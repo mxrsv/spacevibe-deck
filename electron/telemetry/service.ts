@@ -1,7 +1,10 @@
 /**
- * The opt-in usage-analytics service: consent, daily buffers, and sending.
+ * The usage-analytics service: consent, daily buffers, and sending.
  *
- * Spec: docs/specs/2026-08-22-anonymous-usage-telemetry-design.md §3, §5.
+ * Analytics is ON by default and no consent question is asked
+ * (`USAGE_CONSENT_ASKED` is false): `declined` is the only state never
+ * inferred away, and an unreadable `telemetry.json` fails closed to off — see
+ * docs/internals/telemetry.md.
  * Everything is injected (`post`, `now`, the store, the timer) the way
  * `createUpdateLifecycle` injects `loadUpdater`, so no test touches the
  * network or the clock. The governing failure rule is that a dead Worker must

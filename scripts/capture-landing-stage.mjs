@@ -1,14 +1,14 @@
 /* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
- * Gate 2 of `docs/plans/2026-08-20-landing-stage-redesign.md` — shoot the
- * landing's app stage at three widths, twice.
+ * Shoot the built landing's app stage at three widths, twice — the landing
+ * stage redesign's screenshot gate, kept as a script so it can be rerun.
  *
  * It serves the BUILT `marketing/landing-prototype/dist` over a throwaway
  * loopback server (the built bundle is what a visitor gets; `npm run dev`
  * proves nothing about it), then captures the hero and each of the six tour
  * panels at 1440 / 768 / 390 with motion allowed and again with
- * `prefers-reduced-motion: reduce` emulated — which is gate 4's visual layer,
- * produced in the same run.
+ * `prefers-reduced-motion: reduce` emulated — which is the reduced-motion
+ * check's visual layer, produced in the same run.
  *
  * Measurements travel with the images: every shot writes one row into
  * `report.json`, and the page-level checks (no horizontal overflow, no rail

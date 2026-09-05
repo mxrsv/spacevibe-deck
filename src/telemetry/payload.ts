@@ -2,11 +2,11 @@
  * The usage-analytics payload contract — the ONE readable statement of what a
  * participating install sends, written for a person who is not a programmer.
  *
- * Spec: docs/specs/2026-08-22-anonymous-usage-telemetry-design.md §4. The
+ * The behaviour around it is documented in docs/internals/telemetry.md. The
  * landing tour may `cat` this file on screen as a disclosure aid, so it must
  * keep reading as a contract. The snapshot test beside it is the privacy
  * contract in executable form: adding a field turns it red, and updating it
- * requires the spec, the privacy page and its versioned archive to change in
+ * requires that page, the privacy page and its versioned archive to change in
  * the same release.
  *
  * Deliberately absent — and this list is the point of the file: a permanent
@@ -16,9 +16,11 @@
  * local day, never derived from hardware or from the previous day's id, so no
  * field links one day to the next.
  *
- * Sharing is ON by default (owner-decided 2026-08-23) and stops the moment
- * "Share usage stats" is switched off in Settings → Privacy — a declined
- * state is never inferred away. The Tauri host sends nothing at all.
+ * Sharing is ON by default (owner-decided 2026-08-23): no consent question
+ * is asked (`USAGE_CONSENT_ASKED` is false), and it stops the moment "Share
+ * usage stats" is switched off in Settings → Privacy — `declined` is the only
+ * state never inferred away, and an unreadable `telemetry.json` fails closed
+ * to off. The Tauri host sends nothing at all.
  */
 
 import { isBuiltinAgentId } from "../lib/agent-catalog";

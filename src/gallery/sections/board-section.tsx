@@ -28,8 +28,8 @@ import type { AgentOption } from "../../lib/agent-catalog";
 import type { RecentWorkspace } from "../../lib/workspace-recents";
 
 /**
- * Gallery-only mock for docs/specs/2026-08-23-new-task-launcher-design.md.
- * It deliberately owns no app signals and cannot materialize a pane.
+ * Gallery-only mock of the new-task launcher, whose cutover into the app is
+ * unfinished. It deliberately owns no app signals and cannot materialize a pane.
  */
 
 const WORKSPACES = [

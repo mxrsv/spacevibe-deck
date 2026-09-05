@@ -1,11 +1,14 @@
 /**
- * Types and constants for the opt-in usage analytics main-process service.
+ * Types and constants for the usage analytics main-process service.
  *
- * Spec: docs/specs/2026-08-22-anonymous-usage-telemetry-design.md §3-§5, §8.
- * Main owns EVERYTHING here — consent, daily ids and buffers live in
- * `telemetry.json`, never in `settings.json` (settings get copied to other
- * machines and pasted into issues) and never in `register-store.ts`'s
- * allowlist (that would put the daily id one renderer `invoke` away).
+ * Analytics is ON by default and no consent question is asked
+ * (`USAGE_CONSENT_ASKED` is false); `declined` is the only state never
+ * inferred away, and an unreadable `telemetry.json` fails closed to off — see
+ * docs/internals/telemetry.md. Main owns EVERYTHING here — consent, daily ids
+ * and buffers live in `telemetry.json`, never in `settings.json` (settings
+ * get copied to other machines and pasted into issues) and never in
+ * `register-store.ts`'s allowlist (that would put the daily id one renderer
+ * `invoke` away).
  */
 
 /** Where every snapshot goes. Frozen into shipped binaries (spec §8). */
@@ -15,9 +18,11 @@ export const TELEMETRY_ENDPOINT = "https://api.deck.spacevibe.dev/v1/ping";
 export const TELEMETRY_FILE = "telemetry.json";
 
 /**
- * The consent version this build asks for. A material payload, purpose,
- * retention or processor change increments it, which returns every
- * installation to `unanswered` until a fresh opt-in (spec §6).
+ * The consent version this build records when sharing is switched on. It no
+ * longer gates anything: the downgrade-to-`unanswered` check went with the
+ * consent question (2026-08-23), so a material payload, purpose, retention or
+ * processor change is a DOCUMENT change — the privacy notice's own effective
+ * date — not a state transition here.
  */
 export const CONSENT_VERSION = 1;
 

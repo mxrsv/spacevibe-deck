@@ -2,7 +2,7 @@
    The rail whose unit is a live agent rather than a checkout. Ported from the
    owner-approved gallery specimen on 2026-08-16; the class names are the
    specimen's, 1:1, so the shipped rail and the reviewed picture cannot drift.
-   Design: docs/specs/2026-08-16-agent-status-rail-design.md.
+   See docs/internals/agent-rail.md.
 
    The row is ONE line: one status mark · the newest turn, or the tab's own name
    until an agent has spoken · optional worktree suffix · age · agent mark.

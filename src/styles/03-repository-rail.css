@@ -4,7 +4,7 @@
    `.wsitem`'s, untouched — the rail REGROUPS rows, it does not restyle them,
    so "this workspace is active" keeps reading exactly as it always has and
    this surface adds no row to DL §10's ledger.
-   Design: docs/specs/2026-08-13-repository-worktree-rail-design.md §6. ── */
+   See docs/internals/agent-rail.md (section "Other surfaces in the column"). ── */
 .wsbar--repos .wsbar__list {
   gap: 1px;
 }

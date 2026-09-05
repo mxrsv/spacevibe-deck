@@ -303,9 +303,8 @@ pub fn install<R: Runtime>(_app: &App<R>) -> tauri::Result<()> {
 
 // Not `target_os = "macos"` gated: this module reads plain data
 // (`menu_registry`'s generated `&[(&str, &str, Option<&str>)]` tables), so it
-// compiles and runs on any target, including the ubuntu CI runner — see
-// docs/plans/2026-07-27-action-registry.md §2.2 and the CI workflow, which
-// now runs `cargo test` there instead of requiring a macOS runner.
+// compiles and runs on any target, including the ubuntu CI runner — the CI
+// workflow runs `cargo test` there instead of requiring a macOS runner.
 //
 // This used to cross-check hand-typed (id, label, accelerator) triples
 // against these same generated tables. That second hand-written copy is
@@ -336,7 +335,7 @@ mod tests {
     #[test]
     fn edit_menu_items_matches_expected_ids_in_order() {
         let ids: Vec<&str> = EDIT_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();
-        // copy-cwd added in docs/plans/2026-07-27-keyboard-parity.md Task 3 —
+        // copy-cwd joined the Edit menu with the keyboard-parity batch —
         // this list is a deliberate tripwire (see the module comment above):
         // it must be updated by hand whenever action-registry.ts adds an Edit
         // action, so nobody grows the menu without noticing.

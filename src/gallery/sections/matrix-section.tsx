@@ -47,8 +47,9 @@ import { TreatmentDirectionReview } from "./treatment-direction-review";
  * one picture, and the section would have reported a pass on the exact
  * property it exists to test. The direction now derives every colour from
  * `--bg`/`--tone`, so the columns can finally differ, and this section is the
- * evidence for that rebuild
- * (docs/specs/2026-08-13-direction-token-rebuild-design.md §8).
+ * evidence for that rebuild: it proves the surface ramp, the selection wash and
+ * the border role survive a theme change, and it cannot prove native
+ * rendering or font smoothing, which need packaged screenshots.
  *
  * The point is that a wash cannot be judged on one theme. Tokyo Night's `--fg`
  * is a pale blue-violet, so a 4% `--fg` hover reads as "slightly lighter"

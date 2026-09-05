@@ -2,13 +2,15 @@
  * Usage-analytics IPC handlers: the three flat channels over the main-owned
  * service in `../telemetry/service.ts`.
  *
- * Spec: docs/specs/2026-08-22-anonymous-usage-telemetry-design.md §3. Main is
- * the sender because three windows are one machine and must be one stored
- * install-day row — the shape `begin_update_check`'s process-wide single
- * flight already solved. `telemetry.json` is opened through the same
+ * Main is the sender because three windows are one machine and must be one
+ * stored install-day row — the shape `begin_update_check`'s process-wide
+ * single flight already solved. `telemetry.json` is opened through the same
  * `StoreRegistry` as every other userData file, but it is deliberately NOT in
  * `register-store.ts`'s allowlist: consent and the daily id must never be one
- * renderer `store_get` away.
+ * renderer `store_get` away. Analytics is ON by default and no consent
+ * question is asked (`USAGE_CONSENT_ASKED` is false); `declined` is the only
+ * state never inferred away, and an unreadable `telemetry.json` fails closed
+ * to off — see docs/internals/telemetry.md.
  */
 import crypto from "node:crypto";
 import { app, ipcMain, type BrowserWindow } from "electron";

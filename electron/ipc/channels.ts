@@ -19,7 +19,7 @@ export const CHANNELS = {
   // Repository/worktree rail. Electron-only, like the two blocks at the foot
   // of this table: no `#[tauri::command]` counterpart exists, and writing one
   // would implement a feature twice on a host `AGENTS.md` has frozen. See
-  // `docs/specs/2026-08-13-repository-worktree-rail-design.md` §7.3.
+  // `docs/internals/agent-rail.md` (section "Other surfaces in the column").
   gitRepository: "git_repository",
   // Create-worktree flow (open board, task 16). Electron-only like the block
   // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.

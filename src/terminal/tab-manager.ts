@@ -1445,7 +1445,7 @@ export function createTabManager(
 
   /**
    * Copy `id`'s polled CWD to the clipboard (⌘⇧C / menu Edit ▸ "Copy Working
-   * Directory", Task 3 of docs/plans/2026-07-27-keyboard-parity.md).
+   * Directory").
    * No-op if the pane is unknown or its CWD has not been polled yet — never
    * copies a stale/empty value. A write failure reports through the active
    * pane's `notifyError` (C5/C6: never swallowed silently).

@@ -45,9 +45,8 @@ export function fakePane(
     /**
      * Whether the pane starts holding a terminal selection — Ctrl+C's
      * precondition. A boolean rather than a spy pair because the two methods
-     * share state: `copy-or-interrupt` clears after copying, and a test has
-     * to observe the highlight actually go
-     * (docs/specs/2026-08-20-performable-keybindings-design.md D3).
+     * share state: `copy-or-interrupt` clears after copying so the next
+     * Ctrl+C interrupts, and a test has to observe the highlight actually go.
      */
     selection?: boolean;
   } = {},

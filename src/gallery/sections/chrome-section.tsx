@@ -157,9 +157,10 @@ export function ChromeSection() {
 
       {/*
         Component-state coverage, not composition review — which is why the
-        narrowing to one direction above left these standing
-        (docs/specs/2026-08-12-agent-workbench-gallery-design.md §3.3). Nothing
-        else in the gallery shows all seven update phases at once.
+        narrowing to one direction above left these standing: the workbench
+        comparison kept its supporting specimens below the candidates on
+        purpose. Nothing else in the gallery shows all seven update phases at
+        once.
       */}
 
       <Specimen

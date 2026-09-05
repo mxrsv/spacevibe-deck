@@ -7,8 +7,7 @@
  * carried on the action rather than on the binding because Deck stores user
  * overrides per action and replaces an action's whole chord set
  * (`resolveKeymap`, src/lib/keybindings.ts), so two chords of one action
- * cannot differ in conditionality. See
- * docs/specs/2026-08-20-performable-keybindings-design.md D1.
+ * cannot differ in conditionality. See docs/internals/terminal.md.
  *
  * Deliberately pure: it reads a context value, never a signal, so the rules
  * are testable without mounting a tab manager.

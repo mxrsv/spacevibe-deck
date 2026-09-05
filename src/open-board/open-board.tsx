@@ -3,9 +3,13 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
 import type { Preset } from "../lib/preset-schema";
-import { partitionRecents, resolveAgentChoice } from "../lib/workspace-recents";
+import {
+  partitionRecents,
+  resolveAgentChoice,
+  type AgentChoice,
+  type RecentWorkspace,
+} from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
-import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
 import { ensureAgentsDetected } from "../terminal/agent-detection-store";

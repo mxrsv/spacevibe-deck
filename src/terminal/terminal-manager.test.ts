@@ -276,8 +276,8 @@ describe("createTerminalManager focusPane", () => {
   });
 });
 
-// docs/plans/2026-07-27-keyboard-parity.md Task 1: swap the active
-// pane with its neighbor, reusing focusDirection's own nearestInDirection
+// swap-left/right/up/down exchange the focused pane with its neighbour,
+// reusing focusDirection's own nearestInDirection
 // resolution + the already-shipped swapLeaves (pane-drag.ts's onSwap uses the
 // same primitive). jsdom never lays out real geometry — every slot's
 // getBoundingClientRect() is {0,0,0,0} — so, like focusDirection, this suite
@@ -389,8 +389,8 @@ describe("createTerminalManager show", () => {
   });
 });
 
-// Scrollback navigation (docs/plans/2026-07-27-keyboard-parity.md Task 4):
-// thin delegation to the active pane's own scrollPage/scrollToEdge (Pane
+// Scrollback navigation: thin delegation to the active pane's own
+// scrollPage/scrollToEdge (Pane
 // wraps xterm's own scrollPages/scrollToTop/scrollToBottom — untested here,
 // same convention as clear()/pane.clear(): no test in this codebase
 // exercises createPane's real xterm wiring directly, every layer verifies

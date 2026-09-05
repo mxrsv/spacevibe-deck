@@ -11,7 +11,7 @@
 # (MacTargetHelper.getNotarizeOptions). Tauri's workflow calls the middle one
 # APPLE_PASSWORD, so the CI job maps one secret onto both names.
 #
-# Plan: docs/plans/2026-08-18-gate-a-electron-signing.md
+# Runbook: docs/operations/release.md (section "The shipping package").
 #
 # Identity is the Tauri bundle's own (fork F1, 2026-08-14): this build REPLACES
 # an installed `SpaceVibe Deck` rather than standing beside it. The cutover is
@@ -71,8 +71,8 @@ mac:
   # the finished artifact, which the release workflow runs and reports.
   gatekeeperAssess: false
   notarize: true
-# Windows ships from this same config and the same tag (spec:
-# docs/specs/2026-08-20-electron-stable-release-design.md). It is deliberately
+# Windows ships from this same config and the same tag (runbook:
+# docs/operations/release.md). It is deliberately
 # NOT copied from `electron-builder.yml` — that file's win block is a preview
 # artifact with the preview identity. This one inherits the shipping identity
 # above, so the installer registers as `SpaceVibe Deck`: an installed

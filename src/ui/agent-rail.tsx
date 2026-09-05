@@ -31,12 +31,11 @@ import {
 /**
  * The agent status rail.
  *
- * Design: `docs/specs/2026-08-16-agent-status-rail-design.md`; chrome rules
- * `DL §27`. It replaces `RepositoryRail` in `DesktopChrome`'s
- * `sidebarNavigation` slot and keeps that component's callback contract, so
- * reverting is one line in `app.tsx` — the rail changes what the list is ABOUT
- * (a live agent rather than a checkout), never what selecting or closing a tab
- * means (R4).
+ * See `docs/internals/agent-rail.md`; chrome rules `DL §27`. It replaces
+ * `RepositoryRail` in `DesktopChrome`'s `sidebarNavigation` slot and keeps
+ * that component's callback contract, so reverting is one line in `app.tsx`
+ * — the rail changes what the list is ABOUT (a live agent rather than a
+ * checkout), never what selecting or closing a tab means (R4).
  *
  * One list, no mode switch: a cluster per project in the order the user opened
  * them. The `New` launcher moved to the frame beside `SidebarToggle` on

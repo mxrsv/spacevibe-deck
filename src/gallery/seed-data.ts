@@ -272,16 +272,15 @@ export const SEED_LAYOUT = SPLIT_LAYOUT;
 /**
  * The single fixture every workbench composition renders.
  *
- * One object, not one per candidate: the comparison in
- * docs/specs/2026-08-12-agent-workbench-gallery-design.md is a comparison of
- * layouts, so the moment two candidates differ in their content the review
- * stops being about composition. `readonly` all the way down is what enforces
+ * One object, not one per candidate: the agent workbench comparison is a
+ * comparison of layouts, so the moment two candidates differ in their content
+ * the review stops being about composition. `readonly` all the way down is what enforces
  * that — a candidate cannot quietly drop a workspace to make its rail fit.
  *
  * Nothing here describes an approved product surface. Paths, branches, agent
  * names and terminal output are invented; surfaces that Deck has not built are
  * flagged `future` so the markup can say so out loud rather than implying the
- * feature exists (spec §4).
+ * feature exists — one of the comparison's stated failure modes.
  */
 
 export interface WorkbenchProject {

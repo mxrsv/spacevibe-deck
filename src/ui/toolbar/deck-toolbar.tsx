@@ -28,8 +28,10 @@ import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
  * chord. Overflow by width is left wired but idle — there is nothing on the
  * bar for a narrow window to push off.
  *
- * See docs/specs/2026-08-12-feature-toolbar-design.md and its 2026-08-14
- * Browser amendment (docs/specs/2026-08-13-browser-productization-design.md §5).
+ * The toolbar's rules — tooltips, the overflow menu, the `More` control — are
+ * `docs/DESIGN-LANGUAGE.md` §23. The 2026-08-14 Browser amendment: the
+ * browser's toolbar action toggles the browser tab
+ * (`docs/internals/file-surface.md`, section "Browser tab").
  */
 
 const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(
