@@ -15,6 +15,12 @@ import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
 import defaultLogoUrl from "../../.github/assets/icon.svg";
 
+/** What a row's badge shows about an unrunnable agent, and its hover sentence. */
+export interface StaleAgentNote {
+  readonly badge: string;
+  readonly detail: string;
+}
+
 /** The SpaceVibe Deck logo, shown until the user sets a logo in Settings. */
 function DefaultMark() {
   return <img src={defaultLogoUrl} alt="SpaceVibe Deck" />;
@@ -50,11 +56,12 @@ export interface OpenBoardHomeProps {
   readonly decision: string | null;
   describeCombo(recent: RecentWorkspace): string;
   /**
-   * The label of a remembered agent that cannot run — uninstalled, or switched
-   * off in Settings. Null when it can, and null while discovery has not
-   * answered: an unanswered probe must not print `Not installed` on every row.
+   * What to say about a remembered agent that cannot run — uninstalled, or
+   * switched off in Settings, which are different failures with different
+   * fixes. Null when it can run, and null while discovery has not answered:
+   * an unanswered probe must not annotate every row.
    */
-  staleAgent(recent: RecentWorkspace): string | null;
+  staleAgent(recent: RecentWorkspace): StaleAgentNote | null;
   onPickFolder(): void;
   onCreateWorktree(): void;
   onBrowseSessions(): void;
@@ -137,8 +144,8 @@ export function OpenBoardHome({
                   is. Said on the ROW, before the click — the decision line
                   below repeats it only for the click that ignores it. */}
               {stale === null ? null : (
-                <span class="row__stale" title={`${stale} is not installed`}>
-                  Not installed
+                <span class="row__stale" title={stale.detail}>
+                  {stale.badge}
                 </span>
               )}
               <span class="row__time">

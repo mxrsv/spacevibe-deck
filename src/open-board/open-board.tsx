@@ -8,7 +8,7 @@ import { workspaceLabel } from "../lib/workspace-label";
 import type { AgentChoice, AgentResolution, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
-import { ensureAgentsDetected } from "../terminal/agent-detection-store";
+import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
 import {
   agentOptions,
   BUILTIN_AGENTS,
@@ -21,7 +21,7 @@ import { boardPresets, presetsData } from "../presets/presets-store";
 import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
 import type { SessionEntry } from "../lib/session-history";
 import { formatShortcutBinding } from "../lib/shortcut-label";
-import { OpenBoardHome } from "./open-board-home";
+import { OpenBoardHome, type StaleAgentNote } from "./open-board-home";
 import { OpenBoardWorktreeForm } from "./open-board-worktree-form";
 import { available as worktreeHostAvailable } from "../host/worktree-host";
 import { useWorktreeForm } from "./use-worktree-form";
@@ -75,6 +75,41 @@ interface PendingOpen {
 }
 
 /**
+ * WHY a remembered agent cannot run. `agentOptions` drops the disabled and the
+ * undetected alike, so the resolution itself cannot tell them apart — but the
+ * two are fixed by different controls on the same Settings screen, and a
+ * sentence that sends someone to install a CLI they already have is worse than
+ * saying nothing. `null` = it can run.
+ */
+export type AgentUnavailability = "not-installed" | "disabled" | null;
+
+/** Reason for `id`, read against what the probe found and what is switched on. */
+export function unavailabilityOf(
+  id: string,
+  detected: readonly DetectedAgent[],
+  customAgents: readonly CustomAgent[],
+  disabledAgents: readonly string[],
+): AgentUnavailability {
+  if (agentOptions(detected, customAgents, disabledAgents).some((a) => a.id === id)) {
+    return null;
+  }
+  // Same list with the Settings switch NOT applied: present here and absent
+  // above means the binary is there and the user turned the agent off.
+  return agentOptions(detected, customAgents, []).some((a) => a.id === id)
+    ? "disabled"
+    : "not-installed";
+}
+
+/** The row badge: short enough for the meta line, exact about which it is. */
+export function unavailabilityBadge(reason: Exclude<AgentUnavailability, null>): string {
+  return reason === "disabled" ? "Turned off" : "Not installed";
+}
+
+function unavailabilityClause(reason: Exclude<AgentUnavailability, null>): string {
+  return reason === "disabled" ? "is switched off in Settings" : "is not installed";
+}
+
+/**
  * What the board says instead of quietly running the wrong agent.
  *
  * Both halves are stated: the agent that cannot run, and the one that would
@@ -84,20 +119,21 @@ interface PendingOpen {
 export function substitutionMessage(
   resolution: AgentResolution,
   customAgents: readonly CustomAgent[],
+  reason: Exclude<AgentUnavailability, null>,
 ): string | null {
   if (resolution.kind === "chosen") {
     return null;
   }
   const gone = resolution.wanted === null ? null : agentLabel(resolution.wanted, customAgents);
   if (resolution.kind === "substituted") {
-    return `${gone} is not installed — this workspace will open with ${agentLabel(
+    return `${gone} ${unavailabilityClause(reason)} — this workspace will open with ${agentLabel(
       resolution.agent,
       customAgents,
     )} instead.`;
   }
   return gone === null
     ? "No agent CLI was found — this workspace will open a plain shell."
-    : `${gone} is not installed — this workspace will open a plain shell.`;
+    : `${gone} ${unavailabilityClause(reason)} — this workspace will open a plain shell.`;
 }
 
 export function OpenBoard({
@@ -144,29 +180,17 @@ export function OpenBoard({
    */
   const pending = useSignal<PendingOpen | null>(null);
   /**
-   * The discovery answer as a VALUE, for what the rows say — `probe` is the
-   * promise the open path awaits. `null` means discovery has not answered
-   * once, and no row may be annotated from it: an empty pre-boot list would
-   * mark every remembered agent as missing for the frame before it lands.
+   * Whether discovery has answered at least once. What the rows READ is the
+   * live `detectedAgents` signal — Settings' own Refresh writes it, and this
+   * board is still mounted underneath Settings, so installing a CLI and coming
+   * back updates the rows without a remount. This flag only gates the first
+   * frame: an empty pre-boot list would otherwise mark every remembered agent
+   * unavailable before anything had been probed.
    */
-  const detected = useSignal<readonly DetectedAgent[] | null>(null);
+  const probed = useSignal(false);
   // Create-worktree form state (task 16), split into its own hook (F8).
   const worktreeForm = useWorktreeForm();
   const containerRef = useRef<HTMLDivElement>(null);
-  /**
-   * The agent list this board resolves against, as a promise rather than a
-   * value. One click now opens, so a click landing before discovery answers
-   * would otherwise resolve a remembered agent against an EMPTY list and
-   * quietly open a Shell pane instead — `resolveAgentChoice` falls back rather
-   * than waiting. The open path awaits this instead of reading a signal that
-   * may not be filled yet.
-   *
-   * Since the cache landed (`agent-detection-store.ts`) this is normally
-   * already resolved: the boot probe answered long before the board opened, and
-   * only a first launch — or a set of declared agents nothing has probed yet —
-   * makes the await do any waiting.
-   */
-  const probe = useRef<Promise<readonly DetectedAgent[]> | null>(null);
   /**
    * The in-flight `dirs_exist` pass, for the same reason `probe` is held: the
    * open path must not decide a folder is alive just because the answer has
@@ -186,18 +210,16 @@ export function OpenBoard({
   // stale. Never rejects (the store degrades to the best list it knows), so the
   // board still falls back to Shell only when discovery cannot answer at all.
   useEffect(() => {
-    const run = ensureAgentsDetected(probeNames(customAgents));
-    probe.current = run;
     let cancelled = false;
-    void run.then((found) => {
+    void ensureAgentsDetected(probeNames(customAgents)).then(() => {
       if (!cancelled) {
-        detected.value = found;
+        probed.value = true;
       }
     });
     return () => {
       cancelled = true;
     };
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- `detected` is a stable signal
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- `probed` is a stable signal
   }, [customAgents]);
 
   /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on recents only; the missing-signal read is a snapshot */
@@ -256,25 +278,40 @@ export function OpenBoard({
   /** Fresh state every time the form is opened — never a stale attempt. */
   function openWorktreeForm(): void {
     worktreeForm.reset();
+    // The question is a home-view control and would survive out of sight
+    // otherwise, ready to launch a workspace the user has moved on from.
+    pending.value = null;
+    notice.value = null;
     view.value = "worktree";
   }
 
-  /** What may be launched right now, or null while discovery is unanswered. */
+  /** What may be launched right now, out of one discovery answer. */
   function launchable(list: readonly DetectedAgent[]): readonly AgentOption[] {
     return agentOptions(list, customAgents, settings.value.disabledAgents);
   }
 
+  /** Why an id cannot run, against the CURRENT discovery answer. */
+  function unavailability(id: string, list: readonly DetectedAgent[]): AgentUnavailability {
+    return unavailabilityOf(id, list, customAgents, settings.value.disabledAgents);
+  }
+
   /**
-   * The remembered agent a row NAMES but could not run, or null. Reads the
-   * discovery value rather than the promise, so it says nothing at all until
-   * the probe has answered once — a row is never annotated on a guess.
+   * What a row says about a remembered agent it can no longer run, or null.
+   * Silent until the probe has answered once: a row is never annotated on a
+   * guess. The badge and its hover sentence come from the same reason, so the
+   * row and the decision line can never disagree about which failure it is.
    */
-  function staleAgent(recent: RecentWorkspace): string | null {
-    if (detected.value === null || typeof recent.lastAgent !== "string") {
+  function staleAgent(recent: RecentWorkspace): StaleAgentNote | null {
+    if (!probed.value || typeof recent.lastAgent !== "string") {
       return null;
     }
-    const resolution = resolveAgent(recent.lastAgent, launchable(detected.value));
-    return resolution.kind === "chosen" ? null : agentLabel(recent.lastAgent, customAgents);
+    const reason = unavailability(recent.lastAgent, detectedAgents.value);
+    return reason === null
+      ? null
+      : {
+          badge: unavailabilityBadge(reason),
+          detail: `${agentLabel(recent.lastAgent, customAgents)} ${unavailabilityClause(reason)}`,
+        };
   }
 
   /**
@@ -295,14 +332,16 @@ export function OpenBoard({
     if (opening.value) {
       return;
     }
+    // A new click replaces the question the last one asked — a stale `Open
+    // anyway` must never be able to launch a workspace nobody is looking at.
+    // Cleared FIRST, so the missing-folder return below cannot leave the two
+    // messages on screen together, one of them about another workspace.
+    pending.value = null;
+    notice.value = null;
     if (missing.value.has(path)) {
       notice.value = `${workspaceLabel(path)} is missing — pick another folder`;
       return;
     }
-    notice.value = null;
-    // A new row replaces the question the last one asked — a stale `Open
-    // anyway` must never be able to launch a workspace nobody is looking at.
-    pending.value = null;
     opening.value = true;
     // Wait for the liveness pass the same way the agent probe is waited for.
     // `null` means the probe failed, so nothing is known and the open goes
@@ -321,9 +360,23 @@ export function OpenBoard({
     // `lastAgent` carries all three cases on purpose: a string is a named
     // agent, `null` is a remembered Shell-only open, and `undefined` (never
     // opened, or opened before the field existed) means first detected.
-    const found = (await probe.current) ?? [];
+    // Asked HERE rather than held from mount: a warm cache answers in the same
+    // turn, a cold one is waited for (a click landing before discovery answers
+    // would otherwise resolve against an empty list and quietly open a Shell),
+    // and a list refreshed while the user was in Settings is the list this
+    // decides from — which is the whole point of sending them there.
+    const found = await ensureAgentsDetected(probeNames(customAgents));
     const resolution = resolveAgent(entry?.lastAgent, launchable(found));
-    const message = substitutionMessage(resolution, customAgents);
+    const message =
+      resolution.kind === "chosen"
+        ? null
+        : substitutionMessage(
+            resolution,
+            customAgents,
+            resolution.wanted === null
+              ? "not-installed"
+              : (unavailability(resolution.wanted, found) ?? "not-installed"),
+          );
     if (message !== null) {
       opening.value = false;
       pending.value = { path, preset, agent: resolution.agent, message };
@@ -347,13 +400,24 @@ export function OpenBoard({
     }
   }
 
-  /** `Open anyway`: launch exactly the agent the held sentence named. */
+  /**
+   * `Open anyway`: launch exactly the agent the held sentence named.
+   *
+   * The folder is re-checked rather than trusted: the question was raised
+   * against a liveness pass that ran before it, and the recents effect keeps
+   * refreshing `missing` underneath — a folder that went away while the
+   * question stood must not be spawned into.
+   */
   function confirmPending(): void {
     const held = pending.value;
     if (held === null || opening.value) {
       return;
     }
     pending.value = null;
+    if (missing.value.has(held.path)) {
+      notice.value = `${workspaceLabel(held.path)} is missing — pick another folder`;
+      return;
+    }
     void launch(held.path, held.preset, held.agent);
   }
 
@@ -371,6 +435,10 @@ export function OpenBoard({
   function removeRecentRows(paths: readonly string[]): void {
     if (paths.length === 0) {
       return;
+    }
+    // A question about a row the user just deleted has nothing left to name.
+    if (pending.value !== null && paths.includes(pending.value.path)) {
+      pending.value = null;
     }
     removeWorkspaceRecents(paths);
   }
