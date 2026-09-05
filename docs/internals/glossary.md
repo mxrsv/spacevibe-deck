@@ -99,8 +99,10 @@ quick picker, reopen, presets, rail drop and session restore. Not: restore, open
 then agents as rows picked by click or digit. Spawns one pane in the active tab's live cwd.
 Not: Open board.
 
-**Busy** — A pane whose foreground process is not an idle shell (an agent, `vim`, anything).
-The close and quit census asks about busy panes. `unknown` is neither busy nor idle.
+**Busy** — A pane whose foreground process was classified as something other than an idle
+shell (an agent, `vim`, any known non-shell process). The close and quit census asks about
+busy panes. A pane whose process could not be classified is `unknown`, which is neither busy
+nor idle, so the census refuses rather than guesses.
 Not: running, working.
 
 **Agent phase** — The live per-pane work signal: `unknown`, `idle`, `working`, `exited`, from

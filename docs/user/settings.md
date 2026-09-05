@@ -72,7 +72,7 @@ session logs.
 
 | File or folder        | Contents                                                             |
 | --------------------- | -------------------------------------------------------------------- |
-| `settings.json`       | Every setting above                                                  |
+| `settings.json`       | Every setting above except the usage-stats choice                    |
 | `workspaces.json`     | Recent workspaces and the layout and agent each was last opened with |
 | `presets.json`        | Layout presets                                                       |
 | `repositories.json`   | Cached git repository and worktree scans for the rail                |
