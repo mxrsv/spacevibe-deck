@@ -1,5 +1,5 @@
 /* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 // `URL.pathname` yields `/C:/…` on Windows, which `readFileSync` cannot open;
 // `scripts/gallery-entry.test.ts` learned this first.
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const RULEBOOK = join(ROOT, "docs/DESIGN-LANGUAGE.md");
 const GALLERY_DIRECTION = join(ROOT, "src/gallery/chatgpt-direction.css");
 // `src/styles.css` is an `@import` index over `src/styles/*.css` partials
 // (2026-08-16 split) — see `readStylesheet()` below.
@@ -29,18 +28,6 @@ function readStylesheet(): string {
     .map((path) => readFileSync(resolve(dirname(STYLESHEET), path), "utf8"))
     .join("\n");
 }
-const SCANNED_DIRS = ["src", "electron", "scripts"];
-const SCANNED_EXT = /\.(ts|tsx|css)$/;
-const SECTION = /^## (\d+)\. (.+)$/gm;
-const RULE = /\*\*DL-(\d+)\.(\d+)\*\*/g;
-const CITATION = /DL-(\d+)(?:\.(\d+))?/g;
-/**
- * The other spelling this repo uses — `DL §17`, `DESIGN-LANGUAGE §19`. The
- * rulebook prefix is required: a bare `§7` cites a spec, a plan or a review far
- * more often than it cites this document, and there is no way to tell which
- * from the digits. Citing DL by section therefore means naming DL.
- */
-const SECTION_CITATION = /(?:DL|DESIGN-LANGUAGE(?:\.md)?)\s*§\s*(\d+)(?:\.(\d+))?/g;
 
 /**
  * DL-4.3 bans styled uppercase and artificial tracking on readable copy, with
@@ -85,26 +72,6 @@ const CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
 const STYLED_UPPERCASE = /^text-transform\s*:\s*uppercase$/;
 const TEXT_TRACKING = /^letter-spacing\s*:/;
 const NEGATIVE_TRACKING = /^letter-spacing\s*:\s*-/;
-
-function walk(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry);
-    if (entry === "node_modules" || entry === "dist") return [];
-    // The gate's own regex literals are not citations.
-    if (entry === "design-language.test.ts") return [];
-    if (statSync(path).isDirectory()) return walk(path);
-    return SCANNED_EXT.test(entry) ? [path] : [];
-  });
-}
-
-function declared(): { sections: Set<string>; rules: Set<string> } {
-  const text = readFileSync(RULEBOOK, "utf8");
-  const sections = new Set<string>();
-  for (const match of text.matchAll(SECTION)) sections.add(match[1]);
-  const rules = new Set<string>();
-  for (const match of text.matchAll(RULE)) rules.add(`${match[1]}.${match[2]}`);
-  return { sections, rules };
-}
 
 /**
  * Every `selector: declaration;` in the shipping stylesheet that styles casing
@@ -191,22 +158,6 @@ describe("design-language radius scale", () => {
     expect(offScaleRadii()).toEqual([]);
   });
 
-  it("keeps the rulebook synchronized with the 2/8/10/12 token contract", () => {
-    const rulebook = readFileSync(RULEBOOK, "utf8");
-
-    expect(rulebook).toContain("Four radius roles");
-    expect(rulebook).toContain("`--radius-flat` (2px)");
-    expect(rulebook).toContain("`--radius-tight` (8px)");
-    expect(rulebook).toContain("`--radius-control` (10px)");
-    expect(rulebook).toContain("`--radius-surface` (12px)");
-    expect(rulebook).not.toContain("the two radius roles");
-    expect(rulebook).not.toContain("Two radius roles");
-    // The count in the rule's own first sentence moved with the role; a
-    // rulebook still saying "three" would leave the gate asserting one number
-    // and the prose teaching another.
-    expect(rulebook).not.toContain("Three radius roles");
-  });
-
   it("uses the surface radius and raised seam for every modal shell", () => {
     const css = readStylesheet().replace(CSS_COMMENT, "");
     for (const selector of [".preset-editor", ".save-preset", ".agent-quick-picker"]) {
@@ -257,41 +208,7 @@ describe("design-language typography tokens", () => {
   });
 });
 
-describe("design-language citations", () => {
-  it("declares every section number exactly once", () => {
-    const text = readFileSync(RULEBOOK, "utf8");
-    const numbers = [...text.matchAll(SECTION)].map((m) => m[1]);
-    const duplicates = numbers.filter((n, i) => numbers.indexOf(n) !== i);
-    expect(duplicates).toEqual([]);
-  });
-
-  it("scans a non-empty set of files", () => {
-    const files = SCANNED_DIRS.flatMap((dir) => walk(join(ROOT, dir)));
-    expect(files.length).toBeGreaterThan(100);
-  });
-
-  it("resolves every cited rule to a declared rule or section", () => {
-    const { sections, rules } = declared();
-    const spellings = [
-      { pattern: CITATION, prefix: "DL-" },
-      { pattern: SECTION_CITATION, prefix: "DL §" },
-    ] as const;
-    const unresolved: string[] = [];
-    for (const dir of SCANNED_DIRS) {
-      for (const file of walk(join(ROOT, dir))) {
-        const text = readFileSync(file, "utf8");
-        for (const { pattern, prefix } of spellings) {
-          for (const match of text.matchAll(pattern)) {
-            const id = match[2] ? `${match[1]}.${match[2]}` : match[1];
-            const ok = match[2] ? rules.has(id) : sections.has(id);
-            if (!ok) unresolved.push(`${file.replace(ROOT, "")}: ${prefix}${id}`);
-          }
-        }
-      }
-    }
-    expect(unresolved).toEqual([]);
-  });
-
+describe("design-language stage surfaces", () => {
   /**
    * The rendered document's scroll thumb must stay visible at rest, and its
    * pointer step must stay declared BESIDE it.

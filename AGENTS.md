@@ -757,6 +757,24 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 
 Open queue:
 
+- **The design-language gate stopped reading the rulebook (2026-09-05, owner-decided in
+  conversation).** A fork by its own listing — the queue names _a rule in_
+  `docs/DESIGN-LANGUAGE.md`, and this removes the only mechanism that made those rules
+  binding. `scripts/design-language.test.ts` lost its four document-reading cases
+  (`resolves every cited rule…`, `declares every section number exactly once`,
+  `keeps the rulebook synchronized with the 2/8/10/12 token contract`, and the
+  `scans a non-empty set of files` guard that existed only to protect the first) along with
+  `RULEBOOK`, `declared()`, `walk()` and the four citation regexes; the twelve CSS
+  assertions are untouched and still red on violation. Modelled on
+  [pingdotgg/t3code](https://github.com/pingdotgg/t3code), this project's reference repo,
+  which carries no visual rulebook in `docs/` and keeps its whole visual policy in
+  executable form (`oxlint-plugin-t3code/`, its token file, and five lines of `AGENTS.md`) —
+  so the faithful reading of "follow t3code" is drop the prose tier, keep the enforcement
+  tier. Consequence carried on purpose: **159 `DL-x.y` citations in 212 files are now
+  unverified and will rot silently**; this line is the date they started drifting. R2 is
+  rewritten to match. NOT done here: deleting or trimming `docs/DESIGN-LANGUAGE.md` (this
+  only unlocks it), cleaning up the citations, or splitting the twelve assertions into
+  named rules with their own tests.
 - **Analytics consent reversed to default-on (decided 2026-08-23 in conversation
   after hearing the risks; committed 2026-08-24 as `cdc07a0`).** A fork because it amends DL-29.9 —
   the decision modal's rule now governs a surface that mounts nowhere
@@ -1002,8 +1020,14 @@ it runs on rather than implying both.
 ## Repo rules
 
 - **R1. English only** for strings, comments, docs and commit messages.
-- **R2. Design language is executable policy.** Chrome styling follows numbered DL rules;
-  code comments cite them. Fixing a violation also updates the ledger in that document.
+- **R2. The design gate is the CSS assertions, not the prose.**
+  `scripts/design-language.test.ts` pins twelve properties of the shipping stylesheet
+  (the radius scale and its use sites, the type ladder, the casing/tracking ban, the modal
+  shell, the gallery's derived radii, the `.md-doc` scroll thumb, the square file editor,
+  the neutral glyph treatment, and the three focus-current animations). Those are the rules
+  that hold. `docs/DESIGN-LANGUAGE.md` is no longer pinned by any test (2026-09-05), and the
+  159 `DL-x.y` citations across 212 source files are **unchecked from that date** — read a
+  citation as a historical note, not as a reference the tooling keeps honest.
 - **R3. Menu output is generated.** Edit the registry, then run `generate:menu`; never edit
   generated menu code manually.
 - **R4. Load-bearing seams stay explicit.** PTY/window/tab/layout/close modules require a
