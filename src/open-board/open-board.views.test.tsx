@@ -107,7 +107,7 @@ describe("OpenBoard home view", () => {
     pickedFolder = null;
     detected = [];
     detectGate = null;
-    settings.value = { ...settings.value, disabledAgents: [] };
+    settings.value = { ...settings.value, disabledAgents: [], customAgents: [] };
   });
 
   afterEach(() => {
@@ -376,6 +376,98 @@ describe("OpenBoard home view", () => {
       "Claude Code is switched off in Settings",
     );
     expect(host.querySelector(".row__stale")?.textContent).toContain("Turned off");
+  });
+
+  it("a declared agent whose binary is gone is not runnable either", async () => {
+    // `agentOptions` DROPS an undetected built-in but KEEPS a declared agent,
+    // flagging it `missing` — a display rule AgentQuickPicker needs. Read as a
+    // launch rule it would resolve `chosen` and open `command not found`.
+    settings.value = {
+      ...settings.value,
+      customAgents: [{ id: "custom:mine", label: "My Agent", command: "myagent --go" }],
+    };
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "custom:mine" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    expect(host.querySelector(".row__stale")?.textContent).toContain("Not installed");
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__decision")?.textContent).toContain(
+      "My Agent is not installed",
+    );
+  });
+
+  it("a declared agent whose binary IS there still runs", async () => {
+    settings.value = {
+      ...settings.value,
+      customAgents: [{ id: "custom:mine", label: "My Agent", command: "myagent --go" }],
+    };
+    detected = [{ name: "myagent", path: "/usr/local/bin/myagent" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "custom:mine" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    expect(host.querySelector(".row__stale")).toBeNull();
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "custom:mine");
+  });
+
+  it("probes the folder again when the question is answered, not just at mount", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    // The folder goes away while the question stands. `missing` is keyed on
+    // the recents list and nothing changed it, so only a FRESH probe can see
+    // this — which is the whole point: this question outlives its answer.
+    missingPaths.add("/w/beta");
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
+      "beta is missing",
+    );
   });
 
   it("re-reads discovery on each click, so fixing it in Settings takes effect", async () => {

@@ -3,9 +3,14 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
 import type { Preset } from "../lib/preset-schema";
-import { partitionRecents, resolveAgent } from "../lib/workspace-recents";
+import {
+  partitionRecents,
+  resolveAgent,
+  type AgentChoice,
+  type AgentResolution,
+  type RecentWorkspace,
+} from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
-import type { AgentChoice, AgentResolution, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
 import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
@@ -83,6 +88,27 @@ interface PendingOpen {
  */
 export type AgentUnavailability = "not-installed" | "disabled" | null;
 
+/**
+ * What this board may actually launch, out of one discovery answer.
+ *
+ * The `missing` filter is load-bearing and easy to lose: `agentOptions` DROPS
+ * an undetected built-in but KEEPS a declared agent whose binary is gone,
+ * flagging it `missing: true` — a chip that vanished because a tool was
+ * uninstalled reads as lost data, so `AgentQuickPicker` still lists it and
+ * routes it to Settings. That is a display rule, not a launch rule. Without
+ * this filter a remembered custom agent whose binary has left `$PATH`
+ * resolves as `chosen`, wears no badge, and opens a pane that prints
+ * `command not found` — exactly the silence this whole change exists to end,
+ * reintroduced for the one agent kind the built-in path cannot cover.
+ */
+export function runnableAgents(
+  detected: readonly DetectedAgent[],
+  customAgents: readonly CustomAgent[],
+  disabledAgents: readonly string[],
+): readonly AgentOption[] {
+  return agentOptions(detected, customAgents, disabledAgents).filter((a) => !a.missing);
+}
+
 /** Reason for `id`, read against what the probe found and what is switched on. */
 export function unavailabilityOf(
   id: string,
@@ -90,12 +116,14 @@ export function unavailabilityOf(
   customAgents: readonly CustomAgent[],
   disabledAgents: readonly string[],
 ): AgentUnavailability {
-  if (agentOptions(detected, customAgents, disabledAgents).some((a) => a.id === id)) {
+  if (runnableAgents(detected, customAgents, disabledAgents).some((a) => a.id === id)) {
     return null;
   }
-  // Same list with the Settings switch NOT applied: present here and absent
-  // above means the binary is there and the user turned the agent off.
-  return agentOptions(detected, customAgents, []).some((a) => a.id === id)
+  // The same list with the Settings switch NOT applied: runnable here and
+  // absent above means the binary is there and the user turned the agent off.
+  // A declared agent that is BOTH missing and switched off answers
+  // `not-installed` — the deeper problem, and the one Settings shows first.
+  return runnableAgents(detected, customAgents, []).some((a) => a.id === id)
     ? "disabled"
     : "not-installed";
 }
@@ -287,7 +315,7 @@ export function OpenBoard({
 
   /** What may be launched right now, out of one discovery answer. */
   function launchable(list: readonly DetectedAgent[]): readonly AgentOption[] {
-    return agentOptions(list, customAgents, settings.value.disabledAgents);
+    return runnableAgents(list, customAgents, settings.value.disabledAgents);
   }
 
   /** Why an id cannot run, against the CURRENT discovery answer. */
@@ -403,12 +431,19 @@ export function OpenBoard({
   /**
    * `Open anyway`: launch exactly the agent the held sentence named.
    *
-   * The folder is re-checked rather than trusted: the question was raised
-   * against a liveness pass that ran before it, and the recents effect keeps
-   * refreshing `missing` underneath — a folder that went away while the
-   * question stood must not be spawned into.
+   * The folder is PROBED AGAIN rather than trusted. Every other path on this
+   * board decides liveness from `missing` / `livenessProbe`, both keyed on the
+   * recents list and refreshed only when that list changes — honest for a
+   * click that resolves in one turn, and wrong here: this question can stand
+   * on screen for as long as it takes to visit Settings and come back, and
+   * nothing re-probes underneath it. A stale `false` would spawn into a folder
+   * that is gone. One `dirs_exist` for one path is the cheapest call on this
+   * screen.
+   *
+   * An unanswerable probe lets the open through, the rule the mount-time pass
+   * already follows: refusing on a dead bridge would strand the board.
    */
-  function confirmPending(): void {
+  async function confirmPending(): Promise<void> {
     const held = pending.value;
     if (held === null || opening.value) {
       return;
@@ -418,7 +453,19 @@ export function OpenBoard({
       notice.value = `${workspaceLabel(held.path)} is missing — pick another folder`;
       return;
     }
-    void launch(held.path, held.preset, held.agent);
+    opening.value = true;
+    const alive = await invoke<boolean[]>("dirs_exist", { paths: [held.path] }).catch(
+      (err: unknown) => {
+        console.warn("dirs_exist failed:", err);
+        return null;
+      },
+    );
+    opening.value = false;
+    if (alive !== null && alive[0] === false) {
+      notice.value = `${workspaceLabel(held.path)} is missing — pick another folder`;
+      return;
+    }
+    await launch(held.path, held.preset, held.agent);
   }
 
   /**
@@ -573,7 +620,7 @@ export function OpenBoard({
           decision={pending.value === null ? null : pending.value.message}
           describeCombo={describeCombo}
           staleAgent={staleAgent}
-          onConfirmOpen={confirmPending}
+          onConfirmOpen={() => void confirmPending()}
           onManageAgents={manageAgents}
           onPickFolder={() => void pickFolder()}
           onCreateWorktree={openWorktreeForm}
