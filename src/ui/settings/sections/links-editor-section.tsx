@@ -4,14 +4,8 @@ import { settings, updateSettings } from "../../../settings/settings-store";
 import { ConfigRow } from "../../controls/config-row";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { primaryModifierName } from "../../../lib/shortcut-label";
-import {
-  externalApp,
-  isExternalAppId,
-} from "../../../lib/external-app-catalog";
-import {
-  externalAppChoices,
-  groupExternalApps,
-} from "../../../links/external-app-choices";
+import { externalApp, isExternalAppId } from "../../../lib/external-app-catalog";
+import { externalAppChoices, groupExternalApps } from "../../../links/external-app-choices";
 import {
   ensureExternalAppsScanned,
   externalAppsScanned,
@@ -41,18 +35,13 @@ const GROUP_LABELS: Record<string, string> = {
  */
 export function LinksEditorSection() {
   const selected = settings.value.externalAppId;
-  const choices = externalAppChoices(
-    installedExternalApps.value,
-    externalAppsScanned.value,
-  );
+  const choices = externalAppChoices(installedExternalApps.value, externalAppsScanned.value);
   const groups = groupExternalApps(choices);
   // A stored selection whose app has left the machine still has to be visible,
   // or the row would silently read as the first installed app while the click
   // path falls back to it for a different reason. Named, not hidden.
   const missing =
-    choices.some((choice) => choice.id === selected) === false
-      ? externalApp(selected)
-      : null;
+    choices.some((choice) => choice.id === selected) === false ? externalApp(selected) : null;
 
   useEffect(() => {
     void ensureExternalAppsScanned();
@@ -65,9 +54,7 @@ export function LinksEditorSection() {
     >
       <span class="cfg-btn cfg-btn--overlay">
         <span class="cfg-btn__text">
-          {choices.find((choice) => choice.id === selected)?.label ??
-            missing?.label ??
-            selected}
+          {choices.find((choice) => choice.id === selected)?.label ?? missing?.label ?? selected}
         </span>
         <span class="cfg-btn__hint">
           <DeckIcon icon={CaretDown} size={ROW_ICON} />

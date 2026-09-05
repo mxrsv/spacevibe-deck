@@ -2,12 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  EXTERNAL_APP_CATALOG,
-  bundlePath,
-  repositoryRoot,
-  resolveTarget,
-} from "./external-apps";
+import { EXTERNAL_APP_CATALOG, bundlePath, repositoryRoot, resolveTarget } from "./external-apps";
 import { EXTERNAL_APPS } from "../src/lib/external-app-catalog";
 
 const temps: string[] = [];

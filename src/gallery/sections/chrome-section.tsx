@@ -112,11 +112,11 @@ export function ChromeSection() {
             // seam, and a seam a screenshot cannot drag is only a cursor
             // change.
             sidebarToggle={
-              railCollapsed.value ? null : (
-                sidebarFrameActionsSpecimen(() => {
-                  railCollapsed.value = true;
-                })
-              )
+              railCollapsed.value
+                ? null
+                : sidebarFrameActionsSpecimen(() => {
+                    railCollapsed.value = true;
+                  })
             }
             toolbar={null}
             sidebarNavigation={agentRailNavigationSpecimen({

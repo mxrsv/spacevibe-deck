@@ -174,12 +174,14 @@ async function measure(page, width) {
       // T17's floors. 768 is the WORST legibility case, not 390: the
       // breakpoint is 47.5rem = 760px, so 768 sits above it and gets none of
       // the narrow rules.
-      const sized = railType.flatMap((selector) =>
-        [...document.querySelectorAll(selector)].map((node) => ({
-          selector,
-          size: px(getComputedStyle(node).fontSize),
-        })),
-      ).filter((entry) => Number.isFinite(entry.size));
+      const sized = railType
+        .flatMap((selector) =>
+          [...document.querySelectorAll(selector)].map((node) => ({
+            selector,
+            size: px(getComputedStyle(node).fontSize),
+          })),
+        )
+        .filter((entry) => Number.isFinite(entry.size));
       const smallest = sized.reduce(
         (low, entry) => (entry.size < low.size ? entry : low),
         sized[0] ?? { selector: "—", size: Number.NaN },
@@ -285,9 +287,7 @@ if (!existsSync(join(DIST, "landing-prototype/index.html"))) {
 }
 
 const outDir = resolve(flag("out", "/tmp/spacevibe-deck-landing-stage"));
-const widths = String(flag("widths", "1440,768,390"))
-  .split(",")
-  .map(Number);
+const widths = String(flag("widths", "1440,768,390")).split(",").map(Number);
 
 await mkdir(outDir, { recursive: true });
 
@@ -325,7 +325,14 @@ try {
 
       console.log(`── ${width}px · prefers-reduced-motion: ${motion}`);
 
-      shots.push(await shoot(page, ".direction-a .a-appwin", join(outDir, `hero-${width}-${tag}.png`), "hero"));
+      shots.push(
+        await shoot(
+          page,
+          ".direction-a .a-appwin",
+          join(outDir, `hero-${width}-${tag}.png`),
+          "hero",
+        ),
+      );
 
       for (const panel of await page.$$("article.panel")) {
         const scene = await panel.evaluate((node) => node.dataset.scene);
@@ -374,7 +381,9 @@ try {
 
 await writeFile(join(outDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
 
-console.log(`${report.reduce((n, run) => n + run.shots.length, 0)} images + report.json in ${outDir}`);
+console.log(
+  `${report.reduce((n, run) => n + run.shots.length, 0)} images + report.json in ${outDir}`,
+);
 
 if (failures > 0) {
   console.log(`\n${failures} check(s) FAILED.`);

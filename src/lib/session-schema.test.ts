@@ -121,10 +121,9 @@ describe("SessionPane.launchCommand", () => {
   }
 
   it("keeps a pane's launch command", () => {
-    expect(
-      paneOf("claude --permission-mode plan")
-        ?.launchCommand,
-    ).toBe("claude --permission-mode plan");
+    expect(paneOf("claude --permission-mode plan")?.launchCommand).toBe(
+      "claude --permission-mode plan",
+    );
   });
 
   it("drops an unsafe command without dropping the pane", () => {

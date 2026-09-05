@@ -605,9 +605,7 @@ function FlatAgentRow({ pane }: { readonly pane: TreePane }) {
 }
 
 function ClusterHead({ cluster }: { readonly cluster: GroupingCluster }) {
-  return cluster.labelled ? (
-    <span class="gxa-head gxa-head--label">{cluster.project}</span>
-  ) : null;
+  return cluster.labelled ? <span class="gxa-head gxa-head--label">{cluster.project}</span> : null;
 }
 
 /** A — what ships today: every pane is a row and the tab leaves no trace. */
@@ -618,9 +616,7 @@ function FlatColumn() {
         <section key={cluster.project} class="gxa-cluster">
           <ClusterHead cluster={cluster} />
           {cluster.tabs.flatMap((tab) =>
-            tab.panes.map((pane) => (
-              <FlatAgentRow key={`${tab.name}-${pane.agent}`} pane={pane} />
-            )),
+            tab.panes.map((pane) => <FlatAgentRow key={`${tab.name}-${pane.agent}`} pane={pane} />),
           )}
         </section>
       ))}
@@ -645,11 +641,7 @@ function FlatColumn() {
  * 2026-08-16 and nothing has set since `TabPopover` was deleted. Cyan and
  * magenta on purpose — red and yellow are the status dot's words.
  */
-function BandedColumn({
-  mark,
-}: {
-  readonly mark: "rule" | "wash" | "outline" | "tint";
-}) {
+function BandedColumn({ mark }: { readonly mark: "rule" | "wash" | "outline" | "tint" }) {
   return (
     <div class="gxa-rail">
       {GROUPING_CLUSTERS.map((cluster) => (
@@ -759,8 +751,8 @@ export function multiAgentGroupingSpecimen() {
           <span class="gxa-variant__index">B3</span>
           <span class="gxa-variant__title">band, outline — SHIPPING</span>
           <span class="gxa-variant__note">
-            DL-27.19 since 2026-08-20: a rounded hairline frame draws the
-            block's own edge; two tabs back to back close as two objects
+            DL-27.19 since 2026-08-20: a rounded hairline frame draws the block's own edge; two tabs
+            back to back close as two objects
           </span>
         </div>
         <BandedColumn mark="outline" />
@@ -770,8 +762,8 @@ export function multiAgentGroupingSpecimen() {
           <span class="gxa-variant__index">B4</span>
           <span class="gxa-variant__title">band, outline in tab colour</span>
           <span class="gxa-variant__note">
-            turned down 2026-08-20: the same frame wearing the tab's own dot
-            colour, which the status dot's red and yellow would fight
+            turned down 2026-08-20: the same frame wearing the tab's own dot colour, which the
+            status dot's red and yellow would fight
           </span>
         </div>
         <BandedColumn mark="tint" />

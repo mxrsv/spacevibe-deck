@@ -1,0 +1,35 @@
+# Line endings are part of the test contract on this repo.
+#
+# Many suites read a source file with `readFileSync(path, "utf8")` and assert
+# that it CONTAINS an LF-spelled snippet -- `scripts/design-language.test.ts`
+# reads `docs/DESIGN-LANGUAGE.md` and concatenates the CSS partials,
+# `src/ui/agent-rail.test.tsx` matches rule bodies out of
+# `src/styles/04a-agent-rail.css`, and several scripts hash a checked-in file
+# and compare the digest. Git for Windows defaults to `core.autocrlf=true`, so
+# a `windows-latest` checkout rewrote every LF to CRLF in the working tree and
+# those assertions compared LF needles against CRLF haystacks. That is what the
+# `windows-check` job's CSS diffs were: every "Received" line ended in `\r`.
+#
+# `eol=lf` overrides `core.autocrlf` for the working tree, so the bytes a test
+# reads are the bytes that were committed, on every platform. Nothing in the
+# index changes -- no tracked text file in this repo contains a CR today.
+* text=auto eol=lf
+
+# Byte-exact fixtures and vendored data: never normalized in either direction,
+# because their bytes ARE the contract (`.prettierignore` says the same of
+# them). `-text` tells git to leave them alone on checkin and checkout alike.
+electron/usage/fixtures/** -text
+*.jsonl -text
+
+# Binaries: no conversion, and no diff attempted.
+*.png binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.mp4 binary
+*.webm binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

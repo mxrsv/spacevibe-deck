@@ -1,9 +1,5 @@
 import type { ILink, ILinkProvider, Terminal } from "@xterm/xterm";
-import {
-  extractLinkCandidates,
-  stripDiffPrefix,
-  type LinkCandidate,
-} from "../lib/terminal-links";
+import { extractLinkCandidates, stripDiffPrefix, type LinkCandidate } from "../lib/terminal-links";
 import { reportPersistError, requestPathOpen } from "../chrome/events";
 import { hasPrimaryModifier } from "../lib/platform";
 import { defaultLinkClient, type LinkClient } from "./link-client";
@@ -74,10 +70,7 @@ function openCandidate(link: ResolvedLink, client: LinkClient): void {
  * click has to stay a plain click, because an agent TUI (Claude Code, Codex)
  * turns on mouse tracking and needs those clicks itself.
  */
-export function createLinkProvider(
-  term: Terminal,
-  deps: LinkProviderDeps,
-): ILinkProvider {
+export function createLinkProvider(term: Terminal, deps: LinkProviderDeps): ILinkProvider {
   const client = deps.client ?? defaultLinkClient;
   const cache = new Map<string, CacheEntry>();
   // Bumped by every request; a reply carrying a stale id is dropped rather than
@@ -164,10 +157,7 @@ export function createLinkProvider(
     return link;
   }
 
-  function toLinks(
-    resolved: readonly ResolvedLink[],
-    logical: LogicalLine,
-  ): ILink[] | undefined {
+  function toLinks(resolved: readonly ResolvedLink[], logical: LogicalLine): ILink[] | undefined {
     const links = resolved
       // The cache is keyed by line text, but the same text can sit at a
       // different row after a scroll — drop anything the spans no longer cover.
@@ -183,11 +173,7 @@ export function createLinkProvider(
   return {
     provideLinks(bufferLineNumber, callback) {
       const requestId = (generation += 1);
-      const logical = readLogicalLine(
-        term.buffer.active,
-        term.cols,
-        bufferLineNumber - 1,
-      );
+      const logical = readLogicalLine(term.buffer.active, term.cols, bufferLineNumber - 1);
       if (logical === null || logical.text.trim() === "") {
         callback(undefined);
         return;
@@ -205,9 +191,8 @@ export function createLinkProvider(
       const headerPath =
         headerText === null
           ? null
-          : (extractLinkCandidates(headerText).find(
-              (candidate) => candidate.kind === "path",
-            ) ?? null);
+          : (extractLinkCandidates(headerText).find((candidate) => candidate.kind === "path") ??
+            null);
       const crossLine: LinkCandidate | null =
         position !== null && headerPath !== null
           ? {
@@ -220,8 +205,7 @@ export function createLinkProvider(
               end: position.end,
             }
           : null;
-      const candidates =
-        crossLine === null ? onLine : [...onLine, crossLine];
+      const candidates = crossLine === null ? onLine : [...onLine, crossLine];
       if (candidates.length === 0) {
         callback(undefined);
         return;
@@ -313,9 +297,7 @@ export function createLinkProvider(
           // being clickable while URLs keep working — which reads like a
           // detection bug. Say so instead of dropping it.
           if (requestId === generation) {
-            reportPersistError(
-              `Couldn't check the file paths on this line: ${String(err)}`,
-            );
+            reportPersistError(`Couldn't check the file paths on this line: ${String(err)}`);
           }
           callback(undefined);
         });

@@ -78,11 +78,10 @@ describe("SidebarToggle", () => {
     );
 
     const actions = host.querySelector(".sidebar-frame-actions")!;
-    expect(
-      Array.from(actions.children).map((child) =>
-        child.getAttribute("aria-label"),
-      ),
-    ).toEqual(["Collapse the sidebar", "New"]);
+    expect(Array.from(actions.children).map((child) => child.getAttribute("aria-label"))).toEqual([
+      "Collapse the sidebar",
+      "New",
+    ]);
 
     act(() => {
       host.querySelector<HTMLButtonElement>(".sidebar-new")!.click();

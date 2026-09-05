@@ -26,10 +26,7 @@ describe("contrastRatio", () => {
   });
 
   it("is symmetric", () => {
-    expect(contrastRatio("#16161e", "#c0caf5")).toBeCloseTo(
-      contrastRatio("#c0caf5", "#16161e"),
-      5,
-    );
+    expect(contrastRatio("#16161e", "#c0caf5")).toBeCloseTo(contrastRatio("#c0caf5", "#16161e"), 5);
   });
 });
 
@@ -110,13 +107,7 @@ describe("deriveChromeColors", () => {
           continue;
         }
         const c = deriveChromeColors(bg, fg);
-        const ladder = [
-          c.inputBg,
-          c.sidebarBg,
-          c.chrome1,
-          c.chrome2,
-          c.tabActiveBg,
-        ].map(luminance);
+        const ladder = [c.inputBg, c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg].map(luminance);
         for (let step = 1; step < ladder.length; step += 1) {
           expect(ladder[step]).toBeGreaterThan(ladder[step - 1]);
         }
@@ -138,14 +129,10 @@ describe("deriveChromeColors", () => {
       const deckDark = THEME_PRESETS[0];
       expect(deckDark.id).toBe("deck-dark");
       const bg = deckDark.theme.background;
-      expect(deriveChromeColors(bg, deckDark.theme.foreground).sidebarBg).toBe(
-        "#272d31",
-      );
+      expect(deriveChromeColors(bg, deckDark.theme.foreground).sidebarBg).toBe("#272d31");
       // And it is the BACKGROUND that claims it, not the preset: one channel
       // away is a different theme, which derives its own sidebar.
-      expect(deriveChromeColors("#17181d", "#e7e7e7").sidebarBg).not.toBe(
-        "#272d31",
-      );
+      expect(deriveChromeColors("#17181d", "#e7e7e7").sidebarBg).not.toBe("#272d31");
     });
 
     it("preserves the distinction for light and pure-black overrides", () => {
@@ -180,9 +167,7 @@ describe("deriveChromeColors", () => {
      * (2026-08-19).
      */
     const towardTone = (bg: string, color: string): number =>
-      luminance(bg) < DARK_LUMINANCE_THRESHOLD
-        ? lum(color) - lum(bg)
-        : lum(bg) - lum(color);
+      luminance(bg) < DARK_LUMINANCE_THRESHOLD ? lum(color) - lum(bg) : lum(bg) - lum(color);
 
     it("puts a shell seam BELOW the surface it edges, on every preset", () => {
       for (const preset of THEME_PRESETS) {
@@ -217,9 +202,7 @@ describe("deriveChromeColors", () => {
     it("keeps the in-surface divider alpha, so it adapts to its ground", () => {
       const c = deriveChromeColors("#16161e", "#c0caf5");
       expect(c.seamDivider).toBe("rgba(255, 255, 255, 0.12)");
-      expect(deriveChromeColors("#ffffff", "#333333").seamDivider).toBe(
-        "rgba(0, 0, 0, 0.12)",
-      );
+      expect(deriveChromeColors("#ffffff", "#333333").seamDivider).toBe("rgba(0, 0, 0, 0.12)");
     });
   });
 
@@ -230,8 +213,7 @@ describe("deriveChromeColors", () => {
     it("keeps hover quieter than selection on every preset", () => {
       const pairs: readonly (readonly [string, string])[] = [
         ...THEME_PRESETS.map(
-          (preset) =>
-            [preset.theme.background, preset.theme.foreground] as const,
+          (preset) => [preset.theme.background, preset.theme.foreground] as const,
         ),
         ["#ffffff", "#333333"],
       ];
@@ -250,9 +232,7 @@ describe("deriveChromeColors", () => {
       expect(deriveChromeColors("#16161e", "#c0caf5").stateHoverBg).toBe(
         "rgba(255, 255, 255, 0.06)",
       );
-      expect(deriveChromeColors("#ffffff", "#333333").stateHoverBg).toBe(
-        "rgba(0, 0, 0, 0.06)",
-      );
+      expect(deriveChromeColors("#ffffff", "#333333").stateHoverBg).toBe("rgba(0, 0, 0, 0.06)");
     });
   });
 
@@ -292,12 +272,7 @@ describe("deriveChromeColors", () => {
       // inverse the ladder on a dim-foreground theme — textMuted came out
       // LOUDER than textPrimary. primary >= muted >= faint, on every surface.
       const c = deriveChromeColors(bg, fg);
-      for (const surface of [
-        c.sidebarBg,
-        c.chrome1,
-        c.chrome2,
-        c.tabActiveBg,
-      ]) {
+      for (const surface of [c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg]) {
         const primary = contrastRatio(c.textPrimary, surface);
         const muted = contrastRatio(c.textMuted, surface);
         const faint = contrastRatio(c.textFaint, surface);
@@ -311,10 +286,7 @@ describe("deriveChromeColors", () => {
     // The floors are stacked (8 / 6 / 4.5) so the label/description
     // hierarchy in a config row survives; guard they never converge.
     for (const preset of THEME_PRESETS) {
-      const c = deriveChromeColors(
-        preset.theme.background,
-        preset.theme.foreground,
-      );
+      const c = deriveChromeColors(preset.theme.background, preset.theme.foreground);
       expect(new Set([c.textPrimary, c.textMuted, c.textFaint]).size).toBe(3);
     }
   });
@@ -327,9 +299,7 @@ describe("deriveChromeColors", () => {
     // white cannot reintroduce a hue. The literal rose from `#d9d9d9` on
     // 2026-08-19 with the raised sidebar: the active row is lighter than it
     // was, so the ink has to climb further to clear it.
-    expect(deriveChromeColors("#16161e", "#cbcbcb").textPrimary).toBe(
-      "#e0e0e0",
-    );
+    expect(deriveChromeColors("#16161e", "#cbcbcb").textPrimary).toBe("#e0e0e0");
   });
 
   it("keeps the built-in text ladder neutral", () => {
@@ -345,10 +315,7 @@ describe("deriveChromeColors", () => {
       return max === 0 ? 0 : (max - min) / max;
     };
     for (const preset of THEME_PRESETS) {
-      const c = deriveChromeColors(
-        preset.theme.background,
-        preset.theme.foreground,
-      );
+      const c = deriveChromeColors(preset.theme.background, preset.theme.foreground);
       for (const tone of [c.textPrimary, c.textMuted, c.textFaint]) {
         expect(saturation(tone)).toBeLessThan(0.06);
       }
@@ -359,12 +326,9 @@ describe("deriveChromeColors", () => {
 describe("checkChromeTextContrast", () => {
   it("accepts every built-in theme", () => {
     for (const preset of THEME_PRESETS) {
-      expect(
-        checkChromeTextContrast(
-          preset.theme.background,
-          preset.theme.foreground,
-        ),
-      ).toEqual({ ok: true });
+      expect(checkChromeTextContrast(preset.theme.background, preset.theme.foreground)).toEqual({
+        ok: true,
+      });
     }
   });
 

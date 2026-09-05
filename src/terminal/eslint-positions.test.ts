@@ -39,9 +39,10 @@ describe("matchPositionRow", () => {
   });
 
   it("reads a warning row too", () => {
-    expect(
-      matchPositionRow("   3:1  warning  Missing semicolon  semi"),
-    ).toMatchObject({ line: 3, col: 1 });
+    expect(matchPositionRow("   3:1  warning  Missing semicolon  semi")).toMatchObject({
+      line: 3,
+      col: 1,
+    });
   });
 
   it("refuses a bare position with no severity", () => {
@@ -79,11 +80,7 @@ describe("eslintHeaderText", () => {
   });
 
   it("stops at a blank line rather than crossing into the block above", () => {
-    const { buffer, cols } = fakeBuffer([
-      "src/foo.ts",
-      "",
-      "  12:5   error  x  rule",
-    ]);
+    const { buffer, cols } = fakeBuffer(["src/foo.ts", "", "  12:5   error  x  rule"]);
     expect(eslintHeaderText(buffer, cols, 2)).toBeNull();
   });
 
@@ -93,10 +90,7 @@ describe("eslintHeaderText", () => {
   });
 
   it("gives up rather than scanning forever", () => {
-    const rows = [
-      "src/foo.ts",
-      ...Array.from({ length: 60 }, () => "  1:1  error  x  rule"),
-    ];
+    const rows = ["src/foo.ts", ...Array.from({ length: 60 }, () => "  1:1  error  x  rule")];
     const { buffer, cols } = fakeBuffer(rows);
     expect(eslintHeaderText(buffer, cols, rows.length - 1, 5)).toBeNull();
   });

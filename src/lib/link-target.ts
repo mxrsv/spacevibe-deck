@@ -14,11 +14,7 @@
  * agreeing the moment a root is itself a symlink — `/tmp` on macOS is one.
  * This function is handed the ANSWER, not the roots.
  */
-import {
-  editorIdOf,
-  externalApp,
-  type ExternalAppId,
-} from "./external-app-catalog";
+import { editorIdOf, externalApp, type ExternalAppId } from "./external-app-catalog";
 
 export interface LinkDecision {
   /** Absolute, canonical, and already known to be a file. */
@@ -80,8 +76,7 @@ export function decideLinkTarget(decision: LinkDecision): LinkTarget {
   if (decision.appId === null) {
     return {
       kind: "unavailable",
-      reason:
-        "No app is available to open this file — pick one under Settings, in Links & editor.",
+      reason: "No app is available to open this file — pick one under Settings, in Links & editor.",
     };
   }
   const editor = editorIdOf(decision.appId);
@@ -123,9 +118,7 @@ export function resolveExternalApp(
   hostAnswered: boolean = true,
 ): ExternalAppId | null {
   if (!hostAnswered) {
-    return selected !== null && editorIdOf(selected) !== null
-      ? selected
-      : FALLBACK_EDITOR;
+    return selected !== null && editorIdOf(selected) !== null ? selected : FALLBACK_EDITOR;
   }
   if (selected !== null && installed.includes(selected)) {
     return selected;

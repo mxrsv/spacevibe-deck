@@ -37,13 +37,7 @@ const DOTS: readonly Dot[] = Array.from({ length: COUNT }, (_, i) => {
 
 export function WorkspaceSpinner() {
   return (
-    <svg
-      class="wsitem__spinner"
-      viewBox="0 0 26 26"
-      width="26"
-      height="26"
-      aria-hidden="true"
-    >
+    <svg class="wsitem__spinner" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true">
       {DOTS.map((dot, i) => (
         <circle
           key={i}

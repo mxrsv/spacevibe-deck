@@ -9,9 +9,7 @@
 const PING_CLASS = "pane-ping";
 
 export function pingPane(paneId: number, root: ParentNode = document): void {
-  const slot = root.querySelector(
-    `.pane-slot[data-pane-id="${paneId}"]`,
-  );
+  const slot = root.querySelector(`.pane-slot[data-pane-id="${paneId}"]`);
   if (slot === null) {
     return;
   }

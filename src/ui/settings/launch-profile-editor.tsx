@@ -5,10 +5,7 @@ import { settings, updateSettings } from "../../settings/settings-store";
 import { BUILTIN_AGENTS, type BuiltinAgent } from "../../lib/agent-catalog";
 import { AGENT_LOGOS } from "../../lib/agent-logos";
 import { letterAvatar } from "../../lib/letter-avatar";
-import {
-  detectedAgents,
-  ensureAgentsDetected,
-} from "../../terminal/agent-detection-store";
+import { detectedAgents, ensureAgentsDetected } from "../../terminal/agent-detection-store";
 import {
   commandAgentId,
   commandFlags,
@@ -54,10 +51,7 @@ function AgentMark({ id, label }: { id: string; label: string }) {
   }
   const avatar = letterAvatar(label, id);
   return (
-    <span
-      class="lp-mark lp-mark--letter"
-      style={{ color: `var(--${avatar.color})` }}
-    >
+    <span class="lp-mark lp-mark--letter" style={{ color: `var(--${avatar.color})` }}>
       {avatar.letter}
     </span>
   );
@@ -104,11 +98,7 @@ function EnabledToggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <div
-      class="segmented lp-enabled"
-      role="radiogroup"
-      aria-label={`${agent.label} availability`}
-    >
+    <div class="segmented lp-enabled" role="radiogroup" aria-label={`${agent.label} availability`}>
       {[true, false].map((value) => (
         <button
           key={String(value)}
@@ -160,12 +150,8 @@ export function LaunchProfileEditor() {
   const refreshing = useSignal(false);
 
   const installedIds = new Set(detectedAgents.value.map((agent) => agent.name));
-  const installed = BUILTIN_AGENTS.filter((agent) =>
-    installedIds.has(agent.id),
-  );
-  const available = BUILTIN_AGENTS.filter(
-    (agent) => !installedIds.has(agent.id),
-  );
+  const installed = BUILTIN_AGENTS.filter((agent) => installedIds.has(agent.id));
+  const available = BUILTIN_AGENTS.filter((agent) => !installedIds.has(agent.id));
 
   const setEnabled = (agentId: string, next: boolean): void => {
     updateSettings({
@@ -183,11 +169,9 @@ export function LaunchProfileEditor() {
     // `ensureAgentsDetected` has no force flag: a warm cache answers instantly
     // and revalidates behind. That is the right behaviour here too — the
     // button's job is to start a scan, not to block on one.
-    void ensureAgentsDetected(BUILTIN_AGENTS.map((agent) => agent.id)).finally(
-      () => {
-        refreshing.value = false;
-      },
-    );
+    void ensureAgentsDetected(BUILTIN_AGENTS.map((agent) => agent.id)).finally(() => {
+      refreshing.value = false;
+    });
   };
 
   const add = (): void => {

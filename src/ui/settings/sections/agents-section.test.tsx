@@ -75,8 +75,7 @@ describe("AgentsSection", () => {
   // link row landed after it. Scoping by label is positional-drift-proof.
   const addButton = (): HTMLButtonElement => {
     const row = Array.from(host.querySelectorAll(".cfg-row")).find(
-      (candidate) =>
-        candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
+      (candidate) => candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
     )!;
     return row.querySelector<HTMLButtonElement>(".cfg-btn")!;
   };
@@ -104,9 +103,7 @@ describe("AgentsSection", () => {
     mount();
     declare("codex nightly", "codex --nightly");
 
-    const remove = host.querySelector(
-      '[aria-label="Remove codex nightly"] svg',
-    );
+    const remove = host.querySelector('[aria-label="Remove codex nightly"] svg');
     // Trash removes something the user declared and persisted; the draft's
     // X only dismisses a row that never existed.
     expect(remove?.classList.contains("deck-icon--trash")).toBe(true);
@@ -115,9 +112,7 @@ describe("AgentsSection", () => {
     expect(addButton().querySelector(".deck-icon--plus")).not.toBeNull();
 
     click(addButton());
-    const discard = host.querySelector(
-      '[aria-label="Discard the new agent"] svg',
-    );
+    const discard = host.querySelector('[aria-label="Discard the new agent"] svg');
     expect(discard?.classList.contains("deck-icon--x")).toBe(true);
     expect(addButton().textContent?.trim()).toBe("add");
   });
@@ -130,9 +125,7 @@ describe("AgentsSection", () => {
   it("hands the agent catalog to the launch profile editor", () => {
     mount();
     expect(host.querySelector(".lp-head")).not.toBeNull();
-    expect(host.querySelectorAll(".lp-agent")).toHaveLength(
-      BUILTIN_AGENTS.length,
-    );
+    expect(host.querySelectorAll(".lp-agent")).toHaveLength(BUILTIN_AGENTS.length);
     // Every remove control on this screen belongs to a DECLARED agent; none
     // was seeded here, so there are none.
     expect(host.querySelectorAll(".cfg-row__remove")).toHaveLength(0);
@@ -152,9 +145,7 @@ describe("AgentsSection", () => {
     declare("Evil", "x; rm -rf ~");
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "letters, digits",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("letters, digits");
   });
 
   it("refuses a name already taken by a built-in", () => {
@@ -162,9 +153,7 @@ describe("AgentsSection", () => {
     declare("Claude Code", "aider");
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "already used",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("already used");
   });
 
   it("refuses a name spelled like a built-in's id", () => {
@@ -247,9 +236,9 @@ describe("AgentsSection", () => {
     });
 
     const usageButton = (): HTMLButtonElement => {
-      const found = Array.from(
-        host.querySelectorAll<HTMLButtonElement>(".cfg-btn"),
-      ).find((candidate) => candidate.textContent?.trim() === "open …");
+      const found = Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find(
+        (candidate) => candidate.textContent?.trim() === "open …",
+      );
       if (found === undefined) {
         throw new Error("no token usage link row");
       }
@@ -303,11 +292,7 @@ describe("AgentsSection — refusals and cleanup", () => {
     settings.value = DEFAULT_SETTINGS;
   });
 
-  const openAndCommit = (
-    trigger: string,
-    aria: string,
-    value: string,
-  ): void => {
+  const openAndCommit = (trigger: string, aria: string, value: string): void => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
         ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
@@ -316,9 +301,7 @@ describe("AgentsSection — refusals and cleanup", () => {
     act(() => {
       button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const input = host.querySelector<HTMLInputElement>(
-      `[aria-label="${aria}"]`,
-    )!;
+    const input = host.querySelector<HTMLInputElement>(`[aria-label="${aria}"]`)!;
     act(() => {
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -339,18 +322,14 @@ describe("AgentsSection — refusals and cleanup", () => {
     openAndCommit("aider", "Command for Aider", "$(id)");
 
     expect(settings.value.customAgents[0].command).toBe("aider");
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "letters, digits",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("letters, digits");
   });
 
   it("says why an in-place rename was refused", () => {
     openAndCommit("Aider", "Name for Aider", "Claude Code");
 
     expect(settings.value.customAgents[0].label).toBe("Aider");
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "already used",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("already used");
   });
 
   it("clears the refusal once a valid value is committed", () => {

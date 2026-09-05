@@ -6,11 +6,7 @@ import {
   useTooltipVisibility,
   tooltipTriggerProps,
 } from "../controls/action-tooltip";
-import {
-  CHROME_ICON,
-  DeckIcon,
-  type DeckIconSize,
-} from "../controls/deck-icon";
+import { CHROME_ICON, DeckIcon, type DeckIconSize } from "../controls/deck-icon";
 
 interface DockToggleProps {
   readonly open: boolean;
@@ -48,11 +44,7 @@ interface DockToggleProps {
  * from settings. `shortcutLabel` reads the keymap during render, which is how
  * a rebind reaches the tooltip.
  */
-export function DockToggle({
-  open,
-  size = CHROME_ICON,
-  onToggle,
-}: DockToggleProps) {
+export function DockToggle({ open, size = CHROME_ICON, onToggle }: DockToggleProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const tooltip = useTooltipVisibility();
   const label = open ? "Hide the side panel" : "Show the side panel";
