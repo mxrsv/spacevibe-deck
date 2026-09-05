@@ -9,7 +9,7 @@
  * its children update normally. The same defect already reaches shipped
  * behaviour — flipping `tabBarPosition` in Settings leaves `window--sidebar`
  * on the shell — so it pre-dates this work and is reported rather than fixed
- * here (`docs/CONTEXT.md`). Writing to `:root` sidesteps it entirely: nothing
+ * here (`docs/internals/traps.md`). Writing to `:root` sidesteps it entirely: nothing
  * about these two values needs to travel through the shell's props.
  *
  * `:root` is also where the CSS fallbacks for both already live, so a value

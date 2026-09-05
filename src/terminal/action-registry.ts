@@ -90,8 +90,8 @@ export interface ActionDefinition {
   /**
    * Set (only ever `true`) when this action destroys live state with no
    * confirmation step of its own — killing a pane/tab's running process, or
-   * wiping scrollback with no undo (`clear-buffer`, per CONTEXT.md's own
-   * "Buffer" entry). Absent (the default) for everything else.
+   * wiping scrollback with no undo (`clear-buffer`, per the "Buffer" entry in
+   * `docs/internals/glossary.md`). Absent (the default) for everything else.
    *
    * Read by `runAction` (tab-manager.ts, F-B1/F-B2, 2026-07-27 code review)
    * to decide whether a chrome text field (tab rename input, search bar,
@@ -278,7 +278,7 @@ export const ACTION_REGISTRY = [
     id: "clear-buffer",
     label: "Clear Buffer",
     scope: "pane",
-    // Drops scrollback with no undo (CONTEXT.md "Buffer") — always, no
+    // Drops scrollback with no undo (glossary "Buffer") — always, no
     // confirmation step of its own. See ActionDefinition.destructive.
     destructive: true,
     menu: { submenu: "Edit" },
