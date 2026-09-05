@@ -117,7 +117,8 @@ replace its launch command, or add another CLI command.
 | Open usage | `⌘⇧U` | `Ctrl+Shift+U` |
 | Open Settings | `⌘,` | `Ctrl+,` |
 
-The complete bindings live in [the platform keymaps](src/terminal/default-keymaps.ts) `current`.
+The complete bindings are listed in [keyboard shortcuts](docs/user/keyboard-shortcuts.md)
+`current` and defined in [the platform keymaps](src/terminal/default-keymaps.ts) `current`.
 
 ## Build from source
 
@@ -133,7 +134,10 @@ Create a local packaged macOS build with `npm run electron:package`. Release pac
 separate signed and notarized workflow.
 
 Deck uses Electron, Preact, TypeScript, xterm.js, Monaco Editor, and `node-pty`. The host and
-renderer boundary is mapped in [the architecture guide](docs/ARCHITECTURE.md) `current`.
+renderer boundary is mapped in [the architecture overview](docs/internals/overview.md)
+`current`; the full documentation index is [docs/README.md](docs/README.md) `current`, with
+user guides under [docs/user/](docs/user/getting-started.md) `current` and the build and
+release runbooks under [docs/operations/](docs/operations/development.md) `current`.
 
 ## Contributing
 
