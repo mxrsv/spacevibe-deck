@@ -7,10 +7,8 @@
  * single flight already solved. `telemetry.json` is opened through the same
  * `StoreRegistry` as every other userData file, but it is deliberately NOT in
  * `register-store.ts`'s allowlist: consent and the daily id must never be one
- * renderer `store_get` away. Analytics is ON by default and no consent
- * question is asked (`USAGE_CONSENT_ASKED` is false); `declined` is the only
- * state never inferred away, and an unreadable `telemetry.json` fails closed
- * to off — see docs/internals/telemetry.md.
+ * renderer `store_get` away. The consent policy is stated once, in
+ * `src/telemetry/usage-notice.ts` and docs/internals/telemetry.md.
  */
 import crypto from "node:crypto";
 import { app, ipcMain, type BrowserWindow } from "electron";
@@ -45,7 +43,7 @@ const SAVE_DEBOUNCE_MS = 1000;
 /**
  * The real network edge, injected into the service the way `loadUpdater` is
  * injected into the update lifecycle: resolves the HTTP status, rejects on
- * network failure or the 5-second timeout (spec §5).
+ * network failure or the 5-second timeout.
  */
 async function post(payload: UsagePayloadLike): Promise<number> {
   const response = await fetch(TELEMETRY_ENDPOINT, {
@@ -59,7 +57,7 @@ async function post(payload: UsagePayloadLike): Promise<number> {
   return response.status;
 }
 
-/** The client's LOCAL calendar day — deliberately not UTC (spec §4). */
+/** The client's LOCAL calendar day — deliberately not UTC. */
 function localDay(nowMs: number): string {
   const date = new Date(nowMs);
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -72,7 +70,7 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
     .open(TELEMETRY_FILE, { autoSaveMs: SAVE_DEBOUNCE_MS })
     .then((store) => {
       // A root that parses but holds a non-object state is corrupt, not
-      // empty — the same write-lock `settings.json` takes (fail closed, §5).
+      // empty — the same write-lock `settings.json` takes (fail closed).
       store.requireObjectValue(STATE_KEY);
       return createTelemetryService({
         now: () => Date.now(),
@@ -114,7 +112,7 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
   });
 
   // The state read doubles as "a window is ready": every window asks at boot,
-  // and the first answer triggers the enabled run's initial snapshot (§5).
+  // and the first answer triggers the enabled run's initial snapshot.
   ipcMain.handle(CHANNELS.telemetryState, async () => {
     const service = await servicePromise;
     service.noteWindowReady();
@@ -133,7 +131,7 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
         const service = await servicePromise;
         await service.flushOnQuit();
       } catch {
-        // Quit is never held hostage by analytics (spec §5).
+        // Quit is never held hostage by analytics.
       }
     },
   };

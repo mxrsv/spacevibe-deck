@@ -2,10 +2,11 @@
  * The rail's view model: open tabs plus repository scans in, two tiers out.
  *
  * Pure, and deliberately so — it is where every grouping and state-precedence
- * decision lives (groups are built in first-appearance tab order; a worktree's
- * state precedence is missing > attention > working > ready/idle; see
- * `docs/internals/agent-rail.md`, section "Model"), and none of them are
- * observable from a screenshot. The component below it only renders what this
+ * decision lives, and none of them are observable from a screenshot. Groups
+ * are built in first-appearance tab order and keyed per repository (the rule
+ * `docs/internals/agent-rail.md` states under "Model"); a worktree's own state
+ * precedence is missing > attention > working > ready/idle, decided by
+ * `worktreeState` below. The component below it only renders what this
  * returns.
  */
 import { workspaceLabel } from "../lib/workspace-label";

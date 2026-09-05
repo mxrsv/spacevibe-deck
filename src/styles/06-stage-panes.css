@@ -187,7 +187,7 @@
   right: var(--dock-w);
 }
 
-/* ── The document surface (spec §4.2) ─────────────────────────────────────
+/* ── The document surface (docs/internals/file-surface.md) ─────────────────────────────────────
    Same rectangle as `.stage__tabs`, laid over it rather than replacing it:
    the terminal grid keeps its measured size while a file holds the stage, so
    coming back costs no reflow and no PTY resize. Opaque for the same reason

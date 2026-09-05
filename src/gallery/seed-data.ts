@@ -199,7 +199,7 @@ export const SEED_TABS: readonly TabView[] = [
     agentBusy: false,
     unread: false,
     attention: attention("idle"),
-    // A shell pane is part of the tab but never a rail row (spec §9): this tab
+    // A shell pane is part of the tab but never a rail row (docs/internals/agent-rail.md): this tab
     // is what keeps the rail's `shell` identity and empty age visible.
     panes: [pane(109, null, "none", "unknown", 0)],
   },

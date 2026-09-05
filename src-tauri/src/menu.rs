@@ -20,10 +20,10 @@ const ACTION_PREFIX: &str = "action:";
 pub const WINDOW_TARGET_PREFIX: &str = "window-target:";
 
 /// Where a menu event goes now that menu events are no longer broadcast
-/// (spec §9.3).
+/// (the window-peer rule: every window is a peer, none is primary).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MenuRoute {
-    /// Quit never needs a focused window: the census owns it (spec §9.4).
+    /// Quit never needs a focused window: the census owns it.
     Quit,
     Action {
         window: String,
@@ -108,7 +108,7 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     rebuild_move_pane_submenu(app.handle())?;
     app.on_menu_event(|handle, event| {
         // Broadcast is gone: with peer windows it delivered every accelerator
-        // to every window, so one Cmd+T opened a tab in each (spec §9.3).
+        // to every window, so one Cmd+T opened a tab in each.
         let target = crate::window_lifecycle::menu_target(handle);
         match route_menu_event(event.id().0.as_str(), target.as_deref()) {
             MenuRoute::Quit => crate::quit_flow::request_quit(handle),
@@ -120,7 +120,7 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
                 target_label,
             } => {
                 // The source window runs prepare -> stage -> offer_transfer:
-                // only it knows which pane has focus, and §7.4 makes it
+                // only it knows which pane has focus, and the transfer protocol makes it
                 // serialize the xterm buffer before the destination may claim.
                 let _ = handle.emit_to(
                     window,
@@ -355,7 +355,7 @@ mod tests {
     fn window_menu_items_holds_only_move_pane_to_new_window() {
         // Was `is_empty()` until the pane-detach work: Window is no longer
         // 100% Cocoa builtins. Moving a pane into its own window IS window
-        // management, so it belongs here (spec §15.1 / the Cmd+Shift+M
+        // management, so it belongs here (the Cmd+Shift+M
         // binding). Still a deliberate tripwire — update it by hand, with a
         // reason, whenever action-registry.ts adds another Window action.
         let ids: Vec<&str> = WINDOW_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();

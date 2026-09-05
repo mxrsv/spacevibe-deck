@@ -29,9 +29,9 @@ import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
  * bar for a narrow window to push off.
  *
  * The toolbar's rules — tooltips, the overflow menu, the `More` control — are
- * `docs/DESIGN-LANGUAGE.md` §23. The 2026-08-14 Browser amendment: the
- * browser's toolbar action toggles the browser tab
- * (`docs/internals/file-surface.md`, section "Browser tab").
+ * `docs/DESIGN-LANGUAGE.md` §23. The 2026-08-14 Browser amendment made the
+ * browser's toolbar action a toggle of the browser tab rather than a docked
+ * column.
  */
 
 const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(

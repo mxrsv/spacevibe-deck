@@ -21,7 +21,7 @@
 export const USAGE_ANALYTICS_AVAILABLE: boolean = true;
 
 /**
- * Frozen into every shipped binary (spec §6): the page behind it shows the
+ * Frozen into every shipped binary: the page behind it shows the
  * CURRENT privacy notice and an archive keyed by effective date and consent
  * version, so editing the page alone can never broaden consent a shipped
  * binary already stored.

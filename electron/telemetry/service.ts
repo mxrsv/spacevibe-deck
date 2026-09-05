@@ -1,11 +1,9 @@
 /**
  * The usage-analytics service: consent, daily buffers, and sending.
  *
- * Analytics is ON by default and no consent question is asked
- * (`USAGE_CONSENT_ASKED` is false): `declined` is the only state never
- * inferred away, and an unreadable `telemetry.json` fails closed to off — see
- * docs/internals/telemetry.md.
- * Everything is injected (`post`, `now`, the store, the timer) the way
+ * The consent policy is stated once, in `src/telemetry/usage-notice.ts` and
+ * docs/internals/telemetry.md; `parsePersisted` and `consentNow` below are
+ * its implementation. Everything is injected (`post`, `now`, the store, the timer) the way
  * `createUpdateLifecycle` injects `loadUpdater`, so no test touches the
  * network or the clock. The governing failure rule is that a dead Worker must
  * be indistinguishable from a healthy one from inside the app: no caller ever
@@ -62,7 +60,7 @@ export interface TelemetryService {
   count(kind: string, key: string, value: number): void;
   state(): TelemetryStateReply;
   setEnabled(enabled: boolean): Promise<void>;
-  /** First window ready in an enabled run — the initial snapshot (spec §5). */
+  /** First window ready in an enabled run — the initial snapshot. */
   noteWindowReady(): void;
   /** Best-effort final snapshot during orderly quit. Never throws. */
   flushOnQuit(): Promise<void>;
@@ -143,7 +141,7 @@ export function parsePersisted(raw: unknown): PersistedTelemetry {
 }
 
 /**
- * Whether TODAY's buffer is due (spec §5): never-sent sends now, a dirty one
+ * Whether TODAY's buffer is due: never-sent sends now, a dirty one
  * at most every 15 minutes, and a clean one on the six-hour heartbeat.
  * Pure and exported so the cadence is tested without a timer.
  */
@@ -203,7 +201,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     }
   }
 
-  /** Keep at most the newest MAX_PENDING_DAYS buffers (spec §5's cap). */
+  /** Keep at most the newest MAX_PENDING_DAYS buffers. */
   function pruneDays(days: Record<string, DayBuffer>): Record<string, DayBuffer> {
     const ordered = Object.keys(days).sort();
     while (ordered.length > MAX_PENDING_DAYS) {
@@ -219,7 +217,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
   /**
    * Resume or create the current local day's buffer. Returning to a date
    * after a timezone change reuses that buffer's id and counters, so the
-   * server upsert replaces the same row (spec §4).
+   * server upsert replaces the same row.
    */
   function ensureToday(): string {
     const today = deps.localDay(deps.now());
@@ -305,7 +303,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
           status = await deps.post(buildPayload(day, buffer));
         } catch {
           // Network failure or timeout: keep the buffer, retry at the next
-          // scheduled check. No backoff, no fast retry (spec §5).
+          // scheduled check. No backoff, no fast retry.
           continue;
         }
         if (status >= 200 && status < 300) {
@@ -329,7 +327,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
           persist();
         } else if (status === 400 || status === 413) {
           // The only client-invalid answers in the frozen contract: this
-          // exact buffer must never be sent again (spec §8).
+          // exact buffer must never be sent again.
           updateDay(day, { ...buffer, terminal: true });
           persist();
         }
@@ -361,7 +359,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     return { consent: consentNow(), consentVersion: state.consentVersion };
   }
 
-  // Boot (spec §5): an enabled run resumes or creates today's buffer and owns
+  // Boot: an enabled run resumes or creates today's buffer and owns
   // its own timer. Every other consent state creates no id, accepts no count
   // and starts no network timer.
   if (enabled()) {
@@ -430,13 +428,13 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     async setEnabled(next: boolean): Promise<void> {
       if (deps.store.unreadable()) {
         // Fail closed: no consent is inferred and nothing is reset here.
-        // Recovering requires the user to repair or remove the file (spec §5).
+        // Recovering requires the user to repair or remove the file.
         throw new Error("telemetry.json is unreadable; analytics stays off");
       }
       const previous = state;
       if (next) {
         // Consent persists FIRST; the daily id exists only after the write
-        // succeeds (spec §11). Turning on records the current consent version.
+        // succeeds. Turning on records the current consent version.
         state = { consent: "enabled", consentVersion: CONSENT_VERSION, days: {} };
         try {
           await deps.store.flush(state);
@@ -450,7 +448,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
         void runSendCycle();
         return;
       }
-      // Off means off (spec §7): block timers and counts first, then delete
+      // Off means off: block timers and counts first, then delete
       // every unsent buffer and daily id, then persist the declined state.
       endTimer();
       state = { consent: "declined", consentVersion: CONSENT_VERSION, days: {} };
