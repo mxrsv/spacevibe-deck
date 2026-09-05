@@ -99,7 +99,7 @@ with the latest release, so every assertion would run against whatever shipped l
 
 ## `CHANGELOG.md` is machine-read
 
-The `promote` job extracts the section between `## <version>` and the next `## ` heading
+The `promote` job extracts the section between `## <version>` and the next level-2 heading
 from [`CHANGELOG.md`](../../CHANGELOG.md) at the tagged commit and **fails the run if that
 section is empty**. Consequences:
 

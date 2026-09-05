@@ -70,9 +70,10 @@ no-op, and the rail falls back to agent names.
 - **The pane→session pairing is remembered and pinned.** A request carries `preferredId`,
   and `resolveSessionTails` runs two passes: every pin is honoured through
   `findCandidateById` (no 30-day cutoff, no ranking) before any unpinned pane is ranked by
-  mtime proximity through the same `selectCandidate` that session restore uses. One pass in
-  request order lets an earlier unpinned pane take a later pane's pinned session, which is how
-  three rows once printed the same sentence.
+  mtime proximity through the same `selectCandidate` that session restore uses. The two
+  passes exist because the earlier one-pass version let an unpinned pane earlier in the
+  request take a later pane's pinned session, which is how three rows once printed the same
+  sentence; reserving every pin first is what rules that out.
 - **The answer is `{ id, tail }`.** Only the id separates "same conversation, nothing new to
   quote" (keep the row's text) from "different conversation" (take the new pairing and the
   new text, even when empty).
