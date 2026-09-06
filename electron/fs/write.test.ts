@@ -37,7 +37,11 @@ describe("writeFileAtomically", () => {
     expect(fs.readFileSync(target, "utf8")).toBe("x");
   });
 
-  it("applies the mode it is given", async () => {
+  // POSIX only, the `scripts/spawn-helper-permissions.test.ts` precedent:
+  // Windows has no permission bits for `chmod` to set, so `stat().mode & 0o777`
+  // answers 0o666 (438) there whatever mode was asked for. The assertion stays
+  // exact where the bits exist rather than being widened to pass everywhere.
+  it.runIf(process.platform !== "win32")("applies the mode it is given", async () => {
     const target = path.join(root, "moded.sh");
     await writeFileAtomically(target, "#!/bin/sh\n", { mode: 0o755 });
     expect(fs.statSync(target).mode & 0o777).toBe(0o755);
@@ -61,13 +65,17 @@ describe("writeTextFile", () => {
     expect(fs.readFileSync(target, "utf8")).toBe("a\r\nb\r\nc\r\n");
   });
 
-  it("preserves the mode, so saving a script does not strip its +x", async () => {
-    const target = path.join(root, "script.sh");
-    fs.writeFileSync(target, "#!/bin/sh\necho old\n");
-    fs.chmodSync(target, 0o755);
-    await writeTextFile(root, target, "#!/bin/sh\necho new\n", "lf");
-    expect(fs.statSync(target).mode & 0o777).toBe(0o755);
-  });
+  // POSIX only, same reason as `applies the mode it is given` above.
+  it.runIf(process.platform !== "win32")(
+    "preserves the mode, so saving a script does not strip its +x",
+    async () => {
+      const target = path.join(root, "script.sh");
+      fs.writeFileSync(target, "#!/bin/sh\necho old\n");
+      fs.chmodSync(target, 0o755);
+      await writeTextFile(root, target, "#!/bin/sh\necho new\n", "lf");
+      expect(fs.statSync(target).mode & 0o777).toBe(0o755);
+    },
+  );
 
   it("resolves symlinks and replaces the TARGET, not the link", async () => {
     const target = path.join(root, "src", "real.ts");

@@ -76,8 +76,7 @@ export function trapTab(
   const first = items[0];
   const last = items[items.length - 1];
   const active = document.activeElement;
-  const inside =
-    active instanceof HTMLElement && root.contains(active) && active !== root;
+  const inside = active instanceof HTMLElement && root.contains(active) && active !== root;
   if (!inside) {
     event.preventDefault();
     (event.shiftKey ? last : first).focus();

@@ -89,12 +89,7 @@ export function DockTabs({ items, active, onSelect }: DockTabsProps) {
   return (
     <div class="dock-tabs" role="tablist" aria-label="Side panel">
       {items.map((item) => (
-        <DockTabChip
-          key={item.id}
-          item={item}
-          active={item.id === active}
-          onSelect={onSelect}
-        />
+        <DockTabChip key={item.id} item={item} active={item.id === active} onSelect={onSelect} />
       ))}
     </div>
   );

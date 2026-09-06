@@ -6,10 +6,7 @@ import {
   restingMarkVariantsSpecimen,
   statePaletteSpecimen,
 } from "../agent-rail-variants";
-import {
-  railSimplicityLadderSpecimen,
-  railStructureSpecimen,
-} from "../rail-structure-variants";
+import { railSimplicityLadderSpecimen, railStructureSpecimen } from "../rail-structure-variants";
 import { SectionHead, Specimen } from "../specimen";
 
 export function NavigationSection() {

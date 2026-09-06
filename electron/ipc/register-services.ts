@@ -81,10 +81,8 @@ export function registerServices(deps: RegisterServicesDeps): void {
     workspaceForPath({ path: target, roots: roots ?? [] }),
   );
   ipcMain.handle(CHANNELS.externalApps, () => listExternalApps());
-  ipcMain.handle(
-    CHANNELS.openInApp,
-    (_event, { appId, path: target, isDirectory }) =>
-      openInApp({ appId, path: target, isDirectory: isDirectory === true }),
+  ipcMain.handle(CHANNELS.openInApp, (_event, { appId, path: target, isDirectory }) =>
+    openInApp({ appId, path: target, isDirectory: isDirectory === true }),
   );
   ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
     listPromptAssets(agent, cwd ?? null),

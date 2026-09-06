@@ -1,14 +1,8 @@
 import { CaretDown } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "preact/hooks";
-import {
-  ActionTooltip,
-  useTooltipVisibility,
-} from "../controls/action-tooltip";
+import { ActionTooltip, useTooltipVisibility } from "../controls/action-tooltip";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
-import {
-  groupExternalApps,
-  type ExternalAppChoice,
-} from "../../links/external-app-choices";
+import { groupExternalApps, type ExternalAppChoice } from "../../links/external-app-choices";
 import type { ExternalAppId } from "../../lib/external-app-catalog";
 import type { MenuAnchor } from "./toolbar-overflow-menu";
 
@@ -48,9 +42,7 @@ function AppMark({ choice }: { readonly choice: ExternalAppChoice }) {
     // No authored stand-in (DL-14.6): the label is the identity here.
     return <span class="extapp__initial">{choice.label.slice(0, 1)}</span>;
   }
-  return (
-    <img class="extapp__icon" src={choice.iconDataUrl} alt="" aria-hidden />
-  );
+  return <img class="extapp__icon" src={choice.iconDataUrl} alt="" aria-hidden />;
 }
 
 export function ExternalAppButton({
@@ -66,8 +58,7 @@ export function ExternalAppButton({
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   const tooltip = useTooltipVisibility();
 
-  const current =
-    choices.find((choice) => choice.id === selected) ?? choices[0] ?? null;
+  const current = choices.find((choice) => choice.id === selected) ?? choices[0] ?? null;
 
   useEffect(() => {
     if (menu === null) {
@@ -103,8 +94,7 @@ export function ExternalAppButton({
     return null;
   }
 
-  const reason =
-    workspacePath === null ? "No workspace is open on this tab" : null;
+  const reason = workspacePath === null ? "No workspace is open on this tab" : null;
   const label = `Open in ${current.label}`;
   const tooltipId = "action-tip-external-app";
   const showTooltip = tooltip.anchor !== null && menu === null;
@@ -180,18 +170,14 @@ export function ExternalAppButton({
         >
           {groupExternalApps(choices).map((view, index) => (
             <div key={view.group} class="toolbar-menu__group">
-              {index > 0 && (
-                <span class="toolbar-menu__sep" aria-hidden="true" />
-              )}
+              {index > 0 && <span class="toolbar-menu__sep" aria-hidden="true" />}
               {view.items.map((choice) => (
                 <button
                   key={choice.id}
                   type="button"
                   role="menuitemradio"
                   aria-checked={choice.id === current.id}
-                  class={`toolbar-menu__row ${
-                    choice.id === current.id ? "is-active" : ""
-                  }`}
+                  class={`toolbar-menu__row ${choice.id === current.id ? "is-active" : ""}`}
                   onClick={() => {
                     onSelect(choice.id);
                     setMenu(null);

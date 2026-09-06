@@ -9,19 +9,11 @@ import {
 } from "../../lib/derive-colors";
 import { applyThemeVars } from "../../lib/theme-vars";
 import { settings } from "../../settings/settings-store";
-import {
-  resolveTheme,
-  THEME_PRESETS,
-  type ThemePreset,
-} from "../../settings/themes";
+import { resolveTheme, THEME_PRESETS, type ThemePreset } from "../../settings/themes";
 import { DesktopChrome } from "../../ui/desktop-chrome";
 import { StatusBar } from "../../ui/status-bar";
 import { DockToggle } from "../../ui/dock/dock-toggle";
-import {
-  ConfigGroup,
-  ConfigRow,
-  ToggleRow,
-} from "../../ui/controls/config-row";
+import { ConfigGroup, ConfigRow, ToggleRow } from "../../ui/controls/config-row";
 import {
   agentRailNavigationSpecimen,
   deckToolbarSpecimen,
@@ -30,11 +22,7 @@ import {
   sidebarFrameActionsSpecimen,
   tabBarSpecimen,
 } from "../chrome-fixtures";
-import {
-  FORCE_CLASS,
-  installForcedStates,
-  type ForcedState,
-} from "../force-states";
+import { FORCE_CLASS, installForcedStates, type ForcedState } from "../force-states";
 import { SectionHead } from "../specimen";
 import { TreatmentDirectionReview } from "./treatment-direction-review";
 /**
@@ -154,8 +142,7 @@ const STATE_ROWS: readonly StateRow[] = [
  * so the caption now names the treatment the row is showing rather than the
  * absence it used to show.
  */
-const DISABLED_FINDING =
-  "--text-faint, hover border and hint accent both off (DL-5.2, DL-21.4)";
+const DISABLED_FINDING = "--text-faint, hover border and hint accent both off (DL-5.2, DL-21.4)";
 
 /**
  * A theme scope. `applyThemeVars` takes a `CSSStyleDeclaration`, so pointing it
@@ -217,25 +204,19 @@ function WindowCell({
         <span class="gx-native-terminal__prompt">❯</span> npm test
       </p>
       <p class="gx-native-terminal__result">✓ 2631 tests passed</p>
-      <p class="gx-native-terminal__muted">
-        terminal stage remains at full contrast
-      </p>
+      <p class="gx-native-terminal__muted">terminal stage remains at full contrast</p>
     </div>
   ) : null;
 
   return (
     <DesktopChrome
       sidebar={sidebar}
-      sidebarToggle={
-        sidebar ? sidebarFrameActionsSpecimen() : null
-      }
+      sidebarToggle={sidebar ? sidebarFrameActionsSpecimen() : null}
       // The shipping frame row carries window controls only in sidebar mode;
       // its toolbar lives at the trailing end of the stage strip.
       toolbar={null}
       sidebarNavigation={
-        sidebar
-          ? agentRailNavigationSpecimen({ promptsDisabled: disabled })
-          : null
+        sidebar ? agentRailNavigationSpecimen({ promptsDisabled: disabled }) : null
       }
       topTabs={sidebar ? null : tabBarSpecimen({ promptsDisabled: disabled })}
       stage={
@@ -287,11 +268,7 @@ function ControlCell({ disabled }: { disabled: boolean }) {
         </button>
       </ConfigRow>
       <ConfigRow label="Restore defaults" danger>
-        <button
-          type="button"
-          class="cfg-btn cfg-btn--danger"
-          disabled={disabled}
-        >
+        <button type="button" class="cfg-btn cfg-btn--danger" disabled={disabled}>
           reset
         </button>
       </ConfigRow>
@@ -305,10 +282,7 @@ function ControlCell({ disabled }: { disabled: boolean }) {
  * built sheet rather than written here, because a hand-kept list would go on
  * claiming `:active` is missing the day somebody adds one.
  */
-function rowFinding(
-  row: StateRow,
-  absent: readonly ForcedState[],
-): string | null {
+function rowFinding(row: StateRow, absent: readonly ForcedState[]): string | null {
   if (row.force !== null && absent.includes(row.force)) {
     return `identical to selected: styles.css declares no ${row.force === "focus" ? ":focus" : `:${row.force}`} rule`;
   }
@@ -407,12 +381,7 @@ const NATIVE_BALANCED_TYPE_SCALE = {
  * painted by the shipping variable and the readout is the same value measured
  * back off the DOM.
  */
-const TYPE_SCALE_TOKENS = [
-  "--type-title",
-  "--type-body",
-  "--type-meta",
-  "--type-micro",
-] as const;
+const TYPE_SCALE_TOKENS = ["--type-title", "--type-body", "--type-meta", "--type-micro"] as const;
 
 const TYPE_SCALE_ALIAS = [
   "--gx-type-title:var(--type-title)",
@@ -422,38 +391,22 @@ const TYPE_SCALE_ALIAS = [
 ].join(";");
 
 function contrastRows(preset: ThemePreset) {
-  const chrome = deriveChromeColors(
-    preset.theme.background,
-    preset.theme.foreground,
-  );
-  const commonSurfaces = [
-    chrome.sidebarBg,
-    chrome.chrome1,
-    chrome.chrome2,
-    chrome.tabActiveBg,
-  ];
+  const chrome = deriveChromeColors(preset.theme.background, preset.theme.foreground);
+  const commonSurfaces = [chrome.sidebarBg, chrome.chrome1, chrome.chrome2, chrome.tabActiveBg];
 
   return TEXT_CONTRAST_ROLES.map((role) => {
-    const surfaces =
-      role.id === "primary"
-        ? [chrome.inputBg, ...commonSurfaces]
-        : commonSurfaces;
+    const surfaces = role.id === "primary" ? [chrome.inputBg, ...commonSurfaces] : commonSurfaces;
     return {
       ...role,
       minimum: Math.min(
-        ...surfaces.map((surface) =>
-          contrastRatio(chrome[role.colorKey], surface),
-        ),
+        ...surfaces.map((surface) => contrastRatio(chrome[role.colorKey], surface)),
       ),
     };
   });
 }
 
 function surfaceContrastRows(preset: ThemePreset) {
-  const chrome = deriveChromeColors(
-    preset.theme.background,
-    preset.theme.foreground,
-  );
+  const chrome = deriveChromeColors(preset.theme.background, preset.theme.foreground);
   const surfaces = [
     { id: "stage", label: "Stage", color: preset.theme.background },
     { id: "sidebar", label: "Sidebar", color: chrome.sidebarBg },
@@ -482,19 +435,13 @@ function ContrastReview() {
       <header class="gx-specimen__head">
         <span class="gx-specimen__name">text contrast ladder</span>
         <span class="gx-specimen__note">
-          minimum ratio across the real sidebar, chrome, selected and input
-          surfaces · 4 themes · live derived tokens
+          minimum ratio across the real sidebar, chrome, selected and input surfaces · 4 themes ·
+          live derived tokens
         </span>
       </header>
       <div class="gx-contrast-grid">
         {THEME_PRESETS.map((preset) => (
-          <ThemeCell
-            key={preset.id}
-            themeId={preset.id}
-            force={null}
-            inactive={false}
-            width={270}
-          >
+          <ThemeCell key={preset.id} themeId={preset.id} force={null} inactive={false} width={270}>
             <article class="gx-contrast-card">
               <header class="gx-contrast-card__head">
                 <strong>{preset.label}</strong>
@@ -515,9 +462,7 @@ function ContrastReview() {
               {contrastRows(preset).map((role) => (
                 <div key={role.id} class="gx-contrast-row">
                   <div>
-                    <span
-                      class={`gx-contrast-row__sample gx-contrast-row__sample--${role.id}`}
-                    >
+                    <span class={`gx-contrast-row__sample gx-contrast-row__sample--${role.id}`}>
                       {role.sample}
                     </span>
                     <span class="gx-contrast-row__use">{role.use}</span>
@@ -543,8 +488,8 @@ function SurfaceContrastReview() {
       <header class="gx-specimen__head">
         <span class="gx-specimen__name">text-to-surface contrast</span>
         <span class="gx-specimen__note">
-          each number is measured independently · green meets that text role's
-          floor · amber exposes a pairing that must not be used
+          each number is measured independently · green meets that text role's floor · amber exposes
+          a pairing that must not be used
         </span>
       </header>
       <div class="gx-surface-matrix-grid">
@@ -567,9 +512,7 @@ function SurfaceContrastReview() {
                   <span />
                   {matrix.surfaces.map((surface) => (
                     <span key={surface.id} class="gx-surface-matrix__surface">
-                      <i
-                        class={`gx-surface-matrix__dot gx-surface-matrix__dot--${surface.id}`}
-                      />
+                      <i class={`gx-surface-matrix__dot gx-surface-matrix__dot--${surface.id}`} />
                       {surface.label}
                     </span>
                   ))}
@@ -621,9 +564,9 @@ function TypeScaleReview() {
     if (node === null) return;
     const style = getComputedStyle(node);
     setSizes(
-      TYPE_SCALE_TOKENS.map((token) =>
-        style.getPropertyValue(token).trim(),
-      ).filter((value) => value !== ""),
+      TYPE_SCALE_TOKENS.map((token) => style.getPropertyValue(token).trim()).filter(
+        (value) => value !== "",
+      ),
     );
   }, []);
   return (
@@ -631,8 +574,7 @@ function TypeScaleReview() {
       <header class="gx-specimen__head">
         <span class="gx-specimen__name">type hierarchy</span>
         <span class="gx-specimen__note">
-          Native balanced · selected gallery theme · sized by the shipping
-          --type-* variables
+          Native balanced · selected gallery theme · sized by the shipping --type-* variables
         </span>
       </header>
       <div class="gx-type-grid">
@@ -643,18 +585,14 @@ function TypeScaleReview() {
           </header>
           <div class="gx-type-card__sample">
             <strong class="gx-type-card__title">Workspace settings</strong>
-            <span class="gx-type-card__body">
-              Restore tabs and agent sessions when Deck opens.
-            </span>
+            <span class="gx-type-card__body">Restore tabs and agent sessions when Deck opens.</span>
             <span class="gx-type-card__meta">Resumed 2 min ago</span>
             <span class="gx-type-card__micro">⌘⇧B · Toggle explorer</span>
           </div>
           {/* Empty until the layout effect has run, and empty for good if
               `styles.css` ever stops declaring the tokens — which is a finding
               worth seeing, not a gap worth filling with a written-down number. */}
-          <footer>
-            {sizes.length === 0 ? "--type-* not resolved" : sizes.join(" / ")}
-          </footer>
+          <footer>{sizes.length === 0 ? "--type-* not resolved" : sizes.join(" / ")}</footer>
         </article>
       </div>
     </section>
@@ -673,8 +611,7 @@ function NativeWindowReview() {
       <header class="gx-specimen__head">
         <span class="gx-specimen__name">native window treatment</span>
         <span class="gx-specimen__note">
-          real Deck chrome · selected gallery theme · inactive is a proposal,
-          not shipping policy
+          real Deck chrome · selected gallery theme · inactive is a proposal, not shipping policy
         </span>
       </header>
       <div class="gx-native-detail-strip">
@@ -721,11 +658,7 @@ function MatrixBlock({
         <div class="gx-matrix__row">
           <span class="gx-matrix__rowhead" />
           {THEME_PRESETS.map((preset) => (
-            <span
-              key={preset.id}
-              class="gx-matrix__colhead"
-              style={{ width: `${CELL_WIDTH}px` }}
-            >
+            <span key={preset.id} class="gx-matrix__colhead" style={{ width: `${CELL_WIDTH}px` }}>
               {preset.id}
             </span>
           ))}
@@ -736,9 +669,7 @@ function MatrixBlock({
               <span class="gx-matrix__statename">{row.id}</span>
               <span class="gx-matrix__statenote">{row.note}</span>
               {rowFinding(row, absent) !== null && (
-                <span class="gx-matrix__finding">
-                  {rowFinding(row, absent)}
-                </span>
+                <span class="gx-matrix__finding">{rowFinding(row, absent)}</span>
               )}
             </span>
             {THEME_PRESETS.map((preset) => (
@@ -748,9 +679,7 @@ function MatrixBlock({
                 force={row.force}
                 inactive={row.inactive}
               >
-                <div
-                  class={`gx-cell__inner ${tall ? "gx-cell__inner--tall" : ""}`}
-                >
+                <div class={`gx-cell__inner ${tall ? "gx-cell__inner--tall" : ""}`}>
                   {render(row.disabled)}
                 </div>
               </ThemeCell>
@@ -785,9 +714,7 @@ export function MatrixSection() {
           specimens below inherit them from the theme itself and a gallery-only
           override would only be able to disagree with what ships. */}
       <TreatmentDirectionReview
-        renderWindow={() => (
-          <WindowCell sidebar disabled={false} stageWitness />
-        )}
+        renderWindow={() => <WindowCell sidebar disabled={false} stageWitness />}
       />
       <TypeScaleReview />
       <ContrastReview />
@@ -799,9 +726,7 @@ export function MatrixSection() {
         note="real DesktopChrome; hover, active and focus are the app's own rules re-scoped, not copies"
         tall
         absent={absent}
-        render={(disabled) => (
-          <WindowCell sidebar={false} disabled={disabled} />
-        )}
+        render={(disabled) => <WindowCell sidebar={false} disabled={disabled} />}
       />
 
       <MatrixBlock

@@ -168,8 +168,7 @@ const PINNED_SIDEBAR_BG: Readonly<Record<string, string>> = Object.freeze({
 });
 
 type ChromeTextToken = "textPrimary" | "textMuted" | "textFaint";
-type ChromeTextSurface =
-  "inputBg" | "sidebarBg" | "chrome1" | "chrome2" | "tabActiveBg";
+type ChromeTextSurface = "inputBg" | "sidebarBg" | "chrome1" | "chrome2" | "tabActiveBg";
 
 export interface ChromeContrastFailure {
   readonly token: ChromeTextToken;
@@ -274,8 +273,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // darker surface (DL-18.7). Neither direction can land back on `bg`: see
   // `recessedSidebar` for why the old rounding guard is gone.
   const sidebarBg = dark
-    ? (PINNED_SIDEBAR_BG[bg.toLowerCase()] ??
-      mixHex(bg, tone, DARK_SIDEBAR_LIFT))
+    ? (PINNED_SIDEBAR_BG[bg.toLowerCase()] ?? mixHex(bg, tone, DARK_SIDEBAR_LIFT))
     : recessedSidebar(bg);
   const sidebarSeam = mixHex(sidebarBg, bg, 0.5);
   // The chrome ladder stacks ON the sidebar on a dark theme, not on the stage.
@@ -285,21 +283,9 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // sidebar makes the separation structural: every chrome surface is above the
   // sidebar by construction, for every theme, including imports.
   const chromeBase = dark ? sidebarBg : bg;
-  const chrome1 = mixHex(
-    chromeBase,
-    tone,
-    dark ? DARK_CHROME_1_STEP : LIGHT_CHROME_1_STEP,
-  );
-  const chrome2 = mixHex(
-    chromeBase,
-    tone,
-    dark ? DARK_CHROME_2_STEP : LIGHT_CHROME_2_STEP,
-  );
-  const tabActiveBg = mixHex(
-    chromeBase,
-    tone,
-    dark ? DARK_TAB_ACTIVE_STEP : LIGHT_TAB_ACTIVE_STEP,
-  );
+  const chrome1 = mixHex(chromeBase, tone, dark ? DARK_CHROME_1_STEP : LIGHT_CHROME_1_STEP);
+  const chrome2 = mixHex(chromeBase, tone, dark ? DARK_CHROME_2_STEP : LIGHT_CHROME_2_STEP);
+  const tabActiveBg = mixHex(chromeBase, tone, dark ? DARK_TAB_ACTIVE_STEP : LIGHT_TAB_ACTIVE_STEP);
   // 6% against the active row's own step: far enough apart that hover cannot be
   // read as "already selected" (DL-21.2), close enough that the two belong to
   // one ladder. The percentage is the reviewed direction's; only its source
@@ -326,12 +312,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // up louder than the loud one. Mixing toward `bg` can only ever lower
   // contrast, so ordering holds by construction; the `ensureContrast` pass
   // after each mix only pulls a step back up if it undershot its floor.
-  const textPrimary = ensureContrast(
-    fg,
-    [inputBg, ...surfaces],
-    TEXT_PRIMARY_FLOOR,
-    tone,
-  );
+  const textPrimary = ensureContrast(fg, [inputBg, ...surfaces], TEXT_PRIMARY_FLOOR, tone);
   return {
     tone,
     sidebarBg,
@@ -354,11 +335,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     // from `bg` it fell BELOW `chrome2` the moment the ladder moved onto the
     // sidebar (deck-dark: 0.0397 against 0.0409), which is a popover framed in
     // a line darker than its own body.
-    seamRaised: mixHex(
-      chromeBase,
-      tone,
-      dark ? DARK_SEAM_RAISED_STEP : LIGHT_SEAM_RAISED_STEP,
-    ),
+    seamRaised: mixHex(chromeBase, tone, dark ? DARK_SEAM_RAISED_STEP : LIGHT_SEAM_RAISED_STEP),
     // Alpha, because this one runs INSIDE a single surface and has to adapt to
     // whichever one that is — the stage on one pane, `chrome1` on another.
     //
@@ -369,21 +346,11 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     // 12% is the same weight `hair` carries, one ladder step below `hairStrong`.
     seamDivider: alpha(tone, 0.12),
     textPrimary,
-    textMuted: ensureContrast(
-      mixHex(textPrimary, bg, 0.28),
-      surfaces,
-      TEXT_MUTED_FLOOR,
-      tone,
-    ),
+    textMuted: ensureContrast(mixHex(textPrimary, bg, 0.28), surfaces, TEXT_MUTED_FLOOR, tone),
     // 4.5, not 3: this token styles 10.5–11px text — config row descriptions,
     // workspace paths, the "off" value of every toggle — which WCAG AA rates
     // as normal text, where 3:1 is the non-text floor, not the text one.
-    textFaint: ensureContrast(
-      mixHex(textPrimary, bg, 0.5),
-      surfaces,
-      TEXT_FAINT_FLOOR,
-      tone,
-    ),
+    textFaint: ensureContrast(mixHex(textPrimary, bg, 0.5), surfaces, TEXT_FAINT_FLOOR, tone),
   };
 }
 
@@ -395,10 +362,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
  * fallback, while imported files call this boundary check and are rejected
  * before an unreadable theme can become selectable.
  */
-export function checkChromeTextContrast(
-  bg: string,
-  fg: string,
-): ChromeContrastCheck {
+export function checkChromeTextContrast(bg: string, fg: string): ChromeContrastCheck {
   const chrome = deriveChromeColors(bg, fg);
   const surfaces: Readonly<Record<ChromeTextSurface, string>> = {
     inputBg: chrome.inputBg,
@@ -408,21 +372,9 @@ export function checkChromeTextContrast(
     tabActiveBg: chrome.tabActiveBg,
   };
   const checks: readonly [ChromeTextToken, number, ChromeTextSurface[]][] = [
-    [
-      "textPrimary",
-      TEXT_PRIMARY_FLOOR,
-      Object.keys(surfaces) as ChromeTextSurface[],
-    ],
-    [
-      "textMuted",
-      TEXT_MUTED_FLOOR,
-      ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"],
-    ],
-    [
-      "textFaint",
-      TEXT_FAINT_FLOOR,
-      ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"],
-    ],
+    ["textPrimary", TEXT_PRIMARY_FLOOR, Object.keys(surfaces) as ChromeTextSurface[]],
+    ["textMuted", TEXT_MUTED_FLOOR, ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"]],
+    ["textFaint", TEXT_FAINT_FLOOR, ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"]],
   ];
   const failures = checks.flatMap(([token, required, names]) =>
     names.flatMap((surface) => {

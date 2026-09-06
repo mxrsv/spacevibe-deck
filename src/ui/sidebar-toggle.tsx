@@ -1,10 +1,7 @@
 import { Plus, SidebarSimple } from "@phosphor-icons/react";
 import { useEffect, useRef } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import {
-  createNewPaneDragController,
-  type NewPaneDropDeps,
-} from "./new-pane-drag";
+import { createNewPaneDragController, type NewPaneDropDeps } from "./new-pane-drag";
 
 interface SidebarToggleProps {
   /** Painted state, not the setting: a live drag arms this before it writes. */
@@ -51,10 +48,7 @@ interface SidebarNewButtonProps {
 }
 
 /** The sidebar's `New` launcher, now in the frame beside its hide control. */
-function SidebarNewButton({
-  onOpenWorkspace,
-  newPaneDrop,
-}: SidebarNewButtonProps) {
+function SidebarNewButton({ onOpenWorkspace, newPaneDrop }: SidebarNewButtonProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const dropRef = useRef<NewPaneDropDeps | undefined>(newPaneDrop);
   dropRef.current = newPaneDrop;
@@ -100,10 +94,7 @@ export function SidebarFrameActions(props: SidebarFrameActionsProps) {
   return (
     <div class="sidebar-frame-actions">
       <SidebarToggle collapsed={props.collapsed} onToggle={props.onToggle} />
-      <SidebarNewButton
-        onOpenWorkspace={props.onOpenWorkspace}
-        newPaneDrop={props.newPaneDrop}
-      />
+      <SidebarNewButton onOpenWorkspace={props.onOpenWorkspace} newPaneDrop={props.newPaneDrop} />
     </div>
   );
 }

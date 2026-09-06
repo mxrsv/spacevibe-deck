@@ -172,9 +172,7 @@ describe("extractLinkCandidates", () => {
     it("leaves a Claude Code tool line alone", () => {
       // `Read(src/foo.ts)` — the parens are boundaries, not a position, and a
       // single parenthesised number is not one either.
-      expect(
-        extractLinkCandidates("Read(src/foo.ts)").map((c) => c.text),
-      ).toEqual(["src/foo.ts"]);
+      expect(extractLinkCandidates("Read(src/foo.ts)").map((c) => c.text)).toEqual(["src/foo.ts"]);
       expect(extractLinkCandidates("src/foo.ts(3)")[0].text).toBe("src/foo.ts");
     });
 
@@ -199,9 +197,7 @@ describe("extractLinkCandidates", () => {
       expect(file.target).toBe("src/my notes/todo.md");
       // Unquoted, the same text is two candidates and neither is the file.
       expect(
-        extractLinkCandidates("opened src/my notes/todo.md").map(
-          (c) => c.target,
-        ),
+        extractLinkCandidates("opened src/my notes/todo.md").map((c) => c.target),
       ).not.toContain("src/my notes/todo.md");
     });
 
@@ -218,12 +214,8 @@ describe("extractLinkCandidates", () => {
 
   describe("stripDiffPrefix", () => {
     it("strips git's diff prefixes", () => {
-      expect(stripDiffPrefix("a/src/terminal/tab-manager.ts")).toBe(
-        "src/terminal/tab-manager.ts",
-      );
-      expect(stripDiffPrefix("b/src/terminal/tab-manager.ts")).toBe(
-        "src/terminal/tab-manager.ts",
-      );
+      expect(stripDiffPrefix("a/src/terminal/tab-manager.ts")).toBe("src/terminal/tab-manager.ts");
+      expect(stripDiffPrefix("b/src/terminal/tab-manager.ts")).toBe("src/terminal/tab-manager.ts");
     });
 
     it("leaves anything else alone", () => {

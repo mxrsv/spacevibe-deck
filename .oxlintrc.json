@@ -38,7 +38,9 @@
         "vitest/no-conditional-expect": "off",
         "jest/valid-title": "off",
         "vitest/valid-title": "off",
-        "vitest/require-mock-type-parameters": "off"
+        "vitest/require-mock-type-parameters": "off",
+        "jest/valid-expect": ["error", { "maxArgs": 2 }],
+        "vitest/valid-expect": ["error", { "maxArgs": 2 }]
       }
     }
   ],

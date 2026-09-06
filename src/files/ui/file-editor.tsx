@@ -1,3 +1,6 @@
+// oxlint-disable react-hooks/exhaustive-deps -- both effects below narrow their
+// deps on purpose and each says why at its own call site; oxlint 1.78 ignores
+// per-line disables for this rule, so the scope is this one file, this one rule.
 /**
  * The editor surface (plan T33).
  *
@@ -81,6 +84,12 @@ export function FileEditor(props: FileEditorProps) {
   // so this effect can resolve after the component has already unmounted —
   // hence `cancelled`. Flipping to a refusal unmounts the host, and the
   // cleanup below disposes the editor with it.
+  //
+  // The narrow dep list is deliberate, so the rule is silenced HERE rather than
+  // relaxed repo-wide: `ready` is a signal this effect WRITES (`ready.value += 1`),
+  // so listing it would re-run the effect that set it and re-create Monaco on
+  // every mount, forever; and `props.controller` is a stable per-surface object
+  // whose identity must not tear down and re-create the editor.
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) {
@@ -193,6 +202,10 @@ export function FileEditor(props: FileEditorProps) {
 
   // Swap the model when the path changes, and re-apply the content whenever the
   // document's baseline moves — a reload, or the first read landing.
+  //
+  // Silenced HERE, not repo-wide: the effect reads only `document.text` and
+  // `document.file`, and both are listed. Depending on `document` itself would
+  // re-swap the model on every identity change of an unchanged document.
   useEffect(() => {
     const handle = handleRef.current;
     if (handle === null || document === undefined) {

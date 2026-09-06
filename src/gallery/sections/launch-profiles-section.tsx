@@ -20,9 +20,7 @@ import { SectionHead, Specimen } from "../specimen";
  * owner's real `settings.json`.
  */
 
-const SEEDED: readonly LaunchProfile[] = [
-  { id: "lp:opencode-auto", command: "opencode --auto" },
-];
+const SEEDED: readonly LaunchProfile[] = [{ id: "lp:opencode-auto", command: "opencode --auto" }];
 
 const SEEDED_DEFAULTS: Readonly<Record<string, string>> = {
   opencode: "lp:opencode-auto",

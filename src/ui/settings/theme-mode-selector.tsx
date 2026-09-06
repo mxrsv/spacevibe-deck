@@ -82,9 +82,7 @@ export function ThemeModeSelector() {
     } catch {
       // Fail safe, exactly like the reset row: a prompt that could not be
       // shown must not be treated as an answer.
-      reportPersistError(
-        "Couldn't confirm the appearance change — nothing was changed.",
-      );
+      reportPersistError("Couldn't confirm the appearance change — nothing was changed.");
     } finally {
       converting.value = false;
     }
@@ -96,14 +94,7 @@ export function ThemeModeSelector() {
    * leaves the pair as one control rather than walking through it.
    */
   const onKeyDown = (event: KeyboardEvent): void => {
-    const keys = [
-      "ArrowLeft",
-      "ArrowRight",
-      "ArrowUp",
-      "ArrowDown",
-      "Home",
-      "End",
-    ];
+    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
     if (!keys.includes(event.key)) {
       return;
     }
@@ -115,20 +106,14 @@ export function ThemeModeSelector() {
         ? 0
         : event.key === "End"
           ? MODE_OPTIONS.length - 1
-          : (index + (forward ? 1 : -1) + MODE_OPTIONS.length) %
-            MODE_OPTIONS.length;
+          : (index + (forward ? 1 : -1) + MODE_OPTIONS.length) % MODE_OPTIONS.length;
     const next = MODE_OPTIONS[nextIndex];
-    groupRef.current
-      ?.querySelectorAll<HTMLButtonElement>("button")
-      [nextIndex]?.focus();
+    groupRef.current?.querySelectorAll<HTMLButtonElement>("button")[nextIndex]?.focus();
     void select(next.value);
   };
 
   return (
-    <ConfigRow
-      label="Appearance"
-      desc="Use a light or dark surface across Deck"
-    >
+    <ConfigRow label="Appearance" desc="Use a light or dark surface across Deck">
       <div
         ref={groupRef}
         class="segmented"

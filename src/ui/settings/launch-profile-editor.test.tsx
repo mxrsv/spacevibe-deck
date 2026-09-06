@@ -16,9 +16,9 @@ vi.mock("../../host/store-host", () => ({
 }));
 
 vi.mock("../../settings/settings-store", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../settings/settings-store")
-  >("../../settings/settings-store");
+  const actual = await vi.importActual<typeof import("../../settings/settings-store")>(
+    "../../settings/settings-store",
+  );
   return { ...actual, updateSettings: vi.fn() };
 });
 
@@ -104,9 +104,7 @@ describe("LaunchProfileEditor", () => {
     // The catalog's recommendation, not a bare binary and not something the
     // user had to type — this is what a fresh install shows.
     expect(host.textContent).toContain("--dangerously-skip-permissions");
-    expect(host.textContent).toContain(
-      "--dangerously-bypass-approvals-and-sandbox",
-    );
+    expect(host.textContent).toContain("--dangerously-bypass-approvals-and-sandbox");
     expect(updateSettings).not.toHaveBeenCalled();
   });
 
@@ -135,9 +133,7 @@ describe("LaunchProfileEditor", () => {
   it("says so when nothing is installed", () => {
     mount();
 
-    expect(host.querySelector('[role="status"]')?.textContent).toContain(
-      "No agent CLI found",
-    );
+    expect(host.querySelector('[role="status"]')?.textContent).toContain("No agent CLI found");
   });
 
   it("a user preset replaces the shipped command for that agent", () => {
@@ -148,9 +144,7 @@ describe("LaunchProfileEditor", () => {
     expect(host.textContent).toContain("claude --permission-mode plan");
     // The shipped claude command is gone; agy's, which shares that flag, is
     // not — so the assertion names the binary rather than the flag alone.
-    expect(host.textContent).not.toContain(
-      "claude --dangerously-skip-permissions",
-    );
+    expect(host.textContent).not.toContain("claude --dangerously-skip-permissions");
   });
 
   it("disables an agent without deleting it", () => {
@@ -165,8 +159,6 @@ describe("LaunchProfileEditor", () => {
       disabledAgents: ["claude"],
     });
   });
-
-
 
   it("adds a typed command and stars it for its agent", () => {
     install("claude");
@@ -187,9 +179,7 @@ describe("LaunchProfileEditor", () => {
     type("claude; rm -rf /");
     click(byLabel("Add"));
 
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
-      "letters, digits",
-    );
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("letters, digits");
     expect(updateSettings).not.toHaveBeenCalled();
   });
 });

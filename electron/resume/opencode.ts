@@ -71,7 +71,6 @@ const MAX_TAIL_PARTS = 60;
  */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 
-
 /** Every `.json` directly inside `dir`, newest mtime first. A missing or
  *  unreadable directory is an empty list, never a throw. */
 function newestFirstIn(dir: string): FileCandidate[] {

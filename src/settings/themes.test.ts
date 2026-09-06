@@ -85,40 +85,26 @@ describe("the two canonical modes", () => {
     expect(getPreset("does-not-exist").id).toBe(DECK_DARK_ID);
   });
 
-  it.each([DECK_DARK_ID, DECK_LIGHT_ID])(
-    "derives chrome that clears DL-3.5 on %s",
-    (id) => {
-      const preset = getPreset(id);
-      const check = checkChromeTextContrast(
-        preset.theme.background,
-        preset.theme.foreground,
-      );
+  it.each([DECK_DARK_ID, DECK_LIGHT_ID])("derives chrome that clears DL-3.5 on %s", (id) => {
+    const preset = getPreset(id);
+    const check = checkChromeTextContrast(preset.theme.background, preset.theme.foreground);
 
-      expect(check.ok ? null : check.reason).toBeNull();
-    },
-  );
+    expect(check.ok ? null : check.reason).toBeNull();
+  });
 
-  it.each([DECK_DARK_ID, DECK_LIGHT_ID])(
-    "keeps terminal text and cursor legible on %s",
-    (id) => {
-      const { theme } = getPreset(id);
+  it.each([DECK_DARK_ID, DECK_LIGHT_ID])("keeps terminal text and cursor legible on %s", (id) => {
+    const { theme } = getPreset(id);
 
-      expect(
-        contrastRatio(theme.foreground, theme.background),
-      ).toBeGreaterThanOrEqual(TERMINAL_TEXT_FLOOR);
-      expect(
-        contrastRatio(theme.cursor, theme.background),
-      ).toBeGreaterThanOrEqual(TERMINAL_CURSOR_FLOOR);
-    },
-  );
+    expect(contrastRatio(theme.foreground, theme.background)).toBeGreaterThanOrEqual(
+      TERMINAL_TEXT_FLOOR,
+    );
+    expect(contrastRatio(theme.cursor, theme.background)).toBeGreaterThanOrEqual(
+      TERMINAL_CURSOR_FLOOR,
+    );
+  });
 
   it("keeps every legacy built-in id resolvable", () => {
-    for (const id of [
-      "tokyo-night",
-      "dracula",
-      "one-dark",
-      "catppuccin-mocha",
-    ]) {
+    for (const id of ["tokyo-night", "dracula", "one-dark", "catppuccin-mocha"]) {
       expect(getPreset(id).id).toBe(id);
     }
   });
@@ -126,18 +112,12 @@ describe("the two canonical modes", () => {
 
 describe("themeModeOf", () => {
   it("reports each canonical mode as itself", () => {
-    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: DECK_LIGHT_ID })).toBe(
-      "light",
-    );
-    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: DECK_DARK_ID })).toBe(
-      "dark",
-    );
+    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: DECK_LIGHT_ID })).toBe("light");
+    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: DECK_DARK_ID })).toBe("dark");
   });
 
   it("classifies a legacy theme by the background it resolves to", () => {
-    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: "tokyo-night" })).toBe(
-      "dark",
-    );
+    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: "tokyo-night" })).toBe("dark");
   });
 
   // The selected segment must describe what the user is LOOKING at. An
@@ -153,17 +133,13 @@ describe("themeModeOf", () => {
   });
 
   it("classifies an unknown id through the fallback preset", () => {
-    expect(
-      themeModeOf({ ...DEFAULT_SETTINGS, themeId: "file:gone.json" }),
-    ).toBe("dark");
+    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: "file:gone.json" })).toBe("dark");
   });
 });
 
 describe("conversionDiscardsData", () => {
   it("is false for a legacy built-in with nothing overridden", () => {
-    expect(
-      conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "gruvbox" }),
-    ).toBe(false);
+    expect(conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "gruvbox" })).toBe(false);
   });
 
   it("is true while any colour override is set", () => {

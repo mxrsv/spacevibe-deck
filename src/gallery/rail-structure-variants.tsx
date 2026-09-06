@@ -139,11 +139,7 @@ function TabMap({ tab }: { readonly tab: MapTab }) {
       {tab.rows.map((row, rowIndex) => (
         <span key={rowIndex} class="gxs-map__row">
           {row.map((pane) => (
-            <span
-              key={pane.agent}
-              class="gxs-map__pane"
-              data-state={pane.state}
-            >
+            <span key={pane.agent} class="gxs-map__pane" data-state={pane.state}>
               <AgentGlyph agent={pane.agent} className="gxs-map__logo" />
             </span>
           ))}
@@ -154,19 +150,11 @@ function TabMap({ tab }: { readonly tab: MapTab }) {
 }
 
 /** The loudest pane's state, the rollup the row mark already speaks with. */
-const STATE_ORDER: readonly RailState[] = [
-  "failed",
-  "asked",
-  "working",
-  "done",
-  "idle",
-];
+const STATE_ORDER: readonly RailState[] = ["failed", "asked", "working", "done", "idle"];
 
 function rollup(tab: MapTab): RailState {
   const states = tab.rows.flat().map((pane) => pane.state);
-  return (
-    STATE_ORDER.find((state) => states.includes(state)) ?? ("idle" as RailState)
-  );
+  return STATE_ORDER.find((state) => states.includes(state)) ?? ("idle" as RailState);
 }
 
 /**
@@ -189,11 +177,7 @@ function MapColumn({
   readonly carrier: "map" | "row";
 }) {
   return (
-    <div
-      class="gxs-rail"
-      data-carrier={carrier}
-      style={{ width: `${width}px` }}
-    >
+    <div class="gxs-rail" data-carrier={carrier} style={{ width: `${width}px` }}>
       {CLUSTERS.map((cluster) => (
         <section key={cluster.project} class="gxs-cluster">
           <span class="gxs-head">{cluster.project}</span>
@@ -206,13 +190,9 @@ function MapColumn({
               <TabMap tab={tab} />
               <span class="gxs-card__body">
                 <span class="gxs-card__line">
-                  {tab.name !== "" && (
-                    <strong class="gxs-card__name">{tab.name}</strong>
-                  )}
+                  {tab.name !== "" && <strong class="gxs-card__name">{tab.name}</strong>}
                   <span class="gxs-card__msg">
-                    {tab.message !== ""
-                      ? tab.message
-                      : tab.rows.flat()[0].agent}
+                    {tab.message !== "" ? tab.message : tab.rows.flat()[0].agent}
                   </span>
                 </span>
                 {tab.age !== "" && <span class="gxs-card__age">{tab.age}</span>}
@@ -228,11 +208,8 @@ function MapColumn({
 
 /** How a collapsed project summarises itself: counts, loudest state first. */
 function summarise(cluster: MapCluster): string {
-  const states = cluster.tabs.flatMap((tab) =>
-    tab.rows.flat().map((pane) => pane.state),
-  );
-  const count = (state: RailState) =>
-    states.filter((each) => each === state).length;
+  const states = cluster.tabs.flatMap((tab) => tab.rows.flat().map((pane) => pane.state));
+  const count = (state: RailState) => states.filter((each) => each === state).length;
   const parts = [
     count("failed") > 0 ? `${count("failed")} failed` : "",
     count("asked") > 0 ? `${count("asked")} asks` : "",
@@ -281,10 +258,7 @@ function DashboardColumn() {
             </div>
             {loudest !== null && !open && (
               <div class="gxs-project__loudest">
-                <AgentGlyph
-                  agent={loudest.agent}
-                  className="gxs-project__logo"
-                />
+                <AgentGlyph agent={loudest.agent} className="gxs-project__logo" />
                 <span class="gxs-project__agent">{loudest.agent}</span>
                 <span class="gxs-card__age">{loudest.age}</span>
                 <RailStatusMark state={loudest.state} />
@@ -301,14 +275,10 @@ function DashboardColumn() {
                   <span class="gxs-card__body">
                     <span class="gxs-card__line">
                       <span class="gxs-card__msg">
-                        {tab.message !== ""
-                          ? tab.message
-                          : tab.rows.flat()[0].agent}
+                        {tab.message !== "" ? tab.message : tab.rows.flat()[0].agent}
                       </span>
                     </span>
-                    {tab.age !== "" && (
-                      <span class="gxs-card__age">{tab.age}</span>
-                    )}
+                    {tab.age !== "" && <span class="gxs-card__age">{tab.age}</span>}
                   </span>
                   <RailStatusMark state={rollup(tab)} />
                 </div>
@@ -344,8 +314,7 @@ export function railStructureSpecimen() {
           <span class="gxs-variant__index">M2</span>
           <span class="gxs-variant__title">tab map — 200px (floor)</span>
           <span class="gxs-variant__note">
-            the same card where the sidebar is narrowest — the case the map has
-            to survive
+            the same card where the sidebar is narrowest — the case the map has to survive
           </span>
         </div>
         <MapColumn width={200} carrier="map" />
@@ -355,8 +324,7 @@ export function railStructureSpecimen() {
           <span class="gxs-variant__index">M3</span>
           <span class="gxs-variant__title">tab map, uncoloured — 275px</span>
           <span class="gxs-variant__note">
-            topology only; state stays on the one row mark, so no state is said
-            twice (DL-27.2)
+            topology only; state stays on the one row mark, so no state is said twice (DL-27.2)
           </span>
         </div>
         <MapColumn width={275} carrier="row" />
@@ -366,8 +334,8 @@ export function railStructureSpecimen() {
           <span class="gxs-variant__index">P</span>
           <span class="gxs-variant__title">project dashboard</span>
           <span class="gxs-variant__note">
-            one row per project, counts in the header, the loudest agent named;
-            the open project shows its tabs
+            one row per project, counts in the header, the loudest agent named; the open project
+            shows its tabs
           </span>
         </div>
         <DashboardColumn />
@@ -424,12 +392,7 @@ function LadderColumn({ level }: { readonly level: 1 | 2 | 3 }) {
               )
             : cluster.tabs.map((tab, tabIndex) => {
                 const panes = tab.rows.flat();
-                const label =
-                  tab.name !== ""
-                    ? tab.name
-                    : panes.length === 1
-                      ? panes[0].agent
-                      : "";
+                const label = tab.name !== "" ? tab.name : panes.length === 1 ? panes[0].agent : "";
                 return (
                   <div
                     key={`${cluster.project}-${tabIndex}`}
@@ -448,10 +411,7 @@ function LadderColumn({ level }: { readonly level: 1 | 2 | 3 }) {
                                 : undefined
                             }
                           >
-                            <AgentGlyph
-                              agent={pane.agent}
-                              className="gxs-lad__logo"
-                            />
+                            <AgentGlyph agent={pane.agent} className="gxs-lad__logo" />
                           </span>
                         ))}
                       </span>
@@ -482,8 +442,7 @@ export function railSimplicityLadderSpecimen() {
           <span class="gxs-variant__index">L1</span>
           <span class="gxs-variant__title">less ink — one row per pane</span>
           <span class="gxs-variant__note">
-            the sentence and the age are gone; the row is glyph, agent, mark.
-            Reverts DL-27.15
+            the sentence and the age are gone; the row is glyph, agent, mark. Reverts DL-27.15
           </span>
         </div>
         <LadderColumn level={1} />
@@ -493,8 +452,7 @@ export function railSimplicityLadderSpecimen() {
           <span class="gxs-variant__index">L2</span>
           <span class="gxs-variant__title">fewer rows — one row per tab</span>
           <span class="gxs-variant__note">
-            agents as glyphs, badged only when that pane is loud — the rail
-            spec's own §2.1 row
+            agents as glyphs, badged only when that pane is loud — the rail spec's own §2.1 row
           </span>
         </div>
         <LadderColumn level={2} />

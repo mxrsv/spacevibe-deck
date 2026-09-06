@@ -91,7 +91,9 @@ describe("packaged process cleanup", () => {
         child.stdout.once("data", (data) => resolve(Number(String(data)))),
       );
       await verifierModule.stopChild?.(child);
-      expect(() => process.kill(nestedPid, 0)).toThrow();
+      // ESRCH specifically: EPERM would mean the process is still alive but
+      // owned by another user, which is not the cleanup this asserts.
+      expect(() => process.kill(nestedPid, 0)).toThrow(/ESRCH/);
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
         child.kill("SIGKILL");

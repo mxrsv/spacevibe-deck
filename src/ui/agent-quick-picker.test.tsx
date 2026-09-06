@@ -144,9 +144,7 @@ describe("AgentQuickPicker", () => {
 
     const aider = host.querySelectorAll<HTMLButtonElement>(".achip")[2];
     expect(aider.className).toContain("is-missing");
-    expect(aider.title).toBe(
-      "aider --model gpt-4 — not on $PATH; opens Settings",
-    );
+    expect(aider.title).toBe("aider --model gpt-4 — not on $PATH; opens Settings");
   });
 
   it("does not mark a detected built-in as missing", () => {
@@ -377,9 +375,7 @@ describe("AgentQuickPicker destination", () => {
 
 describe("AgentQuickPicker launch profiles", () => {
   function profileSelect(label: string): HTMLSelectElement | null {
-    return host.querySelector<HTMLSelectElement>(
-      `[aria-label="${label} launch profile"]`,
-    );
+    return host.querySelector<HTMLSelectElement>(`[aria-label="${label} launch profile"]`);
   }
 
   it("offers a profile select only for agents that have profiles", () => {
@@ -454,9 +450,7 @@ describe("AgentQuickPicker launch profiles", () => {
     const { onSelect } = mount();
 
     act(() => {
-      profileSelect("Claude Code")!.dispatchEvent(
-        new MouseEvent("click", { bubbles: true }),
-      );
+      profileSelect("Claude Code")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(onSelect).not.toHaveBeenCalled();
@@ -506,11 +500,15 @@ describe("AgentQuickPicker keyboard and unreachable rows (DL-29.8)", () => {
 
     const keys = host.querySelector(".agent-quick-picker__keys");
     expect(keys?.textContent).toContain("pick");
-    expect(
-      Array.from(keys?.querySelectorAll("kbd") ?? []).map(
-        (key) => key.textContent,
-      ),
-    ).toEqual(["1", "9", "0", "↑", "↓", "Enter", "Esc"]);
+    expect(Array.from(keys?.querySelectorAll("kbd") ?? []).map((key) => key.textContent)).toEqual([
+      "1",
+      "9",
+      "0",
+      "↑",
+      "↓",
+      "Enter",
+      "Esc",
+    ]);
   });
 
   it("routes a missing agent to Settings instead of launching it", () => {
