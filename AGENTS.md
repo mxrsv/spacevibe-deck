@@ -45,18 +45,24 @@ superseded by `docs/internals/` wherever they disagree.
 - The Electron cutover is a **clean install** with no settings/workspace migration. The final
   Tauri release must explain the manual transition and old data location. “No Electron” must
   stop being a proof point at cutover; “no accounts” remains valid. **“No telemetry” is
-  retired, and analytics is ON by default (decided 2026-08-23, committed 2026-08-24 as
-  `cdc07a0`):** the 2026-08-22 opt-in model was built, never released, and reversed by
-  the owner the next day — no consent question is asked,
-  `declined` (the Settings → Privacy switch) is the only state never inferred away, an
-  unreadable state file still fails closed to off, and public copy says "on by default,
-  no code, paths or prompts" and never "anonymous". `USAGE_CONSENT_ASKED` in
-  [`usage-notice.ts`](src/telemetry/usage-notice.ts) `current` is the whole reversal
-  switch; the consent modal stays in the tree behind it. Rollout consequence: every
-  install of the next release POSTs, so the Worker and the privacy page are
+  retired, and analytics is MANDATORY — always on, with no opt-out (owner-decided
+  2026-09-06).** The 2026-08-22 opt-in model was built, never released, and reversed to
+  default-on on 2026-08-23 (`cdc07a0`); the switch that reversal kept has now gone too. No
+  consent question is asked, Settings → Privacy renders NO control, `parsePersisted` folds
+  even a `declined` written by an earlier build back to `enabled`, and `setEnabled(false)` is
+  refused in MAIN rather than merely unreachable from the UI — the renderer is not the trust
+  boundary. An unreadable state file still fails closed to off, and that is now the only
+  state in which a shipped build sends nothing. The disclosure stayed when the switch went:
+  Settings → Privacy still states exactly what is sent, and public copy says "always on,
+  no opt-out, no code, paths or prompts" and never "anonymous". Two constants in
+  [`usage-notice.ts`](src/telemetry/usage-notice.ts) `current` are the whole reversal —
+  `USAGE_CONSENT_ASKED` and `USAGE_ANALYTICS_MANDATORY`; the consent modal and the entire
+  opt-out machinery stay in the tree behind them, covered by tests that pass
+  `mandatory: false`. Rollout consequence, unchanged and now unavoidable: every install of
+  the next release POSTs and no user can stop it, so the Worker and the privacy page are
   prerequisites, not follow-ups. See the
   [usage analytics spec](docs/specs/2026-08-22-anonymous-usage-telemetry-design.md)
-  `decided` (amended 2026-08-24).
+  `decided` (amended 2026-08-24, superseded on consent by the 2026-09-06 decision).
 - Electron process classification must use the measured `ps` snapshot path, not
   `node-pty.process`; the latter returned version/executable strings instead of argv0.
 - **Pane detach Phase A exists on Tauri**, including IPC contract tests; remaining native
@@ -757,6 +763,23 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 
 Open queue:
 
+- **Analytics became mandatory — the opt-out switch is gone (owner-decided 2026-09-06 in
+  conversation, after the legal and copy risks were stated).** A fork because it again
+  amends DL-29.9 and because it changes the app's outbound-data policy: there is now no
+  user-reachable way to stop a POST. `USAGE_ANALYTICS_MANDATORY` in
+  [`usage-notice.ts`](src/telemetry/usage-notice.ts) `current` is the switch;
+  `parsePersisted` folds `declined` into `enabled`, `setEnabled(false)` throws in main, and
+  `TelemetryDeps.mandatory` (defaulting to the constant) keeps BOTH policies testable, the
+  `shouldShowUsageNotice(enabled)` precedent. Settings → Privacy keeps its whole disclosure
+  and loses only the control — chosen over deleting the category (an app collecting with no
+  on-screen account of it) and over a disabled switch (a dead control reads worse than none).
+  Copy was corrected in the same change so nothing ships a false claim: README (both spots),
+  the landing's EN and VI proof points, the Settings copy, and the copy test that had pinned
+  "Turn it off here". **NOT resolved here:** the endpoint still does not resolve, so this
+  makes MXR-24 sharper rather than smaller — mandatory collection into a dead hostname is
+  still collection into a dead hostname, and the Worker, D1 and privacy page remain
+  prerequisites for the next release. The legal exposure (GDPR: no opt-out, no objection
+  path) was raised and accepted by the owner.
 - **Analytics consent reversed to default-on (decided 2026-08-23 in conversation
   after hearing the risks; committed 2026-08-24 as `cdc07a0`).** A fork because it amends DL-29.9 —
   the decision modal's rule now governs a surface that mounts nowhere
@@ -1115,9 +1138,9 @@ _(Heading retained for the global living-doc convention.)_
 | A project cluster can be dragged into place                                    | `building` | unverified | Built 2026-08-22 from the [spec](docs/specs/2026-08-22-rail-workspace-reorder-design.md) `decided` (new DL-27.20): `RailStreamGroup.orderKey`, a pure `rail-order.ts`, a delegated pointer controller on the rail's list, and a `railOrder` settings field. Renderer-only, so it reaches BOTH hosts. Targeted suites green (147 assertions across `rail-order`, `rail-cluster-drag`, `settings-schema`, `agent-rail-model`, plus the two reorder cases in `agent-rail.test.tsx`), and `tsc --noEmit` / prettier / oxlint / the design-language gate clean against every file this touches — the four failures in those runs were read and attributed to concurrent sessions. **The full `npm test` (3776/0) and `npm run build` ran green on 2026-08-24 with the whole batch; still owed: a host pass and owner eye review — no cluster has ever actually been dragged.** A code review and a four-angle simplify ran over it: six correctness findings fixed (the worst deleted a cluster from the rail on a duplicated `orderKey`), two cleanups taken, and one declined — the controller reads the rail's DOM instead of taking injected geometry, so spec §8's "mirroring `new-pane-drag.ts`'s deps shape" is not yet true. Cross-window drag is phase 2 and unbuilt; there is no keyboard equivalent — [detail](docs/CONTEXT.md#a-project-cluster-goes-where-the-user-puts-it--2026-08-22) `current` |
 | The rail's close model is native-verified                                     | `building` | unverified | Built 2026-08-22 from the [spec](docs/specs/2026-08-22-rail-close-model-design.md) `decided` (new DL-27.21): every agent row carries its own ✕ closing that PANE, a live project header closes every tab of the repository under one busy dialog and then drops its history entries, and the leaf became a container plus hit layer. Renderer-only apart from one `disposeTab` branch, so it reaches BOTH hosts. `npx tsc --noEmit` is clean and the six affected suites are green (183 tests: close-coordinator, agent-rail, agent-rail-model, app, tab-lifecycle, rail-order) — the full `npm test` (3776/0), `npm run build` and the design-language gate ran green on 2026-08-24 with the whole batch, but there is **no `electron:dev` or `tauri dev` pass and no owner eye review**; no agent has been closed from a leaf and no project from a header in a running app — [detail](docs/CONTEXT.md#every-rail-row-closes-what-it-names--2026-08-22) `current` |
 | Closing the last tab closes the window                                        | `current`  | **false**  | True until 2026-08-22 and deliberately reversed (close model table row 3): `disposeTab`'s empty branch raises the Open board and leaves the window standing, so electron-migration spec §9.5's "the last SURFACE closes THIS window" no longer describes the tab path. `removeEmptyTab`'s pane-MOVED path still closes the window, and the `surfaces.total() > 0` branch still shows a document instead of the board. Pinned by `tab-manager.tab-lifecycle.test.ts` (the old assertion was inverted, not deleted); never seen in a running host — [detail](docs/CONTEXT.md#every-rail-row-closes-what-it-names--2026-08-22) `current` |
-| Deck sends usage analytics by default                                         | `building` | unverified | Built 2026-08-22 as the spec's opt-in client, then REVERSED to default-on by the owner (decided 2026-08-23, committed 2026-08-24 as `cdc07a0`): no consent question, `declined` is the only value never inferred away, unreadable still fails closed, and the consent modal survives behind `USAGE_CONSENT_ASKED=false`. Suite-verified — the telemetry suites' first execution was 62/62 (2026-08-23) and the full `npm test` is 3776/0 with both typechecks and `npm run build` green — but **no host pass and no owner eye review**, and the Worker, D1 and privacy page DO NOT EXIST, so every install of the next release would POST into a hostname that does not resolve today, and Settings links a page that 404s; rollout §12 steps 1-2 are prerequisites now — [plan](docs/plans/2026-08-22-anonymous-usage-telemetry.md) |
+| Deck sends usage analytics, always on, with no opt-out                        | `building` | unverified | Built 2026-08-22 as the spec's opt-in client, reversed to default-on on 2026-08-23 (`cdc07a0`), and made MANDATORY on 2026-09-06: Settings → Privacy renders no control, `parsePersisted` folds `declined` into `enabled`, and `setEnabled(false)` is refused in main. Suite-verified — `npm test` 3876 passed / 0 failed, both typechecks, `npm run build` and `npm run lint` green, with the telemetry suites at 59/59 including three new mandatory-policy cases and the opt-out machinery still covered under `mandatory: false` — but **no host pass and no owner eye review**: no running app has shown the switchless Privacy category. The backend is unchanged and is now the sharper problem, not the smaller one: the Worker, D1 and privacy page DO NOT EXIST, `api.deck.spacevibe.dev` does not resolve (measured 2026-09-06), so every install of the next release POSTs into nothing **and no user can stop it**, while Settings links a page that 404s. Rollout §12 steps 1-2 are hard prerequisites — [plan](docs/plans/2026-08-22-anonymous-usage-telemetry.md) |
 | Markdown opens rendered, and its policy holds                                  | `building` | unverified | Built 2026-08-23 from the [spec](docs/specs/2026-08-23-markdown-rendered-view-design.md) `decided` (new DL §31): `.md` opens rendered, ⌘⇧V flips it, Monaco colorizes the fences, mermaid loads only for a document that has one, and the §6 policy (escaped raw HTML, no `href` anywhere, dead `javascript:`/`data:`/out-of-root links, local-only images, no network fetch) is unit-asserted as pure functions. `npm test` 3755 passed / 8 failed with every failure reproduced as another session's uncommitted work and green on a pristine `HEAD` worktree; `src/files` 278/278; both typechecks, `npm run build` and `generate:menu:check` clean; `marked` and `mermaid` measured as their own lazy chunks. **Owed: a native `electron:dev` pass and the owner eye review** — nothing has been rendered in a running host, so no diagram has been drawn, no image read off disk, no link clicked and no colorized fence seen in either theme. Electron-only by inheritance (no Tauri file surface); Windows is Gate C — [detail](docs/CONTEXT.md#markdown-opens-rendered--2026-08-23) `current` |
-| “No telemetry” is public copy                                                 | `deprecated` | retired  | Retired 2026-08-22 with the opt-in client, re-worded with the default-on reversal (`cdc07a0`, 2026-08-24): README (both spots) and the landing proof point now say analytics is on by default with no code, paths or prompts and a Settings → Privacy switch; the tour's proof is `cat src/telemetry/payload.ts`, whose quoted lines state only what is absent. The 1.0.0 `CHANGELOG.md` entry keeps the old claim as a frozen release record on purpose — [spec §9](docs/specs/2026-08-22-anonymous-usage-telemetry-design.md) `decided` |
+| “No telemetry” is public copy                                                 | `deprecated` | retired  | Retired 2026-08-22 with the opt-in client, re-worded with the default-on reversal (`cdc07a0`, 2026-08-24): README (both spots) and the landing proof point now say analytics is on by default with no code, paths or prompts and a Settings → Privacy switch; **that wording is stale again as of 2026-09-06** — the switch is gone, and README (both spots) plus the landing's EN and VI proof points were rewritten to "always on, no opt-out". The tour's proof is `cat src/telemetry/payload.ts`, whose quoted lines state only what is absent. The 1.0.0 `CHANGELOG.md` entry keeps the old claim as a frozen release record on purpose — [spec §9](docs/specs/2026-08-22-anonymous-usage-telemetry-design.md) `decided` |
 | The rail says which agent holds the keyboard                                  | `building` | unverified | Built 2026-08-23 (new DL-27.22) after the owner reported a rail with no active item: a multi-agent tab renders headless, so DL-27.8's row wash had nowhere to land. `PaneView.focused` projects `activePaneId()`, `ManagerCallbacks.onActivePaneChange` is what tells the tab layer focus moved, and the model ANDs the two so at most one leaf in the rail is washed. `npx tsc --noEmit`, `npm run build`, prettier and the five affected suites are green (156 tests across `agent-rail`, `agent-rail-model`, `terminal-manager`, `tab-manager.tab-lifecycle` and `tabs-store`), plus a gallery pass on the REAL rail measuring exactly one washed row at `--tab-active-bg` with `aria-current="true"`. **Owed: a native `electron:dev` pass and the owner's eye review** — no pane has been focused in a running app; the gallery screenshot shows the wash inside DL-27.19's frame on `deck-dark` only, and no light theme was checked. Renderer-only apart from one callback, so it reaches BOTH hosts — [plan](docs/plans/2026-08-23-rail-focused-pane-marker.md) `building` |
 
-Updated 2026-08-24.
+Updated 2026-09-06.

@@ -60,7 +60,7 @@ export const messages = {
     proofOpenBody: "The whole app is on GitHub — read it, build it, fork it, ship a patch.",
     proofLocalTitle: "Your work stays on your machine",
     proofLocalBody:
-      "Your code, terminals and agent sessions stay local. Deck sends first-party usage analytics — on by default, never code, file paths or prompts — and Settings → Privacy turns them off.",
+      "Your code, terminals and agent sessions stay local. Deck sends first-party usage analytics — always on, with no opt-out, never code, file paths or prompts — and Settings → Privacy states exactly what is sent.",
     scSplit: "split",
     scSplitH: "split down",
     scTab: "new tab",
@@ -141,7 +141,7 @@ export const messages = {
     proofOpenBody: "Toàn bộ app nằm trên GitHub — đọc, tự build, fork hay gửi patch đều được.",
     proofLocalTitle: "Công việc của bạn ở lại trên máy bạn",
     proofLocalBody:
-      "Code, terminal và phiên agent đều nằm local. Deck gửi usage analytics first-party — bật mặc định, không bao giờ kèm code, đường dẫn file hay prompt — tắt được trong Settings → Privacy.",
+      "Code, terminal và phiên agent đều nằm local. Deck gửi usage analytics first-party — luôn bật, không tắt được, và không bao giờ kèm code, đường dẫn file hay prompt — Settings → Privacy ghi rõ những gì được gửi.",
     scSplit: "chia dọc",
     scSplitH: "chia ngang",
     scTab: "tab mới",

@@ -6,9 +6,12 @@
  * a notice row, and it could only ever render while consent is unanswered on
  * a host that can do analytics at all — the Electron host — so on Tauri and
  * in the browser preview nothing ever shows. But no consent question is asked
- * any more: analytics is ON by default, `USAGE_CONSENT_ASKED` below is false,
- * `declined` (the Settings → Privacy switch) is the only state never inferred
- * away, and an unreadable `telemetry.json` fails closed to off. See
+ * any more, and since 2026-09-06 there is no answer to give: analytics is
+ * MANDATORY, `USAGE_CONSENT_ASKED` below is false and
+ * `USAGE_ANALYTICS_MANDATORY` is true, so `declined` is unreachable and an
+ * existing one folds back to `enabled`. An unreadable `telemetry.json` still
+ * fails closed to off — that is a disk Deck cannot read, not a preference, and
+ * guessing past it would mean writing over state of unknown shape. See
  * docs/internals/telemetry.md.
  */
 
@@ -43,6 +46,32 @@ export const USAGE_PRIVACY_URL = "https://deck.spacevibe.dev/privacy";
  * constant exists to keep.
  */
 export const USAGE_CONSENT_ASKED: boolean = false;
+
+/**
+ * Whether analytics is MANDATORY — on for every install, with no way to turn
+ * it off (owner-decided 2026-09-06).
+ *
+ * This is a step beyond the 2026-08-23 default-on reversal, which kept the
+ * Settings → Privacy switch as the one way out. There is no way out now:
+ * `declined` stops being a state the user can reach, `parsePersisted` folds an
+ * existing one back to `enabled`, and `setEnabled(false)` is refused by main
+ * rather than merely unreachable from the UI — the renderer is not the trust
+ * boundary, so a channel that still exists must not honour a request the
+ * product no longer offers.
+ *
+ * The disclosure did NOT go with the switch: Settings → Privacy still states
+ * exactly what is sent and what is not, and still links the privacy notice.
+ * Taking the control away while keeping the account of what is taken is the
+ * whole shape of this decision — a surface that collects silently would be
+ * worse on every axis that matters.
+ *
+ * Typed `boolean` rather than left as the literal, the `USAGE_CONSENT_ASKED`
+ * and `GRAB_PASTE_DISABLED` shape: neither branch becomes statically
+ * unreachable, so a dead-code pass cannot delete the half that makes this
+ * reversible. Flipping this one constant back, re-mounting `ToggleRow` in
+ * `privacy-section.tsx` and restoring the copy is the whole reversal.
+ */
+export const USAGE_ANALYTICS_MANDATORY: boolean = true;
 
 export interface UsageNoticeConditions {
   /** True only where the telemetry host answers — the Electron host. */

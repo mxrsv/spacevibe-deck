@@ -26,6 +26,11 @@ import {
   type TelemetryStateReply,
   type UsagePayloadLike,
 } from "./model";
+// The policy constant is stated once, renderer-side, and imported here the way
+// `electron/fs/write.ts` imports `applyEol` — one spelling of the rule for both
+// processes, so main and Settings can never disagree about whether the switch
+// exists.
+import { USAGE_ANALYTICS_MANDATORY } from "../../src/telemetry/usage-notice";
 
 export interface TelemetryStoreAccess {
   /** True when `telemetry.json` exists but could not be read — fail closed. */
@@ -54,6 +59,13 @@ export interface TelemetryDeps {
   onStateChanged?(state: TelemetryStateReply): void;
   /** Injectable interval for tests; returns the stopper. */
   startTimer?(handler: () => void, intervalMs: number): () => void;
+  /**
+   * Whether analytics is mandatory. Defaults to the constant; a parameter so
+   * the tests can drive BOTH policies — the `shouldShowUsageNotice(enabled)`
+   * precedent. The opt-out machinery below is kept rather than deleted, and
+   * this is what keeps it covered while it is unreachable in shipped builds.
+   */
+  mandatory?: boolean;
 }
 
 export interface TelemetryService {
@@ -110,22 +122,32 @@ function parseBuffer(raw: unknown): DayBuffer | null {
 /**
  * Validate persisted state from disk.
  *
- * `declined` is the only value that survives a round trip unchanged, and that
- * asymmetry is the whole rule since analytics went on by default (2026-08-23):
- * OFF is a state only the user can put the app in, so it is never inferred
- * away. Everything else — a missing field, a garbage string, or the
- * `unanswered` an opt-in build left behind — reads as the new default.
+ * Every value reads as `enabled` while `USAGE_ANALYTICS_MANDATORY` holds
+ * (2026-09-06): a missing field, a garbage string, the `unanswered` an opt-in
+ * build left behind, and — the one that actually changed — a `declined` an
+ * earlier build wrote. That last fold is deliberate and is the sharpest edge
+ * of this decision, so it is stated rather than buried: a recorded refusal is
+ * overridden, not honoured. It reaches almost nobody in practice, because
+ * analytics has never shipped in a release (`cdc07a0` postdates 1.0.0), so a
+ * `declined` file exists only on machines that ran a development build.
  *
- * A file that cannot be READ at all is a different answer: `consentNow` reports
- * `unreadable` and nothing is sent, because a disk Deck cannot read is not a
- * disk it may assume a preference from.
+ * With the constant flipped back, `declined` again survives a round trip
+ * unchanged — OFF becomes a state only the user can put the app in, and one
+ * that is never inferred away.
+ *
+ * A file that cannot be READ at all is a different answer under either policy:
+ * `consentNow` reports `unreadable` and nothing is sent, because a disk Deck
+ * cannot read is not a disk it may assume a preference from.
  */
-export function parsePersisted(raw: unknown): PersistedTelemetry {
+export function parsePersisted(
+  raw: unknown,
+  mandatory: boolean = USAGE_ANALYTICS_MANDATORY,
+): PersistedTelemetry {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return EMPTY_STATE;
   }
   const source = raw as Record<string, unknown>;
-  const consent = source.consent === "declined" ? "declined" : "enabled";
+  const consent = !mandatory && source.consent === "declined" ? "declined" : "enabled";
   const consentVersion = isCount(source.consentVersion) ? source.consentVersion : 0;
   const days: Record<string, DayBuffer> = {};
   const rawDays = source.days;
@@ -159,9 +181,10 @@ export function shouldSend(buffer: DayBuffer, nowMs: number, consent: ConsentSta
 }
 
 export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
+  const mandatory = deps.mandatory ?? USAGE_ANALYTICS_MANDATORY;
   let state: PersistedTelemetry = deps.store.unreadable()
     ? EMPTY_STATE
-    : parsePersisted(deps.store.read());
+    : parsePersisted(deps.store.read(), mandatory);
   let stopTimer: (() => void) | null = null;
   let sending = false;
   let initialSnapshotDone = false;
@@ -426,6 +449,14 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     state: replyState,
 
     async setEnabled(next: boolean): Promise<void> {
+      if (!next && mandatory) {
+        // Settings no longer renders a switch, but `telemetry_set_enabled` is
+        // still a registered channel and the renderer is not the trust
+        // boundary. Refusing here rather than relying on an absent control is
+        // what makes "cannot be turned off" a property of the app instead of a
+        // property of the current UI.
+        throw new Error("usage analytics is mandatory in this build");
+      }
       if (deps.store.unreadable()) {
         // Fail closed: no consent is inferred and nothing is reset here.
         // Recovering requires the user to repair or remove the file.

@@ -69,8 +69,9 @@ edits are not restored.
 The usage dashboard reads supported agents' existing local session logs and groups token use
 and known model costs by agent and day
 ([usage aggregation](src/lib/usage-aggregate.ts) `current`). It needs no Deck account. Deck
-sends first-party usage analytics — on by default, with no code, file paths or prompts,
-and switched off in Settings → Privacy ([what Deck sends](src/telemetry/payload.ts) `current`).
+sends first-party usage analytics — always on, with no code, file paths or prompts, and no way
+to switch them off; Settings → Privacy states exactly what is sent
+([what Deck sends](src/telemetry/payload.ts) `current`).
 
 ### Workflow-neutral agents
 
@@ -88,8 +89,8 @@ Deck checks for updates and tells you when one is ready; you choose when to down
 and relaunch. Both platforms use the moving
 [latest release](https://github.com/mxrsv/spacevibe-deck/releases/latest), never a pinned asset.
 
-**Trust:** MIT licensed · no Deck account · first-party usage analytics on by default, with
-no code, paths or prompts, and a Settings → Privacy switch that turns them off
+**Trust:** MIT licensed · no Deck account · first-party usage analytics always on, with no code,
+paths or prompts, and no opt-out; Settings → Privacy states what is sent
 ([what Deck sends](src/telemetry/payload.ts) `current`) · session and usage data read from
 local agent storage.
 

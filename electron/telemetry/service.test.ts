@@ -39,7 +39,19 @@ interface Harness {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function harness(initial?: unknown, options?: { unreadable?: boolean }): Harness {
+/**
+ * `mandatory` defaults to FALSE here, not to the shipped constant.
+ *
+ * The opt-out machinery is unreachable in shipped builds but is deliberately
+ * kept (see `USAGE_ANALYTICS_MANDATORY`), so its tests have to keep running:
+ * a default of `true` would silently turn every one of them into an assertion
+ * about the refusal instead. The mandatory policy gets its own describe block,
+ * which passes `mandatory: true` explicitly.
+ */
+function harness(
+  initial?: unknown,
+  options?: { unreadable?: boolean; mandatory?: boolean },
+): Harness {
   let nowMs = Date.UTC(2026, 7, 22, 12, 0, 0);
   let uuidCounter = 0;
   let status: number | Error = 204;
@@ -51,6 +63,7 @@ function harness(initial?: unknown, options?: { unreadable?: boolean }): Harness
   const flushes: PersistedTelemetry[] = [];
   let persisted: unknown = initial;
   const deps: TelemetryDeps = {
+    mandatory: options?.mandatory ?? false,
     now: () => nowMs,
     localDay: (ms) => new Date(ms).toISOString().slice(0, 10),
     randomUUID: () => `uuid-${(uuidCounter += 1)}`,
@@ -233,6 +246,46 @@ describe("telemetry lifecycle", () => {
     h.service.noteWindowReady();
     expect(h.posts.length).toBeGreaterThan(0);
     expect(h.timerRunning()).toBe(true);
+  });
+});
+
+describe("mandatory analytics", () => {
+  it("refuses to turn off, and says so rather than failing quietly", async () => {
+    // Settings renders no switch, but `telemetry_set_enabled` is still a
+    // registered channel and the renderer is not the trust boundary. The
+    // refusal has to live here for "cannot be turned off" to be a property of
+    // the app rather than of the current UI.
+    const h = harness(ENABLED_STATE, { mandatory: true });
+    h.service.count("agent", "claude", 1);
+    await expect(h.service.setEnabled(false)).rejects.toThrow(/mandatory/);
+    // The refusal changes nothing: consent stands, the timer stands, and the
+    // day's buffer is NOT deleted the way a real decline would delete it.
+    expect(h.service.state().consent).toBe("enabled");
+    expect(h.timerRunning()).toBe(true);
+    expect(h.flushes).toEqual([]);
+  });
+
+  it("counts and sends for a user who had turned analytics off", () => {
+    // The sharpest edge of the decision, pinned: a `declined` file written by
+    // an earlier build is overridden, not honoured.
+    const h = harness({ consent: "declined", consentVersion: 1, days: {} }, { mandatory: true });
+    h.service.count("agent", "claude", 1);
+    h.service.noteWindowReady();
+    expect(h.service.state().consent).toBe("enabled");
+    expect(h.posts.length).toBeGreaterThan(0);
+    expect(h.timerRunning()).toBe(true);
+  });
+
+  it("still fails closed on an unreadable state file", () => {
+    // Mandatory does not mean "send regardless". A disk Deck cannot read is
+    // not a disk it may assume anything from, and this is the one state in
+    // which a shipped build sends nothing.
+    const h = harness(undefined, { unreadable: true, mandatory: true });
+    h.service.count("agent", "claude", 1);
+    h.service.noteWindowReady();
+    expect(h.service.state().consent).toBe("unreadable");
+    expect(h.posts).toEqual([]);
+    expect(h.writes).toEqual([]);
   });
 });
 
@@ -441,17 +494,28 @@ describe("shouldSend cadence", () => {
 
 describe("persisted-state parsing", () => {
   it("degrades malformed input to the default, but never away from `declined`", () => {
-    expect(parsePersisted(null)).toEqual(EMPTY_STATE);
-    expect(parsePersisted([])).toEqual(EMPTY_STATE);
+    expect(parsePersisted(null, false)).toEqual(EMPTY_STATE);
+    expect(parsePersisted([], false)).toEqual(EMPTY_STATE);
     // A garbage string is a file Deck cannot read a preference out of, so it
     // takes the default…
-    expect(parsePersisted({ consent: "yes" }).consent).toBe("enabled");
-    expect(parsePersisted({}).consent).toBe("enabled");
+    expect(parsePersisted({ consent: "yes" }, false).consent).toBe("enabled");
+    expect(parsePersisted({}, false).consent).toBe("enabled");
     // …and `declined` is the one value that is never inferred away, because it
     // is the only one a user can only have put there on purpose.
-    expect(parsePersisted({ consent: "declined" }).consent).toBe("declined");
+    expect(parsePersisted({ consent: "declined" }, false).consent).toBe("declined");
     // The spelling an opt-in build left behind folds into the default.
-    expect(parsePersisted({ consent: "unanswered" }).consent).toBe("enabled");
+    expect(parsePersisted({ consent: "unanswered" }, false).consent).toBe("enabled");
+  });
+
+  it("folds even `declined` into enabled once analytics is mandatory", () => {
+    // The one value the opt-out policy protected is the one the mandatory
+    // policy overrides, so it is pinned rather than left implied: a recorded
+    // refusal does not survive this build.
+    expect(parsePersisted({ consent: "declined" }, true).consent).toBe("enabled");
+    expect(parsePersisted({ consent: "unanswered" }, true).consent).toBe("enabled");
+    expect(parsePersisted({ consent: "yes" }, true).consent).toBe("enabled");
+    // An unreadable FILE is still a different answer — that path never reaches
+    // `parsePersisted` at all, and `consentNow` reports `unreadable`.
   });
 
   it("drops malformed days and unknown counter keys", () => {
