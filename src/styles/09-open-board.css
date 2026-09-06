@@ -227,6 +227,65 @@
   text-align: center;
 }
 
+/* The board's decision line: the same yellow sentence, plus the two ways
+   forward. It is a block rather than a paragraph because it ASKS — a launch is
+   waiting on it — and DL-19.7 would rather a control be omitted than inert, so
+   both buttons exist only while the question does. */
+.board-home__decision {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 0;
+  max-width: 460px;
+  padding: 11px 14px;
+  border-radius: var(--radius-control);
+  /* DL-1.3: an inset hairline, never a border — no layout, nothing to clip. */
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+  background: var(--chrome-1);
+  text-align: center;
+}
+.board-home__decision-text {
+  margin: 0;
+  font-size: var(--type-body);
+  color: var(--yellow);
+}
+.board-home__decision-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+/* The board's own text-action shape (`.gsep button`), not a new one: bare
+   copy, `--accent` on the one that acts (DL-3.1) and `--text-muted` on the
+   one that leaves. */
+.board-home__decision-go,
+.board-home__decision-fix {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-meta);
+  color: var(--accent);
+  cursor: pointer;
+}
+.board-home__decision-fix {
+  color: var(--text-muted);
+}
+.board-home__decision-go:hover,
+.board-home__decision-fix:hover {
+  color: var(--text-primary);
+}
+.board-home__decision-go:focus-visible,
+.board-home__decision-fix:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.board-home__decision-go:disabled,
+.board-home__decision-fix:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .board-home__recents {
   width: min(480px, 100%);
   margin-top: 34px;
@@ -330,6 +389,16 @@
   color: var(--text-muted);
   font-size: var(--type-micro);
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A remembered agent that cannot run any more. DL-3.2: `--yellow` is
+   attention a person must act on — one step below `--red`'s failure, which is
+   right, since the workspace still opens. `flex: none` so it is never the
+   part of the meta line that gets ellipsised away. */
+.row__stale {
+  flex: none;
+  font-size: var(--type-micro);
+  color: var(--yellow);
   white-space: nowrap;
 }
 .row__time {

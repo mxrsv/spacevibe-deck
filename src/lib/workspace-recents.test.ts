@@ -7,6 +7,7 @@ import {
   partitionRecents,
   pushRecent,
   removeRecents,
+  resolveAgent,
   resolveAgentChoice,
   validateWorkspaces,
   WORKSPACES_VERSION,
@@ -38,6 +39,62 @@ describe("resolveAgentChoice", () => {
   it("degrades to Shell only when no agent is detected", () => {
     expect(resolveAgentChoice(undefined, [])).toBeNull();
     expect(resolveAgentChoice("claude", [])).toBeNull();
+  });
+});
+
+describe("resolveAgent", () => {
+  const agents = [{ id: "claude" }, { id: "codex" }];
+
+  it("reports a runnable memory as the choice it was", () => {
+    expect(resolveAgent("codex", agents)).toEqual({
+      kind: "chosen",
+      agent: "codex",
+    });
+  });
+
+  it("reports an explicit Shell-only memory as a choice, not a fallback", () => {
+    expect(resolveAgent(null, agents)).toEqual({ kind: "chosen", agent: null });
+    expect(resolveAgent(null, [])).toEqual({ kind: "chosen", agent: null });
+  });
+
+  it("reports no memory at all as a choice — a row that promised nothing", () => {
+    expect(resolveAgent(undefined, agents)).toEqual({
+      kind: "chosen",
+      agent: "claude",
+    });
+  });
+
+  it("names the agent it could not honour when it substitutes", () => {
+    expect(resolveAgent("gemini", agents)).toEqual({
+      kind: "substituted",
+      agent: "claude",
+      wanted: "gemini",
+    });
+  });
+
+  it("reports the plain-shell fallback, remembering what was wanted", () => {
+    expect(resolveAgent("claude", [])).toEqual({
+      kind: "shell-fallback",
+      agent: null,
+      wanted: "claude",
+    });
+  });
+
+  it("reports a first run — no memory and nothing installed — as a fallback", () => {
+    expect(resolveAgent(undefined, [])).toEqual({
+      kind: "shell-fallback",
+      agent: null,
+      wanted: null,
+    });
+  });
+
+  it("agrees with resolveAgentChoice on every case", () => {
+    const cases: (string | null | undefined)[] = [undefined, null, "claude", "gemini"];
+    for (const choice of cases) {
+      for (const list of [agents, []]) {
+        expect(resolveAgent(choice, list).agent).toBe(resolveAgentChoice(choice, list));
+      }
+    }
   });
 });
 

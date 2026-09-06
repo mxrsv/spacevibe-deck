@@ -30,7 +30,10 @@ describe("OpenBoardHome start surface", () => {
   function mount(overrides: Partial<OpenBoardHomeProps> = {}) {
     const handlers = {
       describeCombo: () => "Grid · Claude Code",
+      staleAgent: () => null,
       onPickFolder: vi.fn(),
+      onConfirmOpen: vi.fn(),
+      onManageAgents: vi.fn(),
       onCreateWorktree: vi.fn(),
       onBrowseSessions: vi.fn(),
       onOpen: vi.fn(),
@@ -48,6 +51,7 @@ describe("OpenBoardHome start surface", () => {
           openWorkspacePaths={new Set()}
           opening={false}
           notice={null}
+          decision={null}
           {...handlers}
           {...overrides}
         />,

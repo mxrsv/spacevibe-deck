@@ -15,6 +15,88 @@
   original length.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## The board stops running an agent it did not name — 2026-09-04
+
+A recents row printed its remembered agent unconditionally
+(`describeCombo`) and then opened whatever happened to stand first on `$PATH`
+if that agent was gone: `resolveAgentChoice` ended in
+`return agents[0]?.id ?? null`, with a bare shell as the last resort. One
+click, the wrong agent, nothing said — and on a machine with no agent CLI at
+all, which is the first run of anyone who installs Deck before installing an
+agent, a plain shell with no explanation. The board already owned a notice
+line (`.board-home__notice`) and used it for a folder that had vanished; this
+case never reached it. `AgentQuickPicker` had handled the same failure
+correctly since 2026-08-19 — `is-missing`, `not on $PATH; opens Settings`, and
+a route to Settings instead of a launch — so one bug had two opposite
+behaviours in one app (MXR-7, from MXR-5's UX review).
+
+**A resolution now says what it DID, not just what it produced.**
+[`resolveAgent`](../src/lib/workspace-recents.ts) `current` answers one of
+three kinds: `chosen` (the remembered agent runs, an explicit Shell-only
+memory, or a folder with no memory taking the first detected agent — a row
+that promised nothing cannot be contradicted), `substituted` (naming the id it
+could not honour), or `shell-fallback` (nothing runnable at all, `wanted` null
+on a first run). `resolveAgentChoice` survives as the id-only call for
+`agentForWorkspace`, whose caller — the `New` row dropped onto a pane — has no
+surface to say anything on.
+
+**The board asks instead of substituting.** A non-`chosen` resolution is held
+as a `PendingOpen` payload rather than launched: the sentence names both
+halves ("Claude Code is not installed — this workspace will open with Codex
+instead."), and `Open anyway` / `Manage agents…` stand under it in a
+`role="alert"` block. The payload carries the resolved agent, so a discovery
+refresh landing between the question and the answer cannot swap the agent out
+from under the sentence the user just read. Clicking another row clears it —
+a stale `Open anyway` must never open a workspace nobody is looking at — and
+so does `Manage agents…`, whose whole point is that the answer is about to
+change. The question is raised on **home** even when the launch came from the
+worktree form, which would otherwise ask behind a subview and simply never
+open.
+
+Two smaller consequences. The row says it BEFORE the click: `staleAgent`
+prints `Not installed` in `--yellow` (DL-3.2 — attention a person must act on,
+one step below `--red`, which is right because the workspace still opens), and
+says nothing at all until discovery has answered once, so an unanswered probe
+cannot mark every row. And an agent switched OFF in Settings is a substitution
+too, because `agentOptions` already drops it — the user's remembered pick
+cannot run either way.
+
+Friction is bounded by the recents write: a first open with nothing installed
+records `lastAgent: null`, an explicit Shell memory, which resolves `chosen`
+forever after. So the plain-shell question is asked once per folder, and only
+while no agent CLI exists.
+
+A medium code review over the first commit found five real defects, all in
+how the board HELD the question rather than in the resolver, and all fixed
+before the branch stood: the decision read a discovery list snapshotted at
+mount, so the `Manage agents…` → install → Refresh → Back recovery this change
+invented did not actually work (it reads the live `detectedAgents` signal now,
+and asks the cache again on every click — Settings' own Refresh writes that
+store, and this board is still mounted underneath Settings); the
+missing-folder early return fired BEFORE the question was cleared, leaving two
+messages on screen with `Open anyway` pointing at a workspace nothing named;
+`openWorktreeForm` and `removeRecentRows` did not clear it either, so it
+survived a trip to the worktree form or the deletion of its own row; the
+confirmed launch skipped the liveness check the first click had passed, so a
+folder that went away while the question stood could still be spawned into;
+and both the sentence and the badge said "is not installed" for an agent that
+was merely switched OFF, contradicting the catalog the button leads to.
+`unavailabilityOf` now separates the two — `Turned off` /
+`is switched off in Settings` against `Not installed` / `is not installed` —
+and the badge and the sentence are built from ONE reason, so the row and the
+decision line cannot disagree. Fixing that surfaced a sixth, mine: the home
+view still hard-coded the badge text while `staleAgent` had started returning
+it, rendering `title="Turned off is not installed"`.
+
+**No new DL rule** — the block is built from DL-3.2's yellow, DL-1.3's inset
+hairline, DL-3.1's accent on the acting control and the board's own
+`.gsep button` text-action shape. Renderer-only, so it reaches BOTH hosts.
+Verified by `npm test` (3887 passed, 0 failed), `npx tsc --noEmit`,
+`npm run build`, `generate:menu:check`, the design-language gate and 21 new
+assertions across `open-board.views` and `workspace-recents` — but **no
+`electron:dev` or `tauri dev` pass and no owner eye review**: no substitution
+has been confirmed in a running app.
+
 ## The rail marks the agent holding the keyboard — 2026-08-23
 
 The owner sent a screenshot of the rail and said there was no active item in
