@@ -374,11 +374,12 @@ const EXPECTED_ROWS = [
   // about
   "Check for updates",
   "Release notes",
-  // privacy — one switch over MAIN-owned consent state (usage-analytics spec
-  // §7), added 2026-08-22. The disclosure paragraphs under it are
-  // `.settings-screen__note`, not `.cfg-row__label`, so the walk sees the
-  // switch alone.
-  "Share usage stats",
+  // privacy — NO row. The category is still in the rail and still carries the
+  // whole disclosure, but its one switch went when analytics became mandatory
+  // (2026-09-06, `USAGE_ANALYTICS_MANDATORY`). Its paragraphs are
+  // `.settings-screen__note`, not `.cfg-row__label`, so the walk sees nothing
+  // there — which is the point: the category has text to read and nothing to
+  // set. Restoring the switch restores a row here.
   // reset — its own rail category since 2026-08-19, a pinned foot before that
   // (so this row used to be reachable from every category, and is now reached
   // by selecting one).
@@ -414,7 +415,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 19 rows by walking the rail", () => {
+  it("reaches all 18 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

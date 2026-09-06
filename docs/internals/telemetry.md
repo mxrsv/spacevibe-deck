@@ -1,8 +1,10 @@
 # Usage analytics
 
-Deck sends one small usage snapshot per day, on by default, and the only state it never
-infers away is an explicit "off". This page is the contract: what leaves the machine, who
-owns the state, and when a POST fires. Electron only: the Tauri host sends nothing.
+Deck sends one small usage snapshot per day. Since 2026-09-06 it is MANDATORY: there is no
+switch, no consent question, and an "off" recorded by an earlier build is overridden rather
+than honoured. The one state that still stops a send is a `telemetry.json` Deck cannot read.
+This page is the contract: what leaves the machine, who owns the state, and when a POST
+fires. Electron only: the Tauri host sends nothing.
 
 ## The payload
 
@@ -43,21 +45,34 @@ out.
   per-day maximum.
 - Three flat channels: `telemetry_count` (fire and forget), `telemetry_state` (also the
   "a window is ready" signal) and `telemetry_set_enabled`; one broadcast event,
-  `telemetry:state-changed`, so every window's Privacy switch moves together.
+  `telemetry:state-changed`. The event outlived the switch it synchronized: nothing in
+  Settings moves on it now, and it is kept because it is what a restored switch would need.
 
 ## State
 
-- `EMPTY_STATE` is `enabled`. `parsePersisted` folds every stored spelling except
-  `declined` into `enabled`: a missing field, garbage, or an opt-in-era `unanswered` all
-  read as on. `USAGE_CONSENT_ASKED` in
-  [`usage-notice.ts`](../../src/telemetry/usage-notice.ts) is `false`, so the consent modal
-  mounts nowhere; it stays in the tree behind that constant.
-- **Unreadable fails closed.** When `telemetry.json` exists but cannot be read, consent reports
-  `unreadable`, nothing counts, nothing sends, `setEnabled` throws, and Deck neither guesses
-  nor overwrites the file. Settings → Privacy says so and tells the user to repair the file
-  and restart, because it is read once at launch.
-- **Off means off.** `setEnabled(false)` stops the timer, replaces the state with
-  `declined` and an empty day map (every unsent buffer and daily id deleted), then flushes.
+- `EMPTY_STATE` is `enabled`, and `parsePersisted` folds EVERY stored spelling into
+  `enabled` while `USAGE_ANALYTICS_MANDATORY` holds — `declined` included. That last fold is
+  the sharpest edge of the mandatory policy, so it is stated rather than implied: a recorded
+  refusal is overridden. It reaches almost nobody in practice, because analytics has never
+  shipped in a release (`cdc07a0` postdates 1.0.0), so a `declined` file exists only on
+  machines that ran a development build.
+- **Two constants, both in [`usage-notice.ts`](../../src/telemetry/usage-notice.ts), and both
+  the whole reversal.** `USAGE_CONSENT_ASKED` is `false`, so the consent modal mounts nowhere;
+  `USAGE_ANALYTICS_MANDATORY` is `true`, so there is nothing to answer. Neither surface was
+  deleted — the modal stays in the tree, and the opt-out machinery below stays in
+  `service.ts`, covered by tests that pass `mandatory: false`. `TelemetryDeps.mandatory`
+  defaults to the constant and exists so both policies stay testable.
+- **Unreadable fails closed, under either policy.** When `telemetry.json` exists but cannot be
+  read, consent reports `unreadable`, nothing counts, nothing sends, `setEnabled` throws, and
+  Deck neither guesses nor overwrites the file. A disk Deck cannot read is not a disk it may
+  assume anything from. Settings → Privacy says so and tells the user to repair the file and
+  restart, because it is read once at launch.
+- **`setEnabled(false)` is refused in main**, not merely unreachable from the UI. Settings
+  renders no switch, but `telemetry_set_enabled` is still a registered channel and the
+  renderer is not the trust boundary — the refusal is what makes "cannot be turned off" a
+  property of the app rather than of the current UI. With the constant flipped back, the
+  original behaviour returns: stop the timer, replace the state with `declined` and an empty
+  day map (every unsent buffer and daily id deleted), then flush.
 - Counters cap at 1,000,000 so a runaway loop cannot push the body past the server's 4 KB
   limit. Days are keyed by the local calendar day, and at most 7 pending days are kept.
 
@@ -82,7 +97,14 @@ status keeps it under the seven-day cap.
 ## Privacy surface
 
 Settings → Privacy ([`privacy-section.tsx`](../../src/ui/settings/sections/privacy-section.tsx))
-is a view over `telemetry.json` reached through `telemetry_state`: one switch, "Share usage
-stats", disabled while loading, unavailable or unreadable, plus the disclosure in plain words
-and a link to `USAGE_PRIVACY_URL`. A failed write surfaces through the persist-error bar; the
-UI never claims a change main did not keep.
+is a view over `telemetry.json` reached through `telemetry_state`. It carries NO control: the
+disclosure in plain words, the `unreadable` alert, and a link to `USAGE_PRIVACY_URL`. A switch
+would be a lie in either position — working, it would contradict main's refusal; disabled, it
+would be a dead thing to keep pressing.
+
+The disclosure did not go with the switch, and that is the shape of the whole decision: taking
+the choice away is not a licence to stop saying what is taken. The copy states that analytics
+is always on and cannot be turned off, lists what is sent and what never is, and — pinned by
+the copy test — never calls the payload "anonymous" and never implies the collection is
+optional. The category therefore has text to read and nothing to set, which is why the
+settings-screen row inventory counts 18 rows rather than 19.
