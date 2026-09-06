@@ -452,7 +452,8 @@
 /* ── agent workbench (round one) ─────────────────────────────────── */
 
 /*
- * Composition candidates for docs/specs/2026-08-12-agent-workbench-gallery-design.md.
+ * Composition candidates for the window chrome — round one of the agent
+ * workbench comparison, which judged layouts before any treatment.
  *
  * The one inversion of this file's own rule: everything inside the specimen is
  * painted from the app's theme tokens, not from the fixed `--gx-` hexes. The
@@ -1100,8 +1101,21 @@
  * test. If a column is picked, its values move into `derive-colors.ts`, which
  * is what actually feeds the running app.
  *
- * See docs/review/2026-08-12-seam-system-codex.md for the measurements and
- * the proposal each column renders.
+ * The measurements behind the three columns, taken in the browser against the
+ * four shipped presets on 2026-08-12: the old seam was a lightening line mixed
+ * from `--fg` that sat +15 to +24 ABOVE the surface it edged while the
+ * `--bg` -> `--chrome-1` step it marked was only +8 to +9 — the boundary read
+ * as ink laid across the chrome, not as the edge of a plane. Column A pins
+ * those values (`--chrome-1`/`--chrome-2` at 96% / 93% of `--bg`, seams at 12%
+ * / 20% of `--fg`). Column B is the bevel that was offered and declined: two
+ * CSS pixels become four device pixels at DPR 2 and band rather than soften.
+ * Column C is what the owner chose that day and what `derive-colors.ts` then
+ * emitted (DL-2.3): a wider step (95% / 91%) and seams mixed over `--tone`, so
+ * the seam sits 6 to 7 BELOW its surface while the step grows to +10.6 to
+ * +11.6 — tokyo-night reads `+11.9 / -6.9` where it read `+9.3 / +20.5`. Light
+ * themes still take that 95% / 91% step from `--bg`; dark themes have since
+ * moved to a 3% / 6% / 10% ladder measured from `--sidebar-bg` (2026-08-19,
+ * DL-18.7), so this specimen is the light-theme picture only.
  */
 
 .gx-seamrow {

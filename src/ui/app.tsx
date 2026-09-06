@@ -11,14 +11,21 @@ import {
   WINDOW_CLOSE_COPY,
   type ConfirmCopy,
 } from "../terminal/close-guard";
-import { flushSettingsSave, initSettings, settingsLoadState } from "../settings/settings-store";
+import {
+  flushSettingsSave,
+  initSettings,
+  openDockTab,
+  revealDockTab,
+  settings,
+  settingsLoadState,
+  updateSettings,
+} from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
-import { openDockTab, revealDockTab, settings, updateSettings } from "../settings/settings-store";
 import type { DockTab } from "../settings/settings-schema";
 import { agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
@@ -268,8 +275,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   /**
    * The rail's pane-exact destination: an agent chip or a per-agent row names
-   * ONE pane, and pressing it must land there
-   * (`docs/specs/2026-08-16-agent-status-rail-design.md` §2.2).
+   * ONE pane, and pressing it must land there — every pane appears in
+   * `TabView.panes` with its own attention and phase, so a row IS a pane
+   * (`docs/internals/agent-rail.md`).
    *
    * It walks the same preflight `requestAttentionFocus` does rather than a
    * second one — the overlay rules (a draft in `PresetEditor` blocks, a

@@ -1,13 +1,15 @@
 /**
- * The usage-analytics consent question — where it sends people and when it is
- * allowed on screen.
+ * The usage-analytics consent question — where it sends people, and the
+ * switch that keeps it off screen.
  *
- * Spec: docs/specs/2026-08-22-anonymous-usage-telemetry-design.md §6, as
- * amended the same day: the surface is `UsageConsentModal` (DL-29.9), not a
- * notice row. The dialog asks for a decision; it does not announce a default.
- * It renders ONLY while consent is unanswered on a host that can do analytics
- * at all — the Electron host — so on Tauri and in the browser preview nothing
- * ever shows.
+ * The surface is `UsageConsentModal` (DL-29.9), a decision dialog rather than
+ * a notice row, and it could only ever render while consent is unanswered on
+ * a host that can do analytics at all — the Electron host — so on Tauri and
+ * in the browser preview nothing ever shows. But no consent question is asked
+ * any more: analytics is ON by default, `USAGE_CONSENT_ASKED` below is false,
+ * `declined` (the Settings → Privacy switch) is the only state never inferred
+ * away, and an unreadable `telemetry.json` fails closed to off. See
+ * docs/internals/telemetry.md.
  */
 
 /**
@@ -19,7 +21,7 @@
 export const USAGE_ANALYTICS_AVAILABLE: boolean = true;
 
 /**
- * Frozen into every shipped binary (spec §6): the page behind it shows the
+ * Frozen into every shipped binary: the page behind it shows the
  * CURRENT privacy notice and an archive keyed by effective date and consent
  * version, so editing the page alone can never broaden consent a shipped
  * binary already stored.

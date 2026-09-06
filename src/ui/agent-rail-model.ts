@@ -4,8 +4,8 @@
  *
  * Pure, and for the same reason
  * [`repository-model.ts`](../repositories/repository-model.ts) `current` is:
- * every precedence, fold and ordering decision in
- * `docs/specs/2026-08-16-agent-status-rail-design.md` §2/§3 lives here and
+ * every precedence, fold and ordering decision — the grouping and the state
+ * precedence stated in `docs/internals/agent-rail.md` — lives here and
  * none of them is observable from a screenshot. The component only renders
  * what this returns.
  *
@@ -21,14 +21,15 @@
 import type { PaneAgent } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
 import type { RepositoryScan } from "../repositories/repository-client";
-import type { RailTab, RepositoryGroup, WorktreeRow } from "../repositories/repository-model";
 import {
   buildRail,
   filterRailToWorkspaceHistory,
   worktreeForPath,
+  type RailTab,
+  type RepositoryGroup,
+  type WorktreeRow,
 } from "../repositories/repository-model";
-import type { PaneView, TabView } from "../terminal/tabs-store";
-import { NO_PANES } from "../terminal/tabs-store";
+import { NO_PANES, type PaneView, type TabView } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 // Type-only the other way (`RailStreamGroup`), so the pair is a compile-time
 // cycle and never a runtime one.

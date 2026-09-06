@@ -518,10 +518,10 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  // Task 3 (docs/plans/2026-07-27-action-registry.md): overlayBlocksAction
-  // now reads action-registry.ts's ACTION_REGISTRY instead of a hardcoded
-  // if-chain. Every other test above already proves the observable behavior
-  // held; this one proves the SOURCE actually changed — flip a scope in the
+  // overlayBlocksAction reads action-registry.ts's ACTION_REGISTRY instead of
+  // a hardcoded if-chain (docs/internals/terminal.md). Every other test above
+  // already proves the observable behavior held; this one proves the SOURCE
+  // actually changed — flip a scope in the
   // registry and the guard must follow, not silently keep its own copy.
   //
   // "new-tab" dropped out of this set in the F2 fix above: it moved from

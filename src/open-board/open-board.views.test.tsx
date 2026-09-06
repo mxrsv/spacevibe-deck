@@ -48,20 +48,13 @@ vi.mock("../terminal/pty-client", () => ({
   },
 }));
 
-import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { WORKSPACES_VERSION, type RecentWorkspace } from "../lib/workspace-recents";
 import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
-import {
-  detectedAgents,
-  resetAgentDetectionForTests,
-} from "../terminal/agent-detection-store";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { detectedAgents, resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 import { settings } from "../settings/settings-store";
 
 const NOW = 1_800_000_000_000;
@@ -151,9 +144,7 @@ describe("OpenBoard home view", () => {
   const keydown = async (init: KeyboardEventInit): Promise<void> => {
     const board = host.querySelector<HTMLDivElement>(".open-board");
     await act(async () => {
-      board?.dispatchEvent(
-        new KeyboardEvent("keydown", { ...init, bubbles: true }),
-      );
+      board?.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
     });
   };
 
@@ -163,20 +154,16 @@ describe("OpenBoard home view", () => {
     await mount();
 
     expect(host.querySelector(".board-home")).not.toBeNull();
-    expect(
-      host.querySelector(".board-home img[alt='SpaceVibe Deck']"),
-    ).not.toBeNull();
-    expect(host.querySelector(".home-action")?.textContent).toContain(
-      "Open workspace",
-    );
+    expect(host.querySelector(".board-home img[alt='SpaceVibe Deck']")).not.toBeNull();
+    expect(host.querySelector(".home-action")?.textContent).toContain("Open workspace");
     expect(
       [...host.querySelectorAll(".home-action")].some((el) =>
         el.textContent?.includes("Create worktree"),
       ),
     ).toBe(false);
-    expect(
-      [...host.querySelectorAll(".row .row__name")].map((el) => el.textContent),
-    ).toEqual(["alpha"]);
+    expect([...host.querySelectorAll(".row .row__name")].map((el) => el.textContent)).toEqual([
+      "alpha",
+    ]);
     expect(host.querySelector(".gsep")).not.toBeNull();
     // The retired config view (2026-08-16) has no mount left anywhere.
     expect(host.querySelector(".board-config")).toBeNull();
@@ -223,11 +210,7 @@ describe("OpenBoard home view", () => {
 
     // `null` is a remembered Shell-only open and it is carried through — the
     // config view's "Shell is only ever an explicit click" rule went with it.
-    expect(onOpen).toHaveBeenCalledWith(
-      "/w/beta",
-      expect.objectContaining({ id: "p-grid" }),
-      null,
-    );
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.objectContaining({ id: "p-grid" }), null);
   });
 
   it("states the substitution instead of quietly running the wrong agent", async () => {
@@ -243,9 +226,7 @@ describe("OpenBoard home view", () => {
     await settle();
 
     // Said on the row, before anything is clicked.
-    expect(host.querySelector(".row__stale")?.textContent).toContain(
-      "Not installed",
-    );
+    expect(host.querySelector(".row__stale")?.textContent).toContain("Not installed");
 
     const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
@@ -265,11 +246,7 @@ describe("OpenBoard home view", () => {
     });
     await settle();
 
-    expect(onOpen).toHaveBeenCalledWith(
-      "/w/beta",
-      expect.anything(),
-      "codex",
-    );
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "codex");
   });
 
   it("offers the agent catalog instead of the substitute, and drops the question", async () => {
@@ -290,9 +267,7 @@ describe("OpenBoard home view", () => {
     await settle();
 
     await act(async () => {
-      host
-        .querySelector<HTMLButtonElement>(".board-home__decision-fix")
-        ?.click();
+      host.querySelector<HTMLButtonElement>(".board-home__decision-fix")?.click();
     });
 
     expect(onManageAgents).toHaveBeenCalledTimes(1);
@@ -465,9 +440,7 @@ describe("OpenBoard home view", () => {
     await settle();
 
     expect(onOpen).not.toHaveBeenCalled();
-    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
-      "beta is missing",
-    );
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("beta is missing");
   });
 
   it("re-reads discovery on each click, so fixing it in Settings takes effect", async () => {
@@ -526,24 +499,18 @@ describe("OpenBoard home view", () => {
     expect(host.querySelector(".board-home__decision")).not.toBeNull();
 
     act(() => {
-      host
-        .querySelector<HTMLButtonElement>(".board-home__missing-toggle")
-        ?.click();
+      host.querySelector<HTMLButtonElement>(".board-home__missing-toggle")?.click();
     });
     const rows = host.querySelectorAll<HTMLButtonElement>(".row__open");
     await act(async () => {
-      rows[rows.length - 1]?.dispatchEvent(
-        new MouseEvent("click", { bubbles: true }),
-      );
+      rows[rows.length - 1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await settle();
 
     // One message slot: the held launch is gone, not sitting under the notice
     // where `Open anyway` would open a workspace nothing on screen names.
     expect(host.querySelector(".board-home__decision")).toBeNull();
-    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
-      "ghost is missing",
-    );
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("ghost is missing");
     expect(onOpen).not.toHaveBeenCalled();
   });
 
@@ -597,9 +564,7 @@ describe("OpenBoard home view", () => {
     await act(async () => {
       workspacesData.value = {
         version: WORKSPACES_VERSION,
-        recents: [
-          { path: "/w/beta", lastOpenedAt: NOW + 1, lastAgent: "claude" },
-        ],
+        recents: [{ path: "/w/beta", lastOpenedAt: NOW + 1, lastAgent: "claude" }],
       };
     });
     await settle();
@@ -610,9 +575,7 @@ describe("OpenBoard home view", () => {
     await settle();
 
     expect(onOpen).not.toHaveBeenCalled();
-    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
-      "beta is missing",
-    );
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("beta is missing");
   });
 
   it("clicking another row replaces the question rather than stacking one", async () => {
@@ -681,9 +644,7 @@ describe("OpenBoard home view", () => {
     const onOpen = vi.fn(async () => true);
     await mount(onOpen);
 
-    const disclosure = host.querySelector<HTMLButtonElement>(
-      ".board-home__missing-toggle",
-    );
+    const disclosure = host.querySelector<HTMLButtonElement>(".board-home__missing-toggle");
     act(() => disclosure?.click());
     const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
@@ -691,9 +652,7 @@ describe("OpenBoard home view", () => {
     });
 
     expect(onOpen).not.toHaveBeenCalled();
-    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
-      "ghost is missing",
-    );
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("ghost is missing");
   });
 
   it("a failed open is said on home — the board's only place to say it", async () => {

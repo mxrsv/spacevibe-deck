@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 /**
- * The consolidated seam test for the landing stage
- * (plan `docs/plans/2026-08-20-landing-stage-redesign.md` §6).
+ * The consolidated seam test for the landing stage: it pins the hero window's
+ * markup contract.
  *
  * It pins the joins BETWEEN modules — the places the rewrite can break with
- * no error anywhere — and deliberately not appearance, which gates 2 to 5
- * cover. Each `describe` below names the numbered assertion from §6 it
+ * no error anywhere — and deliberately not appearance, which the screenshot
+ * capture (`scripts/capture-landing-stage.mjs`) and the owner's eye review
+ * cover. Each `describe` below is headed by the numbered seam assertion it
  * discharges.
  *
  * Three lanes' own `*.test.js` files were absorbed into it and deleted:
@@ -140,7 +141,7 @@ afterEach(() => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertion 1 — the stream hooks resolve                           */
+/* Seam assertion 1 — the stream hooks resolve                         */
 /* ------------------------------------------------------------------ */
 
 describe("the hero's stream hooks", () => {
@@ -199,7 +200,7 @@ describe("the hero's stream hooks", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertions 2 and 3 — the registry and both locales               */
+/* Seam assertions 2 and 3 — the registry and both locales             */
 /* ------------------------------------------------------------------ */
 
 describe("the panel registry and its copy", () => {
@@ -252,7 +253,7 @@ describe("the panel registry and its copy", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertion 4 — nothing prints a hole                              */
+/* Seam assertion 4 — nothing prints a hole                            */
 /* ------------------------------------------------------------------ */
 
 describe("no renderer prints a hole", () => {
@@ -278,7 +279,7 @@ describe("no renderer prints a hole", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertion 5 — the rail renderer's two shapes                     */
+/* Seam assertion 5 — the rail renderer's two shapes                   */
 /* ------------------------------------------------------------------ */
 
 describe("renderStageRail's two shapes", () => {
@@ -365,7 +366,7 @@ describe("renderStageRail's two shapes", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertion 6 — the reduced-motion frame (gate 4, made automatic)  */
+/* Seam assertion 6 — the reduced-motion frame, made automatic         */
 /* ------------------------------------------------------------------ */
 
 describe("the reduced-motion frame", () => {
@@ -418,7 +419,7 @@ describe("the reduced-motion frame", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertion 8 — the animated seed (R4b)                            */
+/* Seam assertion 8 — the animated seed (R4b)                          */
 /* ------------------------------------------------------------------ */
 
 describe("the animated path's seed", () => {
@@ -468,7 +469,7 @@ describe("the animated path's seed", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* §6 assertion 7 — the agent catalog mirror                           */
+/* Seam assertion 7 — the agent catalog mirror                         */
 /* (absorbed from `agent-strip.test.js`, T3)                           */
 /* ------------------------------------------------------------------ */
 

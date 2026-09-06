@@ -90,7 +90,7 @@ afterEach(() => {
   agentQuickPickerOpen.value = false;
 });
 
-// Task 4 (docs/plans/2026-07-27-action-registry.md): new-preset and
+// Registry unification (docs/internals/terminal.md): new-preset and
 // save-preset used to reach the app through two dedicated Tauri events
 // (`menu:new-preset`/`menu:save-preset`) instead of the shared `action:`/
 // `runAction` dispatch every other item uses. `menu:new-preset` had NO

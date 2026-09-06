@@ -28,7 +28,8 @@ import { SidebarBanner } from "./sidebar-banner";
 /**
  * The repository → worktree navigation rail.
  *
- * Design: `docs/specs/2026-08-13-repository-worktree-rail-design.md`.
+ * The rail `AgentRail` replaced; it still builds and is mounted only in the
+ * gallery. See `docs/internals/agent-rail.md`.
  *
  * It occupies `DesktopChrome`'s existing `sidebarNavigation` slot and keeps
  * `WorkspaceSidebar`'s callback contract exactly — same six props, same
@@ -43,10 +44,11 @@ import { SidebarBanner } from "./sidebar-banner";
  * archived session. That materializes a tab from a path the user chose no
  * layout and no agent for, which is `AGENTS.md`'s tab-materialization fork —
  * still unapproved. A worktree WITH an archived session is a different case:
- * `docs/plans/2026-08-15-session-restore.md` (Task 9; fork queue entry in
- * `AGENTS.md`, Task 11) resolves it by rebuilding that recorded session
- * instead of materializing a fresh, unspecified one, so its empty row becomes
- * pressable through `onResumeWorktree`. Every other empty row stays a
+ * session restore (`docs/internals/session-restore.md` — the rail's
+ * remembered rows are resumable from the per-workspace session archive)
+ * resolves it by rebuilding that recorded session instead of materializing a
+ * fresh, unspecified one, so its empty row becomes pressable through
+ * `onResumeWorktree`. Every other empty row stays a
  * **readout** — DL-17.3's precedent, where a control that cannot be pressed
  * drops its border rather than gaining a disabled pill, because a border is
  * what promises "you can press this" everywhere else in the app.

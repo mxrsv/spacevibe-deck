@@ -33,8 +33,7 @@ vi.mock("./controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import type { PaneView, TabView } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews, type PaneView, type TabView } from "../terminal/tabs-store";
 import { AgentRail } from "./agent-rail";
 import { TabStrip } from "./tab-strip";
 import {

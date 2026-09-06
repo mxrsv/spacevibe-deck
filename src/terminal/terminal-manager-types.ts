@@ -160,8 +160,8 @@ export interface TerminalManager {
    * Whether the active pane holds a terminal selection — read by
    * `isActionPerformable` before a chord is consumed, so `copy-or-interrupt`
    * can fall through to the PTY when there is nothing to copy. No active pane
-   * answers `false` (fail toward the PTY,
-   * docs/specs/2026-08-20-performable-keybindings-design.md D5).
+   * answers `false`: the key then falls through to the PTY instead of being
+   * consumed by a chord that could do nothing.
    */
   activeHasSelection(): boolean;
   /** Drop the active pane's selection. No active pane → no-op. */

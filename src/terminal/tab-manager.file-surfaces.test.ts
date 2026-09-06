@@ -788,7 +788,7 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
  * Performable keybindings — `handleShortcut` asks `isActionPerformable`
  * BEFORE `preventDefault()`, so a binding that cannot do anything behaves as
  * if it did not exist and the key continues to whatever holds focus.
- * See docs/specs/2026-08-20-performable-keybindings-design.md.
+ * See docs/internals/terminal.md.
  *
  * Driving `window` through the pane's own textarea is the real path: the
  * listener is capture-phase on `window`, so a chord that IS consumed never

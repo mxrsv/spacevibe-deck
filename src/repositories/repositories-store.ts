@@ -1,7 +1,7 @@
 /**
  * Repository scans and the one piece of rail state the user owns.
  *
- * Design: `docs/specs/2026-08-13-repository-worktree-rail-design.md` §2/§3.
+ * See `docs/internals/agent-rail.md` (section "Other surfaces in the column").
  *
  * Two rules shape this file:
  *
