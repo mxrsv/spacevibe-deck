@@ -78,8 +78,8 @@ export interface Pane {
   hasSelection(): boolean;
   /**
    * Drop the selection. Separate from `copySelection` because only
-   * `copy-or-interrupt` clears — a plain copy keeps the highlight
-   * (docs/specs/2026-08-20-performable-keybindings-design.md D3).
+   * `copy-or-interrupt` clears — a plain copy keeps the highlight, while
+   * clearing after Ctrl+C is what lets the next press interrupt.
    */
   clearSelection(): void;
   /** Paste the clipboard through xterm's bracketed-paste path (Ctrl+Shift+V). */

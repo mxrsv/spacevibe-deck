@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  decideLinkTarget,
-  externalAppLabel,
-  resolveExternalApp,
-} from "./link-target";
+import { decideLinkTarget, externalAppLabel, resolveExternalApp } from "./link-target";
 import {
   editorIdOf,
   EXTERNAL_APPS,
@@ -116,9 +112,7 @@ describe("resolveExternalApp", () => {
   it("falls back to the first installed app in catalog order", () => {
     // This is where a migrated `custom` editor command lands (design §5), and
     // where an app uninstalled while Deck runs lands too.
-    expect(resolveExternalApp("gitkraken", ["vscode", "finder"])).toBe(
-      "vscode",
-    );
+    expect(resolveExternalApp("gitkraken", ["vscode", "finder"])).toBe("vscode");
     expect(resolveExternalApp(null, ["finder"])).toBe("finder");
   });
 
@@ -171,8 +165,7 @@ describe("the catalog", () => {
 
   it("only the git group resolves a target to a repository", () => {
     for (const app of APPS) {
-      const usesRepo =
-        app.opensFile === "repository" || app.opensFolder === "repository";
+      const usesRepo = app.opensFile === "repository" || app.opensFolder === "repository";
       expect(usesRepo, app.id).toBe(app.group === "git");
     }
   });

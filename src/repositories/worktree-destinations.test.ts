@@ -184,8 +184,6 @@ describe("plainFolderDestination", () => {
   });
 
   it("prints as the folder alone, with no branch half", () => {
-    expect(destinationLabel(plainFolderDestination("/dev/notes"))).toBe(
-      "notes",
-    );
+    expect(destinationLabel(plainFolderDestination("/dev/notes"))).toBe("notes");
   });
 });

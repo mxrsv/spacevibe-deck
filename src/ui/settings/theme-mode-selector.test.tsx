@@ -78,10 +78,7 @@ describe("ThemeModeSelector", () => {
     mount();
 
     expect(host.querySelector('[role="radiogroup"]')).not.toBeNull();
-    expect(options().map((option) => option.textContent?.trim())).toEqual([
-      "Light",
-      "Dark",
-    ]);
+    expect(options().map((option) => option.textContent?.trim())).toEqual(["Light", "Dark"]);
   });
 
   it("names the selected value without relying on colour alone", () => {
@@ -91,10 +88,7 @@ describe("ThemeModeSelector", () => {
     expect(selected()).toBe("Light");
     // One tab stop for the pair, on the selected segment (radiogroup roving
     // tabindex) — Tab enters the control, arrows move within it.
-    expect(options().map((option) => option.getAttribute("tabindex"))).toEqual([
-      "0",
-      "-1",
-    ]);
+    expect(options().map((option) => option.getAttribute("tabindex"))).toEqual(["0", "-1"]);
   });
 
   it("shows a legacy theme as the mode its background belongs to, and writes nothing", () => {
@@ -219,9 +213,7 @@ describe("ThemeModeSelector", () => {
     mount();
 
     act(() => {
-      options()[1].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
-      );
+      options()[1].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     });
     await settle();
 

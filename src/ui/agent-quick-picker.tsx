@@ -4,10 +4,7 @@ import { agentOptions, type CustomAgent } from "../lib/agent-catalog";
 import { AGENT_LOGOS } from "../lib/agent-logos";
 import { letterAvatar } from "../lib/letter-avatar";
 import type { AgentChoice } from "../lib/workspace-recents";
-import {
-  destinationLabel,
-  type QuickDestination,
-} from "../repositories/worktree-destinations";
+import { destinationLabel, type QuickDestination } from "../repositories/worktree-destinations";
 import { ConfigRow } from "./controls/config-row";
 import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
 import { Modal } from "./modal";
@@ -66,11 +63,7 @@ export interface AgentQuickPickerProps {
    * agent has none, or when its "No profile" option is selected, which is an
    * explicit request for the bare command even if the agent has a default.
    */
-  onSelect(
-    agentId: AgentChoice,
-    destination: string | null,
-    profileId: string | null,
-  ): void;
+  onSelect(agentId: AgentChoice, destination: string | null, profileId: string | null): void;
   onCancel(): void;
   /**
    * Open Settings, for a row whose binary is gone. Settings takes no initial
@@ -98,12 +91,10 @@ export function AgentQuickPicker({
   onCancel,
   onManageAgents,
 }: AgentQuickPickerProps) {
-  const chips = agentOptions(detected, customAgents, disabledAgents).map(
-    (option) => ({
-      ...option,
-      logo: AGENT_LOGOS[option.id],
-    }),
-  );
+  const chips = agentOptions(detected, customAgents, disabledAgents).map((option) => ({
+    ...option,
+    logo: AGENT_LOGOS[option.id],
+  }));
 
   /**
    * The user's explicit pick, or null for "whatever the default resolves to".
@@ -148,10 +139,7 @@ export function AgentQuickPicker({
    * it were omitted than inert): it does something, and the something is
    * useful.
    */
-  function activate(chip: {
-    readonly id: string;
-    readonly missing: boolean;
-  }): void {
+  function activate(chip: { readonly id: string; readonly missing: boolean }): void {
     if (chip.missing) {
       onManageAgents();
       return;
@@ -167,9 +155,7 @@ export function AgentQuickPicker({
    */
   function moveFocus(event: KeyboardEvent, key: string): boolean {
     const from = event.target instanceof HTMLElement ? event.target : null;
-    const chips = chipsOf(
-      from === null ? null : from.closest(".agent-quick-picker"),
-    );
+    const chips = chipsOf(from === null ? null : from.closest(".agent-quick-picker"));
     if (chips.length === 0) {
       return false;
     }
@@ -191,11 +177,7 @@ export function AgentQuickPicker({
 
   function pick(agentId: AgentChoice): void {
     const profileId = agentId === null ? "" : profileFor(agentId);
-    onSelect(
-      agentId,
-      current?.path ?? null,
-      profileId === "" ? null : profileId,
-    );
+    onSelect(agentId, current?.path ?? null, profileId === "" ? null : profileId);
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
@@ -248,9 +230,7 @@ export function AgentQuickPicker({
           {/* menu value kind (DL-6, DL-1.4): a native select overlaid
               invisibly on the styled pill. */}
           <span class="cfg-btn cfg-btn--overlay">
-            <span class="cfg-btn__text">
-              {current === null ? "—" : destinationLabel(current)}
-            </span>
+            <span class="cfg-btn__text">{current === null ? "—" : destinationLabel(current)}</span>
             <span class="cfg-btn__hint">
               <DeckIcon icon={CaretDown} size={ROW_ICON} />
             </span>
@@ -277,34 +257,24 @@ export function AgentQuickPicker({
           <span class="cfg-readout">{destinationLabel(current)}</span>
         </ConfigRow>
       ) : (
-        <p class="agent-quick-picker__hint">
-          Runs in this workspace — pick an agent to launch it
-        </p>
+        <p class="agent-quick-picker__hint">Runs in this workspace — pick an agent to launch it</p>
       )}
       <div class="agents">
         {chips.map((chip) => {
-          const avatar =
-            chip.logo === undefined ? letterAvatar(chip.label, chip.id) : null;
+          const avatar = chip.logo === undefined ? letterAvatar(chip.label, chip.id) : null;
           const profiles = profilesForAgent(chip.id, launchProfiles);
           const button = (
             <button
               key={chip.id}
               type="button"
               class={`achip ${chip.missing ? "is-missing" : ""}`}
-              title={
-                chip.missing
-                  ? `${chip.detail} — not on $PATH; opens Settings`
-                  : chip.detail
-              }
+              title={chip.missing ? `${chip.detail} — not on $PATH; opens Settings` : chip.detail}
               onClick={() => activate(chip)}
             >
               {chip.logo !== undefined ? (
                 <img class="achip__logo" src={chip.logo} alt="" />
               ) : (
-                <span
-                  class="achip__letter"
-                  style={{ color: `var(--${avatar?.color})` }}
-                >
+                <span class="achip__letter" style={{ color: `var(--${avatar?.color})` }}>
                   {avatar?.letter}
                 </span>
               )}

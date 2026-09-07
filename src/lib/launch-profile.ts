@@ -103,10 +103,7 @@ function slugify(command: string): string {
     .slice(0, 40);
 }
 
-export function createLaunchProfileId(
-  command: string,
-  existing: readonly LaunchProfile[],
-): string {
+export function createLaunchProfileId(command: string, existing: readonly LaunchProfile[]): string {
   const base = slugify(command) || "command";
   const taken = new Set(existing.map((profile) => profile.id));
   const first = `${LAUNCH_PROFILE_ID_PREFIX}${base}`;
@@ -126,9 +123,7 @@ export function profilesForAgent(
   agentId: string,
   profiles: readonly LaunchProfile[],
 ): readonly LaunchProfile[] {
-  return profiles.filter(
-    (profile) => commandAgentId(profile.command) === agentId,
-  );
+  return profiles.filter((profile) => commandAgentId(profile.command) === agentId);
 }
 
 export function findLaunchProfile(
@@ -182,9 +177,7 @@ export function validateDefaultLaunchProfiles(
     return {};
   }
   const result: Record<string, string> = {};
-  for (const [agentId, profileId] of Object.entries(
-    raw as Record<string, unknown>,
-  )) {
+  for (const [agentId, profileId] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof profileId !== "string") {
       continue;
     }

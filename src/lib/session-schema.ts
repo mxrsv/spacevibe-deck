@@ -71,9 +71,7 @@ function validateSessionPane(raw: unknown): SessionPane {
     // be typed into a live shell, but the pane's cwd and agent are still worth
     // restoring. No SESSION_VERSION bump — the field is optional and a file
     // written before it existed validates to null unchanged.
-    launchCommand: isLaunchCommand(source.launchCommand)
-      ? source.launchCommand
-      : null,
+    launchCommand: isLaunchCommand(source.launchCommand) ? source.launchCommand : null,
   };
 }
 

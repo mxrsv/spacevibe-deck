@@ -4,8 +4,8 @@
  *
  * Pure, and for the same reason
  * [`repository-model.ts`](../repositories/repository-model.ts) `current` is:
- * every precedence, fold and ordering decision in
- * `docs/specs/2026-08-16-agent-status-rail-design.md` §2/§3 lives here and
+ * every precedence, fold and ordering decision — the grouping and the state
+ * precedence stated in `docs/internals/agent-rail.md` — lives here and
  * none of them is observable from a screenshot. The component only renders
  * what this returns.
  *

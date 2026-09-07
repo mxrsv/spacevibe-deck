@@ -97,10 +97,7 @@ export function agentLaunchCommand(
  * Not runtime-verified: the compatibility claim comes from `claude --help`,
  * not from an observed resume with both sets of flags present.
  */
-export function applyResumeFlags(
-  resumeCommand: string,
-  launchCommand: string | null,
-): string {
+export function applyResumeFlags(resumeCommand: string, launchCommand: string | null): string {
   if (launchCommand === null) {
     return resumeCommand;
   }

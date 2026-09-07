@@ -19,12 +19,7 @@
  * `{ kind: "latest" }`, since `agy --continue` needs no id at all.
  */
 import path from "node:path";
-import {
-  datedFilesIn,
-  headBytes,
-  type CandidateSession,
-  type FileCandidate,
-} from "./head";
+import { datedFilesIn, headBytes, type CandidateSession, type FileCandidate } from "./head";
 
 const AGY_CONVERSATIONS_DIR = path.join(".gemini", "antigravity", "conversations");
 const AGY_EXTENSION = ".pb";

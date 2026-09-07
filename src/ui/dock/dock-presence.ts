@@ -47,10 +47,7 @@ export interface DockPresence {
  * navigation sidebar always has, instead of dimming it and waiting for the
  * pointer to come up.
  */
-export function useDockPresence(
-  visible: boolean,
-  hold: boolean = false,
-): DockPresence {
+export function useDockPresence(visible: boolean, hold: boolean = false): DockPresence {
   const [mounted, setMounted] = useState(visible);
   const [entered, setEntered] = useState(visible);
 

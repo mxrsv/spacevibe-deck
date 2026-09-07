@@ -6,7 +6,9 @@
  * key is written in exactly one place — which is what
  * `scripts/electron-ipc-contract.test.ts` parses.
  *
- * Design: `docs/specs/2026-08-13-repository-worktree-rail-design.md` §1.1.
+ * A repository is keyed by its absolute `--git-common-dir`, identical across
+ * its worktrees, and that key is what the scan answers with. See
+ * `docs/internals/agent-rail.md` (section "Other surfaces in the column").
  */
 import { invoke } from "../host/bridge";
 

@@ -39,9 +39,7 @@ describe("externalAppChoices", () => {
 describe("groupExternalApps", () => {
   it("keeps catalog group order and drops empty groups", () => {
     expect(
-      groupExternalApps(externalAppChoices(INSTALLED, true)).map(
-        (view) => view.group,
-      ),
+      groupExternalApps(externalAppChoices(INSTALLED, true)).map((view) => view.group),
     ).toEqual(["editor", "files"]);
   });
 

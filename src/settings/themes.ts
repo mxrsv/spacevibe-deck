@@ -18,8 +18,10 @@ export const DECK_LIGHT_ID = "deck-light";
 
 export type ThemeMode = "light" | "dark";
 
-export const CANONICAL_THEME_IDS: Readonly<Record<ThemeMode, string>> =
-  Object.freeze({ light: DECK_LIGHT_ID, dark: DECK_DARK_ID });
+export const CANONICAL_THEME_IDS: Readonly<Record<ThemeMode, string>> = Object.freeze({
+  light: DECK_LIGHT_ID,
+  dark: DECK_DARK_ID,
+});
 
 export interface ThemePreset {
   id: string;

@@ -17,10 +17,7 @@
  * `src/ui/sessions` — three imports that would make the host depend on
  * everything it hosts.
  */
-import {
-  dockCollapseArmed,
-  dockWidthLive,
-} from "../../files/file-surface-store";
+import { dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
 import type { DockTab } from "../../settings/settings-schema";
 import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from "../panel-resize";
 import { FEATURE_ICON } from "../controls/deck-icon";
@@ -74,10 +71,7 @@ export function DockPanel(props: DockPanelProps) {
       // The RAW width goes to `resolvePanelDrag`, not a clamped one: clamping
       // maps every overdrag onto the floor, and "past the floor" is exactly
       // what the collapse gesture is made of (DL-19.4).
-      const outcome = resolvePanelDrag(
-        startWidth + (startX - moveEvent.clientX),
-        DOCK_DRAG_BOUNDS,
-      );
+      const outcome = resolvePanelDrag(startWidth + (startX - moveEvent.clientX), DOCK_DRAG_BOUNDS);
       dockWidthLive.value = outcome.width;
       dockCollapseArmed.value = outcome.collapsed;
     };
@@ -134,9 +128,7 @@ export function DockPanel(props: DockPanelProps) {
         // Lit for the whole gesture, the sidebar seam's reason exactly: the
         // pointer leaves this 9px target almost immediately once the drag is
         // captured (DL-19.4, amended 2026-08-19).
-        class={`dock-panel__grip ${
-          dockWidthLive.value === null ? "" : "is-dragging"
-        }`}
+        class={`dock-panel__grip ${dockWidthLive.value === null ? "" : "is-dragging"}`}
         onPointerDown={startResize}
         role="separator"
         aria-orientation="vertical"
@@ -160,11 +152,7 @@ export function DockPanel(props: DockPanelProps) {
           drag-past-the-floor gesture goes there: `App` routes it into the
           `toggle-dock` action, which owns the focus guard. */}
       <div class="dock-panel__header">
-        <DockTabs
-          items={props.tabs}
-          active={props.activeTab}
-          onSelect={props.onSelectTab}
-        />
+        <DockTabs items={props.tabs} active={props.activeTab} onSelect={props.onSelectTab} />
         {/* DL-14.2, 2026-08-19: the header's controls draw at
             `FEATURE_ICON`, one rung up from chrome. The stage-strip mount of
             this same component keeps `CHROME_ICON`, where it stands beside

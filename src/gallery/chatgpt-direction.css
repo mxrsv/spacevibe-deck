@@ -8,7 +8,6 @@
  * nothing else. It now declares no colour of its own: every value below comes
  * out of `deriveChromeColors` through `--bg`/`--tone`, so the direction follows
  * the terminal theme and inherits the 7 / 5.5 / 4.5 contrast floors.
- * Design: docs/specs/2026-08-13-direction-token-rebuild-design.md.
  */
 
 /* ── Gallery-wide direction contract ──────────────────────────────

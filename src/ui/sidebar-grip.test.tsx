@@ -139,14 +139,12 @@ describe("SidebarGrip", () => {
     expect(grip.className).not.toContain("is-dragging");
 
     drag(grip, 275, [330]);
-    expect(
-      host.querySelector<HTMLElement>(".sidebar-grip")!.className,
-    ).toContain("is-dragging");
+    expect(host.querySelector<HTMLElement>(".sidebar-grip")!.className).toContain("is-dragging");
 
     release(grip);
-    expect(
-      host.querySelector<HTMLElement>(".sidebar-grip")!.className,
-    ).not.toContain("is-dragging");
+    expect(host.querySelector<HTMLElement>(".sidebar-grip")!.className).not.toContain(
+      "is-dragging",
+    );
   });
 
   it("abandons the drag on pointercancel the same way it ends on pointerup", () => {

@@ -5,7 +5,7 @@ name: Release
 # Tauri automatically. This file stays, with every job intact, so a Tauri
 # hotfix remains possible by hand — a manual run rebuilds from a tag that
 # already shipped, never from `main`.
-# Spec: docs/specs/2026-08-20-electron-stable-release-design.md
+# Runbook: docs/operations/release.md (section "Tauri hotfix").
 on:
   workflow_dispatch:
     inputs:

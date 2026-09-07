@@ -22,8 +22,9 @@ import type { ExternalAppChoice } from "../../links/external-app-choices";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
 
 /**
- * The feature toolbar from docs/specs/2026-08-12-feature-toolbar-design.md,
- * as the design requires before any shipping chrome changes.
+ * The feature toolbar specimen. Its design required the toolbar to stand here
+ * in the gallery before any shipping chrome changed; the rules it follows are
+ * docs/DESIGN-LANGUAGE.md §23.
  *
  * One thing here is a fixture and nothing else: the platform switch. Explorer,
  * Browser and Usage were fixtures too while they were specified but unbuilt;

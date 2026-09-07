@@ -178,9 +178,7 @@ describe("createPane OpenCode glyph rendering", () => {
     webgl.instances[0].emitContextLoss();
     expect(webgl.instances[0].disposed).toBe(1);
     expect(warn).toHaveBeenCalledOnce();
-    expect(warn).toHaveBeenCalledWith(
-      "WebGL terminal renderer context lost; falling back to DOM.",
-    );
+    expect(warn).toHaveBeenCalledWith("WebGL terminal renderer context lost; falling back to DOM.");
   });
 
   it("does not change the renderer when settings are applied", () => {

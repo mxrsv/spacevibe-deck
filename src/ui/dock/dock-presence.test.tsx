@@ -10,13 +10,7 @@ import { DOCK_SLIDE_MS, useDockPresence } from "./dock-presence";
  * hook exists — this repo has no hook-testing harness and does not need one
  * for a probe that prints its own two booleans.
  */
-function Probe({
-  visible,
-  hold = false,
-}: {
-  readonly visible: boolean;
-  readonly hold?: boolean;
-}) {
+function Probe({ visible, hold = false }: { readonly visible: boolean; readonly hold?: boolean }) {
   const presence = useDockPresence(visible, hold);
   return (
     <div

@@ -1,4 +1,5 @@
-/* Gallery-only treatment for docs/specs/2026-08-23-new-task-launcher-design.md. */
+/* Gallery-only treatment of the new-task launcher, whose cutover into the app is
+   unfinished. */
 
 .gx-new-task-direction .window--sidebar > .stage {
   grid-template-columns: minmax(0, 1fr);

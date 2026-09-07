@@ -24,9 +24,7 @@ export interface WorkspaceForPathRequest {
   readonly roots: readonly string[];
 }
 
-export function workspaceForPath(
-  request: WorkspaceForPathRequest,
-): string | null {
+export function workspaceForPath(request: WorkspaceForPathRequest): string | null {
   const { path: target, roots } = request;
   if (typeof target !== "string" || target.length === 0) {
     return null;

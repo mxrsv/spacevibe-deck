@@ -13,15 +13,10 @@
  * not rendered, and Settings falls back to printing the catalog.
  */
 import { signal } from "@preact/signals";
-import {
-  listExternalApps,
-  type InstalledExternalApp,
-} from "../host/external-apps-host";
+import { listExternalApps, type InstalledExternalApp } from "../host/external-apps-host";
 import type { ExternalAppId } from "../lib/external-app-catalog";
 
-export const installedExternalApps = signal<readonly InstalledExternalApp[]>(
-  [],
-);
+export const installedExternalApps = signal<readonly InstalledExternalApp[]>([]);
 
 /** True once a scan has answered — an empty list before and after look the
  * same, and the menu must not say "nothing installed" before it has asked. */

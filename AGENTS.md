@@ -10,9 +10,13 @@ is meant to replace it. The renderer is Preact + xterm.js and reaches whichever 
 under through the facades in `src/host/`. Everything in this repo — UI strings, comments, docs,
 and commits — is **English only**.
 
-Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) `current`; visual rules:
-[docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md) `current`.
+Documentation index: [docs/README.md](docs/README.md) `current` — architecture and
+invariants in [docs/internals/](docs/internals/overview.md) `current`, build and release
+runbooks in [docs/operations/](docs/operations/development.md) `current`, user guides in
+[docs/user/](docs/user/getting-started.md) `current`; visual rules:
+[docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md) `current`. `docs/CONTEXT.md` and
+`docs/ARCHITECTURE.md` are the earlier decision journal and Tauri-era architecture note,
+superseded by `docs/internals/` wherever they disagree.
 
 ## Current direction
 

@@ -27,9 +27,8 @@ export function MigrationBanner({ onDismiss }: MigrationBannerProps) {
     // interrupt whatever a screen-reader user was doing at launch.
     <div class="migration-banner" role="status">
       <p class="migration-banner__message">
-        <strong>SpaceVibe Deck 1.0 is out.</strong> This build no longer
-        updates itself — the new Deck must be downloaded by hand, and settings
-        do not carry over.
+        <strong>SpaceVibe Deck 1.0 is out.</strong> This build no longer updates itself — the new
+        Deck must be downloaded by hand, and settings do not carry over.
       </p>
       {/* DL-8: a control says what happens, and what happens is that a browser
           tab opens. The download is a decision made on the page. */}

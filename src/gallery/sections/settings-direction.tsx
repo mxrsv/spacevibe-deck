@@ -1,5 +1,4 @@
-import { useSignal } from "@preact/signals";
-import type { Signal } from "@preact/signals";
+import { useSignal, type Signal } from "@preact/signals";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import { ArrowCounterClockwise, Minus, Plus, X } from "@phosphor-icons/react";
 import type { ITheme } from "@xterm/xterm";
@@ -115,14 +114,10 @@ function SegmentedControl<T extends string>({
         ? 0
         : event.key === "End"
           ? options.length - 1
-          : (currentIndex +
-              (event.key === "ArrowRight" ? 1 : -1) +
-              options.length) %
+          : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + options.length) %
             options.length;
     onChange(options[nextIndex].value);
-    groupRef.current
-      ?.querySelectorAll<HTMLButtonElement>("button")
-      [nextIndex]?.focus();
+    groupRef.current?.querySelectorAll<HTMLButtonElement>("button")[nextIndex]?.focus();
   };
 
   return (
@@ -181,12 +176,7 @@ interface SelectControlProps {
   readonly onChange: (value: string) => void;
 }
 
-function SelectControl({
-  label,
-  value,
-  options,
-  onChange,
-}: SelectControlProps) {
+function SelectControl({ label, value, options, onChange }: SelectControlProps) {
   return (
     <select
       class="gxs-select"
@@ -209,15 +199,10 @@ interface NumberControlProps {
 }
 
 function NumberControl({ value, min, max, onChange }: NumberControlProps) {
-  const clamp = (next: number): void =>
-    onChange(Math.min(max, Math.max(min, next)));
+  const clamp = (next: number): void => onChange(Math.min(max, Math.max(min, next)));
   return (
     <span class="gxs-number" role="group" aria-label="Font size">
-      <button
-        type="button"
-        aria-label="Decrease font size"
-        onClick={() => clamp(value - 1)}
-      >
+      <button type="button" aria-label="Decrease font size" onClick={() => clamp(value - 1)}>
         <DeckIcon icon={Minus} size={ROW_ICON} />
       </button>
       <input
@@ -229,11 +214,7 @@ function NumberControl({ value, min, max, onChange }: NumberControlProps) {
         onInput={(event) => clamp(Number(event.currentTarget.value))}
       />
       <span aria-hidden="true">px</span>
-      <button
-        type="button"
-        aria-label="Increase font size"
-        onClick={() => clamp(value + 1)}
-      >
+      <button type="button" aria-label="Increase font size" onClick={() => clamp(value + 1)}>
         <DeckIcon icon={Plus} size={ROW_ICON} />
       </button>
     </span>
@@ -248,8 +229,7 @@ function DraftInput({ errorId }: { readonly errorId: string }) {
   const commit = (): void => {
     try {
       const parsed = new URL(draft.value);
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
-        throw new Error();
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error();
       saved.value = parsed.toString().replace(/\/$/, "");
       draft.value = saved.value;
       error.value = null;
@@ -326,9 +306,7 @@ function AgentEditor() {
         </span>
         <span>
           <b>{added.value ?? "Review agent"}</b>
-          <small>
-            {added.value === null ? "Custom · review" : "Custom · saved"}
-          </small>
+          <small>{added.value === null ? "Custom · review" : "Custom · saved"}</small>
         </span>
       </div>
       {adding.value ? (
@@ -404,17 +382,10 @@ function ShortcutRecorder() {
             return;
           }
           if (["Meta", "Control", "Alt", "Shift"].includes(event.key)) return;
-          const modifier = event.metaKey
-            ? "⌘"
-            : event.ctrlKey
-              ? "Ctrl+"
-              : event.altKey
-                ? "⌥"
-                : "";
+          const modifier = event.metaKey ? "⌘" : event.ctrlKey ? "Ctrl+" : event.altKey ? "⌥" : "";
           const next = `${modifier}${event.key.toUpperCase()}`;
           if (next === "⌘W") {
-            conflict.value =
-              "Already used by Close surface. Nothing was saved.";
+            conflict.value = "Already used by Close surface. Nothing was saved.";
             return;
           }
           shortcut.value = next;
@@ -448,9 +419,7 @@ function AboutActions() {
       >
         {status.value === "checking" ? "Checking…" : "Check for updates"}
       </button>
-      {status.value === "current" && (
-        <span role="status">Deck is up to date.</span>
-      )}
+      {status.value === "current" && <span role="status">Deck is up to date.</span>}
     </div>
   );
 }
@@ -459,10 +428,7 @@ function AppearanceSection({ state }: { readonly state: ReviewState }) {
   return (
     <>
       <ConfigGroup label="Theme" />
-      <ConfigRow
-        label="Appearance"
-        desc="Use a light or dark surface across Deck"
-      >
+      <ConfigRow label="Appearance" desc="Use a light or dark surface across Deck">
         <SegmentedControl
           label="Appearance mode"
           value={state.mode.value}
@@ -476,10 +442,7 @@ function AppearanceSection({ state }: { readonly state: ReviewState }) {
         />
       </ConfigRow>
       <ConfigGroup label="Layout" />
-      <ConfigRow
-        label="Tabs"
-        desc="Place the tab strip beside or above the stage"
-      >
+      <ConfigRow label="Tabs" desc="Place the tab strip beside or above the stage">
         <SegmentedControl
           label="Tab position"
           value={state.layout.value}
@@ -501,10 +464,7 @@ function AppearanceSection({ state }: { readonly state: ReviewState }) {
           }}
         />
       </ConfigRow>
-      <ConfigRow
-        label="Show status bar"
-        desc="Branch, path and window readout along the bottom"
-      >
+      <ConfigRow label="Show status bar" desc="Branch, path and window readout along the bottom">
         <SwitchControl
           label="Show status bar"
           checked={state.showStatusBar.value}
@@ -519,10 +479,7 @@ function AppearanceSection({ state }: { readonly state: ReviewState }) {
           Choose logo…
         </button>
       </ConfigRow>
-      <ConfigRow
-        label="Banner"
-        desc="Preset choice and file action stay separate"
-      >
+      <ConfigRow label="Banner" desc="Preset choice and file action stay separate">
         <div class="gxs-inline-controls">
           <SelectControl
             label="Banner preset"
@@ -586,10 +543,7 @@ function CategoryContents({
             }}
           />
         </ConfigRow>
-        <ConfigRow
-          label="Font size"
-          desc="Type a value or step between 10 and 24"
-        >
+        <ConfigRow label="Font size" desc="Type a value or step between 10 and 24">
           <NumberControl
             value={state.fontSize.value}
             min={10}
@@ -604,12 +558,7 @@ function CategoryContents({
           <SelectControl
             label="Scrollback"
             value={state.scrollback.value}
-            options={[
-              "5,000 lines",
-              "10,000 lines",
-              "50,000 lines",
-              "Unlimited",
-            ]}
+            options={["5,000 lines", "10,000 lines", "50,000 lines", "Unlimited"]}
             onChange={(value) => {
               state.scrollback.value = value;
             }}
@@ -696,10 +645,7 @@ function CategoryContents({
       <ConfigRow label="Version">
         <span class="gxs-readonly-value">0.8.0 · Electron</span>
       </ConfigRow>
-      <ConfigRow
-        label="Updates"
-        desc="Async actions report progress and result"
-      >
+      <ConfigRow label="Updates" desc="Async actions report progress and result">
         <AboutActions />
       </ConfigRow>
     </>
@@ -724,8 +670,7 @@ function ResetContents({
     >
       <h2 id={titleId}>Reset all settings?</h2>
       <p id={descriptionId}>
-        Deck will restore application preferences. Workspaces and agent sessions
-        stay intact.
+        Deck will restore application preferences. Workspaces and agent sessions stay intact.
       </p>
       <div class="gxs-form-actions">
         <button
@@ -759,8 +704,7 @@ function SettingsDirectionFrame({
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const category =
-    REVIEW_CATEGORIES.find((item) => item.id === state.category.value) ??
-    REVIEW_CATEGORIES[0];
+    REVIEW_CATEGORIES.find((item) => item.id === state.category.value) ?? REVIEW_CATEGORIES[0];
   const title = state.resetOpen.value ? "Reset settings" : category.label;
   const description = state.resetOpen.value
     ? "Return application preferences to their defaults with a deliberate confirmation."
@@ -787,11 +731,7 @@ function SettingsDirectionFrame({
         <h2>
           <b>~</b>/deck/settings
         </h2>
-        <button
-          type="button"
-          aria-label="Close settings"
-          title="Close settings"
-        >
+        <button type="button" aria-label="Close settings" title="Close settings">
           <DeckIcon icon={X} size={CHROME_ICON} />
         </button>
       </header>
@@ -802,15 +742,9 @@ function SettingsDirectionFrame({
               <button
                 key={id}
                 type="button"
-                class={
-                  !state.resetOpen.value && id === state.category.value
-                    ? "is-active"
-                    : ""
-                }
+                class={!state.resetOpen.value && id === state.category.value ? "is-active" : ""}
                 aria-current={
-                  !state.resetOpen.value && id === state.category.value
-                    ? "page"
-                    : undefined
+                  !state.resetOpen.value && id === state.category.value ? "page" : undefined
                 }
                 title={label}
                 onClick={() => selectCategory(id)}
@@ -850,11 +784,7 @@ function SettingsDirectionFrame({
               {state.resetOpen.value ? (
                 <ResetContents state={state} size={size} />
               ) : (
-                <CategoryContents
-                  category={category.id}
-                  state={state}
-                  size={size}
-                />
+                <CategoryContents category={category.id} state={state} size={size} />
               )}
             </div>
           </div>
@@ -907,8 +837,7 @@ export function SettingsDirectionSection() {
           <select
             value={state.category.value}
             onChange={(event) => {
-              state.category.value = event.currentTarget
-                .value as ReviewCategoryId;
+              state.category.value = event.currentTarget.value as ReviewCategoryId;
               state.resetOpen.value = false;
             }}
           >

@@ -1,7 +1,7 @@
 /**
  * The manual order the user dragged the rail's project clusters into.
  *
- * Design: `docs/specs/2026-08-22-rail-workspace-reorder-design.md` `decided`.
+ * See `docs/internals/agent-rail.md` (section "Order").
  * Pure, for the same reason `agent-rail-model.ts` is: every precedence
  * decision here is invisible in a screenshot, and the component only renders
  * what the model returns.

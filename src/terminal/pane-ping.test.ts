@@ -14,9 +14,7 @@ function grid(...paneIds: readonly number[]): HTMLElement {
 }
 
 function slot(root: ParentNode, paneId: number): HTMLElement {
-  const found = root.querySelector<HTMLElement>(
-    `.pane-slot[data-pane-id="${paneId}"]`,
-  );
+  const found = root.querySelector<HTMLElement>(`.pane-slot[data-pane-id="${paneId}"]`);
   if (found === null) {
     throw new Error(`no slot for pane ${paneId}`);
   }

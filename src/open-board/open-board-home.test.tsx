@@ -3,8 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RecentWorkspace } from "../lib/workspace-recents";
-import { OpenBoardHome } from "./open-board-home";
-import type { OpenBoardHomeProps } from "./open-board-home";
+import { OpenBoardHome, type OpenBoardHomeProps } from "./open-board-home";
 
 const RECENT: RecentWorkspace = {
   path: "/Users/dev/deck",

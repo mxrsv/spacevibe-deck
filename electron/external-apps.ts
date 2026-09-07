@@ -60,10 +60,7 @@ export const EXTERNAL_APP_CATALOG: readonly CatalogEntry[] = [
     id: "vscode",
     label: "VS Code",
     group: "editor",
-    bundles: [
-      "/Applications/Visual Studio Code.app",
-      "~/Applications/Visual Studio Code.app",
-    ],
+    bundles: ["/Applications/Visual Studio Code.app", "~/Applications/Visual Studio Code.app"],
     opensFile: "as-is",
     opensFolder: "as-is",
   },
@@ -87,10 +84,7 @@ export const EXTERNAL_APP_CATALOG: readonly CatalogEntry[] = [
     id: "github-desktop",
     label: "GitHub Desktop",
     group: "git",
-    bundles: [
-      "/Applications/GitHub Desktop.app",
-      "~/Applications/GitHub Desktop.app",
-    ],
+    bundles: ["/Applications/GitHub Desktop.app", "~/Applications/GitHub Desktop.app"],
     opensFile: "repository",
     opensFolder: "repository",
   },
@@ -164,10 +158,7 @@ function expandHome(target: string, home: string): string {
 }
 
 /** The first bundle of `entry` that exists, or null. */
-export function bundlePath(
-  entry: CatalogEntry,
-  home: string = os.homedir(),
-): string | null {
+export function bundlePath(entry: CatalogEntry, home: string = os.homedir()): string | null {
   for (const candidate of entry.bundles) {
     const full = expandHome(candidate, home);
     try {
@@ -227,9 +218,7 @@ async function icnsPath(bundle: string): Promise<string | null> {
       ])
     ).trim();
     if (declared.length > 0) {
-      const base = declared.endsWith(".icns")
-        ? declared.slice(0, -".icns".length)
-        : declared;
+      const base = declared.endsWith(".icns") ? declared.slice(0, -".icns".length) : declared;
       const full = path.join(resources, `${base}.icns`);
       if (fs.existsSync(full)) {
         return full;
@@ -239,9 +228,7 @@ async function icnsPath(bundle: string): Promise<string | null> {
     // No key, unreadable plist — fall through to the directory scan.
   }
   try {
-    const first = fs
-      .readdirSync(resources)
-      .find((entry) => entry.endsWith(".icns"));
+    const first = fs.readdirSync(resources).find((entry) => entry.endsWith(".icns"));
     return first === undefined ? null : path.join(resources, first);
   } catch {
     return null;
@@ -355,17 +342,13 @@ export function resolveTarget(
   rule: TargetRule,
   target: string,
   isDirectory: boolean,
-):
-  | { readonly path: string; readonly reveal: boolean }
-  | { readonly error: string } {
+): { readonly path: string; readonly reveal: boolean } | { readonly error: string } {
   switch (rule) {
     case "as-is":
       return { path: target, reveal: false };
     case "reveal":
       // A folder has nothing to reveal it INSIDE — open it instead.
-      return isDirectory
-        ? { path: target, reveal: false }
-        : { path: target, reveal: true };
+      return isDirectory ? { path: target, reveal: false } : { path: target, reveal: true };
     case "directory":
       return {
         path: isDirectory ? target : path.dirname(target),
@@ -423,9 +406,7 @@ export function openInApp(request: OpenInAppRequest): Promise<void> {
   if ("error" in resolved) {
     throw new Error(resolved.error);
   }
-  const args = resolved.reveal
-    ? ["-R", resolved.path]
-    : ["-a", bundle, resolved.path];
+  const args = resolved.reveal ? ["-R", resolved.path] : ["-a", bundle, resolved.path];
   return new Promise((resolve, reject) => {
     const child = execFile(
       "/usr/bin/open",

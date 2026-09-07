@@ -50,9 +50,7 @@ const PROBE_SAFE = /^[A-Za-z0-9._~+/-]+$/;
  * caller lands here first.
  */
 export function isProbeSafe(name: string): boolean {
-  return (
-    name.length > 0 && name.length <= PROBE_NAME_MAX && PROBE_SAFE.test(name)
-  );
+  return name.length > 0 && name.length <= PROBE_NAME_MAX && PROBE_SAFE.test(name);
 }
 
 /** Every built-in, then each safe caller-supplied name not already present.
@@ -130,10 +128,7 @@ export function stripAnsi(line: string): string {
  * Keep only absolute paths whose basename was asked for; first hit per name
  * wins, ordered by first appearance so numbering in the picker stays stable.
  */
-export function parseCommandVOutput(
-  output: string,
-  probed: readonly string[],
-): AgentInfo[] {
+export function parseCommandVOutput(output: string, probed: readonly string[]): AgentInfo[] {
   const wanted = new Set(probed.map(probeKey));
   const found: AgentInfo[] = [];
   const seen = new Set<string>();
@@ -170,8 +165,7 @@ export function parseCommandVOutput(
  */
 export function discoverAgentsWindows(
   requested: readonly string[],
-  resolve: (name: string) => string | null = (name) =>
-    windows.resolveOnPath(name),
+  resolve: (name: string) => string | null = (name) => windows.resolveOnPath(name),
 ): AgentInfo[] {
   const found: AgentInfo[] = [];
   const seen = new Set<string>();
@@ -194,9 +188,7 @@ export function discoverAgentsWindows(
  * hanging past the timeout — degrades to an empty list rather than leaving the
  * picker waiting forever.
  */
-export function discoverAgents(
-  requested: readonly string[],
-): Promise<AgentInfo[]> {
+export function discoverAgents(requested: readonly string[]): Promise<AgentInfo[]> {
   if (process.platform === "win32") {
     return Promise.resolve(discoverAgentsWindows(requested));
   }
@@ -233,9 +225,7 @@ export async function dirsExist(paths: readonly string[]): Promise<boolean[]> {
  * rather than surface an error, which is what the Rust command did by
  * returning an empty vector on every failure path.
  */
-export async function detectAgentsSafely(
-  names: readonly string[],
-): Promise<AgentInfo[]> {
+export async function detectAgentsSafely(names: readonly string[]): Promise<AgentInfo[]> {
   try {
     return await discoverAgents(names);
   } catch {

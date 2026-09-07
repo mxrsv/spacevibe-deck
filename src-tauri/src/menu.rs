@@ -20,10 +20,10 @@ const ACTION_PREFIX: &str = "action:";
 pub const WINDOW_TARGET_PREFIX: &str = "window-target:";
 
 /// Where a menu event goes now that menu events are no longer broadcast
-/// (spec §9.3).
+/// (the window-peer rule: every window is a peer, none is primary).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MenuRoute {
-    /// Quit never needs a focused window: the census owns it (spec §9.4).
+    /// Quit never needs a focused window: the census owns it.
     Quit,
     Action {
         window: String,
@@ -108,7 +108,7 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     rebuild_move_pane_submenu(app.handle())?;
     app.on_menu_event(|handle, event| {
         // Broadcast is gone: with peer windows it delivered every accelerator
-        // to every window, so one Cmd+T opened a tab in each (spec §9.3).
+        // to every window, so one Cmd+T opened a tab in each.
         let target = crate::window_lifecycle::menu_target(handle);
         match route_menu_event(event.id().0.as_str(), target.as_deref()) {
             MenuRoute::Quit => crate::quit_flow::request_quit(handle),
@@ -120,7 +120,7 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
                 target_label,
             } => {
                 // The source window runs prepare -> stage -> offer_transfer:
-                // only it knows which pane has focus, and §7.4 makes it
+                // only it knows which pane has focus, and the transfer protocol makes it
                 // serialize the xterm buffer before the destination may claim.
                 let _ = handle.emit_to(
                     window,
@@ -303,9 +303,8 @@ pub fn install<R: Runtime>(_app: &App<R>) -> tauri::Result<()> {
 
 // Not `target_os = "macos"` gated: this module reads plain data
 // (`menu_registry`'s generated `&[(&str, &str, Option<&str>)]` tables), so it
-// compiles and runs on any target, including the ubuntu CI runner — see
-// docs/plans/2026-07-27-action-registry.md §2.2 and the CI workflow, which
-// now runs `cargo test` there instead of requiring a macOS runner.
+// compiles and runs on any target, including the ubuntu CI runner — the CI
+// workflow runs `cargo test` there instead of requiring a macOS runner.
 //
 // This used to cross-check hand-typed (id, label, accelerator) triples
 // against these same generated tables. That second hand-written copy is
@@ -336,7 +335,7 @@ mod tests {
     #[test]
     fn edit_menu_items_matches_expected_ids_in_order() {
         let ids: Vec<&str> = EDIT_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();
-        // copy-cwd added in docs/plans/2026-07-27-keyboard-parity.md Task 3 —
+        // copy-cwd joined the Edit menu with the keyboard-parity batch —
         // this list is a deliberate tripwire (see the module comment above):
         // it must be updated by hand whenever action-registry.ts adds an Edit
         // action, so nobody grows the menu without noticing.
@@ -356,7 +355,7 @@ mod tests {
     fn window_menu_items_holds_only_move_pane_to_new_window() {
         // Was `is_empty()` until the pane-detach work: Window is no longer
         // 100% Cocoa builtins. Moving a pane into its own window IS window
-        // management, so it belongs here (spec §15.1 / the Cmd+Shift+M
+        // management, so it belongs here (the Cmd+Shift+M
         // binding). Still a deliberate tripwire — update it by hand, with a
         // reason, whenever action-registry.ts adds another Window action.
         let ids: Vec<&str> = WINDOW_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();

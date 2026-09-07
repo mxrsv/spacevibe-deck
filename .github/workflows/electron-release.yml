@@ -42,8 +42,7 @@ name: Electron Release
 # artifact set is known complete. The verification that keeps a half-built
 # release invisible has to live downstream of both builds.
 #
-# Spec: docs/specs/2026-08-20-electron-stable-release-design.md
-# Plan: docs/plans/2026-08-20-electron-stable-release.md
+# Runbook: docs/operations/release.md.
 on:
   push:
     tags:

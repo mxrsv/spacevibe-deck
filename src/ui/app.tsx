@@ -341,8 +341,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   /**
    * The rail's pane-exact destination: an agent chip or a per-agent row names
-   * ONE pane, and pressing it must land there
-   * (`docs/specs/2026-08-16-agent-status-rail-design.md` §2.2).
+   * ONE pane, and pressing it must land there — every pane appears in
+   * `TabView.panes` with its own attention and phase, so a row IS a pane
+   * (`docs/internals/agent-rail.md`).
    *
    * It walks the same preflight `requestAttentionFocus` does rather than a
    * second one — the overlay rules (a draft in `PresetEditor` blocks, a

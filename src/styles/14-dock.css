@@ -38,7 +38,7 @@
 }
 
 /* ── Explorer panel: a docked column on the right of the stage (DL-19) ────
-   Plan Task 3 (spec: docs/specs/2026-08-12-file-explorer-design.md §3).
+   See docs/internals/file-surface.md.
    `.stage__tabs`' own inset shrinks by exactly the panel's width, so
    terminal panes resize around it (DL-19.1) instead of being covered.
    `--dock-w` is set inline by `App` from the live-drag-or-settled width

@@ -1,3 +1,8 @@
+> **Superseded.** The maintained vocabulary is
+> [`docs/internals/glossary.md`](docs/internals/glossary.md), which merges this file and
+> corrects the entries that drifted (Workspace, Theme gallery, Agent rail, Close tab, Quit).
+> Kept unedited below until the code comments that cite it are updated.
+
 # Deck
 
 A terminal for running many agent CLIs side by side. The UI hierarchy is Window → Tab → Pane.

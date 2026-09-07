@@ -329,10 +329,7 @@ describe("the background recheck", () => {
     vi.useFakeTimers();
     try {
       const update = pending();
-      const check = vi
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(update);
+      const check = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(update);
       const { controller } = setup(null, { check });
 
       await controller.start();

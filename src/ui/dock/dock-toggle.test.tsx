@@ -69,9 +69,7 @@ describe("DockToggle", () => {
 
     const tip = document.querySelector('[role="tooltip"]');
     expect(tip?.textContent).toContain("Show the side panel");
-    expect(tip?.querySelector("kbd")?.textContent).toBe(
-      shortcutLabel("toggle-dock", "macos"),
-    );
+    expect(tip?.querySelector("kbd")?.textContent).toBe(shortcutLabel("toggle-dock", "macos"));
     expect(control().getAttribute("aria-describedby")).toBe(tip?.id);
   });
 
@@ -80,19 +78,10 @@ describe("DockToggle", () => {
   // a PROP, not a read of `open` — the two only happen to correlate today.
   it("draws chrome-sized by default and larger when a mount asks", () => {
     act(() => render(<DockToggle open={false} onToggle={vi.fn()} />, host));
-    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe(
-      "13",
-    );
+    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe("13");
 
-    act(() =>
-      render(
-        <DockToggle open={false} size={FEATURE_ICON} onToggle={vi.fn()} />,
-        host,
-      ),
-    );
-    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe(
-      "15",
-    );
+    act(() => render(<DockToggle open={false} size={FEATURE_ICON} onToggle={vi.fn()} />, host));
+    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe("15");
   });
 
   it("reports a click and keeps no state of its own", () => {

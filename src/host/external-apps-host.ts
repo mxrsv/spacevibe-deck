@@ -14,11 +14,11 @@
  * spread in from an `args` identifier.
  */
 import { invoke } from "./bridge";
-import type {
-  ExternalAppGroup,
-  ExternalAppId,
+import {
+  isExternalAppId,
+  type ExternalAppGroup,
+  type ExternalAppId,
 } from "../lib/external-app-catalog";
-import { isExternalAppId } from "../lib/external-app-catalog";
 
 /**
  * Whether THIS host can answer these three channels at all.
@@ -81,8 +81,7 @@ function asInstalledApp(raw: unknown): InstalledExternalApp | null {
     id: source.id,
     label: typeof source.label === "string" ? source.label : source.id,
     group: source.group as ExternalAppGroup,
-    iconDataUrl:
-      typeof source.iconDataUrl === "string" ? source.iconDataUrl : null,
+    iconDataUrl: typeof source.iconDataUrl === "string" ? source.iconDataUrl : null,
   };
 }
 
@@ -93,9 +92,7 @@ export async function listExternalApps(): Promise<InstalledExternalApp[]> {
     if (!Array.isArray(raw)) {
       return [];
     }
-    return raw
-      .map(asInstalledApp)
-      .filter((app): app is InstalledExternalApp => app !== null);
+    return raw.map(asInstalledApp).filter((app): app is InstalledExternalApp => app !== null);
   } catch {
     return [];
   }

@@ -80,10 +80,7 @@ interface GhOutcome {
   readonly spawnFailed: boolean;
 }
 
-function runGh(
-  args: readonly string[],
-  executable: string,
-): Promise<GhOutcome> {
+function runGh(args: readonly string[], executable: string): Promise<GhOutcome> {
   return new Promise((resolve) => {
     execFile(
       executable,
@@ -123,10 +120,7 @@ export async function readStarState(): Promise<GithubStarState> {
   if (executable === null) {
     return "unavailable";
   }
-  const outcome = await runGh(
-    ["api", "--silent", `user/starred/${REPOSITORY}`],
-    executable,
-  );
+  const outcome = await runGh(["api", "--silent", `user/starred/${REPOSITORY}`], executable);
   if (outcome.ok) {
     return "starred";
   }

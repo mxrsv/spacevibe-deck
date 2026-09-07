@@ -32,11 +32,12 @@ let current: OpenBar | null = null;
  * the platform find-next/find-previous chords (`advanceSearch` below) can
  * repeat it once the bar itself is gone.
  * Deliberately ONE app-wide string, not keyed by pane id: the bar is already
- * a single global instance (`current` above), and CONTEXT.md's "Search…
- * scoped to one pane at a time" describes which pane a term is applied
- * against, not which pane it was typed on. Because it is a plain string with
- * no pane reference, `closeSearchBarForPane` (a pane dying mid-search) never
- * needs to touch it — there is nothing pane-specific here to leak.
+ * a single global instance (`current` above), and the glossary's "Search…
+ * scoped to one pane at a time" (`docs/internals/glossary.md`) describes
+ * which pane a term is applied against, not which pane it was typed on.
+ * Because it is a plain string with no pane reference,
+ * `closeSearchBarForPane` (a pane dying mid-search) never needs to touch it —
+ * there is nothing pane-specific here to leak.
  */
 let lastQuery: string | null = null;
 

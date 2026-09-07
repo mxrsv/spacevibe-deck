@@ -2,7 +2,9 @@
  * The Tauri migration notice — what it says, where it sends people, and when
  * it is allowed on screen.
  *
- * Spec: docs/specs/2026-08-17-tauri-migration-notice-design.md `decided`.
+ * See `docs/operations/release.md` (section "Tauri hotfix"). Tauri-only, and
+ * it ships ENABLED; the row costs `--notice-h` of stage height beneath the
+ * strip (`06-stage-panes.css`).
  *
  * The cutover is a clean install with no updater bridge between the hosts, so
  * without an in-app surface everyone on a Tauri build sits on an app that
@@ -11,14 +13,14 @@
  * `releases/latest` on 2026-08-20, the endpoint
  * `tauri.macos.conf.json` serves — `releases/latest/download/latest.json` —
  * answers 404, so a Tauri client's update check now FAILS rather than
- * reporting "up to date". §10's accepted risk ("this build no longer updates
- * itself" could be false on a Tauri release tagged before the Electron build
- * shipped) is therefore closed: the sentence is now true on every deployed
- * Tauri build, and the new one is downloadable.
+ * reporting "up to date". The design's accepted risk ("this build no longer
+ * updates itself" could be false on a Tauri release tagged before the
+ * Electron build shipped) is therefore closed: the sentence is now true on
+ * every deployed Tauri build, and the new one is downloadable.
  *
  * This module deliberately reads no updater state and calls nothing on the
  * controller: the notice must never become a second thing that can put a
- * client into `download-failed` (spec §2).
+ * client into `download-failed` — the design's one hard rule.
  */
 
 /**

@@ -53,8 +53,8 @@ marketing/video/out/
 dist-electron/
 *.log
 
-# Design screenshots dropped at the repo root during a session. Review evidence
-# belongs in docs/review/assets/ and IS tracked; these are working captures.
+# Design screenshots dropped at the repo root during a session: working
+# captures, never tracked. Evidence a change relies on belongs in the PR.
 /deck-navigation-picker.png
 /deck-primary-contrast-8-proposal.png
 .vercel

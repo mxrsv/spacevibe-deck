@@ -26,13 +26,9 @@ describe("commandProblem", () => {
   it("accepts the commands the reference image shows", () => {
     expect(commandProblem("claude")).toBeNull();
     expect(commandProblem("claude --plan")).toBeNull();
-    expect(
-      commandProblem("codex --dangerously-bypass-approvals-and-sandbox"),
-    ).toBeNull();
+    expect(commandProblem("codex --dangerously-bypass-approvals-and-sandbox")).toBeNull();
     expect(commandProblem("cursor-agent --force")).toBeNull();
-    expect(
-      commandProblem("opencode --model anthropic/claude-sonnet-5"),
-    ).toBeNull();
+    expect(commandProblem("opencode --model anthropic/claude-sonnet-5")).toBeNull();
   });
 
   // This string is written VERBATIM into a live interactive shell, so every
@@ -67,9 +63,7 @@ describe("isLaunchCommand", () => {
 describe("commandAgentId / commandFlags", () => {
   it("splits a command into its binary and its flags", () => {
     expect(commandAgentId("claude --permission-mode plan")).toBe("claude");
-    expect(commandFlags("claude --permission-mode plan")).toBe(
-      "--permission-mode plan",
-    );
+    expect(commandFlags("claude --permission-mode plan")).toBe("--permission-mode plan");
     expect(commandAgentId("claude")).toBe("claude");
     expect(commandFlags("claude")).toBe("");
   });
@@ -79,9 +73,7 @@ describe("createLaunchProfileId", () => {
   it("mints a prefixed slug and never collides", () => {
     expect(createLaunchProfileId("claude --plan", [])).toBe("lp:claude-plan");
     expect(
-      createLaunchProfileId("claude --plan", [
-        { id: "lp:claude-plan", command: "claude --plan" },
-      ]),
+      createLaunchProfileId("claude --plan", [{ id: "lp:claude-plan", command: "claude --plan" }]),
     ).toBe("lp:claude-plan-2");
   });
 });
@@ -110,9 +102,7 @@ describe("validateLaunchProfiles", () => {
   it("drops a profile rather than repairing it", () => {
     expect(validateLaunchProfiles("nope")).toEqual([]);
     expect(validateLaunchProfiles([{ id: "lp:x" }])).toEqual([]);
-    expect(
-      validateLaunchProfiles([{ id: "lp:x", command: "claude; rm -rf /" }]),
-    ).toEqual([]);
+    expect(validateLaunchProfiles([{ id: "lp:x", command: "claude; rm -rf /" }])).toEqual([]);
     expect(validateLaunchProfiles([{ id: 7, command: "claude" }])).toEqual([]);
   });
 
@@ -124,18 +114,14 @@ describe("validateLaunchProfiles", () => {
 
 describe("validateDefaultLaunchProfiles", () => {
   it("keeps a mapping that points at a command for that agent", () => {
-    expect(validateDefaultLaunchProfiles({ claude: "lp:plan" }, [plan])).toEqual(
-      { claude: "lp:plan" },
-    );
+    expect(validateDefaultLaunchProfiles({ claude: "lp:plan" }, [plan])).toEqual({
+      claude: "lp:plan",
+    });
   });
 
   it("drops a dangling id and a cross-agent mapping", () => {
-    expect(validateDefaultLaunchProfiles({ claude: "lp:gone" }, [plan])).toEqual(
-      {},
-    );
-    expect(validateDefaultLaunchProfiles({ codex: "lp:plan" }, [plan])).toEqual(
-      {},
-    );
+    expect(validateDefaultLaunchProfiles({ claude: "lp:gone" }, [plan])).toEqual({});
+    expect(validateDefaultLaunchProfiles({ codex: "lp:plan" }, [plan])).toEqual({});
     expect(validateDefaultLaunchProfiles(null, [plan])).toEqual({});
   });
 });

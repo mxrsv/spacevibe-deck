@@ -36,8 +36,7 @@ export const MAX_CANDIDATES_PER_LINE = 24;
 
 // http/https up to the first whitespace or quote, minus trailing punctuation.
 // Copied from @xterm/addon-web-links (strictUrlRegex) — battle-tested there.
-const URL_RE =
-  /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/g;
+const URL_RE = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/g;
 
 /**
  * Whether a URI may be handed to the default browser.
@@ -143,11 +142,7 @@ const QUOTED_PATH_RE = new RegExp(
 
 /** A quoted token is only a candidate if it could be a path at all. */
 function looksLikePath(body: string): boolean {
-  return (
-    body.includes("/") ||
-    body.includes("\\") ||
-    /\.[A-Za-z][A-Za-z0-9]{0,9}$/u.test(body)
-  );
+  return body.includes("/") || body.includes("\\") || /\.[A-Za-z][A-Za-z0-9]{0,9}$/u.test(body);
 }
 
 /**
@@ -198,10 +193,7 @@ function matchUrls(source: string): LinkCandidate[] {
   return out;
 }
 
-function followsSpacedAbsoluteWindowsPath(
-  source: string,
-  start: number,
-): boolean {
+function followsSpacedAbsoluteWindowsPath(source: string, start: number): boolean {
   if (start === 0 || !/\s/u.test(source[start - 1] ?? "")) {
     return false;
   }
@@ -214,11 +206,7 @@ function followsSpacedAbsoluteWindowsPath(
   return isAbsoluteWindows && !looksComplete;
 }
 
-function startsSpacedAbsoluteWindowsPath(
-  source: string,
-  start: number,
-  end: number,
-): boolean {
+function startsSpacedAbsoluteWindowsPath(source: string, start: number, end: number): boolean {
   const candidate = source.slice(start, end);
   if (!/^(?:[A-Za-z]:[\\/]|\\\\)/u.test(candidate)) {
     return false;
@@ -250,10 +238,7 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
       continue;
     }
     const matched = m[0].slice(boundary.length);
-    const text = matched.slice(
-      0,
-      matched.length - (rawPath.length - path.length),
-    );
+    const text = matched.slice(0, matched.length - (rawPath.length - path.length));
     const start = m.index + boundary.length;
     const end = start + text.length;
     if (
@@ -278,11 +263,7 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
 function matchQuotedPaths(source: string): LinkCandidate[] {
   const out: LinkCandidate[] = [];
   QUOTED_PATH_RE.lastIndex = 0;
-  for (
-    let m = QUOTED_PATH_RE.exec(source);
-    m !== null;
-    m = QUOTED_PATH_RE.exec(source)
-  ) {
+  for (let m = QUOTED_PATH_RE.exec(source); m !== null; m = QUOTED_PATH_RE.exec(source)) {
     const body = m[1] ?? "";
     // A body padded with spaces is a phrase that ended in one, never a path
     // anybody typed — and trimming it would leave the range lying about which
@@ -334,8 +315,6 @@ export function extractLinkCandidates(
   max: number = MAX_CANDIDATES_PER_LINE,
 ): LinkCandidate[] {
   const urls = matchUrls(source);
-  const paths = matchPaths(source).filter(
-    (path) => !urls.some((url) => overlaps(path, url)),
-  );
+  const paths = matchPaths(source).filter((path) => !urls.some((url) => overlaps(path, url)));
   return [...urls, ...paths].sort((a, b) => a.start - b.start).slice(0, max);
 }

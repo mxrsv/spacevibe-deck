@@ -4,7 +4,7 @@
    `.wsitem`'s, untouched — the rail REGROUPS rows, it does not restyle them,
    so "this workspace is active" keeps reading exactly as it always has and
    this surface adds no row to DL §10's ledger.
-   Design: docs/specs/2026-08-13-repository-worktree-rail-design.md §6. ── */
+   See docs/internals/agent-rail.md (section "Other surfaces in the column"). ── */
 .wsbar--repos .wsbar__list {
   gap: 1px;
 }
@@ -108,7 +108,7 @@
 /* A worktree with no session. DL-17.3's precedent: a control that cannot be
    pressed drops its border and its pointer rather than gaining a disabled
    pill, because a border is what promises "you can press this" everywhere
-   else. Opening one is the tab-materialization fork (spec §7.1). */
+   else. Opening one goes through tab materialization. */
 .wsitem--readout {
   color: var(--text-faint);
   cursor: default;

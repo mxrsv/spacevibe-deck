@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyResumeFlags,
-  defaultLaunchCommand,
-  resolveLaunchCommand,
-} from "./launch-command";
+import { applyResumeFlags, defaultLaunchCommand, resolveLaunchCommand } from "./launch-command";
 import type { LaunchProfile } from "./launch-profile";
 
 const plan: LaunchProfile = {
@@ -18,9 +14,7 @@ const sandboxed: LaunchProfile = {
 
 describe("resolveLaunchCommand", () => {
   it("returns the profile's command when the binary matches the agent", () => {
-    expect(resolveLaunchCommand("claude", "lp:plan", [plan])).toBe(
-      plan.command,
-    );
+    expect(resolveLaunchCommand("claude", "lp:plan", [plan])).toBe(plan.command);
   });
 
   it("refuses a command belonging to another agent", () => {
@@ -36,16 +30,12 @@ describe("resolveLaunchCommand", () => {
 
 describe("defaultLaunchCommand", () => {
   it("reads the agent's starred command", () => {
-    expect(defaultLaunchCommand("claude", [plan], { claude: "lp:plan" })).toBe(
-      plan.command,
-    );
+    expect(defaultLaunchCommand("claude", [plan], { claude: "lp:plan" })).toBe(plan.command);
   });
 
   it("returns null when the agent has no default", () => {
     expect(defaultLaunchCommand("claude", [plan], {})).toBeNull();
-    expect(
-      defaultLaunchCommand(null, [plan], { claude: "lp:plan" }),
-    ).toBeNull();
+    expect(defaultLaunchCommand(null, [plan], { claude: "lp:plan" })).toBeNull();
   });
 });
 
@@ -57,23 +47,15 @@ describe("applyResumeFlags", () => {
   });
 
   it("leaves every other agent's resume command alone", () => {
-    expect(applyResumeFlags("codex resume abc123", sandboxed.command)).toBe(
-      "codex resume abc123",
-    );
-    expect(applyResumeFlags("claude --continue", null)).toBe(
-      "claude --continue",
-    );
+    expect(applyResumeFlags("codex resume abc123", sandboxed.command)).toBe("codex resume abc123");
+    expect(applyResumeFlags("claude --continue", null)).toBe("claude --continue");
   });
 
   it("leaves a resume command that is not claude's own alone", () => {
-    expect(applyResumeFlags("review --resume x", plan.command)).toBe(
-      "review --resume x",
-    );
+    expect(applyResumeFlags("review --resume x", plan.command)).toBe("review --resume x");
   });
 
   it("adds nothing when the launch command was the bare binary", () => {
-    expect(applyResumeFlags("claude --resume abc", "claude")).toBe(
-      "claude --resume abc",
-    );
+    expect(applyResumeFlags("claude --resume abc", "claude")).toBe("claude --resume abc");
   });
 });

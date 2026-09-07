@@ -19,16 +19,10 @@ describe("DockTabs", () => {
     host.remove();
   });
 
-  const getTabs = (): HTMLButtonElement[] =>
-    Array.from(host.querySelectorAll('[role="tab"]'));
+  const getTabs = (): HTMLButtonElement[] => Array.from(host.querySelectorAll('[role="tab"]'));
 
   it("renders one tab per item, in order, inside a labelled tablist", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />, host));
 
     const tablist = host.querySelector('[role="tablist"]');
     expect(tablist).not.toBeNull();
@@ -46,12 +40,7 @@ describe("DockTabs", () => {
   });
 
   it("marks only the active chip with is-active and aria-selected", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="usage" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="usage" onSelect={vi.fn()} />, host));
 
     getTabs().forEach((tab, index) => {
       const shouldBeActive = DOCK_TABS[index].id === "usage";
@@ -62,12 +51,7 @@ describe("DockTabs", () => {
 
   it("reports the clicked id and keeps no state of its own", () => {
     const onSelect = vi.fn();
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={onSelect} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={onSelect} />, host));
 
     const tabs = getTabs();
     act(() => {
@@ -82,12 +66,7 @@ describe("DockTabs", () => {
 
   it("renders exactly the items it is given — a caller narrowing to two tabs sees two", () => {
     const narrowed = availableDockTabs(false);
-    act(() =>
-      render(
-        <DockTabs items={narrowed} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={narrowed} active="explorer" onSelect={vi.fn()} />, host));
 
     const tabs = getTabs();
     expect(tabs).toHaveLength(2);
@@ -98,12 +77,7 @@ describe("DockTabs", () => {
   });
 
   it("draws each chip's icon through DeckIcon, never a raw glyph", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />, host));
 
     getTabs().forEach((tab) => {
       const icon = tab.querySelector("svg.deck-icon");
@@ -118,12 +92,7 @@ describe("DockTabs", () => {
   // place its name and chord are ever printed. It opens on hover AND on focus
   // — the native `title` it replaced did neither for a keyboard.
   it("says the tab's name and its chord on hover, and again on focus", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />, host));
 
     const explorer = getTabs()[0];
     expect(document.querySelector('[role="tooltip"]')).toBeNull();
@@ -136,9 +105,7 @@ describe("DockTabs", () => {
     expect(tip?.textContent).toContain("File explorer");
     // The chord comes from the keymap through `shortcutLabel`, never from a
     // literal here: a rebind has to reach this text.
-    expect(tip?.querySelector("kbd")?.textContent).toBe(
-      shortcutLabel("toggle-explorer", "macos"),
-    );
+    expect(tip?.querySelector("kbd")?.textContent).toBe(shortcutLabel("toggle-explorer", "macos"));
     expect(explorer.getAttribute("aria-describedby")).toBe(tip?.id);
 
     act(() => {
@@ -161,12 +128,7 @@ describe("DockTabs", () => {
   });
 
   it("draws all three dock icons with Phosphor's fill weight", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />, host));
 
     getTabs().forEach((tab, index) => {
       const reference = document.createElement("div");

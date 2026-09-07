@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 function sourceFiles(directory: string): string[] {
@@ -14,7 +15,11 @@ function sourceFiles(directory: string): string[] {
 
 describe("terminal diagnostics", () => {
   it("never ships a raw keystroke network tap", () => {
-    const terminalRoot = new URL("../src/terminal/", import.meta.url).pathname;
+    // `fileURLToPath`, not `URL.pathname`: on Windows the latter yields
+    // `/D:/a/…`, which `readdirSync` resolves against the current drive as
+    // `D:\\D:\\a\\…` and cannot open. `scripts/design-language.test.ts` and
+    // `scripts/gallery-entry.test.ts` already carry the same note.
+    const terminalRoot = fileURLToPath(new URL("../src/terminal/", import.meta.url));
     const sources = sourceFiles(terminalRoot)
       .map((file) => readFileSync(file, "utf8"))
       .join("\n");

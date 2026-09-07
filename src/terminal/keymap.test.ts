@@ -255,10 +255,9 @@ describe("matchBinding", () => {
   });
 
   // menu.rs's "New Layout Preset…" item has had this accelerator since
-  // 09f5c4d, before the webview keymap knew about it — Task 4
-  // (docs/plans/2026-07-27-action-registry.md) unifies new-preset into the
-  // same action:/runAction path as every other action, which means it now
-  // needs a real MACOS_KEYMAP binding too.
+  // 09f5c4d, before the webview keymap knew about it — the action registry
+  // unified new-preset into the same action:/runAction path as every other
+  // action, which means it now needs a real MACOS_KEYMAP binding too.
   it("matches Cmd+Shift+N as new-preset", () => {
     expect(matchBinding(keyEvent("n", { metaKey: true, shiftKey: true }))).toBe("new-preset");
   });
@@ -431,7 +430,7 @@ describe("WINDOWS_KEYMAP", () => {
   // `handleShortcut` never calls preventDefault() and xterm still encodes the
   // interrupt. The protection this row asserted therefore moved from the
   // keymap to `action-performable.ts` — matched here, not consumed there.
-  // See docs/specs/2026-08-20-performable-keybindings-design.md.
+  // See docs/internals/terminal.md.
   it.each(["d", "w", "k", "f", "o"])("leaves protected bare Ctrl+%s unbound", (key) => {
     expect(matchBinding(keyEvent(key, { ctrlKey: true }), WINDOWS_KEYMAP)).toBeNull();
   });

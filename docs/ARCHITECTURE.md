@@ -1,3 +1,9 @@
+**Superseded.** This page describes the Tauri 2 + Rust runtime, which is feature-frozen
+and no longer ships from a tag. The current architecture, written for the Electron host,
+is [`internals/overview.md`](internals/overview.md) and the pages beside it; the index is
+[`README.md`](README.md). Kept unedited below because code and workflows still cite it;
+where it disagrees with `internals/`, `internals/` is right.
+
 > Generated from `~/.claude/templates/ARCHITECTURE.template.md` — LIVING doc, update in place (D1).
 
 # SpaceVibe Deck — architecture

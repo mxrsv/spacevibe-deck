@@ -80,9 +80,8 @@
 /* ── DL §30: the notice row ───────────────────────────────────────────────
    One instance again since 2026-08-22 (owner-decided): the usage-consent row
    became the DL-29.9 decision MODAL (`10-modals.css`), so `.migration-banner`
-   — Tauri-only, per
-   docs/specs/2026-08-17-tauri-migration-notice-design.md `decided` — is the
-   genre's whole population.
+   — Tauri-only and shipped enabled, see docs/operations/release.md (section
+   "Tauri hotfix") — is the genre's whole population.
 
    The first row of the stage's own content, BENEATH `.stage__strip` and above
    the terminal grid. Never above the strip: the strip sits at `top: 0`, and
@@ -188,7 +187,7 @@
   right: var(--dock-w);
 }
 
-/* ── The document surface (spec §4.2) ─────────────────────────────────────
+/* ── The document surface (docs/internals/file-surface.md) ─────────────────────────────────────
    Same rectangle as `.stage__tabs`, laid over it rather than replacing it:
    the terminal grid keeps its measured size while a file holds the stage, so
    coming back costs no reflow and no PTY resize. Opaque for the same reason

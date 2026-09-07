@@ -17,8 +17,12 @@
 /** The four kinds of app, in menu order; a hairline separates them (DL-23.5). */
 export type ExternalAppGroup = "editor" | "git" | "files" | "terminal";
 
-export const EXTERNAL_APP_GROUP_ORDER: readonly ExternalAppGroup[] =
-  Object.freeze(["editor", "git", "files", "terminal"]);
+export const EXTERNAL_APP_GROUP_ORDER: readonly ExternalAppGroup[] = Object.freeze([
+  "editor",
+  "git",
+  "files",
+  "terminal",
+]);
 
 /**
  * What an app is actually handed, for a target of a given kind.
@@ -120,9 +124,7 @@ export const EXTERNAL_APPS = [
 
 export type ExternalAppId = (typeof EXTERNAL_APPS)[number]["id"];
 
-export const EXTERNAL_APP_IDS: readonly ExternalAppId[] = EXTERNAL_APPS.map(
-  (app) => app.id,
-);
+export const EXTERNAL_APP_IDS: readonly ExternalAppId[] = EXTERNAL_APPS.map((app) => app.id);
 
 export function isExternalAppId(value: unknown): value is ExternalAppId {
   return EXTERNAL_APP_IDS.includes(value as ExternalAppId);
@@ -140,9 +142,7 @@ export function externalApp(id: ExternalAppId): ExternalApp {
  * `open -a` can name a file but never a position in it. Everything else goes
  * through `open_in_app`, which never claims to.
  */
-export function editorIdOf(
-  id: ExternalAppId,
-): "vscode" | "cursor" | "zed" | null {
+export function editorIdOf(id: ExternalAppId): "vscode" | "cursor" | "zed" | null {
   switch (id) {
     case "vscode":
       return "vscode";

@@ -2,9 +2,8 @@ import { ClockCounterClockwise, FolderOpen, FolderPlus, GitBranch, X } from "@ph
 import { useSignal } from "@preact/signals";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { GithubStarButton } from "../ui/controls/github-star-button";
-import { formatRelativeTime } from "../lib/workspace-recents";
+import { formatRelativeTime, type RecentWorkspace } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
-import type { RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
 import defaultLogoUrl from "../../.github/assets/icon.svg";

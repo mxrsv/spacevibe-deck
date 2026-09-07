@@ -5,10 +5,7 @@ import { createMemoryLinkClient } from "./link-client";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { pathOpenRequest, persistError } from "../chrome/events";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 
 const CWD = "/repo";
 
@@ -48,10 +45,7 @@ function fakeTerminal(text: string): Terminal {
   return fakeTerminalRows([text]);
 }
 
-function provide(
-  term: Terminal,
-  client: ReturnType<typeof createMemoryLinkClient>,
-) {
+function provide(term: Terminal, client: ReturnType<typeof createMemoryLinkClient>) {
   const provider = createLinkProvider(term, {
     getCwd: () => CWD,
     client,
@@ -62,10 +56,7 @@ function provide(
 }
 
 /** One provider, many rows — the shape the cross-line cases need. */
-function providerFor(
-  term: Terminal,
-  client: ReturnType<typeof createMemoryLinkClient>,
-) {
+function providerFor(term: Terminal, client: ReturnType<typeof createMemoryLinkClient>) {
   const provider = createLinkProvider(term, { getCwd: () => CWD, client });
   return (row: number) =>
     new Promise<ILink[] | undefined>((resolve) => {
@@ -90,10 +81,7 @@ describe("createLinkProvider", () => {
 
   it("links a url and opens it in the browser on ⌘+click", async () => {
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal("see https://example.com now"), client);
 
     expect(links).toHaveLength(1);
     expect(links?.[0].text).toBe("https://example.com");
@@ -104,10 +92,7 @@ describe("createLinkProvider", () => {
 
   it("ignores a plain click so the terminal keeps it", async () => {
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal("see https://example.com now"), client);
 
     click(links![0], false);
     expect(client.openedUrls).toEqual([]);
@@ -120,10 +105,7 @@ describe("createLinkProvider", () => {
       homeDir: String.raw`C:\Users\dev`,
     });
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal("see https://example.com now"), client);
 
     click(links![0], true);
     click(links![0], false, true);
@@ -133,10 +115,7 @@ describe("createLinkProvider", () => {
 
   it("links only the paths that resolve to a real file", async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("src/foo.ts and src/gone.ts"),
-      client,
-    );
+    const links = await provide(fakeTerminal("src/foo.ts and src/gone.ts"), client);
 
     expect(links?.map((link) => link.text)).toEqual(["src/foo.ts"]);
   });
@@ -147,10 +126,7 @@ describe("createLinkProvider", () => {
   // itself is covered by `link-target.test.ts`.
   it("raises an open request carrying the line and column", async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("at src/foo.ts:12:5 boom"),
-      client,
-    );
+    const links = await provide(fakeTerminal("at src/foo.ts:12:5 boom"), client);
 
     click(links![0], true);
     expect(pathOpenRequest.value).toMatchObject({
@@ -194,10 +170,7 @@ describe("createLinkProvider", () => {
     // `a/src/foo.ts` is not a file; `src/foo.ts` is. Both go into one batch
     // and the candidate keeps the hit (design §2.2).
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("--- a/src/foo.ts"),
-      client,
-    );
+    const links = await provide(fakeTerminal("--- a/src/foo.ts"), client);
 
     expect(links).toHaveLength(1);
     click(links![0], true);
@@ -256,9 +229,7 @@ describe("createLinkProvider", () => {
     vi.useFakeTimers();
     try {
       const client = createMemoryLinkClient();
-      const spy = vi
-        .spyOn(client, "resolvePaths")
-        .mockResolvedValue([null] as (string | null)[]);
+      const spy = vi.spyOn(client, "resolvePaths").mockResolvedValue([null] as (string | null)[]);
       const term = fakeTerminal("xx a.ts");
       const provider = createLinkProvider(term, { getCwd: () => CWD, client });
       const hover = (): Promise<ILink[] | undefined> =>

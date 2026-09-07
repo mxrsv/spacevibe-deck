@@ -1,7 +1,7 @@
 /**
  * Drag a project cluster in the agent rail to where it should sit (DL-27.20).
  *
- * Design: `docs/specs/2026-08-22-rail-workspace-reorder-design.md` `decided`.
+ * See `docs/internals/agent-rail.md` (section "Order").
  * The third member of this repo's pointer-drag family, after
  * [`pane-drag.ts`](../terminal/pane-drag.ts) `current` (move an existing pane)
  * and [`new-pane-drag.ts`](./new-pane-drag.ts) `current` (drag a control onto

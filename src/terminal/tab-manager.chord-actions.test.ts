@@ -361,8 +361,8 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
   });
 });
 
-// FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1): swap-left/right/
-// up/down route to TerminalManager.swapDirection — its own geometry/DOM
+// swap-left/right/up/down exchange the focused pane with its neighbour and
+// route to TerminalManager.swapDirection — its own geometry/DOM
 // behavior (slot order, focus-follows-pane, zoom drop) is covered directly
 // in terminal-manager.test.ts, which can construct a real two-pane split and
 // inspect .pane-slot order; here the only thing worth proving is routing —
@@ -422,8 +422,7 @@ describe("createTabManager swap-* actions (FR-032)", () => {
   });
 });
 
-// copy-cwd (⌘⇧C + menu Edit ▸ "Copy Working Directory",
-// docs/plans/2026-07-27-keyboard-parity.md Task 3): both surfaces share the
+// copy-cwd (⌘⇧C + menu Edit ▸ "Copy Working Directory"): both surfaces share the
 // exact same commands["copy-cwd"] closure via dispatchAction, so one set of
 // tests through runAction covers both — no separate Tauri event to test.
 describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
@@ -543,8 +542,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
   });
 });
 
-// Scrollback navigation (⇧PageUp/⇧PageDown/⇧Home/⇧End,
-// docs/plans/2026-07-27-keyboard-parity.md Task 4): routing + overlay-guard
+// Scrollback navigation (⇧PageUp/⇧PageDown/⇧Home/⇧End): routing + overlay-guard
 // gating only — TerminalManager.scrollActivePage/scrollActiveToEdge's own
 // delegation is covered directly in terminal-manager.test.ts.
 describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", () => {
