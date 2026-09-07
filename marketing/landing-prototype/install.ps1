@@ -204,7 +204,23 @@ try {
 
   Receive-TrustedAsset $InstallerUri $Tag $InstallerName $InstallerPath
   $ExpectedHash = [BitConverter]::ToString($ExpectedHashBytes).Replace("-", "")
-  $ActualHash = (Get-FileHash -Algorithm SHA512 -LiteralPath $InstallerPath).Hash
+
+  # .NET rather than Get-FileHash: in Windows PowerShell 5.1 that cmdlet is a
+  # script function auto-loaded through PSModulePath, and a powershell.exe
+  # started from PowerShell 7 inherits pwsh's module path, where the lookup
+  # resolves to the Core edition of Microsoft.PowerShell.Utility and fails
+  # with "Get-FileHash is not recognized" (PowerShell/PowerShell#24630).
+  $Sha512 = [Security.Cryptography.SHA512]::Create()
+  $InstallerStream = [IO.File]::OpenRead($InstallerPath)
+
+  try {
+    $ActualHashBytes = $Sha512.ComputeHash($InstallerStream)
+  } finally {
+    $InstallerStream.Dispose()
+    $Sha512.Dispose()
+  }
+
+  $ActualHash = [BitConverter]::ToString($ActualHashBytes).Replace("-", "")
 
   if (-not [string]::Equals($ExpectedHash, $ActualHash, [StringComparison]::OrdinalIgnoreCase)) {
     Stop-Install "Installer SHA-512 verification failed."
