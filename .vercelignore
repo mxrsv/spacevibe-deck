@@ -21,6 +21,10 @@
 # The tour panels import the shared brand marks from here.
 !/marketing/stage
 
+# Vite's publicDir for the landing build (root = marketing/): the privacy page
+# is copied verbatim into the output root and served by the /privacy rewrites.
+!/marketing/public
+
 # The landing's agent logos live with the app's own assets.
 !/src
 /src/*
