@@ -15,18 +15,20 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { activeTabIndex, tabViews, type TabView, type PaneView } from "../terminal/tabs-store";
 import { TabStrip } from "./tab-strip";
+import { stripPreferences, EMPTY_STRIP_PREFERENCES, setStripPinned } from "../lib/strip-order";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../files/file-surface-controller";
-import { openFileTab, resetFileSurfaces } from "../files/file-surface-store";
+import { openFileTab, closeFileSurface, resetFileSurfaces } from "../files/file-surface-store";
 import { nextOpenSequence, resetOpenSequence } from "../lib/open-sequence";
 import type { FileClient } from "../files/file-client";
 import { repositoryScans } from "../repositories/repositories-store";
 import type { RepositoryScan } from "../repositories/repository-client";
 import {
   browserOpen,
+  browserOpenedAt,
   browserState,
   browserSurfaceActive,
   EMPTY_STATE,
@@ -93,6 +95,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     resetBrowserStore();
     resetAgentBoardStore();
     resetOpenSequence();
+    stripPreferences.value = EMPTY_STRIP_PREFERENCES;
     paneTails.value = new Map();
     fileController = createFileSurfaceController({ client: fileClient });
   });
@@ -130,6 +133,275 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       );
     });
   };
+
+  const chipNamed = (name: string): HTMLElement =>
+    [...host.querySelectorAll<HTMLElement>(".tab")].find(
+      (el) => el.querySelector(".tab__label")?.textContent === name,
+    )!;
+  it("reorders mounted terminal chips from mouse pointer events", () => {
+    tabViews.value = [
+      tab({ key: 1, openedAt: 1, name: "First" }),
+      tab({ key: 2, openedAt: 2, name: "Second" }),
+    ];
+    const select = vi.fn();
+    mount({ onSelectTab: select });
+    const list = host.querySelector<HTMLElement>('[role="tablist"]')!;
+    const box = (left: number, width: number) =>
+      ({ left, right: left + width, top: 0, bottom: 30, width, height: 30 }) as DOMRect;
+    list.getBoundingClientRect = () => box(0, 200);
+    chipNamed("First").getBoundingClientRect = () => box(0, 100);
+    chipNamed("Second").getBoundingClientRect = () => box(100, 100);
+    const pointer = (target: EventTarget, type: string, x: number) => {
+      const event = new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: 15,
+        button: 0,
+      });
+      Object.defineProperty(event, "pointerId", { value: 1 });
+      target.dispatchEvent(event);
+    };
+    act(() => {
+      pointer(chipNamed("Second").querySelector(".tab__label")!, "pointerdown", 150);
+      pointer(window, "pointermove", 10);
+      pointer(window, "pointerup", 10);
+      list.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect([...list.querySelectorAll(".tab__label")].map((el) => el.textContent)).toEqual([
+      "Second",
+      "First",
+    ]);
+    expect(select).not.toHaveBeenCalled();
+  });
+  const context = (name: string): void => {
+    act(() => {
+      chipNamed(name).dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 50,
+          clientY: 25,
+        }),
+      );
+    });
+  };
+  const menuAction = async (label: string): Promise<void> => {
+    await act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((el) => el.textContent === label)!
+        .click();
+    });
+  };
+
+  it("pins a tab without selecting it, retains its name and removes its close button", async () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
+      tab({ key: 2, name: "Beta", openedAt: nextOpenSequence() }),
+    ];
+    const select = vi.fn();
+    mount({ onSelectTab: select });
+    context("Beta");
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    await menuAction("Pin");
+    expect(host.querySelector(".tab__label")?.textContent).toBe("Beta");
+    expect(chipNamed("Beta").querySelector(".tab__close")).toBeNull();
+    expect(chipNamed("Beta").querySelector(".tab__pin")).not.toBeNull();
+    expect(select).not.toHaveBeenCalled();
+    context("Beta");
+    await menuAction("Unpin");
+    expect(host.querySelector(".tab__label")?.textContent).toBe("Alpha");
+    expect(chipNamed("Beta").querySelector(".tab__close")).not.toBeNull();
+  });
+
+  it("Close Others targets only visible unpinned terminals in one guarded batch", async () => {
+    const keys = [nextOpenSequence(), nextOpenSequence(), nextOpenSequence(), nextOpenSequence()];
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: keys[0] }),
+      tab({ key: 2, name: "Pinned", openedAt: keys[1] }),
+      tab({ key: 3, name: "Close me", openedAt: keys[2] }),
+      tab({ key: 4, name: "Hidden", workspacePath: "/elsewhere", openedAt: keys[3] }),
+    ];
+    setStripPinned(keys[1]!, true);
+    const closeTabs = vi.fn(async () => true);
+    mount({ onCloseTabs: closeTabs });
+    context("Alpha");
+    await menuAction("Close Others");
+    expect(closeTabs).toHaveBeenCalledExactlyOnceWith([2]);
+  });
+
+  it("Close to the Right follows the displayed manual order", async () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: 1 }),
+      tab({ key: 2, name: "Beta", openedAt: 2 }),
+      tab({ key: 3, name: "Gamma", openedAt: 3 }),
+    ];
+    stripPreferences.value = { order: [3, 1, 2], pinned: [] };
+    const closeTabs = vi.fn(async () => true);
+    mount({ onCloseTabs: closeTabs });
+    context("Alpha");
+    await menuAction("Close to the Right");
+    expect(closeTabs).toHaveBeenCalledExactlyOnceWith([1]);
+  });
+
+  it("keeps a pinned preview file when another preview opens", async () => {
+    tabViews.value = [tab({ openedAt: nextOpenSequence() })];
+    openFileTab("/repo", "/repo/a.ts", { keep: false });
+    mount();
+    context("a.ts");
+    await menuAction("Pin");
+    act(() => {
+      openFileTab("/repo", "/repo/b.ts", { keep: false });
+    });
+    expect(chipNamed("a.ts").querySelector(".tab__label--preview")).toBeNull();
+    expect(chipNamed("a.ts").dataset.pinned).toBe("true");
+  });
+
+  it("Escape closes the menu and a disappearing owner cannot redirect an action", async () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: 1 }),
+      tab({ key: 2, name: "Beta", openedAt: 2 }),
+    ];
+    mount();
+    context("Beta");
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    context("Beta");
+    act(() => {
+      tabViews.value = [tab({ key: 1, name: "Alpha", openedAt: 1 })];
+    });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("a cancelled file close stops the batch before touching any terminals", async () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
+      tab({ key: 2, name: "Beta", openedAt: nextOpenSequence() }),
+    ];
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    const closeTabs = vi.fn(async () => true);
+    const closePath = vi.fn(async () => {});
+    mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
+    context("Alpha");
+    await menuAction("Close Others");
+    expect(closePath).toHaveBeenCalledExactlyOnceWith("/repo", "/repo/a.ts");
+    expect(closeTabs).not.toHaveBeenCalled();
+    expect(chipNamed("Beta")).toBeDefined();
+  });
+
+  it("Close explicitly targets a pinned tab, but bulk actions are unavailable beside only pinned tabs", async () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: 1 }),
+      tab({ key: 2, name: "Beta", openedAt: 2 }),
+    ];
+    setStripPinned(1, true);
+    setStripPinned(2, true);
+    const closeTabs = vi.fn(async () => true);
+    const closeTab = vi.fn();
+    mount({ onCloseTabs: closeTabs, onCloseTab: closeTab });
+    context("Alpha");
+    expect(
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+        (el) => el.textContent === "Close Others",
+      )?.disabled,
+    ).toBe(true);
+    await menuAction("Close");
+    expect(closeTab).toHaveBeenCalledExactlyOnceWith(0);
+    expect(closeTabs).not.toHaveBeenCalled();
+  });
+
+  it("resolves terminal identities again after waiting for a file guard", async () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
+      tab({ key: 2, name: "Gone", openedAt: nextOpenSequence() }),
+      tab({ key: 3, name: "Target", openedAt: nextOpenSequence() }),
+    ];
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    let release = (): void => {};
+    const guard = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const closePath = vi.fn(async (workspace: string, path: string) => {
+      await guard;
+      closeFileSurface(workspace, path);
+    });
+    const closeTabs = vi.fn(async () => true);
+    mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
+    context("Alpha");
+    await menuAction("Close Others");
+    expect(closeTabs).not.toHaveBeenCalled();
+    await act(async () => {
+      tabViews.value = [
+        tab({ key: 3, name: "Target", openedAt: 3 }),
+        tab({ key: 4, name: "New", openedAt: nextOpenSequence() }),
+      ];
+      release();
+    });
+    await vi.waitFor(() => expect(closeTabs).toHaveBeenCalledExactlyOnceWith([0]));
+  });
+
+  it.each([false, true])(
+    "continues to browser and Agents only when the Busy guard accepts: %s",
+    async (accepted) => {
+      tabViews.value = [
+        tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
+        tab({ key: 2, name: "Beta", openedAt: nextOpenSequence() }),
+      ];
+      browserOpen.value = true;
+      browserOpenedAt.value = nextOpenSequence();
+      openAgentBoard();
+      const closeTabs = vi.fn(async () => accepted);
+      const closeBrowser = vi.fn();
+      const closeBoard = vi.fn();
+      mount({
+        onCloseTabs: closeTabs,
+        onCloseBrowser: closeBrowser,
+        onCloseAgentBoard: closeBoard,
+      });
+      context("Alpha");
+      await menuAction("Close Others");
+      expect(closeTabs).toHaveBeenCalledExactlyOnceWith([1]);
+      expect(closeBrowser).toHaveBeenCalledTimes(accepted ? 1 : 0);
+      expect(closeBoard).toHaveBeenCalledTimes(accepted ? 1 : 0);
+      if (!accepted) {
+        expect(chipNamed("Browser")).toBeDefined();
+        expect(chipNamed("Agents")).toBeDefined();
+      }
+    },
+  );
+
+  it("keeps a single close locked until its callback settles", async () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha", openedAt: 1 })];
+    let release = (): void => {};
+    const closeTab = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    mount({ onCloseTab: closeTab });
+    act(() => {
+      chipNamed("Alpha").querySelector<HTMLButtonElement>(".tab__close")!.click();
+    });
+    act(() => {
+      chipNamed("Alpha").querySelector<HTMLButtonElement>(".tab__close")!.click();
+    });
+    expect(closeTab).toHaveBeenCalledExactlyOnceWith(0);
+    await act(async () => {
+      release();
+    });
+    await vi.waitFor(() => {
+      act(() => {
+        chipNamed("Alpha").querySelector<HTMLButtonElement>(".tab__close")!.click();
+      });
+      expect(closeTab).toHaveBeenCalledTimes(2);
+    });
+    await act(async () => {
+      release();
+    });
+  });
 
   it("renders every chip, and no add button, with no .tabbar in the tree", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];

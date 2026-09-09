@@ -14,7 +14,7 @@ import type { DetachTarget } from "./pane-detach";
 import { defaultTransferClient } from "./transfer-client";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
-import { mergeStripOrder, type StripSlot } from "../lib/strip-order";
+import { mergeStripOrder, stripPreferences, type StripSlot } from "../lib/strip-order";
 import { lastRows, stripAnsiSequences } from "../lib/strip-ansi-sequences";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
@@ -2137,11 +2137,15 @@ export function createTabManager(
    * few dozen entries.
    */
   function stripSlots(): readonly StripSlot[] {
+    const visible = deps.visibleTabIndexes?.();
     return mergeStripOrder(
       tabs.map((tab) => ({ openedAt: tab.openedAt })),
       Array.from({ length: surfaces.count() }, (_, index) => ({
         openedAt: surfaces.orderKey?.(index) ?? UNSEQUENCED,
       })),
+      stripPreferences.value,
+    ).filter(
+      (slot) => slot.kind === "surface" || visible === undefined || visible.includes(slot.index),
     );
   }
 

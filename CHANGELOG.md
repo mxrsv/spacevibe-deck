@@ -7,6 +7,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Arrange and pin tabs.** Drag terminal, file, browser and Agents tabs into
+  place; right-click to pin, unpin, close others or close tabs to the right.
+  Pinned tabs keep their icon and name and are skipped by bulk closes.
+  Preferences last for the current window session.
+  [Tab strip](src/ui/tab-strip.tsx) `current`.
+
 - **Agent row messages and compact controls.**
   [Agent rows show their latest message](src/ui/agent-rail-card-model.ts) `current`
   once available; names you set yourself take precedence.

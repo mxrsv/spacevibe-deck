@@ -65,6 +65,9 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * below is unchanged.
    */
   surfaces?: SurfaceStrip;
+  /** The shell's current terminal projection, in owner index space. Missing
+   * means all tabs. Digits and cycling must count the same visible chips. */
+  visibleTabIndexes?: () => readonly number[];
   /**
    * Cmd+Shift+A routes here instead of calling `focusNextAttention`
    * directly, so the app can run the same overlay preflight as a status-dot

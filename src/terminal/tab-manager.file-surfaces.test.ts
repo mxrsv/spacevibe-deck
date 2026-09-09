@@ -19,6 +19,7 @@ import type { BrowserClient } from "../browser/browser-client";
 import { composeSurfaceStrip } from "../ui/stage-surface-strip";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
+import { stripPreferences, EMPTY_STRIP_PREFERENCES } from "../lib/strip-order";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
@@ -93,6 +94,7 @@ beforeEach(() => {
   // Task 23: reset the live setting the production-default notifier reads,
   // and clear the mocked native adapter so per-test call counts start fresh.
   settings.value = DEFAULT_SETTINGS;
+  stripPreferences.value = EMPTY_STRIP_PREFERENCES;
   vi.mocked(sendAgentNotification).mockClear();
 });
 
@@ -829,6 +831,30 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     expect(activeTabIndex.value).toBe(0);
 
     tm.dispose();
+  });
+
+  it("digits and cycling use manual order with pinned surfaces and hidden terminals", async () => {
+    const { tm } = setup({
+      deps: { surfaces, visibleTabIndexes: () => [0, 2] },
+      infos: IDLE_SHELLS,
+    });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    const [first, hidden, last] = tabViews.value.map((tab) => tab.openedAt!);
+    const file = surfaces.orderKey!(0);
+    stripPreferences.value = { order: [last!, hidden!, first!, file], pinned: [file] };
+    tm.runAction("select-tab-1");
+    expect(surfaces.activeIndex()).toBe(0);
+    tm.cycleTab(1);
+    expect(activeTabIndex.value).toBe(2);
+    tm.runAction("select-tab-3");
+    expect(activeTabIndex.value).toBe(0);
+    tm.runAction("select-last-tab");
+    expect(activeTabIndex.value).toBe(0);
+    tm.dispose();
+    stripPreferences.value = EMPTY_STRIP_PREFERENCES;
   });
 
   it("a file opened BEFORE a terminal tab takes the earlier digit", async () => {
