@@ -31,6 +31,10 @@ function mount(overrides: Partial<LauncherFieldsProps> = {}): {
   const onStartTask = vi.fn();
   const onPickFolder = vi.fn();
   const props: LauncherFieldsProps = {
+    // The staged prompt is hidden in production behind
+    // `TASK_PROMPT_STAGING_ENABLED`; these tests keep it wired, the
+    // `deliverGrab(…, pasteDisabled)` precedent.
+    promptStaging: true,
     idPrefix: "test",
     compact: false,
     draft: EMPTY_DRAFT,
@@ -161,6 +165,35 @@ describe("LauncherFields", () => {
     expect(host.querySelector<HTMLButtonElement>(".nt-primary-action")?.textContent).toContain(
       "Open agent",
     );
+  });
+
+  it("withdraws the whole prompt half while task staging is off", () => {
+    // `TASK_PROMPT_STAGING_ENABLED` false: not a collapsed prompt the user can
+    // reopen, but no prompt affordance at all — the label, the expand toggle,
+    // the collapsed panel and `Open agent first` all go, and the primary
+    // action becomes the one thing left to do.
+    mount({ draft: ready(), compact: false, promptStaging: false });
+    expect(host.querySelector("textarea")).toBeNull();
+    expect(host.querySelector(".nt-composer__prompt-head")).toBeNull();
+    expect(host.querySelector(".nt-composer__prompt-collapsed")).toBeNull();
+    expect(host.querySelector(".nt-secondary-action")).toBeNull();
+    expect(host.querySelector<HTMLButtonElement>(".nt-primary-action")?.textContent).toContain(
+      "Open agent",
+    );
+  });
+
+  it("does not let an unanswered prompt block the button while staging is off", () => {
+    // `problem` still reports `empty-prompt` — the draft shape is unchanged —
+    // so the primary must read `openProblem` instead, or a composer with no
+    // prompt box would ship a permanently disabled button.
+    mount({
+      draft: ready(),
+      compact: false,
+      promptStaging: false,
+      problem: "empty-prompt",
+      openProblem: null,
+    });
+    expect(host.querySelector<HTMLButtonElement>(".nt-primary-action")?.disabled).toBe(false);
   });
 
   it("shows a finished attempt as a status, not an alert", () => {

@@ -2,7 +2,7 @@ import { renderAgentStrip } from "../agent-strip.js";
 import { BRAND_ICON_SRC, renderStagePane, renderStageRail, renderStageStrip } from "../appwin.js";
 import { REPO_URL } from "../download-links.js";
 import { renderQuickInstall } from "../install-command.js";
-import { CHANGELOG_URL } from "../release-data.js";
+import { CHANGELOG_URL, LANDING_URL } from "../site-urls.js";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -89,7 +89,7 @@ export function renderDirectionA(copy) {
       <section class="direction-a">
         <div class="a-main">
           <header class="a-topbar">
-            <a class="a-topbar__brand" href="/landing-prototype/?direction=A" aria-label="${copy.navProduct}">
+            <a class="a-topbar__brand" href="${LANDING_URL}" aria-label="${copy.navProduct}">
               ${renderBrandMark(copy)}
             </a>
             <span class="a-topbar__descriptor">Windows + macOS / PTY field</span>

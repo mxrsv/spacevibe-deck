@@ -159,6 +159,27 @@ describe("buildAgentBoard — cards", () => {
     expect(view.cards[5].departed).toBe(true);
     expect(view.cards[5].agent).toBe("claude");
   });
+  it("keeps one restartable card when an ended agent retains its label", () => {
+    const shared = {
+      ordinals: new Map([[11, 3]]),
+      lastAgents: new Map([[11, "claude"]]),
+    };
+    for (const agent of ["claude", null]) {
+      const view = buildAgentBoard(
+        input({
+          ...shared,
+          tabs: [tab(1, DECK, [pane(11, agent, "none", "exited", true)])],
+        }),
+      );
+      expect(view.cards).toHaveLength(1);
+      expect(view.cards[0]).toMatchObject({
+        agent: "claude",
+        departed: true,
+        state: "idle",
+        ordinal: 3,
+      });
+    }
+  });
   it("names a single-agent tab by its custom name and a multi-agent tab by the agent, moving the tab name to where", () => {
     const view = buildAgentBoard(
       input({

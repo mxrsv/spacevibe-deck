@@ -55,6 +55,16 @@ export const quickPickerWorkspace = signal<string | null>(null);
  */
 export const railCardMenuOpen = signal(false);
 /**
+ * The workspace `⌘T`'s free-standing actions menu is open for, or null
+ * (`openspec/changes/rail-create-consolidation`, design D7). `new-tab` hands
+ * `App` the active tab's workspace through `TabManager.newTab()`; `App` writes
+ * it here and mounts `CardActionsMenu` in its `free-standing` placement, which
+ * states that destination in a heading. A module signal rather than `App`
+ * state for the reason its neighbours are (R5): the write comes from the
+ * terminal layer, several components away from the render that reads it.
+ */
+export const railKeyboardMenuFor = signal<string | null>(null);
+/**
  * Settings panel open state. Promoted from a local `useSignal` in `app.tsx`
  * to a module signal here so it is the one overlay signal that shadows the
  * terminal grid — `tab-manager.ts`'s overlay scope guard (which

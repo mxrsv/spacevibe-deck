@@ -1,6 +1,6 @@
 import { BRAND_ICON_SRC } from "./appwin.js";
+import { LANDING_URL } from "./site-urls.js";
 
-const LANDING_URL = "/landing-prototype/";
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 
 function localeButtons(copy, locale) {

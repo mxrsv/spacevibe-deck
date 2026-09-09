@@ -21,6 +21,11 @@ export interface PtySession {
   readonly pty: IPty;
   /** `/dev/ttysNNN` without the `/dev/` prefix — the join key for `ps`. */
   readonly ttyName: string;
+  /**
+   * The per-pane secret the shell learned as `DECK_HOOK_TOKEN`; the hook
+   * endpoint accepts a post for this pane only with it (stage 2).
+   */
+  readonly hookToken: string;
   readonly batcher: OutputBatcher;
   /** Streaming UTF-8 decoder; its held-back tail is released at exit. */
   readonly decode: StreamDecoder;

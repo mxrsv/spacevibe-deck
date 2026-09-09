@@ -1,12 +1,8 @@
 import { WorkspaceSpinner } from "../workspace-spinner";
 import type { RailState } from "../agent-rail-model";
+import type { SignalConfidence } from "../../terminal/agent-attention";
 
 /**
- * Lives in `controls/`, not beside `agent-rail.tsx` (which re-exports it for
- * its five existing importers): the Agent Board imports this mark directly,
- * and `agent-rail.tsx` pulls in the rail's host modules that the Board must
- * not depend on.
- *
  * DL-27.3, amended 2026-08-19 (owner, second pass): the slot draws THREE
  * shapes, not one static dot.
  *
@@ -24,15 +20,43 @@ import type { RailState } from "../agent-rail-model";
  * row that is simply quiet still says "an agent is here" instead of leaving
  * the column empty. Every state's word stays in `title` and the accessible
  * name either way.
+ *
+ * Amended 2026-09-03 (agent-signal contract layer, stage 0): the mark also
+ * carries its CONFIDENCE. `data-confidence="inferred"` draws an `asked` or
+ * `done` dot HOLLOW — Deck read the state off output timing or the process
+ * table rather than hearing it from the CLI — and `explicit` draws it filled;
+ * `unknown` is the resting dot, which is what an `idle` pane that has seen
+ * nothing has always worn. `ended` is the sixth word: a small square in the
+ * quiet gray, the stop glyph, for an agent whose process left the pane.
+ * `failed` and `working` keep one drawing each: a failure is only ever said
+ * by the CLI, and the ring already says "changing on its own".
  */
-export function RailStatusMark({ state }: { readonly state: RailState }) {
+export function RailStatusMark({
+  state,
+  confidence = "explicit",
+}: {
+  readonly state: RailState;
+  readonly confidence?: SignalConfidence;
+}) {
   if (state === "working") {
     return (
-      <span class="asr-row__mark asr-row__mark--spinner" data-state="working" aria-hidden="true">
+      <span
+        class="asr-row__mark asr-row__mark--spinner"
+        data-state="working"
+        data-confidence={confidence}
+        aria-hidden="true"
+      >
         <WorkspaceSpinner />
       </span>
     );
   }
 
-  return <span class="asr-row__mark" data-state={state} aria-hidden="true" />;
+  return (
+    <span
+      class="asr-row__mark"
+      data-state={state}
+      data-confidence={confidence}
+      aria-hidden="true"
+    />
+  );
 }

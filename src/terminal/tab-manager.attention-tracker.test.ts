@@ -381,7 +381,7 @@ describe("createTabManager attention tracker", () => {
       tm.dispose();
     });
 
-    it("infers one completion on agent→shell then ignores shell activity", async () => {
+    it("ends the agent on agent→shell — the row keeps its agent, reads exited — then ignores shell activity", async () => {
       vi.useFakeTimers();
       try {
         const infoByPane = new Map<number, PaneProcessInfo>([
@@ -398,17 +398,29 @@ describe("createTabManager attention tracker", () => {
         expect(tabViews.value[0].attention?.workingCount).toBe(1);
 
         // The foreground process becomes the shell; the next poll closes the
-        // gate and infers exactly one completion.
+        // gate. Before 2026-09-03 that inferred a `completed`, so a crash read
+        // as a finished run (trust audit §4.3); it is the agent's END now.
         infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
         await vi.advanceTimersByTimeAsync(2000);
-        expect(tabViews.value[0].attention?.kind).toBe("completed");
-        expect(tabViews.value[0].attention?.actionableCount).toBe(1);
+        expect(tabViews.value[0].attention?.kind).toBe("idle");
+        expect(tabViews.value[0].attention?.actionableCount).toBe(0);
         expect(tabViews.value[0].attention?.workingCount).toBe(0);
+        // The pane projection still names the agent that ended, so the rail
+        // has a row to print `ended` on (DL-27.3's sixth word).
+        const pane = tabViews.value[0].panes?.[0];
+        expect(pane?.phase).toBe("exited");
+        expect(pane?.agent).toBe("claude");
+        expect(pane?.phaseConfidence).toBe("explicit");
 
-        // Shell activity after the gate closed adds nothing (would be `error`).
+        // Shell activity after the gate closed adds nothing (would be `error`)
+        // — but this harness keeps the pane VISIBLE (window focused, active
+        // tab, DOM focus inside it), and output the user can see is how an
+        // end gets checked: the row goes back to being the shell it now is.
         pty.emitOutput(1, "\x1b]9;4;2\x07");
-        expect(tabViews.value[0].attention?.kind).toBe("completed");
-        expect(tabViews.value[0].attention?.actionableCount).toBe(1);
+        expect(tabViews.value[0].attention?.kind).toBe("idle");
+        expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+        expect(tabViews.value[0].panes?.[0]?.phase).toBe("idle");
+        expect(tabViews.value[0].panes?.[0]?.agent).toBeNull();
 
         tm.dispose();
       } finally {

@@ -102,6 +102,7 @@ export const STATE_RANK: Readonly<Record<RailState, number>> = {
   working: 2,
   done: 3,
   idle: 4,
+  ended: 4,
 };
 
 /**
@@ -122,6 +123,7 @@ export const STATE_WORD: Readonly<Record<RailState, string>> = {
   working: "working",
   done: "done",
   idle: "idle",
+  ended: "ended",
 };
 
 /** The word for one card: `ended` once its agent has left, its state otherwise. */
@@ -232,7 +234,13 @@ function collect(input: AgentBoardInput): {
     for (const cardPane of group.panes) {
       const hit = located.get(cardPane.paneId);
       if (hit !== undefined) {
-        drafts.push({ located: hit, cluster, group, agent: cardPane.agent, departed: false });
+        drafts.push({
+          located: hit,
+          cluster,
+          group,
+          agent: cardPane.agent,
+          departed: hit.pane.phase === "exited",
+        });
       }
     }
   }

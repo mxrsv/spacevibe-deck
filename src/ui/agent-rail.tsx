@@ -1,4 +1,4 @@
-import { CaretRight, Folder, PlusSquare, X } from "@phosphor-icons/react";
+import { CaretRight, Folder, X } from "@phosphor-icons/react";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
@@ -16,7 +16,6 @@ import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
 import { buildAgentRail, type RailStreamGroup } from "./agent-rail-model";
-import { checkoutLabel } from "./agent-rail-card-model";
 import { WorktreeCard } from "./worktree-card";
 import type { CardActions } from "./worktree-card-menus";
 import { RepositoryRail } from "./repository-rail";
@@ -35,8 +34,10 @@ import { isTauriHost } from "../updater/migration-notice";
  * them. The `New` launcher moved to the frame beside `SidebarToggle` on
  * 2026-08-19. Since 2026-08-20 (owner) the rail is no longer live work only:
  * a REMEMBERED project — a workspace-history entry whose last tab has closed —
- * keeps a rowless header with its own `+`, so closing the work does not
- * remove the place it ran in.
+ * keeps its header, so closing the work does not remove the place it ran in.
+ * Since `rail-create-consolidation` (2026-09-02) that header carries no `+`;
+ * the project's remembered checkouts print as rowless groups under it, and
+ * their bare rows are the way back in.
  *
  * One `WorktreeCard` per checkout (DL-27.23/DL-27.24, amended 2026-08-26 —
  * design `docs/specs/2026-08-25-rail-worktree-card-design.md`): the tab tier
@@ -71,19 +72,6 @@ export interface AgentRailProps {
    * `RepositoryRail` reads the same callback for Tauri's legacy tab rows.
    */
   onSelectTab(index: number): void;
-  /**
-   * Open `AgentQuickPicker` targeted at one project (DL-27.18).
-   *
-   * The tab strip's own `+` always opens it on the ACTIVE tab's workspace, so
-   * launching an agent in a project that is on screen but not selected meant
-   * switching tabs first. The header's `+` is the same panel with the
-   * destination decided by which project was pressed. Omitted on hosts where
-   * the picker is not wired (the gallery mounts the rail without it), in which
-   * case no header carries the control.
-   */
-  onNewTabIn?(workspacePath: string): void;
-  /** Keep every project launcher visible but inert during a shared handoff. */
-  newTabDisabled?: boolean;
   /**
    * Forget a remembered project: drop EVERY history entry the rowless header
    * stands for (a repository folds several remembered worktrees into one
@@ -149,52 +137,6 @@ export interface AgentRailProps {
    * passes it to both; the rail lists no file tabs and opens none regardless.
    */
   fileController: FileSurfaceController;
-}
-
-/**
- * The folder a cluster's `+` opens into: the project's own checkout, else the
- * remembered path a rowless cluster carries.
- *
- * `worktrees[0]` IS that checkout since 2026-08-25 — the groups are sorted
- * primary-first (DL-27.23) and git lists the main checkout first — where this
- * used to read the first ROW's workspace and could therefore answer with a
- * package directory below the root. A plain group's synthetic worktree carries
- * its one tab's path, which is the same answer as before; when that tab has no
- * workspace at all the path is empty and the launcher is omitted (DL-19.7).
- * Each worktree group carries its OWN `+` for the checkouts under this one.
- */
-function groupPath(group: RailStreamGroup): string | null {
-  const worktree = group.worktrees[0];
-  if (worktree === undefined) {
-    return group.path;
-  }
-  return worktree.path === "" ? (worktree.rows[0]?.workspacePath ?? null) : worktree.path;
-}
-
-/**
- * Where the project header's `+` actually opens into, as words (spec §7.4):
- * the project, then the primary checkout — which is what `groupPath` has
- * resolved to since 2026-08-25.
- *
- * **A word already said is not said again (2026-08-30).** This used to be
- * `${group.project} · ${worktrees[0].name}`, and a repository's primary
- * checkout sits at the repository root — so its basename IS the project name
- * and the control announced `New tab in spacevibe-deck · spacevibe-deck`: the
- * exact repetition `checkoutLabel` and `whereOf` remove one tier down. It asks
- * `checkoutLabel` for the checkout's word rather than reading `name`, so the
- * header and the card can never disagree about what a checkout is called.
- *
- * The empty check is not defensive: a project git could not scan has one
- * synthetic worktree whose `path` and `branch` are both `""`, and
- * `workspaceLabel("")` is `""` — not `undefined`, so `??` never fired and the
- * label read `New tab in myfolder · ` with a dangling separator.
- */
-function headerDestination(group: RailStreamGroup): string {
-  const worktree = group.worktrees[0];
-  const checkout = worktree === undefined ? "" : checkoutLabel(worktree);
-  return checkout === "" || checkout === group.project
-    ? group.project
-    : `${group.project} · ${checkout}`;
 }
 
 function WorktreeCardRail(props: AgentRailProps) {
@@ -319,12 +261,13 @@ function WorktreeCardRail(props: AgentRailProps) {
         <section class="asr-stream" aria-label="Open agents">
           {view.stream.map((group) => {
             const collapsed = collapsedGroupKeys.value.has(group.key);
-            // A LIVE cluster is one with checkouts under it, and a remembered
-            // one has none — the model gives a rowless project no worktree
-            // groups at all (DL-27.23), so this is the same question the old
-            // `rows.length > 0` asked and the answer cannot differ: a live
-            // cluster is only built when at least one tab is open in it.
-            const live = group.worktrees.length > 0;
+            // A LIVE cluster is one with something OPEN in it — the old
+            // `rows.length > 0` question, asked of the tab indexes the header's
+            // ✕ would close. Not `worktrees.length`: since
+            // `rail-create-consolidation` (2026-09-02) a remembered cluster
+            // carries its checkouts as rowless groups too, so that its way back
+            // in is the same bare row a history-only sibling already had.
+            const live = group.tabIndexes.length > 0;
             return (
               <div
                 class="asr-cluster"
@@ -337,22 +280,22 @@ function WorktreeCardRail(props: AgentRailProps) {
                 data-collapsed={collapsed}
               >
                 {group.labelled && (
-                  /* The header is a ROW of two controls since 2026-08-19
-                     (DL-27.18), not one button: a `+` nested inside the
-                     collapse button would be a button inside a button, which
-                     no browser resolves the way either control means. The
-                     collapse half keeps the whole label and the caret, and the
-                     caret is the LAST thing on the line again since the same
-                     day's re-amendment — the `+` is laid over the slot between
-                     the name and the caret by the header's grid, so DOM order
-                     here is unchanged while reading order is
-                     folder → name → `+` → caret.
+                  /* The header is a ROW of controls since 2026-08-19, not one
+                     button: a control nested inside the collapse button would
+                     be a button inside a button, which no browser resolves the
+                     way either control means. The collapse half keeps the
+                     whole label and the caret, and the caret is the LAST thing
+                     on the line. DL-27.18's `+` stood in the slot before the
+                     caret until `openspec/changes/rail-create-consolidation`
+                     (2026-09-02) removed it: every checkout carries its own
+                     create control on its card, and the header's silently
+                     resolved to the primary one.
 
                      Since 2026-08-22 it is also the whole cluster's drag
                      handle (DL-27.20): no grip glyph is added, and the
                      collapse button shares the surface — below the 5px
-                     threshold its `click` fires untouched. The two small
-                     controls beside it never start a drag. */
+                     threshold its `click` fires untouched. The small close
+                     beside it never starts a drag. */
                   <div class="asr-cluster__head">
                     {live ? (
                       <button
@@ -376,52 +319,15 @@ function WorktreeCardRail(props: AgentRailProps) {
                       /* A REMEMBERED project (owner, 2026-08-20): nothing is
                          open here, so there are no rows to collapse and the
                          disclosure is omitted rather than disabled (DL-19.7).
-                         The still label keeps the toggle's line; the `+`
-                         beside it is the one action the header offers. */
+                         The still label keeps the toggle's line; the forget
+                         control beside it is the one action the header offers
+                         — the checkouts under it carry the create control. */
                       <span class="asr-cluster__still">
                         <span class="asr-cluster__folder" aria-hidden="true">
                           <DeckIcon icon={Folder} size={FEATURE_ICON} />
                         </span>
                         <span class="asr-cluster__name">{group.project}</span>
                       </span>
-                    )}
-                    {/* A project the host could not place has no path to open
-                        into — the control is omitted rather than shown inert
-                        (DL-19.7). */}
-                    {/* Spec §7.4: the header's `+` stays, and it now says WHICH
-                        checkout it targets. `groupPath` resolves to
-                        `worktrees[0]` — always the primary — and with every
-                        checkout carrying its own launcher, the honest wording
-                        is what keeps the two from reading as the same control.
-                        Not removed: a project with one checkout would lose its
-                        launcher whenever its card is open. */}
-                    {props.onNewTabIn !== undefined && groupPath(group) !== null && (
-                      <button
-                        type="button"
-                        class="asr-cluster__add"
-                        disabled={props.newTabDisabled}
-                        aria-label={`New tab in ${headerDestination(group)}`}
-                        title={`New tab in ${headerDestination(group)}`}
-                        onClick={() => {
-                          const path = groupPath(group);
-                          if (path !== null) {
-                            props.onNewTabIn?.(path);
-                          }
-                        }}
-                      >
-                        {/* `PlusSquare`, not the bare `Plus` glyph (owner,
-                              2026-08-20, second pass — the circled mark came
-                              first and read too round beside the rail's
-                              rectangular rows): the framed mark reads as a
-                              drawn control rather than a stray cross floating
-                              on the header line. */}
-                        {/* One rung above the chrome size (owner ask,
-                              2026-08-20): at 13px the framed mark read
-                              smaller than the bare cross it replaced, since
-                              the frame spends the outer pixels. 15 is the
-                              folder glyph's own size on the same line. */}
-                        <DeckIcon icon={PlusSquare} size={FEATURE_ICON} />
-                      </button>
                     )}
                     {/* The header's close. It began (owner, 2026-08-20) as a
                         REMEMBERED project's only action — a rowless header has
@@ -439,10 +345,10 @@ function WorktreeCardRail(props: AgentRailProps) {
                         standing, which reads as a control that did nothing.
 
                         It stands in the caret's track. A live header HAS a
-                        caret, so on hover the two share that track the way the
-                        `+` shares the slot before it; a still header leaves it
-                        empty. Omitted rather than inert when nothing wires it
-                        (DL-19.7). */}
+                        caret, so on hover the two share that track — the
+                        pin-to-overlap idiom the rows' close uses over the agent
+                        glyph; a still header leaves it empty. Omitted rather
+                        than inert when nothing wires it (DL-19.7). */}
                     {!live
                       ? props.onRemoveWorkspace !== undefined &&
                         group.historyPaths.length > 0 && (
@@ -501,8 +407,6 @@ function WorktreeCardRail(props: AgentRailProps) {
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
                       onCloseTab={props.onCloseTab}
-                      onNewTabIn={props.onNewTabIn}
-                      newTabDisabled={props.newTabDisabled}
                       onSelectTab={props.onSelectTab}
                       actions={props.cardActions}
                     />

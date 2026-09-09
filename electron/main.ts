@@ -47,6 +47,10 @@ import { registerBrowser, reactGrabSource } from "./ipc/register-browser";
 import { registerShell } from "./ipc/register-shell";
 import { registerUpdater } from "./ipc/register-updater";
 import { registerTelemetry } from "./ipc/register-telemetry";
+import { registerAgentSignals } from "./ipc/register-agent-signals";
+import { createHookServer } from "./agent-hooks/hook-server";
+import { createOpencodeClients } from "./agent-hooks/opencode-client";
+import { writeClaudeHooksFiles, type ClaudeHooksFiles } from "./agent-hooks/claude-hooks-file";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
 const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
@@ -127,11 +131,33 @@ const browserPanels = new BrowserPanels({
   },
 });
 
+// ---------------------------------------------- Agent-signal contract layer
+// Stage 2 (spec `docs/specs/2026-09-03-agent-signal-contract-layer-design.md`):
+// a loopback endpoint the CLI hooks Deck installs post to, and one opencode
+// subscription per pane. Both deliver through the coordinator, so an event
+// reaches the window that owns the pane and no other. Created BEFORE the PTY
+// manager because every shell learns the endpoint's port at spawn.
+const hookServer = createHookServer({
+  tokenFor: (paneId) => pty.hookTokenOf(paneId),
+  emitToOwner: (paneId, payload) => coordinator.deliver(paneId, EVENTS.hookEvent, payload),
+});
+const opencodeClients = createOpencodeClients({
+  emitToOwner: (paneId, payload) => coordinator.deliver(paneId, EVENTS.hookEvent, payload),
+});
+/** Where the Claude hooks file landed, once `whenReady` has written it. */
+let claudeHooksPaths: ClaudeHooksFiles | null = null;
+
 const pty = new PtyManager({
   emitToOwner: (paneId, event, payload) => coordinator.deliver(paneId, event, payload),
   register: (paneId, label) => coordinator.register(paneId, label),
-  unregister: (paneId) => coordinator.unregister(paneId),
+  unregister: (paneId) => {
+    coordinator.unregister(paneId);
+    // A pane's generation and its opencode subscription die with its PTY.
+    hookServer.forgetPane(paneId);
+    opencodeClients.detach(paneId);
+  },
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
+  hookPort: () => hookServer.port(),
 });
 
 /** The label of the window that sent an IPC message. Every pane command needs
@@ -359,6 +385,20 @@ ipcMain.handle(CHANNELS.ptyCwds, (_event, payload: unknown) => {
 // -------------------------------------------------------------- Services
 registerServices({ labelOf, setRecording: menuState.setRecording });
 
+// ------------------------------------------------- Agent-signal adapters
+registerAgentSignals({
+  config: () => ({
+    // POSIX only: the hook script is `sh` + `curl`. Windows keeps the
+    // fallback (spec §8) until a PowerShell script exists.
+    claudeSettingsPath:
+      process.platform === "win32" ? null : (claudeHooksPaths?.settingsPath ?? null),
+    hookPort: hookServer.port(),
+  }),
+  opencode: opencodeClients,
+  assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
+  labelOf,
+});
+
 // --------------------------------------------------------- Themes folder
 registerThemes();
 
@@ -533,6 +573,17 @@ app.on("second-instance", () => {
 
 // ------------------------------------------------------------------ Boot
 app.whenReady().then(() => {
+  // The hook endpoint and the Claude hooks file (stage 2). Neither blocks the
+  // window: a pane spawned before the listener bound learns no port and stays
+  // on the fallback, and a hooks file that could not be written means no
+  // Claude launch is augmented. Both are Deck-owned paths under `userData` —
+  // never the user's own `~/.claude` (spec §3.1).
+  void hookServer.listen();
+  if (process.platform !== "win32") {
+    void writeClaudeHooksFiles(app.getPath("userData")).then((paths) => {
+      claudeHooksPaths = paths;
+    });
+  }
   // Read the stored rebinds BEFORE the first window exists. `createWindow`
   // rebuilds the menu itself, so resolving afterwards would install the
   // shipped accelerators first and correct them a moment later — a window in

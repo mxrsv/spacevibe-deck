@@ -139,7 +139,6 @@ function mountSidebarLayout(): void {
             onSelectTab={NOOP}
             onCloseTab={NOOP}
             fileController={fileController}
-            onNewTab={NOOP}
             onSelectBrowser={NOOP}
             onCloseBrowser={NOOP}
             onSelectAgentBoard={NOOP}

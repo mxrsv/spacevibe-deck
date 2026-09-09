@@ -263,9 +263,27 @@ describe("settings load recovery layer", () => {
 describe("task launcher mount", () => {
   const source = readFileSync("src/ui/app.tsx", "utf8");
 
-  it("keeps the legacy AgentQuickPicker compiled but unmounted", () => {
-    expect(source).toContain("<QuickLaunch");
+  // Inverted, not deleted: it pinned the surface Quick Launch replaced, and it
+  // now pins the release that defers Quick Launch itself. BOTH launcher
+  // popovers stay compiled and neither is mounted — the Open Board is the one
+  // composer this build ships. Since `rail-create-consolidation` (2026-09-02)
+  // ⌘T raises the rail card's actions menu FREE-STANDING for the active
+  // workspace (`openTaskLauncher` → `railKeyboardMenuFor`), the strip `+` and
+  // the rail project `+` are gone, and NOTHING opens a shell tab on a press:
+  // `openQuickAgent(null, …)` has no caller left in this file.
+  it("keeps both launcher popovers compiled but unmounted, and ⌘T raises the card menu", () => {
+    expect(source).not.toContain("<QuickLaunch");
     expect(source).not.toContain("<AgentQuickPicker");
+    expect(source).toContain('placement="free-standing"');
+    expect(source).toContain("railKeyboardMenuFor.value = workspacePath");
+    // Top-tab mode mounts no rail, and the rail was the only caller of the
+    // scan: without this the chord's heading would name a checkout by its
+    // bare folder in exactly the layout that has no other create control.
+    expect(source).toContain("ensureRepositoriesScanned([workspacePath])");
+    expect(source).not.toContain("openQuickAgent(null");
+    // No call path re-enters `TabManager.newTab` from the app: the old `null`
+    // branch called it back and recursed when no tab was active.
+    expect(source).not.toContain("tabsRef.current?.newTab()");
   });
 
   it("clears the shared draft only after a completed handoff", () => {
@@ -294,7 +312,6 @@ describe("task launcher mount", () => {
     expect(source).toContain("externalPending={taskOperationPending.value}");
     expect(source).toContain("onOpenWorkspace={openTaskBoard}");
     expect(source).toContain("onOpenWorkspace: openTaskBoard");
-    expect(source).toContain("onTransferToBoard={transferQuickLaunchToBoard}");
   });
 
   it("withdraws retry when TabManager no longer owns the original pane", () => {

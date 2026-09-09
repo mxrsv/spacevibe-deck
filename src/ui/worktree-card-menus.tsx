@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   ArrowElbowDownRight,
   FolderOpen,
+  FolderPlus,
   Gear,
   GitFork,
   Info,
@@ -12,7 +13,7 @@ import {
 import { AgentGlyph } from "./controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { CardAgentRow, whereOf } from "./worktree-card-row";
-import { displayAgent } from "./agent-rail-card-model";
+import { displayAgent, subjectWhere, type MenuSubject } from "./agent-rail-card-model";
 import { railCardMenuOpen } from "../chrome/events";
 import type { RailCardPane, RailWorktreeGroup } from "./agent-rail-model";
 
@@ -49,15 +50,32 @@ interface Placement {
   readonly top: number;
 }
 
+/** The four edges a placement reads — a `DOMRect`, or a literal for a surface with no trigger. */
+export type AnchorRect = Pick<DOMRect, "left" | "top" | "right" | "bottom">;
+
+/**
+ * Which side of the anchor the surface hangs off. `right` is the rail's
+ * placement (spec §8.2). `below` is the keyboard-raised actions menu's
+ * (`openspec/changes/rail-create-consolidation`, design D1): it hangs under the
+ * stage strip at the strip's leading edge, because a chord has no control on
+ * screen to sit beside.
+ */
+type PlacementSide = "right" | "below";
+
 /**
  * Place a fixed surface beside `rect`, flipping and clamping against the
  * viewport. Measured off the surface itself, because a flip needs its width
  * and a bottom clamp needs its height — neither is known before it mounts, and
  * both change with the row set (the Tauri menu is ~70px shorter, spec §10).
  */
-function useSurfacePlacement(rect: DOMRect | null): {
+function useSurfacePlacement(
+  rect: AnchorRect | null,
+  side: PlacementSide = "right",
+): {
   readonly ref: { current: HTMLDivElement | null };
   readonly style: Record<string, string>;
+  /** True once the surface has been measured and is visible. */
+  readonly placed: boolean;
 } {
   const ref = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<Placement | null>(null);
@@ -70,13 +88,28 @@ function useSurfacePlacement(rect: DOMRect | null): {
     const measure = (): void => {
       const width = element.offsetWidth;
       const height = element.offsetHeight;
-      const right = rect.right + SURFACE_GAP;
-      const fitsRight = right + width <= window.innerWidth - SURFACE_EDGE;
-      const left = fitsRight ? right : Math.max(SURFACE_EDGE, rect.left - SURFACE_GAP - width);
-      const top = Math.max(
-        SURFACE_EDGE,
-        Math.min(rect.top, window.innerHeight - SURFACE_EDGE - height),
-      );
+      let left: number;
+      let top: number;
+      if (side === "below") {
+        // Under the anchor, leading edges aligned, clamped so the surface never
+        // leaves the viewport on the right or the bottom.
+        left = Math.max(
+          SURFACE_EDGE,
+          Math.min(rect.left, window.innerWidth - SURFACE_EDGE - width),
+        );
+        top = Math.max(
+          SURFACE_EDGE,
+          Math.min(rect.bottom + SURFACE_GAP, window.innerHeight - SURFACE_EDGE - height),
+        );
+      } else {
+        const right = rect.right + SURFACE_GAP;
+        const fitsRight = right + width <= window.innerWidth - SURFACE_EDGE;
+        left = fitsRight ? right : Math.max(SURFACE_EDGE, rect.left - SURFACE_GAP - width);
+        top = Math.max(
+          SURFACE_EDGE,
+          Math.min(rect.top, window.innerHeight - SURFACE_EDGE - height),
+        );
+      }
       // Preact bails on an equal value, so re-measuring a surface that did not
       // move costs one comparison rather than a render.
       setPlace((current) =>
@@ -103,7 +136,7 @@ function useSurfacePlacement(rect: DOMRect | null): {
     return () => {
       observer.disconnect();
     };
-  }, [rect]);
+  }, [rect, side]);
 
   return {
     ref,
@@ -113,6 +146,7 @@ function useSurfacePlacement(rect: DOMRect | null): {
           // the layout effect above has a box to read.
           { visibility: "hidden", left: "0px", top: "0px" }
         : { left: `${place.left}px`, top: `${place.top}px` },
+    placed: place !== null,
   };
 }
 
@@ -397,7 +431,24 @@ export interface CardActions {
   /** The installed app each OS row will actually launch, for its detail line. */
   readonly filesAppLabel?: string;
   readonly terminalAppLabel?: string;
+  /**
+   * Raise the Open board — the `Open another project…` row, rendered ONLY by
+   * the free-standing placement (`rail-create-consolidation`, design D1): with
+   * the tab strip's `+` gone, top-tab mode and a hidden sidebar have no mouse
+   * route to the board, so the chord's own list has to carry one. A card's
+   * anchored menu never renders it — the sidebar's `+ New` is on screen there.
+   */
+  onOpenBoard?(): void;
 }
+
+/**
+ * Where the actions menu stands (`rail-create-consolidation`, design D1).
+ * `anchored` hangs off a card or checkout row and prints no heading, because
+ * the card 6px away states the subject (DL-27.25, amended 2026-08-30).
+ * `free-standing` is `⌘T`'s: no card is beside it, so it states its subject in
+ * a heading and hangs under the stage strip (DL-13.7, amended).
+ */
+export type MenuPlacement = "anchored" | "free-standing";
 
 /** A pressable row: icon · title · detail (DL-13.8). */
 interface ActionRow {
@@ -445,6 +496,10 @@ const ACTION_GLYPHS = {
   finder: FolderOpen,
   terminal: TerminalWindow,
   agents: Gear,
+  // `Open another project…` — a folder being added, distinct from `finder`'s
+  // open folder two rows above it (the glyph-uniqueness rule the 2026-08-30
+  // change recorded for this column).
+  board: FolderPlus,
 } as const;
 
 /**
@@ -457,7 +512,7 @@ const ACTION_GLYPHS = {
  * `(agentsResolved, agents)` — the pair is exhaustive, since a non-empty list
  * can only come from a settled probe.
  */
-function agentRows(actions: CardActions, group: RailWorktreeGroup): readonly MenuRow[] {
+function agentRows(actions: CardActions, subject: MenuSubject): readonly MenuRow[] {
   if (!actions.agentsResolved) {
     return [
       {
@@ -489,7 +544,7 @@ function agentRows(actions: CardActions, group: RailWorktreeGroup): readonly Men
     detail: agent.detail,
     agent: agent.id,
     run: () => {
-      actions.onRunAgent(agent.id, group.path);
+      actions.onRunAgent(agent.id, subject.path);
     },
   }));
 }
@@ -501,9 +556,10 @@ function agentRows(actions: CardActions, group: RailWorktreeGroup): readonly Men
  */
 export function actionGroups(
   actions: CardActions,
-  group: RailWorktreeGroup,
+  subject: MenuSubject,
+  placement: MenuPlacement = "anchored",
 ): readonly (readonly MenuRow[])[] {
-  const agents = agentRows(actions, group);
+  const agents = agentRows(actions, subject);
 
   const work: ActionRow[] = [
     {
@@ -513,17 +569,21 @@ export function actionGroups(
       detail: "Open a pane beside this tab",
       glyph: "split",
       run: () => {
-        actions.onSplitHere(group.path);
+        actions.onSplitHere(subject.path);
       },
     },
   ];
   const createBranch = actions.onCreateBranch;
-  if (createBranch !== undefined) {
+  // Dropped, not disabled, for a checkout git does not know (DL-19.7): a
+  // plain folder has no branch to fork from, and `subject.branch` is null
+  // there — the row would have promised `Branch off null`.
+  if (createBranch !== undefined && subject.labelled && subject.branch !== null) {
+    const branch = subject.branch;
     work.push({
       kind: "action",
       id: "branch",
       title: "Create branch from here",
-      detail: `Branch off ${group.branch}`,
+      detail: `Branch off ${branch}`,
       glyph: "branch",
       run: () => {
         // The REPOSITORY, not this checkout (code review, 2026-08-31):
@@ -532,7 +592,7 @@ export function actionGroups(
         // that worktree instead of beside the repository. `Branch off
         // <branch>` above is still this checkout's branch — that half was
         // always right, and it is what "from here" means.
-        createBranch(group.repositoryPath);
+        createBranch(subject.repositoryPath);
       },
     });
   }
@@ -547,7 +607,7 @@ export function actionGroups(
       detail: "Reveal this folder",
       glyph: "finder",
       run: () => {
-        openFolder(group.path);
+        openFolder(subject.path);
       },
     });
   }
@@ -560,24 +620,65 @@ export function actionGroups(
       detail: actions.terminalAppLabel ?? "Launch your terminal app",
       glyph: "terminal",
       run: () => {
-        openTerminal(group.path);
+        openTerminal(subject.path);
       },
     });
   }
 
-  return [agents, work, os].filter((rows) => rows.length > 0);
+  // The chord's list is COMPLETE on its own (`rail-create-consolidation`,
+  // design D1 and D6): the tab strip's `+` is gone in both layouts, and
+  // top-tab mode has no sidebar, so a hidden sidebar or that layout would
+  // otherwise leave no route to the Open board at all. The anchored menu never
+  // carries it — DL-27.14's `+ New` is on screen beside the rail there.
+  const board: ActionRow[] = [];
+  const openBoard = actions.onOpenBoard;
+  if (placement === "free-standing" && openBoard !== undefined) {
+    board.push({
+      kind: "action",
+      id: "board",
+      title: "Open another project…",
+      detail: "Add a folder or worktree",
+      glyph: "board",
+      run: openBoard,
+    });
+  }
+
+  return [agents, work, os, board].filter((rows) => rows.length > 0);
 }
 
 export interface CardActionsMenuProps {
-  readonly project: string;
-  readonly group: RailWorktreeGroup;
+  /** What the rows act on — a card's group reduced by `subjectOf`, or the
+   * active workspace's by `subjectForWorkspace` for the keyboard placement. */
+  readonly subject: MenuSubject;
   readonly actions: CardActions;
-  /** The card's client rect — the menu hangs off the CARD, not the cursor. */
-  readonly rect: DOMRect | null;
+  /** Defaults to `anchored`. */
+  readonly placement?: MenuPlacement;
+  /** The card's client rect — the menu hangs off the CARD, not the cursor.
+   * Ignored by the free-standing placement, which anchors under the stage
+   * strip and reads that rect itself. */
+  readonly rect: AnchorRect | null;
   /** The `+` segment — exempt from the outside-press close, or its own click
    * would reopen the menu the press had just closed. */
   readonly trigger: HTMLElement | null;
   readonly onClose: () => void;
+}
+
+/**
+ * Where the keyboard-raised menu hangs: under the tab strip, at its leading
+ * edge. `.stage__strip` is sidebar mode's mount and `.tabbar` top-tab mode's
+ * frame (DL-18.6) — one of the two is in the tree in every layout. The fallback
+ * is the viewport's own inset, so a strip that has not mounted yet (a test, the
+ * gallery) still places the surface rather than hiding it forever.
+ */
+function stripAnchor(): AnchorRect {
+  // `[data-strip-anchor]` first: a specimen (the gallery's popovers section)
+  // stands in for the strip so the surface can be reviewed under its own pad
+  // rather than under whichever real strip the page happens to hold.
+  const strip = document.querySelector("[data-strip-anchor], .stage__strip, .tabbar");
+  if (strip !== null) {
+    return strip.getBoundingClientRect();
+  }
+  return { left: SURFACE_EDGE, top: 0, right: SURFACE_EDGE, bottom: 0 };
 }
 
 /**
@@ -595,10 +696,21 @@ export interface CardActionsMenuProps {
  * (DL §23) is one line, and DL-13.3's popover rows are §5 rows, also one line.
  */
 export function CardActionsMenu(props: CardActionsMenuProps) {
-  const { ref, style } = useSurfacePlacement(props.rect);
+  const placement = props.placement ?? "anchored";
+  // The chord's anchor, read once at mount: the strip does not move while the
+  // menu is up (any scroll closes it — `useDismiss`), and a card's `rect` is
+  // the caller's to re-measure, so only the free-standing case reads the DOM.
+  const [stripRect] = useState<AnchorRect | null>(() =>
+    placement === "free-standing" ? stripAnchor() : null,
+  );
+  const { ref, style, placed } = useSurfacePlacement(
+    placement === "free-standing" ? stripRect : props.rect,
+    placement === "free-standing" ? "below" : "right",
+  );
   useDismiss(props.onClose, ref, props.trigger);
   useStageOverlayFlag();
-  const groups = actionGroups(props.actions, props.group);
+  const groups = actionGroups(props.actions, props.subject, placement);
+  const where = subjectWhere(props.subject);
 
   // `role="menu"` PROMISES arrow-key movement, so the promise is kept — the
   // same block `ToolbarOverflowMenu` carries, for the same reason: focus lands
@@ -613,7 +725,6 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
     // raised from the card there, and returning focus to whatever the user was
     // on is truer than picking an element for them.
     const returnTo = document.activeElement;
-    rows()[0]?.focus();
     return () => {
       // DL-13.2's own words ("on dismiss, focus returns to the pane or control
       // that had it"), unimplemented here until 2026-08-31: the focused row
@@ -626,9 +737,24 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
         returnTo.focus();
       }
     };
-    // Mount only: a re-render must not steal focus back to the first row.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The first row takes focus once the surface is PLACED, not at mount
+  // (measured in the gallery, 2026-09-02): the surface is `visibility: hidden`
+  // until `useSurfacePlacement` has read its box, and `focus()` on a hidden
+  // element is a no-op — so the mount-time call left focus on the trigger, and
+  // ⌘T's list opened with nothing focused for the hands that raised it. Once,
+  // guarded by a ref: a re-render after the first placement must not steal
+  // focus back to the first row.
+  const focusedFirstRow = useRef(false);
+  useEffect(() => {
+    if (!placed || focusedFirstRow.current) {
+      return;
+    }
+    focusedFirstRow.current = true;
+    rows()[0]?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placed]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -670,16 +796,25 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
       ref={ref}
       class="asr-pop asr-pop--actions"
       role="menu"
-      aria-label={`Actions for ${whereOf(props.project, props.group)}`}
+      aria-label={`Actions for ${where}`}
+      data-placement={placement}
       style={style}
     >
-      {/* No heading (owner, 2026-08-30). The head printed `Actions for <name>`
-          over `Runs in <branch> [Primary|Worktree]` 6px from a card that states
-          both, so the menu opened by repeating its own anchor. The scope still
-          gets said once — in the footer — and the surface's `aria-label` above
-          still names project, checkout and branch for a reader who cannot see
-          the card. The `Primary`/`Worktree` word moved onto the card head's own
-          badge (`checkoutBadge`). */}
+      {/* No heading on a CARD (owner, 2026-08-30). The head printed `Actions
+          for <name>` over `Runs in <branch> [Primary|Worktree]` 6px from a card
+          that states both, so the menu opened by repeating its own anchor. The
+          scope still gets said once — in the footer — and the surface's
+          `aria-label` above still names project, checkout and branch for a
+          reader who cannot see the card. The `Primary`/`Worktree` word moved
+          onto the card head's own badge (`checkoutBadge`).
+
+          The FREE-STANDING placement has no card beside it, so the one thing
+          the owner asked of every create control — "I must see which checkout
+          the agent will run in" — has to be said here: ONE line, the composed
+          destination (`whereOf`'s own words), not the two-line `Actions for` /
+          `Runs in` head that came off (`rail-create-consolidation`, design D1;
+          DL-27.25 amended). */}
+      {placement === "free-standing" && <p class="asr-act__where">{where}</p>}
       {groups.map((rows, index) => (
         <Fragment key={rows[0]?.id ?? index}>
           {/* Not before the FIRST group: with the head gone, its separator
@@ -726,7 +861,11 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
       <div class="asr-pop__sep" />
       <p class="asr-act__foot">
         <DeckIcon icon={Info} size={CHROME_ICON} />
-        <span>Everything here runs in this checkout</span>
+        <span>
+          {/* A folder git does not know is not a checkout, and the word would
+              promise a branch the menu cannot offer. */}
+          Everything here runs in this {props.subject.labelled ? "checkout" : "folder"}
+        </span>
       </p>
     </div>
   );

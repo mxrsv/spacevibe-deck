@@ -1,0 +1,159 @@
+/* Signal mark direction review (2026-09-03) — GALLERY ONLY.
+ *
+ * Nothing in this file is imported by the renderer (R7: gallery imports flow
+ * app -> gallery only). Variant A of each question is what `04a-agent-rail.css`
+ * ships and needs no rule here; B and C override ONE selector each — the real
+ * `.asr-row__mark[data-state=…][data-confidence=…]::before` — under a variant
+ * wrapper, so the rest of the rail is the shipped component untouched.
+ *
+ * Every drawing stays inside DL-27.3's fixed 14px box and paints only the
+ * `::before` the shipped rule already paints, so no row moves and no
+ * `::after` (the `asked` ripple) is touched.
+ */
+
+/* ------------------------------------------------------- the comparison */
+
+.gxs-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gxs-compare__row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.gxs-compare__title {
+  font-size: var(--type-meta);
+  color: var(--text-muted);
+}
+
+.gxs-strip {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.gxs-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gxs-cell__word {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------- the zooms */
+
+.gxs-zooms {
+  display: flex;
+  align-items: flex-end;
+  gap: 40px;
+}
+
+.gxs-zoom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.gxs-zoom__box {
+  transform: scale(4);
+  transform-origin: center;
+  margin: 24px;
+}
+
+.gxs-zoom__word {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* ------------------------------------------------------- the rail studies */
+
+.gxs-study {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 268px;
+}
+
+.gxs-study__title {
+  font-size: var(--type-meta);
+  color: var(--text-primary);
+}
+
+.gxs-study__note {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+  min-height: 44px;
+}
+
+.gxs-rail {
+  background: var(--sidebar-bg);
+  height: 460px;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------ inferred B - the smaller dot
+ *
+ * The filled 9px dot at 6px. Says "less of a state" rather than "unsure of the
+ * state", and the eye's centre moves 1.5px in from the ring beside it — the
+ * cost the note names. */
+.gxs-v--small .asr-row__mark[data-state="asked"][data-confidence="inferred"]::before,
+.gxs-v--small .asr-row__mark[data-state="done"][data-confidence="inferred"]::before {
+  width: 6px;
+  height: 6px;
+  border: 0;
+  background: var(--status-unread);
+}
+
+.gxs-v--small .asr-row__mark[data-state="done"][data-confidence="inferred"]::before {
+  background: color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+/* ------------------------------------------------ inferred C - the dashed ring
+ *
+ * The hollow ring with a dashed stroke. The loudest "guess" of the three, and
+ * the only texture in the chrome — nothing else in Deck is dashed. */
+.gxs-v--dashed .asr-row__mark[data-state="asked"][data-confidence="inferred"]::before,
+.gxs-v--dashed .asr-row__mark[data-state="done"][data-confidence="inferred"]::before {
+  border-style: dashed;
+}
+
+/* ------------------------------------------------ ended B - the hollow gray ring
+ *
+ * The `done` dot hollowed out. Reads "was here, is gone" — and is identical
+ * to an inferred `done`, which is the collision the note names and the reason
+ * the square ships. */
+.gxs-v--ring .asr-row__mark[data-state="ended"]::before {
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+/* ------------------------------------------------ ended C - the slashed dot
+ *
+ * The 9px gray dot with a diagonal cut. A `linear-gradient` background rather
+ * than a second element, so the mark stays one `::before` — but it is the
+ * only mark in the column drawn from two shapes. */
+.gxs-v--slash .asr-row__mark[data-state="ended"]::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tone) 45%, transparent) 0 40%,
+    transparent 40% 60%,
+    color-mix(in srgb, var(--tone) 45%, transparent) 60% 100%
+  );
+}

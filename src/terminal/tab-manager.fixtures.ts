@@ -149,7 +149,11 @@ export function wire(
     panesById.set(id, pane);
     return pane;
   };
-  const tm = createTabManager(host, pty, { createPane, ...extraDeps });
+  // `promptStaging` defaults to TRUE here and FALSE in production
+  // (`TASK_PROMPT_STAGING_ENABLED`), so the delivery path keeps its coverage
+  // while the shipped surfaces hide it — the `deliverGrab(…, pasteDisabled)`
+  // precedent. `extraDeps` comes last, so a test can still pass false.
+  const tm = createTabManager(host, pty, { createPane, promptStaging: true, ...extraDeps });
   const emitSignal: EmitSignal = (id, signal) => {
     eventsById.get(id)?.onAttentionSignal?.(id, signal);
   };

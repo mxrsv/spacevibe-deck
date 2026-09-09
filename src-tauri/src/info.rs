@@ -28,6 +28,14 @@ pub enum PaneAgent {
     /// Antigravity CLI — the binary is `agy`, so the lowercase serialization
     /// this enum derives already matches the frontend's `PaneAgent` id.
     Agy,
+    /// Cursor CLI — the binary is `cursor-agent`, which `rename_all` would
+    /// flatten to `cursoragent`; the explicit rename keeps the wire id equal
+    /// to the catalog id, the invariant every other variant gets for free.
+    /// Added 2026-09-03 (agent-signal contract layer, stage 0): the catalog
+    /// had carried the sixth built-in since 2026-08-19 while both hosts'
+    /// classification tables still stopped at five.
+    #[serde(rename = "cursor-agent")]
+    CursorAgent,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -54,6 +62,7 @@ fn classify_process(process: Option<&str>, complete: bool) -> (PaneProcessKind, 
         "gemini" => Some(PaneAgent::Gemini),
         "opencode" => Some(PaneAgent::OpenCode),
         "agy" => Some(PaneAgent::Agy),
+        "cursor-agent" => Some(PaneAgent::CursorAgent),
         _ => None,
     };
     if agent.is_some() {
@@ -262,6 +271,18 @@ mod tests {
         assert_eq!(
             classify_process(Some("/Users/dev/.local/bin/agy"), true),
             (PaneProcessKind::Agent, Some(PaneAgent::Agy))
+        );
+    }
+
+    #[test]
+    fn classifies_cursor_agent_as_an_agent_with_its_catalog_id_on_the_wire() {
+        assert_eq!(
+            classify_process(Some("/opt/homebrew/bin/cursor-agent"), true),
+            (PaneProcessKind::Agent, Some(PaneAgent::CursorAgent))
+        );
+        assert_eq!(
+            serde_json::to_string(&PaneAgent::CursorAgent).unwrap(),
+            "\"cursor-agent\""
         );
     }
 

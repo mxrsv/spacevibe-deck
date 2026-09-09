@@ -16,33 +16,35 @@
 import { computed, type ReadonlySignal } from "@preact/signals";
 import { paneSessionIds } from "../../terminal/session-tail-store";
 import { NO_PANES, tabViews } from "../../terminal/tabs-store";
-import { paneState, type RailState } from "../agent-rail-model";
+import { paneSignal, type RailSignal } from "../agent-rail-model";
 
-const NO_STATES: ReadonlyMap<string, RailState> = new Map();
+const NO_STATES: ReadonlyMap<string, RailSignal> = new Map();
 
 /**
- * Session id → the rail state of the pane running it, for every pairing this
- * window holds. Absent means "no pane in this window is in that conversation",
- * never "quiet" — the two are different facts and only the row decides how to
- * draw the second one.
+ * Session id → the rail signal of the pane running it — state AND confidence
+ * (DL-27.3, amended 2026-09-03) — for every pairing this window holds. Absent
+ * means "no pane in this window is in that conversation", never "quiet" — the
+ * two are different facts and only the row decides how to draw the second one.
  *
- * `paneState` is the rail's own mapping (DL-27.3), imported rather than copied
- * so the sidebar cannot grow a second state vocabulary.
+ * `paneSignal` is the rail's own mapping (DL-27.3), imported rather than
+ * copied so the sidebar cannot grow a second state vocabulary — and so an
+ * inferred `asked` draws hollow on a Recent row exactly as it does on the
+ * pane's rail row, rather than the two surfaces disagreeing about one pane.
  */
-export const liveSessionStates: ReadonlySignal<ReadonlyMap<string, RailState>> = computed(() => {
+export const liveSessionStates: ReadonlySignal<ReadonlyMap<string, RailSignal>> = computed(() => {
   const pairings = paneSessionIds.value;
   const tabs = tabViews.value;
   if (pairings.size === 0 || tabs.length === 0) {
     return NO_STATES;
   }
-  const states = new Map<string, RailState>();
+  const states = new Map<string, RailSignal>();
   for (const tab of tabs) {
     for (const pane of tab.panes ?? NO_PANES) {
       const sessionId = pairings.get(pane.paneId);
       if (sessionId === undefined || states.has(sessionId)) {
         continue;
       }
-      states.set(sessionId, paneState(pane));
+      states.set(sessionId, paneSignal(pane));
     }
   }
   return states;

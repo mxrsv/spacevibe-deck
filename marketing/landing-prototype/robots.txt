@@ -1,0 +1,15 @@
+# Served at https://deck.spacevibe.dev/robots.txt — copied to the dist root by
+# ROOT_FILES in vite.build.mjs, the same path install.sh and install.ps1 take.
+#
+# Everything is crawlable, AI answer engines included: Deck is a developer tool
+# and being quotable is the point.
+#
+# The built file spelling `/landing-prototype/index.html` is deliberately NOT
+# disallowed. Blocking it would stop a crawler reading the <link rel=canonical>
+# that folds it into `/`, and a blocked URL can still be indexed by URL alone.
+# Canonical tags and the vercel.json 301s are what dedupe the two spellings.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://deck.spacevibe.dev/sitemap.xml

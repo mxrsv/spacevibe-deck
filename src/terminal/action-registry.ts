@@ -158,7 +158,11 @@ export const ACTION_REGISTRY = [
   },
   {
     id: "new-tab",
-    label: "New Tab",
+    // The id and its chords are unchanged (`rail-create-consolidation`, design
+    // D9): a new id would break every user keymap override bound to it. The
+    // label says what the chord does now — it raises the agent list for the
+    // active checkout, and a row of that list opens the tab.
+    label: "New Agent…",
     // Tiered "board", not "always" (2026-07-27 code review, F2). Originally
     // only set boardOpen.value = true; since 2026-08-14 it opens
     // AgentQuickPicker (rank "modal") instead, but the reasoning still holds

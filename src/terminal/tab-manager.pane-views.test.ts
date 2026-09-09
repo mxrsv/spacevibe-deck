@@ -165,7 +165,8 @@ describe("PaneView ordinals, start time and last agent", () => {
       infos.set(paneId, shellInfo(paneId)); // the agent left; the shell is back
       await vi.advanceTimersByTimeAsync(2000);
       const gone = tabViews.value[0].panes?.[0];
-      expect(gone?.agent).toBeNull();
+      expect(gone?.agent).toBe("claude");
+      expect(gone?.phase).toBe("exited");
       expect(gone?.lastAgent).toBe("claude");
       // A DEPARTURE is not a new generation — the card must not reset its uptime.
       expect(gone?.startedAt).toBe(born);
@@ -274,7 +275,8 @@ describe("PaneView ordinals, start time and last agent", () => {
       await vi.advanceTimersByTimeAsync(2000);
       await vi.advanceTimersByTimeAsync(2000);
       const gone = tabViews.value[0].panes?.[0];
-      expect(gone?.agent).toBeNull();
+      expect(gone?.agent).toBe("claude");
+      expect(gone?.phase).toBe("exited");
       expect(paneSessionIds.value.get(paneId)).toBeUndefined();
       expect(gone?.lastSessionId).toBe("sess-abc");
     } finally {

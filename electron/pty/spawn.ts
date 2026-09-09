@@ -112,8 +112,27 @@ export function resolveSpawnCwd(cwd: string | null, home: string): string {
  *   build it must NOT be faked: tools would pick ConEmu-specific paths on a
  *   plain ConPTY. Verified empirically on Tauri — without it claude emits zero
  *   OSC 9;4; with it, state 0 at startup, 3 while working, 0 when done.
+ * - `DECK_PANE_ID` / `DECK_HOOK_TOKEN` / `DECK_HOOK_PORT` (agent-signal
+ *   contract layer, stage 2): the pane's identity for the hook script Deck
+ *   launches Claude with. The env is fixed at shell spawn while the pane's
+ *   OCCUPANT changes, which is why the endpoint generation-checks every post
+ *   by session id rather than trusting the pane id alone. The port is omitted
+ *   when the loopback listener never bound, and the script exits 0 without
+ *   posting when any of the three is missing.
  */
-export function buildEnv(base: NodeJS.ProcessEnv, version: string): NodeJS.ProcessEnv {
+export interface PaneEnv {
+  readonly paneId: number;
+  /** Per-pane random token; the endpoint refuses a post without it. */
+  readonly hookToken: string;
+  /** The hook endpoint's port, or null when it could not listen. */
+  readonly hookPort: number | null;
+}
+
+export function buildEnv(
+  base: NodeJS.ProcessEnv,
+  version: string,
+  pane?: PaneEnv,
+): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...base,
     TERM: "xterm-256color",
@@ -123,6 +142,15 @@ export function buildEnv(base: NodeJS.ProcessEnv, version: string): NodeJS.Proce
   };
   if (process.platform === "darwin") {
     env.ConEmuANSI = "ON";
+  }
+  if (pane !== undefined) {
+    env.DECK_PANE_ID = String(pane.paneId);
+    env.DECK_HOOK_TOKEN = pane.hookToken;
+    if (pane.hookPort !== null) {
+      env.DECK_HOOK_PORT = String(pane.hookPort);
+    } else {
+      delete env.DECK_HOOK_PORT;
+    }
   }
   return env;
 }
@@ -146,7 +174,7 @@ export interface SpawnedShell {
  * sequence that straddles a read boundary intact rather than turning both
  * halves into U+FFFD.
  */
-export function spawnShell(options: SpawnOptions): SpawnedShell {
+export function spawnShell(options: SpawnOptions, pane?: PaneEnv): SpawnedShell {
   const startedAt = performance.now();
   const launch = platform().shellLaunch();
   const shellResolvedAt = performance.now();
@@ -158,7 +186,7 @@ export function spawnShell(options: SpawnOptions): SpawnedShell {
     cols: options.cols,
     rows: options.rows,
     cwd,
-    env: buildEnv(process.env, app.getVersion()) as Record<string, string>,
+    env: buildEnv(process.env, app.getVersion(), pane) as Record<string, string>,
     encoding: null,
   });
   return {

@@ -21,6 +21,12 @@ export interface AgentProcessMatcher {
  * Built-in agent binaries. A built-in id equals its binary name — that
  * invariant is why `gemini` survived the Antigravity addition, since every
  * `lastAgent` already on disk resolves through it.
+ *
+ * `cursor-agent` joined on 2026-09-03 (agent-signal contract layer, stage 0):
+ * it had been a catalog built-in since 2026-08-19 but was missing here, so a
+ * Cursor pane classified as a busy SHELL — no rail row, no attention gate, no
+ * tail request, no restore. `electron/agents.test.ts` walks `BUILTIN_AGENTS`
+ * against this table so the two lists cannot drift apart again.
  */
 const AGENT_BY_BINARY: Readonly<Record<string, PaneAgent>> = {
   claude: "claude",
@@ -28,6 +34,7 @@ const AGENT_BY_BINARY: Readonly<Record<string, PaneAgent>> = {
   gemini: "gemini",
   opencode: "opencode",
   agy: "agy",
+  "cursor-agent": "cursor-agent",
 };
 
 /** Shells that mean "nothing is running here". */

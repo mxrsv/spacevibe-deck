@@ -68,6 +68,8 @@ interface LivePane {
   readonly launchCommand: string | null;
   /** The task this pane was opened for (spec §11.2), handed back to the Board. */
   readonly taskPrompt: string | null;
+  /** The registry-confirmed session, when the journal recorded one (stage 1). */
+  readonly sessionId: string | null;
 }
 
 interface LiveTab {
@@ -125,6 +127,7 @@ function livePaneOf(pane: SessionPane, alive: ReadonlyMap<string, boolean>): Liv
       skipLookup: true,
       launchCommand: pane.launchCommand,
       taskPrompt: pane.taskPrompt,
+      sessionId: pane.sessionId ?? null,
     };
   }
   return {
@@ -133,6 +136,7 @@ function livePaneOf(pane: SessionPane, alive: ReadonlyMap<string, boolean>): Liv
     skipLookup: false,
     launchCommand: pane.launchCommand,
     taskPrompt: pane.taskPrompt,
+    sessionId: pane.sessionId ?? null,
   };
 }
 
@@ -173,6 +177,9 @@ function buildResumeRequests(tabs: readonly LiveTab[]): {
           agent: pane.agent,
           cwd: pane.cwd,
           lastSeenAt: tab.lastSeenAt,
+          // The conversation the registry confirmed this pane was in (stage 1):
+          // main reopens it when it is still on disk and ranks only when not.
+          ...(pane.sessionId === null ? {} : { preferredId: pane.sessionId }),
         });
         keys.push(paneKey(tabIndex, paneIndex));
       }

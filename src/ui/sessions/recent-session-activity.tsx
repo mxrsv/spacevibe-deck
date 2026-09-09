@@ -45,6 +45,9 @@ const LOUD_STATE_WORDS: Readonly<Partial<Record<RailState, string>>> = Object.fr
   working: "running",
   asked: "needs you",
   failed: "failed",
+  // DL-27.3's sixth word (2026-09-03): the pane that ran this session lost
+  // its agent. Loud, because a dead process is something to look at.
+  ended: "ended",
 });
 
 /** No pane holds this session: the quiet dot, so the state column still holds. */
@@ -147,7 +150,8 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
             const name = sessionName(entry);
             const reasonId = dead ? unavailableReasonId(base, entry) : undefined;
             const activityTime = formatActivityTime(entry.lastActivityMs, Date.now());
-            const state = liveStates.get(entry.sessionId) ?? QUIET_STATE;
+            const live = liveStates.get(entry.sessionId);
+            const state = live?.state ?? QUIET_STATE;
             const loudWord = LOUD_STATE_WORDS[state];
             return (
               <li key={`${entry.agent}-${entry.sessionId}`} class="recent-session-activity__slot">
@@ -179,7 +183,7 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                   {loudWord === undefined ? null : (
                     <span class="recent-session-activity__state-word">{loudWord}. </span>
                   )}
-                  <RailStatusMark state={state} />
+                  <RailStatusMark state={state} confidence={live?.confidence} />
                   <time class="recent-session-activity__time" dateTime={activityTime.dateTime}>
                     {activityTime.label}
                   </time>

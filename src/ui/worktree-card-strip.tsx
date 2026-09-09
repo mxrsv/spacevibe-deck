@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { Plus } from "@phosphor-icons/react";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import { CardLoad, CardMark, STATE_LABEL, whereOf } from "./worktree-card-row";
+import { CardLoad, CardMark, signalLabelOf, whereOf } from "./worktree-card-row";
 import { SegmentMenu } from "./worktree-card-menus";
 import {
   displayAgent,
@@ -25,9 +25,14 @@ import type { RailWorktreeGroup } from "./agent-rail-model";
  *
  * **This reverses the card spec's §4 and the comment that used to sit on
  * `CardStrip`: the strip is no longer a preview, it is a set of controls.** A
- * segment is one AGENT KIND rather than one pane, it is a `<button>` that
- * focuses its loudest pane, hovering or focusing it raises the panes behind
- * it, and a trailing `+` opens the checkout's actions menu.
+ * segment is one AGENT KIND rather than one pane, it is a `<button>`, hovering
+ * or focusing it raises the panes behind it, and a trailing `+` opens the
+ * checkout's actions menu. **What a press does depends on how many panes the
+ * segment stands for (spec §16 §15.1, amended 2026-09-02):** a single-pane
+ * segment focuses that pane; a merged `×N` segment and the `+N` tail PIN the
+ * menu open so the user can choose, because pressing the loudest pane on the
+ * user's behalf was a guess they never asked for, and it closed the hover menu
+ * under a pointer that could not re-raise it without leaving first.
  *
  * Three consequences of that reversal, each of which was a deliberate line in
  * the shipped card:
@@ -209,6 +214,23 @@ export function CardStrip(props: CardStripProps) {
   const { group, project } = props;
   const { ref, metrics } = useStripMetrics();
   const [hovered, setHovered] = useState<HoverTarget | null>(null);
+  /**
+   * The key a PRESS opened the menu for (spec §16 §15.1, amended 2026-09-02).
+   *
+   * Until then every segment's press focused its loudest pane and closed the
+   * menu — so a merged `×2` could never be CHOSEN from by clicking: the press
+   * guessed a pane, the hover menu vanished under a pointer that had not
+   * moved, and since `pointerenter` never fires again while the pointer stays
+   * inside the segment, the menu could not come back until the pointer left
+   * and returned. The owner read that as "click does nothing but blink".
+   *
+   * A pinned menu ignores the hover close: it survives the pointer leaving the
+   * strip and the surface, and goes on Escape, an outside press, a second
+   * press on its own segment, a pane chosen from it, or its segment leaving
+   * the shown set. Hovering a DIFFERENT segment re-targets the menu and drops
+   * the pin, so the strip never holds two intents at once.
+   */
+  const [pinned, setPinned] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
 
   const all = groupSegments(group.panes);
@@ -221,6 +243,13 @@ export function CardStrip(props: CardStripProps) {
     metrics.tail,
   );
 
+  // Pinned by KEY, not by index: `groupSegments` re-ranks on every render, so a
+  // state change mid-hover can reorder or evict the segment the menu belongs
+  // to. When the key leaves the shown set the menu has nothing to describe and
+  // `behind` is empty, which is what closes it (spec §5.1).
+  const behind = hovered === null ? [] : panesBehind(hovered.key, group.panes, fit.shown);
+  const pinHolds = pinned !== null && hovered?.key === pinned && behind.length > 0;
+
   const clearTimer = (): void => {
     if (timer.current !== null) {
       window.clearTimeout(timer.current);
@@ -232,10 +261,18 @@ export function CardStrip(props: CardStripProps) {
     timer.current = window.setTimeout(() => {
       timer.current = null;
       setHovered({ key, element, rect: element.getBoundingClientRect() });
+      setPinned((current) => (current === key ? current : null));
     }, delay);
   };
   const dismiss = (delay: number): void => {
+    // Leaving cancels whatever hover intent was pending, pinned or not: a
+    // `raise` scheduled by brushing a neighbouring segment must not fire after
+    // the pointer has gone, or it would re-target an unpinned menu that nothing
+    // is left to close.
     clearTimer();
+    if (pinHolds) {
+      return;
+    }
     timer.current = window.setTimeout(() => {
       timer.current = null;
       setHovered(null);
@@ -244,13 +281,19 @@ export function CardStrip(props: CardStripProps) {
   const close = (): void => {
     clearTimer();
     setHovered(null);
+    setPinned(null);
   };
-
-  // Pinned by KEY, not by index: `groupSegments` re-ranks on every render, so a
-  // state change mid-hover can reorder or evict the segment the menu belongs
-  // to. When the key leaves the shown set the menu has nothing to describe and
-  // `behind` is empty, which is what closes it (spec §5.1).
-  const behind = hovered === null ? [] : panesBehind(hovered.key, group.panes, fit.shown);
+  /** A press on a segment that stands for several panes: open to choose, or
+   * close what a previous press opened. */
+  const togglePin = (key: string, element: HTMLElement): void => {
+    if (pinned === key) {
+      close();
+      return;
+    }
+    clearTimer();
+    setHovered({ key, element, rect: element.getBoundingClientRect() });
+    setPinned(key);
+  };
 
   return (
     <>
@@ -264,9 +307,14 @@ export function CardStrip(props: CardStripProps) {
         {fit.shown.map((segment) => {
           const merged = segment.panes.length > 1;
           const name = segment.panes[0]?.label ?? segment.agent;
+          const where = whereOf(project, group);
+          // A merged segment's press CHOOSES, a single one's FOCUSES — the
+          // accessible name says which (DL-27.2), since nothing else on the
+          // segment does.
+          const stateWord = signalLabelOf(segment.state, segment.confidence);
           const word = merged
-            ? `${segment.panes.length} ${displayAgent(segment.agent)} agents, loudest ${STATE_LABEL[segment.state]}`
-            : `${name}, ${STATE_LABEL[segment.state]}`;
+            ? `Choose from ${segment.panes.length} ${displayAgent(segment.agent)} agents, loudest ${stateWord} in ${where}`
+            : `Focus ${name}, ${stateWord} in ${where}`;
           const loudest = segment.panes[0];
           return (
             <button
@@ -277,17 +325,27 @@ export function CardStrip(props: CardStripProps) {
               data-origin={hovered?.key === segment.agent}
               // DL-23.10 applied: no native `title` on a control the keyboard
               // reaches. The state word lives in the accessible name (DL-27.2).
-              aria-label={`Focus ${word} in ${whereOf(project, group)}`}
+              aria-label={word}
+              // Only a segment whose press opens something claims a popup; a
+              // single-pane segment's press is a focus, and its hover menu is
+              // DL-13.7's stateless kind.
+              aria-haspopup={merged ? "dialog" : undefined}
+              aria-expanded={
+                merged ? hovered?.key === segment.agent && behind.length > 0 : undefined
+              }
               onPointerEnter={(event) => {
                 raise(segment.agent, event.currentTarget, HOVER_OPEN_MS);
               }}
               onFocus={(event) => {
                 raise(segment.agent, event.currentTarget, 0);
               }}
-              onClick={() => {
-                // A merged segment presses its LOUDEST pane — the one whose
-                // state the single mark is already reporting.
-                if (loudest !== undefined) {
+              onClick={(event) => {
+                // A merged segment stands for several panes, so its press opens
+                // the choice rather than guessing the loudest (spec §16 §15.1,
+                // amended 2026-09-02). A single-pane segment IS its pane.
+                if (merged) {
+                  togglePin(segment.agent, event.currentTarget);
+                } else if (loudest !== undefined) {
                   props.onFocusPane(loudest.tabIndex, loudest.paneId);
                   close();
                 }
@@ -295,7 +353,7 @@ export function CardStrip(props: CardStripProps) {
             >
               <span class="asr-card__glyph">
                 <AgentGlyph agent={segment.agent} className="asr-card__logo" />
-                <CardMark state={segment.state} />
+                <CardMark state={segment.state} confidence={segment.confidence} />
               </span>
               {/* `--text-muted`, never `--accent`: `+N` already spends the
                   accent on a count of HIDDEN agents, and two counts in one bar
@@ -314,11 +372,19 @@ export function CardStrip(props: CardStripProps) {
             data-fit-role="overflow"
             data-origin={hovered?.key === STRIP_OVERFLOW_KEY}
             aria-label={`${fit.overflow} more agents in ${whereOf(project, group)}`}
+            aria-haspopup="dialog"
+            aria-expanded={hovered?.key === STRIP_OVERFLOW_KEY && behind.length > 0}
             onPointerEnter={(event) => {
               raise(STRIP_OVERFLOW_KEY, event.currentTarget, HOVER_OPEN_MS);
             }}
             onFocus={(event) => {
               raise(STRIP_OVERFLOW_KEY, event.currentTarget, 0);
+            }}
+            onClick={(event) => {
+              // The tail stands for the panes the fold hid: a press opens them
+              // to choose from, and a second press closes them, exactly as a
+              // merged segment does. It had no press at all before 2026-09-02.
+              togglePin(STRIP_OVERFLOW_KEY, event.currentTarget);
             }}
           >
             +{fit.overflow}

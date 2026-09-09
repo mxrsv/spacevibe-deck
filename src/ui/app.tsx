@@ -2,7 +2,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "../host/bridge";
 import { getCurrentWindow, currentWindowLabel } from "../host/window-host";
-import { ask, message, open } from "../host/dialog-host";
+import { ask, message } from "../host/dialog-host";
 import { installQuitGuard } from "../lib/quit-guard";
 import {
   confirmClose,
@@ -38,11 +38,7 @@ import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { pingPane } from "../terminal/pane-ping";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { presetsData, savePreset } from "../presets/presets-store";
-import {
-  recordWorkspaceOpen,
-  removeWorkspaceRecents,
-  workspacesData,
-} from "../open-board/workspaces-store";
+import { recordWorkspaceOpen, removeWorkspaceRecents } from "../open-board/workspaces-store";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -52,6 +48,7 @@ import {
   persistError,
   promptsOpen,
   railCardMenuOpen,
+  railKeyboardMenuFor,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
@@ -75,37 +72,19 @@ import { isTauriHost, shouldShowNotice } from "../updater/migration-notice";
 import { UsageConsentModal } from "./usage-consent-modal";
 import { ensureTelemetryStateLoaded, usageConsentOpen } from "../telemetry/consent-store";
 import { countRestoredSessions, installUsageCounterEffects } from "../telemetry/usage-counters";
-import { launchNotice, OpenBoard } from "../open-board/open-board";
+import { OpenBoard } from "../open-board/open-board";
 import {
   clearDraft,
-  clearDraftAndUseRetarget,
   closeQuickLaunch,
-  keepDraftWorkspace,
-  moveDraftToRetarget,
   newTaskDraft,
-  openQuickLaunch,
-  selectDraftWorkspace,
-  taskDraftTouched,
   quickLaunchOpen,
-  quickLaunchRetarget,
-  toggleQuickLaunch,
-  transferToBoard,
-  updateDraft,
+  taskDraftTouched,
 } from "../launcher/launcher-store";
 import { agentLaunchCommand } from "../lib/launch-command";
-import { openAgentProblem, startTaskProblem, type NewTaskDraft } from "../launcher/new-task-draft";
+import type { NewTaskDraft } from "../launcher/new-task-draft";
 import { composeLaunchCommand } from "../launcher/compose-launch-command";
 import { mergeRuntimeDefaults, runtimeFor } from "../launcher/runtime-catalog";
-import { QuickLaunch, QuickLaunchSubview } from "../launcher/quick-launch";
 import type { LauncherPending } from "../launcher/launcher-fields";
-import { CreateWorkspaceForm } from "../open-board/create-workspace-form";
-import {
-  available as workspaceCreateAvailable,
-  createWorkspace,
-} from "../host/workspace-create-host";
-import { available as worktreeHostAvailable } from "../host/worktree-host";
-import { OpenBoardWorktreeForm } from "../open-board/open-board-worktree-form";
-import { useWorktreeForm } from "../open-board/use-worktree-form";
 import {
   launchCanRetryPrompt,
   launchClearsDraft,
@@ -168,7 +147,9 @@ import { DeckToolbar } from "./toolbar/deck-toolbar";
 // pinned block whose count pressed it is gone, so a swap back re-wires that one
 // prop to `requestAttentionFocus`.
 import { AgentRail } from "./agent-rail";
-import type { CardActions } from "./worktree-card-menus";
+import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
+import { subjectForWorkspace } from "./agent-rail-model";
+import { ensureRepositoriesScanned, repositoryScans } from "../repositories/repositories-store";
 import { StatusBar } from "./status-bar";
 import { SettingsScreen } from "./settings/settings-screen";
 import { UsageDockTab } from "./usage/usage-dock-tab";
@@ -276,14 +257,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // — accepted, because a notice whose whole job is to be seen should err that
   // way rather than the other.
   const noticeDismissed = useSignal(false);
-  const quickLaunchPending = useSignal<LauncherPending | null>(null);
   const taskOperationPending = useSignal<LauncherPending | null>(null);
   const taskOperationFlight = useRef<Promise<LaunchTaskOutcome> | null>(null);
   const quickLaunchNotice = useSignal<string | null>(null);
   const launchAttempt = useSignal<TaskLaunchAttempt | null>(null);
-  const quickLaunchView = useSignal<"composer" | "workspace" | "worktree">("composer");
-  const quickLaunchReturnAfterSettings = useSignal(false);
-  const quickWorktreeForm = useWorktreeForm();
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
   const fileControllerRef = useRef<FileSurfaceController | null>(null);
@@ -769,16 +746,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
-  // Manage agents is a round trip, not a draft dismissal. Settings covers the
-  // whole window, so Quick Launch leaves while it is open and returns to the
-  // same draft when Settings closes; the popover's mount focus restores the
-  // prompt field after `closePanel` briefly hands focus to the active pane.
-  useSignalEffect(() => {
-    if (!quickLaunchReturnAfterSettings.value || settingsOpen.value) return;
-    quickLaunchReturnAfterSettings.value = false;
-    openQuickLaunch(null);
-  });
-
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
     // One builder per flow: the dialog title and OK label differ, so a
@@ -1060,24 +1027,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     void ensureExternalAppsScanned();
   }, []);
 
-  // Quick Launch shares the detection cache with Open Board, but after the
-  // legacy picker is retired nothing else would refresh it on Cmd+T. Seed the
-  // remembered prompt visibility at the same open boundary.
-  useSignalEffect(() => {
-    if (!quickLaunchOpen.value) {
-      quickLaunchView.value = "composer";
-      return;
-    }
-    const customAgents = settings.value.customAgents;
-    void ensureAgentsDetected(probeNames(customAgents));
-    if (newTaskDraft.value.promptExpanded !== settings.value.quickLaunchPromptExpanded) {
-      updateDraft({
-        ...newTaskDraft.value,
-        promptExpanded: settings.value.quickLaunchPromptExpanded,
-      });
-    }
-  });
-
   /**
    * The launcher's one launch path (design §8). `App` composes the command and
    * asks `TabManager` to materialize and deliver; the board says what happened.
@@ -1225,7 +1174,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     boardOpen.value = false;
-    closeQuickLaunch();
     if (tabsRef.current?.focusTaskPrompt(attempt.tabKey) !== true) {
       launchAttempt.value = null;
     }
@@ -1242,85 +1190,43 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   }
 
+  /**
+   * ⌘T (`new-tab`), reached through `TabManager.newTab()` with the active
+   * tab's workspace. Quick Launch is deferred out of this release; since
+   * `openspec/changes/rail-create-consolidation` (2026-09-02) the chord raises
+   * the same agent list every rail card's `+` raises, FREE-STANDING under the
+   * stage strip with a heading that states the destination — not a shell in
+   * that checkout, which was a process started without a word about where.
+   * With no workspace to name, the Open board is the honest answer. This
+   * never calls back into `newTab()`, which is what removed the recursion the
+   * old `null` branch had when no tab was active.
+   */
   function openTaskLauncher(workspacePath: string | null): void {
-    if (taskOperationPending.value === null) {
-      toggleQuickLaunch(workspacePath);
+    if (taskOperationPending.value !== null) {
+      return;
     }
-  }
-
-  function transferQuickLaunchToBoard(): void {
-    if (taskOperationPending.value === null) {
-      transferToBoard();
+    // A second ⌘T while the list is up closes it — the toggle every anchored
+    // trigger has, so the chord is not the one create control without one.
+    if (railKeyboardMenuFor.value !== null) {
+      railKeyboardMenuFor.value = null;
+      return;
     }
+    if (workspacePath === null) {
+      openTaskBoard();
+      return;
+    }
+    // The rail is the only other caller of the scan, and top-tab mode never
+    // mounts a rail: without this the heading would name a git checkout by its
+    // bare folder and drop its branch exactly in the layout that has no other
+    // create control. The menu reads `repositoryScans` in render, so it
+    // re-derives its subject when the scan lands.
+    ensureRepositoriesScanned([workspacePath]);
+    railKeyboardMenuFor.value = workspacePath;
   }
 
   /** The live agent choices shared by both launcher surfaces. */
   const launcherAgents = () =>
     agentOptions(detectedAgents.value, settings.value.customAgents, settings.value.disabledAgents);
-
-  /** Quick Launch owns its pending/notice line; materialization stays shared. */
-  async function runQuickLaunch(kind: "start" | "open"): Promise<void> {
-    if (quickLaunchPending.value !== null || taskOperationPending.value !== null) {
-      return;
-    }
-    quickLaunchNotice.value = null;
-    quickLaunchPending.value = kind === "start" ? "sending-prompt" : "opening-agent";
-    const outcome = await handleLaunchTask(newTaskDraft.value, kind === "start");
-    quickLaunchPending.value = null;
-    quickLaunchNotice.value = launchNotice(outcome);
-  }
-
-  async function retryQuickLaunchPrompt(): Promise<void> {
-    if (quickLaunchPending.value !== null || taskOperationPending.value !== null) {
-      return;
-    }
-    quickLaunchNotice.value = null;
-    quickLaunchPending.value = "retrying-prompt";
-    const outcome = await handleRetryTaskPrompt();
-    quickLaunchPending.value = null;
-    quickLaunchNotice.value = launchNotice(outcome);
-  }
-
-  async function pickQuickLaunchFolder(): Promise<void> {
-    quickLaunchPending.value = "picking-folder";
-    quickLaunchNotice.value = null;
-    try {
-      const picked = await open({ directory: true, multiple: false });
-      if (typeof picked === "string") {
-        selectDraftWorkspace(picked);
-      }
-    } catch (error: unknown) {
-      console.warn("Quick Launch folder picker failed:", error);
-      quickLaunchNotice.value = "Couldn't open the folder picker — try again";
-    } finally {
-      quickLaunchPending.value = null;
-    }
-  }
-
-  function openQuickWorktreeForm(repoPath?: string): void {
-    quickWorktreeForm.reset();
-    // A rail card's `Create branch from here` names the repository it was
-    // raised on (spec §8): prefilling it is what keeps that row from dropping
-    // the user into an empty form about no checkout in particular. Quick
-    // Launch's own control still opens it blank.
-    if (repoPath !== undefined) {
-      quickWorktreeForm.setRepo(repoPath);
-    }
-    quickLaunchNotice.value = null;
-    quickLaunchView.value = "worktree";
-  }
-
-  function submitQuickWorktree(): void {
-    quickLaunchPending.value = "creating-worktree";
-    void quickWorktreeForm
-      .submit((path) => {
-        selectDraftWorkspace(path);
-        quickLaunchView.value = "composer";
-      })
-      .finally(() => {
-        quickLaunchPending.value = null;
-      });
-  }
 
   /** Editor confirm: save the preset, then materialize a new tab. */
   async function handleEditorCreate(name: string, artifact: PresetArtifact): Promise<void> {
@@ -1714,27 +1620,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
-  /** Quick Launch is non-modal, but it still needs visible stage pixels. */
-  const quickLaunchUnavailable = (): string | null =>
-    browserSurfaceActive.value
-      ? "close the browser tab before opening Quick Launch"
-      : overlayCoversPane()
-        ? "a surface is covering the stage"
-        : null;
-
-  useSignalEffect(() => {
-    if (!quickLaunchOpen.value) {
-      return;
-    }
-    const unavailable = quickLaunchUnavailable();
-    if (unavailable !== null) {
-      closeQuickLaunch();
-      if (browserSurfaceActive.value) {
-        reportPersistError(`Quick Launch is unavailable — ${unavailable}.`);
-      }
-    }
-  });
-
   /**
    * Everything that must hide the browser surface's native view.
    *
@@ -2080,14 +1965,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     onSplitHere: (workspacePath) => {
       void tabsRef.current?.splitInWorkspace(workspacePath);
     },
-    ...(worktreeHostAvailable
-      ? {
-          onCreateBranch: (repoPath: string) => {
-            openQuickLaunch(repoPath);
-            openQuickWorktreeForm(repoPath);
-          },
-        }
-      : {}),
+    // Rendered by the FREE-STANDING placement only (`rail-create-consolidation`,
+    // design D1): ⌘T's list has to reach the Open board on its own, because the
+    // tab strip's `+` is gone and top-tab mode has no sidebar `+ New`.
+    onOpenBoard: openTaskBoard,
+    // `Create branch from here` is deliberately unwired while Quick Launch is
+    // deferred: the row's only create surface was that popover's worktree
+    // subview. DL-19.7 — a control nothing answers is omitted, not drawn.
     ...(externalAppsAvailable && filesApp !== undefined
       ? {
           onOpenFolder: (path: string) => {
@@ -2105,17 +1989,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         }
       : {}),
   };
-  const quickContext = {
-    runnableAgentIds: quickAgents.filter((agent) => !agent.missing).map((agent) => agent.id),
-    unavailableAgentIds: quickAgents.filter((agent) => agent.missing).map((agent) => agent.id),
-  };
-  const quickProblem = startTaskProblem(newTaskDraft.value, quickContext);
-  /**
-   * What blocks opening an agent with no task. A collapsed Quick Launch offers
-   * exactly that, so gating its primary on `quickProblem` disabled the button
-   * over its own "Open the agent first and type in its terminal".
-   */
-  const quickOpenProblem = openAgentProblem(newTaskDraft.value, quickContext);
   const currentLaunchAttempt = launchAttempt.value;
   const launchTargetExists =
     currentLaunchAttempt !== null &&
@@ -2202,12 +2075,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             }
             onFocusPane={focusRailPane}
             cardActions={railCardActions}
-            onNewTabIn={(workspacePath) => {
-              // The same non-modal launcher Cmd+T raises, pinned to the
-              // project whose header was pressed.
-              openTaskLauncher(workspacePath);
-            }}
-            newTabDisabled={taskOperationPending.value !== null}
             // A remembered header's close: forget the folder by dropping its
             // history entries; the rail re-derives from `workspacesData`.
             onRemoveWorkspace={removeWorkspaceRecents}
@@ -2219,8 +2086,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         <TabBar
           onSelectTab={selectTab}
           onCloseTab={(index) => void closeTab(index)}
-          onNewTab={() => void tabsRef.current?.newTab()}
-          newTabDisabled={taskOperationPending.value !== null}
           toolbar={chromeActions}
           fileController={fileController}
           onSelectBrowser={selectBrowserTab}
@@ -2295,8 +2160,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 <TabStrip
                   onSelectTab={selectTab}
                   onCloseTab={(index) => void closeTab(index)}
-                  onNewTab={() => void tabsRef.current?.newTab()}
-                  newTabDisabled={taskOperationPending.value !== null}
                   fileController={fileController}
                   onSelectBrowser={selectBrowserTab}
                   onCloseBrowser={closeBrowserTab}
@@ -2365,110 +2228,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               above and shared with `boardPanel`, so the grid and the panel
               cannot disagree about the selected card. */}
           <AgentBoardSurface view={boardView} actions={boardActions} panel={boardPanel} />
-          {quickLaunchOpen.value ? (
-            quickLaunchView.value === "workspace" ? (
-              <QuickLaunchSubview
-                label="Create workspace"
-                onBack={() => {
-                  quickLaunchView.value = "composer";
-                }}
-              >
-                <CreateWorkspaceForm
-                  initialParent={
-                    newTaskDraft.value.workspacePath ?? getDesktopEnvironment().homeDir
-                  }
-                  onPickParent={() => open({ directory: true, multiple: false })}
-                  create={createWorkspace}
-                  onCreated={(path) => {
-                    selectDraftWorkspace(path);
-                    quickLaunchView.value = "composer";
-                  }}
-                  onBack={() => {
-                    quickLaunchView.value = "composer";
-                  }}
-                  onClose={() => {
-                    closeQuickLaunch();
-                    tabsRef.current?.focusActive();
-                  }}
-                />
-              </QuickLaunchSubview>
-            ) : quickLaunchView.value === "worktree" ? (
-              <QuickLaunchSubview
-                label="Create worktree"
-                onBack={() => {
-                  quickLaunchView.value = "composer";
-                }}
-              >
-                <OpenBoardWorktreeForm
-                  recents={workspacesData.value.recents}
-                  homeDir={getDesktopEnvironment().homeDir}
-                  repoPath={quickWorktreeForm.state.repoPath}
-                  branch={quickWorktreeForm.state.branch}
-                  destPath={quickWorktreeForm.state.destPath}
-                  error={quickWorktreeForm.state.error}
-                  creating={quickWorktreeForm.state.creating}
-                  onRepoChange={quickWorktreeForm.setRepo}
-                  onBrowseRepo={() => void quickWorktreeForm.browseRepo()}
-                  onBranchChange={quickWorktreeForm.setBranch}
-                  onDestChange={quickWorktreeForm.setDest}
-                  onBack={() => {
-                    quickLaunchView.value = "composer";
-                  }}
-                  onSubmit={submitQuickWorktree}
-                />
-              </QuickLaunchSubview>
-            ) : (
-              <QuickLaunch
-                draft={newTaskDraft.value}
-                agents={quickAgents}
-                recents={workspacesData.value.recents}
-                declaredModels={settings.value.agentModels}
-                agentRuntimeDefaults={settings.value.agentRuntimeDefaults}
-                canCreateWorkspace={workspaceCreateAvailable}
-                canCreateWorktree={worktreeHostAvailable}
-                pending={quickLaunchPending.value ?? taskOperationPending.value}
-                problem={quickProblem}
-                openProblem={quickOpenProblem}
-                agentsResolved={agentsProbed.value}
-                notice={quickLaunchNotice.value}
-                retarget={quickLaunchRetarget.value}
-                canRetryDelivery={canRetryTaskDelivery}
-                canFocusOpenedAgent={launchTargetExists}
-                hasUserDraftContent={taskDraftTouched.value}
-                onDraftChange={updateDraft}
-                onPromptExpandedChange={(quickLaunchPromptExpanded) =>
-                  updateSettings({ quickLaunchPromptExpanded })
-                }
-                onPickFolder={() => void pickQuickLaunchFolder()}
-                onCreateWorkspace={() => {
-                  quickLaunchNotice.value = null;
-                  quickLaunchView.value = "workspace";
-                }}
-                onCreateWorktree={openQuickWorktreeForm}
-                onManageAgents={() => {
-                  closeQuickLaunch();
-                  settingsOpen.value = true;
-                  quickLaunchReturnAfterSettings.value = true;
-                }}
-                onStartTask={() => void runQuickLaunch("start")}
-                onOpenAgent={() => void runQuickLaunch("open")}
-                onRetryDelivery={() => void retryQuickLaunchPrompt()}
-                onFocusOpenedAgent={focusTaskLaunchTarget}
-                onClearDraft={() => {
-                  quickLaunchNotice.value = null;
-                  clearTaskLaunchDraft();
-                }}
-                onKeepRetarget={keepDraftWorkspace}
-                onMoveRetarget={moveDraftToRetarget}
-                onClearRetarget={clearDraftAndUseRetarget}
-                onTransferToBoard={transferQuickLaunchToBoard}
-                onClose={() => {
-                  closeQuickLaunch();
-                  tabsRef.current?.focusActive();
-                }}
-              />
-            )
-          ) : null}
           {/* Gated on the `dockOpen` setting. The column hosts three
               surfaces since 2026-08-16, so `App` picks the body — that is
               what keeps `DockPanel` from importing every feature it can
@@ -2547,6 +2306,25 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               modals so a user-invoked one (⌘T, a preset draft) paints above
               it in DOM order on the shared z-40 scrim. */}
           {showUsageConsent ? <UsageConsentModal /> : null}
+          {/* ⌘T's agent list (`rail-create-consolidation`, design D1/D7): the
+              rail card's own actions menu, free-standing under the stage strip
+              with a heading that states the destination, since no card is
+              beside it. Its subject comes from the same scans the rail reads,
+              so the chord and the card cannot name one checkout two ways. It
+              sets `railCardMenuOpen` itself, so the browser's native view is
+              already hidden under it. */}
+          {railKeyboardMenuFor.value !== null ? (
+            <CardActionsMenu
+              placement="free-standing"
+              subject={subjectForWorkspace(railKeyboardMenuFor.value, repositoryScans.value)}
+              actions={railCardActions}
+              rect={null}
+              trigger={null}
+              onClose={() => {
+                railKeyboardMenuFor.value = null;
+              }}
+            />
+          ) : null}
           {editorRequest.value !== null ? (
             <PresetEditor
               onCancel={() => {

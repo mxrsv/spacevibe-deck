@@ -5,6 +5,7 @@ import { letterAvatar } from "../lib/letter-avatar";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
 import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
 import {
   mergeRuntimeDefaults,
   parseRuntimeKey,
@@ -77,6 +78,13 @@ export interface LauncherFieldsProps {
   readonly idPrefix: string;
   /** Quick Launch's tighter shape, and the only mount whose prompt collapses. */
   readonly compact: boolean;
+  /**
+   * Whether the prompt half of the composer exists at all. Defaults to
+   * `TASK_PROMPT_STAGING_ENABLED`, and is a prop rather than a bare constant
+   * read for the `deliverGrab(…, pasteDisabled)` reason: the staged path stays
+   * covered by its own tests while production runs with it hidden.
+   */
+  readonly promptStaging?: boolean;
   readonly draft: NewTaskDraft;
   readonly agents: readonly AgentOption[];
   readonly recents: readonly RecentWorkspace[];
@@ -198,7 +206,12 @@ export function problemTone(
 export function LauncherFields(props: LauncherFieldsProps) {
   const { draft, agents } = props;
   const promptId = `${props.idPrefix}-prompt`;
-  const expanded = props.compact ? draft.promptExpanded : true;
+  // `TASK_PROMPT_STAGING_ENABLED` false rides the collapsed shape this
+  // component already had rather than adding a third one: no textarea, and the
+  // primary button opens an agent under `openProblem`. The difference from a
+  // user-collapsed Quick Launch is only that nothing offers to expand it.
+  const staging = props.promptStaging ?? TASK_PROMPT_STAGING_ENABLED;
+  const expanded = staging && (props.compact ? draft.promptExpanded : true);
   const busy = props.pending !== null;
   /**
    * The primary button changes ACTION with the prompt section, so it must
@@ -247,18 +260,20 @@ export function LauncherFields(props: LauncherFieldsProps) {
 
   return (
     <div class={`nt-composer ${props.compact ? "nt-composer--compact" : ""}`}>
-      <div class="nt-composer__prompt-head">
-        <label for={promptId}>What do you want the agent to do?</label>
-        {props.compact ? (
-          <button
-            type="button"
-            class="nt-text-action"
-            onClick={() => props.onDraftChange(withPromptExpanded(draft, !expanded))}
-          >
-            {expanded ? "Hide prompt" : "Add prompt"}
-          </button>
-        ) : null}
-      </div>
+      {staging ? (
+        <div class="nt-composer__prompt-head">
+          <label for={promptId}>What do you want the agent to do?</label>
+          {props.compact ? (
+            <button
+              type="button"
+              class="nt-text-action"
+              onClick={() => props.onDraftChange(withPromptExpanded(draft, !expanded))}
+            >
+              {expanded ? "Hide prompt" : "Add prompt"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {expanded ? (
         <textarea
           id={promptId}
@@ -268,7 +283,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
           disabled={busy}
           onInput={(event) => props.onDraftChange(withPrompt(draft, event.currentTarget.value))}
         />
-      ) : (
+      ) : !staging ? null : (
         <button
           type="button"
           class="nt-composer__prompt-collapsed"
@@ -373,7 +388,10 @@ export function LauncherFields(props: LauncherFieldsProps) {
             >
               <DeckIcon icon={ArrowsOutSimple} size={ROW_ICON} />
             </button>
-          ) : (
+          ) : !staging ? null : (
+            // "first" only means anything beside a button that would otherwise
+            // send a task, so it goes with the prompt rather than standing next
+            // to a primary that already reads `Open agent`.
             <button
               type="button"
               class="nt-secondary-action"

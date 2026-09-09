@@ -1,3 +1,4 @@
+import { paneSignal } from "./agent-rail-model";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { PaneAgent } from "../lib/process-info";
 import { workspacesData } from "../open-board/workspaces-store";
@@ -69,7 +70,8 @@ export interface BoardViewSources {
  * pane no poll has classified yet, have no claim to make and get none.
  */
 function confidenceOf(pane: PaneView): BoardConfidence | undefined {
-  return pane.confidence;
+  const confidence = paneSignal(pane).confidence;
+  return confidence === "unknown" ? undefined : confidence;
 }
 
 export function boardInputFrom(sources: BoardViewSources): AgentBoardInput {

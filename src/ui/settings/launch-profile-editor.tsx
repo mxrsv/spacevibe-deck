@@ -120,16 +120,67 @@ function EnabledToggle({
   );
 }
 
+/** The agents a signal adapter exists for (spec §4 stage 2, v1). */
+const ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex", "opencode"]);
+
+/**
+ * The per-agent adapter switch (agent-signal contract layer, stage 2; spec
+ * §10.4): whether a launch of this agent is augmented so the CLI reports to
+ * Deck — Claude's hooks file and minted session id, Codex's always-ring
+ * notification flag, opencode's pinned server port. Off, the agent is read
+ * off the process table and output timing, and its marks are drawn hollow.
+ * Same `segmented` control the availability toggle uses, so a row reads as
+ * two questions in one vocabulary.
+ */
+function SignalsToggle({
+  agent,
+  on,
+  onChange,
+}: {
+  agent: BuiltinAgent;
+  on: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div
+      class="segmented lp-signals"
+      role="radiogroup"
+      aria-label={`${agent.label} signals`}
+      title="Ask the CLI for its state directly; off, Deck reads it off the process table and output timing"
+    >
+      {[true, false].map((value) => (
+        <button
+          key={String(value)}
+          type="button"
+          role="radio"
+          aria-checked={on === value}
+          aria-label={`${value ? "Ask" : "Do not ask"} ${agent.label} for its state`}
+          tabIndex={on === value ? 0 : -1}
+          class={`segmented__option ${on === value ? "is-selected" : ""}`}
+          onClick={() => onChange(value)}
+        >
+          {value ? "Signals on" : "Signals off"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AgentRow({
   agent,
   command,
   enabled,
   onToggle,
+  signals,
+  onSignals,
 }: {
   agent: BuiltinAgent;
   command: string;
   enabled: boolean;
   onToggle: (next: boolean) => void;
+  /** Null for an agent no adapter exists for; the switch is then omitted. */
+  signals: boolean | null;
+  onSignals: (next: boolean) => void;
 }) {
   return (
     <div class={`lp-agent ${enabled ? "" : "is-off"}`}>
@@ -138,6 +189,7 @@ function AgentRow({
         <span class="lp-agent__name">{agent.label}</span>
         <CommandLine command={command} />
       </div>
+      {signals === null ? null : <SignalsToggle agent={agent} on={signals} onChange={onSignals} />}
       <EnabledToggle agent={agent} enabled={enabled} onChange={onToggle} />
     </div>
   );
@@ -316,6 +368,16 @@ export function LaunchProfileEditor() {
     draftError.value = null;
   };
 
+  const adapters = settings.value.agentSignalAdapters;
+  const adapterOf = (agentId: string): boolean | null =>
+    ADAPTER_AGENTS.has(agentId) ? adapters[agentId as keyof typeof adapters] : null;
+  const setAdapter = (agentId: string, next: boolean): void => {
+    if (!ADAPTER_AGENTS.has(agentId)) {
+      return;
+    }
+    updateSettings({ agentSignalAdapters: { ...adapters, [agentId]: next } });
+  };
+
   const renderRow = (agent: BuiltinAgent) => (
     <AgentRow
       key={agent.id}
@@ -323,6 +385,8 @@ export function LaunchProfileEditor() {
       command={effectiveCommand(agent, profiles, defaults)}
       enabled={!disabled.includes(agent.id)}
       onToggle={(next) => setEnabled(agent.id, next)}
+      signals={adapterOf(agent.id)}
+      onSignals={(next) => setAdapter(agent.id, next)}
     />
   );
 

@@ -95,8 +95,24 @@ function pane(
   // tab is the active one (DL-27.22). One pane per tab may carry it, the same
   // invariant `activePaneId()` has in the app.
   focused = false,
+  // How much the state is to be trusted (DL-27.3, amended 2026-09-03). The
+  // default is the app's own default for a fixture that says nothing: the
+  // attention axis `explicit`, the phase axis `unknown` — the filled marks
+  // the rail drew before confidence existed. A seed that wants a hollow
+  // (inferred) mark says so here.
+  signal: Partial<Pick<PaneView, "confidence" | "phaseConfidence">> = {},
 ): PaneView {
-  return { paneId, agent, attention: attentionValue, phase, hasRun, changedAt, focused };
+  return {
+    paneId,
+    agent,
+    attention: attentionValue,
+    phase,
+    hasRun,
+    changedAt,
+    focused,
+    confidence: signal.confidence ?? "explicit",
+    phaseConfidence: signal.phaseConfidence ?? (phase === "unknown" ? "unknown" : "explicit"),
+  };
 }
 
 export const SEED_TABS: readonly TabView[] = [
@@ -123,8 +139,16 @@ export const SEED_TABS: readonly TabView[] = [
     unread: false,
     attention: attention("completed", { actionableCount: 1 }),
     // `completed` renders as `asked` since the owner's 2026-08-16 merge: a
-    // finished run nobody checked wears the same yellow as a question.
-    panes: [pane(102, "codex", "completed", "idle", minutesAgo(8), true)],
+    // finished run nobody checked wears the same yellow as a question. This
+    // one is INFERRED — codex reports no OSC 9;4, so its completion is "3 s
+    // of silence after a streak" — and the mark is drawn hollow for it
+    // (DL-27.3, amended 2026-09-03).
+    panes: [
+      pane(102, "codex", "completed", "idle", minutesAgo(8), true, false, {
+        confidence: "inferred",
+        phaseConfidence: "inferred",
+      }),
+    ],
   },
   {
     key: 6,
@@ -144,7 +168,11 @@ export const SEED_TABS: readonly TabView[] = [
       // The keyboard is in this pane, so selecting this tab washes its row and
       // nothing else in the rail (DL-27.22) — the case a headless multi-agent
       // tab could not show at all before 2026-08-23.
-      pane(104, "codex", "none", "idle", minutesAgo(18), true, true),
+      pane(104, "codex", "none", "idle", minutesAgo(18), true, true, {
+        // A checked run whose completion was read off output timing: a
+        // hollow gray `done` beside the filled one below (DL-27.3, 2026-09-03).
+        phaseConfidence: "inferred",
+      }),
       pane(105, "gemini", "none", "idle", minutesAgo(26)),
       pane(106, "claude", "none", "idle", minutesAgo(44), true),
     ],
@@ -207,7 +235,11 @@ export const SEED_TABS: readonly TabView[] = [
     // tree is the identity. This tab keeps that case visible in the gallery.
     panes: [
       pane(110, "claude", "requested", "idle", minutesAgo(1), true),
-      pane(111, "agy", "none", "idle", minutesAgo(35)),
+      // The agent's process has left this pane (`exited` while the pane stays
+      // up): DL-27.3's sixth word, `ended`, drawn as the small square. The
+      // pane still names `agy` — the tracker's `agentLabel` survives the end
+      // so the row has something to be named after (2026-09-03).
+      pane(111, "agy", "none", "exited", minutesAgo(35), true),
     ],
   },
   {

@@ -18,12 +18,12 @@ describe("createMemoryPtyClient", () => {
     const pty = createMemoryPtyClient();
     const outputs: Array<[number, string]> = [];
     const prompts: number[] = [];
-    const exits: number[] = [];
+    const exits: Array<[number, number | null]> = [];
     const stopOut = await pty.listenOutput((id, data) => {
       outputs.push([id, data]);
     });
-    const stopExit = await pty.listenExit((id) => {
-      exits.push(id);
+    const stopExit = await pty.listenExit((id, exitCode) => {
+      exits.push([id, exitCode]);
     });
     const stopPrompt = await pty.listenPromptReady((id) => {
       prompts.push(id);
@@ -31,9 +31,15 @@ describe("createMemoryPtyClient", () => {
     pty.emitOutput(1, "hi");
     pty.emitPromptReady(1);
     pty.emitExit(1);
+    pty.emitExit(2, 130);
     expect(outputs).toEqual([[1, "hi"]]);
     expect(prompts).toEqual([1]);
-    expect(exits).toEqual([1]);
+    // The status rides the exit since 2026-09-03 (stage 0); a host that reports
+    // none — Tauri's `ExitPayload { id }` — answers null, never a guessed zero.
+    expect(exits).toEqual([
+      [1, null],
+      [2, 130],
+    ]);
     stopOut();
     stopPrompt();
     stopExit();

@@ -190,29 +190,10 @@
   background: var(--accent);
 }
 
-.tab-add {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-control);
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 17px;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition:
-    background var(--duration) var(--ease),
-    color var(--duration) var(--ease),
-    transform var(--duration) var(--ease);
-}
-
-.tab-add:hover {
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
-  transform: rotate(90deg);
-}
+/* `.tab-add` — the strip's trailing `+` — was DELETED by
+   `openspec/changes/rail-create-consolidation` (2026-09-02): its destination
+   was the active tab's workspace, stated nowhere, and every checkout now
+   carries its own create control on the rail. `⌘T` keeps the keyboard route. */
 
 .tabbar__spacer {
   flex: 1;

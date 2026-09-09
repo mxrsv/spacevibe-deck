@@ -48,6 +48,14 @@ export interface AgentLauncherOptions {
   readonly platform?: DesktopPlatform;
   readonly timeoutMs?: number;
   readonly onTimeout?: (id: number) => void;
+  /**
+   * The command for `id` has just been queued into its shell. `TabManager`
+   * polls `pty_info` on it, at once and again a second later, so the
+   * attention gate opens within the agent's own boot time rather than up to
+   * one 2 s tick after it (trust audit §4.5 — the startup blind window).
+   * Never throws into the launcher: a callback failure is logged.
+   */
+  readonly onFire?: (id: number) => void;
 }
 
 function emptyState(): LauncherState {
@@ -79,6 +87,7 @@ export function createAgentLauncher(
     options.timeoutMs ??
     (platform === "windows" ? WINDOWS_AGENT_LAUNCH_TIMEOUT_MS : AGENT_LAUNCH_TIMEOUT_MS);
   const onTimeout = options.onTimeout ?? (() => {});
+  const onFire = options.onFire ?? (() => {});
   let state = emptyState();
 
   function fire(id: number): void {
@@ -96,6 +105,11 @@ export function createAgentLauncher(
       // A failed write leaves the pane as an empty shell — never sink the tab.
       console.error("agent launch write_pty failed:", err);
     });
+    try {
+      onFire(id);
+    } catch (error) {
+      console.error("agent launch fire callback failed:", error);
+    }
   }
 
   function expire(id: number): void {

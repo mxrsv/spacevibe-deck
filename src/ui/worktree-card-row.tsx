@@ -1,8 +1,9 @@
 import { AgentGlyph } from "./controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { X } from "@phosphor-icons/react";
-import { checkoutLabel } from "./agent-rail-card-model";
+import { subjectOf, subjectWhere } from "./agent-rail-card-model";
 import type { RailCardPane, RailState, RailWorktreeGroup } from "./agent-rail-model";
+import type { SignalConfidence } from "../terminal/agent-attention";
 
 /**
  * The parts a worktree card and its popovers BOTH draw.
@@ -26,10 +27,33 @@ import type { RailCardPane, RailState, RailWorktreeGroup } from "./agent-rail-mo
 export const STATE_LABEL: Readonly<Record<RailState, string>> = {
   failed: "failed",
   asked: "needs you",
+  ended: "ended",
   working: "working",
   done: "done",
   idle: "idle",
 };
+
+/**
+ * `STATE_LABEL` plus the confidence, where the confidence changes the meaning
+ * (DL-27.3, amended 2026-09-03): an inferred `asked`/`done` is Deck's reading
+ * of output timing, not the CLI's word, and the accessible name says so. A
+ * contract-layer `detail` (`permission prompt`, `input needed`) rides on an
+ * `asked` the same way: the word says what is waited on, not just that
+ * something is.
+ */
+export function signalLabelOf(
+  state: RailState,
+  confidence?: SignalConfidence,
+  detail?: string | null,
+): string {
+  const word = STATE_LABEL[state];
+  if (state === "asked" && typeof detail === "string" && detail !== "") {
+    return `${word} — ${detail}`;
+  }
+  return confidence === "inferred" && (state === "asked" || state === "done")
+    ? `${word} (inferred)`
+    : word;
+}
 
 /** The one state that means "the machine is busy" (spec §11.3: `thinking` was dropped). */
 export const BUSY_STATE: RailState = "working";
@@ -48,13 +72,9 @@ export const BUSY_STATE: RailState = "working";
  * the checkout's word so the string and the head can never disagree.
  */
 export function whereOf(project: string, group: RailWorktreeGroup): string {
-  const said: string[] = [];
-  for (const segment of [project, checkoutLabel(group), group.branch]) {
-    if (segment !== "" && !said.includes(segment)) {
-      said.push(segment);
-    }
-  }
-  return said.join(" · ");
+  // One rule, stated once: `subjectWhere` is what the free-standing actions
+  // menu prints as its heading, so the row's name and that heading cannot drift.
+  return subjectWhere(subjectOf(project, group));
 }
 
 /**
@@ -63,11 +83,26 @@ export function whereOf(project: string, group: RailWorktreeGroup): string {
  * NOTHING here rather than a gray dot, and `working` never draws the spinner —
  * busy motion is `CardLoad`'s trailing track, not this dot.
  */
-export function CardMark({ state }: { readonly state: RailState }) {
+export function CardMark({
+  state,
+  confidence = "explicit",
+}: {
+  readonly state: RailState;
+  readonly confidence?: SignalConfidence;
+}) {
   if (state === "idle") {
     return null;
   }
-  return <span class="asr-card__dot" data-state={state} aria-hidden="true" />;
+  // `data-confidence` draws an inferred `asked`/`done` hollow, the same rule
+  // the rail's `RailStatusMark` follows (DL-27.3, amended 2026-09-03).
+  return (
+    <span
+      class="asr-card__dot"
+      data-state={state}
+      data-confidence={confidence}
+      aria-hidden="true"
+    />
+  );
 }
 
 /**
@@ -106,7 +141,7 @@ export function CardAgentRow({
   onFocusPane,
   onClosePane,
 }: CardAgentRowProps) {
-  const label = STATE_LABEL[pane.state];
+  const label = signalLabelOf(pane.state, pane.confidence, pane.detail);
   const where = whereOf(project, group);
 
   return (
@@ -114,6 +149,7 @@ export function CardAgentRow({
       class="asr-card__row"
       data-kind="agent"
       data-state={pane.state}
+      data-confidence={pane.confidence}
       data-focused={pane.focused}
       data-pane-id={pane.paneId}
     >
@@ -129,7 +165,7 @@ export function CardAgentRow({
       />
       <span class="asr-card__glyph">
         <AgentGlyph agent={pane.agent} className="asr-card__logo" />
-        <CardMark state={pane.state} />
+        <CardMark state={pane.state} confidence={pane.confidence} />
       </span>
       <span class="asr-card__name">{pane.label}</span>
       {/* The loading mark sits BEFORE the model pill (owner, 2026-08-26): it

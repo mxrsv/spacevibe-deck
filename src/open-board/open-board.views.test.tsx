@@ -141,6 +141,9 @@ describe("OpenBoard home view", () => {
     await act(async () => {
       render(
         <OpenBoard
+          // Production hides the prompt behind `TASK_PROMPT_STAGING_ENABLED`;
+          // these views keep it wired so the staged path stays covered.
+          promptStaging
           contextWorkspacePath={props.contextWorkspacePath ?? null}
           canCancel={props.canCancel ?? false}
           canBrowseSessions={props.canBrowseSessions ?? false}
@@ -601,6 +604,9 @@ describe("OpenBoard home view", () => {
     await act(async () => {
       render(
         <OpenBoard
+          // Production hides the prompt behind `TASK_PROMPT_STAGING_ENABLED`;
+          // these views keep it wired so the staged path stays covered.
+          promptStaging
           contextWorkspacePath={null}
           canCancel={true}
           canBrowseSessions={false}

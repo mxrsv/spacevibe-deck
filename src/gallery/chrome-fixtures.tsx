@@ -13,6 +13,7 @@ import { TabStrip } from "../ui/tab-strip";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
 import { SidebarFrameActions } from "../ui/sidebar-toggle";
 import { RecentSessionActivity } from "../ui/sessions/recent-session-activity";
+import type { CardActions } from "../ui/worktree-card-menus";
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -78,7 +79,6 @@ export function tabBarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}
     <TabBar
       onSelectTab={NOOP}
       onCloseTab={NOOP}
-      onNewTab={NOOP}
       toolbar={deckToolbarSpecimen({ promptsDisabled })}
       onSelectBrowser={NOOP}
       onCloseBrowser={NOOP}
@@ -110,16 +110,26 @@ interface AgentRailSpecimenOptions {
 }
 
 /**
- * The gallery's stand-in for the task launcher.
+ * The gallery's stand-in for the card actions menu's wiring.
  *
- * It is wired rather than omitted because both launchers in the rail are
- * omitted, not disabled, when nothing owns them (DL-19.7): without this the
- * specimen showed a project header with no `+` and — since 2026-08-25 — a
- * worktree tier with none either, so the gallery could not review the control
- * the app actually draws. The panel itself belongs to `App`; a specimen only
- * has to prove the trigger is there.
+ * It is wired rather than omitted because every create control on a checkout
+ * is omitted, not disabled, when nothing owns the menu (DL-19.7): without this
+ * the specimen would show cards with no strip `+`, no `New agent` row and a
+ * static bare row, so the gallery could not review the controls the app
+ * actually draws (`rail-create-consolidation`, 2026-09-02 — the rail's header
+ * `+` this used to stand in for is gone). The rows do nothing here; a specimen
+ * only has to prove the trigger and the surface it raises are there.
  */
-const openLauncher = (_workspacePath: string): void => {};
+const GALLERY_CARD_ACTIONS: CardActions = {
+  agents: [
+    { id: "claude", label: "Claude", detail: "claude --dangerously-skip-permissions" },
+    { id: "codex", label: "Codex", detail: "codex --full-auto" },
+  ],
+  agentsResolved: true,
+  onRunAgent: NOOP,
+  onSplitHere: NOOP,
+  onOpenBoard: NOOP,
+};
 
 /**
  * The shipping sidebar navigation with seeded gallery stores underneath it.
@@ -142,7 +152,7 @@ export function agentRailNavigationSpecimen({
       onClosePane={NOOP}
       onFocusPane={onFocusPane}
       legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
-      onNewTabIn={openLauncher}
+      cardActions={GALLERY_CARD_ACTIONS}
       fileController={fileControllerFixture}
       recentActivity={<RecentSessionActivity onResume={NOOP} onViewAll={NOOP} />}
       footer={
@@ -196,7 +206,6 @@ export function repositoryScopedTabStripSpecimen() {
     <TabStrip
       onSelectTab={selectGalleryTab}
       onCloseTab={NOOP}
-      onNewTab={NOOP}
       onSelectBrowser={NOOP}
       onCloseBrowser={NOOP}
       onSelectAgentBoard={NOOP}

@@ -36,6 +36,7 @@ vi.mock("./controls/deck-icon", () => ({
 import { activeTabIndex, tabViews, type PaneView, type TabView } from "../terminal/tabs-store";
 import { AgentRail } from "./agent-rail";
 import { TabStrip } from "./tab-strip";
+import type { CardActions } from "./worktree-card-menus";
 import {
   collapsedRepositories,
   configureRepositoryClient,
@@ -131,6 +132,18 @@ let fileController: FileSurfaceController;
 
 const NOOP = (): void => {};
 
+/**
+ * What every checkout's create control raises (`rail-create-consolidation`):
+ * the card's actions menu, wired the way `App` wires it. One agent, so the
+ * first `menuitem` is `Run Claude` and a press on it is what starts a process.
+ */
+const ACTIONS: CardActions = {
+  agents: [{ id: "claude", label: "Claude", detail: "claude" }],
+  agentsResolved: true,
+  onRunAgent: vi.fn(),
+  onSplitHere: vi.fn(),
+};
+
 function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): void {
   act(() => {
     render(
@@ -170,7 +183,6 @@ function mountSidebarLayout(): void {
             onSelectTab={NOOP}
             onCloseTab={NOOP}
             fileController={fileController}
-            onNewTab={NOOP}
             onSelectBrowser={NOOP}
             onCloseBrowser={NOOP}
             onSelectAgentBoard={NOOP}
@@ -231,6 +243,8 @@ function openAllCards(): void {
 
 beforeEach(() => {
   initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
+  vi.mocked(ACTIONS.onRunAgent).mockClear();
+  vi.mocked(ACTIONS.onSplitHere).mockClear();
   host = document.createElement("div");
   document.body.appendChild(host);
   invalidateRepositoryScans();
@@ -411,9 +425,8 @@ describe("AgentRail click contract", () => {
     const onCloseTab = vi.fn();
     const onClosePane = vi.fn();
     const onSelectTab = vi.fn();
-    const onNewTabIn = vi.fn();
     tabViews.value = [tab({ key: 1, panes: [] })];
-    mount({ onCloseTab, onClosePane, onSelectTab, onNewTabIn });
+    mount({ onCloseTab, onClosePane, onSelectTab, cardActions: ACTIONS });
     await settle();
 
     expect(host.querySelector(".asr-card")).not.toBeNull();
@@ -425,7 +438,7 @@ describe("AgentRail click contract", () => {
     expect(onSelectTab).toHaveBeenCalledTimes(1);
     click(shell?.querySelector(".asr-row__action--close"));
     expect(onCloseTab).toHaveBeenCalledWith(0);
-    expect(onNewTabIn).not.toHaveBeenCalled();
+    expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
     expect(onClosePane).not.toHaveBeenCalled();
   });
 
@@ -725,9 +738,8 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(head?.getAttribute("aria-expanded")).not.toBeNull();
   });
 
-  it("keeps a checkout with nothing open in it, and gives it the launcher", async () => {
-    const onNewTabIn = vi.fn();
-    mount({ onNewTabIn });
+  it("keeps a checkout with nothing open in it, and its row opens the agent list", async () => {
+    mount({ cardActions: ACTIONS });
     await settle();
 
     // One tab, in `/r/main`; `/r/side` is in Deck's history with nothing
@@ -738,13 +750,22 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
 
     const bare = host.querySelectorAll<HTMLElement>("button.asr-bare");
     expect(bare).toHaveLength(1);
+    // `rail-create-consolidation`: the press OPENS the checkout's agent list
+    // and starts nothing — the old `onNewTabIn(path)` spawned a shell here.
+    expect(bare[0].getAttribute("aria-haspopup")).toBe("menu");
     click(bare[0]);
+    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
+    expect(menu).not.toBeNull();
+    // Anchored to the row, so no heading: the row 6px away names the checkout.
+    expect(menu?.querySelector(".asr-act__where")).toBeNull();
     // The worktree ROOT, never a tab's cwd.
-    expect(onNewTabIn).toHaveBeenCalledWith("/r/side");
+    expect(menu?.getAttribute("aria-label")).toBe("Actions for main · side");
+    click(menu?.querySelector<HTMLElement>('[role="menuitem"]'));
+    expect(ACTIONS.onRunAgent).toHaveBeenCalledWith("claude", "/r/side");
   });
 
   it("names the project, the checkout AND its branch in the bare row's accessible name", async () => {
-    mount({ onNewTabIn: NOOP });
+    mount({ cardActions: ACTIONS });
     await settle();
 
     // Review fix (2026-08-26): `project` is threaded down from
@@ -781,7 +802,7 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
       version: WORKSPACES_VERSION,
       recents: [{ path: "/r/main", lastOpenedAt: 2 }],
     };
-    mount({ onNewTabIn: NOOP });
+    mount({ cardActions: ACTIONS });
     await settle();
 
     // The one implicit group's only name is the folder the cluster header
@@ -791,6 +812,16 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(host.querySelector(".asr-bare")).toBeNull();
     expect(host.querySelector(".asr-cluster__head")?.textContent).toBe("main");
     expect(rows()).toHaveLength(1);
+    // Its one create control (`rail-create-consolidation`, design D5): with the
+    // header's `+` gone, the flat entries end with the open card's own row,
+    // and the list it raises has no branch to fork from.
+    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
+    expect(host.querySelector(".asr-cluster__add")).toBeNull();
+    click(host.querySelector(".asr-card__new"));
+    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
+    expect(menu).not.toBeNull();
+    expect(menu?.textContent).not.toContain("Create branch");
+    expect(menu?.textContent).toContain("runs in this folder");
   });
 
   it("hides its groups with the project when the header collapses", async () => {
@@ -818,98 +849,66 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
   });
 });
 
-describe("AgentRail project launcher (DL-27.18)", () => {
-  it("disables every project launcher while a task handoff is in flight", async () => {
-    const onNewTabIn = vi.fn();
-    mount({ onNewTabIn, newTabDisabled: true });
+describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", () => {
+  it("draws exactly one create control per checkout, and none on any project header", async () => {
+    // `/r/main` has a tab (a closed card, so the strip's trailing `+`);
+    // `/r/side` is history-only (a bare row, which is itself the control).
+    mount({ cardActions: ACTIONS });
+    await settle();
+
+    expect(host.querySelectorAll(".asr-cluster__add")).toHaveLength(0);
+    expect(host.querySelectorAll(".asr-card__seg--add")).toHaveLength(1);
+    expect(host.querySelectorAll("button.asr-bare")).toHaveLength(1);
+    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(0);
+
+    // Open, the card's control is its `New agent` row and the strip is gone —
+    // still one per checkout.
+    openAllCards();
+    expect(host.querySelectorAll(".asr-card__seg--add")).toHaveLength(0);
+    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
+    expect(host.querySelectorAll("button.asr-bare")).toHaveLength(1);
+  });
+
+  it("opens the checkout's agent list from New agent and starts nothing on the press", async () => {
+    mount({ cardActions: ACTIONS });
     await settle();
     openAllCards();
 
-    const launchers = host.querySelectorAll<HTMLButtonElement>(
-      ".asr-cluster__add, .asr-bare, .asr-card__new",
-    );
-    expect(launchers.length).toBeGreaterThan(0);
-    for (const launcher of launchers) {
-      expect(launcher.disabled).toBe(true);
-      launcher.click();
-    }
-    expect(onNewTabIn).not.toHaveBeenCalled();
+    const row = host.querySelector<HTMLElement>(".asr-card__new");
+    expect(row?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(row?.getAttribute("aria-expanded")).toBe("false");
+    click(row);
+    expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
+    expect(ACTIONS.onSplitHere).not.toHaveBeenCalled();
+    expect(row?.getAttribute("aria-expanded")).toBe("true");
+    // Anchored to the card, so no heading and the card's own words as the name.
+    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
+    expect(menu?.getAttribute("aria-label")).toBe("Actions for main");
+    expect(menu?.querySelector(".asr-act__where")).toBeNull();
+    // A second press on the row that opened it CLOSES it.
+    click(row);
+    expect(host.querySelector(".asr-pop--actions")).toBeNull();
+    expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
   });
 
-  it("opens the picker on the project the header belongs to", async () => {
-    // `/r/side` is a WORKTREE of the same repository, so both tabs land in one
-    // cluster — which is the point: one header, one launcher, and it answers
-    // with the project's own path rather than with whichever tab is active.
-    tabViews.value = [
-      tab({ key: 1, panes: [pane({ paneId: 11 })] }),
-      tab({
-        key: 2,
-        workspacePath: "/r/side",
-        panes: [pane({ paneId: 21 })],
-      }),
-    ];
-    const onNewTabIn = vi.fn();
-    mount({ onNewTabIn });
-    await settle();
-
-    const adds = host.querySelectorAll<HTMLElement>("button.asr-cluster__add");
-    expect(adds).toHaveLength(1);
-    click(adds[0]);
-    expect(onNewTabIn).toHaveBeenCalledWith("/r/main");
-  });
-
-  it("omits the launcher when the host cannot open one", async () => {
+  it("omits every create control when nothing wires the menu (DL-19.7)", async () => {
     mount();
     await settle();
 
     expect(host.querySelector(".asr-cluster__add")).toBeNull();
-    // The collapse control is untouched by its absence.
+    expect(host.querySelector(".asr-card__new")).toBeNull();
+    expect(host.querySelector(".asr-card__seg--add")).toBeNull();
+    expect(host.querySelector("button.asr-bare")).toBeNull();
+    // The collapse control is untouched by their absence.
     expect(host.querySelector("button.asr-cluster__toggle")).not.toBeNull();
   });
 
-  it("names the project AND the checkout it actually opens into", async () => {
-    // Spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §7.4: the
-    // header's `+` resolves through `groupPath` to `worktrees[0]` — always the
-    // PRIMARY checkout — and it used to say only the project. With every
-    // checkout carrying its own launcher on its card, the honest wording is
-    // what keeps the two from reading as the same control.
-    mount({ onNewTabIn: NOOP });
-    await settle();
-
-    // **Amended 2026-08-30: a word already said is not said again.** This
-    // fixture's project is `main` AND its primary checkout is on branch
-    // `main`, so naming the checkout after the project would print one word
-    // twice — the defect this change removes one tier down. The `· checkout`
-    // half is proven by the next case, where the two differ.
-    expect(host.querySelector(".asr-cluster__add")?.getAttribute("aria-label")).toBe(
-      "New tab in main",
-    );
-  });
-
-  it("still names the checkout when it is a different word from the project", async () => {
-    configureRepositoryClient({
-      scan: async () => ({
-        ...SCAN,
-        worktrees: [{ ...SCAN.worktrees[0]!, branch: "release/1.0" }, ...SCAN.worktrees.slice(1)],
-      }),
-    });
-    invalidateRepositoryScans();
-    mount({ onNewTabIn: NOOP });
-    await settle();
-
-    expect(host.querySelector(".asr-cluster__add")?.getAttribute("aria-label")).toBe(
-      "New tab in main · release/1.0",
-    );
-  });
-
-  it("lays the launcher one slot inside the caret, on the rows' own edge", () => {
-    // The re-amendment (2026-08-19): reading order is folder → name → `+` →
-    // caret, expressed as a grid rather than as DOM order — the toggle spans
-    // every track so its trailing caret keeps the outermost 17px slot, the
-    // launcher is pinned into the track before it, and the caret reserves that
-    // track from inside the button (7 + 17 = 24px). The box rule is the other
-    // half of the alignment: `width: 100%` beside the padding had made the
-    // header 11px wider than every row under it.
+  it("keeps the header a two-track grid with the caret on the rows' own edge", () => {
+    // The launcher's middle track went with the launcher: the toggle spans
+    // every track so its trailing caret keeps the outermost 17px slot, and no
+    // `:has` reserve holds 24px open for a control that is not there. The box
+    // rule is the other half of the alignment: `width: 100%` beside the
+    // padding had made the header 11px wider than every row under it.
     const css = readFileSync("src/styles/04a-agent-rail.css", "utf8");
     const head = css.slice(
       css.indexOf(".asr-cluster__head {"),
@@ -917,11 +916,10 @@ describe("AgentRail project launcher (DL-27.18)", () => {
     );
     expect(head).toContain("box-sizing: border-box");
     expect(head).not.toContain("\n  width: 100%;");
-    expect(head).toContain("grid-template-columns: minmax(0, 1fr) 17px 17px");
+    expect(head).toContain("grid-template-columns: minmax(0, 1fr) 17px;");
     expect(css).toContain("grid-column: 1 / -1");
-    expect(css).toContain(
-      ".asr-cluster__head:has(.asr-cluster__add) .asr-cluster__caret {\n  margin-left: 24px;",
-    );
+    expect(css).not.toContain(".asr-cluster__add {");
+    expect(css).not.toContain(":has(.asr-cluster__add)");
   });
 });
 
@@ -958,15 +956,25 @@ describe("AgentRail remembered projects (2026-08-20)", () => {
     expect(rows()).toHaveLength(1);
   });
 
-  it("offers the launcher on a remembered project", async () => {
-    const onNewTabIn = vi.fn();
-    mount({ onNewTabIn });
+  it("keeps a remembered project one press from an agent, through its checkout row", async () => {
+    // `rail-create-consolidation`: the header's `+` is gone, so a remembered
+    // project prints its checkouts as rowless groups and THEY are the way back
+    // in — `/w/other` is a plain folder, so it renders flat entries (none) plus
+    // that tier's `New agent` row, and the list it raises runs there.
+    mount({ cardActions: ACTIONS });
     await settle();
 
-    const adds = host.querySelectorAll<HTMLElement>("button.asr-cluster__add");
-    expect(adds).toHaveLength(2);
-    click(adds[1]);
-    expect(onNewTabIn).toHaveBeenCalledWith("/w/other");
+    expect(host.querySelector(".asr-cluster__add")).toBeNull();
+    const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
+    const remembered = heads[1].closest<HTMLElement>(".asr-cluster");
+    const row = remembered?.querySelector<HTMLElement>(".asr-card__new");
+    expect(row).not.toBeNull();
+    // The header itself is still a still label — no toggle, no live close.
+    expect(heads[1].querySelector(".asr-cluster__toggle")).toBeNull();
+    expect(heads[1].querySelector(".asr-cluster__remove--live")).toBeNull();
+    click(row);
+    click(host.querySelector<HTMLElement>('.asr-pop--actions [role="menuitem"]'));
+    expect(ACTIONS.onRunAgent).toHaveBeenCalledWith("claude", "/w/other");
   });
 
   it("keeps a close on the rowless header that removes the folder", async () => {
@@ -1117,12 +1125,18 @@ describe("AgentRail project close (close model, 2026-08-22, table row 4)", () =>
     expect(css).toContain(
       ".asr-cluster__head:has(.asr-cluster__remove--live:focus-visible) .asr-cluster__caret {",
     );
-    // Still three tracks.
+    // Two tracks since `rail-create-consolidation` (2026-09-02) took the
+    // launcher's middle one: the close pins into the last, which is the caret's.
     const head = css.slice(
       css.indexOf(".asr-cluster__head {"),
       css.indexOf(".asr-cluster__toggle {"),
     );
-    expect(head).toContain("grid-template-columns: minmax(0, 1fr) 17px 17px");
+    expect(head).toContain("grid-template-columns: minmax(0, 1fr) 17px;");
+    const remove = css.slice(
+      css.indexOf(".asr-cluster__remove {"),
+      css.indexOf(".asr-cluster:hover .asr-cluster__remove,"),
+    );
+    expect(remove).toContain("grid-column: 2;");
   });
 });
 
@@ -1186,6 +1200,60 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
 
     const row = rows()[0];
     expect(row.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe(mark);
+  });
+
+  // Agent-signal contract layer, stage 0 (2026-09-03; DL-27.3 amended): the
+  // mark carries its confidence, and an agent whose process left reads `ended`.
+  it("draws an inferred asked hollow — the badge says so, and the accessible name says so", async () => {
+    tabViews.value = [
+      tab({
+        panes: [pane({ attention: "completed", confidence: "inferred", hasRun: true })],
+      }),
+    ];
+    mount();
+    await settle();
+    openAllCards();
+
+    const row = rows()[0];
+    const dot = row.querySelector(".asr-card__dot");
+    expect(dot?.getAttribute("data-state")).toBe("asked");
+    expect(dot?.getAttribute("data-confidence")).toBe("inferred");
+    expect(row.dataset.confidence).toBe("inferred");
+    const hit = row.querySelector<HTMLElement>(".asr-card__hit");
+    expect(hit?.getAttribute("aria-label")).toContain("needs you (inferred)");
+    expect(hit?.getAttribute("title")).toContain("needs you (inferred)");
+  });
+
+  it("draws an explicit asked filled, with no confidence word in the name", async () => {
+    tabViews.value = [
+      tab({ panes: [pane({ attention: "requested", confidence: "explicit", hasRun: true })] }),
+    ];
+    mount();
+    await settle();
+    openAllCards();
+
+    const row = rows()[0];
+    expect(row.querySelector(".asr-card__dot")?.getAttribute("data-confidence")).toBe("explicit");
+    const hit = row.querySelector<HTMLElement>(".asr-card__hit");
+    expect(hit?.getAttribute("aria-label")).toMatch(/, needs you$/);
+    expect(hit?.getAttribute("aria-label")).not.toContain("inferred");
+  });
+
+  it("names an ended agent's pane ended, with its own dot state", async () => {
+    tabViews.value = [
+      tab({ panes: [pane({ phase: "exited", phaseConfidence: "explicit", hasRun: true })] }),
+    ];
+    mount();
+    await settle();
+    openAllCards();
+
+    const row = rows()[0];
+    expect(row.dataset.state).toBe("ended");
+    expect(row.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe("ended");
+    const hit = row.querySelector<HTMLElement>(".asr-card__hit");
+    expect(hit?.getAttribute("aria-label")).toMatch(/, ended$/);
+    // Not busy: the loading track stays empty for a dead agent.
+    expect(row.querySelector(".asr-card__load")?.getAttribute("data-busy")).toBe("false");
   });
 
   it("paints no dot at all for idle (design §9.4 point 2 — amends DL-27.3)", async () => {

@@ -131,7 +131,10 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
         onFocus={() => onFocusRequest(card)}
       />
       <div class="board-card__row board-card__row--head">
-        <RailStatusMark state={card.state} />
+        <RailStatusMark
+          state={card.departed ? "ended" : card.state}
+          confidence={card.confidence ?? "unknown"}
+        />
         <span class="board-label board-card__state">{word}</span>
         <span class="board-card__num">{formatRank(card.rank)}</span>
       </div>

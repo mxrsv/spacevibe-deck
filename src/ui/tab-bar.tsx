@@ -5,8 +5,6 @@ import { TabStrip } from "./tab-strip";
 interface TabBarProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
-  onNewTab(): void;
-  newTabDisabled?: boolean;
   /**
    * The feature toolbar, built once by `App` so this mount and the sidebar
    * frame's mount can never drift apart (one element, both layouts). TabBar
@@ -50,8 +48,6 @@ export function TabBar(props: TabBarProps) {
       <TabStrip
         onSelectTab={props.onSelectTab}
         onCloseTab={props.onCloseTab}
-        onNewTab={props.onNewTab}
-        newTabDisabled={props.newTabDisabled}
         fileController={props.fileController}
         onSelectBrowser={props.onSelectBrowser}
         onCloseBrowser={props.onCloseBrowser}

@@ -276,6 +276,43 @@ describe("restoreSession", () => {
     expect(intent.paneCommands).toEqual(["claude --resume aaa", "claude --resume bbb"]);
   });
 
+  it("sends a journalled session id as the lookup's pin (stage 1, 2026-09-03)", async () => {
+    const pinnedTab = tab({
+      workspacePath: "/w",
+      panes: [
+        {
+          cwd: "/w",
+          agent: "claude",
+          launchCommand: null,
+          taskPrompt: null,
+          sessionId: "a79dbead-d71b-445b-b328-86f9952b1d84",
+        },
+        { cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null },
+      ],
+    });
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [pinnedTab] })]]);
+    const lookup = vi.fn(
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
+        { kind: "id", id: "a79dbead-d71b-445b-b328-86f9952b1d84" },
+        null,
+      ],
+    );
+    const { deps, mocks } = createFakeDeps({ records, lookup });
+    await restoreSession(deps, "main");
+    const [requests] = mocks.lookup.mock.calls[0];
+    // The pin rides the request; a pane the registry never confirmed sends
+    // none and is ranked as before.
+    expect(requests).toEqual([
+      {
+        agent: "claude",
+        cwd: "/w",
+        lastSeenAt: 1,
+        preferredId: "a79dbead-d71b-445b-b328-86f9952b1d84",
+      },
+      { agent: "claude", cwd: "/w", lastSeenAt: 1 },
+    ]);
+  });
+
   it("puts a claude pane's mode back on its resume command", async () => {
     const modeTab = tab({
       workspacePath: "/w",

@@ -2,7 +2,7 @@ import { signal } from "@preact/signals";
 import type { PaneAgent } from "../lib/process-info";
 import type { TabDotColor } from "../lib/tab-colors";
 import type { AgentPhase } from "./agent-activity";
-import type { AgentAttentionSummary, AttentionKind } from "./agent-attention";
+import type { AgentAttentionSummary, AttentionKind, SignalConfidence } from "./agent-attention";
 
 /** Shared with UI consumers so they can import it from tabs-store. */
 export type { AgentAttentionSummary } from "./agent-attention";
@@ -24,12 +24,40 @@ export type { AgentAttentionSummary } from "./agent-attention";
 export interface PaneView {
   /** PTY/pane id — the coordinate `TabManager.activateForAttention` takes. */
   readonly paneId: number;
-  /** Recognized agent in this pane, or null for a shell/unrecognized process. */
+  /**
+   * Recognized agent in this pane, or null for a shell/unrecognized process.
+   *
+   * Since 2026-09-03 (agent-signal contract layer, stage 0) a pane whose
+   * agent has ENDED — `phase` is "exited" and the shell is back — still names
+   * that agent here, off the tracker's own `agentLabel`, so the rail has a
+   * row to print `ended` on (DL-27.3's sixth word). It reverts to null once
+   * the end is acknowledged, exactly when the tracker's phase leaves "exited".
+   */
   readonly agent: PaneAgent | null;
   /** Latched attention, straight from the tracker snapshot. */
   readonly attention: AttentionKind;
   /** Live work signal, straight from the tracker snapshot. */
   readonly phase: AgentPhase;
+  /**
+   * How much to trust `attention` and `phase` respectively, straight from the
+   * tracker (DL-27.3, 2026-09-03): the rail draws an inferred mark hollow.
+   * Optional on the same grounds as `focused`: a fixture-built `PaneView`
+   * predates them, and the rail model reads an absent value as `unknown`.
+   */
+  readonly confidence?: SignalConfidence;
+  readonly phaseConfidence?: SignalConfidence;
+  /** Exit status once the PTY has exited; null when unknown or still up. */
+  readonly exitCode?: number | null;
+  /**
+   * The session this pane's agent is running, as a FACT from a contract-layer
+   * source (the Claude registry since stage 1, 2026-09-03) — never a
+   * transcript-mtime guess. The tail store sends it as an exact pin; Recent
+   * activity joins on it. Absent (not null) on a fixture, and null while no
+   * source has said.
+   */
+  readonly sessionId?: string | null;
+  /** What the agent is waiting on, when a contract-layer source says so. */
+  readonly detail?: string | null;
   /**
    * The pane's current agent has reached `working` at least once — what lets
    * the rail split a quiet pane into `done` (ran, checked) vs `idle` (never
@@ -80,19 +108,6 @@ export interface PaneView {
    * agent → shell — after which Restart starts being offered.
    */
   readonly lastSessionId?: string;
-  /**
-   * Whether the pane's current state was ANNOUNCED by the agent or inferred by
-   * Deck (spec §11.8) — the trust audit's own bit, reaching one pixel: the
-   * panel's `State` row (`WORKING · inferred`).
-   *
-   * Projected straight from the attention tracker's snapshot
-   * (`agent-attention.ts:37`, `confidence: "explicit" | "inferred"`). It is NOT
-   * derivable from `attention`: that union is
-   * `"none" | "completed" | "requested" | "warning" | "error"` and carries no
-   * such distinction. Undefined while the poller has never classified the pane,
-   * because the tracker has no snapshot for it yet.
-   */
-  readonly confidence?: "explicit" | "inferred";
 }
 
 /** `TabView.panes` before the first sync — a shared empty list, not a new one. */

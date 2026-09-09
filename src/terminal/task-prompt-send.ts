@@ -75,6 +75,38 @@ export const TASK_PROMPT_POLL_MS = 500;
  */
 export const TASK_PROMPT_AUTOSEND = false;
 
+/**
+ * Whether a launch may carry a task prompt at all.
+ *
+ * **False, and hidden rather than fixed** (owner decision, 2026-09-07). The
+ * readiness gate loses a race it cannot recover from: a tracker entry starts at
+ * `phase: "unknown"`, the process gate DROPS every activity transition that
+ * arrives before the 2s `pty_info` poll calls `noteProcess(isAgent=true)`, and
+ * `noteProcess` opens that gate without setting `phase`. An agent that finishes
+ * its banner inside that window has all of its startup evidence discarded and
+ * then goes quiet, so `phase` stays `"unknown"` forever — and the 3200ms idle
+ * resync in `tab-manager.ts` cannot save it, because that timer is conditioned
+ * on `phase === "working"`. `submitAllowed` demands `"idle"`, so every prompted
+ * launch burns the full `TASK_PROMPT_READY_TIMEOUT_MS` and then reports failure
+ * with the agent sitting there, healthy and unprompted.
+ *
+ * Measured in a running Electron host on 2026-09-07: `pty_info` answered
+ * `kind: "agent"` for the pane, the rail read `idle` with `hasRun` false, and
+ * `Retry delivery` failed identically at the 90s ceiling with the agent idle
+ * for ten minutes. The defect predates this branch — the three gate files are
+ * byte-identical to `main`'s, from `57d3f3f`, the commit that shipped the
+ * launcher — and `main`'s uncommitted agent-signal layer does not fix it
+ * either, since `noteRegistry` writes attention and never `phase`.
+ *
+ * So this constant is the seam, the `GRAB_PASTE_DISABLED` /
+ * `MIGRATION_NOTICE_ENABLED` precedent: while it is false the composer states
+ * only a workspace and an agent, `Start task` becomes `Open agent`, and
+ * `launchTask` never waits on readiness. Nothing was deleted — flipping it to
+ * true restores the prompt box, the delivery and the recovery row unchanged.
+ * The fix itself is tracked as DECK-37 and belongs on `main`, not here.
+ */
+export const TASK_PROMPT_STAGING_ENABLED = false;
+
 /** The gate that must open BEFORE any paste. */
 export function promptReadyToSend(input: SubmitGateInput): boolean {
   return submitAllowed(input);

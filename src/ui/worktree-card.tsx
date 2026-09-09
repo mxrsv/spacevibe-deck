@@ -5,7 +5,12 @@ import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
 import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
 import { CardStrip } from "./worktree-card-strip";
 import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
-import { checkoutBadge, checkoutLabel, type CheckoutBadge } from "./agent-rail-card-model";
+import {
+  checkoutBadge,
+  checkoutLabel,
+  subjectOf,
+  type CheckoutBadge,
+} from "./agent-rail-card-model";
 import type { RailCardEntry, RailCardShell, RailWorktreeGroup } from "./agent-rail-model";
 
 /**
@@ -29,7 +34,8 @@ import type { RailCardEntry, RailCardShell, RailWorktreeGroup } from "./agent-ra
  * close button, so a leaf needs a `__hit`): `__mark`, `__dot`, `__glyph`,
  * `__logo`, `__hit`, `__load`, `__count`, `__seg` — the closed strip's
  * segment, deliberately NOT `__row`. **Amended 2026-08-27**: a segment now
- * carries a PRESS (it focuses its loudest pane) and raises a menu, so the
+ * carries a PRESS (a single-pane segment focuses its pane; since 2026-09-02 a
+ * merged one pins its menu open to choose from) and raises a menu, so the
  * original wording — "carries no press and no close" — is no longer the
  * distinction. It still carries no CLOSE and is still not a full row, and the
  * selector reason stands unchanged: sharing one class made "how many rows are
@@ -250,15 +256,14 @@ function CardEntryRow({
 function BareCheckout({
   project,
   group,
-  onNewTabIn,
-  newTabDisabled,
+  actions,
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
-  readonly onNewTabIn?: (workspacePath: string) => void;
-  readonly newTabDisabled?: boolean;
+  readonly actions?: CardActions;
 }) {
   const where = whereOf(project, group);
+  const menu = useActionsMenu();
   const content = (
     <Fragment>
       <span class="asr-bare__mark" aria-hidden="true" />
@@ -267,27 +272,36 @@ function BareCheckout({
     </Fragment>
   );
 
-  if (onNewTabIn === undefined) {
+  if (actions === undefined) {
     return (
       <div class="asr-bare" data-shell="false">
         {content}
       </div>
     );
   }
+  // The row IS the checkout's one create control (`rail-create-consolidation`,
+  // spec: "a checkout with nothing open is itself the control"), and since that
+  // change a press OPENS the agent list rather than spawning a shell — the
+  // press itself starts nothing. `aria-haspopup`/`aria-expanded` are DL-13.7's
+  // (amended) words for a press-to-open trigger; no `title`, since one never
+  // appears on focus (DL-23.10) and the accessible name already says it all.
   return (
-    <button
-      type="button"
-      class="asr-bare"
-      data-shell="false"
-      disabled={newTabDisabled}
-      aria-label={`New agent in ${where}`}
-      title={`New agent in ${where}`}
-      onClick={() => {
-        onNewTabIn(group.path);
-      }}
-    >
-      {content}
-    </button>
+    <Fragment>
+      <button
+        type="button"
+        class="asr-bare"
+        data-shell="false"
+        aria-haspopup="menu"
+        aria-expanded={menu.rect !== null}
+        aria-label={`New agent in ${where}`}
+        onClick={(event) => {
+          menu.toggleAt(event.currentTarget.getBoundingClientRect(), event.currentTarget);
+        }}
+      >
+        {content}
+      </button>
+      <CheckoutMenu project={project} group={group} actions={actions} menu={menu} />
+    </Fragment>
   );
 }
 
@@ -303,6 +317,7 @@ function BareCheckout({
 function FlatEntries({
   project,
   group,
+  actions,
   onFocusPane,
   onClosePane,
   onSelectTab,
@@ -310,11 +325,13 @@ function FlatEntries({
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
+  readonly actions?: CardActions;
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
   readonly onSelectTab: (tabIndex: number) => void;
   readonly onCloseTab: (tabIndex: number) => void;
 }) {
+  const menu = useActionsMenu();
   return (
     <Fragment>
       {group.entries.map((entry) => (
@@ -329,7 +346,138 @@ function FlatEntries({
           onCloseTab={onCloseTab}
         />
       ))}
+      {/* The folder's one create control (`rail-create-consolidation`, design
+          D5): with the project header's `+` gone, a folder git does not know
+          would otherwise have NO create path. The same row the open card
+          ends with, anchored to itself since there is no card box; the menu
+          it raises drops every git-backed row (`labelled: false`). A remembered
+          folder with no entries renders this row alone. */}
+      {actions !== undefined && (
+        <Fragment>
+          <NewAgentRow
+            where={whereOf(project, group)}
+            open={menu.rect !== null}
+            onPress={(row) => {
+              menu.toggleAt(row.getBoundingClientRect(), row);
+            }}
+          />
+          <CheckoutMenu project={project} group={group} actions={actions} menu={menu} />
+        </Fragment>
+      )}
     </Fragment>
+  );
+}
+
+/**
+ * The actions menu's open state and anchor, shared by every shape a checkout
+ * renders as (`rail-create-consolidation`, design D3): the boxed card (its
+ * strip `+`, its `New agent` row, a right-click), the bare row of a checkout
+ * with nothing open, and the flat entries of a folder git does not know. One
+ * hook rather than three copies of the same two fields, so the toggle contract
+ * — a second press on the control that opened it CLOSES it, because that
+ * control is exempt from `useDismiss`'s outside-press close — is stated once.
+ *
+ * The menu itself is `position: fixed` off `rect`, so the host's own box does
+ * not matter and `CheckoutMenu` renders as a sibling of whatever pressed it.
+ */
+interface ActionsMenuState {
+  readonly rect: DOMRect | null;
+  readonly trigger: { readonly current: HTMLElement | null };
+  /** Open at `rect`, exempting `trigger` from the outside-press close; close
+   *  instead if already open — the press came from the control that opened it. */
+  readonly toggleAt: (rect: DOMRect, trigger: HTMLElement | null) => void;
+  /** Open (or re-anchor) without toggling — the right-click path, which has no
+   *  trigger element and must not close a menu it was asked to raise. */
+  readonly openAt: (rect: DOMRect) => void;
+  readonly close: () => void;
+}
+
+function useActionsMenu(): ActionsMenuState {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const trigger = useRef<HTMLElement | null>(null);
+  const close = (): void => {
+    setRect(null);
+    trigger.current = null;
+  };
+  return {
+    rect,
+    trigger,
+    toggleAt: (at, from) => {
+      if (rect !== null) {
+        close();
+        return;
+      }
+      trigger.current = from;
+      setRect(at);
+    },
+    openAt: (at) => {
+      trigger.current = null;
+      setRect(at);
+    },
+    close,
+  };
+}
+
+/** The checkout's actions menu, mounted while its state says it is open. */
+function CheckoutMenu({
+  project,
+  group,
+  actions,
+  menu,
+}: {
+  readonly project: string;
+  readonly group: RailWorktreeGroup;
+  readonly actions: CardActions;
+  readonly menu: ActionsMenuState;
+}) {
+  if (menu.rect === null) {
+    return null;
+  }
+  return (
+    <CardActionsMenu
+      subject={subjectOf(project, group)}
+      actions={actions}
+      rect={menu.rect}
+      trigger={menu.trigger.current}
+      onClose={menu.close}
+    />
+  );
+}
+
+/**
+ * The `New agent` row — the open card's create control and the flat entries'
+ * (design D5). Since `rail-create-consolidation` it OPENS the checkout's agent
+ * list rather than spawning a shell: the label said "agent" and the press
+ * started none. `aria-haspopup`/`aria-expanded` are DL-13.7's (amended) words
+ * for a press-to-open trigger. `.asr-card__new` is its own leaf, not
+ * `.asr-card__row` (review fix, 2026-08-26): it shares no press target or
+ * accessible name with an agent row.
+ */
+function NewAgentRow({
+  where,
+  open,
+  onPress,
+}: {
+  readonly where: string;
+  readonly open: boolean;
+  readonly onPress: (row: HTMLButtonElement) => void;
+}) {
+  return (
+    <button
+      type="button"
+      class="asr-card__new"
+      aria-haspopup="menu"
+      aria-expanded={open}
+      aria-label={`New agent in ${where}`}
+      onClick={(event) => {
+        onPress(event.currentTarget);
+      }}
+    >
+      <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
+        <DeckIcon icon={Plus} size={CHROME_ICON} />
+      </span>
+      <span class="asr-card__name">New agent</span>
+    </button>
   );
 }
 
@@ -347,18 +495,20 @@ export interface WorktreeCardProps {
    */
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
   readonly onCloseTab: (tabIndex: number) => void;
-  readonly onNewTabIn?: (workspacePath: string) => void;
-  readonly newTabDisabled?: boolean;
   /**
    * Reach a shell-only entry's tab. Agent entries use `onFocusPane`; a true
-   * empty checkout still goes through `onNewTabIn` instead.
+   * empty checkout's row opens the actions menu instead.
    */
   readonly onSelectTab: (tabIndex: number) => void;
   /**
-   * The checkout's actions menu (spec §8), raised by the strip's `+` or by a
-   * right-click on the card. Omitted where nothing can wire it, which takes
-   * the `+` with it (DL-19.7) rather than leaving a launcher that opens
-   * nothing.
+   * The checkout's actions menu (spec §8) — since `rail-create-consolidation`
+   * the ONE surface every create control on a checkout raises: the closed
+   * card's strip `+`, the open card's `New agent` row, the bare row of a
+   * checkout with nothing open, the flat entries' row, and a right-click on
+   * the card. `onNewTabIn` is gone with that change: no press on this card
+   * starts a process by itself any more. Omitted where nothing can wire it,
+   * which takes every create control with it (DL-19.7) rather than leaving a
+   * launcher that opens nothing.
    */
   readonly actions?: CardActions;
 }
@@ -368,19 +518,17 @@ export function WorktreeCard(props: WorktreeCardProps) {
   // The actions menu belongs to the CARD, not to the strip: a right-click
   // anywhere on the card raises the same surface the `+` does (spec §7.3), and
   // `worktree-agent-stack.tsx` already carried that gesture in the older rail.
-  const [actionsAt, setActionsAt] = useState<DOMRect | null>(null);
-  const actionsTrigger = useRef<HTMLElement | null>(null);
+  // Since `rail-create-consolidation` the open card's `New agent` row raises it
+  // too, so the state is the shared hook's rather than this component's own.
+  const menu = useActionsMenu();
   const cardRef = useRef<HTMLElement>(null);
-  const closeActions = (): void => {
-    setActionsAt(null);
-    actionsTrigger.current = null;
-  };
 
   if (!group.labelled) {
     return (
       <FlatEntries
         project={project}
         group={group}
+        actions={props.actions}
         onFocusPane={props.onFocusPane}
         onClosePane={props.onClosePane}
         onSelectTab={props.onSelectTab}
@@ -390,14 +538,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
   }
 
   if (group.entries.length === 0) {
-    return (
-      <BareCheckout
-        project={project}
-        group={group}
-        onNewTabIn={props.onNewTabIn}
-        newTabDisabled={props.newTabDisabled}
-      />
-    );
+    return <BareCheckout project={project} group={group} actions={props.actions} />;
   }
 
   const actions = props.actions;
@@ -420,8 +561,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
         if (card === null) {
           return;
         }
-        actionsTrigger.current = null;
-        setActionsAt(card.getBoundingClientRect());
+        menu.openAt(card.getBoundingClientRect());
       }}
     >
       <CardHead
@@ -455,21 +595,21 @@ export function WorktreeCard(props: WorktreeCardProps) {
               onCloseTab={props.onCloseTab}
             />
           ))}
-          {props.onNewTabIn !== undefined && (
-            <button
-              type="button"
-              class="asr-card__new"
-              disabled={props.newTabDisabled}
-              aria-label={`New agent in ${whereOf(project, group)}`}
-              onClick={() => {
-                props.onNewTabIn?.(group.path);
+          {/* The open card's create control: the closed strip's `+`, in row
+              form. Off the CARD's rect, like the `+` and the right-click, so
+              every entry point puts the menu in the same place (spec §8.2). */}
+          {actions !== undefined && (
+            <NewAgentRow
+              where={whereOf(project, group)}
+              open={menu.rect !== null}
+              onPress={(row) => {
+                const card = cardRef.current;
+                menu.toggleAt(
+                  card === null ? row.getBoundingClientRect() : card.getBoundingClientRect(),
+                  row,
+                );
               }}
-            >
-              <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
-                <DeckIcon icon={Plus} size={CHROME_ICON} />
-              </span>
-              <span class="asr-card__name">New agent</span>
-            </button>
+            />
           )}
         </Fragment>
       ) : (
@@ -478,35 +618,24 @@ export function WorktreeCard(props: WorktreeCardProps) {
           group={group}
           onFocusPane={props.onFocusPane}
           onClosePane={props.onClosePane}
-          actionsOpen={actionsAt !== null}
+          actionsOpen={menu.rect !== null}
           onOpenActions={
             actions === undefined
               ? undefined
               : (trigger) => {
-                  if (actionsAt !== null) {
-                    closeActions();
-                    return;
-                  }
-                  actionsTrigger.current = trigger;
                   // Off the CARD's rect, not the `+`'s: both entry points must
                   // put the menu in the same place (spec §8.2).
                   const card = cardRef.current;
-                  setActionsAt(
+                  menu.toggleAt(
                     card === null ? trigger.getBoundingClientRect() : card.getBoundingClientRect(),
+                    trigger,
                   );
                 }
           }
         />
       )}
-      {actions !== undefined && actionsAt !== null && (
-        <CardActionsMenu
-          project={project}
-          group={group}
-          actions={actions}
-          rect={actionsAt}
-          trigger={actionsTrigger.current}
-          onClose={closeActions}
-        />
+      {actions !== undefined && (
+        <CheckoutMenu project={project} group={group} actions={actions} menu={menu} />
       )}
     </article>
   );

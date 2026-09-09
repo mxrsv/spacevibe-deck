@@ -5,6 +5,7 @@
  */
 import { BUILTIN_AGENTS } from "../lib/agent-catalog";
 import type { PaneAgent } from "../lib/process-info";
+import type { SignalConfidence } from "../terminal/agent-attention";
 import type { RailPaneRow, RailState, RailTabRow } from "./agent-rail-model";
 
 /** One agent pane on a worktree card. */
@@ -59,9 +60,15 @@ export interface RailWorktreeGroup {
   readonly rows: readonly RailTabRow[];
 }
 
+/**
+ * DL-27.3's fold, loudest first. `ended` sits between `asked` and `working`
+ * (2026-09-03): an agent that died is something to look at before a run that
+ * is still going, and after a question that is waiting on an answer.
+ */
 const STATE_RANK: Readonly<Record<RailState, number>> = {
-  failed: 4,
-  asked: 3,
+  failed: 5,
+  asked: 4,
+  ended: 3,
   working: 2,
   done: 1,
   idle: 0,
@@ -245,6 +252,8 @@ export interface StripGroup {
   readonly panes: readonly RailCardPane[];
   /** The loudest pane's state — the one mark a merged segment can wear. */
   readonly state: RailState;
+  /** That pane's confidence in it, so the segment's mark can be drawn hollow too. */
+  readonly confidence: SignalConfidence;
 }
 
 /**
@@ -282,7 +291,12 @@ export function groupSegments(panes: readonly RailCardPane[]): readonly StripGro
       // A group with no members cannot exist — every key came from a pane — so
       // falling back to `members` avoids the non-null assertion the type needs.
       const loudest = sorted[0] ?? members[0];
-      return { agent, panes: sorted, state: loudest?.state ?? "idle" } satisfies StripGroup;
+      return {
+        agent,
+        panes: sorted,
+        state: loudest?.state ?? "idle",
+        confidence: loudest?.confidence ?? "unknown",
+      } satisfies StripGroup;
     })
     .sort((a, b) => {
       const left = a.panes[0];
@@ -378,4 +392,63 @@ export function panesBehind(
     return panes.filter((pane) => !seen.has(pane.paneId));
   }
   return shown.find((group) => group.agent === key)?.panes ?? [];
+}
+
+/* ──────────────────────────── what the actions menu acts on ─────────────────
+ * `openspec/changes/rail-create-consolidation` (design D2). The actions menu
+ * used to read a whole `RailWorktreeGroup`, which only a rendered card has.
+ * `⌘T` raises the same menu FREE-STANDING for the active tab's workspace, and
+ * `App` holds no groups — it holds a path and the same scans the rail reads —
+ * so the menu takes this SUBSET instead, and both placements build it: a card
+ * through `subjectOf`, the chord through `subjectForWorkspace` in
+ * `agent-rail-model.ts`. The menu stays pure over its inputs either way.
+ */
+
+export interface MenuSubject {
+  /** The project name the cluster header prints — `RailStreamGroup.project`. */
+  readonly project: string;
+  /** The checkout root the menu's rows act on; never a tab's cwd. */
+  readonly path: string;
+  /** The repository — `worktree_add`'s argument; `path` itself for the primary. */
+  readonly repositoryPath: string;
+  /** Null when git does not know the checkout: a plain folder, and every
+   *  workspace under Tauri, where `git_repository` does not exist. */
+  readonly branch: string | null;
+  /** The checkout's own word — `checkoutLabel`'s answer for a scanned checkout,
+   *  the folder's basename otherwise. */
+  readonly label: string;
+  /** Mirrors `RailWorktreeGroup.labelled`: false for the synthetic worktree of a
+   *  folder git does not know, which drops every git-backed row. */
+  readonly labelled: boolean;
+}
+
+/** The subject a card's menu acts on — the card's own group, reduced. */
+export function subjectOf(project: string, group: RailWorktreeGroup): MenuSubject {
+  return {
+    project,
+    path: group.path,
+    repositoryPath: group.repositoryPath,
+    branch: group.labelled && group.branch !== "" ? group.branch : null,
+    label: checkoutLabel(group),
+    labelled: group.labelled,
+  };
+}
+
+/**
+ * `project · label · branch`, with a segment already said dropped — the rule
+ * `whereOf` has applied to every accessible name and tooltip since 2026-08-30,
+ * stated once here so the card row's `whereOf` and the free-standing menu's
+ * heading can never disagree about the words. A repository's primary checkout
+ * sits at the repository root, so its label (the branch) and the project can
+ * still collide with the branch; a worktree named after its branch collides
+ * the other way. Both come out as one word.
+ */
+export function subjectWhere(subject: MenuSubject): string {
+  const said: string[] = [];
+  for (const segment of [subject.project, subject.label, subject.branch ?? ""]) {
+    if (segment !== "" && !said.includes(segment)) {
+      said.push(segment);
+    }
+  }
+  return said.join(" · ");
 }

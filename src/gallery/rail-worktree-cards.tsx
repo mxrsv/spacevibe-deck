@@ -256,7 +256,6 @@ function CardRail({ initialOpenKey }: { readonly initialOpenKey: string | null }
                 onClosePane={NOOP}
                 onCloseTab={NOOP}
                 onSelectTab={NOOP}
-                onNewTabIn={NOOP}
               />
             ))}
           </div>

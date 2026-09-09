@@ -31,6 +31,10 @@ function mount(overrides: Partial<QuickLaunchProps> = {}) {
   const onFocusOpenedAgent = vi.fn();
   const onClearDraft = vi.fn();
   const props: QuickLaunchProps = {
+    // The staged prompt is hidden in production behind
+    // `TASK_PROMPT_STAGING_ENABLED`; these tests keep it wired, the
+    // `deliverGrab(…, pasteDisabled)` precedent.
+    promptStaging: true,
     draft: readyDraft(),
     agents: AGENTS,
     recents: [{ path: "/repo/deck", lastOpenedAt: 1 }],

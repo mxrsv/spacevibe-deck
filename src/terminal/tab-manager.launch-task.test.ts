@@ -127,6 +127,25 @@ describe("launchTask", () => {
     expect(written(pty)).not.toContain("ship it");
   });
 
+  it("drops the prompt entirely, and never waits, while staging is off", async () => {
+    // Production's own default (`TASK_PROMPT_STAGING_ENABLED` false). The pane
+    // is DELIBERATELY left as a bare shell — under staging this is the input
+    // that makes `waitForPromptReady` burn its full 90s ceiling — and the
+    // assertion is that no fake timer has to be advanced for the call to
+    // settle. `started` is the honest outcome: the tab is up, the agent was
+    // asked for nothing.
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setupControllable(infos, { promptStaging: false });
+    await tm.init();
+    const result = await tm.launchTask(INTENT, "ship it");
+    expect(result.outcome).toBe("started");
+    expect(result.tabKey).toBeTypeOf("number");
+    expect(written(pty)).not.toContain("ship it");
+    expect(paneTaskPrompts.value.get(1)).toBeUndefined();
+  });
+
   it("treats a whitespace-only prompt as no prompt", async () => {
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],

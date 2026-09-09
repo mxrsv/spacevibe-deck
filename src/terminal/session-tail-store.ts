@@ -111,6 +111,11 @@ function panesOf(tab: TabView): readonly PaneView[] {
   return tab.panes ?? NO_PANES;
 }
 
+/** The retained label of an ended agent is display metadata, not a live process. */
+function liveAgentOf(pane: PaneView): string | null {
+  return pane.phase === "exited" ? null : pane.agent;
+}
+
 /**
  * Resume marks, in two halves.
  *
@@ -161,15 +166,37 @@ export function noteResumedPane(workspacePath: string | null, agent: string): vo
   resumeClaims.set(key, (resumeClaims.get(key) ?? 0) + 1);
 }
 
+/**
+ * A sentence the CLI itself handed over — Claude's `Stop` hook carries
+ * `last_assistant_message` (agent-signal contract layer, stage 2) — for the
+ * pane that ran it. Written straight into the store under that session,
+ * ahead of any transcript read: the file is documented as lagging the turn
+ * (trust audit §4.6), and this is the fix the audit named. A later
+ * `session_tail` answer for the same session keeps it (a null tail for the
+ * same id keeps what is on screen); a different session replaces it.
+ */
+export function noteExplicitTail(paneId: number, sessionId: string, text: string): void {
+  const sentence = text.trim();
+  if (sentence === "") {
+    return;
+  }
+  paneSessions.set(paneId, sessionId);
+  const tails = new Map(paneTails.value);
+  tails.set(paneId, sentence);
+  paneTails.value = tails;
+  publishPairings();
+}
+
 /** Whether this pane is (or hereby becomes) the holder of a resume mark. */
 function claimsResume(pane: PaneView, workspacePath: string | null): boolean {
   if (resumedPaneIds.has(pane.paneId)) {
     return true;
   }
-  if (pane.agent === null) {
+  const agent = liveAgentOf(pane);
+  if (agent === null) {
     return false;
   }
-  const key = claimKey(workspacePath, pane.agent);
+  const key = claimKey(workspacePath, agent);
   const remaining = resumeClaims.get(key) ?? 0;
   if (remaining <= 0) {
     return false;
@@ -201,7 +228,8 @@ function fingerprintOf(tabs: readonly TabView[]): string {
   return tabs
     .flatMap((tab) =>
       panesOf(tab).map(
-        (pane) => `${pane.paneId}:${pane.agent ?? ""}:${pane.hasRun ? 1 : 0}:${pane.changedAt}`,
+        (pane) =>
+          `${pane.paneId}:${liveAgentOf(pane) ?? ""}:${pane.hasRun ? 1 : 0}:${pane.changedAt}`,
       ),
     )
     .join("|");
@@ -248,7 +276,7 @@ function isNewGeneration(pane: PaneView, previous: PaneGeneration | undefined): 
   if (previous === undefined) {
     return false;
   }
-  return previous.agent !== pane.agent || (previous.ran && !pane.hasRun);
+  return previous.agent !== liveAgentOf(pane) || (previous.ran && !pane.hasRun);
 }
 
 /**
@@ -268,14 +296,15 @@ function entriesOf(tabs: readonly TabView[]): readonly TailEntry[] {
   // bug this exists to fix (the sessions panel's resume, 2026-08-17).
   for (const tab of tabs) {
     for (const pane of panesOf(tab)) {
-      if (pane.agent !== null && !pane.hasRun) {
+      if (liveAgentOf(pane) !== null && !pane.hasRun) {
         claimsResume(pane, tab.workspacePath);
       }
     }
   }
   for (const tab of tabs) {
     for (const pane of panesOf(tab)) {
-      if (pane.agent === null) {
+      const agent = liveAgentOf(pane);
+      if (agent === null) {
         continue;
       }
       // Mop-up for the panes the first pass skipped: a restored pane the user
@@ -283,19 +312,28 @@ function entriesOf(tabs: readonly TabView[]): readonly TailEntry[] {
       // must be spent here rather than left lying around for the next FRESH
       // pane in that workspace to pick up.
       const resumed = claimsResume(pane, tab.workspacePath);
-      if (!pane.hasRun && !resumed) {
+      // A FACT from a contract-layer source (the Claude registry, stage 1):
+      // the pane's session is known, not guessed, so the ask is exact — the
+      // main process pins that id and never ranks for this pane (spec §10.7).
+      // A pane the registry knows is asked even before it has run: its
+      // conversation exists, and a session that has said nothing yet answers
+      // an empty tail on its own.
+      const fact =
+        typeof pane.sessionId === "string" && pane.sessionId !== "" ? pane.sessionId : null;
+      if (!pane.hasRun && !resumed && fact === null) {
         continue;
       }
-      const preferredId = paneSessions.get(pane.paneId);
+      const preferredId = fact ?? paneSessions.get(pane.paneId);
       entries.push({
         paneId: pane.paneId,
         request: {
-          agent: pane.agent,
+          agent,
           cwd: tab.workspacePath,
           lastSeenAt: pane.changedAt || now,
           // Absent on the first ask for this pane; from then on it is what
           // keeps the answer stable instead of re-guessed every few seconds.
           ...(preferredId === undefined ? {} : { preferredId }),
+          ...(fact === null ? {} : { exact: true }),
         },
       });
     }
@@ -450,9 +488,9 @@ function prune(
         // because a pin does not self-correct. Passing `false` there is also
         // what delivers §11.11's "overwritten by the next shell→agent
         // generation", through `forget`'s own delete branch.
-        forget(tails, models, pane.paneId, pane.agent === null);
+        forget(tails, models, pane.paneId, liveAgentOf(pane) === null);
       }
-      paneGenerations.set(pane.paneId, { agent: pane.agent, ran: pane.hasRun });
+      paneGenerations.set(pane.paneId, { agent: liveAgentOf(pane), ran: pane.hasRun });
     }
   }
   return { tails, models };

@@ -82,7 +82,6 @@ describe("TabBar", () => {
   const baseProps = () => ({
     onSelectTab: vi.fn(),
     onCloseTab: vi.fn(),
-    onNewTab: vi.fn(),
     onRenameTab: vi.fn(),
     onSetTabColor: vi.fn(),
     // TabBar places the toolbar element `App` builds; a marker div is enough
@@ -102,27 +101,28 @@ describe("TabBar", () => {
     });
   };
 
-  it("shows the Windows New Tab shortcut without changing its accessible label", () => {
+  it("carries no add button in top-tab mode either", () => {
+    // `rail-create-consolidation` (2026-09-02): the strip's `+` is gone in BOTH
+    // layouts. Top-tab mode has no sidebar, so this frame has no mouse create
+    // control at all — ⌘T's free-standing list, which carries
+    // `Open another project…`, is the route, and that consequence is recorded
+    // in the change's proposal for the owner.
     initializeDesktopEnvironment({
       platform: "windows",
       homeDir: "C:\\Users\\Deck",
     });
     mount(baseProps());
 
-    const add = host.querySelector(".tab-add") as HTMLButtonElement;
-    expect(add.title).toBe("New tab (Ctrl+Shift+T)");
-    expect(add.getAttribute("aria-label")).toBe("New tab");
+    expect(host.querySelector(".tab-add")).toBeNull();
+    expect(host.querySelector('[aria-label="New tab"]')).toBeNull();
   });
 
-  it("draws add and close as icons, named only by their labels", () => {
+  it("draws close as an icon, named only by its label", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
     mount(baseProps());
 
-    const add = host.querySelector(".tab-add") as HTMLButtonElement;
     const close = host.querySelector(".tab__close") as HTMLButtonElement;
 
-    expect(add.querySelector(".deck-icon--plus")).not.toBeNull();
-    expect(add.textContent).toBe("");
     expect(close.querySelector(".deck-icon--x")).not.toBeNull();
     expect(close.getAttribute("aria-label")).toBe("Close tab");
   });

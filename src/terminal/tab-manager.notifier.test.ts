@@ -167,7 +167,7 @@ describe("createTabManager notifier — production default reads the setting LIV
 });
 
 describe("createTabManager notifier integration — fake notifier (Task 23)", () => {
-  it("routes a background agent→shell completion transition through maybeNotify once, with the right paneId/kind/labels", async () => {
+  it("routes a background agent→shell END through maybeNotify once as kind none — a dead agent is never a finished run", async () => {
     vi.useFakeTimers();
     try {
       const infoByPane = new Map<number, PaneProcessInfo>([
@@ -185,7 +185,38 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       maybeNotify.mockClear(); // discard the gate-open + working calls (kind "none")
 
       infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null)); // foreground process becomes the shell
-      await vi.advanceTimersByTimeAsync(2000); // poll closes the gate → inferred completion
+      await vi.advanceTimersByTimeAsync(2000); // poll closes the gate → the agent ENDED (stage 0, 2026-09-03)
+
+      // Before 2026-09-03 this was an inferred `completed`, so a crashed agent
+      // sent a "claude finished" notification (trust audit §4.3). The end is a
+      // phase change with nothing latched, and the choke point sends nothing
+      // for `none` — so no notification claims a dead agent finished.
+      expect(maybeNotify).not.toHaveBeenCalled();
+
+      tm.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("routes a background OSC completion through maybeNotify once, with the right paneId/kind/labels", async () => {
+    vi.useFakeTimers();
+    try {
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
+      const { notifier, maybeNotify } = fakeNotifierSpy();
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
+      await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+        workspacePath: "/repo",
+      });
+      await tm.init();
+      await vi.advanceTimersByTimeAsync(0); // materialize poll → gate open (claude)
+
+      pty.emitOutput(1, "\x1b]9;4;1\x07"); // working
+      maybeNotify.mockClear(); // discard the gate-open + working calls (kind "none")
+
+      pty.emitOutput(1, "\x1b]9;4;0\x07"); // the CLI's own clear → explicit completion
 
       expect(maybeNotify).toHaveBeenCalledTimes(1);
       const n = maybeNotify.mock.calls[0][0];
@@ -218,8 +249,9 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07");
       maybeNotify.mockClear();
 
-      infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
-      await vi.advanceTimersByTimeAsync(2000);
+      // The CLI's own clear: an explicit completion (an agent→shell exit is
+      // the agent ENDING since 2026-09-03, and ends carry no kind to notify).
+      pty.emitOutput(1, "\x1b]9;4;0\x07");
 
       // Routed regardless of window focus — a real notifier would gate this
       // on `isWindowFocused()`, but this fake proves TabManager itself

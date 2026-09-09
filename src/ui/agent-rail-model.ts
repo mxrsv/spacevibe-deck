@@ -20,7 +20,7 @@
  */
 import type { PaneAgent } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
-import type { RepositoryScan } from "../repositories/repository-client";
+import type { RepositoryScan, WorktreeEntry } from "../repositories/repository-client";
 import {
   buildRail,
   filterRailToWorkspaceHistory,
@@ -29,6 +29,7 @@ import {
   worktreeForPath,
 } from "../repositories/repository-model";
 import { NO_PANES, type PaneView, type TabView } from "../terminal/tabs-store";
+import type { SignalConfidence } from "../terminal/agent-attention";
 import { UNSEQUENCED } from "../lib/open-sequence";
 // Type-only the other way (`RailStreamGroup`), so the pair is a compile-time
 // cycle and never a runtime one.
@@ -39,12 +40,14 @@ import {
   outranks,
   sortWorktrees,
   stripSegments,
+  type MenuSubject,
   type RailCardEntry,
   type RailCardPane,
   type RailCardShell,
   type RailWorktreeGroup,
 } from "./agent-rail-card-model";
 export { STRIP_VISIBLE, stripSegments };
+export type { MenuSubject };
 export type { RailCardEntry, RailCardPane, RailCardShell, RailWorktreeGroup };
 
 /**
@@ -55,14 +58,46 @@ export type { RailCardEntry, RailCardPane, RailCardShell, RailWorktreeGroup };
  * label in `paneState`); `done` is a run you checked; `idle` is a pane whose
  * agent has never run anything. `idle` and the accent-ringed `done` are
  * gone.
+ *
+ * `ended` is the sixth word (DL-27.3, amended 2026-09-03; agent-signal
+ * contract layer, stage 0): the agent's process left the pane while the pane
+ * stayed up — any exit status, no CLI error event. It is what a crash used to
+ * be misread as: before this, a working agent that died latched an inferred
+ * `completed` and wore `asked`'s yellow (trust audit §4.3). It clears when
+ * the user focuses the pane or types into the shell that replaced it.
  */
-export type RailState = "failed" | "asked" | "working" | "done" | "idle";
+export type RailState = "failed" | "asked" | "ended" | "working" | "done" | "idle";
+
+/**
+ * The rail state and how much to trust it, read together (DL-27.3, amended
+ * 2026-09-03). `explicit` means the CLI said so over a channel it documents;
+ * `inferred` means Deck read it off output timing or the process table;
+ * `unknown` means nothing has been seen yet. The rail draws an inferred
+ * `asked`/`done` hollow and an explicit one filled.
+ */
+export interface RailSignal {
+  readonly state: RailState;
+  readonly confidence: SignalConfidence;
+}
 
 /** One agent pane inside a tab row. */
 export interface RailPaneRow {
   readonly paneId: number;
   readonly agent: PaneAgent;
   readonly state: RailState;
+  /**
+   * How much `state` is to be trusted — see `RailSignal`. Always set by
+   * `paneRows`; optional only so a fixture-built row predating the field
+   * (gallery seeds, tests) still types, in which case a renderer reads it
+   * as `explicit` — today's filled mark.
+   */
+  readonly confidence?: SignalConfidence;
+  /**
+   * What the agent is waiting on when a contract-layer source says it is
+   * waiting (`permission prompt`, `input needed`), else null. The accessible
+   * name's detail; the mark itself does not change (DL-27.2).
+   */
+  readonly detail?: string | null;
   /**
    * Head of this pane's newest turn when `AgentRailInput.tails` carries one,
    * else empty.
@@ -189,16 +224,19 @@ export interface RailStreamGroup {
   /**
    * The project's checkouts, each holding its own rows (DL-27.23): the
    * primary first, then the worktrees with something open in them by
-   * earliest-open, then the ones that are only in Deck's history. Empty for a
-   * REMEMBERED cluster, whose project has nothing open at all — that header is
-   * the whole cluster and there are no checkouts to print under it.
+   * earliest-open, then the ones that are only in Deck's history. A REMEMBERED
+   * cluster — nothing open in the project at all — carries its remembered
+   * checkouts as rowless groups since `rail-create-consolidation`
+   * (2026-09-02); before that it was empty and the header's `+` was the way
+   * back in. Whether a cluster is live is `tabIndexes.length > 0`, never this
+   * list's length.
    */
   readonly worktrees: readonly RailWorktreeGroup[];
   /**
-   * The workspace the header's `+` opens into when the cluster has no rows —
-   * a REMEMBERED project (owner, 2026-08-20): a workspace from Deck's
-   * persisted history whose last tab has closed. Null for a live cluster,
-   * whose rows carry their own workspace paths.
+   * The newest history entry of a REMEMBERED project (owner, 2026-08-20): a
+   * workspace from Deck's persisted history whose last tab has closed. Null
+   * for a live cluster, whose rows carry their own workspace paths. It named
+   * the header's `+` destination until that control went (2026-09-02).
    */
   readonly path: string | null;
   /**
@@ -289,21 +327,43 @@ const WEEK = 7 * DAY;
  *
  * A quiet pane splits on the tracker's `hasRun` bit: `done` is a run you
  * checked, `idle` is an agent that has never run anything.
+ *
+ * `exited` — the agent left the pane, or the PTY died — is `ended` (2026-09-03)
+ * unless a latched error or warning outranks it: those were said by the CLI
+ * and the exit does not un-say them. A `requested` or `completed` never
+ * reaches here on an exited pane, because the tracker drops both when the
+ * agent ends; the fold is stated anyway so the rule is readable in one place.
+ *
+ * The confidence beside the word comes from whichever axis produced it: the
+ * attention latch's own for `failed`/`asked`, the phase's for the rest. An
+ * `idle` that has seen nothing is `unknown` — the resting dot.
  */
-export function paneState(pane: PaneView): RailState {
+export function paneSignal(pane: PaneView): RailSignal {
+  const attentionConfidence = pane.confidence ?? "explicit";
+  const phaseConfidence = pane.phaseConfidence ?? "unknown";
   switch (pane.attention) {
     case "error":
-      return "failed";
+      return { state: "failed", confidence: attentionConfidence };
     case "requested":
     case "warning":
     case "completed":
-      return "asked";
+      return { state: "asked", confidence: attentionConfidence };
     default:
-      if (pane.phase === "working") {
-        return "working";
+      if (pane.phase === "exited") {
+        return { state: "ended", confidence: phaseConfidence };
       }
-      return pane.hasRun ? "done" : "idle";
+      if (pane.phase === "working") {
+        return { state: "working", confidence: phaseConfidence };
+      }
+      return pane.hasRun
+        ? { state: "done", confidence: phaseConfidence }
+        : { state: "idle", confidence: phaseConfidence };
   }
+}
+
+/** The state half of `paneSignal`, for callers that read no confidence. */
+export function paneState(pane: PaneView): RailState {
+  return paneSignal(pane).state;
 }
 
 /**
@@ -332,7 +392,8 @@ function paneRows(
             paneId: pane.paneId,
             agent: pane.agent,
             message: tails?.get(pane.paneId) ?? "",
-            state: paneState(pane),
+            ...paneSignal(pane),
+            detail: pane.detail ?? null,
             age: formatShortAge(pane.changedAt, now),
             changedAt: pane.changedAt,
             // DL-27.22: the tab's focused pane is only the WINDOW's focused
@@ -529,11 +590,18 @@ function rememberedClusters(
   input: AgentRailInput,
   livePaths: readonly string[],
 ): RailStreamGroup[] {
-  const clusters: RailStreamGroup[] = [];
+  interface Folded {
+    readonly key: string;
+    readonly repository: Extract<RepositoryScan, { kind: "repository" }> | null;
+    /** The FIRST history entry of the project — newest, since history is newest first. */
+    readonly first: string;
+    readonly historyPaths: string[];
+  }
   // Folded siblings accumulate here: the FIRST history entry of a repository
   // makes the cluster, and every later worktree of the same repository joins
   // its `historyPaths` instead of printing a second header.
-  const byKey = new Map<string, string[]>();
+  const folded: Folded[] = [];
+  const byKey = new Map<string, Folded>();
   for (const path of input.workspaceHistoryPaths) {
     // A history workspace some live cluster already covers is not repeated:
     // longest-prefix, the same attachment rule tabs use, so a remembered
@@ -544,39 +612,122 @@ function rememberedClusters(
     const scan = input.scans.get(path);
     const repository = scan?.kind === "repository" ? scan : null;
     const key = repository?.key ?? `plain:${path}`;
-    const folded = byKey.get(key);
-    if (folded !== undefined) {
-      folded.push(path);
+    const existing = byKey.get(key);
+    if (existing !== undefined) {
+      existing.historyPaths.push(path);
       continue;
     }
-    const historyPaths = [path];
-    byKey.set(key, historyPaths);
+    const entry: Folded = { key, repository, first: path, historyPaths: [path] };
+    byKey.set(key, entry);
+    folded.push(entry);
+  }
+  return folded.map(({ key, repository, first, historyPaths }) => {
     // Named like the live tier: after the repository's own checkout when a
     // scan knows it, else after the folder itself.
     const primary = repository?.worktrees.find((entry) => !entry.bare) ?? null;
-    clusters.push({
+    return {
       key: `remembered:${key}`,
       // The un-prefixed key, which is exactly what the live tier stores this
       // project under — that identity is what survives the last tab closing
       // (spec §3).
       orderKey: key,
-      project: workspaceLabel(primary?.path ?? path),
+      project: workspaceLabel(primary?.path ?? first),
       labelled: true,
-      // Nothing is open in this project at all, so there are no checkouts to
-      // print under its header (DL-27.23): the remembered cluster IS the
-      // header, exactly as it was before the worktree tier existed. A
-      // remembered SIBLING of a live project is a different case and does get
-      // a group — it lives inside that project's cluster, above.
-      worktrees: [],
-      path,
+      // The remembered checkouts, each a group with nothing open in it
+      // (`openspec/changes/rail-create-consolidation`, 2026-09-02). Until then
+      // this was `[]` — "the remembered cluster IS the header" — and the
+      // header's own `+` was the project's create path. That `+` is gone:
+      // every create control lives on the checkout tier now, so a remembered
+      // project prints its checkouts as the same bare rows a history-only
+      // sibling of a LIVE project already printed, and each row is the way
+      // back in. A folder git does not know prints one unlabelled group, which
+      // renders as flat entries plus that tier's `New agent` row.
+      worktrees: rememberedWorktrees(repository, primary, first, historyPaths),
+      path: first,
       historyPaths,
       // Nothing is open here — the remembered header's ✕ forgets, it never
       // closes (owner, 2026-08-20; unchanged by the close model).
       tabIndexes: NO_TAB_INDEXES,
-    });
-  }
-  return clusters;
+    };
+  });
 }
+
+/**
+ * One rowless group per remembered checkout of a project (see
+ * `rememberedClusters`). A repository's history entries resolve to their
+ * worktree ROOTS by longest prefix — a remembered package directory lands on
+ * its checkout, never beside it — and duplicates fold; the primary sorts first
+ * (`sortWorktrees`). The fields mirror what `buildAgentRail` gives a live group
+ * with no rows, so `WorktreeCard` cannot tell the two apart and needs no
+ * remembered branch of its own.
+ */
+function rememberedWorktrees(
+  repository: Extract<RepositoryScan, { kind: "repository" }> | null,
+  primary: WorktreeEntry | null,
+  first: string,
+  historyPaths: readonly string[],
+): readonly RailWorktreeGroup[] {
+  const rowless = {
+    entries: NO_ENTRIES,
+    panes: NO_CARD_PANES,
+    rows: NO_ROWS,
+    live: false,
+    age: "",
+    active: false,
+  };
+  if (repository === null || primary === null) {
+    // A folder git does not know: one synthetic checkout named after itself,
+    // exactly the shape `buildRail` gives a live plain folder (`branch` falls
+    // back to the basename there too).
+    const name = workspaceLabel(first);
+    return [
+      {
+        key: first,
+        branch: name,
+        name,
+        path: first,
+        repositoryPath: first,
+        primary: true,
+        labelled: false,
+        ...rowless,
+      },
+    ];
+  }
+  const checkouts = repository.worktrees.filter((entry) => !entry.bare);
+  const roots = new Map<string, WorktreeEntry>();
+  for (const path of historyPaths) {
+    const root = worktreeForPath(
+      checkouts.map((entry) => entry.path),
+      path,
+    );
+    const checkout = checkouts.find((entry) => entry.path === root);
+    if (checkout !== undefined && !roots.has(checkout.path)) {
+      roots.set(checkout.path, checkout);
+    }
+  }
+  // A scan that answered for the path but lists no checkout containing it (a
+  // stale scan, a moved worktree) must not leave the header with no way back
+  // in: the primary is the honest fallback, since it is the repository itself.
+  if (roots.size === 0) {
+    roots.set(primary.path, primary);
+  }
+  return sortWorktrees(
+    [...roots.values()].map((checkout) => ({
+      key: checkout.path,
+      branch: checkout.branch ?? workspaceLabel(checkout.path),
+      name: workspaceLabel(checkout.path),
+      path: checkout.path,
+      repositoryPath: primary.path,
+      primary: checkout.path === primary.path,
+      labelled: true,
+      ...rowless,
+    })),
+  );
+}
+
+const NO_ENTRIES: readonly RailCardEntry[] = [];
+const NO_CARD_PANES: readonly RailCardPane[] = [];
+const NO_ROWS: readonly RailTabRow[] = [];
 
 /**
  * Every persisted history entry a LIVE cluster stands for (close model, 2026-08-22).
@@ -762,4 +913,62 @@ export function formatShortAge(then: number, now: number): string {
     return `${Math.floor(age / DAY)}d`;
   }
   return `${Math.floor(age / WEEK)}w`;
+}
+
+/**
+ * The menu subject for a workspace PATH, for the keyboard-raised actions menu
+ * (`openspec/changes/rail-create-consolidation`, design D2 and D7). `⌘T` has
+ * the active tab's `workspacePath` and no card, so this derives what a card
+ * would have carried from the same scans the rail reads:
+ *
+ * - a scanned repository answers the checkout that contains the path (longest
+ *   prefix, so a tab opened in a package directory still lands on its worktree
+ *   root — `RailWorktreeGroup.path` is "always the worktree root, never a tab's
+ *   cwd"), named by `checkoutLabel`'s own rule: the primary checkout by its
+ *   branch, every other by its folder;
+ * - anything else — a plain folder, a scan that has not landed, every path
+ *   under Tauri — is `labelled: false` with the folder's basename as its label
+ *   and no branch, which is exactly the unlabelled group `buildAgentRail`
+ *   produces for it.
+ *
+ * Pure: it never triggers a scan. A caller that wants one asks
+ * `ensureRepositoriesScanned` the way the rail does.
+ */
+export function subjectForWorkspace(
+  path: string,
+  scans: ReadonlyMap<string, RepositoryScan>,
+): MenuSubject {
+  const scan = scans.get(path);
+  if (scan?.kind === "repository") {
+    const checkouts = scan.worktrees.filter((entry) => !entry.bare);
+    const primary = checkouts[0];
+    const root = worktreeForPath(
+      checkouts.map((entry) => entry.path),
+      path,
+    );
+    const checkout = checkouts.find((entry) => entry.path === root);
+    if (primary !== undefined && checkout !== undefined) {
+      // `branch` falls back to the basename exactly as `RepositoryGroup`'s
+      // worktree `name` does for a detached HEAD (worktree-tier spec §11.1), so
+      // the subject says the same word the rail would have.
+      const branch = checkout.branch ?? workspaceLabel(checkout.path);
+      const isPrimary = checkout.path === primary.path;
+      return {
+        project: workspaceLabel(primary.path),
+        path: checkout.path,
+        repositoryPath: primary.path,
+        branch,
+        label: isPrimary ? branch : workspaceLabel(checkout.path),
+        labelled: true,
+      };
+    }
+  }
+  return {
+    project: workspaceLabel(path),
+    path,
+    repositoryPath: path,
+    branch: null,
+    label: workspaceLabel(path),
+    labelled: false,
+  };
 }

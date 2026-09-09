@@ -88,9 +88,11 @@
   text-align: left;
 }
 
-/* `BareCheckout` renders a plain `<div>` when `onNewTabIn` is unwired (DL-19.7: the control the
-   host cannot drive degrades to a static row, never an inert-looking button) and a real
-   `<button>` otherwise — this rule covers both, `cursor` only where the element is one. */
+/* `BareCheckout` renders a plain `<div>` when the actions menu is unwired (DL-19.7: the control
+   the host cannot drive degrades to a static row, never an inert-looking button) and a real
+   `<button>` otherwise — one that OPENS the checkout's agent list since
+   `rail-create-consolidation` (2026-09-02). This rule covers both, `cursor` only where the
+   element is one. */
 button.asr-bare {
   cursor: pointer;
 }
@@ -607,6 +609,11 @@ button.asr-bare:hover {
    of left padding is what gives it room to sit there. Shared by the open row AND the closed
    strip's segment: both render this exact structure via the same `CardMark`/`AgentGlyph` pair. */
 .asr-card__glyph {
+  --asr-badge-size: 5px;
+  --asr-badge-ring: 1.5px;
+  --asr-badge-outset: 2px;
+  --asr-badge-radius: calc(var(--asr-badge-size) / 2 + var(--asr-badge-ring));
+  --asr-badge-center: calc(var(--asr-badge-radius) - var(--asr-badge-outset));
   position: relative;
   display: grid;
   place-items: center;
@@ -636,22 +643,16 @@ button.asr-bare:hover {
   font: 620 var(--type-micro) / 1 var(--ui-font);
 }
 
-/* The per-pane state badge, on the glyph's bottom-left corner (`CardMark`; design §5, §9.4).
-   `content-box` so the 1.5px ring GROWS the box instead of eating the fill — this file has no
-   global `box-sizing` reset, and the border-box default would leave visible colour inside a
-   5px circle instead of a ring around it. The ring's colour is the plane immediately behind a
-   glyph sitting directly on the sidebar (a bare row, or a strip segment outside any card
-   background); inside an open card's own light wash the ring reads a shade off that plane —
-   accepted as ported from the specimen, and a candidate the owner can retune with the same
-   Task 10 pass that picks the busy hue. */
+/* The corner badge uses content-box: the ring surrounds the 5px fill. Explicit marks
+   keep their sidebar-colored separator; inferred rings reveal the surface below. */
 .asr-card__dot {
   position: absolute;
-  bottom: -2px;
-  left: -2px;
+  bottom: calc(-1 * var(--asr-badge-outset));
+  left: calc(-1 * var(--asr-badge-outset));
   box-sizing: content-box;
-  width: 5px;
-  height: 5px;
-  border: 1.5px solid var(--sidebar-bg);
+  width: var(--asr-badge-size);
+  height: var(--asr-badge-size);
+  border: var(--asr-badge-ring) solid var(--sidebar-bg);
   border-radius: 50%;
 }
 
@@ -667,31 +668,45 @@ button.asr-bare:hover {
   background: var(--red);
 }
 
-/* `done` — a checkout can hold a finished pane and a working one at once, so this dot has to
-   read as "not busy" without disappearing the way `idle` does (below): a done row still ran
-   something. No state left undeclared falls back to this: `idle` is the only state that
-   overrides it.
-
-   The fill is OPAQUE (owner, 2026-08-26: "one state has only a black border and no
-   background"). It shipped as `--tone 26%` over `transparent`, and a translucent fill inside a
-   5px circle composites against whatever plane the dot happens to sit on — the card's own
-   `--tab-active-bg`, plus the row's wash, plus the focus wash on top of that — landing about
-   one step off the row it sits in. All that survived was the 1.5px `--sidebar-bg` ring, which
-   is DARKER than the card, so the mark read as an empty black outline rather than a state. The
-   mix is against `--sidebar-bg` instead of `transparent`: the same grey, but a real one that
-   the plane behind it cannot dilute. Every other drawn state was already opaque
-   (`--status-unread`, `--red`) or near enough (`--asr-card-busy` at 62%) to survive it. */
+/* Done stays visible after work stops. An opaque gray prevents the row's wash from
+   diluting the fill until only the darker separator remains visible. */
 .asr-card__dot[data-state="done"] {
   background: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
 }
 
-/* Idle paints nothing. `display: none`, not `background: none`: the ring above is drawn in the
-   plane BEHIND the row, so a transparent fill inside it would still leave a 7px ring sitting on
-   an idle agent's corner — a mark where the state says there is none. `CardMark` already omits
-   this element for `idle` (returns `null`); this rule is defensive, not load-bearing, in case a
-   future caller renders the badge unconditionally. */
+/* CardMark omits idle. Hide it defensively so a future caller cannot leave an empty ring. */
 .asr-card__dot[data-state="idle"] {
   display: none;
+}
+
+/* Ended is a filled stop square, distinct from an inferred done ring (DL-27.3). */
+.asr-card__dot[data-state="ended"] {
+  background: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
+  border-radius: var(--radius-flat);
+}
+
+/* Inferred marks reveal the actual surface, including its hover/focus wash. Mask only the
+   logo under the badge: a transparent fill alone would reveal the overlapping brand glyph.
+   The shared geometry keeps this cutout aligned in rows, strips and menus. */
+.asr-card__glyph:has(
+    > .asr-card__dot[data-confidence="inferred"]:is([data-state="asked"], [data-state="done"])
+  )
+  > .asr-card__logo {
+  mask-image: radial-gradient(
+    circle at var(--asr-badge-center) calc(100% - var(--asr-badge-center)),
+    transparent var(--asr-badge-radius),
+    #000 var(--asr-badge-radius)
+  );
+}
+
+.asr-card__dot[data-state="asked"][data-confidence="inferred"] {
+  background: transparent;
+  border-color: var(--status-unread);
+}
+
+.asr-card__dot[data-state="done"][data-confidence="inferred"] {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
 }
 
 /* -------------------------------------------------------------------- the loading track */

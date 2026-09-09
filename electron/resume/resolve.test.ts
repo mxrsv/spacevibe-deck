@@ -292,6 +292,26 @@ describe("resolveResume", () => {
     );
     expect(answers).toEqual([{ kind: "id", id: "aaaa" }, null, { kind: "id", id: "cx1" }]);
   });
+
+  it("(i2) reopens a journalled session id when it is on disk, and ranks only when it is not (stage 1)", () => {
+    // Two sessions in `/tmp/two`; the ranking would pick `s2` (nearest to T2)
+    // for both requests below. The pin names `s1` for the first pane, so it
+    // gets `s1`, and the second — pinned to a session no longer on disk —
+    // falls back to the ranking, which still cannot hand it `s1`.
+    expect(
+      resolveResume(home, [
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "s1" },
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "gone-from-disk" },
+      ]),
+    ).toEqual([
+      { kind: "id", id: "s1" },
+      { kind: "id", id: "s2" },
+    ]);
+    // A pin recorded in one checkout is not reopened in another.
+    expect(
+      resolveResume(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1, preferredId: "s1" }]),
+    ).toEqual([{ kind: "id", id: "aaaa" }]);
+  });
 });
 
 describe("validateResumeRequests", () => {
@@ -351,6 +371,20 @@ describe("validateResumeRequests", () => {
       { agent: "claude", cwd: "/tmp/w", lastSeenAt: 2 },
       { agent: "claude", cwd: "/tmp/w", lastSeenAt: 3 },
       { agent: "claude", cwd: "/tmp/w", lastSeenAt: 4 },
+    ]);
+  });
+
+  it("(n) carries `exact` only beside a pin (stage 1, 2026-09-03)", () => {
+    expect(
+      validateResumeRequests([
+        { agent: "claude", cwd: "/tmp/w", lastSeenAt: 1, preferredId: "s1", exact: true },
+        { agent: "claude", cwd: "/tmp/w", lastSeenAt: 2, preferredId: "s1", exact: "yes" },
+        { agent: "claude", cwd: "/tmp/w", lastSeenAt: 3, exact: true },
+      ]),
+    ).toEqual([
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 1, preferredId: "s1", exact: true },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 2, preferredId: "s1" },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 3 },
     ]);
   });
 });

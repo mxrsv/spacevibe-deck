@@ -96,6 +96,20 @@ let host: HTMLDivElement;
 const NOOP_FOCUS = (): void => {};
 const NOOP_CLOSE = (): void => {};
 
+/**
+ * The actions menu every create control on a checkout raises
+ * (`rail-create-consolidation`): one agent, so the first `menuitem` is
+ * `Run Claude`. A fresh pair of mocks per test.
+ */
+function cardActions(): CardActions {
+  return {
+    agents: [{ id: "claude", label: "Claude", detail: "claude" }],
+    agentsResolved: true,
+    onRunAgent: vi.fn(),
+    onSplitHere: vi.fn(),
+  };
+}
+
 function mount(props: Partial<WorktreeCardProps> & { readonly group: RailWorktreeGroup }): void {
   act(() => {
     render(
@@ -229,7 +243,7 @@ describe("WorktreeCard head (design §4)", () => {
         tag: "BUTTON",
         title: null,
         label:
-          "Focus 2 Claude agents, loudest idle in spacevibe-bench · ai-terminal · feature/ai-terminal",
+          "Choose from 2 Claude agents, loudest idle in spacevibe-bench · ai-terminal · feature/ai-terminal",
       },
     ]);
     expect(segments[0]?.textContent).toContain("×2");
@@ -258,6 +272,165 @@ describe("WorktreeCard head (design §4)", () => {
     const add = segments[segments.length - 1];
     expect(add?.classList.contains("asr-card__seg--add")).toBe(true);
     expect(add?.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("WorktreeCard segment press (spec §16 §15.1, amended 2026-09-02)", () => {
+  // The defect the owner reported: a merged `×2` segment pressed the LOUDEST
+  // pane and closed the hover menu, so a press could never choose between the
+  // two — and since the pointer never left the segment, `pointerenter` never
+  // fired again and the menu could not come back. A press on a merged segment
+  // or on the `+N` tail now PINS the menu open instead; a single-pane segment
+  // keeps its press as a focus, because its menu says nothing the segment did
+  // not.
+  const TWO_CODEX = group({
+    panes: [
+      pane({ paneId: 1, agent: "codex", label: "Codex" }),
+      pane({ paneId: 2, agent: "codex", label: "Codex 2" }),
+    ],
+  });
+
+  function fire(element: Element | null | undefined, type: string): void {
+    act(() => {
+      element?.dispatchEvent(new Event(type, { bubbles: false }));
+    });
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("pins the menu on a merged segment's press instead of guessing a pane", () => {
+    const onFocusPane = vi.fn();
+    mount({ open: false, group: TWO_CODEX, onFocusPane });
+    const segment = host.querySelector(".asr-card__seg");
+
+    click(segment);
+
+    expect(onFocusPane).not.toHaveBeenCalled();
+    const menu = host.querySelector(".asr-pop--panes");
+    expect(menu).not.toBeNull();
+    expect(menu?.querySelectorAll(".asr-card__row")).toHaveLength(2);
+    expect(segment?.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(segment?.getAttribute("aria-expanded")).toBe("true");
+
+    // A second press on the same segment closes what the first opened.
+    click(segment);
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+    expect(segment?.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps a pinned menu up after the pointer leaves the strip", () => {
+    vi.useFakeTimers();
+    mount({ open: false, group: TWO_CODEX });
+    click(host.querySelector(".asr-card__seg"));
+
+    fire(host.querySelector(".asr-card__strip"), "pointerleave");
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(host.querySelector(".asr-pop--panes")).not.toBeNull();
+  });
+
+  it("drops a neighbour's pending hover when the pointer leaves a pinned strip", () => {
+    vi.useFakeTimers();
+    mount({
+      open: false,
+      group: group({
+        panes: [
+          pane({ paneId: 1, agent: "codex", label: "Codex" }),
+          pane({ paneId: 2, agent: "codex", label: "Codex 2" }),
+          pane({ paneId: 3, agent: "claude", label: "Claude" }),
+        ],
+      }),
+    });
+    const segments = host.querySelectorAll(".asr-card__seg");
+    const codex = [...segments].find((segment) => segment.textContent?.includes("×2"));
+    const claude = [...segments].find((segment) => !segment.textContent?.includes("×2"));
+    click(codex);
+
+    // Brush the neighbour on the way out: its 120ms raise is pending when the
+    // pointer leaves, and must not fire into an unpinned menu nothing closes.
+    fire(claude, "pointerenter");
+    fire(host.querySelector(".asr-card__strip"), "pointerleave");
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(codex?.getAttribute("aria-expanded")).toBe("true");
+    expect(host.querySelectorAll(".asr-pop--panes .asr-card__row")).toHaveLength(2);
+  });
+
+  it("lets a hover-raised menu go when the pointer leaves, as before", () => {
+    vi.useFakeTimers();
+    mount({ open: false, group: TWO_CODEX });
+    fire(host.querySelector(".asr-card__seg"), "pointerenter");
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(host.querySelector(".asr-pop--panes")).not.toBeNull();
+
+    fire(host.querySelector(".asr-card__strip"), "pointerleave");
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+  });
+
+  it("closes a pinned menu on Escape and on choosing a pane from it", () => {
+    const onFocusPane = vi.fn();
+    mount({ open: false, group: TWO_CODEX, onFocusPane });
+    click(host.querySelector(".asr-card__seg"));
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+
+    click(host.querySelector(".asr-card__seg"));
+    const rows = host.querySelectorAll(".asr-pop--panes .asr-card__hit");
+    click(rows[1]);
+    expect(onFocusPane).toHaveBeenCalledWith(0, 2);
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+  });
+
+  it("still focuses the pane on a single-pane segment's press, with nothing pinned", () => {
+    const onFocusPane = vi.fn();
+    mount({
+      open: false,
+      group: group({ panes: [pane({ paneId: 5, tabIndex: 3 })] }),
+      onFocusPane,
+    });
+    const segment = host.querySelector(".asr-card__seg");
+
+    click(segment);
+
+    expect(onFocusPane).toHaveBeenCalledWith(3, 5);
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+    expect(segment?.getAttribute("aria-haspopup")).toBeNull();
+  });
+
+  it("pins exactly the hidden panes on the `+N` tail's press", () => {
+    const onFocusPane = vi.fn();
+    // Six kinds at the fallback widths overflow the 220px fallback budget.
+    const agents = ["claude", "codex", "gemini", "opencode", "agy", "cursor-agent"] as const;
+    mount({
+      open: false,
+      group: group({
+        panes: agents.map((agent, index) => pane({ paneId: index + 1, agent, label: agent })),
+      }),
+      onFocusPane,
+    });
+    const tail = host.querySelector<HTMLElement>('.asr-card__seg[data-overflow="true"]');
+    expect(tail).not.toBeNull();
+    const hidden = Number(tail?.textContent?.replace("+", ""));
+
+    click(tail);
+
+    expect(onFocusPane).not.toHaveBeenCalled();
+    expect(tail?.getAttribute("aria-expanded")).toBe("true");
+    expect(host.querySelectorAll(".asr-pop--panes .asr-card__row")).toHaveLength(hidden);
   });
 });
 
@@ -434,11 +607,11 @@ describe("WorktreeCard open list (design §5)", () => {
     );
   });
 
-  it("opens the launcher pinned to this checkout from New agent", () => {
-    const onNewTabIn = vi.fn();
+  it("opens the checkout's agent list from New agent, starting nothing on the press", () => {
+    const actions = cardActions();
     mount({
       open: true,
-      onNewTabIn,
+      actions,
       group: group({ path: "/repo/ai-terminal", panes: [pane()] }),
     });
 
@@ -446,12 +619,37 @@ describe("WorktreeCard open list (design §5)", () => {
     // 2026-08-26): it shares no press target or accessible name with an
     // agent row, and briefly sharing `__row` broke a `rows()`-style test
     // selector's vacuity guarantee.
-    const launcher = host.querySelector(".asr-card__new");
+    const launcher = host.querySelector<HTMLElement>(".asr-card__new");
     expect(launcher).not.toBeNull();
     expect(launcher?.classList.contains("asr-card__row")).toBe(false);
+    // A press-to-open trigger (DL-13.7, amended), not a launcher: since
+    // `rail-create-consolidation` the row OPENS the list and starts nothing.
+    expect(launcher?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(launcher?.getAttribute("aria-expanded")).toBe("false");
     click(launcher);
-    expect(onNewTabIn).toHaveBeenCalledWith("/repo/ai-terminal");
-    expect(onNewTabIn).toHaveBeenCalledTimes(1);
+    expect(actions.onRunAgent).not.toHaveBeenCalled();
+    expect(actions.onSplitHere).not.toHaveBeenCalled();
+    expect(launcher?.getAttribute("aria-expanded")).toBe("true");
+    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
+    expect(menu).not.toBeNull();
+    // Anchored to the card: no heading, since the card names the checkout.
+    expect(menu?.querySelector(".asr-act__where")).toBeNull();
+    click(menu?.querySelector<HTMLElement>('[role="menuitem"]'));
+    expect(actions.onRunAgent).toHaveBeenCalledWith("claude", "/repo/ai-terminal");
+    expect(actions.onRunAgent).toHaveBeenCalledTimes(1);
+    // A choice closes it.
+    expect(host.querySelector(".asr-pop--actions")).toBeNull();
+  });
+
+  it("closes the list on a second press of the row that opened it", () => {
+    mount({ open: true, actions: cardActions(), group: group({ panes: [pane()] }) });
+
+    const launcher = host.querySelector<HTMLElement>(".asr-card__new");
+    click(launcher);
+    expect(host.querySelector(".asr-pop--actions")).not.toBeNull();
+    click(launcher);
+    expect(host.querySelector(".asr-pop--actions")).toBeNull();
+    expect(launcher?.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("marks the focused row with aria-current and washes exactly one row", () => {
@@ -566,20 +764,29 @@ describe("WorktreeCard bare row (design §6)", () => {
     expect(bare?.textContent).not.toContain("spacevibe-board");
   });
 
-  it("keeps a bare row reachable: pressing it opens the launcher for that checkout", () => {
-    const onNewTabIn = vi.fn();
+  it("keeps a bare row reachable: pressing it opens the agent list for that checkout", () => {
+    const actions = cardActions();
     mount({
-      onNewTabIn,
+      actions,
       group: group({ path: "/repo/docs", panes: [] }),
     });
 
-    const bare = host.querySelector("button.asr-bare");
+    const bare = host.querySelector<HTMLElement>("button.asr-bare");
     expect(bare).not.toBeNull();
     expect(bare?.getAttribute("aria-label")).toBe(
       "New agent in spacevibe-bench · ai-terminal · feature/ai-terminal",
     );
+    expect(bare?.getAttribute("aria-haspopup")).toBe("menu");
+    // No `title`: one never appears on focus (DL-23.10), and the accessible
+    // name already says it all.
+    expect(bare?.hasAttribute("title")).toBe(false);
     click(bare);
-    expect(onNewTabIn).toHaveBeenCalledWith("/repo/docs");
+    // The press starts nothing; the list it opened does.
+    expect(actions.onRunAgent).not.toHaveBeenCalled();
+    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
+    expect(menu).not.toBeNull();
+    click(menu?.querySelector<HTMLElement>('[role="menuitem"]'));
+    expect(actions.onRunAgent).toHaveBeenCalledWith("claude", "/repo/docs");
   });
 
   it("degrades to a static row rather than an inert button when unwired (DL-19.7)", () => {
@@ -598,10 +805,10 @@ describe("WorktreeCard bare row (design §6)", () => {
 
 describe("WorktreeCard shell rows", () => {
   it("keeps a live shell tab inside the card instead of claiming the checkout is empty", () => {
-    const onNewTabIn = vi.fn();
+    const actions = cardActions();
     const onSelectTab = vi.fn();
     mount({
-      onNewTabIn,
+      actions,
       onSelectTab,
       open: true,
       group: group({
@@ -619,7 +826,7 @@ describe("WorktreeCard shell rows", () => {
     click(row?.querySelector(".asr-card__hit"));
     expect(onSelectTab).toHaveBeenCalledWith(4);
     expect(onSelectTab).toHaveBeenCalledTimes(1);
-    expect(onNewTabIn).not.toHaveBeenCalled();
+    expect(actions.onRunAgent).not.toHaveBeenCalled();
   });
 
   it("closes the shell tab through the tab callback", () => {

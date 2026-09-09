@@ -70,16 +70,25 @@ describe("boardInputFrom", () => {
   });
 
   it("carries the tracker's own trust bit, and claims nothing without one", () => {
-    const explicit = boardInputFrom({ ...base(), tabs: [tab([pane({ confidence: "explicit" })])] });
+    const explicit = boardInputFrom({
+      ...base(),
+      tabs: [tab([pane({ phaseConfidence: "explicit" })])],
+    });
     expect(explicit.confidence?.get(11)).toBe("explicit");
-    const inferred = boardInputFrom({ ...base(), tabs: [tab([pane({ confidence: "inferred" })])] });
+    const inferred = boardInputFrom({
+      ...base(),
+      tabs: [tab([pane({ phaseConfidence: "inferred", confidence: "explicit" })])],
+    });
     expect(inferred.confidence?.get(11)).toBe("inferred");
     // `undefined` is a REAL case, not just a fixture one: `tracker.snapshot(id)`
     // answers null until a poll has classified the pane, so an unclassified
     // pane has no tier. It must stay OUT of the map — the model reads
     // `input.confidence?.get(id) ?? null` (`agent-board-model.ts:303`), so
     // absence becomes `null`, which is "claims nothing".
-    const silent = boardInputFrom({ ...base(), tabs: [tab([pane({ confidence: undefined })])] });
+    const silent = boardInputFrom({
+      ...base(),
+      tabs: [tab([pane({ phaseConfidence: "unknown" })])],
+    });
     expect(silent.confidence?.has(11)).toBe(false);
   });
 

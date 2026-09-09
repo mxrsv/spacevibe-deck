@@ -1,32 +1,37 @@
 import { describe, expect, it, vi } from "vitest";
 import { actionGroups, type CardActions } from "./worktree-card-menus";
-import type { RailWorktreeGroup } from "./agent-rail-model";
+import type { MenuSubject } from "./agent-rail-card-model";
 
 /**
  * The actions menu's row set (spec
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §8, §12).
+ * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §8, §12;
+ * `openspec/changes/rail-create-consolidation` for the subject, the
+ * free-standing placement and the board row).
  *
  * DL-19.7 is the rule under test: a row whose host cannot answer is OMITTED,
  * never shown inert — which is exactly what leaves Tauri with the agent rows
  * and the split row, and nothing else.
  */
 
-const CHECKOUT: RailWorktreeGroup = {
-  key: "/repo/wt",
-  branch: "feat/strip-actions",
-  name: "wt",
-  path: "/repo/wt",
+const CHECKOUT: MenuSubject = {
+  project: "repo",
   // A LINKED worktree, so its repository is a different path — which is the
   // whole point of the `Create branch from here` case below.
+  path: "/repo/wt",
   repositoryPath: "/repo",
-  primary: false,
+  branch: "feat/strip-actions",
+  label: "wt",
   labelled: true,
-  entries: [],
-  panes: [],
-  live: true,
-  age: "now",
-  active: false,
-  rows: [],
+};
+
+/** A folder git does not know — every path under Tauri, and a plain folder on Electron. */
+const FOLDER: MenuSubject = {
+  project: "notes",
+  path: "/w/notes",
+  repositoryPath: "/w/notes",
+  branch: null,
+  label: "notes",
+  labelled: false,
 };
 
 function actions(extra: Partial<CardActions> = {}): CardActions {
@@ -140,5 +145,36 @@ describe("actionGroups", () => {
       }
     }
     expect(seen).toEqual(["run:/repo/wt", "split:/repo/wt"]);
+  });
+
+  it("drops the branch row for a folder git does not know, even when wired (DL-19.7)", () => {
+    // `rail-create-consolidation` design D5: a plain folder has no branch to
+    // fork from, so the row goes rather than promising `Branch off null`.
+    const groups = actionGroups(actions({ onCreateBranch: () => {} }), FOLDER);
+    expect(ids(groups)).toEqual(["run:claude", "split"]);
+  });
+
+  it("carries the board row ONLY in the free-standing placement", () => {
+    // Design D1/D6: the chord's list is complete on its own because top-tab
+    // mode and a hidden sidebar have no other route to the Open board; a card's
+    // anchored menu never repeats the `+ New` that stands beside it.
+    const open = vi.fn();
+    const wired = actions({ onOpenBoard: open });
+    expect(ids(actionGroups(wired, CHECKOUT))).toEqual(["run:claude", "split"]);
+    const free = actionGroups(wired, CHECKOUT, "free-standing");
+    expect(ids(free)).toEqual(["run:claude", "split", "board"]);
+    const board = free.flat().at(-1);
+    expect(board?.kind === "action" ? board.title : null).toBe("Open another project…");
+    if (board?.kind === "action") {
+      board.run();
+    }
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the board row when nothing can raise the board (DL-19.7)", () => {
+    expect(ids(actionGroups(actions(), CHECKOUT, "free-standing"))).toEqual([
+      "run:claude",
+      "split",
+    ]);
   });
 });

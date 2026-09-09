@@ -14,6 +14,7 @@ import { SettingsDirectionSection } from "./sections/settings-direction";
 import { ToolbarSection } from "./sections/toolbar-section";
 import { TokensSection } from "./sections/tokens-section";
 import { LaunchProfilesSection } from "./sections/launch-profiles-section";
+import { SignalMarkVariantsSection } from "./sections/signal-mark-variants";
 
 export interface GallerySection {
   readonly id: string;
@@ -62,6 +63,15 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     id: "attention",
     label: "attention direction",
     Section: AttentionDirectionSection,
+  },
+  /* Registered 2026-09-03 for the agent-signal contract layer's stage 0: the
+     inferred/explicit mark and the `ended` word are drawn as candidates for
+     the owner's eye, variant A of each shipping meanwhile. Parked the way
+     `unread-mark-variants` was once the owner has chosen. */
+  {
+    id: "signal-marks",
+    label: "signal mark direction",
+    Section: SignalMarkVariantsSection,
   },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
   { id: "seams", label: "seam system", Section: SeamSection },

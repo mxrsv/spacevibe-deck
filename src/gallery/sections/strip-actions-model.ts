@@ -15,6 +15,7 @@ import type { RailCardPane, RailState } from "../../ui/agent-rail-model";
 export const STATE_LABEL: Readonly<Record<RailState, string>> = {
   failed: "failed",
   asked: "needs you",
+  ended: "ended",
   working: "working",
   done: "done",
   idle: "idle",

@@ -59,7 +59,13 @@ export interface PtyClient {
   cancelCloseWindow(requestId: number): Promise<void>;
   listenOutput(handler: (id: number, data: string) => void): Promise<UnlistenFn>;
   listenPromptReady(handler: (id: number) => void): Promise<UnlistenFn>;
-  listenExit(handler: (id: number) => void): Promise<UnlistenFn>;
+  /**
+   * A pane's PTY exited. `exitCode` is the status the host reported, or null
+   * when it reported none — Tauri's `ExitPayload` carries only the id, and
+   * the tracker records that as "unknown" rather than guessing zero
+   * (agent-signal contract layer, stage 0, 2026-09-03).
+   */
+  listenExit(handler: (id: number, exitCode: number | null) => void): Promise<UnlistenFn>;
 }
 
 interface OutputPayload {
@@ -69,6 +75,15 @@ interface OutputPayload {
 
 interface ExitPayload {
   id: number;
+  /** Electron adds it (`electron/pty/manager.ts`); Tauri does not. */
+  exitCode?: number;
+}
+
+/** The status off the wire, or null for a host that sends none. */
+function exitCodeOf(payload: ExitPayload): number | null {
+  return typeof payload.exitCode === "number" && Number.isFinite(payload.exitCode)
+    ? payload.exitCode
+    : null;
 }
 
 interface PromptReadyPayload {
@@ -172,7 +187,7 @@ export function createTauriPtyClient(): PtyClient {
     },
     listenExit(handler) {
       return listen<ExitPayload>("pty:exit", (event) => {
-        handler(event.payload.id);
+        handler(event.payload.id, exitCodeOf(event.payload));
       });
     },
   };
@@ -193,7 +208,7 @@ export function createMemoryPtyClient(
   readonly writes: { id: number; data: string }[];
   emitOutput(id: number, data: string): void;
   emitPromptReady(id: number): void;
-  emitExit(id: number): void;
+  emitExit(id: number, exitCode?: number | null): void;
 } {
   let nextId = options.nextId ?? 1;
   const sessions = new Map<number, { cwd: string | null }>();
@@ -201,7 +216,7 @@ export function createMemoryPtyClient(
   const infos = new Map(options.infos ?? []);
   const outputHandlers = new Set<(id: number, data: string) => void>();
   const promptReadyHandlers = new Set<(id: number) => void>();
-  const exitHandlers = new Set<(id: number) => void>();
+  const exitHandlers = new Set<(id: number, exitCode: number | null) => void>();
 
   return {
     sessions,
@@ -270,9 +285,9 @@ export function createMemoryPtyClient(
         handler(id);
       }
     },
-    emitExit(id) {
+    emitExit(id, exitCode = null) {
       for (const handler of exitHandlers) {
-        handler(id);
+        handler(id, exitCode);
       }
     },
   };

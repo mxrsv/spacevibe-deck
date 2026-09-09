@@ -29,7 +29,7 @@
  * keeps ownership. Only the sidebar projection is scoped; file chips continue
  * through `FileSurfaceController` exactly as before.
  */
-import { Globe, Plus, SquaresFour, TerminalWindow, X } from "@phosphor-icons/react";
+import { Globe, SquaresFour, TerminalWindow, X } from "@phosphor-icons/react";
 import { activeTabIndex, tabViews, type TabView } from "../terminal/tabs-store";
 import type { PaneAgent } from "../lib/process-info";
 import { UNSEQUENCED } from "../lib/open-sequence";
@@ -37,7 +37,6 @@ import { mergeStripOrder } from "../lib/strip-order";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { fileIcon } from "../files/ui/file-icons";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import { titleWithShortcut } from "../lib/shortcut-label";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { activeWorkspace } from "../files/file-surface-store";
 import { fileTabViews } from "../files/file-tab-views";
@@ -52,9 +51,6 @@ import { tabTail } from "./agent-rail-model";
 export interface TabStripProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
-  onNewTab(): void;
-  /** The shared launcher already owns an in-flight task handoff. */
-  newTabDisabled?: boolean;
   /**
    * The same `SurfaceStrip` wired into `TabManager` (Task 5) — read here
    * only for `fileTabViews`'s projection and the `activate`/`closePath`
@@ -350,16 +346,11 @@ export function TabStrip(props: TabStripProps) {
           return fileTab === undefined ? null : fileChip(fileTab, surface.index);
         })}
       </div>
-      <button
-        type="button"
-        class="tab-add"
-        disabled={props.newTabDisabled}
-        title={titleWithShortcut("New tab", "new-tab")}
-        aria-label="New tab"
-        onClick={props.onNewTab}
-      >
-        <DeckIcon icon={Plus} size={CHROME_ICON} />
-      </button>
+      {/* No `+` after the chips since `openspec/changes/rail-create-consolidation`
+          (2026-09-02, owner): it was the one create control whose destination
+          was implicit — "the ACTIVE tab's workspace", said nowhere — and the
+          rail's cards each carry their own. `⌘T` (`new-tab`) keeps the
+          keyboard route and states its destination in the menu it raises. */}
     </>
   );
 }

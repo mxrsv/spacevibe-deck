@@ -41,6 +41,12 @@ import { useWorktreeForm } from "./use-worktree-form";
 import { SessionsBody } from "../ui/sessions/sessions-body";
 
 export interface OpenBoardProps {
+  /**
+   * Forwarded to the composer; defaults to `TASK_PROMPT_STAGING_ENABLED`.
+   * Present so the staged-prompt path stays testable while production
+   * hides it — the `deliverGrab(…, pasteDisabled)` precedent.
+   */
+  readonly promptStaging?: boolean;
   canCancel: boolean;
   /** Session history is Electron-only; false omits the board entry entirely. */
   canBrowseSessions: boolean;
@@ -119,6 +125,7 @@ export function launchNotice(outcome: LaunchTaskOutcome): string | null {
 }
 
 export function OpenBoard({
+  promptStaging,
   canCancel,
   canBrowseSessions,
   openWorkspacePaths,
@@ -620,6 +627,7 @@ export function OpenBoard({
         </div>
       ) : (
         <BoardComposer
+          promptStaging={promptStaging}
           homeDir={home}
           openFolderShortcut={openFolderShortcut}
           canCreateWorkspace={workspaceCreateAvailable}

@@ -29,6 +29,19 @@ import {
 } from "../lib/agent-catalog";
 import { agentLaunchCommand, resolveLaunchCommand } from "../lib/launch-command";
 import { countAgentLaunch } from "../telemetry/usage-counters";
+import { createAgentRegistrySync } from "./agent-registry-sync";
+import { agentRegistry as fetchAgentRegistry } from "../host/agent-registry-host";
+import { UNAVAILABLE_REGISTRY } from "../lib/agent-registry";
+import { augmentLaunchCommand, mintsClaudeSession, needsOpencodePort } from "../lib/launch-augment";
+import {
+  agentSignalConfig as fetchSignalConfig,
+  available as signalsHostAvailable,
+  listenHookEvents as listenHostHookEvents,
+  NO_SIGNAL_CONFIG,
+  opencodeAttach as hostOpencodeAttach,
+} from "../host/agent-signals-host";
+import { contractSignalOf, type HookEvent } from "../lib/agent-signal-map";
+import { noteExplicitTail } from "./session-tail-store";
 import { usageConsentOpen } from "../telemetry/consent-store";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
@@ -62,6 +75,7 @@ import {
   TASK_PROMPT_AUTOSEND,
   TASK_PROMPT_POLL_MS,
   TASK_PROMPT_READY_TIMEOUT_MS,
+  TASK_PROMPT_STAGING_ENABLED,
   type LaunchTaskOutcome,
   type LaunchTaskResult,
 } from "./task-prompt-send";
@@ -81,7 +95,7 @@ import {
   openAgentBoard,
   stepAgentBoardBack,
 } from "../ui/agent-board-store";
-import { createAgentLauncher } from "./agent-launch";
+import { createAgentLauncher, type AgentLaunchEntry } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
   capturePresetLayout,
@@ -134,6 +148,31 @@ export type { OpenFromPresetOptions, TabManagerDeps, TabManager } from "./tab-ma
 const WINDOWS_AGENT_TIMEOUT_MESSAGE =
   "PowerShell was not ready in time. Launch the agent manually.";
 const WINDOWS_STARTUP_POLL_FALLBACK_MS = 4000;
+/**
+ * How long after a launch command is typed the second `pty_info` poll runs
+ * (trust audit §4.5). One second is inside every agent's boot time on the
+ * owner's machine and half the recurring poll's tick, so the attention gate
+ * opens before the agent's first turn rather than up to 2 s after it.
+ */
+const LAUNCH_FOLLOW_UP_POLL_MS = 1000;
+
+/**
+ * A v4 uuid for `claude --session-id` (stage 2, spec §10.2). `randomUUID`
+ * where the runtime has it; otherwise built from `getRandomValues`, which
+ * every renderer and test environment provides.
+ */
+function mintSessionId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  cryptoApi.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 export function createTabManager(
   host: HTMLElement,
@@ -142,6 +181,7 @@ export function createTabManager(
 ): TabManager {
   const tabs: TabEntry[] = [];
   const unlisteners: UnlistenFn[] = [];
+  const promptStaging = deps.promptStaging ?? TASK_PROMPT_STAGING_ENABLED;
   const surfaces = deps.surfaces ?? INERT_SURFACES;
   const transfer = deps.transfer ?? defaultTransferClient;
   const closeWindow = deps.closeWindow ?? (() => getCurrentWindow().close());
@@ -173,6 +213,8 @@ export function createTabManager(
   interface PaneGeneration {
     readonly agent: PaneAgent;
     readonly startedAt: number;
+    readonly sessionId?: string;
+    readonly running: boolean;
   }
   const paneGenerations = new Map<number, PaneGeneration>();
   // An incomplete task handoff belongs to the exact pane that received (or
@@ -259,12 +301,128 @@ export function createTabManager(
   // Through paneIo so its synthetic keystrokes ("claude\r") count as input —
   // the echo suppression then keeps the launch echo out of the spinner.
   const reportAgentLaunchTimeout = deps.onAgentLaunchTimeout ?? reportChromeMessage;
+  // The second poll a launch schedules (trust audit §4.5), keyed by pane so a
+  // relaunch into the same pane replaces rather than stacks it, and cleared on
+  // dispose so a torn-down manager never polls a dead host.
+  const launchFollowUpPolls = new Map<number, ReturnType<typeof setTimeout>>();
   const launcher = createAgentLauncher(paneIo, {
     platform: environment.platform,
     onTimeout: () => {
       reportAgentLaunchTimeout(WINDOWS_AGENT_TIMEOUT_MESSAGE);
     },
+    onFire: (id) => {
+      // The startup blind window (trust audit §4.5): the attention gate opens
+      // on the poll that first finds the agent in the foreground, and the
+      // recurring poll runs every 2 s. An agent that starts working — or
+      // prints its startup OSC clear — before that tick was invisible for a
+      // whole run. Poll at once (usually still the shell) and again a second
+      // later (usually the agent), so the gate opens within the CLI's own
+      // boot time; `noteProcess`'s seed carries anything the activity module
+      // saw in between. On Windows the launcher fires only after the prompt
+      // marker, which is also what releases the startup poll deferral, so
+      // this never forks a WMI census in front of a profile still loading.
+      void poller.poll();
+      const pending = launchFollowUpPolls.get(id);
+      if (pending !== undefined) {
+        clearTimeout(pending);
+      }
+      launchFollowUpPolls.set(
+        id,
+        setTimeout(() => {
+          launchFollowUpPolls.delete(id);
+          if (!disposed) {
+            void poller.poll();
+          }
+        }, LAUNCH_FOLLOW_UP_POLL_MS),
+      );
+    },
   });
+
+  // ---- Agent-signal adapters (stage 2) ------------------------------------
+  // The launch config main answered at `init()` — the `--settings` file a
+  // Claude launch is augmented with — cached because `arm` happens inside a
+  // materialize that must not wait on a round trip; a launch armed before
+  // the answer lands goes out un-augmented rather than late. The two seams
+  // default to the host facade, which answers "no adapter" where the host
+  // cannot (Tauri, the browser preview), and `null` disables that half.
+  let signalConfig = NO_SIGNAL_CONFIG;
+  const signalConfigFetch = deps.signalConfig === undefined ? fetchSignalConfig : deps.signalConfig;
+  const opencodeAttach =
+    deps.opencodeAttach === undefined ? hostOpencodeAttach : deps.opencodeAttach;
+  const hookEventsListen = deps.hookEvents === undefined ? listenHostHookEvents : deps.hookEvents;
+  // Stages 1–3 are Electron-only (spec §8): a host with no `agent_signal_config`
+  // — Tauri, the browser preview, the test harness — arms the user's command
+  // exactly as before, synchronously, with no minted id and no flag appended.
+  const signalsEnabled =
+    deps.signalConfig === undefined ? signalsHostAvailable : deps.signalConfig !== null;
+
+  /**
+   * Arm each pane's command, augmented at ARM time with the flags that make
+   * its CLI report to Deck (spec §4 stage 2; `launch-augment.ts`). The user's
+   * own command is what `launchCommandByPane` and the journal hold — the
+   * augmented string exists only here and in the shell it is typed into.
+   * An opencode pane asks main for a port first; a fresh Claude launch mints
+   * its session id here, and the tracker holds it until the gate opens.
+   */
+  async function prepareLaunch({ id, command }: AgentLaunchEntry): Promise<AgentLaunchEntry> {
+    if (!signalsEnabled) return { id, command };
+    const adapters = settings.value.agentSignalAdapters;
+    const platform = environment.platform;
+    if (command === null) {
+      return { id, command: null };
+    }
+    let opencodePort: number | null = null;
+    if (opencodeAttach !== null && needsOpencodePort(command, adapters)) {
+      opencodePort = await opencodeAttach(id).catch(() => null);
+    }
+    const sessionId =
+      platform !== "windows" && mintsClaudeSession(command, adapters) ? mintSessionId() : null;
+    const augmented = augmentLaunchCommand(command, {
+      adapters,
+      platform,
+      claudeSettingsPath: signalConfig.claudeSettingsPath,
+      sessionId,
+      opencodePort,
+    });
+    if (augmented.sessionId !== null) {
+      tracker.noteMintedSession(id, augmented.sessionId);
+    }
+    return { id, command: augmented.command };
+  }
+
+  async function armLaunch(entries: readonly AgentLaunchEntry[]): Promise<void> {
+    if (!signalsEnabled) {
+      launcher.arm(entries);
+      return;
+    }
+    const armed = await Promise.all(entries.map(prepareLaunch));
+    if (!disposed) {
+      launcher.arm(armed);
+    }
+  }
+
+  /**
+   * One accepted hook post or server event for a pane of this window. The
+   * map decides what it means; the tracker decides whether it applies (gate
+   * and generation); a `Stop`'s sentence goes straight to the tail store.
+   */
+  function onHookEvent(event: HookEvent): void {
+    if (ownerOf(event.paneId) === undefined) {
+      return;
+    }
+    const signal = contractSignalOf(event);
+    if (signal === null) {
+      return;
+    }
+    const snap = tracker.noteContract(event.paneId, signal);
+    if (snap !== null && signal.kind === "completed" && signal.message !== null) {
+      noteExplicitTail(event.paneId, signal.sessionId, signal.message);
+    }
+    if (snap !== null) {
+      maybeNotify(event.paneId, snap);
+      syncViews();
+    }
+  }
 
   function activeManager(): TerminalManager | null {
     return active >= 0 && active < tabs.length ? tabs[active].manager : null;
@@ -341,14 +499,22 @@ export function createTabManager(
       // make a `+N` count add up.
       const panes: readonly PaneView[] = paneIds.map((id) => {
         const snap = tracker.snapshot(id);
-        const agent = explicitAgent(poller.infoFor(id));
-        tab.manager.setPaneWorking(id, agent !== null && snap?.phase === "working");
-        if (agent !== null && paneGenerations.get(id)?.agent !== agent) {
+        const live = explicitAgent(poller.infoFor(id));
+        tab.manager.setPaneWorking(id, live !== null && snap?.phase === "working");
+        // An agent that ENDED keeps its name on the projection until the end
+        // is acknowledged (stage 0, 2026-09-03): the poller says "shell" the
+        // moment the agent leaves the foreground, and a row with no agent is
+        // not a row — so DL-27.3's `ended` word would have nothing to land
+        // on. The tracker's `agentLabel` is the seam: it is kept after the
+        // gate closes for exactly this kind of post-run copy.
+        const agent =
+          live ?? (snap?.phase === "exited" && snap.agentLabel !== null ? snap.agentLabel : null);
+        if (live !== null && paneGenerations.get(id)?.agent !== live) {
           // A different agent in the same pane is a new generation; the FIRST
           // agent in a fresh pane is one too. An agent LEAVING is not: the
           // card keeps counting from when the agent started (spec §11.11).
           const replacing = paneGenerations.get(id) !== undefined;
-          paneGenerations.set(id, { agent, startedAt: now() });
+          paneGenerations.set(id, { agent: live, startedAt: now(), running: true });
           if (replacing) {
             // Spec §11.2: the task prompt is dropped on pane close "or
             // generation change". Only the SECOND agent onward — the first
@@ -361,12 +527,33 @@ export function createTabManager(
             forgetTaskPrompt(id);
           }
         }
+        const previousGeneration = paneGenerations.get(id);
+        if (previousGeneration !== undefined) {
+          if (live === null && previousGeneration.running) {
+            paneGenerations.set(id, { ...previousGeneration, running: false });
+          } else if (live !== null) {
+            // A same-name occupant after a shell is still a new conversation.
+            // Keep Board uptime semantics, but never inherit the old session.
+            paneGenerations.set(id, {
+              ...previousGeneration,
+              running: true,
+              sessionId:
+                snap?.sessionId ??
+                (previousGeneration.running ? previousGeneration.sessionId : undefined),
+            });
+          }
+        }
         const generation = paneGenerations.get(id);
         return {
           paneId: id,
           agent,
           attention: snap?.attention ?? "none",
           phase: snap?.phase ?? "unknown",
+          confidence: snap?.confidence ?? "explicit",
+          phaseConfidence: snap?.phaseConfidence ?? "unknown",
+          exitCode: snap?.exitCode ?? null,
+          sessionId: snap?.sessionId ?? null,
+          detail: snap?.detail ?? null,
           hasRun: snap?.hasRun ?? false,
           changedAt: snap?.changedAt ?? 0,
           // `paneId` above is this tab's own `activePaneId()`, already read
@@ -380,11 +567,7 @@ export function createTabManager(
           // module that knows which conversation a pane was in, and the only
           // one that sees the moment that knowledge is about to be dropped
           // (spec §11.11).
-          lastSessionId: lastSessionIdFor(id),
-          // The tracker's own trust bit, projected rather than re-derived —
-          // `snap` is the same snapshot `attention` and `phase` come from, so
-          // this costs no second lookup.
-          confidence: snap?.confidence,
+          lastSessionId: generation?.sessionId ?? lastSessionIdFor(id),
         };
       });
       return applyTabOverride(
@@ -541,6 +724,7 @@ export function createTabManager(
       // Every pane of every tab is polled now, so a long session would
       // otherwise leave one cache entry behind per pane ever opened.
       poller.prune(live);
+      registrySync.prune(live);
     },
     onAttentionSignal(id: number, signal: PaneAttentionSignal): void {
       // Structured OSC 9/777 notification or bell from a pane. Stamp it with
@@ -831,6 +1015,7 @@ export function createTabManager(
     pruneLaunchCommands(live);
     pruneTaskPromptPanes(live);
     poller.prune(live);
+    registrySync.prune(live);
   }
 
   /** Remove a tab whose last pane MOVED — no busy guard, no reopen snapshot. */
@@ -919,9 +1104,10 @@ export function createTabManager(
   }
 
   async function newTab(): Promise<void> {
-    // The + / Cmd+T path raises the shared non-modal Quick Launch in the
-    // active workspace. No tab is materialized until its final action; the
-    // legacy AgentQuickPicker remains compiled as the one-line revert seam.
+    // ⌘T hands the app the active tab's workspace and materializes nothing:
+    // since `rail-create-consolidation` (2026-09-02) the app answers with the
+    // rail card's agent list, free-standing, and a row of THAT list is what
+    // starts a process. The Quick Launch fallback stays as the revert seam.
     (deps.onOpenTaskLauncher ?? toggleQuickLaunch)(activeWorkspacePath());
   }
 
@@ -1010,7 +1196,7 @@ export function createTabManager(
         noteTaskPrompt(id, prompt);
       }
     });
-    launcher.arm(
+    void armLaunch(
       paneIds.map((id, index) => ({
         id,
         command: intent.paneCommands?.[index] ?? fallback,
@@ -1158,7 +1344,13 @@ export function createTabManager(
     if (entry === null) {
       return { outcome: "spawn-failed", tabKey: null };
     }
-    const text = prompt?.trim() ?? "";
+    // The surfaces already withhold the prompt while
+    // `TASK_PROMPT_STAGING_ENABLED` is false, so this is the second gate rather
+    // than the only one — and it is the one that matters, because it is the
+    // only place that can promise no caller reaches `waitForPromptReady`'s
+    // 90-second ceiling. `started` is the honest outcome: the tab is up and
+    // nothing was asked of the agent.
+    const text = promptStaging ? (prompt?.trim() ?? "") : "";
     if (text === "") {
       return { outcome: "started", tabKey: entry.key };
     }
@@ -1391,7 +1583,7 @@ export function createTabManager(
       if (launchCommand !== null) {
         launchCommandByPane.set(paneId, launchCommand);
       }
-      launcher.arm([
+      void armLaunch([
         {
           id: paneId,
           command:
@@ -1451,6 +1643,9 @@ export function createTabManager(
           // sent. Same limit as `launchCommand` above — a detached pane's
           // prompt does not travel with it.
           taskPrompt: capturedTaskPrompt(id),
+          // The conversation a contract-layer source confirmed (stage 1: the
+          // Claude registry), so restore reopens it rather than guessing.
+          sessionId: tracker.snapshot(id)?.sessionId ?? null,
         };
       });
       return [
@@ -1519,7 +1714,10 @@ export function createTabManager(
    * PTY has exited, an agent is STILL running in it, it never ran one, or that
    * agent has no resume form.
    */
+  const restartingPanes = new Set<number>();
+
   async function restartPane(paneId: number): Promise<boolean> {
+    if (restartingPanes.has(paneId)) return false;
     const owner = ownerOf(paneId);
     // An exited PTY still belongs to its tab, so `ownerOf` alone would let a
     // command be typed into a dead session and reported as a restart.
@@ -1536,13 +1734,14 @@ export function createTabManager(
     if (agent === null) {
       return false; // this pane has never run an agent
     }
+    const sessionId = paneGenerations.get(paneId)?.sessionId ?? lastSessionIdFor(paneId) ?? null;
     const command = restartCommandFor({
       agent,
       // The id the tail store KEPT on the agent's way out, never the live
       // pairing in `paneSessionIds`: `forget` empties that one at the exact
       // agent → shell transition after which Restart is offered, so reading it
       // would silently degrade every Restart to "latest".
-      sessionId: lastSessionIdFor(paneId) ?? null,
+      sessionId,
       launchCommand: launchCommandFor(paneId),
       customAgents: settings.value.customAgents,
     });
@@ -1552,8 +1751,26 @@ export function createTabManager(
     // `paneIo`, not `pty`: its `writePty` calls `activity.noteInput(id)` first,
     // which is what keeps the echoed command out of the working spinner.
     // `AgentLauncher` is built on it for exactly this reason.
-    await paneIo.writePty(paneId, `${command}\r`);
-    return true;
+    restartingPanes.add(paneId);
+    try {
+      const prepared = await prepareLaunch({ id: paneId, command });
+      if (
+        disposed ||
+        ownerOf(paneId) !== owner ||
+        !owner.manager.paneAlive(paneId) ||
+        explicitAgent(poller.infoFor(paneId)) !== null ||
+        prepared.command === null
+      ) {
+        return false;
+      }
+      await paneIo.writePty(paneId, `${prepared.command}\r`);
+      if (agent === "claude" && sessionId !== null) {
+        tracker.noteMintedSession(paneId, sessionId);
+      }
+      return true;
+    } finally {
+      restartingPanes.delete(paneId);
+    }
   }
 
   /**
@@ -1725,6 +1942,7 @@ export function createTabManager(
     pruneNotifiedKinds(live);
     pruneLaunchCommands(live);
     poller.prune(live);
+    registrySync.prune(live);
     if (tabs.length === 0) {
       // "Surface", not "tab": a window holding file tabs still has something to
       // show, and closing it would discard them — including unsaved ones, with
@@ -1825,13 +2043,54 @@ export function createTabManager(
       // opens: only a classified, named agent can do that.
       for (const info of infos) {
         const agent = explicitAgent(info);
-        const snap = tracker.noteProcess(info.id, agent ?? info.process, agent !== null);
+        // The activity module's snapshot is read HERE, before `syncViews`
+        // below hands the new process label to `activity.noteProcess` and
+        // resets the record — so an OSC 9;4 the agent reported before this
+        // poll recognised it can seed the gate it is about to open (trust
+        // audit §4.5). Order is load-bearing; keep the seed ahead of the sync.
+        const snap = tracker.noteProcess(
+          info.id,
+          agent ?? info.process,
+          agent !== null,
+          activity.snapshot(info.id),
+        );
         if (snap !== null) {
           maybeNotify(info.id, snap);
         }
       }
+      // Stage 3's freshness: a contract-layer state nobody has refreshed in
+      // two minutes turns inferred, on the same tick the process table is
+      // read — the fallback it hands over to. Not routed through
+      // `maybeNotify`: the KIND does not change, only its confidence, and
+      // the sync below re-renders the hollow mark.
+      tracker.tick(now());
       syncViews();
     },
+  });
+
+  // The Claude registry joined to this window's panes (agent-signal contract
+  // layer, stage 1). Reads the SAME `pty_info` cache the poller keeps — the
+  // foreground pid is the join key — and feeds the tracker a fact per Claude
+  // pane: its session id, and whether Claude itself reports `waiting`. The
+  // host facade answers "unavailable" on Tauri and in the browser preview, and
+  // the sync treats that as today's behaviour, so nothing here is host-gated
+  // beyond the facade. A `null` seam disables it outright (tests).
+  const registryFetch = deps.registry === undefined ? fetchAgentRegistry : deps.registry;
+  const registrySync = createAgentRegistrySync({
+    fetch: registryFetch ?? (() => Promise.resolve(UNAVAILABLE_REGISTRY)),
+    paneIds: allPaneIds,
+    agentOf: (id) => explicitAgent(poller.infoFor(id)),
+    processIdOf: (id) => {
+      const pid = poller.infoFor(id)?.processId;
+      return typeof pid === "number" && Number.isSafeInteger(pid) && pid > 0 ? pid : null;
+    },
+    onFact: (id, fact) => {
+      const snap = tracker.noteRegistry(id, fact);
+      if (snap !== null) {
+        maybeNotify(id, snap);
+      }
+    },
+    onApplied: syncViews,
   });
 
   function forgetWindowsStartupPoll(id: number): boolean {
@@ -2578,8 +2837,8 @@ export function createTabManager(
    * whatever happened to be focused, in a different checkout. Doing it
    * honestly is materialize-then-split, which is `TabManager`'s business (the
    * `launchTask` precedent): the rail passes a PATH and receives a boolean,
-   * exactly as `onNewTabIn` already does, and no pane id leaves the terminal
-   * layer.
+   * exactly as the rail's other path-in callbacks do, and no pane id leaves the
+   * terminal layer.
    *
    * One departure from the spec's own wording, named: when the checkout has NO
    * tab, this materializes one and STOPS rather than also splitting it. A
@@ -2772,7 +3031,7 @@ export function createTabManager(
       }),
     );
     await registerUnlisten(
-      pty.listenExit((id) => {
+      pty.listenExit((id, exitCode) => {
         forgetWindowsStartupPoll(id);
         windowsStartupReady.delete(id);
         // Note the exit BEFORE fanning out: a multi-pane tab auto-closes the
@@ -2780,13 +3039,14 @@ export function createTabManager(
         // noteExit first updates the live record instead of re-creating one
         // that prune already dropped.
         //
-        // Deliberately NOT routed through `maybeNotify`: `noteExit` only ever
-        // sets `phase: "exited"` and never touches `attention`, so any
-        // non-null snapshot it returns is a phase-only re-emit of whatever
-        // was already latched — forwarding it can only ever duplicate a
-        // notification already sent (or send a bare "none"/no-op). The
-        // tracker bookkeeping and `syncViews` re-render still run as before.
-        const exitSnap = tracker.noteExit(id);
+        // Deliberately NOT routed through `maybeNotify`: `noteExit` sets
+        // `phase: "exited"` (and, since 2026-09-03, records the status and
+        // drops a live agent's requested/completed latch) but never RAISES
+        // attention, so any non-null snapshot it returns carries nothing new
+        // to notify about — forwarding it could only duplicate a notification
+        // already sent (or send a bare "none"/no-op). The tracker bookkeeping
+        // and `syncViews` re-render still run as before.
+        const exitSnap = tracker.noteExit(id, exitCode);
         for (const tab of tabs) {
           tab.manager.handleExit(id);
         }
@@ -2795,6 +3055,19 @@ export function createTabManager(
         }
       }),
     );
+    // Stage 2: the launch config, then the hook/server events. The config is
+    // awaited so the first launch after boot is augmented; the subscription
+    // is registered like every other host listener.
+    if (signalConfigFetch !== null) {
+      try {
+        signalConfig = await signalConfigFetch();
+      } catch (err) {
+        console.warn("agent_signal_config failed; launches go out un-augmented:", err);
+      }
+    }
+    if (hookEventsListen !== null) {
+      await registerUnlisten(hookEventsListen(onHookEvent));
+    }
     await registerUnlisten(
       installFileDrop({
         onOver(x, y) {
@@ -2823,6 +3096,7 @@ export function createTabManager(
     // Session restore is gone: the app always opens on the Open board, and the
     // user reopens folders from Recents by hand.
     poller.start();
+    registrySync.start();
     syncViews();
   }
 
@@ -2893,10 +3167,15 @@ export function createTabManager(
       disposed = true;
       launcher.dispose();
       poller.stop();
+      registrySync.stop();
       for (const pending of activityResync.values()) {
         clearTimeout(pending);
       }
       activityResync.clear();
+      for (const pending of launchFollowUpPolls.values()) {
+        clearTimeout(pending);
+      }
+      launchFollowUpPolls.clear();
       for (const fallback of windowsStartupPollFallbacks.values()) {
         clearTimeout(fallback);
       }

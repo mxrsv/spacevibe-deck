@@ -117,7 +117,6 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
           <TabStrip
             onSelectTab={vi.fn()}
             onCloseTab={vi.fn()}
-            onNewTab={vi.fn()}
             onSelectBrowser={vi.fn()}
             onCloseBrowser={vi.fn()}
             onSelectAgentBoard={vi.fn()}
@@ -132,7 +131,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
   };
 
-  it("renders every chip and the add button with no .tabbar in the tree", () => {
+  it("renders every chip, and no add button, with no .tabbar in the tree", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
     openFileTab("/repo", "/repo/a.ts", { keep: true });
     mount();
@@ -142,17 +141,11 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(host.querySelector(".tab--file .tab__label")?.textContent).toBe("a.ts");
     // One row since 2026-08-16 (DL-18.6): no segment hairline anywhere in it.
     expect(host.querySelector(".tabbar__sep")).toBeNull();
-    expect(host.querySelector(".tab-add")).not.toBeNull();
-  });
-
-  it("disables the add button while a task handoff owns the launcher", () => {
-    const onNewTab = vi.fn();
-    mount({ onNewTab, newTabDisabled: true });
-
-    const add = host.querySelector<HTMLButtonElement>(".tab-add");
-    expect(add?.disabled).toBe(true);
-    add?.click();
-    expect(onNewTab).not.toHaveBeenCalled();
+    // No `+` after the chips since `rail-create-consolidation` (2026-09-02):
+    // the strip's launcher was the one create control whose destination was
+    // implicit, and ⌘T keeps the keyboard route.
+    expect(host.querySelector(".tab-add")).toBeNull();
+    expect(host.querySelector('[aria-label="New tab"]')).toBeNull();
   });
 
   it("puts the tab's newest turn on its chip, and keeps a typed name over it", () => {

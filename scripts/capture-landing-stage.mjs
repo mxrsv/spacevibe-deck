@@ -26,28 +26,17 @@
  * `npm run prototype:landing` in the owner's own browser at the three widths.
  */
 
-import { createServer } from "node:http";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { extname, join, normalize, resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 import { chromium } from "playwright-core";
 
+import { DIST, serveLandingDist } from "./serve-landing-dist.mjs";
+
 import { findChromium } from "../marketing/video/render/capture.mjs";
 
-const DIST = resolve(import.meta.dirname, "../marketing/landing-prototype/dist");
 const PAGE = "/landing-prototype/index.html";
-
-const MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".webp": "image/webp",
-  ".woff2": "font/woff2",
-};
 
 /** The rail's smallest type. T17's floors are `max(Ncqw, 9px)`. */
 const RAIL_TYPE = [
@@ -63,41 +52,6 @@ function flag(name, fallback) {
   const index = process.argv.indexOf(`--${name}`);
 
   return index === -1 ? fallback : process.argv[index + 1];
-}
-
-/**
- * Serve `dist` and nothing else. A path that escapes the root 404s rather
- * than reading up the tree.
- */
-function serveDist() {
-  const server = createServer(async (request, response) => {
-    let path = decodeURIComponent(request.url.split("?")[0]);
-
-    if (path.endsWith("/")) {
-      path += "index.html";
-    }
-
-    const file = join(DIST, normalize(path));
-
-    if (!file.startsWith(DIST)) {
-      response.writeHead(403).end("forbidden");
-      return;
-    }
-
-    try {
-      const body = await readFile(file);
-      response.writeHead(200, {
-        "content-type": MIME[extname(file)] ?? "application/octet-stream",
-      });
-      response.end(body);
-    } catch {
-      response.writeHead(404).end("not found");
-    }
-  });
-
-  return new Promise((done) => {
-    server.listen(0, "127.0.0.1", () => done(server));
-  });
 }
 
 /**
@@ -291,7 +245,7 @@ const widths = String(flag("widths", "1440,768,390")).split(",").map(Number);
 
 await mkdir(outDir, { recursive: true });
 
-const server = await serveDist();
+const server = await serveLandingDist();
 const { port } = server.address();
 const executablePath = findChromium();
 

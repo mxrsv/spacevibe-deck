@@ -8,6 +8,7 @@ import { formatRelativeTime, type RecentWorkspace } from "../lib/workspace-recen
 import { GithubStarButton } from "../ui/controls/github-star-button";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { LauncherFields, type LauncherFieldsProps } from "../launcher/launcher-fields";
+import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
 
 /**
  * The Open Board's focal artifact (design §4.1): a generous prompt composer,
@@ -57,10 +58,13 @@ export function BoardComposer(props: BoardComposerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const missingExpanded = useSignal(false);
   const busy = props.pending !== null;
+  const staging = props.promptStaging ?? TASK_PROMPT_STAGING_ENABLED;
 
   function focusPrompt(): void {
     // The row's whole job is to answer the Workspace field and hand the user
-    // back to what they were writing.
+    // back to what they were writing. Under `TASK_PROMPT_STAGING_ENABLED` false
+    // there is nothing being written, so this is a deliberate no-op rather than
+    // a second focus target invented for a composer with no prompt.
     queueMicrotask(() => {
       rootRef.current?.querySelector("textarea")?.focus();
     });
@@ -75,15 +79,26 @@ export function BoardComposer(props: BoardComposerProps) {
    * ⌘Enter starts a task. Composer-local by design: it fires only while focus
    * is inside this subtree, so it needs no registry action, no keymap entry
    * and no menu regeneration — and it cannot reach a terminal.
+   *
+   * It takes the same action and the same gate as the primary button, which is
+   * what makes `TASK_PROMPT_STAGING_ENABLED` false safe here: reading `problem`
+   * would leave the chord permanently dead on `empty-prompt` — a draft with no
+   * prompt box can never answer — so the chord follows the button onto
+   * `openProblem` and opens the agent instead of silently doing nothing.
    */
   function handleKeyDown(event: KeyboardEvent): void {
     if (event.key !== "Enter" || !hasPrimaryModifier(event)) {
       return;
     }
-    if (props.problem !== null || busy) {
+    const blocked = staging ? props.problem : props.openProblem;
+    if (blocked !== null || busy) {
       return;
     }
-    props.onStartTask();
+    if (staging) {
+      props.onStartTask();
+    } else {
+      props.onOpenAgent();
+    }
     event.preventDefault();
     event.stopPropagation();
   }
@@ -142,14 +157,18 @@ export function BoardComposer(props: BoardComposerProps) {
         <header class="nt-board__head">
           <span>New task</span>
           <h2>Start something new</h2>
-          {/* Says what actually happens. `TASK_PROMPT_AUTOSEND` is false — the
-              launch TYPES the task into the agent and stops, so the Enter is
-              the user's. `launchNotice` carries that sentence too, but only
-              onto a board that is already being dismissed; said here it is on
-              screen before the button is ever pressed. */}
+          {/* Says what actually happens, which is why it moves with
+              `TASK_PROMPT_STAGING_ENABLED`. With staging on, `TASK_PROMPT_AUTOSEND`
+              is false — the launch TYPES the task into the agent and stops, so the
+              Enter is the user's. With it off there is no prompt to describe, and
+              promising one over a composer that has no textarea is the one thing
+              this line must never do. `launchNotice` carries the staged sentence
+              too, but only onto a board that is already being dismissed; said here
+              it is on screen before the button is ever pressed. */}
           <p>
-            Describe the outcome. Deck opens the agent and types your task — press Enter there to
-            send it.
+            {staging
+              ? "Describe the outcome. Deck opens the agent and types your task — press Enter there to send it."
+              : "Pick a workspace and an agent. Deck opens it there — type your task in its terminal."}
           </p>
         </header>
 

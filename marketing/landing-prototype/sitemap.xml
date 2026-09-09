@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The two public URLs, in their canonical spellings. No <lastmod>: a hand-typed
+  date rots the moment anything ships, and a build-stamped one would claim the
+  content changed on every deploy.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://deck.spacevibe.dev/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://deck.spacevibe.dev/changelog</loc>
+    <priority>0.5</priority>
+  </url>
+</urlset>

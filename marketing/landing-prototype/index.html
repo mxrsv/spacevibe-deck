@@ -3,15 +3,60 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpaceVibe Deck — a desktop terminal for AI agent CLIs</title>
     <meta
       name="description"
-      content="SpaceVibe Deck is a desktop terminal built to launch, watch, and steer AI coding agents in parallel."
+      content="SpaceVibe Deck is a desktop terminal built to launch, watch, and steer AI coding agents in parallel. Run Claude Code, Codex, Gemini, opencode and any CLI on your $PATH side by side on macOS and Windows."
     />
-    <title>SpaceVibe Deck — a desktop terminal for AI agent CLIs</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'/%3E"
+
+    <!-- SEO. The page is reachable at two paths — `/` (the vercel.json
+         rewrite) and `/landing-prototype/index.html` (the built file itself) —
+         so the canonical says which one is the page. Every absolute URL here
+         is written out in full: OG/Twitter scrapers ignore relative ones. -->
+    <link rel="canonical" href="https://deck.spacevibe.dev/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0a0c0b" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SpaceVibe Deck" />
+    <meta property="og:url" content="https://deck.spacevibe.dev/" />
+    <meta
+      property="og:title"
+      content="SpaceVibe Deck — a desktop terminal for AI agent CLIs"
     />
+    <meta
+      property="og:description"
+      content="Launch, watch, and steer AI coding agents in parallel. One desktop terminal for Claude Code, Codex, Gemini, opencode and any CLI on your $PATH."
+    />
+    <meta
+      property="og:image"
+      content="https://deck.spacevibe.dev/landing-prototype/assets/og-cover.png"
+    />
+    <meta property="og:image:width" content="1800" />
+    <meta property="og:image:height" content="942" />
+    <meta
+      property="og:image:alt"
+      content="The Deck app window running three AI coding agents side by side."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="SpaceVibe Deck — a desktop terminal for AI agent CLIs"
+    />
+    <meta
+      name="twitter:description"
+      content="Launch, watch, and steer AI coding agents in parallel. One desktop terminal for Claude Code, Codex, Gemini, opencode and any CLI on your $PATH."
+    />
+    <meta
+      name="twitter:image"
+      content="https://deck.spacevibe.dev/landing-prototype/assets/og-cover.png"
+    />
+
+    <!-- Relative so Vite emits and hashes it; an absolute URL would be left
+         verbatim and `marketing/stage/` is not copied into dist. -->
+    <link rel="icon" type="image/svg+xml" href="../stage/assets/deck-icon.svg" />
+    <link rel="apple-touch-icon" href="/landing-prototype/assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="/landing-prototype/styles/base.css" />
     <script>
       // Google Analytics (gtag.js), gated to the production host so local
@@ -28,6 +73,45 @@
         };
         window.gtag("js", new Date());
         window.gtag("config", "G-YX72NC5X2R");
+      }
+    </script>
+
+    <!-- Structured data. Only facts the repo can back: MIT, free, the two
+         platforms the release workflow builds, and a download link that points
+         at `releases/latest` rather than a version string that would drift the
+         day the next tag ships. No rating, no review count — Deck has none. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://deck.spacevibe.dev/#website",
+            "url": "https://deck.spacevibe.dev/",
+            "name": "SpaceVibe Deck",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://deck.spacevibe.dev/#app",
+            "name": "SpaceVibe Deck",
+            "alternateName": "Deck",
+            "url": "https://deck.spacevibe.dev/",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "macOS, Windows",
+            "description": "A desktop terminal built to launch, watch, and steer AI coding agents in parallel.",
+            "image": "https://deck.spacevibe.dev/landing-prototype/assets/og-cover.png",
+            "downloadUrl": "https://github.com/mxrsv/spacevibe-deck/releases/latest",
+            "softwareHelp": "https://github.com/mxrsv/spacevibe-deck",
+            "license": "https://opensource.org/licenses/MIT",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
       }
     </script>
   </head>

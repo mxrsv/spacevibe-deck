@@ -6,12 +6,26 @@
 import { describe, expect, it } from "vitest";
 import { classifyProcess, normalizedProcessName, validateAgentProcessMatchers } from "./classify";
 import { argv0Name, foregroundProcess, parsePsTable } from "./macos";
+import { BUILTIN_AGENTS } from "../agents";
 
 describe("classifyProcess", () => {
   it("classifies a recognized agent process", () => {
     expect(classifyProcess("claude", true)).toEqual({
       kind: "agent",
       agent: "claude",
+    });
+  });
+
+  // Agent-signal contract layer, stage 0 (2026-09-03): `cursor-agent` was a
+  // catalog built-in for two weeks while this table did not know it, so a
+  // Cursor pane was a busy shell to every consumer of the classification.
+  // Walking the built-in list is what stops the two from drifting again.
+  it.each([...BUILTIN_AGENTS])("classifies built-in %s as an agent", (id) => {
+    expect(classifyProcess(id, true)).toEqual({ kind: "agent", agent: id });
+    expect(classifyProcess(`/opt/homebrew/bin/${id}`, true)).toEqual({ kind: "agent", agent: id });
+    expect(classifyProcess("node", true, `node /Users/dev/.local/bin/${id} --force`)).toEqual({
+      kind: "agent",
+      agent: id,
     });
   });
 

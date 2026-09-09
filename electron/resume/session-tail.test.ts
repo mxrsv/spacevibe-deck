@@ -646,6 +646,27 @@ describe("resolveSessionTails", () => {
       resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc", lastSeenAt: T2 }]),
     ).toEqual([{ id: "oc1", tail: "Working tree clean — nothing staged.", model: null }]);
   });
+
+  it("(w) an exact pin is honoured when on disk and answered null when not — never ranked (stage 1)", () => {
+    // The registry says pane A runs `s2` and pane B runs `fresh-not-on-disk`
+    // (a session whose file is not written yet). Before `exact`, B would have
+    // been handed `s1` — the nearest stranger — and worn its sentence.
+    expect(
+      tailsOf(home, [
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T1, preferredId: "s2", exact: true },
+        {
+          agent: "claude",
+          cwd: "/tmp/two",
+          lastSeenAt: T1,
+          preferredId: "fresh-not-on-disk",
+          exact: true,
+        },
+        // A plain request in the same batch still ranks, and still cannot
+        // take the pinned session.
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2 },
+      ]),
+    ).toEqual(["Pane two finished the refactor.", null, "Pane one is waiting on approval."]);
+  });
 });
 
 describe("resolveSessionTails tail window", () => {

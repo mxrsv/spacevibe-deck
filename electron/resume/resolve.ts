@@ -22,12 +22,21 @@ export interface ResumeRequest {
    * evidence of which conversation a pane is running, where `lastSeenAt` is
    * only a guess about it.
    *
-   * `resolveResume` IGNORES this: restore asks the question once, at boot,
-   * with nothing to have been paired with yet. It exists for
-   * `resolveSessionTails`, which asks it every few seconds and must answer
-   * the same way each time or a sentence walks from row to row.
+   * It exists for `resolveSessionTails`, which asks every few seconds and
+   * must answer the same way each time or a sentence walks from row to row.
+   * Since stage 1 of the agent-signal contract layer (2026-09-03)
+   * `resolveResume` honours it too: the journal records the session id the
+   * Claude registry confirmed for a pane, and restore reopens THAT
+   * conversation when it is still on disk, ranking by mtime only when it
+   * is not.
    */
   readonly preferredId?: string;
+  /**
+   * `preferredId` is a fact rather than a memory: when it cannot be honoured
+   * the answer is null, never a ranked substitute (spec §10.7). Sent by the
+   * tail path for a registry-confirmed pane.
+   */
+  readonly exact?: boolean;
 }
 
 export type ResumeRef =
@@ -173,12 +182,16 @@ function resolveOne(
   const taken = takenByAgent.get(request.agent) ?? new Set<string>();
   takenByAgent.set(request.agent, taken);
 
-  const best = selectCandidate(
-    request,
-    candidatesFor(request.agent),
-    taken,
-    request.agent === "agy" ? agyCwdMatches : cwdMatches,
-  );
+  const matchesCwd = request.agent === "agy" ? agyCwdMatches : cwdMatches;
+  // A recorded session id (stage 1: the registry's word, journalled at
+  // capture) is reopened when it is still on disk; the ranked guess only
+  // runs when it is not. Same cwd predicate as the guess, so a conversation
+  // recorded in one checkout is not reopened in another.
+  const pinned = findCandidateById(request, candidatesFor(request.agent), taken, matchesCwd);
+  if (pinned !== null) {
+    return { kind: "id", id: pinned.id };
+  }
+  const best = selectCandidate(request, candidatesFor(request.agent), taken, matchesCwd);
   if (best === null) {
     return FALLBACK_LATEST.has(request.agent) ? { kind: "latest" } : null;
   }
@@ -281,11 +294,14 @@ export function validateResumeRequests(raw: unknown): (ResumeRequest | null)[] {
     // because its remembered id came back wrong would be a worse answer than
     // the guess this field exists to replace.
     const preferredId = isSafeSessionId(entry.preferredId) ? entry.preferredId : undefined;
+    // `exact` without a pin is meaningless and is dropped with it.
+    const exact = preferredId !== undefined && entry.exact === true;
     return {
       agent: entry.agent,
       cwd: entry.cwd,
       lastSeenAt: entry.lastSeenAt,
       ...(preferredId === undefined ? {} : { preferredId }),
+      ...(exact ? { exact } : {}),
     };
   });
 }

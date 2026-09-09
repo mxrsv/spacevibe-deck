@@ -155,6 +155,66 @@ describe("createAgentLauncher", () => {
     expect(pty.writes).toEqual([]);
   });
 
+  // Agent-signal contract layer, stage 0 (2026-09-03): the caller polls
+  // `pty_info` on the fire so the attention gate opens inside the agent's
+  // own boot time (trust audit §4.5).
+  it("reports each fire once, after the command is queued, and never for a null command", () => {
+    const pty = createMemoryPtyClient();
+    const onFire = vi.fn();
+    const launcher = createAgentLauncher(pty, { platform: "macos", onFire });
+    launcher.arm([
+      { id: 1, command: "claude" },
+      { id: 2, command: null },
+    ]);
+    expect(onFire).not.toHaveBeenCalled();
+
+    launcher.noteOutput(1);
+    launcher.noteOutput(2);
+    launcher.noteOutput(1);
+    vi.advanceTimersByTime(AGENT_LAUNCH_TIMEOUT_MS);
+
+    expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    expect(onFire).toHaveBeenCalledOnce();
+    expect(onFire).toHaveBeenCalledWith(1);
+  });
+
+  it("reports the fire on the timeout path and on the Windows prompt-ready path too", () => {
+    const onFireMac = vi.fn();
+    const mac = createAgentLauncher(createMemoryPtyClient(), {
+      platform: "macos",
+      onFire: onFireMac,
+    });
+    mac.arm([{ id: 1, command: "codex" }]);
+    vi.advanceTimersByTime(AGENT_LAUNCH_TIMEOUT_MS);
+    expect(onFireMac).toHaveBeenCalledWith(1);
+
+    const onFireWin = vi.fn();
+    const win = createAgentLauncher(createMemoryPtyClient(), {
+      platform: "windows",
+      onFire: onFireWin,
+    });
+    win.arm([{ id: 3, command: "codex" }]);
+    win.notePromptReady(3);
+    expect(onFireWin).toHaveBeenCalledWith(3);
+  });
+
+  it("a throwing fire callback never stops the command from being typed", () => {
+    const pty = createMemoryPtyClient();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const launcher = createAgentLauncher(pty, {
+      platform: "macos",
+      onFire: () => {
+        throw new Error("boom");
+      },
+    });
+    launcher.arm([{ id: 1, command: "claude" }]);
+    launcher.noteOutput(1);
+
+    expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
   it("launches a Windows agent only from structured prompt readiness", () => {
     const { pty, launcher } = setup("windows");
     launcher.arm([{ id: 1, command: "codex" }]);

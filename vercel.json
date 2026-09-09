@@ -16,6 +16,14 @@
     {
       "source": "/privacy/2026-09-07",
       "destination": "/privacy/2026-09-07/index.html"
+    },
+    {
+      "source": "/changelog",
+      "destination": "/landing-prototype/changelog/index.html"
+    },
+    {
+      "source": "/changelog/",
+      "destination": "/landing-prototype/changelog/index.html"
     }
   ],
   "headers": [
@@ -54,6 +62,37 @@
           "value": "public, max-age=86400"
         }
       ]
+    },
+    {
+      "source": "/(robots.txt|sitemap.xml)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/landing-prototype",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/landing-prototype/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/landing-prototype/changelog",
+      "destination": "/changelog",
+      "permanent": true
+    },
+    {
+      "source": "/landing-prototype/changelog/",
+      "destination": "/changelog",
+      "permanent": true
     }
   ]
 }

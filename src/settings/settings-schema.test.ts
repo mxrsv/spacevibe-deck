@@ -509,6 +509,28 @@ describe("agentRuntimeDefaults", () => {
   });
 });
 
+describe("agentSignalAdapters (agent-signal contract layer, stage 2)", () => {
+  it("is on for every adapter by default, including for a file that predates the field", () => {
+    expect(validateSettings({}).agentSignalAdapters).toEqual({
+      claude: true,
+      codex: true,
+      opencode: true,
+    });
+  });
+
+  it("keeps an explicit off per agent and ignores anything that is not a boolean", () => {
+    expect(
+      validateSettings({ agentSignalAdapters: { claude: false, codex: "no", gemini: false } })
+        .agentSignalAdapters,
+    ).toEqual({ claude: false, codex: true, opencode: true });
+    expect(validateSettings({ agentSignalAdapters: [] }).agentSignalAdapters).toEqual({
+      claude: true,
+      codex: true,
+      opencode: true,
+    });
+  });
+});
+
 describe("quickLaunchPromptExpanded", () => {
   it("defaults to true", () => {
     expect(validateSettings({}).quickLaunchPromptExpanded).toBe(true);

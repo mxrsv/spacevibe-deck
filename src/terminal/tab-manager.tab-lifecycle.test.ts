@@ -264,6 +264,14 @@ describe("createTabManager workspace identity", () => {
           agent: "claude",
           attention: "none",
           phase: "working",
+          // The signal-contract fields (stage 0/1, 2026-09-03): the attention
+          // axis has nothing latched, the phase came from OSC 9;4, the PTY is
+          // up, and no contract-layer source has named a session yet.
+          confidence: "explicit",
+          phaseConfidence: "explicit",
+          exitCode: null,
+          sessionId: null,
+          detail: null,
           changedAt: expect.any(Number),
           // The tracker's gate opened and this pane has produced a run, which
           // is what separates the rail's `done` from its `idle`.
@@ -278,7 +286,6 @@ describe("createTabManager workspace identity", () => {
           ordinal: expect.any(Number),
           startedAt: expect.any(Number),
           lastAgent: "claude",
-          confidence: "explicit",
         },
         // Polled and recognised as a shell: no agent identity, and the
         // tracker's gate never opened for it, so nothing latched, the phase is
@@ -288,6 +295,11 @@ describe("createTabManager workspace identity", () => {
           agent: null,
           attention: "none",
           phase: "unknown",
+          confidence: "explicit",
+          phaseConfidence: "unknown",
+          exitCode: null,
+          sessionId: null,
+          detail: null,
           changedAt: 0,
           hasRun: false,
           focused: true,
@@ -295,7 +307,6 @@ describe("createTabManager workspace identity", () => {
           // A shell pane has no agent generation, so it has neither a
           // `startedAt` nor a `lastAgent` — the two absences a Board card
           // reads as "nothing has ever run here".
-          confidence: "explicit",
         },
       ]);
       expect(tabViews.value[0].panes?.[0].changedAt).toBeGreaterThan(0);
@@ -337,7 +348,9 @@ describe("createTabManager captureSession (session journal)", () => {
       {
         workspacePath: "/w/a",
         layout: { type: "leaf" },
-        panes: [{ cwd: "/w/a", agent: "claude", launchCommand: null, taskPrompt: null }],
+        panes: [
+          { cwd: "/w/a", agent: "claude", launchCommand: null, taskPrompt: null, sessionId: null },
+        ],
         // Always null since 2026-08-16: `renameTab` went with `TabPopover`,
         // so nothing can set a name any more. The FIELD stays because the
         // snapshot shape is shared with the transfer payload.
@@ -347,7 +360,7 @@ describe("createTabManager captureSession (session journal)", () => {
       {
         workspacePath: null,
         layout: { type: "leaf" },
-        panes: [{ cwd: null, agent: null, launchCommand: null, taskPrompt: null }],
+        panes: [{ cwd: null, agent: null, launchCommand: null, taskPrompt: null, sessionId: null }],
         name: null,
         dotColor: null,
       },

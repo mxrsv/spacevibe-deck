@@ -15,8 +15,18 @@ export interface ResumeRequest {
   readonly agent: string;
   readonly cwd: string | null;
   readonly lastSeenAt: number;
-  /** Only the rail's tail path sends one; `resume_lookup` ignores it. */
+  /**
+   * The session this pane is paired with — the tail path's remembered
+   * pairing, or (since stage 1, 2026-09-03) a FACT from the Claude registry
+   * that restore sends too, so `resume_lookup` reopens the recorded
+   * conversation rather than the nearest one by mtime.
+   */
   readonly preferredId?: string;
+  /**
+   * `preferredId` is a fact, not a memory: answer it or answer nothing, never
+   * rank a substitute (spec §10.7). Only the tail path sends it.
+   */
+  readonly exact?: boolean;
 }
 
 /** Wire mirror of `electron/resume/session-tail.ts`'s `SessionTailAnswer`. */

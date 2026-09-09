@@ -21,6 +21,8 @@ import { WindowRegistry } from "./window-lifecycle";
 import { bootModeOrNormal, moveToWindowTarget } from "../src/terminal/transfer-client";
 import { isUpdateMenuAction } from "../src/updater/update-menu-actions";
 import { parseDesktopEnvironment } from "../src/lib/platform";
+import { parseRegistrySnapshot } from "../src/lib/agent-registry";
+import { EMPTY_SNAPSHOT, parseClaudeAgents } from "./agent-registry/claude-registry";
 
 const MAIN = readFileSync("electron/main.ts", "utf8");
 const MENU = readFileSync("electron/menu.ts", "utf8");
@@ -84,6 +86,56 @@ describe("desktop_environment", () => {
     expect(() => parseDesktopEnvironment({ platform: "macos", home: "/Users/dev" })).toThrow(
       "homeDir must be a string",
     );
+  });
+});
+
+describe("agent_registry", () => {
+  it("answers a snapshot the renderer's validator accepts, field for field", () => {
+    // The contract fixture for the stage-1 channel (spec §1, R6): main's
+    // snapshot shape and the renderer's parser are two files, and a renamed
+    // key would leave every Claude pane silently inferred.
+    expect(SERVICES).toContain(
+      "ipcMain.handle(CHANNELS.agentRegistry, () => claudeRegistry.read())",
+    );
+    const entries = parseClaudeAgents(
+      JSON.stringify([
+        {
+          pid: 4242,
+          cwd: "/w",
+          kind: "interactive",
+          startedAt: 1,
+          sessionId: "a79dbead-d71b-445b-b328-86f9952b1d84",
+          name: "deck",
+          status: "waiting",
+          waitingFor: "permission prompt",
+        },
+      ]),
+    );
+    const wire = JSON.parse(
+      JSON.stringify({ available: true, stale: false, polledAt: 12, entries }),
+    ) as unknown;
+    expect(parseRegistrySnapshot(wire)).toEqual({
+      available: true,
+      stale: false,
+      polledAt: 12,
+      entries: [
+        {
+          pid: 4242,
+          cwd: "/w",
+          sessionId: "a79dbead-d71b-445b-b328-86f9952b1d84",
+          status: "waiting",
+          waitingFor: "permission prompt",
+          name: "deck",
+          kind: "interactive",
+        },
+      ],
+    });
+    // The empty snapshot main answers before its first poll is the renderer's
+    // "unavailable" — nothing is cleared and nothing invented from it.
+    const empty = parseRegistrySnapshot(JSON.parse(JSON.stringify(EMPTY_SNAPSHOT)) as unknown);
+    expect(empty.available).toBe(false);
+    expect(empty.stale).toBe(true);
+    expect(empty.entries).toEqual([]);
   });
 });
 

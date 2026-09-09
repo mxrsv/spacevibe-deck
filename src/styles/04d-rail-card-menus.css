@@ -185,3 +185,25 @@
   color: var(--text-faint);
   font: 450 var(--type-micro) / 1.35 var(--ui-font);
 }
+
+/* The keyboard-raised placement's heading (`openspec/changes/rail-create-consolidation`,
+   design D1; DL-27.25 amended, DL-13.7 amended). `⌘T` raises the actions menu with NO card
+   beside it, so the one thing every create control owes the user — which checkout the agent
+   will run in — is said here, as ONE line: the composed destination `whereOf` already prints
+   into every accessible name, not the two-line `Actions for` / `Runs in` head that came off
+   on 2026-08-30. The anchored placement never renders it (the card 6px away states the
+   subject), so `[data-placement="anchored"]` has no heading to style.
+
+   Title ink and weight, on the title's own rung — the heading names the subject the rows
+   below act on, which is the most important word in the surface — over the same left inset
+   as `.asr-act`'s text (10px padding + 18px glyph track + 8px gap), so it starts on the
+   column every title below it starts on. Nothing goes below `--type-micro` (DL-4.5). */
+.asr-act__where {
+  overflow: hidden;
+  margin: 0;
+  padding: 5px 10px 4px 36px;
+  color: var(--text-primary);
+  font: 600 var(--type-meta) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

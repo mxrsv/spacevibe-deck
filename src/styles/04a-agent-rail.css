@@ -152,15 +152,17 @@
    `--type-project` records that scoped exception once in the token file. The
    tone stays `--text-muted`, not `--text-faint`: it remains supporting context
    for the agents rather than the loudest word in the column. */
-/* The header row itself since 2026-08-19 (DL-27.18): a line holding the
-   collapse control and the `+`, not a button. The padding stays here so the
-   two controls share one inset and the first-project rule below still lands.
+/* The header row itself since 2026-08-19: a line holding the collapse control
+   and its close, not a button. The padding stays here so the controls share one
+   inset and the first-project rule below still lands.
 
-   It is a GRID since the same day's re-amendment, because the launcher stands
-   BETWEEN the name and the caret now: the toggle spans every column so its own
-   trailing caret lands in the last 17px track, and the `+` is pinned into the
-   track before it — the pin-to-overlap idiom `.asr-row__actions` already uses
-   for the close that swaps in over the agent glyph. */
+   It is a GRID since the same day's re-amendment: the toggle spans every column
+   so its own trailing caret lands in the last 17px track, and the close is
+   pinned into that same track — the pin-to-overlap idiom `.asr-row__actions`
+   already uses for the close that swaps in over the agent glyph. The middle
+   track that held DL-27.18's `+` between the name and the caret went with that
+   control (`rail-create-consolidation`, 2026-09-02): two tracks, not three, so
+   the caret no longer stands 24px in from a slot nothing occupies. */
 .asr-cluster__head {
   display: grid;
   /* `width: 100%` PLUS padding with no global `border-box` reset made this
@@ -178,8 +180,8 @@
      one list. The three figures below are that grid restated, not new numbers:
      7 + 17 + 7. The trailing side matches the same way: the last track is the
      rows' own 17px glyph slot over a 4px inset, so the caret sits on the agent
-     glyph's centre line and the `+` on the one before it. */
-  grid-template-columns: minmax(0, 1fr) 17px 17px;
+     glyph's centre line. */
+  grid-template-columns: minmax(0, 1fr) 17px;
   gap: 7px;
   padding: 6px 4px 2px 7px;
 }
@@ -236,62 +238,24 @@
   overflow: hidden;
 }
 
-/* DL-27.18: the launcher. It keeps its 17px box at all times — appearing on
-   hover would otherwise reflow the caret beside it on every pointer pass — and
-   only its ink fades in, so the resting header is exactly the line it was
-   before this control existed. `:focus-visible` reveals it too: a control the
-   keyboard can reach and the eye cannot is worse than no control. Since the
-   2026-08-19 re-amendment it stands INSIDE the caret rather than past it. */
-.asr-cluster__add {
-  display: flex;
-  /* Pinned into the middle track, on top of the spanning toggle (DOM order
-     paints it above; `z-index` says so rather than relying on that). The
-     track supplies its width and both gaps, so no margin of its own. */
-  grid-row: 1;
-  grid-column: 2;
-  z-index: 1;
-  align-items: center;
-  justify-content: center;
-  width: 17px;
-  height: 17px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity var(--duration) var(--ease),
-    color var(--duration) var(--ease);
-}
-
-.asr-cluster:hover .asr-cluster__add,
-.asr-cluster__add:focus-visible {
-  opacity: 1;
-}
-
-.asr-cluster__add:hover {
-  color: var(--text-primary);
-}
-
-.asr-cluster__add:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
+/* `.asr-cluster__add` — DL-27.18's launcher — was DELETED by
+   `openspec/changes/rail-create-consolidation` (2026-09-02): every checkout
+   carries its own create control on its card, so the header's `+` was a second
+   `+` in the same column that silently resolved to the primary checkout. Its
+   middle grid track went with it (see `.asr-cluster__head`). */
 
 /* A remembered header's close (owner, 2026-08-20): the rowless cluster has no
    tab rows to carry a close, so the header keeps one that removes the FOLDER
-   from the rail. It pins into the caret's track — grid column 3, which a
-   still header leaves empty (the still label spans column 1 only) — with the
-   launcher's own reveal contract: a reserved 17px box whose ink fades in on
-   cluster hover or keyboard focus. The hover stays the neutral wash every
-   close in the rail moved to on 2026-08-16 (DL-21.2): forgetting a folder is
-   undoable by reopening it, so `--red` would overstate it. */
+   from the rail. It pins into the caret's track — the last grid column, which a
+   still header leaves empty (the still label spans column 1 only) — with a
+   reveal contract: a reserved 17px box whose ink fades in on cluster hover or
+   keyboard focus. The hover stays the neutral wash every close in the rail
+   moved to on 2026-08-16 (DL-21.2): forgetting a folder is undoable by
+   reopening it, so `--red` would overstate it. */
 .asr-cluster__remove {
   display: flex;
   grid-row: 1;
-  grid-column: 3;
+  grid-column: 2;
   z-index: 1;
   align-items: center;
   justify-content: center;
@@ -381,15 +345,6 @@
 .asr-cluster__toggle:focus-visible .asr-cluster__caret,
 .asr-cluster[data-collapsed="true"] .asr-cluster__caret {
   opacity: 1;
-}
-
-/* The launcher's track, reserved from inside the toggle: gap · slot · gap =
-   7 + 17 + 7. Without it a long project name would run under a `+` that is
-   invisible until the pointer arrives. `:has` keeps the slot from opening as
-   dead space on a project the host cannot open into, where the launcher is
-   omitted entirely (DL-19.7). */
-.asr-cluster__head:has(.asr-cluster__add) .asr-cluster__caret {
-  margin-left: 24px;
 }
 
 .asr-cluster__toggle[aria-expanded="true"] .asr-cluster__caret {
@@ -919,6 +874,56 @@
    spends a hue (DL-3.2). They differ only in the word the tooltip says. */
 .asr-row__mark[data-state="done"]::before,
 .asr-row__mark[data-state="idle"]::before {
+  background: color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+/* ── Confidence (DL-27.3, amended 2026-09-03) ────────────────────────────
+   The mark says how much to trust itself. `data-confidence="inferred"` is a
+   state Deck READ — off output timing ("3 s of silence after a streak") or the
+   process table — rather than one the CLI SAID over a channel it documents
+   (OSC 9;4, a BEL, a hook, the registry). An inferred `asked` or `done` is
+   drawn HOLLOW: the same 9px of ink, the same hue, but a 1.5px ring instead
+   of a disc, so the eye reads "this is a guess" at the same glance that
+   reads the colour. `explicit` stays filled and `unknown` is the resting
+   dot `idle` has always worn — an idle pane that has seen nothing is not a
+   guess about anything. `failed` is never hollow: nothing produces it but a
+   CLI's own error report. `working` keeps the ring: the motion already says
+   "changing on its own", and hollowing eight moving dots would say nothing.
+
+   `box-sizing: border-box` because this file has no global reset (AGENTS.md,
+   known traps): without it the ring would paint outside the 9px and the
+   hollow mark would sit visibly larger than the filled one beside it. The
+   `asked` ripple (`::after`) is untouched — an inferred question still
+   radiates, since the halo means "come and look" whatever the source. */
+.asr-row__mark[data-state="asked"][data-confidence="inferred"]::before,
+.asr-row__mark[data-state="done"][data-confidence="inferred"]::before {
+  box-sizing: border-box;
+  background: transparent;
+  border: 1.5px solid var(--status-unread);
+}
+
+.asr-row__mark[data-state="done"][data-confidence="inferred"]::before {
+  border-color: color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+/* ended — DL-27.3's sixth word (2026-09-03): the agent's process left the
+   pane while the pane stayed up. Before this a crash latched an inferred
+   `completed` and wore `asked`'s yellow (trust audit §4.3). It is a small
+   SQUARE in the quiet gray — the stop glyph — so it reads apart from every
+   dot in the column without spending a hue: an ended agent is not a
+   failure (`--red` is the CLI's own error, DL-3.2) and not a question
+   (`--status-unread` means "answer me"). 7px, because a square of the dot's
+   9px reads heavier than the disc it sits beside; it is still centred in
+   the fixed 14px box, so no row moves. The word is `ended` in the
+   accessible name and the tooltip, and the mark clears when the user
+   focuses the pane or types into the shell that replaced the agent. The
+   corners take `--radius-flat` (DL-20.1's smallest role) rather than a
+   literal: at 7px the 2px role is the difference between a square and a
+   pebble, and it is the only radius the scale allows a mark this small. */
+.asr-row__mark[data-state="ended"]::before {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-flat);
   background: color-mix(in srgb, var(--tone) 45%, transparent);
 }
 

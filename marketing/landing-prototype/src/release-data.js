@@ -1,7 +1,6 @@
 export const REPO_URL = "https://github.com/mxrsv/spacevibe-deck";
 export const RELEASES_URL = `${REPO_URL}/releases/latest`;
 export const WINDOWS_FALLBACK_URL = `${REPO_URL}/releases`;
-export const CHANGELOG_URL = "/landing-prototype/changelog/";
 
 const RELEASES_API =
   "https://api.github.com/repos/mxrsv/spacevibe-deck/releases?per_page=100";

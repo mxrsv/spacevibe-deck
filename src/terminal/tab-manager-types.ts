@@ -12,6 +12,10 @@ import type { MaterializeIntent } from "./tab-materialize";
 import type { LaunchTaskOutcome, LaunchTaskResult } from "./task-prompt-send";
 import type { Settings } from "../settings/settings-schema";
 import type { SurfaceStrip } from "./surface-strip";
+import type { RegistrySnapshot } from "../lib/agent-registry";
+import type { AgentSignalConfig } from "../host/agent-signals-host";
+import type { HookEvent } from "../lib/agent-signal-map";
+import type { UnlistenFn } from "../host/bridge";
 
 /**
  * Internal to the tab-manager module: `createTabManager` (`tab-manager.ts`)
@@ -48,6 +52,13 @@ export interface OpenFromPresetOptions {
  * every existing `{ createPane }` (or omitted) caller keeps compiling.
  */
 export interface TabManagerDeps extends TerminalManagerDeps {
+  /**
+   * Whether `launchTask` may carry a task prompt. Defaults to
+   * `TASK_PROMPT_STAGING_ENABLED`, which production leaves false; injected here
+   * for the `deliverGrab(…, pasteDisabled)` reason, so the delivery path keeps
+   * its own coverage while the surfaces hide it.
+   */
+  promptStaging?: boolean;
   /**
    * Surfaces in the strip that are not terminal tabs. No production caller
    * passes one yet (see `SurfaceStrip`); absent = none, and every behaviour
@@ -99,6 +110,23 @@ export interface TabManagerDeps extends TerminalManagerDeps {
   closeWindow?: () => Promise<void>;
   /** Test seam — defaults to the real Tauri transfer client. */
   transfer?: TransferClient;
+  /**
+   * Test seam for the Claude registry (agent-signal contract layer, stage 1).
+   * Defaults to `src/host/agent-registry-host.ts`, which answers the
+   * unavailable snapshot on Tauri and in the browser preview, so the sync
+   * built on it stays inert there. `null` disables the sync outright.
+   */
+  registry?: (() => Promise<RegistrySnapshot>) | null;
+  /**
+   * Test seams for the stage-2 adapters. `signalConfig` answers the launch
+   * config (`--settings` file, hook port); `opencodeAttach` reserves a port
+   * for an opencode pane; `hookEvents` subscribes to accepted hook posts and
+   * server events. Each defaults to `src/host/agent-signals-host.ts`, which
+   * answers "no adapter" where the host cannot; `null` disables that half.
+   */
+  signalConfig?: (() => Promise<AgentSignalConfig>) | null;
+  opencodeAttach?: ((paneId: number) => Promise<number | null>) | null;
+  hookEvents?: ((handler: (event: HookEvent) => void) => Promise<UnlistenFn>) | null;
 }
 
 /** Owns all tabs: routing, keyboard, agent launch; info polling lives in PaneInfoPoller. */
@@ -138,7 +166,7 @@ export interface TabManager {
    * one fork the strip-actions work opened (spec
    * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §11.1) — the
    * caller passes a PATH and receives a boolean, so no pane id leaves the
-   * terminal layer, exactly as `onNewTabIn` already works.
+   * terminal layer, exactly as the rail's other path-in callbacks work.
    */
   splitInWorkspace(workspacePath: string): Promise<boolean>;
   /** The command a pane was started with; null when it had none. */

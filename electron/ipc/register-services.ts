@@ -15,6 +15,7 @@ import { createDirectory } from "../fs/create-directory";
 import { readStarState, starRepository } from "../github-star";
 import { resolveResume, validateResumeRequests } from "../resume/resolve";
 import { resolveSessionTails } from "../resume/session-tail";
+import { createClaudeRegistry } from "../agent-registry/claude-registry";
 import { listSessions } from "../sessions/list";
 import { resolvePaths, openEditor } from "../links";
 import { listExternalApps, openInApp } from "../external-apps";
@@ -53,6 +54,12 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.sessionTail, (_event, { requests }) =>
     resolveSessionTails(app.getPath("home"), validateResumeRequests(requests)),
   );
+  // The Claude registry (stage 1). One poller for the whole process — every
+  // window asks the same question — answering its latest snapshot at once and
+  // polling on its own 5 s clock only while someone keeps asking. Never
+  // rejects: a failed poll is the previous list flagged stale.
+  const claudeRegistry = createClaudeRegistry();
+  ipcMain.handle(CHANNELS.agentRegistry, () => claudeRegistry.read());
   ipcMain.handle(CHANNELS.windowLabel, (event) => deps.labelOf(event));
   ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) => detectAgentsSafely(names ?? []));
   ipcMain.handle(CHANNELS.dirsExist, (_event, { paths }) => dirsExist(paths));

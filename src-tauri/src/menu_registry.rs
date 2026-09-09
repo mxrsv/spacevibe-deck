@@ -10,7 +10,7 @@ pub fn build_file_menu<R: Runtime>(
     handle: &tauri::AppHandle<R>,
 ) -> tauri::Result<tauri::menu::Submenu<R>> {
     use super::menu::action_item;
-    let new_tab = action_item(handle, "new-tab", "New Tab", Some("CmdOrCtrl+T"))?;
+    let new_tab = action_item(handle, "new-tab", "New Agent…", Some("CmdOrCtrl+T"))?;
     let reopen_tab = action_item(
         handle,
         "reopen-tab",

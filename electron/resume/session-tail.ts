@@ -373,8 +373,12 @@ export function resolveSessionTails(
 
   // Pass 2 — rank what pass 1 left. Only agents in `TAIL_SOURCES` reach here,
   // and none of them is `agy`, so the default `cwdMatches` predicate is right.
+  // An `exact` request never reaches the ranking (stage 1, spec §10.7): its
+  // pin is a fact from the Claude registry, and a session the scan has not
+  // seen yet — the file is written on the first message — is answered with
+  // nothing rather than with the nearest stranger.
   requests.forEach((request, index) => {
-    if (paired[index] !== null || !scannable(request)) {
+    if (paired[index] !== null || !scannable(request) || request.exact === true) {
       return;
     }
     try {

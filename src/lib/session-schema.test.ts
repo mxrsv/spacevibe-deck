@@ -225,3 +225,38 @@ describe("SessionPane.taskPrompt", () => {
     );
   });
 });
+
+describe("SessionPane.sessionId (agent-signal contract layer, stage 1)", () => {
+  function paneOf(sessionId: unknown) {
+    const record = validateWindowRecord({
+      savedAt: 1,
+      activeTabIndex: 0,
+      tabs: [
+        {
+          workspacePath: null,
+          layout: { type: "leaf" },
+          panes: [{ cwd: "/tmp", agent: "claude", launchCommand: null, sessionId }],
+          name: null,
+          dotColor: null,
+        },
+      ],
+      files: [],
+      activeFileTab: null,
+    });
+    return record?.tabs[0].panes[0];
+  }
+
+  it("keeps a registry-confirmed session id", () => {
+    expect(paneOf("a79dbead-d71b-445b-b328-86f9952b1d84")?.sessionId).toBe(
+      "a79dbead-d71b-445b-b328-86f9952b1d84",
+    );
+  });
+
+  it("drops an unsafe id without dropping the pane, and omits the field when absent", () => {
+    const unsafe = paneOf("../../etc/passwd");
+    expect(unsafe?.sessionId).toBeUndefined();
+    expect(unsafe?.agent).toBe("claude");
+    expect(paneOf(null)?.sessionId).toBeUndefined();
+    expect(paneOf(undefined)).not.toHaveProperty("sessionId");
+  });
+});

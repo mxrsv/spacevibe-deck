@@ -12,6 +12,7 @@
  * pane — in that order — so the renderer never sees an exit for a pane whose
  * last bytes are still queued. `handleExit` keeps that order.
  */
+import { randomBytes } from "node:crypto";
 import { EVENTS } from "../ipc/channels";
 import { createStreamDecoder, OutputBatcher } from "./stream";
 import { PtySessionStore, type PtySession } from "./session-store";
@@ -54,6 +55,13 @@ export interface PtyManagerDeps {
   readonly unregister: (paneId: number) => void;
   /** Throws when `windowLabel` does not own `paneId`. */
   readonly assertOwner: (paneId: number, windowLabel: string) => void;
+  /**
+   * The hook endpoint's port at spawn time, or null when it never bound
+   * (agent-signal contract layer, stage 2). Read per spawn, not captured:
+   * the listener binds asynchronously at boot and a pane spawned before it
+   * simply learns no port.
+   */
+  readonly hookPort?: () => number | null;
 }
 
 export class PtyManager {
@@ -64,8 +72,17 @@ export class PtyManager {
 
   spawn(windowLabel: string, options: SpawnOptions): number {
     const fallbackStartedAt = performance.now();
-    const { pty, ttyName, startupTiming } = spawnShell(options);
+    // The id is allocated BEFORE the spawn since stage 2 (2026-09-03): the
+    // shell's environment carries it (`DECK_PANE_ID`), with a fresh secret
+    // the hook endpoint will demand back. Ids are never reused, so a spawn
+    // that throws after allocation merely skips a number.
     const id = this.store.allocateId();
+    const hookToken = randomBytes(16).toString("hex");
+    const { pty, ttyName, startupTiming } = spawnShell(options, {
+      paneId: id,
+      hookToken,
+      hookPort: this.deps.hookPort?.() ?? null,
+    });
     const decode = createStreamDecoder();
 
     const batcher = new OutputBatcher({
@@ -77,7 +94,7 @@ export class PtyManager {
       resume: () => pty.resume(),
     });
 
-    const session = this.store.insert({ id, pty, ttyName, batcher, decode });
+    const session = this.store.insert({ id, pty, ttyName, hookToken, batcher, decode });
 
     if (process.env[STARTUP_TRACE_ENV] === "1") {
       const startedAt = startupTiming?.startedAt ?? fallbackStartedAt;
@@ -97,7 +114,7 @@ export class PtyManager {
       this.traceStartup(id, "first_output");
       batcher.push(decode(chunk as unknown as Uint8Array | string));
     });
-    pty.onExit(() => this.handleExit(session));
+    pty.onExit(({ exitCode }) => this.handleExit(session, exitCode));
 
     this.deps.register(id, windowLabel);
     return id;
@@ -228,6 +245,11 @@ export class PtyManager {
     return this.store.ids();
   }
 
+  /** The pane's hook token, or null once its PTY is gone — the endpoint's whole authentication. */
+  hookTokenOf(id: number): string | null {
+    return this.store.get(id)?.hookToken ?? null;
+  }
+
   /**
    * Flush, announce, then forget — in that order.
    *
@@ -235,7 +257,7 @@ export class PtyManager {
    * down a pane that still has unrendered output, which is how the last lines
    * of a build log go missing.
    */
-  private handleExit(session: PtySession): void {
+  private handleExit(session: PtySession, exitCode?: number): void {
     if (session.exited) {
       return;
     }
@@ -250,7 +272,15 @@ export class PtyManager {
     session.batcher.flush();
     session.batcher.close();
     this.store.remove(session.id);
-    this.deps.emitToOwner(session.id, EVENTS.ptyExit, { id: session.id });
+    // The status rides the exit (agent-signal contract layer, stage 0,
+    // 2026-09-03) so the renderer's tracker can record how the pane ended.
+    // Additive on the wire: Tauri's `ExitPayload { id }` stays valid, and the
+    // renderer treats a missing or non-finite code as "unknown".
+    const payload =
+      typeof exitCode === "number" && Number.isFinite(exitCode)
+        ? { id: session.id, exitCode }
+        : { id: session.id };
+    this.deps.emitToOwner(session.id, EVENTS.ptyExit, payload);
     this.deps.unregister(session.id);
     this.startupTraceByPane.delete(session.id);
   }

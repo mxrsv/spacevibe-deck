@@ -27,6 +27,10 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
   const onStartTask = vi.fn();
   const onOpenAgent = vi.fn();
   const props: BoardComposerProps = {
+    // The staged prompt is hidden in production behind
+    // `TASK_PROMPT_STAGING_ENABLED`; these tests keep it wired, the
+    // `deliverGrab(…, pasteDisabled)` precedent.
+    promptStaging: true,
     draft: { ...withAgent(withWorkspace(EMPTY_DRAFT, "/repo/deck"), "claude", null), prompt: "go" },
     agents: AGENTS,
     homeDir: "/Users/dev",

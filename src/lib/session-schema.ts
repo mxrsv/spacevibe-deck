@@ -34,6 +34,13 @@ export interface SessionPane {
    * what the pane was asked to do.
    */
   readonly taskPrompt: string | null;
+  /**
+   * The session the pane's agent was CONFIRMED to be running at capture — the
+   * Claude registry's word (agent-signal contract layer, stage 1) — so restore
+   * reopens that conversation rather than the nearest by mtime. Absent on a
+   * file written before the field existed; null when no source confirmed one.
+   */
+  readonly sessionId?: string | null;
 }
 
 export interface SessionTab {
@@ -119,8 +126,16 @@ function validateSessionPane(raw: unknown): SessionPane {
     // disk that anyone can hand-edit, so the bound the writer respects has to
     // be re-imposed on whatever comes back.
     taskPrompt: typeof source.taskPrompt === "string" ? capTaskPrompt(source.taskPrompt) : null,
+    // Same shape `agent-resume.ts` demands before an id may reach a PTY
+    // write; a malformed id is dropped, not the pane. Emitted only when
+    // present so a journal written before the field validates unchanged.
+    ...(typeof source.sessionId === "string" && SESSION_ID_SAFE.test(source.sessionId)
+      ? { sessionId: source.sessionId }
+      : {}),
   };
 }
+
+const SESSION_ID_SAFE = /^[A-Za-z0-9._-]{1,128}$/;
 
 function validateSessionTab(raw: unknown): SessionTab | null {
   if (typeof raw !== "object" || raw === null) {

@@ -13,6 +13,7 @@ import {
 } from "../lib/launch-profile";
 import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
 import { runtimeFor, type AgentRuntimeDefault } from "../launcher/runtime-catalog";
+import type { SignalAdapters } from "../lib/launch-augment";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -128,6 +129,16 @@ export interface Settings {
    */
   agentRuntimeDefaults: Readonly<Record<string, AgentRuntimeDefault>>;
   /**
+   * Which per-pane signal adapters a launch is augmented with (agent-signal
+   * contract layer, stage 2; spec §5, §10.4): Claude's hooks file and minted
+   * session id, Codex's always-ring notification flag, opencode's pinned
+   * server port. ON by default — a sidebar whose truth depends on the user
+   * having run a setup command cannot claim trust (spec §3.1) — and switched
+   * per agent under Settings → Agents; off, that agent is inferred and drawn
+   * so.
+   */
+  agentSignalAdapters: SignalAdapters;
+  /**
    * Whether Quick Launch opens with its prompt section expanded.
    *
    * The launcher draft carries a live `promptExpanded` too; THIS is the
@@ -218,6 +229,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultLaunchProfiles: {},
   agentModels: {},
   agentRuntimeDefaults: {},
+  agentSignalAdapters: { claude: true, codex: true, opencode: true },
   quickLaunchPromptExpanded: true,
   promptTemplates: [],
   browserHomeUrl: "http://localhost:3000",
@@ -469,6 +481,22 @@ function validateAgentRuntimeDefaults(raw: unknown): Readonly<Record<string, Age
   return result;
 }
 
+/**
+ * Each adapter is on unless the stored value says `false` for it: an absent
+ * key, a settings file from before the field, or a non-boolean all mean the
+ * default, which is on (spec §10.4).
+ */
+function validateSignalAdapters(raw: unknown): SignalAdapters {
+  const defaults = DEFAULT_SETTINGS.agentSignalAdapters;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return defaults;
+  }
+  const source = raw as Record<string, unknown>;
+  const flag = (key: keyof SignalAdapters): boolean =>
+    typeof source[key] === "boolean" ? (source[key] as boolean) : defaults[key];
+  return { claude: flag("claude"), codex: flag("codex"), opencode: flag("opencode") };
+}
+
 function validateRailOrder(raw: unknown): readonly string[] {
   if (!Array.isArray(raw)) {
     return DEFAULT_SETTINGS.railOrder;
@@ -562,6 +590,7 @@ export function validateSettings(raw: unknown): Settings {
     railOrder: validateRailOrder(source.railOrder),
     agentModels: validateAgentModels(source.agentModels),
     agentRuntimeDefaults: validateAgentRuntimeDefaults(source.agentRuntimeDefaults),
+    agentSignalAdapters: validateSignalAdapters(source.agentSignalAdapters),
     quickLaunchPromptExpanded:
       typeof source.quickLaunchPromptExpanded === "boolean"
         ? source.quickLaunchPromptExpanded

@@ -79,9 +79,13 @@ describe("createRailClusterDragController", () => {
       const name = document.createElement("span");
       name.className = "asr-cluster__name";
       name.textContent = project;
-      const add = document.createElement("button");
-      add.className = "asr-cluster__add";
-      head.append(name, add);
+      // The header's small control. It was the DL-27.18 `+` until
+      // `rail-create-consolidation` removed that launcher (2026-09-02); the
+      // close in the same slot carries the same "a control in the header never
+      // starts a drag" contract, so the fixture builds that one now.
+      const remove = document.createElement("button");
+      remove.className = "asr-cluster__remove";
+      head.append(name, remove);
 
       const row = document.createElement("div");
       row.className = "asr-row";
@@ -272,11 +276,12 @@ describe("createRailClusterDragController", () => {
     controller.dispose();
   });
 
-  it("never starts a drag from the header's own launcher", () => {
+  it("never starts a drag from the header's own control", () => {
     const controller = install();
-    const add = list.querySelector<HTMLElement>(".asr-cluster__add");
+    const control = list.querySelector<HTMLElement>(".asr-cluster__remove");
+    expect(control).not.toBeNull();
 
-    add?.dispatchEvent(pointer("pointerdown", 20, 20));
+    control?.dispatchEvent(pointer("pointerdown", 20, 20));
     window.dispatchEvent(pointer("pointermove", 20, 150));
     window.dispatchEvent(pointer("pointerup", 20, 150));
 

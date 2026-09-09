@@ -5,6 +5,7 @@ import {
   STRIP_VISIBLE,
   buildAgentRail,
   formatShortAge,
+  paneSignal,
   stripSegments,
   tabTail,
   type AgentRailInput,
@@ -207,6 +208,105 @@ describe("buildAgentRail state mapping", () => {
     // mark carries the failure, the list does not move the row to carry it.
     expect(streamRows(view)).toHaveLength(1);
     expect(streamRows(view)[0].state).toBe("failed");
+  });
+});
+
+describe("paneSignal — the sixth word and the confidence beside it (DL-27.3, 2026-09-03)", () => {
+  it("reads an exited pane with nothing latched as ended", () => {
+    expect(paneSignal(pane(1, { phase: "exited" }))).toEqual({
+      state: "ended",
+      confidence: "unknown",
+    });
+    expect(paneSignal(pane(1, { phase: "exited", phaseConfidence: "explicit" }))).toEqual({
+      state: "ended",
+      confidence: "explicit",
+    });
+  });
+
+  it("lets a latched error or warning outrank the end — the CLI said it, the exit does not un-say it", () => {
+    expect(paneSignal(pane(1, { phase: "exited", attention: "error" })).state).toBe("failed");
+    expect(paneSignal(pane(1, { phase: "exited", attention: "warning" })).state).toBe("asked");
+  });
+
+  it("takes the attention axis's confidence for failed and asked", () => {
+    expect(paneSignal(pane(1, { attention: "completed", confidence: "inferred" }))).toEqual({
+      state: "asked",
+      confidence: "inferred",
+    });
+    expect(paneSignal(pane(1, { attention: "requested", confidence: "explicit" }))).toEqual({
+      state: "asked",
+      confidence: "explicit",
+    });
+    expect(paneSignal(pane(1, { attention: "error" })).confidence).toBe("explicit");
+  });
+
+  it("takes the phase axis's confidence for working, done and idle", () => {
+    expect(paneSignal(pane(1, { phase: "working", phaseConfidence: "inferred" }))).toEqual({
+      state: "working",
+      confidence: "inferred",
+    });
+    expect(
+      paneSignal(pane(1, { phase: "idle", hasRun: true, phaseConfidence: "inferred" })),
+    ).toEqual({ state: "done", confidence: "inferred" });
+    expect(paneSignal(pane(1, { phase: "idle", hasRun: false }))).toEqual({
+      state: "idle",
+      confidence: "unknown",
+    });
+  });
+
+  it("reads an absent confidence as today's defaults — explicit attention, unknown phase", () => {
+    // A fixture or a seed built before the fields existed.
+    const legacy: PaneView = {
+      paneId: 9,
+      agent: "claude",
+      attention: "none",
+      phase: "idle",
+      hasRun: true,
+      changedAt: NOW,
+    };
+    expect(paneSignal(legacy)).toEqual({ state: "done", confidence: "unknown" });
+    expect(paneSignal({ ...legacy, attention: "completed" })).toEqual({
+      state: "asked",
+      confidence: "explicit",
+    });
+  });
+
+  it("carries the confidence onto every rail row, and folds ended above working", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [
+              pane(1, { phase: "working", phaseConfidence: "explicit" }),
+              pane(2, { phase: "exited", phaseConfidence: "explicit" }),
+              pane(3, { attention: "completed", confidence: "inferred" }),
+            ],
+          }),
+        ],
+      }),
+    );
+    const row = streamRows(view)[0];
+    expect(row.panes.map((entry) => [entry.state, entry.confidence])).toEqual([
+      ["working", "explicit"],
+      ["ended", "explicit"],
+      ["asked", "inferred"],
+    ]);
+    // failed > asked > ended > working > done > idle: the asked pane speaks.
+    expect(row.state).toBe("asked");
+    expect(row.voice?.paneId).toBe(3);
+  });
+
+  it("an ended pane outranks a working one when nothing is asked", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [pane(1, { phase: "working" }), pane(2, { phase: "exited" })],
+          }),
+        ],
+      }),
+    );
+    expect(streamRows(view)[0].state).toBe("ended");
   });
 });
 
@@ -1136,7 +1236,7 @@ describe("tabTail", () => {
 });
 
 describe("buildAgentRail remembered projects (2026-08-20)", () => {
-  it("keeps a rowless cluster for a history workspace with no open tab", () => {
+  it("keeps a cluster for a history workspace with no open tab, with its checkout as a rowless group", () => {
     const view = buildAgentRail(railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck"] }));
 
     expect(view.stream).toEqual([
@@ -1147,13 +1247,55 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
         tabIndexes: [],
         project: "deck",
         labelled: true,
-        worktrees: [],
+        // `rail-create-consolidation` (2026-09-02): was `[]` — the header's own
+        // `+` was the way back in. With that control gone the remembered
+        // checkout is a group with nothing open, the same shape a history-only
+        // sibling of a live project has always had, so its bare row is the
+        // create control.
+        worktrees: [
+          {
+            key: "/w/deck",
+            branch: "main",
+            name: "deck",
+            path: "/w/deck",
+            repositoryPath: "/w/deck",
+            primary: true,
+            labelled: true,
+            entries: [],
+            panes: [],
+            rows: [],
+            live: false,
+            age: "",
+            active: false,
+          },
+        ],
         path: "/w/deck",
         // Every history entry the header folds, so its close control can
         // forget all of them at once.
         historyPaths: ["/w/deck"],
       },
     ]);
+  });
+
+  it("prints every remembered checkout of a repository as a rowless group, primary first", () => {
+    const view = buildAgentRail(
+      railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck-side", "/w/deck"] }),
+    );
+
+    // One header (folded by the scan), two groups, and the primary leads
+    // whatever order the history had — `sortWorktrees`' rule one tier up.
+    expect(view.stream).toHaveLength(1);
+    expect(
+      view.stream[0].worktrees.map((worktree) => [
+        worktree.path,
+        worktree.primary,
+        worktree.branch,
+      ]),
+    ).toEqual([
+      ["/w/deck", true, "main"],
+      ["/w/deck-side", false, "release-hardening"],
+    ]);
+    expect(view.stream[0].historyPaths).toEqual(["/w/deck-side", "/w/deck"]);
   });
 
   it("folds several remembered worktrees of one repository into one cluster", () => {
@@ -1202,7 +1344,27 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
         tabIndexes: [],
         project: "scratch",
         labelled: true,
-        worktrees: [],
+        // One synthetic, unlabelled checkout named after the folder — the
+        // shape `buildRail` gives a live plain folder (`branch` falls back to
+        // the basename there too), so it renders as flat entries plus that
+        // tier's `New agent` row.
+        worktrees: [
+          {
+            key: "/home/me/scratch",
+            branch: "scratch",
+            name: "scratch",
+            path: "/home/me/scratch",
+            repositoryPath: "/home/me/scratch",
+            primary: true,
+            labelled: false,
+            entries: [],
+            panes: [],
+            rows: [],
+            live: false,
+            age: "",
+            active: false,
+          },
+        ],
         path: "/home/me/scratch",
         historyPaths: ["/home/me/scratch"],
       },
@@ -1314,9 +1476,12 @@ describe("buildAgentRail — what a live cluster's close has to take (close mode
   it("gives a remembered cluster no tab to close", () => {
     const view = buildAgentRail(railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck"] }));
 
-    // No rows, and no checkouts to print them under either (DL-27.23): a
-    // remembered cluster IS its header.
-    expect(view.stream[0].worktrees).toEqual([]);
+    // No rows anywhere under it — its checkout prints as a rowless group since
+    // `rail-create-consolidation` — so the close has nothing to close and only
+    // forgets. `tabIndexes`, not `worktrees.length`, is what says "live".
+    expect(view.stream[0].worktrees.map((worktree) => [worktree.path, worktree.rows])).toEqual([
+      ["/w/deck", []],
+    ]);
     expect(view.stream[0].tabIndexes).toEqual([]);
     expect(view.stream[0].historyPaths).toEqual(["/w/deck"]);
   });

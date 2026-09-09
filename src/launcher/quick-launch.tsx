@@ -5,6 +5,7 @@ import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import { tildify } from "../lib/process-info";
 import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { workspaceLabel } from "../lib/workspace-label";
+import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
 import { LauncherFields, type LauncherFieldsProps } from "./launcher-fields";
 import type { QuickLaunchRetarget } from "./launcher-store";
 import type { NewTaskDraft } from "./new-task-draft";
@@ -95,10 +96,15 @@ export function QuickLaunch(props: QuickLaunchProps) {
     props.onDraftChange(next);
   };
 
+  // `promptExpanded` is a PERSISTED setting, so under
+  // `TASK_PROMPT_STAGING_ENABLED` false it can still read true from an install
+  // that had the prompt open — the chord has to ask the constant, not the
+  // draft, or it would stage a task no visible textarea could have written.
   const handleKeyDown = (event: KeyboardEvent): void => {
     if (
       event.key === "Enter" &&
       hasPrimaryModifier(event) &&
+      (props.promptStaging ?? TASK_PROMPT_STAGING_ENABLED) &&
       props.draft.promptExpanded &&
       props.problem === null &&
       props.pending === null

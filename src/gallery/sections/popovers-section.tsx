@@ -1,6 +1,10 @@
-import { ChatText } from "@phosphor-icons/react";
+import { ChatText, Command } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
+import { createPortal } from "preact/compat";
+import { useRef } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "../../ui/controls/deck-icon";
+import { CardActionsMenu, type CardActions } from "../../ui/worktree-card-menus";
+import type { MenuSubject } from "../../ui/agent-rail-card-model";
 import { PromptPopover } from "../../prompts/prompt-popover";
 import type { PromptTarget } from "../../prompts/inject";
 import {
@@ -69,6 +73,88 @@ function PromptPopoverSpecimen() {
   );
 }
 
+/**
+ * `⌘T`'s agent list (`openspec/changes/rail-create-consolidation`, design D1;
+ * DL-13.7 and DL-27.25 amended): the rail card's own actions menu in its
+ * FREE-STANDING placement. No card is beside it, so it states its destination
+ * in a one-line heading and ends with `Open another project…` — the row that
+ * keeps top-tab mode and a hidden sidebar one keyboard route from the board.
+ *
+ * The pad carries `data-strip-anchor`, which the placement reads before the
+ * real strip: the surface hangs under THIS pad's leading edge, so it can be
+ * reviewed here rather than under whichever `.stage__strip` the page holds.
+ * It is `position: fixed` like every rail popover and closes on scroll, so
+ * scroll the page and press again.
+ */
+const KEYBOARD_MENU_SUBJECT: MenuSubject = {
+  project: "spacevibe-bench",
+  path: "/Users/deck/spacevibe-bench",
+  repositoryPath: "/Users/deck/spacevibe-bench",
+  branch: "main",
+  label: "main",
+  labelled: true,
+};
+
+const NOOP = (): void => {};
+
+const KEYBOARD_MENU_ACTIONS: CardActions = {
+  agents: [
+    { id: "claude", label: "Claude", detail: "claude --dangerously-skip-permissions" },
+    { id: "codex", label: "Codex", detail: "codex --full-auto" },
+  ],
+  agentsResolved: true,
+  onRunAgent: NOOP,
+  onSplitHere: NOOP,
+  onOpenFolder: NOOP,
+  onOpenTerminal: NOOP,
+  filesAppLabel: "Finder",
+  terminalAppLabel: "Ghostty",
+  onOpenBoard: NOOP,
+};
+
+function KeyboardActionsMenuSpecimen() {
+  const open = useSignal(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  return (
+    <div class="gx-anchorpad" data-strip-anchor>
+      <button
+        ref={trigger}
+        type="button"
+        class="iconbtn"
+        aria-haspopup="menu"
+        aria-expanded={open.value}
+        aria-label="Raise the ⌘T agent list"
+        onClick={() => {
+          open.value = !open.value;
+        }}
+      >
+        <DeckIcon icon={Command} size={CHROME_ICON} />
+      </button>
+      {/* Portalled to `<body>`: `.gx-section` carries a transform, which makes a
+          `position: fixed` descendant position against the SECTION rather than
+          the viewport (measured 2026-09-02: the surface landed 256px right and
+          80px below the coordinates it computed). `App` mounts the real menu
+          under no such ancestor, so the portal is what makes the specimen
+          faithful, not a workaround the app needs. */}
+      {open.value &&
+        createPortal(
+          <CardActionsMenu
+            placement="free-standing"
+            subject={KEYBOARD_MENU_SUBJECT}
+            actions={KEYBOARD_MENU_ACTIONS}
+            rect={null}
+            trigger={trigger.current}
+            onClose={() => {
+              open.value = false;
+            }}
+          />,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 export function PopoversSection() {
   return (
     <>
@@ -76,6 +162,14 @@ export function PopoversSection() {
         title="Popovers"
         blurb="Both anchored surfaces share one elevated frame, one radius and one interaction rhythm."
       />
+
+      <Specimen
+        name=".asr-pop--actions[data-placement=free-standing]"
+        note="⌘T's agent list — the heading states the destination because no card stands beside it; the last row reaches the Open board"
+        surface="chrome-1"
+      >
+        <KeyboardActionsMenuSpecimen />
+      </Specimen>
 
       <Specimen
         name=".prompt-popover"
