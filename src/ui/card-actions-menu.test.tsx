@@ -128,7 +128,7 @@ describe("CardActionsMenu placements", () => {
     expect(menu?.textContent).not.toContain("Runs in");
     const items = [...(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
     expect(items.map((item) => item.querySelector(".asr-act__title")?.textContent)).toEqual([
-      "Run Claude",
+      "Claude",
       "New split here",
       "Open another project…",
     ]);

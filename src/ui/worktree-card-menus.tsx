@@ -541,7 +541,7 @@ function agentRows(actions: CardActions, subject: MenuSubject): readonly MenuRow
   return actions.agents.map((agent) => ({
     kind: "action",
     id: `run:${agent.id}`,
-    title: `Run ${agent.label}`,
+    title: agent.label,
     detail: agent.detail,
     agent: agent.id,
     run: () => {
