@@ -6,7 +6,8 @@
 
 Date: 2026-08-23
 Spec: [2026-08-23-new-task-launcher-design.md](../specs/2026-08-23-new-task-launcher-design.md) `decided`
-Status: `planned` — nothing in this plan is built yet.
+Status: `building` — the original launcher is landed; the 2026-08-30 safety and recovery
+addendum below awaits owner approval.
 
 **Goal:** make `New` mean *start a task* — one prompt-first composer on the Open Board and one
 non-modal Quick Launch popover, sharing a single immutable draft and a single launch contract
@@ -14,12 +15,319 @@ that materializes exactly one agent pane and sends the first prompt exactly once
 
 **Architecture:** a pure `src/launcher/` core (draft, validation, runtime catalog, command
 composition) with a window-scoped signal store; two presentations that share field components
-but no modal behaviour; and one new `TabManager` method that owns materialize → readiness →
-prompt-send so pane ids never leave the terminal layer.
+but no modal behaviour; and terminal-owned `TabManager` methods for initial materialization and
+safe retry so pane ids never leave the terminal layer.
 
 **Tech stack:** Preact + `@preact/signals`, existing `TabManager` materialization seam,
 existing `injectIntoPane` / `submitAllowed` prompt gate, existing `worktree_add` IPC, one new
 Electron-only flat channel for directory creation.
+
+## 2026-08-30 safety and recovery addendum
+
+**Goal:** close the five approved RCM findings in the primary task-start flow without
+redesigning the launcher: an explicit workspace never degrades to Home, an unsubmitted prompt
+never clears its draft, a safe prompt-delivery retry reuses the tab already created, pending
+work says what it is doing, and a contextual project trigger never silently moves a non-empty
+draft to another repository.
+
+**Architecture:** enforce the directory invariant at the Electron PTY boundary, because that
+is the last owner before process creation and it protects every renderer caller. Keep retry
+ownership inside `TabManager`: `launchTask` may expose an existing tab key, but never a pane
+id, and `retryTaskPrompt` resolves the pane again inside the terminal layer. Keep the
+cross-repository decision in the window-scoped launcher store and render it through the
+existing Quick Launch surface using current semantic tokens.
+
+### Expected outcomes
+
+- An explicit missing, non-directory, or empty `cwd` rejects before `node-pty.spawn`; only
+  `cwd: null` selects Home — verify with `resolveSpawnCwd` unit tests.
+- `prompt-pending`, `prompt-not-sent`, and `prompt-failed` retain the shared draft and keep the
+  launcher visible; only `started` and `sent` clear it — verify with
+  `task-prompt-send.test.ts` and `app.test.tsx`.
+- Retry after `prompt-not-sent` or `prompt-failed` addresses the exact original pane and leaves
+  the tab count unchanged; replacing that pane — even with the same agent — withdraws Retry.
+  `prompt-pending` is never retryable because the text may already be in the agent composer —
+  verify with `tab-manager.launch-task.test.ts`.
+- Every `LauncherPending` value renders a named `role="status"` message and a truthful primary
+  label — verify with `launcher-fields.test.tsx` and `quick-launch.test.tsx`.
+- Opening Quick Launch from project B while a non-empty draft belongs to project A keeps A
+  selected until the user chooses Keep, Move, or Clear — verify with
+  `launcher-store.test.ts` and `quick-launch.test.tsx`.
+
+### Canonical data and invariants
+
+**Canonical data:** the requested `SpawnOptions.cwd`, the immutable `newTaskDraft`, the
+`TabEntry.key` returned by the materialization owned inside `TabManager`, and
+`LaunchTaskOutcome` are the only sources allowed to decide directory, draft clearing, retry
+target, and completion.
+
+**Do not infer from:** the currently focused tab, the last tab in `tabViews`, the selected
+Quick Launch trigger, or a successful PTY spawn. Each can change across an await or can describe
+a different workspace than the task attempt.
+
+- **Explicit-directory invariant:** `cwd: null` means Home; every string means “spawn in this
+  exact live directory or reject.” No string may fall back.
+- **Handoff invariant:** a draft clears only after `started` or `sent`. `prompt-pending` is a
+  terminal, non-retryable delivery state but is not submission success.
+- **Retry invariant:** only outcomes that prove no paste landed (`prompt-not-sent` and
+  `prompt-failed`) may offer retry, retry never materializes a tab, and the exact pane that
+  failed delivery must still exist.
+- **Snapshot invariant:** a retry action is available only while prompt, workspace, agent,
+  model, and reasoning effort still match the failed attempt. Editing any of them converts the
+  next Start action into a new launch rather than sending changed runtime data into the old
+  pane.
+- **Single-flight invariant:** Open Board and Quick Launch share one task-operation lock. While
+  launch or retry is pending, both surfaces and every route into Open Board refuse a competing
+  launch.
+- **Context invariant:** project context may prefill an empty draft; it cannot rewrite a
+  non-empty draft that already names another workspace without an explicit user choice.
+
+### Scope
+
+**In scope:** Electron spawn validation, launch-result/retry seams, Open Board and Quick Launch
+completion behavior, shared pending/recovery UI, explicit Clear, and contextual workspace
+retarget decisions.
+
+**Out of scope:** auto-pressing Enter, argv prompt delivery, session restore, rail visibility,
+tab overflow/naming, saved-command management, telemetry, project-close confirmation, Tauri
+PTY behavior, or visual redesign beyond the new state rows and actions.
+
+### Remediation tasks
+
+#### Task R1: Red test and fail closed at the Electron PTY boundary
+
+**Files:**
+
+- Modify: [`electron/pty/spawn.ts`](../../electron/pty/spawn.ts)
+- Create: [`electron/pty/spawn.test.ts`](../../electron/pty/spawn.test.ts)
+
+**Decision:** `resolveSpawnCwd(null, home)` returns Home. An empty string, missing path, or
+non-directory string throws a user-safe error before `pty.spawn`.
+
+**Build:**
+
+- Add focused tests named `uses Home only for a null cwd`, `rejects a missing explicit cwd`,
+  and `rejects an explicit file path` and run them red against the current fallback.
+- Change `resolveSpawnCwd` without changing environment construction, shell selection, or PTY
+  timing.
+- Mock `electron` and `node-pty` in the test rather than spawning a real host process.
+
+**Verify:**
+
+- `npm test -- electron/pty/spawn.test.ts` → the three directory-contract tests pass.
+- `npm test -- src/terminal/tab-manager.launch-task.test.ts` → `spawn-failed` still retains no
+  pasted prompt.
+
+#### Task R2: Red test the completion predicates and result shape
+
+**Files:**
+
+- Modify: [`src/terminal/task-prompt-send.ts`](../../src/terminal/task-prompt-send.ts)
+- Modify: [`src/terminal/task-prompt-send.test.ts`](../../src/terminal/task-prompt-send.test.ts)
+
+**Decision:** rename the clear predicate to `launchClearsDraft`; it accepts only `started` and
+`sent`. Define `LaunchTaskResult` as the outcome plus an optional materialized `TabEntry.key`,
+and define `launchCanRetryPrompt` for `prompt-not-sent` and `prompt-failed` only.
+
+**Build:**
+
+- First change the current test that pins `prompt-pending` as clearable so it fails expecting
+  the draft-retaining contract.
+- Add a red test that `prompt-pending` is not classified as retryable.
+- Implement the predicates and immutable result type without changing launch behavior yet.
+
+**Verify:**
+
+- `npm test -- src/terminal/task-prompt-send.test.ts` → clear and retry classifications pass.
+
+#### Task R3: Retry prompt delivery inside the original tab
+
+**Files:**
+
+- Modify: [`src/terminal/tab-manager.ts`](../../src/terminal/tab-manager.ts)
+- Modify: [`src/terminal/tab-manager-types.ts`](../../src/terminal/tab-manager-types.ts)
+- Modify: [`src/terminal/tab-manager.launch-task.test.ts`](../../src/terminal/tab-manager.launch-task.test.ts)
+
+**Decision:** `launchTask` returns `LaunchTaskResult`. Add
+`retryTaskPrompt(tabKey, prompt, expectedAgent)` and `canRetryTaskPrompt(tabKey)`; TabManager
+retains the exact pane internally and never creates a tab or exposes a pane id.
+
+**Build:**
+
+- Add a red retry test whose first paste fails, whose retry succeeds against the original tab,
+  and whose `tabViews` length remains one.
+- Add red tests for a closed/unknown tab, a changed agent, and replacement of the original pane
+  by the same agent; each returns `prompt-not-sent` without writing.
+- Implement the smallest result and retry seams using `TabEntry.key` lookup and the existing
+  readiness/injection functions.
+
+**Verify:**
+
+- `npm test -- src/terminal/tab-manager.launch-task.test.ts` → exactly-once, concurrency,
+  closed-target, changed-agent, and one-tab retry tests pass.
+
+#### Task R4: Retain the draft and bind recovery to the original attempt
+
+**Files:**
+
+- Modify: [`src/ui/app.tsx`](../../src/ui/app.tsx)
+- Modify: [`src/ui/app.test.tsx`](../../src/ui/app.test.tsx)
+
+**Decision:** App stores an immutable attempt snapshot `{ tabKey, prompt, workspacePath,
+agentId, modelId, reasoningEffort, outcome }` for every materialized prompted outcome. It
+exposes focus while that target exists, and exposes retry only for `prompt-not-sent` or
+`prompt-failed` while the visible draft matches the snapshot and TabManager still owns the
+exact pane. `prompt-pending` keeps the launcher, draft, and focus target but has no retry
+action.
+
+**Build:**
+
+- Add red tests that `prompt-pending` does not call `clearDraft`/close the surface, and that a
+  safe retry calls `retryTaskPrompt` without a second `launchTask`.
+- Record the attempt snapshot after any materialized prompted outcome and clear it after a
+  completed submission, a missing target, or a mismatching draft edit.
+- Resolve `Focus opened agent` by finding the stored `tabKey` in `tabViews`; never assume the
+  newest or active tab is the launch target.
+- Keep workspace-recents writes separate from the clear predicate so a materialized session
+  is not mislabeled as a failed open.
+
+**Verify:**
+
+- `npm test -- src/ui/app.test.tsx -t "task launch|prompt retry"` → both completion paths pass.
+
+#### Task R5: Render truthful shared pending and recovery controls
+
+**Files:**
+
+- Modify: [`src/launcher/launcher-fields.tsx`](../../src/launcher/launcher-fields.tsx)
+- Modify: [`src/launcher/launcher-fields.test.tsx`](../../src/launcher/launcher-fields.test.tsx)
+
+**Decision:** `LauncherFields` owns the shared status copy and controls; parent surfaces own
+the async callbacks and focus transfer.
+
+**Build:**
+
+- Add a pure pending-label map for folder picking, workspace/worktree creation, agent opening,
+  first delivery, and retry delivery.
+- Put the named message in `role="status"`, change the primary label while busy, and preserve
+  disabled competing controls.
+- Render `Retry delivery` only for a matching safe retry target, `Focus opened agent` as the
+  escape to the existing pane, and `Clear draft` only when the draft has user content.
+- Keep `prompt-pending` copy explicit: the task is staged in the agent and the user must close
+  the launcher and press Enter there.
+
+**Verify:**
+
+- `npm test -- src/launcher/launcher-fields.test.tsx` → pending labels, live-region semantics,
+  Clear, focus, and retry availability pass.
+
+#### Task R6: Wire Quick Launch recovery without changing its popover genre
+
+**Files:**
+
+- Modify: [`src/launcher/quick-launch.tsx`](../../src/launcher/quick-launch.tsx)
+- Modify: [`src/launcher/quick-launch.test.tsx`](../../src/launcher/quick-launch.test.tsx)
+
+**Decision:** Quick Launch passes the shared retry, focus-target, and Clear callbacks while
+remaining non-modal and non-dismissing on background interaction.
+
+**Build:**
+
+- Add red tests that a pending operation is announced and that prompt-pending keeps the panel
+  mounted with `Focus opened agent` but without `Retry delivery`.
+- Add red tests that retryable failure invokes the retry callback once and Clear invokes the
+  explicit draft reset once.
+- Wire the callbacks without changing Escape, focus-on-open, transfer-to-board, or browser
+  coverage behavior.
+
+**Verify:**
+
+- `npm test -- src/launcher/quick-launch.test.tsx` → non-modal behavior and recovery actions
+  pass together.
+
+#### Task R7: Wire Open Board recovery without hiding the pane target
+
+**Files:**
+
+- Modify: [`src/open-board/open-board.tsx`](../../src/open-board/open-board.tsx)
+- Modify: [`src/open-board/open-board.views.test.tsx`](../../src/open-board/open-board.views.test.tsx)
+
+**Decision:** Open Board keeps its internal pending/notice ownership and receives retry,
+focus-target, and Clear callbacks from App.
+
+**Build:**
+
+- Add red tests that prompt-pending keeps Open Board mounted and explains the required Enter.
+- Add red tests that a retryable failure uses the original-target callback and does not call
+  `onStartTask` again.
+- Preserve cold-start non-cancellability; `Focus opened agent` is available only when a target
+  tab exists.
+
+**Verify:**
+
+- `npm test -- src/open-board/open-board.views.test.tsx` → cold-start, prompt-pending, retry,
+  and focus-target states pass.
+
+#### Task R8: Model cross-repository retargeting without mutating the draft
+
+**Files:**
+
+- Modify: [`src/launcher/launcher-store.ts`](../../src/launcher/launcher-store.ts)
+- Modify: [`src/launcher/launcher-store.test.ts`](../../src/launcher/launcher-store.test.ts)
+
+**Decision:** a contextual trigger for project B records a pending retarget while a non-empty
+draft stays on project A. The inline choice offers Keep A, Move to B, or Clear and use B.
+
+**Build:**
+
+- Add red store tests for empty-draft prefill, same-workspace reuse, and different-workspace
+  conflict without mutation.
+- Add immutable Keep, Move, and Clear transitions and clear the pending retarget when Quick
+  Launch closes.
+
+**Verify:**
+
+- `npm test -- src/launcher/launcher-store.test.ts` → all three choices and close cleanup pass.
+
+#### Task R9: Render the contextual workspace decision
+
+**Files:**
+
+- Modify: [`src/launcher/quick-launch.tsx`](../../src/launcher/quick-launch.tsx)
+- Modify: [`src/launcher/quick-launch.test.tsx`](../../src/launcher/quick-launch.test.tsx)
+- Modify: [`src/styles/18-new-task-launcher.css`](../../src/styles/18-new-task-launcher.css)
+
+**Decision:** render the pending retarget as a compact status block using existing surface,
+hairline, type, focus, and action tokens; add no raw color, modal, scrim, or motion.
+
+**Build:**
+
+- Add a red component test that project A remains selected while the block names project B.
+- Add red tests for Keep A, Move to B, and Clear and use B callbacks.
+- Style the block at wide and compact widths using only the existing launcher token vocabulary.
+
+**Verify:**
+
+- `npm test -- src/launcher/quick-launch.test.tsx` → all retarget choices pass.
+- `npm test -- scripts/design-language.test.ts` → no design-language contract regresses.
+
+#### Task R10: Broader verification and native review gate
+
+**Files:** all files named in R1–R9; no additional production scope.
+
+**Decision:** automated evidence closes source behavior only. The new pending and retarget
+states remain visually pending until the owner reviews a rendered Electron or Gallery capture.
+
+**Verify:**
+
+- `npm test -- electron/pty/spawn.test.ts src/terminal/task-prompt-send.test.ts src/terminal/tab-manager.launch-task.test.ts src/launcher/launcher-store.test.ts src/launcher/launcher-fields.test.tsx src/launcher/quick-launch.test.tsx src/open-board/open-board.views.test.tsx src/ui/app.test.tsx`
+  → all targeted suites pass.
+- `npm run build` → renderer typecheck and production bundle succeed.
+- `npm run electron:build` → Electron main/preload typecheck and bundle succeed.
+- `npm run generate:menu:check` → generated menu is unchanged.
+- Owner-authorized rendered review: prompt-pending, retryable failure, pending launch, and
+  cross-repository conflict at wide and compact widths. Do not run a dev server, Playwright,
+  or Electron without that explicit authorization.
 
 ## Global constraints
 
@@ -35,8 +343,9 @@ Electron-only flat channel for directory creation.
 - **R5.** Renderer state uses Preact signals; the launcher store is window-scoped.
 - **R6.** IPC payload shape is a contract — flat keys, and
   `scripts/electron-ipc-contract.test.ts` must be extended in the same task that adds a channel.
-- **R4.** `TabManager` is a load-bearing seam; it gains exactly one method and no caller
-  outside it ever sees a pane id.
+- **R4.** `TabManager` is a load-bearing seam. The original launcher added `launchTask`; the
+  2026-08-30 addendum adds only `retryTaskPrompt`, and no caller outside it ever sees a pane
+  id.
 - **DL is executable policy (R2).** New chrome cites numbered rules; the new section is §32.
 - **No invented CLI flags or model names.** Every flag and every seeded model value must be
   quoted from that CLI's own `--help` on the implementer's machine, the same rule
@@ -78,13 +387,15 @@ controller polls `freshPaneInfo` + `paneAttention` until a `submitAllowed`-shape
 passes, and only then calls `injectIntoPane`. Its internal gate becomes the *second* check, not
 the first.
 
-### T-B. `"pasted"` is terminal — the prompt is never retried
+### T-B. `"pasted"` is terminal — only a proven no-paste failure may retry
 
 `injectIntoPane` answers `"sent" | "pasted" | "failed" | "busy" | "no-target"`. `"pasted"`
 means the text reached the agent's composer but the gate closed between paste and `\r`. The
 text is already in the agent's input. **Retrying would duplicate it**, so `"pasted"` ends the
 attempt with a visible message ("the prompt is waiting in the pane — press Enter to send") and
 the draft is NOT cleared. This is how spec §8's "exactly once" is honoured on the failure path.
+The 2026-08-30 addendum permits retry only for `prompt-not-sent` and `prompt-failed`, whose
+contracts prove that no prompt landed, and routes that retry back to the original tab.
 
 ### T-C. Readiness timeout is 90s, and a timeout leaves the tab standing
 
