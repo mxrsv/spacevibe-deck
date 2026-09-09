@@ -13,6 +13,21 @@ const ERROR_COPY: Record<WorktreeAddErrorCode, string> = {
   "branch-exists": "A branch with that name already exists",
   "destination-exists": "That destination folder already exists",
   "git-not-found": "git isn't installed, or isn't on PATH",
+  "invalid-branch":
+    "That branch name isn't valid — use a name without spaces, such as feature/my-task",
+  "invalid-path": "Choose full paths for the repository and destination folders",
+  "permission-denied":
+    "Git couldn't access or write the worktree — check permissions for the repository and destination",
+  "repository-unavailable": "The repository folder is missing or unavailable — choose it again",
+  "no-commits":
+    "This repository has no current commit — create an initial commit before adding a worktree",
+  "disk-full": "There isn't enough disk space to create the worktree — free up space first",
+  "timed-out":
+    "Worktree creation timed out. No branch or worktree was found for this attempt — you can try again",
+  "incomplete-worktree":
+    "Creation was interrupted, but the branch or worktree still exists. Check it in Git before trying again; Deck hasn't removed anything",
+  "recovery-check-failed":
+    "Creation was interrupted and Deck couldn't check what was created. Check the branch and destination in Git before trying again",
   unknown: "Couldn't create the worktree — check the folder and branch and try again",
 };
 

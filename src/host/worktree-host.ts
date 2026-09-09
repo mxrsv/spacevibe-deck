@@ -25,7 +25,20 @@ export interface AddWorktreeArgs {
 }
 
 export type WorktreeAddErrorCode =
-  "not-a-repository" | "branch-exists" | "destination-exists" | "git-not-found" | "unknown";
+  | "not-a-repository"
+  | "branch-exists"
+  | "destination-exists"
+  | "git-not-found"
+  | "invalid-branch"
+  | "invalid-path"
+  | "permission-denied"
+  | "repository-unavailable"
+  | "no-commits"
+  | "disk-full"
+  | "timed-out"
+  | "incomplete-worktree"
+  | "recovery-check-failed"
+  | "unknown";
 
 export type AddWorktreeResult =
   | { readonly ok: true; readonly path: string }

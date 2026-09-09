@@ -18,6 +18,15 @@ describe("worktreeErrorCopy", () => {
       "branch-exists",
       "destination-exists",
       "git-not-found",
+      "invalid-branch",
+      "invalid-path",
+      "permission-denied",
+      "repository-unavailable",
+      "no-commits",
+      "disk-full",
+      "timed-out",
+      "incomplete-worktree",
+      "recovery-check-failed",
       "unknown",
     ];
     const seen = new Set<string>();

@@ -57,6 +57,12 @@ constants that currently switch behaviour off and are meant to be flipped back.
 
 ## Data and contracts
 
+- **A timed-out worktree command is not a rollback.** Git may leave a branch,
+  directory or registered worktree, including when a checkout hook stalls after
+  files were written. [Worktree creation](../../electron/git/worktree.ts) inspects
+  all three after interruption. Do not turn a registered worktree into success
+  without checking its files, and do not add automatic cleanup or force retries:
+  the remaining checkout may contain user work.
 - **A store that cannot be read is write-locked.** Do not "fix" an unreadable file by
   writing defaults over it; the lock exists so recoverable bytes survive.
 - **`CHANGELOG.md` is machine-read** by the release workflow. Its `## <version>` headings and

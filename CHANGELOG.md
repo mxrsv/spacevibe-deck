@@ -7,6 +7,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **More reliable worktree creation.** Checkouts have up to a minute to finish,
+  failures explain invalid branches, access problems and disk space, and an
+  interrupted checkout is inspected before suggesting another attempt. Deck
+  preserves any branch or worktree left behind.
+  [Worktree creation](electron/git/worktree.ts) `current`.
+
 - **Focus worktrees from their cards.** Click a card's heading or empty space to
   focus its session; the heading also expands or collapses its agents
   ([worktree card](src/ui/worktree-card.tsx) `current`).

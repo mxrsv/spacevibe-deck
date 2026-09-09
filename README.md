@@ -70,6 +70,12 @@ icon and name; bulk closes skip them. Order and pins last for the current
 window session; keyboard navigation follows the visible order
 ([tab strip](src/ui/tab-strip.tsx) `current`, [strip order](src/lib/strip-order.ts) `current`).
 
+Worktree creation allows up to a minute for checkout. If it is interrupted, Deck
+checks the branch, destination and worktree registration before reporting whether
+you can retry or need to inspect the existing checkout. It does not automatically
+delete or overwrite a partial checkout
+([worktree creation](electron/git/worktree.ts) `current`).
+
 ### Sessions that come back
 
 Deck continuously journals open tabs and file surfaces, guards boot restoration against crash
