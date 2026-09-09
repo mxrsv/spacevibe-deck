@@ -7,6 +7,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Arrange and pin tabs.** Drag terminal, file, browser and Agents tabs into
+  place; right-click to pin, unpin, close others or close tabs to the right.
+  Pinned tabs keep their icon and name and are skipped by bulk closes.
+  Preferences last for the current window session.
+  [Tab strip](src/ui/tab-strip.tsx) `current`.
+
 - **Return to Agent Board.** When session restore is enabled, quitting while viewing Agent
   Board now brings the Board back on screen at the next launch. Switching away before quitting
   keeps only its `Agents` tab open ([Board restore](src/terminal/session-restore.ts) `current`).
@@ -17,12 +23,6 @@ This update makes starting new work more deliberate and improves terminal
 startup on Windows.
 
 ### Highlights
-
-- **Arrange and pin tabs.** Drag terminal, file, browser and Agents tabs into
-  place; right-click to pin, unpin, close others or close tabs to the right.
-  Pinned tabs keep their icon and name and are skipped by bulk closes.
-  Preferences last for the current window session.
-  [Tab strip](src/ui/tab-strip.tsx) `current`.
 
 - ⚡ **Faster Windows terminal startup.** Deck no longer starts a PowerShell/WMI
   process census in front of a new shell, split or docked pane. Background
