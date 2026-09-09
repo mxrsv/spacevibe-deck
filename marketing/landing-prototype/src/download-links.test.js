@@ -7,12 +7,12 @@ import {
 } from "./download-links.js";
 
 const DMG_URL =
-  "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe.Deck_0.9.0_universal.dmg";
+  "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe-Deck-0.9.0-arm64.dmg";
 const EXE_URL =
-  "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0-windows-preview/SpaceVibe.Deck_0.9.0_x64-setup.exe";
+  "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe-Deck-0.9.0-win-x64-setup.exe";
 
-// Newest-first, like the API: the Windows preview prerelease sits above the
-// stable macOS release.
+// Newest-first, like the API: the preview sits above the stable release, but
+// both platform links resolve from stable assets only.
 const RELEASES = [
   {
     tag_name: "v0.9.0-windows-preview",
@@ -44,9 +44,14 @@ const RELEASES = [
         browser_download_url: "x",
       },
       {
-        name: "SpaceVibe.Deck_0.9.0_universal.dmg",
+        name: "SpaceVibe-Deck-0.9.0-arm64.dmg",
         download_count: 5,
         browser_download_url: DMG_URL,
+      },
+      {
+        name: "SpaceVibe-Deck-0.9.0-win-x64-setup.exe",
+        download_count: 6,
+        browser_download_url: EXE_URL,
       },
     ],
   },
@@ -54,8 +59,6 @@ const RELEASES = [
 
 // Mirrors the page: the hero uses install copy, while the finale/footer retain
 // download copy. The footer Releases link must stay untouched.
-// The macOS control is a disabled button while the Electron macOS build is
-// unreleased — it carries `downloadMac` but is deliberately not an anchor.
 function renderFixture() {
   const root = document.createElement("main");
   root.innerHTML = `
@@ -63,16 +66,17 @@ function renderFixture() {
       <span data-copy="installWin">Install for Windows</span>
       <span data-copy="winPreviewTag">preview</span>
     </a>
-    <button class="hero-mac" type="button" disabled>
+    <a class="hero-mac" href="${RELEASES_URL}" target="_blank" rel="noreferrer">
       <span data-copy="installMac">Install for macOS</span>
-      <span data-copy="comingSoon">coming soon</span>
-    </button>
+    </a>
     <a class="footer-win" href="${WINDOWS_FALLBACK_URL}" target="_blank" rel="noreferrer"
       data-copy="downloadWin">Download for Windows</a>
     <a class="releases" href="${RELEASES_URL}" target="_blank"
       data-copy="footerReleases">Releases</a>
     <a class="release-version" href="/landing-prototype/changelog/"
       data-release-version>v0.8.0</a>
+    <a class="quick-manual" href="${WINDOWS_FALLBACK_URL}"
+      data-install-manual="win">Download manually</a>
     <aside data-download-proof data-download-state="loading">
       <strong data-download-count>—</strong>
       <span>downloads</span>
@@ -110,7 +114,10 @@ describe("upgradeReleaseLinks", () => {
     expect(
       root.querySelector("[data-download-proof]").dataset.downloadState,
     ).toBe("ready");
-    expect(root.querySelector("[data-download-count]").textContent).toBe("17");
+    expect(root.querySelector("[data-download-count]").textContent).toBe("23");
+    expect(root.querySelector(".quick-manual").href).toBe(EXE_URL);
+    expect(root.querySelector(".quick-manual").dataset.installMacUrl).toBe(DMG_URL);
+    expect(root.querySelector(".quick-manual").dataset.installWinUrl).toBe(EXE_URL);
   });
 
   it("leaves non-download anchors alone", async () => {
@@ -122,19 +129,16 @@ describe("upgradeReleaseLinks", () => {
     expect(root.querySelector("a.releases").href).toBe(RELEASES_URL);
   });
 
-  // The whole point of the coming-soon control being a <button>: a live .dmg
-  // exists on a stable release, and nothing may quietly turn it into a link.
-  it("never turns the coming-soon macOS control into a download", async () => {
+  it("points the macOS anchor at the stable Apple Silicon DMG", async () => {
     stubFetch(RELEASES);
     const root = renderFixture();
 
     await upgradeReleaseLinks(root);
 
     const mac = root.querySelector(".hero-mac");
-    expect(mac.tagName).toBe("BUTTON");
-    expect(mac.hasAttribute("href")).toBe(false);
-    expect(mac.disabled).toBe(true);
-    expect(root.querySelector("a.hero-mac")).toBeNull();
+    expect(mac.tagName).toBe("A");
+    expect(mac.href).toBe(DMG_URL);
+    expect(mac.hasAttribute("target")).toBe(false);
   });
 
   it("keeps the page hrefs when the API call fails", async () => {
@@ -169,7 +173,12 @@ describe("upgradeReleaseLinks", () => {
   });
 
   it("keeps the releases page when no release carries an .exe", async () => {
-    stubFetch([RELEASES[1]]);
+    stubFetch([
+      {
+        ...RELEASES[1],
+        assets: RELEASES[1].assets.filter((asset) => !asset.name.endsWith(".exe")),
+      },
+    ]);
     const root = renderFixture();
 
     await upgradeReleaseLinks(root);

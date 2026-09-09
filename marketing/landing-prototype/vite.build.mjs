@@ -14,6 +14,10 @@ const outDir = resolve(import.meta.dirname, "dist");
 // still produces them (marketing/video/README.md) — they are simply no longer
 // shipped, which is several megabytes the landing stopped carrying.
 const RUNTIME_ASSETS = ["landing-prototype/assets"];
+const BOOTSTRAP_ENDPOINTS = [
+  "landing-prototype/install.sh",
+  "landing-prototype/install.ps1",
+];
 
 function copyRuntimeAssets() {
   return {
@@ -30,6 +34,16 @@ function copyRuntimeAssets() {
         }
 
         cpSync(source, resolve(outDir, path), { recursive: true });
+      }
+
+      for (const path of BOOTSTRAP_ENDPOINTS) {
+        const source = resolve(marketingRoot, path);
+
+        if (!existsSync(source)) {
+          throw new Error(`Landing build: bootstrap endpoint "${path}" is missing.`);
+        }
+
+        cpSync(source, resolve(outDir, path.split("/").at(-1)));
       }
     },
   };

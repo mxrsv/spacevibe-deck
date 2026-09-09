@@ -3,20 +3,13 @@
  *
  * The download anchors are server-rendered with releases *pages* — URLs that
  * never rot — and upgraded in place at load time: one call to the releases
- * API finds the newest macOS .dmg on a stable release and the newest Windows
- * installer on any published release. The Windows engineering preview ships
- * as a prerelease, which `releases/latest` never returns, hence the list
- * endpoint.
+ * API finds the newest Apple Silicon .dmg and Windows x64 installer on stable
+ * releases. The list endpoint remains shared with the changelog and download
+ * proof, while platform selection rejects prerelease installers.
  *
  * Decided 2026-08-01: the Windows link follows the API like macOS, replacing
  * the hand-bumped WINDOWS_TAG pin — publishing a release is the act that
  * points the landing at it, so an unpublished build can never be served.
- *
- * 2026-08-17, for the Windows Electron release: the page carries no macOS
- * ANCHOR right now — the macOS control is a disabled button until the Electron
- * macOS build ships, so nothing matches the `downloadMac` retarget and the old
- * Tauri .dmg is never handed out. The call below stays because restoring macOS
- * is then a markup change alone: turn the button back into an anchor.
  *
  * Failure contract: on any miss (offline, rate limit, no matching asset) the
  * anchors keep their server-rendered page hrefs — a releases page, never a
@@ -70,6 +63,25 @@ function setDownloadProofState(root, state, count = null) {
   }
 }
 
+function retargetInstallManualLinks(root, urls) {
+  for (const link of root.querySelectorAll("[data-install-manual]")) {
+    if (urls.mac) {
+      link.dataset.installMacUrl = urls.mac;
+    }
+
+    if (urls.win) {
+      link.dataset.installWinUrl = urls.win;
+    }
+
+    const selectedUrl = link.dataset.installManual === "win" ? urls.win : urls.mac;
+
+    if (selectedUrl) {
+      link.href = selectedUrl;
+      link.removeAttribute("target");
+    }
+  }
+}
+
 export async function upgradeReleaseLinks(root) {
   let releases;
 
@@ -84,6 +96,7 @@ export async function upgradeReleaseLinks(root) {
 
   retargetAnchors(root, ["downloadMac", "installMac"], urls.mac);
   retargetAnchors(root, ["downloadWin", "installWin"], urls.win);
+  retargetInstallManualLinks(root, urls);
   setDownloadProofState(root, "ready", totalInstallerDownloads(releases));
 
   const stableTag = latestStableTag(releases);

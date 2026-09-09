@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="What SpaceVibe Deck sends, why it sends it, and how long usage data is kept." />
+    <title>Privacy — SpaceVibe Deck</title>
+    <style>
+      :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0a0c0b; color: #e7eae8; font-size: 16px; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      a { color: inherit; text-underline-offset: .22em; }
+      a:hover { color: #fff; }
+      a:focus-visible { outline: 2px solid #9de0b7; outline-offset: 5px; }
+      .skip { position: absolute; left: 24px; top: -80px; background: #0a0c0b; padding: 12px; }
+      .skip:focus { top: 12px; }
+      header, footer { max-width: 1120px; margin: auto; padding: 28px 32px; display: flex; justify-content: space-between; gap: 24px; }
+      header { border-bottom: 1px solid #303733; }
+      .brand { font-weight: 650; letter-spacing: -.03em; text-decoration: none; }
+      .label, nav, dt, footer { font-family: "SF Mono", Consolas, monospace; font-size: 12px; }
+      .label { color: #abb6ae; letter-spacing: .08em; text-transform: uppercase; }
+      .layout { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 64px; padding: 72px 32px 100px; }
+      nav { align-self: start; position: sticky; top: 32px; line-height: 2.8; }
+      nav a { display: block; color: #abb6ae; text-decoration: none; }
+      main { min-width: 0; max-width: 70ch; }
+      h1 { font-size: clamp(40px, 5vw, 64px); line-height: 1.05; font-weight: 550; letter-spacing: -.055em; margin: 22px 0; }
+      .intro { font-size: 21px; line-height: 1.5; color: #c1cac4; margin: 0 0 24px; }
+      .meta { color: #abb6ae; font-size: 13px; }
+      section { border-top: 1px solid #303733; padding-top: 28px; margin-top: 48px; scroll-margin-top: 28px; }
+      h2 { font-size: 23px; font-weight: 550; letter-spacing: -.025em; margin: 0 0 20px; }
+      p, li, dd { color: #c1cac4; line-height: 1.75; }
+      p { margin: 14px 0; }
+      strong { color: #e7eae8; font-weight: 600; }
+      ul { padding-left: 22px; }
+      li + li { margin-top: 10px; }
+      dl { margin: 0; }
+      .field { padding: 18px 0; border-top: 1px solid #242b27; }
+      dt { color: #e7eae8; overflow-wrap: anywhere; }
+      dd { margin: 7px 0 0; font-size: 15px; }
+      code { font-family: "SF Mono", Consolas, monospace; font-size: .85em; overflow-wrap: anywhere; }
+      footer { border-top: 1px solid #303733; color: #abb6ae; line-height: 1.7; }
+      @media (max-width: 760px) {
+        header, footer { padding: 24px; }
+        .layout { display: block; padding: 40px 24px 64px; }
+        nav { position: static; display: flex; flex-wrap: wrap; gap: 0 20px; margin-bottom: 36px; }
+        footer { flex-direction: column; gap: 8px; }
+        section { margin-top: 36px; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <header><a class="brand" href="/">SpaceVibe Deck</a><span class="label">Privacy notice / 01</span></header>
+    <div class="layout">
+      <nav aria-label="On this page">
+        <a href="#builds">01 / Your build</a><a href="#data">02 / The payload</a>
+        <a href="#delivery">03 / Delivery</a><a href="#retention">04 / Retention</a>
+        <a href="#infrastructure">05 / Infrastructure</a><a href="#contact">06 / Questions</a>
+      </nav>
+      <main id="content">
+        <div class="label">Usage analytics · Schema 1</div>
+        <h1>What Deck sends.</h1>
+        <p class="intro">Usage totals.<br />No code, paths or prompts.</p>
+        <p class="meta">Effective September 7, 2026 · <a href="/privacy/2026-09-07">Dated copy of this notice</a></p>
+        <p>Deck uses small usage snapshots to understand which agents and features people use and where to focus development. They describe participating install-days, not total installations, individual journeys or user retention.</p>
+        <section id="builds">
+          <h2>Which version are you running?</h2>
+          <p><strong>The upcoming Electron release sends usage analytics automatically and has no in-app opt-out.</strong> No account is required.</p>
+          <p>The public <strong>1.0.0 release and older Tauri builds do not send these analytics</strong>. Earlier development builds that show a “Share usage stats” setting follow that setting. This notice describes the analytics-enabled client and its receiving service; publishing it does not change an installed build.</p>
+        </section>
+        <section id="data">
+          <h2>The complete payload</h2>
+          <p>Each request contains only the following fields. The service rejects additional fields.</p>
+          <dl>
+            <div class="field"><dt>schemaVersion</dt><dd>The payload format version, currently 1.</dd></div>
+            <div class="field"><dt>dailyId · day</dt><dd>A random identifier generated for each local calendar day, plus that date. It lets repeated snapshots replace the same daily record. There is no permanent installation identifier in the payload.</dd></div>
+            <div class="field"><dt>version · platform · arch</dt><dd>The Deck version, macOS or Windows, and ARM64 or x64 architecture.</dd></div>
+            <div class="field"><dt>agents</dt><dd>Daily launch counts for Claude, Codex, OpenCode, Antigravity, Gemini and Cursor Agent. All custom agents share a single “custom” bucket; their names and commands are never sent.</dd></div>
+            <div class="field"><dt>surfaces</dt><dd>Daily open counts for the browser, Explorer and usage dashboard.</dd></div>
+            <div class="field"><dt>maxTabs · maxPanes</dt><dd>The highest number of simultaneous tabs and panes that day.</dd></div>
+            <div class="field"><dt>restoredSessions</dt><dd>Whether any session was restored that day, as a yes-or-no value.</dd></div>
+          </dl>
+          <p><strong>Never in this payload:</strong> code, prompts, replies, terminal output, file names or paths, repository or branch names, browser URLs, agent commands, account names, hostnames, locale, time zone, or individual action timestamps.</p>
+          <p>The receiving service adds a first-received timestamp solely to enforce retention. It does not read or store your IP address, user agent or location as analytics fields.</p>
+        </section>
+        <section id="delivery">
+          <h2>Small, cumulative snapshots</h2>
+          <p>The client sends a snapshot after startup, roughly every 15 minutes when counters change, a six-hour heartbeat, and a best-effort final snapshot when it quits. Later snapshots replace the same day's counters instead of adding them again.</p>
+          <p>Deck keeps up to seven daily buffers locally to retry failed delivery. The service accepts dates from the preceding 30 UTC calendar days through the following day, allowing for local time zones. Older snapshots are discarded rather than reintroduced after cleanup.</p>
+          <p>Requests travel over HTTPS to <code>api.deck.spacevibe.dev/v1/ping</code>. No public statistics or data export endpoint is provided. These unauthenticated counts are internal product feedback, not verified adoption figures.</p>
+        </section>
+        <section id="retention">
+          <h2>A short life for daily records</h2>
+          <p>Raw daily records are scheduled for deletion from the live database within <strong>35 days of first receipt</strong>. Cleanup starts at day 34 to leave room for the daily job; a failed job can delay deletion and requires operator attention.</p>
+          <p>Before deletion, the service retains coarse totals grouped by day, app version, platform and architecture. These totals contain no daily identifier and may be kept longer for internal analysis. Aggregation and deletion happen in one database transaction.</p>
+          <p>Cloudflare D1 also maintains recovery history through <a href="https://developers.cloudflare.com/d1/reference/time-travel/">Time Travel</a>. Depending on the account plan, deleted data can remain recoverable for up to 30 additional days (7 days on the free plan). This recovery history is separate from the live database retention schedule.</p>
+        </section>
+        <section id="infrastructure">
+          <h2>Where the request goes</h2>
+          <p>SpaceVibe operates the receiving service on Cloudflare Workers and D1. Worker request logging, invocation logging and tracing are disabled for this service.</p>
+          <p>Cloudflare necessarily handles network metadata, including IP addresses, while delivering and protecting requests. Disabling application logging does not remove that infrastructure processing. See <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a> for its practices.</p>
+          <p>The website hosting this notice is served by Vercel and has its own network delivery processing. See <a href="https://vercel.com/legal/privacy-policy">Vercel's privacy policy</a>.</p>
+        </section>
+        <section id="contact">
+          <h2>Questions or corrections?</h2>
+          <p>Contact the maintainer through the <a href="https://github.com/mxrsv/spacevibe-deck/issues">SpaceVibe Deck issue tracker</a>. Please do not include private code, credentials or other sensitive information in a public issue.</p>
+          <p>Material changes will receive a new dated notice. This <a href="/privacy/2026-09-07">September 7, 2026 notice</a> will remain available.</p>
+        </section>
+      </main>
+    </div>
+    <footer><span>SpaceVibe Deck · Privacy</span><a href="/">Back to Deck ↗</a></footer>
+  </body>
+</html>

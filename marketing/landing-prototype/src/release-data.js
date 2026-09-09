@@ -120,21 +120,23 @@ export function latestStableTag(releases) {
   return releases.find((release) => !release.prerelease)?.tag ?? null;
 }
 
-function assetUrl(release, suffix) {
+function assetUrl(release, matches) {
   return (
-    release.assets.find((asset) => asset.name.endsWith(suffix))
+    release.assets.find((asset) => matches(asset.name.toLowerCase()))
       ?.browser_download_url ?? null
   );
 }
 
 export function selectDownloadUrls(releases) {
-  const mac =
-    releases
-      .filter((release) => !release.prerelease)
-      .map((release) => assetUrl(release, ".dmg"))
-      .find(Boolean) ?? null;
-  const win =
-    releases.map((release) => assetUrl(release, ".exe")).find(Boolean) ?? null;
+  const stableReleases = releases.filter((release) => !release.prerelease);
+  const mac = stableReleases
+    .map((release) => assetUrl(release, (name) => name.endsWith("-arm64.dmg")))
+    .find(Boolean) ?? null;
+  const win = stableReleases
+    .map((release) =>
+      assetUrl(release, (name) => name.endsWith("-win-x64-setup.exe")),
+    )
+    .find(Boolean) ?? null;
 
   return { mac, win };
 }
