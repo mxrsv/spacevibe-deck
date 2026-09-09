@@ -231,15 +231,14 @@ button.asr-bare:hover {
 
 /* ---------------------------------------------------------------------- the head */
 
-/* Three tracks and no more: mark, checkout name, branch badge — no caret, no age, no count on
-   this line (design §4). The mark's 14px box matches the shipped rail's own status-mark
-   footprint, so a resting dot and the live state trade places without moving the name. */
+/* DL-27.25: a fixed trailing caret makes disclosure visible without shifting the name
+   or badge on hover. Age and count stay below this button. */
 .asr-card__head {
   display: grid;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-columns: 14px minmax(0, 1fr) auto 13px;
   align-items: center;
   column-gap: 6px;
   min-height: 24px;
@@ -250,6 +249,37 @@ button.asr-bare:hover {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  border-radius: var(--asr-card-pill-radius);
+}
+
+.asr-card__head:hover,
+.asr-card__head:focus-visible {
+  background: var(--state-hover-bg);
+}
+
+.asr-card__head:focus-visible {
+  outline: 1px solid var(--text-muted);
+  outline-offset: 2px;
+}
+
+.asr-card__chevron {
+  color: var(--text-muted);
+  transform: rotate(0deg);
+}
+
+.asr-card__head[aria-expanded="true"] .asr-card__chevron {
+  transform: rotate(90deg);
+}
+
+.asr-card__head:hover .asr-card__chevron,
+.asr-card__head:focus-visible .asr-card__chevron {
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .asr-card__chevron {
+    transition: transform var(--duration) var(--ease);
+  }
 }
 
 .asr-card__mark {

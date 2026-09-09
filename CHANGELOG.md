@@ -14,7 +14,8 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   [Worktree creation](electron/git/worktree.ts) `current`.
 
 - **Focus worktrees from their cards.** Click a card's heading or empty space to
-  focus its session; the heading also expands or collapses its agents
+  focus its session; the heading also expands or collapses its agents. A persistent
+  chevron shows that state, and the heading highlights on hover or keyboard focus
   ([worktree card](src/ui/worktree-card.tsx) `current`).
 
 - **A color for each worktree.** Right-click it and choose **Worktree color**

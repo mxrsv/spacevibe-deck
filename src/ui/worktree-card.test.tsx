@@ -208,7 +208,7 @@ describe("WorktreeCard head (design §4)", () => {
     expect(onClosePane).toHaveBeenCalledTimes(1);
   });
 
-  it("draws the head as mark, basename and branch badge, with no caret and no age", () => {
+  it("draws the head with a disclosure caret and keeps age on its own line", () => {
     mount({
       group: group({
         name: "ai-terminal",
@@ -223,13 +223,14 @@ describe("WorktreeCard head (design §4)", () => {
     expect(head?.querySelector(".asr-card__mark")).not.toBeNull();
     expect(head?.querySelector(".asr-card__name")?.textContent).toBe("ai-terminal");
     expect(head?.querySelector(".asr-card__badge")?.textContent).toContain("feature/ai-terminal");
-    // No caret: the badge's `GitBranch` glyph is the head's ONLY icon.
-    expect(head?.querySelectorAll("[data-deck-icon-size]")).toHaveLength(1);
+    expect(head?.querySelectorAll("[data-deck-icon-size]")).toHaveLength(2);
     // No age on the head — it lives on the meta line, a sibling of the head.
     expect(head?.textContent).not.toContain("5m");
     expect(host.querySelector(".asr-card__meta")?.textContent).toBe("5m");
     // The project prefix (review fix, 2026-08-26): `project · checkout · branch`.
-    expect(head?.getAttribute("title")).toBe("spacevibe-bench · ai-terminal · feature/ai-terminal");
+    expect(head?.getAttribute("title")).toBe(
+      "Expand agents — spacevibe-bench · ai-terminal · feature/ai-terminal",
+    );
     expect(head?.getAttribute("aria-label")).toContain(
       "spacevibe-bench · ai-terminal · feature/ai-terminal",
     );
@@ -253,10 +254,11 @@ describe("WorktreeCard head (design §4)", () => {
     // The badge cannot restate the label, so it states the role instead.
     expect(head?.querySelector(".asr-card__badge")?.textContent).toBe("Primary");
     expect(head?.querySelector(".asr-card__badge")?.getAttribute("data-kind")).toBe("role");
-    // A `role` badge carries no glyph, so the head draws none at all.
-    expect(head?.querySelectorAll("[data-deck-icon-size]")).toHaveLength(0);
+    // A `role` badge carries no glyph; the disclosure caret still does.
+    expect(head?.querySelector(".asr-card__badge [data-deck-icon-size]")).toBeNull();
+    expect(head?.querySelectorAll("[data-deck-icon-size]")).toHaveLength(1);
     expect(head?.textContent).not.toContain("spacevibe-board");
-    expect(head?.getAttribute("title")).toBe("spacevibe-board · main");
+    expect(head?.getAttribute("title")).toBe("Expand agents — spacevibe-board · main");
   });
 
   it("states a worktree named after its branch exactly once", () => {
@@ -270,7 +272,7 @@ describe("WorktreeCard head (design §4)", () => {
     const head = host.querySelector(".asr-card__head");
     expect(head?.querySelector(".asr-card__name")?.textContent).toBe("fix-login");
     expect(head?.querySelector(".asr-card__badge")?.textContent).toBe("Worktree");
-    expect(head?.getAttribute("title")).toBe("spacevibe-board · fix-login");
+    expect(head?.getAttribute("title")).toBe("Expand agents — spacevibe-board · fix-login");
   });
 
   it("merges a closed card's segments by agent kind, never sharing the open row's class", () => {

@@ -1,6 +1,6 @@
 import { Fragment } from "preact";
 import { useRef, useState } from "preact/hooks";
-import { GitBranch, Plus, TerminalWindow, X } from "@phosphor-icons/react";
+import { CaretRight, GitBranch, Plus, TerminalWindow, X } from "@phosphor-icons/react";
 import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
 import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
 import { CardStrip } from "./worktree-card-strip";
@@ -113,10 +113,9 @@ function Badge({
 }
 
 /**
- * The card head: `mark · checkout label · badge`, and nothing else.
- * No caret, no age (design §4 — the head has 213px for a name and a branch
- * at 275px, and a caret's 19px was almost exactly the deficit). The name
- * and badge focus and toggle the card; its context menu offers colors (DL-27.25).
+ * The card head: mark, checkout label, badge and an always-visible disclosure
+ * caret (DL-27.25). The whole button focuses and toggles the card; its context
+ * menu offers colors. The caret keeps a fixed slot in both disclosure states.
  *
  * The label is `checkoutLabel`, not `group.name`: the primary checkout's
  * folder name IS the project name the cluster header printed directly above,
@@ -140,12 +139,13 @@ function CardHead({
       class="asr-card__head"
       aria-expanded={open}
       aria-label={`${open ? "Collapse" : "Expand"} ${where}${group.live ? ", working" : ""}`}
-      title={where}
+      title={`${open ? "Collapse" : "Expand"} agents — ${where}`}
       onClick={onToggle}
     >
       <span class="asr-card__mark" data-live={group.live} aria-hidden="true" />
       <span class="asr-card__name">{checkoutLabel(group)}</span>
       <Badge className="asr-card__badge" badge={checkoutBadge(group)} />
+      <DeckIcon icon={CaretRight} size={CHROME_ICON} class="asr-card__chevron" />
     </button>
   );
 }
