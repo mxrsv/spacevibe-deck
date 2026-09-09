@@ -1,9 +1,4 @@
-import {
-  ArrowCounterClockwise,
-  ArrowsOutSimple,
-  DotsThreeOutline,
-  Stop,
-} from "@phosphor-icons/react";
+import { ArrowCounterClockwise, DotsThreeOutline, Stop } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { stateWordFor, type BoardCard } from "./agent-board-model";
 import { AgentGlyph } from "./controls/agent-glyph";
@@ -12,8 +7,15 @@ import { RailStatusMark } from "./controls/rail-status-mark";
 
 /**
  * One Agent Board card (spec §5.3–§5.6, DL-34.2–DL-34.4). A DL-27.1
- * container with a full-bleed hit layer, five rows, a DL-27.5 hover column
- * and a `More` menu that holds every action for the keyboard.
+ * container with a full-bleed hit layer, a DL-27.5 hover column and a `More`
+ * menu that holds every action for the keyboard.
+ *
+ * It was five rows on one even rhythm until 2026-09-09, which read as a list
+ * rather than a card. The same facts are now four GROUPS — status, identity,
+ * what the agent said, footer — placed by `grid-template-areas` and separated
+ * by unequal gaps, so the eye gets a hierarchy instead of a stack. The hover
+ * column moved to the foot with them: it sat top-right and forced a permanent
+ * 74px void beside the rank, on every card, hovered or not.
  */
 export interface BoardCardActions {
   /** `null` closes the panel — the composition's Escape sends it. */
@@ -33,6 +35,18 @@ export interface AgentBoardCardProps {
 
 export function formatRank(rank: number): string {
   return rank < 10 ? `0${rank}` : String(rank);
+}
+
+/**
+ * The footer's two figures. `up 12m · 2m` printed two bare durations and only
+ * named one of them, so the second read as noise — it is the age of the last
+ * output, and `ago` is the word that says so. An unknown figure is still `--`
+ * rather than `-- ago`, which would claim a measurement Deck does not have.
+ */
+export function metaLine(card: BoardCard): string {
+  const up = card.up === "" ? "--" : card.up;
+  const changed = card.changed === "" ? "--" : `${card.changed} ago`;
+  return `up ${up} · ${changed}`;
 }
 
 function accessibleName(card: BoardCard): string {
@@ -134,15 +148,15 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
         onClick={() => actions.onOpenInStage(card)}
         onFocus={() => onFocusRequest(card)}
       />
-      <div class="board-card__row board-card__row--head">
+      <div class="board-card__status">
         <RailStatusMark
           state={card.departed ? "ended" : card.state}
           confidence={card.confidence ?? "unknown"}
         />
         <span class="board-label board-card__state">{word}</span>
-        <span class="board-card__num">{formatRank(card.rank)}</span>
       </div>
-      <div class="board-card__row">
+      <span class="board-card__num">{formatRank(card.rank)}</span>
+      <div class="board-card__id">
         <AgentGlyph agent={card.agent} className="board-card__glyph" />
         <span class="board-card__name">{card.name}</span>
       </div>
@@ -153,24 +167,19 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
             <span class="board-card__what-prefix">Task</span>{" "}
           </>
         )}
-        {card.what.text}
+        {card.what.text === "" ? (
+          // The footer already spells an unknown figure `--`; a pane with
+          // nothing to quote gets the same mark rather than a blank band, which
+          // read as a card that had failed to load. It states absence, it does
+          // not invent a fact (spec §8).
+          <span class="board-card__what-empty">—</span>
+        ) : (
+          card.what.text
+        )}
       </div>
-      <div class="board-card__meta">{`up ${card.up === "" ? "--" : card.up} · ${card.changed === "" ? "--" : card.changed}`}</div>
+      <div class="board-card__meta">{metaLine(card)}</div>
       <div class="board-card__actions">
         {stopOrRestart}
-        <button
-          type="button"
-          class="iconbtn"
-          tabIndex={-1}
-          data-action="open"
-          aria-label={`Open ${card.name} in stage`}
-          onClick={(event) => {
-            event.stopPropagation();
-            actions.onOpenInStage(card);
-          }}
-        >
-          <DeckIcon icon={ArrowsOutSimple} size={ROW_ICON} />
-        </button>
         <button
           type="button"
           class="iconbtn"

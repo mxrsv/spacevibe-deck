@@ -57,7 +57,7 @@ function mount(c: BoardCard, a = actions()) {
 }
 
 describe("AgentBoardCard", () => {
-  it("prints the five rows with the state word, rank, glyph, name, where, task and meta", () => {
+  it("prints the four groups: state, rank, glyph, name, where, task and meta", () => {
     const { host } = mount(card());
     const el = host.querySelector(".board-card")!;
     expect(el.getAttribute("data-state")).toBe("asked");
@@ -69,11 +69,14 @@ describe("AgentBoardCard", () => {
     expect(host.querySelector(".board-card__where")!.textContent).toBe("deck · main");
     // A real space, so assistive tech does not announce "TaskRefactor".
     expect(host.querySelector(".board-card__what")!.textContent).toBe("Task Refactor the rail");
-    expect(host.querySelector(".board-card__meta")!.textContent).toBe("up 12m · 2m");
+    // `ago` names the second figure: two bare durations printed side by side
+    // said what only one of them meant.
+    expect(host.querySelector(".board-card__meta")!.textContent).toBe("up 12m · 2m ago");
   });
-  it("prints -- for an unknown uptime and nothing on row 4 when there is nothing", () => {
+  it("prints -- for an unknown uptime and nothing in the what group when there is nothing", () => {
     const { host } = mount(card({ up: "", what: { kind: "none", text: "" } }));
-    expect(host.querySelector(".board-card__meta")!.textContent).toBe("up -- · 2m");
+    // An unknown figure stays a bare `--`: `-- ago` would claim a measurement.
+    expect(host.querySelector(".board-card__meta")!.textContent).toBe("up -- · 2m ago");
     expect(host.querySelector(".board-card__what")!.getAttribute("data-kind")).toBe("none");
   });
   it("marks the selected card with aria-current and a departed one with data-departed", () => {
@@ -131,8 +134,11 @@ describe("AgentBoardCard", () => {
   it("keeps the hover column out of the Tab order and opens More from the card", () => {
     const { host } = mount(card());
     const column = [...host.querySelectorAll<HTMLButtonElement>(".board-card__actions .iconbtn")];
-    expect(column.length).toBe(3);
-    expect(column.map((button) => button.tabIndex)).toEqual([-1, -1, -1]);
+    // TWO since DECK-43: `Open in stage` left the column, because pressing the
+    // card is exactly that now. `More` still carries the row.
+    expect(column.length).toBe(2);
+    expect(column.map((button) => button.dataset.action)).toEqual(["stop", "more"]);
+    expect(column.map((button) => button.tabIndex)).toEqual([-1, -1]);
     // The keyboard route §5.6 designed: the card answers the context-menu key.
     const hit = host.querySelector<HTMLButtonElement>(".board-card__hit")!;
     act(() => hit.focus());
