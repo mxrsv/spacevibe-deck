@@ -4,7 +4,20 @@
   "installCommand": "npm ci",
   "buildCommand": "vite build --config marketing/landing-prototype/vite.build.mjs",
   "outputDirectory": "marketing/landing-prototype/dist",
-  "rewrites": [{ "source": "/", "destination": "/landing-prototype/index.html" }],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/landing-prototype/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/2026-09-07/index.html"
+    },
+    {
+      "source": "/privacy/2026-09-07",
+      "destination": "/privacy/2026-09-07/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/install.sh",
@@ -35,7 +48,12 @@
     },
     {
       "source": "/deck-tour(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
     }
   ]
 }
