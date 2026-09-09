@@ -53,7 +53,13 @@ constraint: **consume as few machine resources as possible.**
   point of the mark and the whole cost of the exception; it was taken knowingly,
   over a still ring that separates the mark in a screenshot but not in the
   corner of an eye. The still ring is what `prefers-reduced-motion: reduce`
-  gets. No other surface inherits any of the three.
+  gets.
+  **A third scoped exception was added 2026-08-27 by DL-27.25:** an Electron
+  worktree-card row or strip carries three `transform: scaleY` bars while its
+  agent is working (DECK-30, amended 2026-09-09). The 6/10/8px bars share a
+  900ms alternate cycle with a 150ms stagger; there is no beam. Leaving working
+  removes all three bars. Reduced motion keeps their static heights. No other
+  surface inherits these exceptions.
   **A fourth scoped exception was added 2026-09-03 by DL-34.3:** the Agent
   Board draws DL-27.3's `WorkspaceSpinner` on every card whose pane is
   `working` — one loop per working pane, the same budget the rail already
@@ -98,7 +104,7 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 | `--text-primary` / `--text-muted` / `--text-faint`                           | text hierarchy                           |
 | `--ui-font`                                                                  | the one chrome typeface (DL-4.1)         |
 | `--type-title` … `--type-micro`                                              | the four standard text sizes (DL-4.4)    |
-| `--radius-flat` / `--radius-tight` / `--radius-control` / `--radius-surface` | the four radius roles (DL-20.1)          |
+| `--radius-flat` / `--radius-tab` / `--radius-tight` / `--radius-control` / `--radius-surface` | the five radius roles (DL-20.1)          |
 | `--duration` / `--ease`                                                      | chrome state-change motion (DL-20.2)     |
 
 - **DL-2.1** Components never hardcode colors. Every color routes through a
@@ -840,9 +846,24 @@ it. The rules below are unchanged and still bind the Prompt Board; §10's ledger
 row about the two popovers disagreeing on their edge is settled by deletion
 rather than by a fix.
 
+**Two members since 2026-08-27, and the section widened twice for them**
+(spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5, §8.3,
+§8.4). The rail's worktree card raises a hover-driven segment menu and a
+pressed actions menu, and neither fitted the rules as written: DL-13.2 is a
+CLICK contract (`aria-expanded`, `role="dialog"`, Esc / outside-click) and
+DL §23's hover surface carries no actions, so a hover-raised popover belonged
+to neither genre; and DL-13.3's rows are single-line, where the actions menu's
+row is icon · title · detail. DL-13.7 and DL-13.8 below record both, and
+DL-13.1's radius is scoped in place.
+
 - **DL-13.1** A popover is a `--chrome-2` surface with a 1px `--seam-raised`
   inset hairline at `--radius-surface` (DL-20.1 — 8px until 2026-08-14),
-  anchored to its trigger. No blurred shadow (DL-1.3); depth comes from the
+  anchored to its trigger. **Amended 2026-08-27: that radius is scoped to
+  STAGE-level surfaces.** A popover anchored inside the rail takes the card's
+  own `--asr-card-radius` (6px) instead — the rail settled this on 2026-08-25,
+  when `--radius-surface` on a 260px card in a 276px column "read as pills at
+  rail width" and every corner in that sheet collapsed to one value. A 12px
+  popover hanging off a 6px card is rounder than the thing it belongs to. No blurred shadow (DL-1.3); depth comes from the
   background step. The frame is a seam, not a hairline: a popover floats above
   chrome, so its edge is a boundary between two surfaces (DL-2.3), which is the
   §10 debt this rule carried while it still said `--hair-strong`.
@@ -861,6 +882,47 @@ rather than by a fix.
   height, then scrolls.
 - **DL-13.6** Transient controls in a popover (pickers, search) reset when it
   opens; a popover never remembers half-finished state across opens.
+- **DL-13.7** (new 2026-08-27) A popover may be HOVER-raised when it describes
+  what its trigger already shows and adds no state of its own. It then needs
+  what a click contract gives for free and hover does not: an open delay, a
+  pointer bridge so travelling into the surface does not close it, a pin by the
+  trigger's identity (not its index) so a re-ranked trigger closes rather than
+  re-targets the menu, and a close on scroll — a `position: fixed` surface does
+  not follow its anchor. Keyboard focus raises the same surface, and the
+  trigger's native `title` comes off (DL-23.10): a `title` never appears on
+  focus, so the state word moves into the accessible name (DL-27.2).
+  **Amended 2026-09-02 (owner, from a live report): a trigger that stands for
+  SEVERAL things PINS the popover on press.** The strip's merged `×N` segment
+  and its `+N` tail collapse N choices into one control, and their press used
+  to focus the loudest pane and close the hover menu — a guess the user never
+  asked for, closed under a pointer that could not re-raise it without leaving
+  the segment first, which the owner read as "click does nothing but blink". A
+  pinned popover ignores the hover close and goes on Escape, an outside press,
+  a second press on its trigger, a choice made from it, or its trigger leaving
+  the shown set; hovering a different trigger re-targets it and drops the pin.
+  The trigger then carries `aria-haspopup` and `aria-expanded`, since a press
+  that opens something is a click contract after all. A trigger that stands for
+  ONE thing keeps its press as that thing's own action, and its hover popover
+  stays the stateless kind this rule was written for.
+  **Amended 2026-09-02 (owner, `openspec/changes/rail-create-consolidation`): a
+  popover may be KEYBOARD-raised when its trigger is a chord.** `⌘T` raises the
+  rail card's actions menu with no control on screen, so the mechanics differ
+  from both the hover and the press kinds: no open delay and no pointer bridge
+  (nothing was hovered), pinned from the moment it opens, closes on Escape, an
+  outside press, any scroll or a choice, and it hangs under the stage strip at
+  the strip's leading edge — the row the chord conceptually belongs to — rather
+  than beside a trigger. Because no anchor names its subject, it states the
+  subject itself in a heading (DL-27.25, amended); the press-to-open triggers
+  that share the surface (`New agent`, the bare row) carry `aria-haspopup` and
+  `aria-expanded` and drop their native `title` (DL-23.10), the same words the
+  merged-segment press took above.
+- **DL-13.8** (new 2026-08-27) A menu row may spend TWO lines — icon · title ·
+  detail — where the second line says what pressing it will do. Title takes
+  `--type-meta` at weight 600 over detail at `--type-micro` in `--text-faint`:
+  separated by weight and ink rather than by size, the pairing DL-4.4 already
+  records for the Recent activity block. Nothing goes below `--type-micro`;
+  the ladder has four rungs and DL-4.5 forbids inventing a fifth. A row's
+  detail never restates the scope the surface states once.
 
 ## 14. Icons
 
@@ -1399,11 +1461,12 @@ window's identity and its actions at the same time.
   the stage strip. The feature toolbar remains on the stage side; this
   amendment adds one sidebar action, not a second toolbar.
 
-  **Cross-reference, 2026-09-03:** the hidden state can now be PRODUCED by a
-  surface rather than by the user — the Agent Board hides the sidebar while it
-  holds the stage (DL-34.1), without writing `sidebarCollapsed`, and omits the
-  strip-mounted toggle meanwhile. `sidebarCollapsed` is no longer the only way
-  the column is at width 0.
+  **Cross-reference, 2026-09-03, WITHDRAWN 2026-09-09 (DECK-43):** the hidden
+  state was briefly PRODUCED by a surface rather than by the user — the Agent
+  Board hid the sidebar while it held the stage (DL-34.1), without writing
+  `sidebarCollapsed`, and omitted the strip-mounted toggle meanwhile. DL-34.1
+  reversed that half, so `sidebarCollapsed` and a drag are once again the only
+  ways the column reaches width 0.
 
 - **DL-18.10** **One chip shape, one row, one order (2026-08-16).** The strip
   had two segments until this rule: every terminal tab, a `.tabbar__sep`
@@ -1474,7 +1537,7 @@ window's identity and its actions at the same time.
   sentence, exactly as in the rail (DL-27.15), and a tab whose agent has said
   nothing keeps its process name, so no chip is ever blank. Three geometry
   changes pay for the longer text and are part of this rule: the corner drops
-  to `--radius-flat` (DL-20.1's fourth role) so the left padding no longer
+  to `--radius-tab` (DL-20.1) so the left padding no longer
   holds text off a curve, the label steps down to `--type-meta`, and the chip
   takes a `max-width` — a sentence on a chip is trimmed to a glance, never
   spelled out, with the whole of it in `title` (DL-27.4's contract, inherited
@@ -1589,7 +1652,16 @@ covering it, and it can hold something that is not Deck's own pixels.
   drag reads as the column lagging the hand.
 - **DL-19.5** One status line, directly under the header, in `--text-faint`
   (DL-3.4) — or `--red` when it reports a failure (DL-3.2). It is the panel's
-  only place for transient text; a panel does not raise dialogs of its own.
+  only place for transient text.
+  **Amended 2026-08-25:** a panel does not raise a dialog to report **its own
+  state** — a failure, a progress step, an unreadable directory. That is what
+  the status line is for, and it is the reason this rule exists: a background
+  event must never steal the window. A dialog the **user pressed a control to
+  open** is not that event, and may use the shared `Modal` shell (DL §29).
+  Every existing use is untouched: listing errors still go to
+  [`LoadError`](../src/ui/controls/load-error.tsx) `current`, and the create
+  failures of the explorer's own cluster go to this status line, not to a
+  second dialog.
 - **DL-19.6** When a panel hosts **foreign content** (a web page, a preview),
   Deck's chrome never overlaps it: the content gets its own rectangle below the
   header, and that rectangle is the only part of the column Deck does not
@@ -1626,6 +1698,17 @@ covering it, and it can hold something that is not Deck's own pixels.
   (WCAG 2.5.3 — the short label must be contained in it). This is a layout
   rule, not a second genre: nothing about the items changes but their
   direction and their padding.
+- **DL-19.9** **A docked panel's tab hangs its own actions off the row that
+  names what it is showing (2026-08-25, owner).** Not in the shared header, and
+  not in a row of its own. The shared header stays the tab row (DL-19.3,
+  DL-19.7) and never carries a control belonging to one tab. The actions are a
+  trailing cluster of icon-only controls on that first row, **sized to the row
+  rather than to chrome** — `.iconbtn`'s 24px box overflows a 22px data row by
+  1px above and below, and the row cannot grow because its height is the
+  constant every index in the virtual list is computed from. They are visible
+  at rest. This is DL-27.18's arrangement applied to a docked panel; it adds no
+  vertical chrome to a column whose floor is 360px wide
+  ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx) `current`).
 
 ## 20. Numeric scales
 
@@ -1638,11 +1721,13 @@ decision. Design:
 [direction token rebuild §9.4](specs/2026-08-13-direction-token-rebuild-design.md)
 `decided`.
 
-- **DL-20.1** Four radius roles, and no fifth picked at a use site.
+- **DL-20.1** Five radius roles, and no sixth picked at a use site.
   `--radius-flat` (2px) is a control packed into a **dense row**, where a
   larger corner forces horizontal padding to keep text clear of the curve and
   that padding is width the text needed — the tab strip's chips are the whole
-  membership (owner, 2026-08-17, with the chips' turn text).
+  membership (owner, 2026-08-17, with the chips' turn text). Amended
+  2026-09-09 (DECK-39): [strip tabs and view buttons](../src/styles/05-tab-bar-toolbar.css)
+  use `--radius-tab` (6px); other compact details retain the 2px default.
   `--radius-tight` (8px) is anything drawn inside a control or row — marks,
   bars, scrollbar thumbs and miniature parts. `--radius-control` (10px) is
   anything the pointer acts on inside a surface — rows, pills, icon buttons
@@ -1699,7 +1784,7 @@ looking at rendered specimens across four themes.
   so selecting one changes a colour, never the row's geometry (DL-1.2's
   `border-color` is the animated property). The chip's own corner left
   `--radius-control` on 2026-08-17 (DL-18.10 amended, DL-20.1's new
-  `--radius-flat` role), so the wash and the frame trace THAT corner there;
+  `--radius-tab` role), so the wash and the frame trace THAT corner there;
   every other genre keeps `--radius-control`. Other genres are otherwise
   unchanged: a border on a rail row or a settings category is still a
   violation.
@@ -2115,7 +2200,15 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   checked, and `idle` an agent that has never run anything (the tracker's
   `hasRun` bit splits the two). When a tab folds its panes into one row the
   loudest one speaks: failed > asked > working > done > idle. `failed` is
-  never allowed to read as `idle`. Every mark occupies ONE fixed 14px box —
+  never allowed to read as `idle`. **Amended 2026-08-27: on a closed worktree
+  card the same fold now ranks agent KINDS rather than panes** (spec
+  `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4). A segment is
+  one agent, `×N` when it holds several panes, so a merged segment wears ONE
+  mark — its loudest pane's — and says nothing about the others until its menu
+  opens (DL-13.7). That is the stated cost of the grouping, and it is why the
+  menu is not a convenience. The two counts a strip can carry are deliberately
+  different inks: `×N` is `--text-muted` and names what the segment IS, `+N`
+  keeps `--accent` and names what the strip is NOT showing. Every mark occupies ONE fixed 14px box —
   the resting dot paints 9px of ink centred inside it — so row geometry never
   moves between states.
   **Amended 2026-08-20 (owner), three times:** the spinner was 12px in
@@ -2130,6 +2223,52 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   flex-laid leaf rows did not — their text jumped 5px whenever a pane entered
   or left `working`. The box is 14px in every state now, the dot centred in
   it by `::before`, and the leaf's old 2.5px compensating margin is gone.
+  **Amended 2026-09-03 (agent-signal contract layer, stage 0; spec
+  `docs/specs/2026-09-03-agent-signal-contract-layer-design.md` §4): the mark
+  carries its CONFIDENCE, and the vocabulary has a sixth word, `ended`.** The
+  tracker has always known whether an `asked` or a `done` came from the CLI's
+  own OSC 9;4 or from "3 s of silence after a streak", and the rail drew both
+  with one pen — so every yellow mark on a codex, opencode or gemini row was a
+  guess wearing the certainty of a fact (trust audit §4.8). A mark now
+  answers `explicit` (the CLI said it, over a channel it documents: OSC 9;4,
+  a BEL, a hook, the registry), `inferred` (Deck read it off output timing or
+  the process table) or `unknown` (nothing seen yet). On the shared rail mark,
+  an **inferred `asked` or `done` is drawn HOLLOW** — the same 9px, the same hue, a 1.5px ring in place
+  of the disc — and an explicit one filled; `unknown` is the resting dot
+  `idle` has always worn. `failed` is never hollow, because nothing produces
+  it but a CLI's own error report; `working` keeps the ring, because motion
+  already says "changing on its own". The accessible name spells the
+  difference out where it changes the meaning — `needs you (inferred)`,
+  `done (inferred)` — so DL-27.2's "the word survives" now includes the
+  doubt. **`ended`** is an agent whose PROCESS left the pane while the pane
+  stayed up — any exit status, no CLI error event. Before this, a working
+  agent that died latched an inferred `completed` and wore `asked`'s yellow
+  (trust audit §4.3; Codex's objection to the audit's §7.3 is why it is not
+  `failed` either — `failed` is only ever a CLI's own error event, and a
+  non-zero exit is also what Ctrl-C and a wrapper's exit look like). It is
+  drawn as a **7px square in the quiet gray** — the stop glyph, the one
+  non-round mark in the column, so it is seen before it is read — and it
+  spends no hue: not `--red` (the CLI's own failure, DL-3.2) and not
+  `--status-unread` (a question). The card badge also uses a filled quiet-gray
+  square for `ended`, distinct from the round `done` dot. **Card dots use solid
+  state colors for both confidence levels (DECK-30, 2026-09-09):** asked is
+  yellow and done is quiet gray; a dark surface must not turn either center
+  into a dark hole. The inferred qualifier remains in the row's tooltip and
+  accessible name, and in the strip's accessible name. Idle paints no card dot.
+  See [card status styles](../src/styles/04c-rail-worktree-card.css). The row keeps
+  its agent's name and glyph until the end is CHECKED — the user focuses the
+  pane, or output arrives while the pane is visible, which is normally the
+  user typing into the shell that replaced the agent (known limit: a prompt
+  that repaints on its own, a clock or a transient-prompt plugin, clears it
+  the same way) — and then reverts to
+  the shell it now is; a latched `error` or `warning` outranks the end, since
+  the CLI said it and the exit does not un-say it, while a `requested` or
+  `completed` is dropped with the agent that could have answered it. The
+  fold gains the word between `asked` and `working`: failed > asked > ended >
+  working > done > idle. Both drawings were chosen by the implementer as the
+  spec's default and are DRAWN beside two alternatives each in the gallery's
+  `signal mark direction` section for the owner's eye; the owner's pick
+  replaces this paragraph's "chosen" with "owner-chosen", or reverses it.
 - **DL-27.4** **An actionable message line is trimmed by layout, never by
   slicing the string.** Only `asked` and `failed` earn that second line;
   `working`, `done` and `idle` stay one line. `text-overflow: ellipsis` does
@@ -2419,8 +2558,23 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   `FEATURE_ICON` (15px) and the name from 11px to `--type-project` (13px),
   keeping the pair 2px larger without changing the caret.
 
-- **DL-27.18** **A project header carries its own launcher (2026-08-19,
-  owner).** The trailing side of the header is a `+` that opens
+- **DL-27.18** **RETIRED 2026-09-02 (owner, `openspec/changes/rail-create-consolidation`):
+  a project header carries no launcher.** Every checkout carries its own
+  create control on its card (DL-27.25, amended the same day) — the closed
+  strip's `+`, the open card's `New agent` row, or the bare row of a checkout
+  with nothing open — so the header's `+` had become a second `+` in the same
+  column that silently resolved to the primary checkout. The owner's rule from
+  the 2026-09-02 interview is one glyph, one meaning: in the rail a `+` always
+  opens the agent list for the checkout it sits on, with the destination stated
+  by position and never re-chosen. The header's middle grid track went with the
+  control (`.asr-cluster__head` is two tracks), and a REMEMBERED project — which
+  this `+` was the only way back into — prints its checkouts as rowless groups
+  now, so their bare rows are the way back in. The tab strip's `+`, which this
+  rule's history names as the only other `+`, went in the same change; `⌘T`
+  keeps the keyboard route (DL-13.7, amended). The rule text below is kept as
+  the record of what the control was.
+  **Original rule:** A project header carries its own launcher (2026-08-19,
+  owner). The trailing side of the header is a `+` that opens
   `AgentQuickPicker` (§29) with the destination already decided by which
   project was pressed. Before it, the only `+` was the tab strip's, which
   always means "the ACTIVE tab's workspace": launching an agent in a project
@@ -2600,15 +2754,46 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   wires. Collapse stays the project header's (one disclosure per cluster,
   DL-27.11), and closing stays DL-27.21's — a row closes its agent, a project
   header closes the project, and a worktree-scoped close is not offered rather
-  than offered as a third meaning for one glyph.
+  than offered as a third meaning for one glyph. **Superseded on Electron by
+  DL-27.25 (2026-08-27):** the worktree became a disclosure card. Tauri does
+  not inherit that surface; it keeps the legacy repository rail.
+- **DL-27.25** **One Electron checkout is one disclosure card (2026-08-27).**
+  The head states checkout plus branch, focuses its session and toggles its own
+  open state. An always-visible trailing chevron points right when collapsed and
+  down when expanded, with a fixed slot after the badge. Hover or keyboard focus
+  adds a neutral wash to the whole heading and brightens the chevron; keyboard
+  focus also has an outline. The tooltip names `Expand agents` or `Collapse agents`.
+  Rotation uses `--duration` and `--ease` only when reduced motion is not requested
+  ([heading styles](../src/styles/04c-rail-worktree-card.css)).
+  Clicking card whitespace or metadata focuses without toggling.
+  Focus keeps the currently selected entry when present, otherwise selects the
+  first entry in opening order; the active frame follows actual tab selection
+  ([card focus](../src/ui/worktree-card.tsx), DECK-46, 2026-09-09). Closed,
+  it previews up to three loudest agent panes as non-interactive segments;
+  every segment carries an accessible agent-and-state label and `+N` carries
+  an accessible overflow count.
 
-- **DL-27.25** **Electron worktree cards (DECK-44/DECK-46, 2026-09-09).**
-  Clicking the heading focuses its session and toggles expansion; clicking card
-  whitespace or metadata focuses without toggling. Focus keeps the selected
-  entry when present, otherwise selects the first entry in opening order.
-  The active frame follows actual tab selection. Agent and menu controls keep
-  their own actions; empty checkouts open the agent menu.
-  [Card focus](../src/ui/worktree-card.tsx).
+  **Amended 2026-08-30 (owner): the head states what the tier above it did
+  not, and no slot restates another.** "Checkout plus branch" printed the
+  project name twice for the PRIMARY checkout — it sits at the repository root,
+  so its folder basename IS the project name the cluster header prints directly
+  above it, and the owner read `spacevibe-board` stacked on `spacevibe-board`.
+  So the primary checkout is named by its BRANCH and every other checkout by
+  its own folder name ([`checkoutLabel`](../src/ui/agent-rail-card-model.ts)
+  `current`), and the trailing badge takes whichever fact the label did not:
+  the branch normally, the word `Primary` when the branch is already the label,
+  and the word `Worktree` for a checkout whose folder is named after its branch
+  — the shape `git worktree add ../fix-login fix-login` produces, which is the
+  same repetition one tier down. `Primary`/`Worktree` is not new vocabulary: it
+  is the word the card's own actions menu printed in its header until that
+  header came off the same day. The badge takes the surface this slot already
+  has (`--tone` at 8%, `--text-muted`) and differs only by carrying no
+  `GitBranch` glyph. The active card uses its worktree color, falling back to
+  green when no override is stored. This narrows DL-27.23's "a worktree group
+  is always labelled": the card is still drawn, still labelled and still
+  carries its strip, `+` and menu — only the word in its name slot changes.
+  `whereOf` drops a repeated segment on the same rule, so every accessible name
+  and tooltip inherits the fix rather than restating it.
 
   **Worktree colors (DECK-44, 2026-09-09).** The checkout's context menu includes
   **Worktree color**, showing the current color name. Pressing that item
@@ -2623,6 +2808,90 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   Choices belong to checkout-root paths and survive session closure; branch
   labels and agent state do not determine identity color.
   [Color control](../src/ui/worktree-color-picker.tsx).
+
+  **The actions menu lost its heading in the same change (owner).** It printed
+  `Actions for <checkout>` over `Runs in <branch> [Primary|Worktree]` 6px from
+  a card that states both, so the surface opened by repeating its own anchor.
+  The `role="menu"` `aria-label` still names project, checkout and branch — a
+  reader who cannot see the card loses nothing — and DL-13.8's "a row's detail
+  never restates the scope the surface states once" still has its one
+  statement, the footer. The menu's first group therefore carries no leading
+  separator, or the hairline would draw across the surface's own top edge.
+  **Its agent group is never silently absent:** DL-19.7 omits a control the
+  host CANNOT wire, and a discovery probe still in flight is not that, so the
+  group states `Looking for installed agents…` while it runs and offers a route
+  to Settings when it answers with nothing. A stated absence is a fact, not a
+  control, so it is not a menu item and the roving focus does not stop on it.
+
+  **The closed strip stopped being a preview hours later, the same day** (spec
+  `docs/specs/2026-08-27-rail-card-strip-actions-design.md`): a segment is one
+  agent KIND (DL-27.3, amended), it is a `<button>` — a single-pane segment
+  focuses that pane, and since 2026-09-02 a merged `×N` segment pins its menu
+  open to choose from (DL-13.7, amended). **Only groups of at least two panes
+  raise a popover on hover or keyboard focus (DECK-30, 2026-09-09).** A
+  single-pane segment raises nothing and still focuses its pane on press.
+  An open or pending group popover closes when only one pane remains.
+  `+N` raises exactly the panes it hides
+  and pins them on press, and a trailing `+` — which
+  the fold never drops — opens the checkout's actions menu (DL-13.8), the same
+  surface a right-click on the card raises. **The fold is by measured width,
+  not by a count of three**: the stylesheet's own `max-width` is what the
+  component reads back as the strip's budget, so the room a strip has has one
+  source of truth. A closed card carrying agents had no create path pinned to
+  its own checkout before this — the project header's `+` silently resolves to
+  the primary one, and it now says so. Open, it is a flat list of selectable entries:
+  every agent pane remains pane-exact, and every tab with no agent contributes
+  one `Shell` row so removing the tab tier cannot remove the only route back to
+  that tab. Repeated base labels receive deterministic numeric ordinals across
+  the whole checkout; a user-authored name wins as the base. Otherwise, each
+  agent row uses its own pane's non-empty message, falling back to the agent
+  name until a message arrives (DL-27.15). The same label reaches the row's
+  tooltip, accessible name and close control, including rows in strip menus.
+
+  A selected shell tab marks the card active just as a selected agent tab does.
+  Model pills render only from an authoritative pane/session pairing; the
+  production rail currently withholds its heuristic pairing, so absence is the
+  truthful state. **An agent row shares one trailing 16px cell between state and
+  close (2026-09-09).** Hover or keyboard focus anywhere in the row hides its
+  state and shows close in that same cell; the model pill stays visible and the
+  label keeps its width. Working shows the three staggered loading bars recorded
+  in DL-1.2; other states use their existing dot/stop square, and idle stays empty.
+  Row glyphs carry no corner badge; closed-strip glyphs keep theirs.
+  A working row also keeps one static inset hairline — no blur,
+  gradient beam or rasterized custom-property animation. The card is
+  Electron-only; [`AgentRail`](../src/ui/agent-rail.tsx) `current` routes Tauri
+  to the legacy [`RepositoryRail`](../src/ui/repository-rail.tsx) `current`.
+
+  **Amended 2026-09-02 (owner, `openspec/changes/rail-create-consolidation`):
+  every checkout carries exactly ONE create control, and it opens the agent
+  list.** The open card's `New agent` row and the bare row of a checkout with
+  nothing open had spawned a plain SHELL through `onNewTabIn` — a process
+  started without a word about its agent or its place, under a label that said
+  "agent". Both open the checkout's actions menu now, anchored to the card or
+  row, exactly as the closed strip's `+` and a right-click do
+  ([`useActionsMenu`](../src/ui/worktree-card.tsx) `current` is the one state
+  all three shapes share); a press starts nothing, and selecting an agent
+  starts it. Agent rows show only the agent name, without a `Run` prefix. A folder git does not know (flat entries) ends with the same
+  `New agent` row, and its menu drops every git-backed row. A REMEMBERED
+  project prints its remembered checkouts as rowless groups
+  ([`rememberedWorktrees`](../src/ui/agent-rail-model.ts) `current`) so their
+  bare rows are its way back in, since the header's `+` (DL-27.18, retired) is
+  gone. A plain shell is `New split here`, nowhere else — the split row
+  materializes a tab when the checkout has none, so a shell PANE is one named
+  row away; a second shell TAB in a busy checkout is no longer reachable from
+  the rail, a cost the owner accepted in the change's proposal.
+  **The menu's heading returns for ONE placement:** raised by `⌘T` with no card
+  beside it, the same `CardActionsMenu` stands free under the stage strip
+  (DL-13.7, amended) and prints the composed destination
+  ([`subjectWhere`](../src/ui/agent-rail-card-model.ts) `current` — `whereOf`'s
+  own words) as one line, `.asr-act__where`, in title ink on the title rung;
+  never the `Actions for` / `Runs in` pair that came off on 2026-08-30. That
+  placement alone also carries `Open another project…`, because with the tab
+  strip's `+` gone, top-tab mode and a hidden sidebar have no other route to
+  the Open board. The menu reads a
+  [`MenuSubject`](../src/ui/agent-rail-card-model.ts) `current` rather than a
+  card's group, so the chord and the card build it from different inputs and
+  name one checkout with one set of words.
 
 ## 28. The rail's action footer
 
@@ -2962,49 +3231,46 @@ Numbered 33 because §22 stays reserved and §32 was the previous highest rule.
   It follows the live and remembered project stream in the rail's one vertical
   scrollport, with one `--seam-recessed` separator and no card or independent
   background. It aggregates **at most five** supported sessions across every
-  project, globally newest first. This is a compact re-entry surface; it does
-  not change DL-27's project → worktree → agent hierarchy.
+  project, globally newest first. The sidebar applies an **Unread** filter
+  to that snapshot (owner, 2026-09-09), using the existing `asked` signal:
+  questions, warnings and completed results not yet acknowledged. The heading
+  reads `Unread`; a successful empty result reads `No unread recent sessions.`
+  Working, checked and unpaired sessions do not appear. Focus acknowledges the
+  pane, so the row leaves the filter as soon as its unread state clears.
+  `View all` still opens the complete history. This is a compact re-entry
+  surface; it does not change DL-27's project → worktree → agent hierarchy.
 - **DL-33.2** **Every row is a verified session summary.** The store pins each
   tail request to the listed session id and accepts a sentence only when the
   returned id matches exactly; otherwise the summary falls back to title, then
-  id. The one-line row keeps a 15px `AgentGlyph` and a fixed 4em tabular-time
-  column. **The visible agent label is gone (owner, 2026-08-26): the row is the
-  glyph, the sentence, the state and the age.** This is DL-27.15's move one
-  surface later — the glyph beside the word already said `Claude`, and dropping
-  it starts every sentence at the same x instead of after a word whose width
-  changes per agent. The name is not lost: it leads the row's hidden prefix, so
-  the accessible name reads `Resume Claude — <title>:`.
-  **Amended 2026-08-26 (owner): the row also states what its agent is doing.**
-  The design's "no synthetic status dot" is reversed — a fourth 14px track
-  between the copy and the age carries DL-27.3's own mark, drawn by the rail's
-  [RailStatusMark](../src/ui/agent-rail.tsx) `current` so the sidebar keeps one
-  state vocabulary and one geometry. The state is never inferred from the
-  listing: it is the state of the pane running that EXACT session id, joined
-  through the tail store's confirmed pairings
-  ([live-session-state.ts](../src/ui/sessions/live-session-state.ts)
-  `current`); a session no pane holds takes the quiet dot, so the column holds
-  in every row rather than appearing and disappearing. The mark is decoration
-  for a screen reader (`aria-hidden`), so a LOUD state — `working`, `asked`,
-  `failed` — is additionally spoken as one visually hidden word in the row's
-  accessible name, and the two quiet states say nothing. Time uses
-  bounded labels from `now` through `99y+` (or `—` for an invalid date), so the
-  fixed track cannot grow; the summary's flexible track yields first and
-  ellipsizes while agent identity and time remain readable. Its 30px minimum
-  height, 7px inset, `--radius-control`, `--state-hover-bg`, and `--text-*` /
-  `--type-*` treatment are tokens, not a second sidebar language. The
-  block sits UNDER the rail it follows (owner, 2026-08-26, in two passes the
-  same day): its heading takes `--type-meta`, its sentence and `View all`
-  `--type-micro` — a compact re-entry list is a glance, and must not compete
-  with the live work above it. The row's
-  accessible name still carries the full session title or id, so compact copy
-  does not weaken exact-session identity.
-- **DL-33.3** **The compact row itself resumes its exact session.** This is a
-  scoped fork from DL-25.1: the complete history keeps its inert body and
-  visible `Resume` control, while this deliberately five-item sidebar block
-  makes its entire compact row the one native resume button. A missing folder
-  stays readable and focusable with `aria-disabled` and `folder is gone`, but
-  never resumes. `View all` is separate navigation to the existing Sessions
-  dock, not a resume, selection, or filter action.
+  id. Rows are ordered by latest activity, never by agent state.
+  The one-line row is **glyph, sentence, age, state** (owner, 2026-09-09): a
+  15px `AgentGlyph`, flexible ellipsized summary, fixed 4em tabular-time column,
+  then a 14px state slot at the right edge. The visible agent label is omitted;
+  the accessible name includes the agent and full session title or id.
+  [RecentSessionActivity](../src/ui/sessions/recent-session-activity.tsx)
+  uses [findSessionPane](../src/ui/sessions/live-session-state.ts) to match the
+  exact session id and agent in this window. A contract-reported id takes
+  precedence over the tail store's pairing. A matched pane supplies the rail's
+  own [RailStatusMark](../src/ui/controls/rail-status-mark.tsx); an unmatched
+  session leaves the slot empty instead of suggesting a live agent with a gray
+  dot. Loud states are also included in the accessible name.
+  Time uses bounded labels from `now` through `99y+` (or `—` for an invalid
+  date). The summary yields before identity, time or state. The row keeps its
+  30px minimum height, 7px inset, `--radius-control` and `--state-hover-bg`.
+  The heading takes `--type-meta`; summary and `View all` take `--type-micro`.
+- **DL-33.3** **The compact row opens its exact session.** A matching agent
+  still open in this window focuses that pane; otherwise the row resumes the
+  session in a new single-pane tab in its recorded folder. Recheck the match
+  at click time, and never focus an exited agent's shell as a resumed session.
+  While tab materialization is pending, the row blocks repeated activation and
+  shows an accent opening ring with an accessible `Opening…` announcement.
+  This pending state ends when materialization answers; it does not claim the
+  agent has become ready. The created pane remains the click destination during
+  startup, before the CLI reports its session identity. The neutral working ring remains the pane's signal.
+  A failed open leaves a retryable inline error. A missing folder remains
+  readable and focusable with `aria-disabled` and `folder is gone`, but cannot
+  be activated. The complete history retains its existing `Resume` control;
+  `View all` opens the Sessions dock without selecting or resuming a session.
 - **DL-33.5** **The block stays current, and it is never a poller.** Added
   2026-08-26 (owner). A snapshot read once at boot goes stale the moment an
   agent answers, so
@@ -3036,21 +3302,33 @@ detail panel, toggled against the rail; it is built by
 [`19-agent-board.css`](../src/styles/19-agent-board.css) `building`.
 Numbered 34 because §33 was the previous highest rule.
 
-- **DL-34.1** **The Board is a stage surface that hides the sidebar while it
-  holds the stage.** It covers `.stage__surface` as the document and the
-  browser do (DL-18.8), has one chip on the strip, and produces DL-18.9's
-  hidden sidebar transiently — never writing `sidebarCollapsed`, omitting the
-  strip-mounted `SidebarToggle` meanwhile, and leaving the dock unpainted as
-  the Open Board does. Leaving the Board restores whatever the user had.
-  **Amended 2026-09-04, from the eye pass:** the surface FOLDS on its own
-  width, measured with a container query rather than a viewport one — the
-  Board is the window in the app and a column inside the rail in the gallery,
-  and a viewport rule would fold at two different widths in the two. Below
-  832px of board (nav + panel + the grid's padding + one card) an open panel
-  leaves the flow and covers the grid instead of squeezing it to slivers;
-  below 472px (nav + padding + one card) the nav folds to its counts,
-  DL-11.7's shape, each row keeping an `aria-label` of label and count so a
-  hidden label still announces.
+- **DL-34.1** **The Board is a stage surface in the Inbox's own frame.** It
+  covers `.stage__surface` as the document and the browser do (DL-18.8) and
+  has one chip on the strip.
+  **Amended 2026-09-09 (DECK-43), reversing this rule's own second half.**
+  It used to produce DL-18.9's hidden sidebar transiently — never writing
+  `sidebarCollapsed`, omitting the strip-mounted `SidebarToggle` meanwhile,
+  and leaving the dock unpainted as the Open Board does. It no longer touches
+  either column: the rail and the dock keep the widths the user gave them, so
+  the Board is a change of what the STAGE holds and nothing else. The Open
+  Board keeps every one of those suppressions, because it is a start screen
+  with no window behind it, which is exactly what the Agent Board is not.
+  **View control (2026-09-09, DECK-39, amended the same day):** while a
+  terminal tab is open, [the shared toolbar](../src/ui/toolbar/deck-toolbar.tsx)
+  carries ONE persistent **Board** button in both window layouts, reporting
+  with `aria-pressed` whether the Board holds the stage and toggling it either
+  way — the `Inbox` half was the ABSENCE of the Board, not a place of its own.
+  Its selected wash mixes 18% `--tone` into `--chrome-2`, with `--tone` text
+  so the active state stays distinct from resting and hover in both themes;
+  6px corners inside an 8px outer frame, no separate border on the selected
+  button, and outside the strip's scrolling chips.
+  **Amended 2026-09-04, from the eye pass; both thresholds retired 2026-09-09
+  (DECK-43):** the surface FOLDED on its own width, measured with a container
+  query rather than a viewport one, at 832px (nav + panel + the grid's padding
+  + one card) and 472px (nav + padding + one card). Both figures were derived
+  from the two side columns, and with those unmounted the grid's own
+  `auto-fill` is the whole responsive behaviour. The rules are kept in
+  `19-agent-board.css`, unmatched, as what a revert restores.
 - **DL-34.2** **A card is a pane, and it outlives its agent.** One card per
   agent pane (the rail's own unit); a pane whose agent has left keeps its
   card as `idle` wearing the departed agent's name until the pane closes.
@@ -3067,6 +3345,22 @@ Numbered 34 because §33 was the previous highest rule.
   pane-ordinal order, never its sort position. A card carries DL-21.7's
   resting wash (amended) inside DL-1.3's inset hairline at
   `--radius-control`.
+  **Amended 2026-09-09 (DECK-43), on the owner's report that the card read as
+  a list: it is FOUR GROUPS, not five rows.** The five facts sat on one even
+  4px rhythm, so nothing led. They are `grid-template-areas` now and the
+  UNEQUAL gaps do the work — 8px binds the name to its checkout, which sits
+  1px under it and indented to the name's own left edge, and 11px separates
+  status, identity, what-the-agent-said and footer. **What the agent said is
+  the subject**: it takes `--text-primary` (it shared `--text-muted` with the
+  checkout) and two clamped lines instead of one truncated one, with a
+  `min-height` so every card in an `auto-fill` row is one height. A pane with
+  nothing to quote prints `—`, the footer's own convention for a figure Deck
+  does not have, rather than a blank band. The footer names its second figure
+  (`up 12m · 2m ago`); two bare durations said what only one of them meant.
+  **DL-27.5's hover column moved to the FOOT** and lost its third control:
+  pinned top-right it collided with the rank, which cost that row a permanent
+  74px reserve visible as a hole on every unhovered card, and `Open in stage`
+  is what pressing the card does now.
 - **DL-34.3** **`asked` and `failed` colour the card's frame, and nothing else
   does.** The inset hairline takes `--status-unread` or `--red`; `working`,
   `done` and `idle` keep `--hair`. `working` is DL-27.3's `WorkspaceSpinner`
@@ -3074,10 +3368,18 @@ Numbered 34 because §33 was the previous highest rule.
   switched off inside `.agent-board` — the frame is the whole signal at the
   size of the whole card. Green appears nowhere: DL-3.2 and the worktree
   card's colour rule already own it.
-- **DL-34.4** **Selection is the Board's own, drawn with DL-27.22's token.**
-  The selected card — the one whose panel is open — wears `--tab-active-bg`
-  and `aria-current`; at most one. Selecting neither focuses a pane nor
-  acknowledges it; only a `sent` reply or a step to the full stage does.
+- **DL-34.4** **A press on a card opens that agent's pane.**
+  **Amended 2026-09-09 (DECK-43), reversing this rule's own subject.** It read:
+  selection is the Board's own, drawn with DL-27.22's token — the selected
+  card, the one whose panel is open, wearing `--tab-active-bg` and
+  `aria-current`, at most one, selecting neither focusing a pane nor
+  acknowledging it. With the panel unmounted there is nothing for a selection
+  to raise, so the press does what the panel's snapshot was an approximation
+  of: it activates the pane on the stage and acknowledges it, which is
+  DL-34.10's `Open in stage` on the whole card. The double-click that used to
+  mean that is gone with the distinction, and a digit key does the same. The
+  wash and `aria-current` stay in the card's markup and stylesheet, reachable
+  again the moment something selects.
   **Amended 2026-09-04, from the eye pass:** that wash is the lightest plane a
   card ever wears, and on it the state word fell under DL-3.5's floor in three
   of six cells (dark `FAILED` 4.32, light `FAILED` 4.30, light `ASKED` 3.43).
@@ -3094,23 +3396,32 @@ Numbered 34 because §33 was the previous highest rule.
   exception) for the two nav headings and the state word; `--text-primary`
   for names and values, `--text-muted` for the task or tail, `--text-faint`
   for labels, the where-line, meta and the number.
-- **DL-34.6** **The panel's terminal is a snapshot of the pane's own
-  scrollback.** Plain text, colour stripped, the last rows of the real
+- **DL-34.6** **RETIRED 2026-09-09 (DECK-43) — the panel is unmounted.**
+  [`AgentBoardPanel`](../src/ui/agent-board-panel.tsx) `deprecated` still
+  builds and keeps its suite; nothing renders it, so this rule and DL-34.7
+  bind nothing. The rule as written: **the panel's terminal is a snapshot of
+  the pane's own scrollback.** Plain text, colour stripped, the last rows of the real
   buffer; no element moves, no PTY resizes, no second renderer exists.
-- **DL-34.7** **The reply box goes through the inject gate.** Text is placed;
+- **DL-34.7** **RETIRED 2026-09-09 (DECK-43) — with DL-34.6.** The rule as
+  written: **the reply box goes through the inject gate.** Text is placed;
   Enter follows only when `submitAllowed` allows it AND the pane has reached
   `working` once; a real question gets the text placed and not sent, and the
   panel says so. Only a `sent` outcome acknowledges the pane.
-- **DL-34.8** **The nav is STATUS then PROJECTS, live only, totals not
-  filtered.** `Failed` appears only while some pane is `failed`; a PROJECTS
+- **DL-34.8** **RETIRED 2026-09-09 (DECK-43) — the nav is unmounted.**
+  [`AgentBoardNav`](../src/ui/agent-board-nav.tsx) `deprecated` still builds
+  and keeps its suite, and `boardStatusFilter` / `boardProjectFilter` still
+  filter the model — nothing on screen writes them. The rule as written:
+  **the nav is STATUS then PROJECTS, live only, totals not filtered.** `Failed` appears only while some pane is `failed`; a PROJECTS
   row is a checkout holding at least one card; counts are totals and the
   grid's heading states the filtered result. **Each group is a real listbox
   (2026-09-04, from the eye pass):** roving `tabindex`, ↑/↓/Home/End inside
   the group, one Tab stop per group. Claiming the role without the keys was
   worse than claiming nothing — it tells a screen-reader user to reach for
   arrows that do not answer. Escape belongs to DL-34.9 and passes through.
-- **DL-34.9** **Escape closes the panel, then steps the Board back to the
-  terminal.** A Board rule, not DL-29.8's — the Board is not a modal.
+- **DL-34.9** **Escape steps the Board back to the terminal.** A Board rule,
+  not DL-29.8's — the Board is not a modal. **Amended 2026-09-09 (DECK-43):**
+  it took TWO presses, the first closing the panel. With no panel there is no
+  first press to absorb, so the branch is deleted rather than left unreachable.
 - **DL-34.10** **Stop leaves the shell and the card; Restart resumes the
   conversation and exists only once the agent has left; Close lives in
   `More`.** The hover column carries at most Stop-or-Restart, `Open in

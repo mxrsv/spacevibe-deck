@@ -78,6 +78,7 @@ const LABEL_TREATMENT_SELECTORS = new Set([".board-label"]);
  */
 const RADIUS_VALUES = new Set([
   "var(--radius-flat)",
+  "var(--radius-tab)",
   "var(--radius-tight)",
   "var(--radius-control)",
   "var(--radius-surface)",
@@ -186,11 +187,12 @@ function offScaleRadii(): string[] {
 }
 
 describe("design-language radius scale", () => {
-  it("declares the DL-20.1 roles at 2/8/10/12", () => {
+  it("declares the DL-20.1 roles at 2/6/8/10/12", () => {
     const css = readStylesheet().replace(CSS_COMMENT, "");
     for (const [name, size] of Object.entries({
       // The dense-row role, added 2026-08-17 with the tab strip's turn text.
       "--radius-flat": "2px",
+      "--radius-tab": "6px",
       "--radius-tight": "8px",
       "--radius-control": "10px",
       "--radius-surface": "12px",
@@ -211,11 +213,12 @@ describe("design-language radius scale", () => {
     expect(offScaleRadii()).toEqual([]);
   });
 
-  it("keeps the rulebook synchronized with the 2/8/10/12 token contract", () => {
+  it("keeps the rulebook synchronized with the 2/6/8/10/12 token contract", () => {
     const rulebook = readFileSync(RULEBOOK, "utf8");
 
-    expect(rulebook).toContain("Four radius roles");
+    expect(rulebook).toContain("Five radius roles");
     expect(rulebook).toContain("`--radius-flat` (2px)");
+    expect(rulebook).toContain("`--radius-tab` (6px)");
     expect(rulebook).toContain("`--radius-tight` (8px)");
     expect(rulebook).toContain("`--radius-control` (10px)");
     expect(rulebook).toContain("`--radius-surface` (12px)");
@@ -380,12 +383,11 @@ describe("DL-33 recent agent activity", () => {
     }
 
     const row = css.match(/\.recent-session-activity__row\s*\{([^}]*)\}/)?.[1] ?? "";
-    // Amended 2026-08-26 (owner): a fourth track carries DL-27.3's own 14px
-    // status mark between the copy and the fixed age column, so a row reports
-    // what the agent running that session is doing.
-    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 14px 4em\s*;/);
+    // Amended 2026-09-09 (owner): the fixed age precedes the trailing status
+    // slot; an unopened session leaves that slot empty without moving text.
+    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 4em 14px\s*;/);
     expect(css).toMatch(
-      /\.recent-session-activity__row > \.asr-row__mark\s*\{[^}]*justify-self:\s*center/s,
+      /\.recent-session-activity__state > \.asr-row__mark\s*\{[^}]*justify-self:\s*center/s,
     );
     expect(row).toMatch(/min-height:\s*30px\s*;/);
     expect(row).toMatch(/border-radius:\s*var\(--radius-control\)\s*;/);
@@ -568,6 +570,23 @@ describe("DL-34 agent board", () => {
     expect(css).toMatch(
       /@container \(max-width: 472px\)\s*\{\s*\.agent-board__nav\s*\{[^}]*width:\s*var\(--board-nav-folded-w\)/s,
     );
+    // DL-34.2 (amended 2026-09-09): four GROUPS, not five even rows. The card
+    // places by area and spends UNEQUAL margins between them, which is what
+    // the amendment is about — a uniform `row-gap` would satisfy a shape
+    // assertion and still read as the list the owner reported.
+    expect(css).toMatch(/\.board-card\s*\{[^}]*grid-template-areas:\s*\n?\s*"status num"/s);
+    expect(css).toMatch(/\.board-card\s*\{[^}]*row-gap:\s*0/s);
+    expect(css).toMatch(/\.board-card__id\s*\{[^}]*margin-top:\s*8px/s);
+    expect(css).toMatch(/\.board-card__where\s*\{[^}]*margin-top:\s*1px/s);
+    // What the agent said is the subject: primary ink, two clamped lines, and
+    // a floor so an `auto-fill` row is one height.
+    expect(css).toMatch(/\.board-card__what\s*\{[^}]*color:\s*var\(--text-primary\)/s);
+    expect(css).toMatch(/\.board-card__what\s*\{[^}]*line-clamp:\s*2/s);
+    expect(css).toMatch(/\.board-card__what\s*\{[^}]*min-height:/s);
+    // DL-27.5's column sits at the FOOT, so no row reserves space for it at
+    // the top — the reserve is the footer's, over air.
+    expect(css).toMatch(/\.board-card__actions\s*\{[^}]*bottom:/s);
+    expect(css).not.toMatch(/\.board-card__actions\s*\{[^}]*\btop:/s);
     // DL-34.3: the frame carries state; the rail's ripple is off on the Board.
     expect(css).toMatch(/\.board-card\[data-state="asked"\]\s*\{[^}]*var\(--status-unread\)/s);
     expect(css).toMatch(
