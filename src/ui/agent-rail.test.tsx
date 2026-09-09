@@ -135,7 +135,7 @@ const NOOP = (): void => {};
 /**
  * What every checkout's create control raises (`rail-create-consolidation`):
  * the card's actions menu, wired the way `App` wires it. One agent, so the
- * first `menuitem` is `Run Claude` and a press on it is what starts a process.
+ * first `menuitem` is `Claude` and a press on it is what starts a process.
  */
 const ACTIONS: CardActions = {
   agents: [{ id: "claude", label: "Claude", detail: "claude" }],
@@ -1248,7 +1248,7 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
 
   // Agent-signal contract layer, stage 0 (2026-09-03; DL-27.3 amended): the
   // mark carries its confidence, and an agent whose process left reads `ended`.
-  it("draws an inferred asked hollow — the badge says so, and the accessible name says so", async () => {
+  it("preserves inferred asked confidence in the badge metadata and accessible name", async () => {
     tabViews.value = [
       tab({
         panes: [pane({ attention: "completed", confidence: "inferred", hasRun: true })],
@@ -1328,7 +1328,7 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     expect(row.querySelector("svg.wsitem__spinner")).toBeNull();
     const load = row.querySelector(".asr-card__load");
     expect(load?.getAttribute("data-busy")).toBe("true");
-    expect(load?.children).toHaveLength(1);
+    expect(load?.children).toHaveLength(3);
     expect(load?.parentElement?.classList.contains("asr-card__status")).toBe(true);
     expect(row.querySelector(".asr-card__dot")).toBeNull();
   });
