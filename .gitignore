@@ -30,8 +30,6 @@ dist-electron-release
 *.sw?
 
 # Local design docs / specs (không track) — pipeline frozen docs ARE tracked
-docs/superpowers/
-docs/archive/
 # Keep pipeline artifacts:
 # docs/PRINCIPLES.md, docs/PRD.md, docs/BUSINESS-FLOW.md, docs/CONTEXT.md,
 # docs/CONTEXT-archive.md, docs/ARCHITECTURE.md, docs/UX-DESIGN.md,
