@@ -50,6 +50,13 @@ working, asked, and failed work; supported session logs supply the agent's lates
 unsupported tails fall back to the agent name
 ([rail model](src/ui/agent-rail-model.ts) `current`).
 
+Click a worktree card's heading to focus its session and expand or collapse its agents.
+Clicking the card's empty space focuses it without changing expansion
+([worktree card](src/ui/worktree-card.tsx) `current`).
+Right-click a worktree and choose **Worktree color**, or **Default** to reset its color.
+The choice stays with that checkout and colors its dot, selected frame and badge
+([worktree color picker](src/ui/worktree-color-picker.tsx) `current`).
+
 ### One project stage
 
 Run real PTYs in split panes, move between git worktrees, edit files, and keep browser pages

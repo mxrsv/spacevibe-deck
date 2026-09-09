@@ -14,6 +14,7 @@ import {
 import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
 import { runtimeFor, type AgentRuntimeDefault } from "../launcher/runtime-catalog";
 import type { SignalAdapters } from "../lib/launch-augment";
+import { validateWorktreeColors, type WorktreeColors } from "./worktree-colors";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -101,6 +102,8 @@ export interface Settings {
    * in two places on two screens with nothing to explain why.
    */
   railOrder: readonly string[];
+  /** Checkout-root paths, independent of branch labels and live sessions. */
+  worktreeColors: WorktreeColors;
   /**
    * The agent a new tab opens with when nothing else names one. Null = fall
    * back to the first detected agent, which is what Deck did before this
@@ -225,6 +228,7 @@ export const DEFAULT_SETTINGS: Settings = {
   launchProfiles: [],
   disabledAgents: [],
   railOrder: [],
+  worktreeColors: {},
   defaultAgent: null,
   defaultLaunchProfiles: {},
   agentModels: {},
@@ -588,6 +592,7 @@ export function validateSettings(raw: unknown): Settings {
       ? source.disabledAgents.filter((id): id is string => typeof id === "string")
       : DEFAULT_SETTINGS.disabledAgents,
     railOrder: validateRailOrder(source.railOrder),
+    worktreeColors: validateWorktreeColors(source.worktreeColors),
     agentModels: validateAgentModels(source.agentModels),
     agentRuntimeDefaults: validateAgentRuntimeDefaults(source.agentRuntimeDefaults),
     agentSignalAdapters: validateSignalAdapters(source.agentSignalAdapters),

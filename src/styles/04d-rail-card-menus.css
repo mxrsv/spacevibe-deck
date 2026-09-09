@@ -59,6 +59,70 @@
   overflow-y: auto;
 }
 
+/* Worktree identity and the in-menu palette (DL-27.25). */
+.asr-bare-heading {
+  min-width: 0;
+}
+
+.asr-card__mark::before,
+.asr-bare__mark::before {
+  background: var(--worktree-color, color-mix(in srgb, var(--tone) 26%, transparent));
+}
+.asr-card__mark[data-live="true"]::before {
+  background: var(--worktree-color, var(--asr-card-busy));
+}
+.asr-color-action__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--worktree-color, var(--green));
+}
+.asr-color-menu {
+  display: grid;
+  gap: 7px;
+  padding: 4px 8px 8px;
+}
+
+.asr-color-menu__swatches {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.asr-color-menu__swatch,
+.asr-color-menu__default {
+  box-sizing: border-box;
+  display: grid;
+  min-width: 0;
+  min-height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--asr-card-radius);
+  background: none;
+  color: var(--text-primary);
+  font: 500 var(--type-micro) / 1.5 var(--ui-font);
+  cursor: pointer;
+}
+
+.asr-color-menu__swatch span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+}
+
+.asr-color-menu button:hover,
+.asr-color-menu button:focus-visible {
+  background: var(--state-hover-bg);
+  outline: 1px solid var(--text-muted);
+  outline-offset: -1px;
+}
+
+.asr-color-menu button[aria-checked="true"] {
+  box-shadow: inset 0 0 0 1px var(--text-primary);
+}
+
 /* The panes behind one segment (spec §5). Narrower than the actions menu: its
    rows are the card's own agent rows, which are already sized for rail width. */
 .asr-pop--panes {

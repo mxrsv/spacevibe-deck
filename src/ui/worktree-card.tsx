@@ -4,6 +4,8 @@ import { GitBranch, Plus, TerminalWindow, X } from "@phosphor-icons/react";
 import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
 import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
 import { CardStrip } from "./worktree-card-strip";
+import { settings } from "../settings/settings-store";
+import { worktreeColorStyle } from "../settings/worktree-colors";
 import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
 import {
   checkoutBadge,
@@ -113,8 +115,8 @@ function Badge({
 /**
  * The card head: `mark · checkout label · badge`, and nothing else.
  * No caret, no age (design §4 — the head has 213px for a name and a branch
- * at 275px, and a caret's 19px was almost exactly the deficit). The whole
- * head is the toggle.
+ * at 275px, and a caret's 19px was almost exactly the deficit). The name
+ * and badge focus and toggle the card; its context menu offers colors (DL-27.25).
  *
  * The label is `checkoutLabel`, not `group.name`: the primary checkout's
  * folder name IS the project name the cluster header printed directly above,
@@ -274,8 +276,13 @@ function BareCheckout({
 
   if (actions === undefined) {
     return (
-      <div class="asr-bare" data-shell="false">
-        {content}
+      <div
+        class="asr-bare-heading"
+        style={worktreeColorStyle(settings.value.worktreeColors, group.path)}
+      >
+        <div class="asr-bare" data-shell="false">
+          {content}
+        </div>
       </div>
     );
   }
@@ -286,7 +293,14 @@ function BareCheckout({
   // (amended) words for a press-to-open trigger; no `title`, since one never
   // appears on focus (DL-23.10) and the accessible name already says it all.
   return (
-    <Fragment>
+    <div
+      class="asr-bare-heading"
+      style={worktreeColorStyle(settings.value.worktreeColors, group.path)}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        menu.openAt(event.currentTarget.getBoundingClientRect());
+      }}
+    >
       <button
         type="button"
         class="asr-bare"
@@ -301,7 +315,7 @@ function BareCheckout({
         {content}
       </button>
       <CheckoutMenu project={project} group={group} actions={actions} menu={menu} />
-    </Fragment>
+    </div>
   );
 }
 
@@ -542,13 +556,36 @@ export function WorktreeCard(props: WorktreeCardProps) {
   }
 
   const actions = props.actions;
+  const focusCard = (): void => {
+    const entry =
+      group.entries.find((candidate) =>
+        candidate.kind === "agent" ? candidate.focused : candidate.active,
+      ) ?? group.entries[0];
+    if (entry.kind === "agent") {
+      props.onFocusPane(entry.tabIndex, entry.paneId);
+    } else {
+      props.onSelectTab(entry.tabIndex);
+    }
+  };
   return (
     <article
       ref={cardRef}
       class="asr-card"
+      style={worktreeColorStyle(settings.value.worktreeColors, group.path)}
       data-open={props.open}
       data-active={group.active}
       data-live={group.live}
+      onClick={(event) => {
+        // Only card whitespace and metadata: child controls and popovers
+        // retain their own targets, including close and new-agent actions.
+        const target = event.target;
+        if (
+          target === event.currentTarget ||
+          (target instanceof Element && target.matches(".asr-card__meta, .asr-card__count"))
+        ) {
+          focusCard();
+        }
+      }}
       onContextMenu={(event) => {
         if (actions === undefined) {
           return;
@@ -569,6 +606,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
         group={group}
         open={props.open}
         onToggle={() => {
+          focusCard();
           props.onToggle(group.key);
         }}
       />

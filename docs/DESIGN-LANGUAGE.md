@@ -2602,6 +2602,28 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   header closes the project, and a worktree-scoped close is not offered rather
   than offered as a third meaning for one glyph.
 
+- **DL-27.25** **Electron worktree cards (DECK-44/DECK-46, 2026-09-09).**
+  Clicking the heading focuses its session and toggles expansion; clicking card
+  whitespace or metadata focuses without toggling. Focus keeps the selected
+  entry when present, otherwise selects the first entry in opening order.
+  The active frame follows actual tab selection. Agent and menu controls keep
+  their own actions; empty checkouts open the agent menu.
+  [Card focus](../src/ui/worktree-card.tsx).
+
+  **Worktree colors (DECK-44, 2026-09-09).** The checkout's context menu includes
+  **Worktree color**, showing the current color name. Pressing that item
+  expands six theme-aware swatches and **Default** inside the same popover,
+  without toggling the card or launching an agent. Empty checkouts also open
+  the menu on right-click. The head dot is an indicator, not a color button.
+  An explicit choice colors the head dot in both active
+  and inactive cards, plus the active frame and badge; Default restores the
+  neutral/busy head dot and green active treatment. Agent status marks keep
+  their existing meaning. The palette uses the rail popover surface, with a
+  neutral selection outline, keyboard focus and Escape/outside dismissal.
+  Choices belong to checkout-root paths and survive session closure; branch
+  labels and agent state do not determine identity color.
+  [Color control](../src/ui/worktree-color-picker.tsx).
+
 ## 28. The rail's action footer
 
 > **HIDDEN since 2026-08-17 (owner).**

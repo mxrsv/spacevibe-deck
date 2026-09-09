@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const setMock = vi.hoisted(() => vi.fn(async () => {}));
+const setMock = vi.hoisted(() => vi.fn(async (_key: string, _value: unknown) => {}));
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
 const getMock = vi.hoisted(() => vi.fn(async (): Promise<unknown> => undefined));
 const loadMock = vi.hoisted(() =>
@@ -73,6 +73,23 @@ describe("settings persistence", () => {
   it("flushSettingsSave forces the autosaved store to disk", async () => {
     await flushSettingsSave();
     expect(saveMock).toHaveBeenCalled();
+  });
+
+  it("persists checkout colors and reloads them through the settings schema", async () => {
+    const colors = { "/repo/main": "purple", "/other/main": "cyan" } as const;
+    updateSettings({ worktreeColors: colors });
+    await vi.waitFor(() =>
+      expect(setMock).toHaveBeenCalledWith(
+        "settings",
+        expect.objectContaining({ worktreeColors: colors }),
+      ),
+    );
+    await vi.waitFor(() => expect(saveMock).toHaveBeenCalled());
+    const saved = setMock.mock.calls.at(-1)?.[1];
+    settings.value = DEFAULT_SETTINGS;
+    getMock.mockResolvedValueOnce(saved);
+    await initSettings();
+    expect(settings.value.worktreeColors).toEqual(colors);
   });
 
   it("reports a load failure and blocks writes until a retry succeeds", async () => {

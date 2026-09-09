@@ -431,6 +431,8 @@ describe("AgentRail click contract", () => {
 
     expect(host.querySelector(".asr-card")).not.toBeNull();
     openAllCards();
+    expect(onSelectTab).toHaveBeenCalledExactlyOnceWith(0);
+    onSelectTab.mockClear();
     const shell = host.querySelector<HTMLElement>('.asr-card__row[data-kind="shell"]');
     expect(shell).not.toBeNull();
     click(shell?.querySelector(".asr-card__hit"));
@@ -440,6 +442,27 @@ describe("AgentRail click contract", () => {
     expect(onCloseTab).toHaveBeenCalledWith(0);
     expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
     expect(onClosePane).not.toHaveBeenCalled();
+  });
+
+  it("updates the active worktree from tab state when its card head is pressed", async () => {
+    tabViews.value = [
+      tab({ key: 1, workspacePath: "/r/main" }),
+      tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 22 })] }),
+    ];
+    activeTabIndex.value = 0;
+    const onFocusPane = vi.fn((index: number) => {
+      activeTabIndex.value = index;
+    });
+    mount({ onFocusPane });
+    await settle();
+    const cards = host.querySelectorAll<HTMLElement>(".asr-card");
+    expect(cards).toHaveLength(2);
+    expect(cards[0].dataset.active).toBe("true");
+    expect(cards[1].dataset.active).toBe("false");
+    click(cards[1].querySelector(".asr-card__head"));
+    expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(1, 22);
+    expect(cards[0].dataset.active).toBe("false");
+    expect(cards[1].dataset.active).toBe("true");
   });
 
   it("keeps a shell tab reachable beside an agent tab in the same checkout", async () => {

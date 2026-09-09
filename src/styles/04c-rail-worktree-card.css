@@ -48,8 +48,8 @@
      the same thing): one hue for "the machine is working" — `running` and `thinking` share it,
      spec §11.3 drops `thinking` as a state Deck tracks at all — appears on the head mark, the
      row's corner badge, the loading bars, the rim glow and the rim beam, and nowhere else.
-     `--status-unread` stays `asked`, `--red` stays `failed`, `--green` is reserved for the
-     ACTIVE checkout (a place, not a state) and `--accent` for the strip's `+N` (a count, not
+     `--status-unread` stays `asked`, `--red` stays `failed`, and the worktree identity color
+     (green by default) marks the ACTIVE checkout. `--accent` is for the strip's `+N` (a count, not
      anything an agent is doing). A variable rather than a literal so Task 10's pick is one
      edit and every mark below restates only this line. */
   --asr-card-busy: color-mix(in srgb, var(--tone) 62%, transparent);
@@ -58,7 +58,7 @@
      selected item a neutral `--hair-strong` frame and nothing else); the neutral alternative
      is a one-line swap of this variable to `var(--hair-strong)`; either way it stays a hairline
      (`inset 0 0 0 1px`), so DL-1.3 is untouched by this half regardless of the pick. */
-  --asr-card-active-frame: color-mix(in srgb, var(--green) 72%, transparent);
+  --asr-card-active-frame: color-mix(in srgb, var(--worktree-color, var(--green)) 72%, transparent);
   /* The agent list's own rhythm: one row's height and the gap between rows, used everywhere
      the list measures against them so a later change to either is one edit. */
   --asr-card-row-h: 28px;
@@ -173,14 +173,14 @@ button.asr-bare:hover {
   padding: 1px 5px;
 }
 
-/* The active checkout's badge, in the same green the card frame takes (design §9.5) — no
+/* The active checkout's badge takes the same identity color as its frame (DL-27.25) — no
    `data-accent` prop on `Badge` itself, since `.asr-card` already carries `data-active` and a
    descendant selector reaches the same pixels with no component change. `.asr-bare` never
    carries `data-active` (a bare checkout cannot be the one holding the window's focus), so this
    never needs to guard against a bare badge matching it. */
 .asr-card[data-active="true"] .asr-card__badge {
-  background: color-mix(in srgb, var(--green) 15%, transparent);
-  color: color-mix(in srgb, var(--green) 78%, var(--text-primary));
+  background: color-mix(in srgb, var(--worktree-color, var(--green)) 15%, transparent);
+  color: color-mix(in srgb, var(--worktree-color, var(--green)) 78%, var(--text-primary));
 }
 
 /* ------------------------------------------------------------------------- the card */

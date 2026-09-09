@@ -20,6 +20,8 @@ import type {
 } from "./agent-rail-model";
 import { WorktreeCard, type WorktreeCardProps } from "./worktree-card";
 import type { CardActions } from "./worktree-card-menus";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 
 function pane(overrides: Partial<RailCardPane> = {}): RailCardPane {
   return {
@@ -129,6 +131,7 @@ function mount(props: Partial<WorktreeCardProps> & { readonly group: RailWorktre
 }
 
 beforeEach(() => {
+  settings.value = DEFAULT_SETTINGS;
   host = document.createElement("div");
   document.body.appendChild(host);
 });
@@ -145,6 +148,66 @@ function click(element: Element | null | undefined): void {
 }
 
 describe("WorktreeCard head (design §4)", () => {
+  it("focuses the first pane using its global tab index and still toggles disclosure", () => {
+    const onFocusPane = vi.fn();
+    const onToggle = vi.fn();
+    mount({ group: group({ panes: [pane({ tabIndex: 8 })] }), onFocusPane, onToggle });
+    click(host.querySelector(".asr-card__head"));
+    expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(8, 11);
+    expect(onToggle).toHaveBeenCalledExactlyOnceWith("/repo/ai-terminal");
+  });
+
+  it("keeps the focused pane when clicking an already active card", () => {
+    const onFocusPane = vi.fn();
+    mount({
+      group: group({
+        active: true,
+        panes: [pane(), pane({ paneId: 22, tabIndex: 8, focused: true })],
+      }),
+      onFocusPane,
+    });
+    click(host.querySelector(".asr-card__head"));
+    expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(8, 22);
+  });
+
+  it("selects a shell-only card through the existing tab callback", () => {
+    const onSelectTab = vi.fn();
+    const onFocusPane = vi.fn();
+    mount({ group: group({ entries: [shell()] }), onSelectTab, onFocusPane });
+    click(host.querySelector(".asr-card__head"));
+    expect(onSelectTab).toHaveBeenCalledExactlyOnceWith(4);
+    expect(onFocusPane).not.toHaveBeenCalled();
+  });
+
+  it("focuses card whitespace and metadata without toggling disclosure", () => {
+    const onFocusPane = vi.fn();
+    const onToggle = vi.fn();
+    mount({ group: group({ panes: [pane()], age: "now" }), open: true, onFocusPane, onToggle });
+    for (const selector of [".asr-card", ".asr-card__meta", ".asr-card__count"]) {
+      click(host.querySelector(selector));
+    }
+    expect(onFocusPane).toHaveBeenCalledTimes(3);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("does not redirect agent, close, or new-agent clicks to the first pane", () => {
+    const onFocusPane = vi.fn();
+    const onClosePane = vi.fn();
+    mount({
+      group: group({ panes: [pane(), pane({ paneId: 22, tabIndex: 8 })] }),
+      open: true,
+      onFocusPane,
+      onClosePane,
+      actions: cardActions(),
+    });
+    click(host.querySelectorAll(".asr-card__hit")[1]);
+    expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(8, 22);
+    click(host.querySelector(".asr-row__action--close"));
+    click(host.querySelector(".asr-card__new"));
+    expect(onFocusPane).toHaveBeenCalledTimes(1);
+    expect(onClosePane).toHaveBeenCalledTimes(1);
+  });
+
   it("draws the head as mark, basename and branch badge, with no caret and no age", () => {
     mount({
       group: group({

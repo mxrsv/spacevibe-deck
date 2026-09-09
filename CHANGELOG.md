@@ -7,6 +7,15 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Focus worktrees from their cards.** Click a card's heading or empty space to
+  focus its session; the heading also expands or collapses its agents
+  ([worktree card](src/ui/worktree-card.tsx) `current`).
+
+- **A color for each worktree.** Right-click it and choose **Worktree color**
+  to color its dot, selected frame and badge. Choices survive reopening Deck;
+  **Default** restores the original treatment.
+  [Worktree colors](src/ui/worktree-color-picker.tsx) `current`.
+
 - **Arrange and pin tabs.** Drag terminal, file, browser and Agents tabs into
   place; right-click to pin, unpin, close others or close tabs to the right.
   Pinned tabs keep their icon and name and are skipped by bulk closes.
