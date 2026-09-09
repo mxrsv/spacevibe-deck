@@ -110,6 +110,67 @@ describe("RecentSessionActivity", () => {
     });
   };
 
+  it.each(["all", "unread"] as const)(
+    "does not borrow another conversation's attention or focus in %s",
+    async (filter) => {
+      const selected = entry({ agent: "codex", sessionId: "other-B" });
+      recentSessionEntries.value = [selected];
+      // The pane runs A, but transcript ranking guessed B in the same cwd.
+      // Codex has no contract ID here; a pairing cannot prove its identity.
+      tabViews.value = [tabWith([{ ...pane(1, "requested", "idle"), agent: "codex" }])];
+      paneSessionIds.value = new Map([[1, selected.sessionId]]);
+      const onResume = vi.fn();
+      const onFocusPane = vi.fn();
+      act(() =>
+        render(
+          <RecentSessionActivity
+            filter={filter}
+            onResume={onResume}
+            onFocusPane={onFocusPane}
+            onViewAll={vi.fn()}
+          />,
+          host,
+        ),
+      );
+      const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row");
+      if (filter === "unread") {
+        expect(row).toBeNull();
+      } else {
+        await act(async () => row!.click());
+        expect(onFocusPane).not.toHaveBeenCalled();
+        expect(onResume).toHaveBeenCalledWith(selected);
+        expect(row!.querySelector(".asr-row__mark")).toBeNull();
+      }
+      expect(tabViews.value[0]?.panes?.[0]?.attention).toBe("requested");
+    },
+  );
+
+  it.each(["same pane", "another pane"])(
+    "keeps the launch receipt when transcript ranking misidentifies %s",
+    async (conflict) => {
+      const selected = entry({ agent: "codex" });
+      recentSessionEntries.value = [selected];
+      const launched = { ...pane(9, "none", "idle", false), agent: "codex" };
+      const onResume = vi.fn(async () => {
+        tabViews.value = [tabWith([launched])];
+        return { paneId: 9, canFocus: () => true };
+      });
+      const { onFocusPane } = mount(onResume);
+      const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+      await act(async () => row.click());
+      act(() => {
+        tabViews.value = [tabWith([launched, { ...pane(1, "requested", "idle"), agent: "codex" }])];
+        paneSessionIds.value = new Map([
+          [9, "other-session"],
+          [1, conflict === "another pane" ? selected.sessionId : "unrelated"],
+        ]);
+      });
+      await act(async () => row.click());
+      expect(onResume).toHaveBeenCalledOnce();
+      expect(onFocusPane).toHaveBeenCalledWith(0, 9);
+    },
+  );
+
   it("filters Recent to the unread signal without reordering its entries", () => {
     recentSessionEntries.value = [
       entry({ sessionId: "working" }),
@@ -120,18 +181,12 @@ describe("RecentSessionActivity", () => {
     ];
     tabViews.value = [
       tabWith([
-        pane(1, "none", "working"),
-        pane(2, "requested", "idle"),
-        pane(3, "none", "idle"),
-        pane(4, "completed", "idle"),
+        { ...pane(1, "none", "working"), sessionId: "working" },
+        { ...pane(2, "requested", "idle"), sessionId: "question" },
+        { ...pane(3, "none", "idle"), sessionId: "read" },
+        { ...pane(4, "completed", "idle"), sessionId: "completed" },
       ]),
     ];
-    paneSessionIds.value = new Map([
-      [1, "working"],
-      [2, "question"],
-      [3, "read"],
-      [4, "completed"],
-    ]);
     mountUnread();
     expect(host.querySelector("h2")?.textContent).toBe("Unread");
     expect(
@@ -148,10 +203,9 @@ describe("RecentSessionActivity", () => {
   });
 
   it("removes a session from the unread filter as soon as focus acknowledges it", () => {
-    tabViews.value = [tabWith([pane(1, "completed", "idle")])];
-    paneSessionIds.value = new Map([[1, "session-id"]]);
+    tabViews.value = [tabWith([{ ...pane(1, "completed", "idle"), sessionId: "session-id" }])];
     const focus = vi.fn(() => {
-      tabViews.value = [tabWith([pane(1, "none", "idle")])];
+      tabViews.value = [tabWith([{ ...pane(1, "none", "idle"), sessionId: "session-id" }])];
     });
     mountUnread(focus);
     act(() => host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click());
@@ -175,13 +229,12 @@ describe("RecentSessionActivity", () => {
       entry({ sessionId: "unpaired" }),
     ];
     tabViews.value = [
-      tabWith([pane(1, "warning", "idle"), pane(2, "error", "idle"), pane(3, "none", "exited")]),
+      tabWith([
+        { ...pane(1, "warning", "idle"), sessionId: "warning" },
+        { ...pane(2, "error", "idle"), sessionId: "failure" },
+        { ...pane(3, "none", "exited"), sessionId: "ended" },
+      ]),
     ];
-    paneSessionIds.value = new Map([
-      [1, "warning"],
-      [2, "failure"],
-      [3, "ended"],
-    ]);
     mountUnread();
     expect(host.querySelectorAll(".recent-session-activity__row")).toHaveLength(1);
     expect(host.querySelector(".asr-row__mark")?.getAttribute("data-state")).toBe("asked");
@@ -289,17 +342,12 @@ describe("RecentSessionActivity", () => {
     ];
     tabViews.value = [
       tabWith([
-        pane(1, "none", "working"),
-        pane(2, "requested", "idle"),
-        pane(3, "error", "idle"),
+        { ...pane(1, "none", "working"), sessionId: "running" },
+        { ...pane(2, "requested", "idle"), sessionId: "answered" },
+        { ...pane(3, "error", "idle"), sessionId: "crashed" },
         pane(4, "none", "idle", false),
       ]),
     ];
-    paneSessionIds.value = new Map([
-      [1, "running"],
-      [2, "answered"],
-      [3, "crashed"],
-    ]);
 
     mount();
 
@@ -320,8 +368,9 @@ describe("RecentSessionActivity", () => {
 
   it("never pairs a row with a session id it does not hold", () => {
     recentSessionEntries.value = [entry({ sessionId: "listed" })];
-    tabViews.value = [tabWith([pane(1, "none", "working")])];
-    paneSessionIds.value = new Map([[1, "a-different-session"]]);
+    tabViews.value = [
+      tabWith([{ ...pane(1, "none", "working"), sessionId: "a-different-session" }]),
+    ];
 
     mount();
 
@@ -368,10 +417,15 @@ describe("RecentSessionActivity", () => {
   });
 
   it("focuses the exact open pane instead of resuming a duplicate", () => {
-    tabViews.value = [tabWith([pane(1, "none", "working"), pane(2, "requested", "idle")])];
+    tabViews.value = [
+      tabWith([
+        { ...pane(1, "none", "working"), sessionId: "other" },
+        { ...pane(2, "requested", "idle"), sessionId: "session-id" },
+      ]),
+    ];
     paneSessionIds.value = new Map([
-      [1, "other"],
-      [2, "session-id"],
+      [1, "session-id"],
+      [2, "other"],
     ]);
     const { onResume, onFocusPane } = mount();
     const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
@@ -382,8 +436,7 @@ describe("RecentSessionActivity", () => {
   });
 
   it("resumes after the paired agent exits instead of focusing its shell", async () => {
-    tabViews.value = [tabWith([pane(1, "error", "exited")])];
-    paneSessionIds.value = new Map([[1, "session-id"]]);
+    tabViews.value = [tabWith([{ ...pane(1, "error", "exited"), sessionId: "session-id" }])];
     const { onResume, onFocusPane } = mount();
     await act(async () =>
       host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click(),
@@ -393,8 +446,9 @@ describe("RecentSessionActivity", () => {
   });
 
   it("rechecks the pane at click time and refuses another agent with the same id", async () => {
-    tabViews.value = [tabWith([{ ...pane(1, "none", "working"), agent: "codex" }])];
-    paneSessionIds.value = new Map([[1, "session-id"]]);
+    tabViews.value = [
+      tabWith([{ ...pane(1, "none", "working"), agent: "codex", sessionId: "session-id" }]),
+    ];
     const { onResume, onFocusPane } = mount();
     await act(async () =>
       host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click(),
@@ -448,8 +502,7 @@ describe("RecentSessionActivity", () => {
 
     // A pane holding this exact session appears, so the next press takes the
     // focus branch and never reaches the resume path at all.
-    tabViews.value = [tabWith([pane(2, "none", "idle")])];
-    paneSessionIds.value = new Map([[2, "session-id"]]);
+    tabViews.value = [tabWith([{ ...pane(2, "none", "idle"), sessionId: "session-id" }])];
     await act(async () => row.click());
 
     expect(onFocusPane).toHaveBeenCalledWith(0, 2);
@@ -476,7 +529,11 @@ describe("RecentSessionActivity", () => {
     expect(onResume).toHaveBeenCalledTimes(2);
   });
 
-  it("does not reuse a launch receipt after its agent exits", async () => {
+  it.each<Partial<PaneView>>([
+    { phase: "exited" },
+    { agent: "codex" },
+    { sessionId: "another-session" },
+  ])("does not reuse a launch receipt after its pane changes to %j", async (change) => {
     const onResume = vi.fn(async () => {
       tabViews.value = [tabWith([pane(9, "none", "idle", false)])];
       return { paneId: 9, canFocus: () => true };
@@ -485,7 +542,7 @@ describe("RecentSessionActivity", () => {
     const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
     await act(async () => row.click());
     act(() => {
-      tabViews.value = [tabWith([pane(9, "none", "exited")])];
+      tabViews.value = [tabWith([{ ...pane(9, "none", "idle"), ...change }])];
     });
     await act(async () => row.click());
     expect(onResume).toHaveBeenCalledTimes(2);
@@ -538,8 +595,7 @@ describe("RecentSessionActivity", () => {
   });
 
   it("rechecks a rendered row whose pane closes before click", async () => {
-    tabViews.value = [tabWith([pane(1, "none", "working")])];
-    paneSessionIds.value = new Map([[1, "session-id"]]);
+    tabViews.value = [tabWith([{ ...pane(1, "none", "working"), sessionId: "session-id" }])];
     const { onFocusPane, onResume } = mount();
     const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
     await act(async () => {
