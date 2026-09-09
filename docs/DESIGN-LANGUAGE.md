@@ -2541,6 +2541,12 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   DL-3.2's danger ink on something a project close asks about ONCE for every
   pane at a time. **What the rail still does not close: a whole multi-agent
   tab.** ⌘⇧W is that, and nothing in the rail duplicates it.
+  **Agent card rows (2026-09-09):** one trailing 16px cell holds the state
+  indicator at rest and close on hover or keyboard focus anywhere in the row.
+  Working uses the existing loading indicator; other states use their dot or
+  stop square, and idle stays empty. The model stays visible and the message
+  keeps its width. The leading agent glyph carries no state badge; closed-strip
+  glyphs retain theirs. See [the shared row](../src/ui/worktree-card-row.tsx).
 - **DL-27.22** **The row whose pane holds the keyboard carries the selection
   wash (2026-08-23, owner).** Until this rule the rail could show NOTHING as
   selected: DL-27.8 puts the wash on `.asr-row--tab`, and a multi-agent tab

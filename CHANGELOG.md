@@ -13,6 +13,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   Preferences last for the current window session.
   [Tab strip](src/ui/tab-strip.tsx) `current`.
 
+- **Agent row messages and compact controls.**
+  [Agent rows show their latest message](src/ui/agent-rail-card-model.ts) `current`
+  once available; names you set yourself take precedence.
+  [State and close share the row's trailing slot](src/ui/worktree-card-row.tsx) `current`:
+  hover or keyboard focus reveals close without shifting the message or model.
+
 - **Return to Agent Board.** When session restore is enabled, quitting while viewing Agent
   Board now brings the Board back on screen at the next launch. Switching away before quitting
   keeps only its `Agents` tab open ([Board restore](src/terminal/session-restore.ts) `current`).

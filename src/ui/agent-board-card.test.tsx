@@ -94,11 +94,18 @@ describe("AgentBoardCard", () => {
     const quiet = mount(card({ departed: false, state: "idle" }));
     expect(quiet.host.querySelector(".board-card__state")!.textContent).toBe("idle");
   });
-  it("selects on click and opens in stage on double click", () => {
+  // DECK-43: one press, one meaning. It SELECTED on a single click and opened
+  // on a double one until 2026-09-09, when the panel a selection raised was
+  // removed — so the single press took the double one's job and the
+  // distinction went with the panel.
+  it("opens the pane on a single press and never selects", () => {
     const { host, a } = mount(card());
     const hit = host.querySelector<HTMLButtonElement>(".board-card__hit")!;
     act(() => hit.click());
-    expect(a.onSelect).toHaveBeenCalledTimes(1);
+    expect(a.onOpenInStage).toHaveBeenCalledTimes(1);
+    expect(a.onSelect).not.toHaveBeenCalled();
+    // The double-click handler is gone, so a second press is a second open,
+    // not a different action.
     act(() => {
       hit.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });

@@ -7,15 +7,26 @@ import {
   type BoardCard,
   type BoardStatusFilter,
 } from "./agent-board-model";
-import { AgentBoardNav } from "./agent-board-nav";
-import { AgentBoardPanel, type BoardPanelState } from "./agent-board-panel";
+import type { BoardPanelState } from "./agent-board-panel";
 import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
 
 /**
- * The Agent Board (spec §4–§7, DL §34): nav · grid · panel. Presentational —
- * every fact arrives in `view` and every effect leaves through `actions`, so
- * the gallery mounts the real thing over a fixture and the wiring plan binds
- * it to the stores without touching this file.
+ * The Agent Board (spec §4–§7, DL §34): a grid of cards on the stage, inside
+ * the SAME frame the Inbox uses — the rail on the left, the dock on the right,
+ * both exactly as the user left them (DECK-43, 2026-09-09, owner-asked).
+ *
+ * It had three columns of its own until then: a STATUS/PROJECTS nav, the grid,
+ * and a detail panel that quoted the selected pane's last 40 lines. Both side
+ * columns are GONE from the render, and a card press no longer selects — it
+ * opens that agent's pane on the stage, which is what the panel's snapshot was
+ * an approximation of. `AgentBoardNav` and `AgentBoardPanel` still build and
+ * still have their own suites (the §24 theme-gallery precedent); nothing
+ * mounts them, so `view.selected` stays null and the panel's snapshot timer
+ * never has a selection to refresh.
+ *
+ * Presentational — every fact arrives in `view` and every effect leaves through
+ * `actions`, so the gallery mounts the real thing over a fixture and the wiring
+ * binds it to the stores without touching this file.
  */
 export interface AgentBoardActions extends BoardCardActions {
   onReply(card: BoardCard, text: string): void;
@@ -28,6 +39,10 @@ export interface AgentBoardActions extends BoardCardActions {
 export interface AgentBoardProps {
   readonly view: AgentBoardView;
   readonly actions: AgentBoardActions;
+  /**
+   * Unread since DECK-43 removed the panel, and kept rather than dropped: it
+   * is what a revert re-mounts, and `App` computes it either way.
+   */
   readonly panel: BoardPanelState;
 }
 
@@ -44,7 +59,7 @@ function columnCount(grid: HTMLDivElement | null): number {
   return tracks.split(" ").length;
 }
 
-export function AgentBoard({ view, actions, panel }: AgentBoardProps) {
+export function AgentBoard({ view, actions }: AgentBoardProps) {
   const [focusedPaneId, setFocusedPaneId] = useState<number | null>(null);
   const grid = useRef<HTMLDivElement>(null);
   const focusIndex = Math.max(
@@ -59,7 +74,9 @@ export function AgentBoard({ view, actions, panel }: AgentBoardProps) {
   };
 
   const onGridKey = (event: KeyboardEvent): void => {
-    // Spec §5.5: ⌘Enter (Ctrl+Enter on Windows) is tier 3 for the focused card.
+    // Spec §5.5's tier 3, and since DECK-43 the same thing plain Enter on the
+    // focused card does — the chord is kept because it is the one a user who
+    // learned it already presses.
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       const focused = view.cards[focusIndex];
       if (focused !== undefined) {
@@ -71,7 +88,9 @@ export function AgentBoard({ view, actions, panel }: AgentBoardProps) {
     const digit = cardForDigit(view, event.key);
     if (digit !== null) {
       event.preventDefault();
-      actions.onSelect(digit);
+      // The keyboard twin of a press: a digit opens that agent's pane. It
+      // SELECTED until DECK-43, which is a word with no surface left.
+      actions.onOpenInStage(digit);
       return;
     }
     const last = view.cards.length - 1;
@@ -94,31 +113,14 @@ export function AgentBoard({ view, actions, panel }: AgentBoardProps) {
   const onRootKey = (event: KeyboardEvent): void => {
     if (event.key !== "Escape") return;
     event.preventDefault();
-    if (view.selected !== null) {
-      // The panel holds focus; unmounting it would drop focus to <body>, and
-      // the SECOND Escape (DL-34.9) would never reach this handler. Hand
-      // focus back to the selected card first (a hidden card clamps to 0).
-      focusCard(view.cards.findIndex((card) => card.paneId === view.selected?.paneId));
-      actions.onSelect(null);
-    } else {
-      actions.onEscape();
-    }
+    // One Escape, not two (DL-34.9): the panel that owned the first press is
+    // no longer rendered, so a first-press branch here would be a branch
+    // nothing can reach.
+    actions.onEscape();
   };
 
-  const panelOpen = view.selected !== null;
   return (
-    <section
-      class="agent-board"
-      data-panel={panelOpen ? "open" : "closed"}
-      aria-label="Agent Board"
-      onKeyDown={onRootKey}
-    >
-      <AgentBoardNav
-        status={view.status}
-        projects={view.projects}
-        onStatusFilter={actions.onStatusFilter}
-        onProjectFilter={actions.onProjectFilter}
-      />
+    <section class="agent-board" aria-label="Agent Board" onKeyDown={onRootKey}>
       <div class="agent-board__main">
         <div class="agent-board__heading" role="status">{`${view.shown} of ${view.total}`}</div>
         {view.total === 0 ? (
@@ -150,16 +152,6 @@ export function AgentBoard({ view, actions, panel }: AgentBoardProps) {
           </div>
         )}
       </div>
-      {view.selected !== null && (
-        <AgentBoardPanel
-          key={view.selected.paneId} // a new card is a new panel: its mount effect places focus once
-          card={view.selected}
-          state={panel}
-          actions={actions}
-          onReply={actions.onReply}
-          autoFocusReply={view.selected.state === "asked"}
-        />
-      )}
     </section>
   );
 }

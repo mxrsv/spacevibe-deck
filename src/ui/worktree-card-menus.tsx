@@ -29,12 +29,9 @@ import type { RailCardPane, RailWorktreeGroup } from "./agent-rail-model";
  * `MenuAnchor` (`toolbar/toolbar-overflow-menu.tsx`); the gallery specimen
  * drew them `absolute` and its own header says not to inherit that.
  *
- * PLACEMENT, decided here for BOTH surfaces rather than the actions menu
- * alone: to the right of the trigger, top-aligned, 6px away, flipping to the
- * left when it would pass the viewport. Spec §8.2 argues it for the actions
- * menu — the rail is a 276px column on the window's left edge, so a menu
- * hanging BELOW covers the rail, the other checkouts and the card being acted
- * on — and that argument does not depend on which of the two menus it is.
+ * PLACEMENT: both surfaces open to the right, 6px away, flipping left when
+ * they would pass the viewport. The segment menu starts below its trigger;
+ * the anchored actions menu stays top-aligned (spec §8.2).
  *
  * DL amendments this carries (spec §11.2): DL-13.1's 12px `--radius-surface`
  * is scoped to stage-level surfaces and these take the card's 6px instead;
@@ -60,7 +57,7 @@ export type AnchorRect = Pick<DOMRect, "left" | "top" | "right" | "bottom">;
  * stage strip at the strip's leading edge, because a chord has no control on
  * screen to sit beside.
  */
-type PlacementSide = "right" | "below";
+type PlacementSide = "right" | "bottom-right" | "below";
 
 /**
  * Place a fixed surface beside `rect`, flipping and clamping against the
@@ -107,7 +104,10 @@ export function useSurfacePlacement(
         left = fitsRight ? right : Math.max(SURFACE_EDGE, rect.left - SURFACE_GAP - width);
         top = Math.max(
           SURFACE_EDGE,
-          Math.min(rect.top, window.innerHeight - SURFACE_EDGE - height),
+          Math.min(
+            side === "bottom-right" ? rect.bottom + SURFACE_GAP : rect.top,
+            window.innerHeight - SURFACE_EDGE - height,
+          ),
         );
       }
       // Preact bails on an equal value, so re-measuring a surface that did not
@@ -302,7 +302,7 @@ export interface SegmentMenuProps {
  * accepted cost, drawn in the gallery before it was chosen.
  */
 export function SegmentMenu(props: SegmentMenuProps) {
-  const { ref, style } = useSurfacePlacement(props.rect);
+  const { ref, style } = useSurfacePlacement(props.rect, "bottom-right");
   useDismiss(props.onClose, ref, props.trigger);
   useStageOverlayFlag();
   const only = props.panes.length === 1 ? props.panes[0] : undefined;

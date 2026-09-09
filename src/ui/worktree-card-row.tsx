@@ -78,7 +78,7 @@ export function whereOf(project: string, group: RailWorktreeGroup): string {
 }
 
 /**
- * The per-pane state indicator, badged on the glyph's corner (card design §5).
+ * The per-pane state indicator: trailing on rows, badged on strip glyphs (DL-27.21).
  * Diverges from the rail's shared `RailStatusMark` on purpose: `idle` paints
  * NOTHING here rather than a gray dot, and `working` never draws the spinner —
  * busy motion is `CardLoad`'s trailing track, not this dot.
@@ -128,8 +128,8 @@ export interface CardAgentRowProps {
 }
 
 /**
- * One agent, as a list row (card design §5): `glyph · name · model pill ·
- * loading mark`. The whole row is the button — DL-27.21 still requires its own
+ * One agent, as a list row (DL-27.21): `glyph · name · model pill · state/close`.
+ * The whole row is the button — DL-27.21 still requires its own
  * close, so the row is a container with a full-bleed hit layer (DL-27.1's
  * shape) rather than a literal `<button>`, which could not also hold a real
  * closable ✕.
@@ -165,19 +165,18 @@ export function CardAgentRow({
       />
       <span class="asr-card__glyph">
         <AgentGlyph agent={pane.agent} className="asr-card__logo" />
-        <CardMark state={pane.state} confidence={pane.confidence} />
       </span>
       <span class="asr-card__name">{pane.label}</span>
-      {/* The loading mark sits BEFORE the model pill (owner, 2026-08-26): it
-          reads as "this model is working" rather than as a mark stranded past
-          the pill at the row's trailing edge, which is also where the close ✕
-          swaps in. DOM order follows visual order so the two agree. */}
-      <CardLoad state={pane.state} />
       {/* Conditional, and it stays conditional inside the segment menu too
           (spec §5): production withholds the model wherever the pane/session
           pairing is heuristic, and a menu that invented one would be the guess
           the row refuses. */}
       {pane.model !== "" && <span class="asr-card__pill">{pane.model}</span>}
+      {/* DL-27.21: state and close share one trailing cell without moving the label. */}
+      <span class="asr-card__status" aria-hidden="true">
+        <CardLoad state={pane.state} />
+        {pane.state !== BUSY_STATE && <CardMark state={pane.state} confidence={pane.confidence} />}
+      </span>
       {/* DL-27.21, kept: every agent row closes its own pane — the same
           `asr-row__actions` / `asr-row__action--close` vocabulary the old tab
           row and its leaves both used, not a card-local reinvention of it. */}

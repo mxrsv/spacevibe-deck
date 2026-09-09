@@ -110,24 +110,30 @@ describe("AgentBoardSurface", () => {
     expect(agentBoardSurfaceActive.value).toBe(true);
   });
 
-  it("routes a nav press into the board's own filter signal", () => {
+  // DECK-43: the nav that carried the STATUS/PROJECTS rows is unmounted. The
+  // filter signals and their bindings survive (the §24 precedent) — this
+  // states that nothing on screen writes them any more.
+  it("draws no filter nav to route a press from", () => {
     openAgentBoard();
     const host = mount(someView());
-    const rows = [...host.querySelectorAll<HTMLButtonElement>(".board-nav__row")];
-    const asked = rows.find((row) => row.textContent?.startsWith("Asked"));
-    act(() => asked?.click());
-    expect(boardStatusFilter.value).toBe("asked");
+    expect(host.querySelectorAll(".board-nav__row")).toHaveLength(0);
+    expect(boardStatusFilter.value).toBe("all");
   });
 
-  it("holds the order the user is looking at when a card is selected", () => {
+  it("opens the pressed card's pane instead of selecting it", () => {
     openAgentBoard();
+    const actions = hostActions();
     const view = someView();
-    const host = mount(view);
+    const host = mount(view, actions);
     act(() => host.querySelector<HTMLButtonElement>(".board-card__hit")?.click());
-    expect(boardSelectedPaneId.value).toBe(view.cards[0].paneId);
-    // Spec §5.2: the held order is the order on screen, so a live re-sort
-    // cannot move the card under the pointer while its panel is open.
-    expect(boardHeldOrder.value).toEqual(view.cards.map((card) => card.paneId));
+    expect(actions.onOpenInStage).toHaveBeenCalledWith(
+      expect.objectContaining({ paneId: view.cards[0].paneId }),
+    );
+    // No selection, so no held order: spec §5.2's freeze existed to keep a
+    // live re-sort from moving the card under an OPEN panel, and there is no
+    // panel to hold still for.
+    expect(boardSelectedPaneId.value).toBeNull();
+    expect(boardHeldOrder.value).toBeNull();
   });
 
   it("hands Escape to the host action rather than binding it locally", () => {

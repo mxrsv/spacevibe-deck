@@ -126,8 +126,12 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
         class="board-card__hit"
         tabIndex={tabIndex}
         aria-label={accessibleName(card)}
-        onClick={() => actions.onSelect(card)}
-        onDblClick={() => actions.onOpenInStage(card)}
+        // DECK-43: a press opens that agent's pane on the stage. It SELECTED
+        // until 2026-09-09, when the detail panel a selection raised was
+        // removed — the pane itself is what the panel's snapshot approximated,
+        // so the press goes straight to it and the double-click that used to
+        // be the shortcut for it is gone with the distinction.
+        onClick={() => actions.onOpenInStage(card)}
         onFocus={() => onFocusRequest(card)}
       />
       <div class="board-card__row board-card__row--head">
