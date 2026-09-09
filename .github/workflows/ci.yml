@@ -76,6 +76,36 @@ jobs:
       - name: Rust tests
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
 
+  # `backend/` is the analytics ingest Worker, and it is its own npm project
+  # with its own lockfile — the root `npm test` deliberately excludes it
+  # (its suite is `node:test`, which vitest cannot run). So without this job
+  # the 18 tests covering the ingest contract, the retention window and the
+  # cron sweep would gate nothing.
+  #
+  # No `wrangler deploy --dry-run` here: that step reads the live Cloudflare
+  # account, and CI holds no credentials for it by design.
+  backend-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
   windows-check:
     runs-on: windows-latest
     steps:

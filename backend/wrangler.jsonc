@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spacevibe-deck-analytics",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-07-30",
+  "account_id": "4505dcfce1ee9cef5bdea0e05b3ec485",
+  "workers_dev": false,
+  "preview_urls": false,
+  "logpush": false,
+  "observability": {
+    "enabled": false,
+    "logs": { "enabled": false, "invocation_logs": false },
+    "traces": { "enabled": false }
+  },
+  "routes": [{ "pattern": "api.deck.spacevibe.dev", "custom_domain": true }],
+  "ratelimits": [
+    {
+      "name": "INGEST_LIMITER",
+      "namespace_id": "34201",
+      "simple": { "limit": 1000, "period": 60 }
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "spacevibe-deck-analytics",
+      "database_id": "5b1207c9-50c1-45da-be68-eb52a5d16b5a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": { "crons": ["0 3 * * *"] }
+}

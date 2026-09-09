@@ -1,0 +1,22 @@
+{
+  "name": "spacevibe-deck-analytics",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/*.test.mjs",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply spacevibe-deck-analytics --remote"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "miniflare": "4.20260730.0",
+    "wrangler": "4.129.0"
+  },
+  "overrides": {
+    "undici": "7.29.0"
+  }
+}
