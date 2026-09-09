@@ -5,6 +5,12 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+- **Return to Agent Board.** When session restore is enabled, quitting while viewing Agent
+  Board now brings the Board back on screen at the next launch. Switching away before quitting
+  keeps only its `Agents` tab open ([Board restore](src/terminal/session-restore.ts) `current`).
+
 ## 1.0.1
 
 This update makes starting new work more deliberate and improves terminal

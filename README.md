@@ -64,6 +64,10 @@ loops, and resumes supported conversations without assigning the same session tw
 ([session journal](src/terminal/session-journal.ts) `current`). Pane scrollback and unsaved file
 edits are not restored.
 
+If Agent Board was on screen when you quit, session restore brings it back on screen. If you
+had switched to a terminal or file, only its `Agents` tab returns
+([Board restore](src/terminal/session-restore.ts) `current`).
+
 ### Local usage accounting
 
 The usage dashboard reads supported agents' existing local session logs and groups token use

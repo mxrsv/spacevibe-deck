@@ -43,6 +43,7 @@ function record(overrides: Partial<WindowRecord> = {}): WindowRecord {
     files: [],
     activeFileTab: null,
     agentBoardOpen: false,
+    agentBoardSurfaceActive: false,
     ...overrides,
   };
 }
@@ -146,7 +147,7 @@ function createFakeDeps(
   };
 
   const deps: RestoreDeps = {
-    manager: { materialize, selectTab },
+    manager: { materialize, selectTab, notifySurfacesChanged: vi.fn() },
     files: { openFile, activateFile },
     dirsExist,
     statFiles,

@@ -23,14 +23,14 @@ import type { FileSurfaceController } from "../files/file-surface-controller";
 import { applyResumeFlags } from "../lib/launch-command";
 import { materializeChromeFrom } from "./tab-materialize";
 import { noteResumedPane } from "./session-tail-store";
-import { openAgentBoard } from "../ui/agent-board-store";
+import { openAgentBoard, stepAgentBoardBack } from "../ui/agent-board-store";
 import { countAgentLaunch } from "../telemetry/usage-counters";
 import type { TabManager } from "./tab-manager";
 
 const BUILTIN_AGENT_IDS = new Set(BUILTIN_AGENTS.map((agent) => agent.id));
 
 export interface RestoreDeps {
-  manager: Pick<TabManager, "materialize" | "selectTab">;
+  manager: Pick<TabManager, "materialize" | "selectTab" | "notifySurfacesChanged">;
   files: Pick<FileSurfaceController, "openFile" | "activateFile">;
   dirsExist(paths: readonly string[]): Promise<boolean[]>;
   /** `FileClient.statFiles`, root-scoped: call once per file surface with
@@ -396,17 +396,20 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
         ? await restoreFiles(deps.files, deps.statFiles, mainRecord, result.alive)
         : null;
 
-    // Spec §4.2: the Board opens itself at boot and never otherwise. The MAIN
-    // record only, like `files`: boot restore folds secondary windows into
-    // this one, and a secondary record's flag would raise a Board in a window
-    // that never had one. `restored > 0` because a Board with no panes has
-    // nothing to show and no chip to leave by.
-    if (mainRecord?.agentBoardOpen === true && restored > 0) {
-      openAgentBoard();
-    }
-
+    const restoreBoard = mainRecord?.agentBoardOpen === true && restored > 0;
+    const restoreBoardSurface = restoreBoard && mainRecord.agentBoardSurfaceActive === true;
+    // selectTab deactivates every surface, including files opened above.
     deps.manager.selectTab(clampIndex(mainRecord?.activeTabIndex ?? 0, restored));
-    if (activeFileTarget !== null) {
+
+    // Main record only: secondary windows fold into this one. Restore AFTER
+    // terminal selection so it cannot immediately take the Board off stage.
+    // Legacy records remember the chip but not which surface was active.
+    if (restoreBoard) {
+      openAgentBoard();
+      if (!restoreBoardSurface) stepAgentBoardBack();
+      deps.manager.notifySurfacesChanged();
+    }
+    if (activeFileTarget !== null && !restoreBoardSurface) {
       deps.files.activateFile(activeFileTarget.workspacePath, activeFileTarget.path);
     }
 

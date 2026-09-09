@@ -72,15 +72,13 @@ export interface WindowRecord {
   readonly files: readonly SessionFileSurface[];
   readonly activeFileTab: string | null;
   /**
-   * The Agent Board's chip was open when this window was last written (spec
-   * §4.2). Restored from the MAIN record only, the way `files` is: boot
-   * restore folds secondary windows into the main one, so a secondary
-   * record's value would raise a Board in a window that never had one.
-   *
-   * No `SESSION_VERSION` bump: a file written before the field existed
-   * validates to `false`, which is exactly the old behaviour.
+   * The Board chip existed at quit. Like files, only the main record restores
+   * it: folding in a secondary window must not raise its Board here.
+   * No version bump: legacy records validate missing Board flags to false.
    */
   readonly agentBoardOpen: boolean;
+  /** The Board held the stage at quit; legacy records restore only its chip. */
+  readonly agentBoardSurfaceActive: boolean;
 }
 
 /** Last known session per workspace; key `archive`. Survives restore. */
@@ -248,6 +246,8 @@ export function validateWindowRecord(raw: unknown): WindowRecord | null {
     // the Board from the string "false", which is what a hand-edited or
     // half-migrated file contains.
     agentBoardOpen: source.agentBoardOpen === true,
+    agentBoardSurfaceActive:
+      source.agentBoardOpen === true && source.agentBoardSurfaceActive === true,
   };
 }
 

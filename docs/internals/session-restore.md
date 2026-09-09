@@ -47,8 +47,16 @@ power-off rather than only at a clean quit.
 6. Secondary window records are cleared **before** files and tab selection are restored, so
    a throw there cannot leave a stale record to fold in twice on the next boot.
 
+The main record remembers the Agent Board chip separately from whether its surface held the
+stage. Restore its surface **after** terminal selection, which deactivates every surface;
+when it was active, do not activate a saved file over it. Records without the surface flag keep
+the chip-only behavior. Secondary records cannot raise the Board, and no Board restores unless
+at least one terminal tab survives. The decision is recorded in
+[DECK-33](https://linear.app/mxrsv/issue/DECK-33).
+
 Scrollback, unsaved edits and window placement never restore. The rail's remembered rows use
-the same core for one workspace, without the marker.
+the same core for one workspace, without the marker; they also restore each pane's saved task
+prompt, since the archive carries the same session tabs as boot restore.
 
 ## Resolving a conversation
 

@@ -19,7 +19,7 @@ import { Store } from "../host/store-host";
 import { reportPersistError } from "../chrome/events";
 import { tabViews, activeTabIndex } from "./tabs-store";
 import { fileSurfaces, activeFileTab } from "../files/file-surface-store";
-import { agentBoardOpen } from "../ui/agent-board-store";
+import { agentBoardOpen, agentBoardSurfaceActive } from "../ui/agent-board-store";
 import { paneTaskPrompts } from "./board-task-prompts";
 import {
   MAX_JOURNAL_TABS,
@@ -194,6 +194,8 @@ function buildRecord(deps: SessionJournalDeps): WindowRecord {
     // restore a surface with nothing to show and no way out. Written false
     // rather than left alone, so the next launch does not retry it.
     agentBoardOpen: tabs.length > 0 && agentBoardOpen.value,
+    agentBoardSurfaceActive:
+      tabs.length > 0 && agentBoardOpen.value && agentBoardSurfaceActive.value,
   };
 }
 
@@ -295,6 +297,8 @@ export async function initSessionJournal(deps: SessionJournalDeps): Promise<void
     // this read the effect never re-runs for it, and the state is saved only
     // when something else happens to move.
     void agentBoardOpen.value;
+    // Switching between an existing Board chip and the terminal must also save.
+    void agentBoardSurfaceActive.value;
     // Same reason, and it bites harder: `TASK_PROMPT_AUTOSEND` is false, so a
     // launch's prompt is normally recorded AFTER the agent appeared and
     // `tabViews` already moved. Nothing else changes while the text sits

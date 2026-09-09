@@ -28,6 +28,7 @@ const RECORD = {
   files: [],
   activeFileTab: null,
   agentBoardOpen: false,
+  agentBoardSurfaceActive: false,
 };
 
 describe("validateWindowRecord", () => {
@@ -156,6 +157,25 @@ describe("WindowRecord.agentBoardOpen", () => {
     expect(validateWindowRecord({ ...base, agentBoardOpen: "yes" })?.agentBoardOpen).toBe(false);
     expect(validateWindowRecord({ ...base, agentBoardOpen: "false" })?.agentBoardOpen).toBe(false);
     expect(validateWindowRecord({ ...base, agentBoardOpen: 1 })?.agentBoardOpen).toBe(false);
+  });
+});
+
+describe("WindowRecord.agentBoardSurfaceActive", () => {
+  it.each([undefined, null, false, "true", "false", 1])("rejects non-true state %s", (value) => {
+    expect(
+      validateWindowRecord({ ...RECORD, agentBoardOpen: true, agentBoardSurfaceActive: value })
+        ?.agentBoardSurfaceActive,
+    ).toBe(false);
+  });
+
+  it("restores an active surface only with an open chip", () => {
+    expect(
+      validateWindowRecord({ ...RECORD, agentBoardOpen: true, agentBoardSurfaceActive: true })
+        ?.agentBoardSurfaceActive,
+    ).toBe(true);
+    expect(
+      validateWindowRecord({ ...RECORD, agentBoardSurfaceActive: true })?.agentBoardSurfaceActive,
+    ).toBe(false);
   });
 });
 

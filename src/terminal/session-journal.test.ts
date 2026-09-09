@@ -20,7 +20,13 @@ import {
   type FileSurfaceState,
 } from "../files/file-surface-store";
 import { persistError } from "../chrome/events";
-import { agentBoardOpen, openAgentBoard, resetAgentBoardStore } from "../ui/agent-board-store";
+import {
+  agentBoardOpen,
+  openAgentBoard,
+  resetAgentBoardStore,
+  stepAgentBoardBack,
+  activateAgentBoard,
+} from "../ui/agent-board-store";
 import { noteTaskPrompt, paneTaskPrompts, resetTaskPrompts } from "./board-task-prompts";
 
 const LEAF = { type: "leaf" } as const;
@@ -332,6 +338,7 @@ describe("session journal", () => {
       openAgentBoard();
       await flushSessionJournal();
       expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(true);
+      expect(data.get("window:main")).toMatchObject({ agentBoardSurfaceActive: true });
     });
 
     it("rewrites it false with no tabs", async () => {
@@ -342,6 +349,7 @@ describe("session journal", () => {
       // Zero tabs = no Board: the chip cannot render and the action is scope
       // "pane", so a remembered `true` would restore a surface with no way out.
       expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(false);
+      expect(data.get("window:main")).toMatchObject({ agentBoardSurfaceActive: false });
     });
 
     it("re-runs the write effect when only the board's state moved", async () => {
@@ -356,6 +364,25 @@ describe("session journal", () => {
       await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
       expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(true);
       expect(agentBoardOpen.value).toBe(true);
+    });
+  });
+
+  it("persists switching away from and back to an already-open Board", async () => {
+    const { store, data } = createFakeStore();
+    await initSessionJournal(deps({ store, capture: () => [tab("/w")] }));
+    openAgentBoard();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    stepAgentBoardBack();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(data.get("window:main")).toMatchObject({
+      agentBoardOpen: true,
+      agentBoardSurfaceActive: false,
+    });
+    activateAgentBoard();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(data.get("window:main")).toMatchObject({
+      agentBoardOpen: true,
+      agentBoardSurfaceActive: true,
     });
   });
 

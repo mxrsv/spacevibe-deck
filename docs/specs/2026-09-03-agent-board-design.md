@@ -298,19 +298,10 @@ than visits.
   return. The alternative — the dock beside the Board's own panel — is two
   trailing columns, and the Board has no relation to the explorer that the
   document has.
-- **Remembered — on the main window's record.** `agentBoardOpen` joins
-  `WindowRecord` in [`session-schema.ts`](../../src/lib/session-schema.ts)
-  `current` (its validation and the journal effect's dependency list both
-  change), and restore reads it from the MAIN record only: boot restore
-  already folds every secondary window's tabs into the main window and then
-  clears their records
-  ([`session-restore.ts`](../../src/terminal/session-restore.ts) `current`),
-  so "per window" at boot means one window. On restore the Board opens when
-  that record says so, and **for no other reason** (§3.2, §17 Q2): there is
-  no pane-count rule, restore gains no new count, and an adopt-boot window
-  never opens onto it (the `bootOpensTheBoard` precedent). **Never
-  mid-session:** no launch, close or state change moves the Board on or off
-  the stage.
+- **Boot restoration:** the owner decision and acceptance criteria for this
+  paragraph now live in [DECK-33](https://linear.app/mxrsv/issue/DECK-33)
+  (decided 2026-09-09). Maintainer constraints live in
+  [session restore](../internals/session-restore.md#boot-restore).
 
 ### 4.3 A consequence to look at, not a decision made here
 
