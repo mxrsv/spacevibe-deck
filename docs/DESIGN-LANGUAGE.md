@@ -1301,9 +1301,9 @@ window's identity and its actions at the same time.
   consequence is deliberate and worth stating: the same chips exist in both
   layouts, so the navigation rail no longer lists documents at all. A rail row
   says which repository and worktree a session is in; the strip says what is
-  open. **Amended 2026-08-16:** the strip is ONE row of one chip shape, in the
-  order things were opened — see DL-18.10, which retired the segments this
-  rule and DL-18.8 used to name.
+  open. **Amended 2026-08-16:** the strip is ONE row of one chip shape.
+  Open order is the default; manual order and pinned groups follow DL-18.10
+  (DECK-45, 2026-09-09), which also retired the separate surface segments.
 - **DL-18.7** **The stage is the focal surface in every theme.** The terminal
   and document surface keep the active theme's `--bg`; the left navigation
   frame/rail and every docked side panel share the derived `--sidebar-bg`.
@@ -1418,18 +1418,25 @@ window's identity and its actions at the same time.
   uses
   ([`fileIcon`](../src/files/ui/file-icons.ts) `current`), which is where that
   vocabulary stopped being docked-panel-only; the browser keeps its globe.
-  **Order is when it was opened**, on one window-wide clock the three owners
-  share ([`open-sequence.ts`](../src/lib/open-sequence.ts) `current`,
-  [`mergeStripOrder`](../src/lib/strip-order.ts) `current`), so a document
-  opened before a terminal tab sits before it. The keyboard walks that same
-  merge — the point of the rule rather than a side effect: ⌘⇧[ / ⌘⇧], ⌘1–9 and
-  ⌘9 count CHIPS, so ⌘2 can land on a document. Approved by the owner on
-  2026-08-16, who chose the glyph-led chip and the interleaved order over
-  keeping documents in a segment of their own. Two things deliberately did NOT
-  change: a label is never coloured by git status (Deck's file model has no
-  git status to read), and sidebar mode still scopes the terminal chips to the
-  active repository (DL-18.6) — the merge orders whatever that scope leaves
-  visible.
+  **Default order is when it was opened**, on one window-wide clock
+  ([`open-sequence.ts`](../src/lib/open-sequence.ts)). **DECK-45, 2026-09-09:**
+  dragging changes the order within the pinned or ordinary group, with a neutral
+  insertion line and a label ghost. The strip scrolls horizontally when chips no
+  longer fit, including during an edge drag. Escape cancels the drag.
+  Pinned chips sit first, retain the same icon and name, and replace the close
+  button with a trailing pin glyph. A 6px additional gap separates the two groups.
+  Right-click or Shift+F10 opens the existing popover row treatment with
+  **Pin/Unpin**, **Close**, **Close Others**, **Close to the Right**. Disabled
+  actions remain visible; Escape/outside press dismiss, arrow keys move focus,
+  and dismissal returns focus to the chip. A normal active-chip click stays inert.
+  The menu is portalled out of the scroll clip and obscures the native browser
+  stage while open ([`TabStripMenu`](../src/ui/tab-strip-menu.tsx)).
+  Order and pins last for the current window session. The keyboard uses the same
+  visible merge ([`mergeStripOrder`](../src/lib/strip-order.ts)): ⌘⇧[ / ⌘⇧],
+  ⌘1–9 and ⌘9 count chips after reorder/pinning. Sidebar mode still scopes
+  terminal chips to the active repository. Bulk closes skip pinned and hidden
+  chips, preserve the existing Busy/dirty guards and never imply a workspace-wide
+  close ([`closeChips`](../src/ui/tab-strip-close.ts)).
   **Amended the same day, after the owner saw it rendered — a chip says WHAT
   is open and nothing else.** Three things came off it, in the order the owner
   asked:

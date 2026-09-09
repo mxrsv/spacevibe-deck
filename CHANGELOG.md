@@ -18,6 +18,12 @@ startup on Windows.
 
 ### Highlights
 
+- **Arrange and pin tabs.** Drag terminal, file, browser and Agents tabs into
+  place; right-click to pin, unpin, close others or close tabs to the right.
+  Pinned tabs keep their icon and name and are skipped by bulk closes.
+  Preferences last for the current window session.
+  [Tab strip](src/ui/tab-strip.tsx) `current`.
+
 - ⚡ **Faster Windows terminal startup.** Deck no longer starts a PowerShell/WMI
   process census in front of a new shell, split or docked pane. Background
   inspection stays paused through shell startup and resumes on its normal

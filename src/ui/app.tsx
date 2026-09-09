@@ -205,7 +205,7 @@ import {
   suspendSessionJournal,
 } from "../terminal/session-journal";
 import { restoreSession, resumeWorkspace } from "../terminal/session-restore";
-import { worktreeForPath } from "../repositories/repository-model";
+import { activeRepositoryTabIndexes, worktreeForPath } from "../repositories/repository-model";
 import { DesktopChrome } from "./desktop-chrome";
 import {
   archivedWorkspaceResumeAvailable,
@@ -554,6 +554,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     const manager = createTabManager(host, undefined, {
+      visibleTabIndexes: () =>
+        settings.value.tabBarPosition === "left"
+          ? activeRepositoryTabIndexes(tabViews.value, activeTabIndex.value, repositoryScans.value)
+          : tabViews.value.map((_, index) => index),
       onOpenTaskLauncher: openTaskLauncher,
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
@@ -2085,7 +2089,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       topTabs={
         <TabBar
           onSelectTab={selectTab}
-          onCloseTab={(index) => void closeTab(index)}
+          onCloseTab={closeTab}
+          onCloseTabs={async (indexes) => (await tabsRef.current?.closeTabs(indexes)) ?? false}
           toolbar={chromeActions}
           fileController={fileController}
           onSelectBrowser={selectBrowserTab}
@@ -2159,7 +2164,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }) ? (
                 <TabStrip
                   onSelectTab={selectTab}
-                  onCloseTab={(index) => void closeTab(index)}
+                  onCloseTab={closeTab}
+                  onCloseTabs={async (indexes) =>
+                    (await tabsRef.current?.closeTabs(indexes)) ?? false
+                  }
                   fileController={fileController}
                   onSelectBrowser={selectBrowserTab}
                   onCloseBrowser={closeBrowserTab}

@@ -83,10 +83,21 @@ Ids are process-local integers from 1, never reused.
   waits for xterm's write drain so a transfer serializes after every byte landed. Paste is
   bracketed and `\n` becomes `\r`, the only route that lands a multi-line body in an agent
   TUI's composer as one block.
-- **Strip order** is one window-wide clock ([`open-sequence.ts`](../../src/lib/open-sequence.ts)):
-  terminal tabs, documents and the browser tab share it, keys are never reused, and
-  [`mergeStripOrder`](../../src/lib/strip-order.ts) is walked by both the keyboard
-  (`TabManager`) and the paint (`TabStrip`), so ⌘1–9 and tab cycling count chips.
+- **Strip order** starts with the window-wide clock
+  ([`open-sequence.ts`](../../src/lib/open-sequence.ts)).
+  [`stripPreferences` and `mergeStripOrder`](../../src/lib/strip-order.ts) apply a manual
+  order and pinned prefix without rewriting open keys or owner indexes. Preferences are
+  renderer-local: they survive workspace/layout switches, but are not journaled across
+  application restarts. The shell supplies `visibleTabIndexes` so keyboard digits/cycling
+  count the same repository-scoped chips as the strip.
+- **Strip close actions** ([`tab-strip-close.ts`](../../src/ui/tab-strip-close.ts)) capture
+  identities before awaiting guards. A single close uses App's existing workspace cleanup;
+  bulk closes target only visible, unpinned chips and deliberately omit that cleanup so it
+  cannot sweep pinned or hidden files. Files close sequentially through their dirty guard,
+  then terminals use one Busy confirmation; cancelling stops the remaining batch but does
+  not undo earlier confirmed file closes. Files retained in another workspace become
+  visible again when that workspace is reopened. Pinning a preview promotes it to a kept
+  file tab so another preview cannot replace it.
 - The closed-tab stack holds 10 snapshots in memory (`layout`, `cwds`, `name`, `dotColor`,
   `workspacePath`); ⌘⇧T reopens with fresh shells and does not re-run agents.
 

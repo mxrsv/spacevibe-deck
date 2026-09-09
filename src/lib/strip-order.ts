@@ -1,6 +1,6 @@
 /**
- * The strip's one ordering rule: a chip sits where it was opened, whatever
- * kind of chip it is (DL-18.6, 2026-08-16).
+ * The strip's shared order: pinned chips first, then manual placement,
+ * falling back to open order for new chips (DL-18.10, DECK-45).
  *
  * Until then the strip was two segments — every terminal tab, a hairline,
  * then every non-terminal surface — and that shape was baked into the
@@ -14,6 +14,60 @@
  * TabManager still learns nothing about files, only that a surface carries an
  * order key ([`SurfaceStrip.orderKey`](../terminal/tab-manager.ts)).
  */
+
+import { signal } from "@preact/signals";
+
+export interface StripPreferences {
+  readonly order: readonly number[];
+  readonly pinned: readonly number[];
+}
+
+export const EMPTY_STRIP_PREFERENCES: StripPreferences = { order: [], pinned: [] };
+
+/** Window-local presentation preferences, shared by the chips and keyboard.
+ * Open keys are identities: never rewrite them or reorder a PTY owner's array.
+ * Preferences survive layout/workspace switches, not an application restart. */
+export const stripPreferences = signal<StripPreferences>(EMPTY_STRIP_PREFERENCES);
+
+export function setStripPinned(key: number, pinned: boolean): void {
+  if (key <= 0) return;
+  const current = stripPreferences.value;
+  stripPreferences.value = {
+    ...current,
+    pinned: pinned
+      ? [...new Set([...current.pinned, key])]
+      : current.pinned.filter((item) => item !== key),
+  };
+}
+
+/** Move within one pin group, replacing only visible positions. Hidden
+ * workspaces keep their relative order. New chips append in open order. */
+export function moveStripTab(
+  source: number,
+  before: number | null,
+  visible: readonly number[],
+  all: readonly number[],
+): void {
+  const current = stripPreferences.value;
+  const pinned = new Set(current.pinned);
+  const group = visible.filter((key) => key > 0 && pinned.has(key) === pinned.has(source));
+  if (!group.includes(source) || source === before || (before !== null && !group.includes(before)))
+    return;
+  const rest = group.filter((key) => key !== source);
+  const at = before === null ? rest.length : rest.indexOf(before);
+  const moved = [...rest.slice(0, at), source, ...rest.slice(at)];
+  const keys = [...new Set(all.filter((key) => key > 0))];
+  const ordered = mergeStripOrder(
+    keys.map((openedAt) => ({ openedAt })),
+    [],
+    current,
+  ).map((slot) => keys[slot.index]!);
+  let index = 0;
+  stripPreferences.value = {
+    order: ordered.map((key) => (group.includes(key) ? moved[index++]! : key)),
+    pinned: current.pinned.filter((key) => keys.includes(key)),
+  };
+}
 
 /** Which owner a slot belongs to. */
 export type StripSlotKind = "tab" | "surface";
@@ -46,7 +100,10 @@ export interface StripOrderKey {
 export function mergeStripOrder(
   tabs: readonly StripOrderKey[],
   surfaces: readonly StripOrderKey[],
+  preferences: StripPreferences = EMPTY_STRIP_PREFERENCES,
 ): readonly StripSlot[] {
+  const ranks = new Map(preferences.order.map((key, index) => [key, index]));
+  const pinned = new Set(preferences.pinned);
   const entries = [
     ...tabs.map((tab, index) => ({
       slot: { kind: "tab" as const, index },
@@ -59,6 +116,13 @@ export function mergeStripOrder(
   ];
   return entries
     .map((entry, position) => ({ ...entry, position }))
-    .sort((a, b) => a.openedAt - b.openedAt || a.position - b.position)
+    .sort(
+      (a, b) =>
+        Number(pinned.has(b.openedAt)) - Number(pinned.has(a.openedAt)) ||
+        (ranks.get(a.openedAt) ?? preferences.order.length) -
+          (ranks.get(b.openedAt) ?? preferences.order.length) ||
+        a.openedAt - b.openedAt ||
+        a.position - b.position,
+    )
     .map((entry) => entry.slot);
 }
