@@ -1,3 +1,7 @@
+import { useEffect, useRef } from "preact/hooks";
+import { tabViews } from "../../terminal/tabs-store";
+import { useSignal } from "@preact/signals";
+import { RecentSessionActivity } from "../../ui/sessions/recent-session-activity";
 import { agentStatusRailChromeSpecimen, agentStatusRailSpecimen } from "../agent-status-rail";
 import {
   agentRailVariantsSpecimen,
@@ -116,6 +120,86 @@ export function NavigationSection() {
         <div style={{ height: "100%", "--sidebar-w": `${SIDEBAR_WIDTH_MIN}px` }}>
           {agentStatusRailChromeSpecimen()}
         </div>
+      </Specimen>
+    </>
+  );
+}
+
+const NORMAL_SIDEBAR_WIDTH = 275;
+
+/** Real production rows, with simulated host outcomes and no CLI launch. */
+function RecentActivityDemo({ width }: { readonly width: number }) {
+  const originalTabs = useRef(tabViews.peek());
+  useEffect(
+    () => () => {
+      tabViews.value = originalTabs.current;
+    },
+    [],
+  );
+  const result = useSignal("Only unread recent sessions are shown. Select one to mark it read.");
+  return (
+    <div style={{ width, maxWidth: "100%" }}>
+      <div style={{ background: "var(--sidebar-bg)", padding: "8px 0" }}>
+        <RecentSessionActivity
+          filter="unread"
+          onResume={() => {
+            result.value = "The pane closed; Deck would resume this session.";
+          }}
+          onFocusPane={(index, paneId) => {
+            tabViews.value = tabViews.value.map((tab, tabIndex) =>
+              tabIndex === index
+                ? {
+                    ...tab,
+                    panes: tab.panes?.map((pane) =>
+                      pane.paneId === paneId ? { ...pane, attention: "none" as const } : pane,
+                    ),
+                  }
+                : tab,
+            );
+            result.value = "Opened and marked read. The session leaves this filter.";
+          }}
+          onViewAll={() => {
+            result.value = "Opens the complete Sessions view in Deck.";
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        style={{ marginTop: "16px" }}
+        onClick={() => {
+          tabViews.value = originalTabs.current;
+          result.value = "Unread preview restored.";
+        }}
+      >
+        Reset unread preview
+      </button>
+      <p role="status" style={{ color: "var(--text-muted)", minHeight: "3em" }}>
+        {result}
+      </p>
+    </div>
+  );
+}
+
+export function RecentActivitySection() {
+  return (
+    <>
+      <SectionHead
+        title="Recent activity"
+        blurb="Recent activity filtered to unread only: questions, warnings and results not yet seen. Opening a session acknowledges it and removes it from the list. View all still opens the complete history."
+      />
+      <Specimen
+        name="Normal sidebar · 275px"
+        note="Select the unread row to open it and see the empty state. Reset restores the seeded unread state."
+        surface="none"
+      >
+        <RecentActivityDemo width={NORMAL_SIDEBAR_WIDTH} />
+      </Specimen>
+      <Specimen
+        name="Compact sidebar · 200px"
+        note="The same production component at the sidebar floor. Use the Gallery theme picker to compare Light and Dark."
+        surface="none"
+      >
+        <RecentActivityDemo width={SIDEBAR_WIDTH_MIN} />
       </Specimen>
     </>
   );

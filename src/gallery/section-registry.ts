@@ -5,7 +5,7 @@ import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
 import { ExplorerTreeSection } from "./sections/explorer-tree-section";
 import { MatrixSection } from "./sections/matrix-section";
-import { NavigationSection } from "./sections/navigation-section";
+import { NavigationSection, RecentActivitySection } from "./sections/navigation-section";
 import { OverlaysSection } from "./sections/overlays-section";
 import { PopoversSection } from "./sections/popovers-section";
 import { RowsSection } from "./sections/rows-section";
@@ -59,6 +59,7 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
   { id: "navigation", label: "navigation", Section: NavigationSection },
+  { id: "recent-activity", label: "recent activity", Section: RecentActivitySection },
   {
     id: "attention",
     label: "attention direction",

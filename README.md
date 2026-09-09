@@ -87,6 +87,11 @@ If Agent Board was on screen when you quit, session restore brings it back on sc
 had switched to a terminal or file, only its `Agents` tab returns
 ([Board restore](src/terminal/session-restore.ts) `current`).
 
+Recent activity filters its five latest sessions to **Unread**: questions,
+warnings and completed results not yet acknowledged in this window. Selecting
+one opens its pane and acknowledges it; **View all** opens the complete history
+([Recent activity](src/ui/sessions/recent-session-activity.tsx) `current`).
+
 ### Local usage accounting
 
 The usage dashboard reads supported agents' existing local session logs and groups token use

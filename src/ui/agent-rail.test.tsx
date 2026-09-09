@@ -1521,7 +1521,7 @@ describe("AgentRail recent activity style contract", () => {
 
   it("keeps compact rows at fixed glyph and time geometry without horizontal overflow", () => {
     const row = ruleBody(".recent-session-activity__row");
-    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 14px 4em");
+    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 4em 14px");
     expect(row).toContain("min-height: 30px");
     expect(row).toContain("box-sizing: border-box");
     expect(row).toContain("width: 100%");
@@ -1540,7 +1540,7 @@ describe("AgentRail recent activity style contract", () => {
     // DL-33.2 (amended 2026-08-26): the status mark is the rail's own 14px
     // box, centred in the track it was given rather than resting at the tab
     // row's trailing edge.
-    const mark = ruleBody(".recent-session-activity__row > .asr-row__mark");
+    const mark = ruleBody(".recent-session-activity__state > .asr-row__mark");
     expect(mark).toContain("justify-self: center");
 
     const time = ruleBody(".recent-session-activity__time");

@@ -46,6 +46,14 @@ startup on Windows.
 
 ### Highlights
 
+- **Return to unread conversations.** Recent activity now filters its latest
+  sessions to unread questions, warnings and results. Opening one focuses its
+  pane and acknowledges it; View all keeps the complete history available.
+  A session whose pane has closed can still resume in a new tab. Opening shows a
+  loading ring and blocks repeated clicks; unopened sessions no longer carry
+  a gray status dot. Time sits before the trailing state indicator.
+  [Recent activity](src/ui/sessions/recent-session-activity.tsx) `current`.
+
 - ⚡ **Faster Windows terminal startup.** Deck no longer starts a PowerShell/WMI
   process census in front of a new shell, split or docked pane. Background
   inspection stays paused through shell startup and resumes on its normal

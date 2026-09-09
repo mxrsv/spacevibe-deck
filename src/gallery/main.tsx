@@ -143,9 +143,10 @@ function main(): void {
   // store confirms in the app (DL-33.2, amended 2026-08-26). There is no
   // session log in a browser, so the pairings are seeded here the same way
   // `paneTails` above is — three of the five listed sessions are running in a
-  // seeded pane (working, needs-you, failed) and two are held by no pane, which
-  // is the quiet dot. Pane 108 runs a different agent than its row's glyph on
-  // purpose: the mark reports the PANE's state, the glyph the session's agent.
+  // seeded pane. Only two also match the session's agent (working, needs-you).
+  // Pane 108 deliberately has another agent: a coinciding id must not make
+  // that row focus or report the state of the wrong CLI. Unmatched rows have
+  // an empty status slot.
   paneSessionIds.value = new Map([
     [101, "gallery-claude-launcher"],
     [107, "gallery-codex-release"],

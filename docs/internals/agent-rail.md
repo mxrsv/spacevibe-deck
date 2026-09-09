@@ -54,6 +54,37 @@ The words (`failed`, `needs you`, `working`, `done`, `idle`) live only in the ro
 accessible name. Where attention and phase come from is in
 [terminal.md](terminal.md#agent-phase-and-attention).
 
+## Recent session re-entry
+
+[Recent activity](../../src/ui/sessions/recent-session-activity.tsx) applies its
+`unread` filter to the store's latest-five snapshot before rendering. Unread is
+`paneSignal(...).state === "asked"`, the rail's existing yellow mark, not the
+legacy tab-level unread-output bit. It is window-scoped and does not imply that
+older unread sessions outside the snapshot have been scanned. The raw snapshot
+still determines cold loading; an empty filter during a refresh is not a new
+cold load. The component's `all` mode remains available for its reusable row
+surface, while production and Gallery explicitly select `unread`.
+
+On click it rechecks
+[the exact agent/session pairing](../../src/ui/sessions/live-session-state.ts)
+on click before resuming. A contract-reported session id outranks a tail pairing;
+a directory match alone cannot identify a conversation. An exited match may
+still supply a status mark, but is never a focus destination. The lookup is
+window-scoped; it does not discover running sessions in another Deck window or
+another terminal. During a launch initiated by Recent activity,
+`TabManager.materializePane` returns the exact created pane id and a validity check. The row retains
+that destination until a confirmed match exists, the pane exits/closes, or a
+conflicting identity appears. A readiness cancellation or rejected PTY write
+invalidates the receipt so the row can retry. This receipt prevents another click from spawning
+a duplicate during startup; it never supplies a live status or claims that the
+CLI has resumed successfully. Do not infer this receipt from the active pane or
+newest tab: concurrent launches can change both.
+
+Opening is the materialization promise, not agent readiness. The synchronous
+per-session pending guard covers repeated clicks until that promise settles;
+agent-working feedback continues to come from the pane signal. The full Sessions
+view still uses its explicit Resume action.
+
 ## The sentence, and the pairing behind it
 
 The rail's sentence is the newest assistant text in the agent's own session log, read by

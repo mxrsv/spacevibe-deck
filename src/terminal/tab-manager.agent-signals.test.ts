@@ -54,6 +54,54 @@ afterEach(() => {
 });
 
 describe("createTabManager — arm-time augmentation (stage 2)", () => {
+  it("returns each materialized pane without borrowing another concurrent launch's destination", async () => {
+    const { tm, pty } = harness(new Map());
+    try {
+      await tm.init();
+      const ids = await Promise.all([
+        tm.materializePane({
+          layout: null,
+          cwds: ["/first"],
+          paneCommands: ["codex resume first"],
+        }),
+        tm.materializePane({
+          layout: null,
+          cwds: ["/second"],
+          paneCommands: ["codex resume second"],
+        }),
+      ]);
+      expect(ids[0]).not.toBeNull();
+      expect(ids[1]).not.toBeNull();
+      expect(ids[0]!.paneId).not.toBe(ids[1]!.paneId);
+      expect(pty.sessions.get(ids[0]!.paneId)?.cwd).toBe("/first");
+      expect(pty.sessions.get(ids[1]!.paneId)?.cwd).toBe("/second");
+    } finally {
+      tm.dispose();
+    }
+  });
+
+  it("invalidates a Recent launch receipt when its PTY command write fails", async () => {
+    const { tm, pty } = harness(new Map());
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(pty, "writePty").mockRejectedValue(new Error("PTY write failed"));
+    try {
+      await tm.init();
+      const receipt = await tm.materializePane({
+        layout: null,
+        cwds: ["/repo"],
+        paneCommands: ["codex resume sample"],
+      });
+      expect(receipt?.canFocus()).toBe(true);
+      await vi.advanceTimersByTimeAsync(0);
+      pty.emitOutput(receipt!.paneId, "$ ");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(receipt?.canFocus()).toBe(false);
+    } finally {
+      tm.dispose();
+      error.mockRestore();
+    }
+  });
+
   it("restarts the confirmed Claude session with hooks when no transcript tail was read", async () => {
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],

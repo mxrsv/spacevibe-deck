@@ -20,8 +20,14 @@ const DEFAULT_SECTION_ID = "chrome";
  */
 
 export function Gallery() {
-  const activeId = useSignal(DEFAULT_SECTION_ID);
-  const themeId = useSignal(THEME_PRESETS[0].id);
+  const params = new URLSearchParams(window.location.search);
+  const requestedSection = params.get("section");
+  const activeId = useSignal(
+    GALLERY_SECTIONS.find((section) => section.id === requestedSection)?.id ?? DEFAULT_SECTION_ID,
+  );
+  const themeId = useSignal(
+    THEME_PRESETS.find((theme) => theme.id === params.get("theme"))?.id ?? THEME_PRESETS[0].id,
+  );
   const contentRef = useRef<HTMLElement>(null);
 
   // Published on `:root`, the same place `app.tsx` publishes it, so the
