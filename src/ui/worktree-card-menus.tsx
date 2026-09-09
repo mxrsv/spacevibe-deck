@@ -65,7 +65,7 @@ type PlacementSide = "right" | "bottom-right" | "below";
  * and a bottom clamp needs its height — neither is known before it mounts, and
  * both change with the row set (the Tauri menu is ~70px shorter, spec §10).
  */
-function useSurfacePlacement(
+export function useSurfacePlacement(
   rect: AnchorRect | null,
   side: PlacementSide = "right",
 ): {
@@ -160,7 +160,7 @@ function useSurfacePlacement(
  * than re-invented, including the trigger exemption — the trigger's own click
  * toggles, so it must not close through this path too.
  */
-function useDismiss(
+export function useDismiss(
   onClose: () => void,
   surface: { readonly current: HTMLElement | null },
   trigger: HTMLElement | null,
@@ -241,7 +241,7 @@ const OVERLAY_RELEASE_MS = 260;
 let openCardMenus = 0;
 let releaseTimer: ReturnType<typeof setTimeout> | null = null;
 
-function useStageOverlayFlag(): void {
+export function useStageOverlayFlag(): void {
   useEffect(() => {
     openCardMenus += 1;
     if (releaseTimer !== null) {

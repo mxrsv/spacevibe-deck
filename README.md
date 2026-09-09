@@ -57,6 +57,12 @@ beside terminals as tabs on the same stage. Cmd/Ctrl+click on a path from an age
 file and line in a configured editor
 ([PTY host](electron/pty/spawn.ts) `current`, [stage strip](src/ui/stage-surface-strip.ts) `current`).
 
+Drag tabs to rearrange them, or right-click for **Pin/Unpin**, **Close**,
+**Close Others** and **Close to the Right**. Pinned tabs stay first with their
+icon and name; bulk closes skip them. Order and pins last for the current
+window session; keyboard navigation follows the visible order
+([tab strip](src/ui/tab-strip.tsx) `current`, [strip order](src/lib/strip-order.ts) `current`).
+
 ### Sessions that come back
 
 Deck continuously journals open tabs and file surfaces, guards boot restoration against crash

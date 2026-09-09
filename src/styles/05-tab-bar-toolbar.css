@@ -635,3 +635,71 @@
     transition: none;
   }
 }
+
+/* DECK-45: the shared strip's pinned group, pointer drag and context menu. */
+.tabbar__tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+.tabbar__tabs::-webkit-scrollbar {
+  display: none;
+}
+.tabbar__tabs > .tab {
+  flex-shrink: 0;
+  touch-action: none;
+}
+.tab__pin {
+  display: flex;
+  color: var(--text-faint);
+  margin-left: 2px;
+}
+.tab.is-pinned {
+  padding-right: 6px;
+}
+.tab.is-pinned + .tab:not(.is-pinned) {
+  margin-left: 6px;
+}
+.tab:focus-visible {
+  outline: 1px solid var(--hair-strong);
+  outline-offset: -1px;
+}
+.tab:focus-within .tab__close {
+  opacity: 1;
+}
+.tabbar__tabs.is-tab-dragging,
+.tabbar__tabs.is-tab-dragging .tab {
+  cursor: grabbing;
+}
+.tab-strip-ghost {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-strip-drop-line {
+  position: fixed;
+  width: 2px;
+  background: var(--text-primary);
+  z-index: 101;
+  pointer-events: none;
+}
+.tab-strip-menu {
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  -webkit-app-region: no-drag;
+}
+.tab-strip-menu .toolbar-menu__sep {
+  display: block;
+}
+.tab-strip-menu .toolbar-menu__row:disabled {
+  color: var(--text-faint);
+  cursor: default;
+  background: transparent;
+}
+.tab-strip-error {
+  color: var(--text-primary);
+  font-size: var(--type-meta);
+}
