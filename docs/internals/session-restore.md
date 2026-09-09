@@ -1,5 +1,7 @@
 # Session restore
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 On launch Deck reopens the tabs that were open at quit and resumes each built-in agent's
 conversation. Electron only: the lookup channel has no Tauri counterpart.
 `Settings.restoreSessions` (default on) is the kill switch.

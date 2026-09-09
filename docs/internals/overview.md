@@ -1,5 +1,7 @@
 # Architecture overview
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 SpaceVibe Deck is an Electron desktop terminal for running several AI agent CLIs side by
 side. The main process (`electron/`) owns everything the renderer cannot: PTYs, the process
 table, windows, persistent stores, the native menu, the updater, usage analytics, git

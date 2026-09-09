@@ -1,5 +1,7 @@
 # File surface, browser tab and path opening
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 Three things share the stage with the terminal grid: documents opened from the file
 explorer, the browser tab, and the routing that turns a path an agent printed into one of
 those. All of it is Electron only: the file channels, the `WebContentsView` and the external

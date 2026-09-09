@@ -1,5 +1,7 @@
 # Glossary
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 The words Deck's code, tests and documents use, each with the terms to avoid. The UI
 hierarchy is Window → Tab → Pane; documents and the browser are surfaces beside tabs.
 

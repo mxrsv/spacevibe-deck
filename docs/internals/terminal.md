@@ -1,5 +1,7 @@
 # Terminal, panes and tabs
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 The stage is a set of tabs, each a split tree of panes, each pane one xterm.js instance bound
 to one PTY that the main process owns. This page covers the PTY manager and its ownership
 model, the tab and layout layer in the renderer, how a tab is materialized and an agent

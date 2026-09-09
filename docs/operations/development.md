@@ -1,5 +1,7 @@
 # Development
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 How to build, run, test and check the repository. Architecture is in
 [`../internals/`](../internals/overview.md); cutting a release is in [release.md](release.md).
 
