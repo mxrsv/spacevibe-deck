@@ -129,14 +129,10 @@ describe("deriveChromeColors", () => {
       const deckDark = THEME_PRESETS[0];
       expect(deckDark.id).toBe("deck-dark");
       const bg = deckDark.theme.background;
-      expect(deriveChromeColors(bg, deckDark.theme.foreground).sidebarBg).toBe(
-        "#161b22",
-      );
+      expect(deriveChromeColors(bg, deckDark.theme.foreground).sidebarBg).toBe("#161b22");
       // And it is the BACKGROUND that claims it, not the preset: one channel
       // away is a different theme, which derives its own sidebar.
-      expect(deriveChromeColors("#17181d", "#e7e7e7").sidebarBg).not.toBe(
-        "#161b22",
-      );
+      expect(deriveChromeColors("#17181d", "#e7e7e7").sidebarBg).not.toBe("#161b22");
     });
 
     it("preserves the distinction for light and pure-black overrides", () => {

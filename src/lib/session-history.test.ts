@@ -71,9 +71,9 @@ describe("asSessionsSnapshot", () => {
   it.each([0, -8_640_000_000_000_000, 8_640_000_000_000_000])(
     "keeps a finite timestamp inside JavaScript's Date range: %s",
     (lastActivityMs) => {
-      expect(asSessionsSnapshot(reply([entry({ lastActivityMs })]))?.entries[0]?.lastActivityMs).toBe(
-        lastActivityMs,
-      );
+      expect(
+        asSessionsSnapshot(reply([entry({ lastActivityMs })]))?.entries[0]?.lastActivityMs,
+      ).toBe(lastActivityMs);
     },
   );
 

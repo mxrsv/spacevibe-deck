@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildPtyInfo, createPtyInfoReader } from "./info";
 import { foregroundProcess, parsePsTable } from "../platform/macos";
+import * as macos from "../platform/macos";
 import type { PtySessionSnapshot } from "./session-store";
 
 const rows = parsePsTable(
@@ -26,7 +27,7 @@ const snapshot = (
 
 describe("buildPtyInfo", () => {
   it("reports an idle login shell", () => {
-    const [info] = buildPtyInfo([snapshot(1, 501, "ttys001")], rows);
+    const [info] = buildPtyInfo([snapshot(1, 501, "ttys001")], rows, new Map(), macos);
 
     expect(info).toEqual({
       id: 1,
@@ -39,7 +40,7 @@ describe("buildPtyInfo", () => {
   });
 
   it("reports a foreground agent with its id", () => {
-    const [info] = buildPtyInfo([snapshot(2, 610, "ttys002")], rows);
+    const [info] = buildPtyInfo([snapshot(2, 610, "ttys002")], rows, new Map(), macos);
 
     expect(info).toEqual({
       id: 2,
@@ -52,14 +53,14 @@ describe("buildPtyInfo", () => {
   });
 
   it("reports an ordinary foreground job as busy", () => {
-    const [info] = buildPtyInfo([snapshot(3, 800, "ttys003")], rows);
+    const [info] = buildPtyInfo([snapshot(3, 800, "ttys003")], rows, new Map(), macos);
 
     expect(info.kind).toBe("busy");
     expect(info.agent).toBe(null);
   });
 
   it("uses the foreground command line to recognize a Node agent", () => {
-    const [info] = buildPtyInfo([snapshot(4, 900, "ttys004")], rows);
+    const [info] = buildPtyInfo([snapshot(4, 900, "ttys004")], rows, new Map(), macos);
 
     expect(info).toMatchObject({
       process: "node",
@@ -69,7 +70,7 @@ describe("buildPtyInfo", () => {
   });
 
   it("recognizes a user-declared agent matcher", () => {
-    const [info] = buildPtyInfo([snapshot(5, 1000, "ttys005")], rows, new Map(), undefined, [
+    const [info] = buildPtyInfo([snapshot(5, 1000, "ttys005")], rows, new Map(), macos, [
       { binary: "aider", agent: "Aider" },
     ]);
 
@@ -81,7 +82,7 @@ describe("buildPtyInfo", () => {
   });
 
   it("degrades a pane missing from the table to unknown, keeping its cwd", () => {
-    const [info] = buildPtyInfo([snapshot(4, 999, "ttys099", "/tmp")], rows);
+    const [info] = buildPtyInfo([snapshot(4, 999, "ttys099", "/tmp")], rows, new Map(), macos);
 
     expect(info).toEqual({
       id: 4,
@@ -94,14 +95,19 @@ describe("buildPtyInfo", () => {
   });
 
   it("answers every snapshot from one table reading, in order", () => {
-    const infos = buildPtyInfo([snapshot(1, 501, "ttys001"), snapshot(2, 610, "ttys002")], rows);
+    const infos = buildPtyInfo(
+      [snapshot(1, 501, "ttys001"), snapshot(2, 610, "ttys002")],
+      rows,
+      new Map(),
+      macos,
+    );
 
     expect(infos.map((info) => info.id)).toEqual([1, 2]);
     expect(infos.map((info) => info.kind)).toEqual(["idle-shell", "agent"]);
   });
 
   it("returns an empty list for no snapshots", () => {
-    expect(buildPtyInfo([], rows)).toEqual([]);
+    expect(buildPtyInfo([], rows, new Map(), macos)).toEqual([]);
   });
 });
 

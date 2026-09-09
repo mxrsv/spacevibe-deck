@@ -32,7 +32,7 @@ describe("createEntry", () => {
     expect((await stat(result.path)).isDirectory()).toBe(true);
     await expect(
       createEntry({ root, parent: path.join(root, "missing"), name: "deep", kind: "directory" }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("outside the workspace");
   });
 
   it("creates inside a nested parent", async () => {
@@ -64,8 +64,8 @@ describe("createEntry", () => {
     await symlink(path.join(outside, "target.txt"), path.join(root, "link.txt"));
     await expect(
       createEntry({ root, parent: root, name: "link.txt", kind: "file" }),
-    ).rejects.toThrow();
-    await expect(stat(path.join(outside, "target.txt"))).rejects.toThrow();
+    ).rejects.toThrow("outside the workspace");
+    await expect(stat(path.join(outside, "target.txt"))).rejects.toThrow("ENOENT");
   });
 
   it("refuses a parent outside the named root", async () => {
@@ -98,6 +98,6 @@ describe("createEntry", () => {
   it("refuses a kind it does not know", async () => {
     await expect(
       createEntry({ root, parent: root, name: "x", kind: "socket" as never }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("Deck can only create a file or a folder.");
   });
 });

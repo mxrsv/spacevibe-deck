@@ -756,8 +756,8 @@ export function multiAgentGroupingSpecimen() {
           <span class="gxa-variant__title">band, outline — retired 2026-08-26</span>
           <span class="gxa-variant__note">
             DL-27.19, 2026-08-20 to 2026-08-26: a rounded hairline frame drew the block's own edge;
-            two tabs back to back closed as two objects. Retired when the worktree card replaced
-            the tab tier.
+            two tabs back to back closed as two objects. Retired when the worktree card replaced the
+            tab tier.
           </span>
         </div>
         <BandedColumn mark="outline" />

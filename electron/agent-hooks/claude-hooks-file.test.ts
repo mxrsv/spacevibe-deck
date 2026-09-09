@@ -80,7 +80,9 @@ describe("writeClaudeHooksFiles", () => {
     expect(written).not.toBeNull();
     expect(written?.scriptPath).toBe(path.join(ROOT, "agent-hooks", "deck-hook.sh"));
     expect(written?.settingsPath).toBe(path.join(ROOT, "agent-hooks", "claude.json"));
-    expect(statSync(written!.scriptPath).mode & 0o111).not.toBe(0);
+    if (process.platform !== "win32") {
+      expect(statSync(written!.scriptPath).mode & 0o111).not.toBe(0);
+    }
     const doc = JSON.parse(readFileSync(written!.settingsPath, "utf8")) as {
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
     };

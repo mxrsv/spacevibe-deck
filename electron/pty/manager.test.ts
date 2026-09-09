@@ -53,6 +53,13 @@ vi.mock("../platform/macos", async (importOriginal) => ({
   terminateProcessGroups: terminateSpy,
 }));
 
+vi.mock("../platform/windows", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  readProcessTable: async () => [],
+  foregroundProcess: () => foreground.value,
+  terminateProcessGroups: terminateSpy,
+}));
+
 let emitted: Emitted[];
 let unregistered: number[];
 let manager: PtyManager;

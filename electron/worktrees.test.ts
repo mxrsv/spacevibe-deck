@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { promisify } from "node:util";
 import { parseWorktreePorcelain, scanRepository } from "./worktrees";
 
@@ -173,7 +173,7 @@ describe("scanRepository", () => {
 
       // The identity claim the whole rail rests on: a linked worktree reports
       // the SAME key, which is what groups the two rows under one repository.
-      const linked = join(dir, "..", `${dir.split("/").pop()}-linked`);
+      const linked = join(dir, "..", `${basename(dir)}-linked`);
       await run("git", ["-C", dir, "worktree", "add", "-q", "-b", "side", linked]);
       try {
         const fromLinked = await scanRepository(linked);

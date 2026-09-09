@@ -78,8 +78,8 @@ describe("parseClaudeAgents", () => {
   });
 
   it("throws on anything that is not a JSON array, so the poller can flag it stale", () => {
-    expect(() => parseClaudeAgents("not json")).toThrow();
-    expect(() => parseClaudeAgents('{"pid":1}')).toThrow();
+    expect(() => parseClaudeAgents("not json")).toThrow(SyntaxError);
+    expect(() => parseClaudeAgents('{"pid":1}')).toThrow("registry output is not an array");
     expect(() => parseClaudeAgents("x".repeat(1024 * 1024 + 1))).toThrow(/size cap/);
   });
 });

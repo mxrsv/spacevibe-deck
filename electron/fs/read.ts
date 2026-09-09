@@ -18,7 +18,6 @@ import {
   isInside,
   PathOutsideWorkspaceError,
   resolveInsideRoot,
-  resolveRoot,
 } from "./path-guard";
 
 /**
@@ -135,11 +134,14 @@ async function resolveSymlinkEntry(
  */
 export async function listDir(root: string, directory: string): Promise<DirEntryPayload[]> {
   const canonicalDirectory = assertInsideRoot(root, directory);
-  // Resolved once per call, not once per symlinked entry: `directory` above
-  // already proved `root` resolves, and the filesystem cannot change between
-  // these two synchronous calls.
-  const canonicalRoot = resolveRoot(root);
-  if (canonicalRoot === null) {
+  // The guard above validates root. Resolve it once with the SAME native
+  // resolver as the symlinks: on Windows realpathSync can keep an 8.3 name
+  // (RUNNER~1), while promises.realpath expands it, breaking containment.
+  // Keep canonicalDirectory's spelling for the renderer's existing path keys.
+  let canonicalRoot: string;
+  try {
+    canonicalRoot = await fs.realpath(root);
+  } catch {
     throw new PathOutsideWorkspaceError(root);
   }
   const entries = await fs.readdir(canonicalDirectory, { withFileTypes: true });

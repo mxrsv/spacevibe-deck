@@ -75,38 +75,41 @@ afterEach(() => {
 });
 
 describe("packaged process cleanup", () => {
-  it("stops the packaged process group before fixture cleanup may continue", async () => {
-    expect(typeof verifierModule.stopChild).toBe("function");
-    const child = spawn(
-      process.execPath,
-      [
-        "-e",
-        'const{spawn}=require("node:child_process");const nested=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});process.stdout.write(String(nested.pid));setInterval(()=>{},1000)',
-      ],
-      { detached: true, stdio: ["ignore", "pipe", "ignore"] },
-    );
-    let nestedPid = 0;
-    try {
-      nestedPid = await new Promise<number>((resolve) =>
-        child.stdout.once("data", (data) => resolve(Number(String(data)))),
+  it.skipIf(process.platform !== "darwin")(
+    "stops the packaged process group before fixture cleanup may continue",
+    async () => {
+      expect(typeof verifierModule.stopChild).toBe("function");
+      const child = spawn(
+        process.execPath,
+        [
+          "-e",
+          'const{spawn}=require("node:child_process");const nested=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});process.stdout.write(String(nested.pid));setInterval(()=>{},1000)',
+        ],
+        { detached: true, stdio: ["ignore", "pipe", "ignore"] },
       );
-      await verifierModule.stopChild?.(child);
-      // ESRCH specifically: EPERM would mean the process is still alive but
-      // owned by another user, which is not the cleanup this asserts.
-      expect(() => process.kill(nestedPid, 0)).toThrow(/ESRCH/);
-    } finally {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill("SIGKILL");
-      }
-      if (nestedPid > 0) {
-        try {
-          process.kill(nestedPid, "SIGKILL");
-        } catch {
-          // The expected path: stopChild already reaped the process group.
+      let nestedPid = 0;
+      try {
+        nestedPid = await new Promise<number>((resolve) =>
+          child.stdout.once("data", (data) => resolve(Number(String(data)))),
+        );
+        await verifierModule.stopChild?.(child);
+        // ESRCH specifically: EPERM would mean the process is still alive but
+        // owned by another user, which is not the cleanup this asserts.
+        expect(() => process.kill(nestedPid, 0)).toThrow(/ESRCH/);
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) {
+          child.kill("SIGKILL");
+        }
+        if (nestedPid > 0) {
+          try {
+            process.kill(nestedPid, "SIGKILL");
+          } catch {
+            // The expected path: stopChild already reaped the process group.
+          }
         }
       }
-    }
-  });
+    },
+  );
 });
 
 const COMPLETE_ASAR = {
@@ -160,7 +163,7 @@ describe("machOArchCount", () => {
 });
 
 describe("structureFailures", () => {
-  it("passes a complete layout", () => {
+  it.skipIf(process.platform === "win32")("passes a complete layout", () => {
     expect(structureFailures(completeLayout(tempDir()))).toEqual([]);
   });
 
@@ -194,7 +197,7 @@ describe("structureFailures", () => {
     expect(structureFailures(layout).some((failure) => failure.includes("universal"))).toBe(true);
   });
 
-  it("rejects a non-executable spawn-helper", () => {
+  it.skipIf(process.platform === "win32")("rejects a non-executable spawn-helper", () => {
     const dir = tempDir();
     const layout = completeLayout(dir);
     const helper = path.join(

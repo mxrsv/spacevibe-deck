@@ -53,6 +53,9 @@ afterEach(() => {
   }
 });
 
+// Real Git histories spawn many processes; Windows runners need a larger I/O budget.
+const WINDOWS_GIT_TIMEOUT_MS = 30_000;
+
 describe("generateReleaseNotes", () => {
   const commits = [
     releaseCommit("1", "feat(prompt-board): add catalog", "Reuse saved prompts from the chrome"),
@@ -293,45 +296,49 @@ describe("release history", () => {
     ).toBe("v9007199254740993.0.0");
   });
 
-  it("reads non-merge commit metadata between the release tags", () => {
-    const cwd = createRepository();
-    commit(cwd, "feat: initial release");
-    git(cwd, "tag", "v1.0.0");
-    const boardSha = commit(
-      cwd,
-      "feat(board): add prompt board",
-      "Release-Note: Open reusable prompts from the chrome.",
-    );
+  it(
+    "reads non-merge commit metadata between the release tags",
+    { timeout: process.platform === "win32" ? WINDOWS_GIT_TIMEOUT_MS : undefined },
+    () => {
+      const cwd = createRepository();
+      commit(cwd, "feat: initial release");
+      git(cwd, "tag", "v1.0.0");
+      const boardSha = commit(
+        cwd,
+        "feat(board): add prompt board",
+        "Release-Note: Open reusable prompts from the chrome.",
+      );
 
-    git(cwd, "switch", "-c", "release-side");
-    const fixSha = commit(cwd, "fix: keep pane output");
-    git(cwd, "switch", "main");
-    const docsSha = commit(cwd, "docs: update context");
-    git(cwd, "merge", "--no-ff", "release-side", "-m", "Merge release-side");
-    git(cwd, "tag", "v1.1.0");
+      git(cwd, "switch", "-c", "release-side");
+      const fixSha = commit(cwd, "fix: keep pane output");
+      git(cwd, "switch", "main");
+      const docsSha = commit(cwd, "docs: update context");
+      git(cwd, "merge", "--no-ff", "release-side", "-m", "Merge release-side");
+      git(cwd, "tag", "v1.1.0");
 
-    const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
-    expect(commits).toHaveLength(3);
-    expect(commits).toEqual(
-      expect.arrayContaining([
-        {
-          sha: boardSha,
-          subject: "feat(board): add prompt board",
-          body: "feat(board): add prompt board\n\nRelease-Note: Open reusable prompts from the chrome.\n",
-        },
-        {
-          sha: fixSha,
-          subject: "fix: keep pane output",
-          body: "fix: keep pane output\n",
-        },
-        {
-          sha: docsSha,
-          subject: "docs: update context",
-          body: "docs: update context\n",
-        },
-      ]),
-    );
-  });
+      const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
+      expect(commits).toHaveLength(3);
+      expect(commits).toEqual(
+        expect.arrayContaining([
+          {
+            sha: boardSha,
+            subject: "feat(board): add prompt board",
+            body: "feat(board): add prompt board\n\nRelease-Note: Open reusable prompts from the chrome.\n",
+          },
+          {
+            sha: fixSha,
+            subject: "fix: keep pane output",
+            body: "fix: keep pane output\n",
+          },
+          {
+            sha: docsSha,
+            subject: "docs: update context",
+            body: "docs: update context\n",
+          },
+        ]),
+      );
+    },
+  );
 
   it("removes a conventional feature that was reverted before the release", () => {
     const cwd = createRepository();
@@ -398,31 +405,35 @@ describe("release history", () => {
     );
   });
 
-  it("removes commits introduced by a reverted merge", () => {
-    const cwd = createRepository();
-    commit(cwd, "feat: initial release");
-    git(cwd, "tag", "v1.0.0");
-    git(cwd, "switch", "-c", "feature");
-    writeFileSync(join(cwd, "feature.txt"), "detachable panes\n");
-    git(cwd, "add", "feature.txt");
-    commit(
-      cwd,
-      "feat(ui): add detachable panes",
-      "Release-Note: Detach panes into separate windows.",
-    );
-    git(cwd, "switch", "main");
-    git(cwd, "merge", "--no-ff", "feature", "-m", "Merge feature");
-    const mergeSha = git(cwd, "rev-parse", "HEAD");
-    git(cwd, "revert", "-m", "1", "--no-edit", mergeSha);
-    commit(cwd, "fix(terminal): keep text paste", "Release-Note: Restore Windows text paste.");
-    git(cwd, "tag", "v1.1.0");
+  it(
+    "removes commits introduced by a reverted merge",
+    { timeout: process.platform === "win32" ? WINDOWS_GIT_TIMEOUT_MS : undefined },
+    () => {
+      const cwd = createRepository();
+      commit(cwd, "feat: initial release");
+      git(cwd, "tag", "v1.0.0");
+      git(cwd, "switch", "-c", "feature");
+      writeFileSync(join(cwd, "feature.txt"), "detachable panes\n");
+      git(cwd, "add", "feature.txt");
+      commit(
+        cwd,
+        "feat(ui): add detachable panes",
+        "Release-Note: Detach panes into separate windows.",
+      );
+      git(cwd, "switch", "main");
+      git(cwd, "merge", "--no-ff", "feature", "-m", "Merge feature");
+      const mergeSha = git(cwd, "rev-parse", "HEAD");
+      git(cwd, "revert", "-m", "1", "--no-edit", mergeSha);
+      commit(cwd, "fix(terminal): keep text paste", "Release-Note: Restore Windows text paste.");
+      git(cwd, "tag", "v1.1.0");
 
-    const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
-    const notes = generateReleaseNotes(commits, { channel: "stable" });
+      const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
+      const notes = generateReleaseNotes(commits, { channel: "stable" });
 
-    expect(notes).not.toContain("Detach panes");
-    expect(notes).toContain("Restore Windows text paste");
-  });
+      expect(notes).not.toContain("Detach panes");
+      expect(notes).toContain("Restore Windows text paste");
+    },
+  );
 
   it("honors the selected mainline when reverting a merge", () => {
     const cwd = createRepository();
@@ -520,16 +531,20 @@ describe("Release-Note policy baseline", () => {
     );
   });
 
-  it("errors instead of exempting when the baseline is outside the history", () => {
-    const { cwd } = createBaselineRepository();
-    commit(cwd, "feat(toolbar): add the overflow menu");
-    git(cwd, "tag", "v1.1.0");
-    const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
+  it(
+    "errors instead of exempting when the baseline is outside the history",
+    { timeout: process.platform === "win32" ? WINDOWS_GIT_TIMEOUT_MS : undefined },
+    () => {
+      const { cwd } = createBaselineRepository();
+      commit(cwd, "feat(toolbar): add the overflow menu");
+      git(cwd, "tag", "v1.1.0");
+      const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
 
-    expect(() => markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE)).toThrow(
-      `Release-Note policy baseline ${ABSENT_BASELINE} is not reachable from v1.1.0`,
-    );
-  });
+      expect(() => markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE)).toThrow(
+        `Release-Note policy baseline ${ABSENT_BASELINE} is not reachable from v1.1.0`,
+      );
+    },
+  );
 
   it("does not consult the baseline when every commit declares a trailer", () => {
     const cwd = createRepository();

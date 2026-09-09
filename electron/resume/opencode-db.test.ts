@@ -15,6 +15,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as opencode from "./opencode";
 import { candidates, sessionModel, sessionTailText } from "./opencode-db";
 
+// Creating the real SQLite fixture can exceed 5s under Windows runner disk contention.
+const WINDOWS_SQLITE_TIMEOUT_MS = 15_000;
 const T0 = Date.parse("2026-08-17T10:00:00Z");
 
 let home: string;
@@ -103,17 +105,21 @@ afterEach(() => {
 });
 
 describe("opencode-db.candidates", () => {
-  it("reports sessions newest first, with directory as the cwd", () => {
-    const db = createDatabase(home);
-    addSession(db, "ses_old", "/tmp/one", T0);
-    addSession(db, "ses_new", "/tmp/two", T0 + 5000);
-    db.close();
+  it(
+    "reports sessions newest first, with directory as the cwd",
+    { timeout: process.platform === "win32" ? WINDOWS_SQLITE_TIMEOUT_MS : undefined },
+    () => {
+      const db = createDatabase(home);
+      addSession(db, "ses_old", "/tmp/one", T0);
+      addSession(db, "ses_new", "/tmp/two", T0 + 5000);
+      db.close();
 
-    expect(candidates(home)).toEqual([
-      { id: "ses_new", cwd: "/tmp/two", mtimeMs: T0 + 5000 },
-      { id: "ses_old", cwd: "/tmp/one", mtimeMs: T0 },
-    ]);
-  });
+      expect(candidates(home)).toEqual([
+        { id: "ses_new", cwd: "/tmp/two", mtimeMs: T0 + 5000 },
+        { id: "ses_old", cwd: "/tmp/one", mtimeMs: T0 },
+      ]);
+    },
+  );
 
   it("leaves sub-agent sessions out", () => {
     // A delegated task gets its own session under the same directory. Quoting

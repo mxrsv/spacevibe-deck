@@ -79,6 +79,32 @@ describe("listDir", () => {
     expect(link?.directory).toBe(true);
   });
 
+  it("compares root and symlinks using the same native path spelling", async () => {
+    // Windows' JS resolver preserves RUNNER~1 while the native resolver
+    // expands it. Model two equivalent spellings without needing NTFS here.
+    const nativeRoot = path.join(base, "native-workspace");
+    fs.symlinkSync(root, nativeRoot, "junction");
+    const realpath = fsAsync.realpath.bind(fsAsync);
+    const spy = vi.spyOn(fsAsync, "realpath").mockImplementation(async (target) => {
+      const canonical = await realpath(target);
+      return canonical === root || canonical.startsWith(`${root}${path.sep}`)
+        ? `${nativeRoot}${canonical.slice(root.length)}`
+        : canonical;
+    });
+    try {
+      const rows = await listDir(root, root);
+      expect(rows.find((row) => row.name === "src-link")).toMatchObject({
+        path: path.join(root, "src-link"),
+        directory: true,
+        outOfRoot: false,
+      });
+      expect(rows.find((row) => row.name === "away")?.outOfRoot).toBe(true);
+    } finally {
+      spy.mockRestore();
+      fs.unlinkSync(nativeRoot);
+    }
+  });
+
   it("flags a dangling symlink as a leaf, not out of root by escaping", async () => {
     const rows = await listDir(root, root);
     const dangling = rows.find((row) => row.name === "dangling-link");
@@ -235,7 +261,7 @@ describe("listDir — bounded async realpath on a 10k-entry directory", () => {
     try {
       const rows = await listDir(bigRoot, bigDir);
       expect(rows).toHaveLength(TOTAL_ENTRIES);
-      expect(callCount).toBe(SYMLINK_COUNT);
+      expect(callCount).toBe(SYMLINK_COUNT + 1); // Root uses the same native resolver.
       expect(maxInFlight).toBe(MAX_REALPATH_CONCURRENCY);
     } finally {
       spy.mockRestore();

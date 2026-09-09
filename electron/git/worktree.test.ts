@@ -158,7 +158,7 @@ describe("addWorktree", () => {
       error: "timed-out",
     });
     expect(execFileMock).toHaveBeenCalledTimes(3);
-    expect(lstat).toHaveBeenCalledWith("/dest");
+    expect(lstat).toHaveBeenCalledWith(path.resolve("/dest"));
   });
 
   it.each(["branch", "directory", "registration"])(
