@@ -41,7 +41,7 @@ import {
   opencodeAttach as hostOpencodeAttach,
 } from "../host/agent-signals-host";
 import { contractSignalOf, type HookEvent } from "../lib/agent-signal-map";
-import { noteExplicitTail } from "./session-tail-store";
+import { lastSessionIdFor, noteExplicitTail } from "./session-tail-store";
 import { usageConsentOpen } from "../telemetry/consent-store";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
@@ -67,7 +67,6 @@ import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
 import { forgetTaskPrompt, noteTaskPrompt, paneTaskPrompts } from "./board-task-prompts";
-import { lastSessionIdFor } from "./session-tail-store";
 import { restartCommandFor } from "./pane-restart";
 import {
   launchClearsDraft,
@@ -2845,7 +2844,7 @@ export function createTabManager(
 
   /**
    * The rail card's `New split here` (spec
-   * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §11.1 — the one
+   * `docs/internals/agent-rail.md` — the one
    * fork this work opens, resolved by the owner's "implement this spec").
    *
    * `split-row`/`split-column` act on the ACTIVE pane, and the card that
