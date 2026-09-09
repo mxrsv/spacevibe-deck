@@ -21,11 +21,14 @@ tense; anything about the frozen Tauri host says so.
   materialization and launch, phase and attention, actions and menu, close, quit and
   transfer.
 - [Agent Rail](internals/agent-rail.md) — the rail model, state, the session-tail pairing,
-  focus, close and order.
+  focus, the checkout card and its strip, close and order.
+- [Agent Board](internals/agent-board.md) — the grid of live agent cards, the seams it took,
+  and what Restart resumes.
 - [File surface, browser tab and path opening](internals/file-surface.md) — the explorer,
   editor, markdown policy, browser view and link routing.
 - [Session restore](internals/session-restore.md) — the journal, boot restore, resume
   resolution and session history.
+- [Analytics service](../backend/README.md) — independent Worker/D1 deployment and retention operations.
 - [Usage analytics](internals/telemetry.md) — the payload, consent state and when a POST
   fires.
 - [Known traps and live switches](internals/traps.md) — what has bitten this codebase, and
@@ -45,7 +48,3 @@ tense; anything about the frozen Tauri host says so.
 - [`../AGENTS.md`](../AGENTS.md) — repository rules for contributors and agents.
 - [`../CHANGELOG.md`](../CHANGELOG.md) — user-facing release notes, read by the release
   workflow.
-
-`ARCHITECTURE.md`, `CONTEXT.md`, `CONTEXT-archive.md`, `intent/`, `plans/`, `specs/` and
-`review/` are the earlier documentation set. They describe decisions as they were made and
-are superseded by the pages above wherever the two disagree.

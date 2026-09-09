@@ -86,6 +86,31 @@ constants that currently switch behaviour off and are meant to be flipped back.
 - The Rust and Electron usage scanners are held equal by a golden fixture that must be
   regenerated from the Rust side, never from the port's own output.
 
+## Accepted limitations
+
+Named because a maintainer will otherwise read them as bugs to fix on sight. Each was looked
+at and left; changing one is a decision, not a cleanup.
+
+- **An explorer channel's `root` is any absolute path the renderer sends,** not a workspace
+  this window has open. `resolveRoot` proves *containment*, not authorization, and
+  `registerExplorer` takes the renderer's `root` verbatim — a property of every explorer
+  channel, not something `create_entry` introduced. Binding roots to the owning window would
+  change every explorer channel's authorization at once. The exposure is bounded: `wx` and a
+  non-recursive `mkdir` cannot overwrite.
+- **Hidden files can be shown but not hidden again.** `setShowHidden` has no UI control; the
+  create flow turns it on as a side effect of creating a dotted name and says so on the
+  status line. There is no way back short of reopening the workspace.
+- **The explorer does not restore a per-workspace scroll position.**
+  `FileSurfaceState.scrollTop` and `setScrollTop` exist and are never read or written —
+  `FileTreeView` keeps its own local state, so scroll leaks between workspaces whenever the
+  component survives a `workspacePath` change.
+- **A preset can be created but not renamed or deleted.** The layout cards were the only call
+  sites of `renamePreset` and `deletePreset`, and they went with the Open board's redesign.
+- **A custom editor command cannot be typed for ⌘+click.** `editorId` and `editorCommand`
+  became the single catalog id `externalAppId`, and a stored `custom` migrates to the first
+  catalog app. `editor-command.ts` and `open_editor`'s `custom` branch still build and still
+  validate; restoring the feature needs a catalog entry carrying a command template.
+
 ## Live switches
 
 Each is one typed constant whose other branch is kept in the tree on purpose, so reverting

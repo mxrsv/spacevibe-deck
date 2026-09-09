@@ -61,6 +61,26 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   first 8 KiB, invalid UTF-8 decoded lossily and opened read-only, line endings detected by
   the dominant kind.
 
+- **The root is row 0 of the model**, not separate DOM above the scroller, because the spacer
+  height, the window, the roving tabindex, `scrollIntoView` and every arrow key are index
+  arithmetic over one array. `rootExpanded` is its own per-workspace field and could not fold
+  into `expanded`, which already means "this child directory is open". It is window-scoped and
+  deliberately not persisted, so it never becomes the only restored explorer state.
+- **Focus is a path, not an index** ([`tree-focus.ts`](../../src/files/tree-focus.ts)): a
+  create re-sorts the rows, and focus must land on the created *entry*, which is an identity.
+- The root row carries four always-visible controls, each a 17px square rather than
+  `.iconbtn`'s 24px box, which would overflow a 22px row. **Refresh re-lists every visible
+  directory without clearing the cache** — clearing destroys the map `visibleDirectories`
+  reads, so only the root would reload. **Collapse All** empties `expanded`, leaves the root
+  open, and is a controller operation because only the controller may call `refreshWatch()`.
+- **Creating goes out over [`create_entry`](../../electron/fs/create-entry.ts)**, an
+  Electron-only channel: `open(…, "wx")` or a non-recursive `mkdir`, so it can never
+  overwrite, a symlink included. Its name validator is one pure module **both processes
+  import**, accepting a leading dot and refusing the Windows device names on every platform.
+  It exists rather than reusing `write_file` (which renames over its target, so New File would
+  silently truncate) or `create_directory` (not bounded to a root, and refuses every dotted
+  name). Failures land on the explorer's status line, never in a second dialog.
+
 ## Main-process file guards
 
 - **A path is legal only if, after `realpath`, it is inside the workspace root, itself

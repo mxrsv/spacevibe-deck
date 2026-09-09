@@ -847,8 +847,7 @@ row about the two popovers disagreeing on their edge is settled by deletion
 rather than by a fix.
 
 **Two members since 2026-08-27, and the section widened twice for them**
-(spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5, §8.3,
-§8.4). The rail's worktree card raises a hover-driven segment menu and a
+(`docs/internals/agent-rail.md`). The rail's worktree card raises a hover-driven segment menu and a
 pressed actions menu, and neither fitted the rules as written: DL-13.2 is a
 CLICK contract (`aria-expanded`, `role="dialog"`, Esc / outside-click) and
 DL §23's hover surface carries no actions, so a hover-raised popover belonged
@@ -1713,12 +1712,12 @@ covering it, and it can hold something that is not Deck's own pixels.
 ## 20. Numeric scales
 
 Approved as a fork on 2026-08-14 (plan decision D2). Proposed by
-[the 2026-08-12 visual review](review/2026-08-12-visual-system-codex-review.md)
+the 2026-08-12 visual review
 `current`, which asked for seven closed scales; **two of them are adopted and the rest are
 not**. The numbers are the ones the owner eye-approved in the gallery direction,
 not the review's, because a scale nobody has looked at rendered is a table, not a
 decision. Design:
-[direction token rebuild §9.4](specs/2026-08-13-direction-token-rebuild-design.md)
+direction token rebuild §9.4
 `decided`.
 
 - **DL-20.1** Five radius roles, and no sixth picked at a use site.
@@ -1763,7 +1762,7 @@ decision. Design:
 
 Approved as a fork on 2026-08-14 (plan decision D1). This section resolves what
 the direction rebuild called
-[a real conflict, not a gap](specs/2026-08-13-direction-token-rebuild-design.md)
+a real conflict, not a gap
 `decided`: the reviewed direction marks selection with a full rounded wash,
 while DL-5.1 and DL-11.2 mandated a 2px left accent bar. Both cannot be "how
 active reads everywhere". The wash wins, because it is what the owner approved
@@ -1873,7 +1872,7 @@ of two ways a row gets there rather than the reason the menu exists. Numbered
 23 because §15/§16 were reserved
 for the usage sections (now landed above) and §20–§22 were spent by the same
 program
-([toolbar spec](specs/2026-08-12-feature-toolbar-design.md) `decided`).
+(toolbar spec `decided`).
 
 - **DL-23.1** A tooltip shows the action's **name, its chord when the active
   platform has one, and the reason when the action cannot run** — nothing
@@ -2027,7 +2026,7 @@ a key beside exactly one setting changed in place; neither describes a list
 whose rows CARRY an action. A history row does not read a fact or set a value,
 it offers to resume a session. Numbered 25 because §22 stays reserved — the
 next free number above §24, not the gap
-([session history spec](specs/2026-08-14-session-history-design.md) `decided`).
+(session history spec `decided`).
 
 - **DL-25.1** **Amended 2026-08-16, reversing this rule's original form.** A
   history row is **content plus one named action**: the body is inert and the
@@ -2129,7 +2128,7 @@ into shipping code.
 
 Approved as a fork on 2026-08-16, for the navigation rail whose unit is a live
 agent rather than a checkout
-([agent status rail spec](specs/2026-08-16-agent-status-rail-design.md)
+(agent status rail spec
 `decided`). §25's history row is one control with one outcome, and §5's config
 row is a key beside exactly one setting; neither describes a row that is
 simultaneously a target and a strip of smaller targets. A rail row goes to a
@@ -2201,8 +2200,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   `hasRun` bit splits the two). When a tab folds its panes into one row the
   loudest one speaks: failed > asked > working > done > idle. `failed` is
   never allowed to read as `idle`. **Amended 2026-08-27: on a closed worktree
-  card the same fold now ranks agent KINDS rather than panes** (spec
-  `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4). A segment is
+  card the same fold now ranks agent KINDS rather than panes** (`docs/internals/agent-rail.md`). A segment is
   one agent, `×N` when it holds several panes, so a merged segment wears ONE
   mark — its loudest pane's — and says nothing about the others until its menu
   opens (DL-13.7). That is the stated cost of the grouping, and it is why the
@@ -2223,8 +2221,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   flex-laid leaf rows did not — their text jumped 5px whenever a pane entered
   or left `working`. The box is 14px in every state now, the dot centred in
   it by `::before`, and the leaf's old 2.5px compensating margin is gone.
-  **Amended 2026-09-03 (agent-signal contract layer, stage 0; spec
-  `docs/specs/2026-09-03-agent-signal-contract-layer-design.md` §4): the mark
+  **Amended 2026-09-03 (agent-signal contract layer, stage 0; `docs/internals/terminal.md`): the mark
   carries its CONFIDENCE, and the vocabulary has a sixth word, `ended`.** The
   tracker has always known whether an `asked` or a `done` came from the CLI's
   own OSC 9;4 or from "3 s of silence after a streak", and the rail drew both
@@ -2663,7 +2660,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   the strip and the rail share one order key for TABS
   ([`strip-order.ts`](../src/lib/strip-order.ts) `current`) and the strip has
   no notion of a project. Spec:
-  [rail workspace reorder](specs/2026-08-22-rail-workspace-reorder-design.md)
+  rail workspace reorder
   `decided`.
 
 - **DL-27.21** **Every rail row closes what it names, and a project header
@@ -2823,8 +2820,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   to Settings when it answers with nothing. A stated absence is a fact, not a
   control, so it is not a menu item and the roving focus does not stop on it.
 
-  **The closed strip stopped being a preview hours later, the same day** (spec
-  `docs/specs/2026-08-27-rail-card-strip-actions-design.md`): a segment is one
+  **The closed strip stopped being a preview hours later, the same day** (`docs/internals/agent-rail.md`): a segment is one
   agent KIND (DL-27.3, amended), it is a `<button>` — a single-pane segment
   focuses that pane, and since 2026-09-02 a merged `×N` segment pins its menu
   open to choose from (DL-13.7, amended). **Only groups of at least two panes
@@ -3082,9 +3078,9 @@ a docked panel (§19).
 Approved as a fork on 2026-08-17 and built on 2026-08-20 as "the migration
 notice", when `SpaceVibe Deck 1.0.0` shipped and the Tauri updater endpoint
 began answering 404. Spec:
-[tauri migration notice](specs/2026-08-17-tauri-migration-notice-design.md)
+tauri migration notice
 `decided`. Widened to a two-instance genre on 2026-08-22 by the
-[usage analytics spec](specs/2026-08-22-anonymous-usage-telemetry-design.md)
+usage analytics spec
 `decided`, then narrowed back the same day when the owner moved the consent
 question to a DL-29.9 decision modal — the row genre built the consent
 surface for a few hours and holds one instance again. Numbered 30 because §22
@@ -3134,7 +3130,7 @@ act on but cannot simply be rid of without answering it.
 ## 31. The rendered document
 
 Added 2026-08-23 with the markdown rendered view. Spec:
-[markdown rendered view](specs/2026-08-23-markdown-rendered-view-design.md)
+markdown rendered view
 `decided`. Numbered 31 because §22 stays reserved — the next free number above
 §30, not the gap.
 
@@ -3185,7 +3181,7 @@ tables are the nearest thing and are still scanning, not reading.
 ## 32. The task launcher
 
 Added 2026-08-24 from the owner-approved Gallery treatment in the
-[new task launcher spec](specs/2026-08-23-new-task-launcher-design.md) `decided`.
+new task launcher spec `decided`.
 The production surface is split between the shared
 [launcher fields](../src/launcher/launcher-fields.tsx) `current`, the
 [Open Board composer](../src/open-board/board-composer.tsx) `current`, and the
@@ -3218,7 +3214,7 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
 ## 33. Recent agent activity
 
 Added 2026-08-25 from the owner-approved
-[recent agent activity design](specs/2026-08-25-recent-agent-activity-design.md)
+recent agent activity design
 `decided`. The production block is
 [RecentSessionActivity](../src/ui/sessions/recent-session-activity.tsx)
 `current`, composed through [AgentRail](../src/ui/agent-rail.tsx) `current`;
@@ -3294,7 +3290,7 @@ Numbered 33 because §22 stays reserved and §32 was the previous highest rule.
 ## 34. The agent board
 
 Added 2026-09-03 from the owner-decided
-[Agent Board spec](specs/2026-09-03-agent-board-design.md) `decided`. The
+Agent Board spec `decided`. The
 surface is a grid of live agent panes with a status-counting nav and a right
 detail panel, toggled against the rail; it is built by
 [`agent-board-model.ts`](../src/ui/agent-board-model.ts) `building`,
@@ -3453,7 +3449,7 @@ section therefore means naming DL, or the gate does not see the citation.
 
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
-| The Agent Board is a shipping surface | `building` | wired, natively walked, owner eye review owed | §34 landed 2026-09-03 with the spec; the wiring landed 2026-09-06 (17 tasks, `73cd1b1`..`69f58cf`). `npm test` 4436/1 with the one failure the DL citation gate at its nine baseline citations, both typechecks, `npm run build`, `npm run electron:build` and `generate:menu:check` green, plus a **native `electron:dev` walk** under an isolated `userData` — the chip, ⌘⇧O both ways, the sidebar at width 0 and restored (collapsed included), a card's real scrollback in the panel with no focus theft, Stop → `ENDED` → Restart, a reply landing as _placed_, the two-step Escape, and the chip surviving a relaunch. **Not walked: Restart resuming a real session id** (the probe agent has none) — [plan](plans/2026-09-04-agent-board-wiring.md) `building` |
+| The Agent Board is a shipping surface | `building` | wired, natively walked, owner eye review owed | §34 landed 2026-09-03 with the spec; the wiring landed 2026-09-06 (17 tasks, `73cd1b1`..`69f58cf`). `npm test` 4436/1 with the one failure the DL citation gate at its nine baseline citations, both typechecks, `npm run build`, `npm run electron:build` and `generate:menu:check` green, plus a **native `electron:dev` walk** under an isolated `userData` — the chip, ⌘⇧O both ways, the sidebar at width 0 and restored (collapsed included), a card's real scrollback in the panel with no focus theft, Stop → `ENDED` → Restart, a reply landing as _placed_, the two-step Escape, and the chip surviving a relaunch. **Not walked: Restart resuming a real session id** (the probe agent has none) — plan `building` |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).

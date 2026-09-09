@@ -132,6 +132,13 @@ pane and clears that pane's latched attention. The keyboard mark itself comes fr
 converges there. Split, close, respawn and adoption assign the active id directly and are
 covered by `onLayoutChange` and the pane poller, so the projection self-heals.
 
+Recent/Unread rows must match a **contract session ID** before borrowing a pane's attention
+or focusing it. A remembered tail pairing may still be a transcript-time guess; it is not
+navigation authority. Without confirmed identity, Recent resumes the selected session.
+Its own launch receipt can reuse the newly created pane until a confirmed ID is available;
+a guessed pairing cannot redirect or invalidate that receipt. See
+[`live-session-state.ts`](../../src/ui/sessions/live-session-state.ts).
+
 ## Close model
 
 The control closes the thing its row names ([`close-coordinator.ts`](../../src/terminal/close-coordinator.ts)):
@@ -168,6 +175,69 @@ A project cluster goes where the user drags it and stays there
   project returns to its slot.
 - Settings are app-level, so a drag reorders every window's rail. There is no keyboard
   equivalent.
+
+## The checkout card, and its strip
+
+On Electron a cluster's checkouts are drawn as disclosure cards
+([`agent-rail-card-model.ts`](../../src/ui/agent-rail-card-model.ts),
+[`worktree-card.tsx`](../../src/ui/worktree-card.tsx)); Tauri stays on `RepositoryRail`
+rather than inheriting a surface whose git and session sources it lacks.
+
+- **The head names the checkout once.** The primary checkout is named by its **branch**,
+  every other by its folder, and the badge takes whichever fact the label did not
+  (`Primary`, `Worktree`, or the branch). The primary sits at the repository root, so its
+  basename is the word the cluster header already printed above it — and
+  `git worktree add ../fix-login fix-login` makes folder and branch one word one tier down.
+  `RailWorktreeGroup.name` stays a **fact**; the label is display.
+- **Model pills are withheld in production.** The available pane → session pairing is
+  heuristic, and a missing pill is more truthful than a guessed model.
+- **A closed card's strip segment is one agent KIND**, ranked by `STATE_RANK`'s own
+  `outranks`, with `×N` beside the glyph when several panes share it. The cost is stated
+  rather than argued: a merged segment wears **one** state mark, its loudest pane's, which
+  is why the hover menu is not a convenience.
+- **Every segment is a `<button>`.** A single-pane segment focuses its pane. A merged `×N`
+  segment and the `+N` tail **pin the menu open** on press instead of guessing a pane —
+  pressing the loudest pane closed the hover menu under a pointer that could not re-raise
+  it, which reads as "click only blinks". Hover or keyboard focus raises the panes behind a
+  segment as ordinary rows.
+- **The fold is by measured width.** `useStripMetrics` reads the stylesheet's own
+  `max-width` back as the budget and the real segment boxes as their widths, so the room a
+  strip has has one source of truth. The `+` is never what folds: a launcher that vanishes
+  when a checkout gets busy is missing exactly when it is wanted.
+
+## One create control per checkout
+
+The rail once spent five controls on "create" that did three different things, four of them
+spawning a plain shell with no word about where. One rule replaces them: **pressing `+`
+prefers an agent, and the destination is stated by position, never re-chosen.**
+
+- The project header's `+` and the tab strip's `+` are **gone in both layouts**. The open
+  card's `New agent` row, the bare row of a checkout with nothing open, a folder's flat
+  entries and the closed strip's `+` all raise the same actions menu
+  ([`useActionsMenu`](../../src/ui/worktree-card.tsx)); a press starts nothing — `Run <agent>`
+  does. A shell is `New split here`, nowhere else.
+- **⌘T raises that same menu free-standing** under the stage strip, with a one-line
+  destination heading and an `Open another project…` row, built from a `MenuSubject` the
+  chord derives from the same scans the rail reads
+  ([`subjectForWorkspace`](../../src/ui/agent-rail-model.ts)). With no workspace it raises the
+  Open board. `TabManager.newTab()` is unchanged: `App` answers the chord through the
+  `railKeyboardMenuFor` signal rather than calling back into the tab layer, which is what
+  removes the recursion the deferred path had.
+- A **remembered** project prints its checkouts as rowless groups
+  ([`rememberedWorktrees`](../../src/ui/agent-rail-model.ts)) so their bare rows are its way
+  back in. The sidebar's own `+ New` is untouched.
+- **No new IPC.** The rows ride `openQuickAgent`, `worktree_add` through Quick Launch's
+  create-worktree subview, and `open_in_app` with the catalog's Finder and terminal entries.
+  The one fork is [`splitInWorkspace`](../../src/terminal/tab-manager.ts): `split-row` acts on
+  the **active** pane and the card that raised the menu may not own it, so doing it honestly
+  is materialize-then-split, which is `TabManager`'s business. It takes a path and answers a
+  boolean, so no pane id leaves the terminal layer. An empty checkout materializes and stops —
+  a fresh tab's single pane *is* the pane the row promised.
+- Both surfaces are `position: fixed` over the stage, so `railCardMenuOpen` joined
+  `browserPanelObscured`: the browser's `WebContentsView` is a native layer above the
+  renderer and would otherwise cover the menu. The menu hangs to the **right** of the card,
+  because the rail is a column on the window's left edge and a menu below it would cover the
+  rail it was raised from.
 
 ## Other surfaces in the column
 

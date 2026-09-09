@@ -128,6 +128,15 @@ and session restore. `TabManager.materialize` owns the implementation.
   reaches a live shell verbatim. Resolution order in
   [`launch-command.ts`](../../src/lib/launch-command.ts): the starred preset, then any
   preset for the agent, then the catalog's shipped `defaultCommand`, then the bare binary.
+- **The Open board resolves an agent before it promises one.**
+  [`resolveAgent`](../../src/lib/workspace-recents.ts) reports *which* of three things
+  happened — `chosen`, `substituted`, `shell-fallback` — where the older
+  `resolveAgentChoice` returned an id and let a missing agent fall through to whatever stood
+  first on `$PATH`. A row therefore cannot print one agent and open another.
+  [`BoardComposer`](../../src/open-board/board-composer.tsx) seeds a **runnable** agent into
+  a visible draft and starts nothing; picking a workspace fills the composer, it does not
+  launch. An explicit Shell memory (`lastAgent: null`) resolves `chosen` forever after, so a
+  machine with no agent CLI is asked once per folder, not on every open.
 - **The catalog** ([`agent-catalog.ts`](../../src/lib/agent-catalog.ts)): a built-in's id, its
   binary name and its bare command are the same string, which is what keeps every
   `lastAgent` on disk resolving. Order is the digit-key contract, so new agents append.
@@ -157,6 +166,40 @@ poll having classified the pane's foreground process as an agent.
   the window is foreground, the tab is active, and DOM focus rests inside the pane.
 - Notifications dedupe on the latch identity, so only a newly raised or escalated kind is
   forwarded, and the OSC classifier never carries the payload's title or body text.
+
+### The contract layer
+
+The heuristics above are the floor. Where a CLI can be made to *say* what it is doing, Deck
+asks it, and the rail draws **how much it knows**: an inferred mark is a hollow ring, an
+explicit one is filled, and a contract state older than 120 seconds turns inferred. The
+mark also gained a sixth word, `ended`, for an agent whose process left the pane — it used
+to wear `asked`'s yellow as an inferred `completed`. `phaseConfidence` in
+[`agent-attention.ts`](../../src/terminal/agent-attention.ts) is the axis; each adapter is
+switchable under Settings → Agents through the `agentSignalAdapters` setting, default on.
+
+- **Claude answers a registry.** Main polls `claude agents --json`
+  ([`claude-registry.ts`](../../electron/agent-registry/claude-registry.ts)) and the renderer
+  joins it on the pid `pty_info` already reports, so a Claude pane's session id is a **fact**
+  and its `waiting` is Claude's own word. The poll is demand-driven (an app with no Claude
+  pane spawns nothing), answers the previous snapshot flagged `stale` rather than throwing,
+  and runs the **discovered absolute path** — a packaged app's `PATH` is launchd's bare one.
+- **Hooks come back over loopback.** Every shell learns `DECK_PANE_ID`, `DECK_HOOK_TOKEN` and
+  `DECK_HOOK_PORT`; main runs a loopback endpoint
+  ([`hook-server.ts`](../../electron/agent-hooks/hook-server.ts)) behind a pure, tested
+  [validator](../../electron/agent-hooks/hook-request.ts), and writes its settings file to
+  `<userData>/agent-hooks/claude.json` — **never into `~/.claude`**. `claude --settings` is
+  additive, so the user's own hooks keep firing. `Stop`'s `last_assistant_message` goes
+  straight to the rail; `StopFailure` and `session.error` are the only producers of `failed`.
+- **The launch is augmented at arm time, not stored.**
+  [`launch-augment.ts`](../../src/lib/launch-augment.ts) composes `claude --settings <file>
+  --session-id <minted>`, `codex -c tui.notification_condition=always` and `opencode --port
+  <reserved>`. The journal keeps the **user's** command; restore re-applies the additions.
+  Deck's own flags are exempt from `commandProblem` (macOS `userData` holds a space, which a
+  user-typed command may not) and are composed here, shell-quoted, and nowhere else. A flag
+  the user already typed is never doubled — that half of the row simply stays inferred. A
+  minted `--session-id` is added only to a **fresh** launch; a resuming command keeps its own.
+- `cursor-agent` classifies as an agent on both hosts. Electron only otherwise: on Tauri no
+  adapter exists and every mark stays inferred. Windows ships no hook script.
 
 ## Actions, keymaps and the menu
 

@@ -25,7 +25,7 @@
 > **Windows:** the 1.0 installer is x64 and unsigned, so Microsoft SmartScreen will warn on
 > first install. Windows 1.0 has shipped without a real-hardware runtime verification pass.
 
-![SpaceVibe Deck 1.0 with the Agent Rail and multiple CLI agents](.github/assets/screenshot.png?v=1.0.0) `current`
+![SpaceVibe Deck 1.0 with the Agent Rail and multiple CLI agents](.github/assets/screenshot.png?v=1.0.0)
 
 ## The attention loop
 
@@ -38,8 +38,8 @@
 
 Resume is exact for Claude Code, Codex, and OpenCode; Gemini CLI and Antigravity are
 best-effort, while custom agents relaunch their declared command. The implementation is
-documented in [session restore](src/terminal/session-restore.ts) `current` and
-[resume resolution](electron/resume/resolve.ts) `current`.
+documented in [session restore](src/terminal/session-restore.ts) and
+[resume resolution](electron/resume/resolve.ts).
 
 ## What ships in V1
 
@@ -48,64 +48,63 @@ documented in [session restore](src/terminal/session-restore.ts) `current` and
 Every live project and pane stays visible in one rail. A short status mark distinguishes
 working, asked, and failed work; supported session logs supply the agent's latest words, and
 unsupported tails fall back to the agent name
-([rail model](src/ui/agent-rail-model.ts) `current`).
+([rail model](src/ui/agent-rail-model.ts)).
 
 Click a worktree card's heading to focus its session and expand or collapse its agents.
 Clicking the card's empty space focuses it without changing expansion
-([worktree card](src/ui/worktree-card.tsx) `current`).
+([worktree card](src/ui/worktree-card.tsx)).
 Right-click a worktree and choose **Worktree color**, or **Default** to reset its color.
 The choice stays with that checkout and colors its dot, selected frame and badge
-([worktree color picker](src/ui/worktree-color-picker.tsx) `current`).
+([worktree color picker](src/ui/worktree-color-picker.tsx)).
 
 ### One project stage
 
 Run real PTYs in split panes, move between git worktrees, edit files, and keep browser pages
 beside terminals as tabs on the same stage. Cmd/Ctrl+click on a path from an agent opens the
 file and line in a configured editor
-([PTY host](electron/pty/spawn.ts) `current`, [stage strip](src/ui/stage-surface-strip.ts) `current`).
+([PTY host](electron/pty/spawn.ts), [stage strip](src/ui/stage-surface-strip.ts)).
 
 Drag tabs to rearrange them, or right-click for **Pin/Unpin**, **Close**,
 **Close Others** and **Close to the Right**. Pinned tabs stay first with their
 icon and name; bulk closes skip them. Order and pins last for the current
 window session; keyboard navigation follows the visible order
-([tab strip](src/ui/tab-strip.tsx) `current`, [strip order](src/lib/strip-order.ts) `current`).
+([tab strip](src/ui/tab-strip.tsx), [strip order](src/lib/strip-order.ts)).
 
 Worktree creation allows up to a minute for checkout. If it is interrupted, Deck
 checks the branch, destination and worktree registration before reporting whether
 you can retry or need to inspect the existing checkout. It does not automatically
 delete or overwrite a partial checkout
-([worktree creation](electron/git/worktree.ts) `current`).
+([worktree creation](electron/git/worktree.ts)).
 
 ### Sessions that come back
 
 Deck continuously journals open tabs and file surfaces, guards boot restoration against crash
 loops, and resumes supported conversations without assigning the same session twice
-([session journal](src/terminal/session-journal.ts) `current`). Pane scrollback and unsaved file
+([session journal](src/terminal/session-journal.ts)). Pane scrollback and unsaved file
 edits are not restored.
-
-If Agent Board was on screen when you quit, session restore brings it back on screen. If you
-had switched to a terminal or file, only its `Agents` tab returns
-([Board restore](src/terminal/session-restore.ts) `current`).
 
 Recent activity filters its five latest sessions to **Unread**: questions,
 warnings and completed results not yet acknowledged in this window. Selecting
 one opens its pane and acknowledges it; **View all** opens the complete history
-([Recent activity](src/ui/sessions/recent-session-activity.tsx) `current`).
+([Recent activity](src/ui/sessions/recent-session-activity.tsx)).
 
 ### Local usage accounting
 
 The usage dashboard reads supported agents' existing local session logs and groups token use
 and known model costs by agent and day
-([usage aggregation](src/lib/usage-aggregate.ts) `current`). It needs no Deck account. Deck
-sends first-party usage analytics — on by default, with no code, file paths or prompts,
-and switched off in Settings → Privacy ([what Deck sends](src/telemetry/payload.ts) `current`).
+([usage aggregation](src/lib/usage-aggregate.ts)). It needs no Deck account. Deck
+sends first-party usage analytics from release 1.1.0 onward — always on, with no opt-out,
+and no code, file paths or prompts; Settings → Privacy states exactly what is sent
+([what Deck sends](src/telemetry/payload.ts)).
+The receiving service is maintained in [backend/](backend/README.md);
+read the [public privacy notice](https://deck.spacevibe.dev/privacy) for build-specific policy.
 
 ### Workflow-neutral agents
 
 Deck includes six agent definitions and accepts user-declared CLI commands. Each agent runs in
 its own terminal process; Deck coordinates the workspace and attention surface without
 replacing the CLI's own workflow
-([agent catalog](src/lib/agent-catalog.ts) `current`).
+([agent catalog](src/lib/agent-catalog.ts)).
 
 ## Install
 
@@ -126,9 +125,9 @@ Deck checks for updates and tells you when one is ready; you choose when to down
 and relaunch. Both platforms use the moving
 [latest release](https://github.com/mxrsv/spacevibe-deck/releases/latest), never a pinned asset.
 
-**Trust:** MIT licensed · no Deck account · first-party usage analytics on by default, with
-no code, paths or prompts, and a Settings → Privacy switch that turns them off
-([what Deck sends](src/telemetry/payload.ts) `current`) · session and usage data read from
+**Trust:** MIT licensed · no Deck account · from 1.1.0, first-party usage analytics always on, with no code,
+paths or prompts, and no opt-out; Settings → Privacy states what is sent
+([what Deck sends](src/telemetry/payload.ts)) · session and usage data read from
 local agent storage.
 
 ## Built-in agents
@@ -155,8 +154,7 @@ replace its launch command, or add another CLI command.
 | Open usage | `⌘⇧U` | `Ctrl+Shift+U` |
 | Open Settings | `⌘,` | `Ctrl+,` |
 
-The complete bindings are listed in [keyboard shortcuts](docs/user/keyboard-shortcuts.md)
-`current` and defined in [the platform keymaps](src/terminal/default-keymaps.ts) `current`.
+The complete bindings are listed in [keyboard shortcuts](docs/user/keyboard-shortcuts.md) and defined in [the platform keymaps](src/terminal/default-keymaps.ts).
 
 ## Build from source
 
@@ -172,26 +170,18 @@ Create a local packaged macOS build with `npm run electron:package`. Release pac
 separate signed and notarized workflow.
 
 Deck uses Electron, Preact, TypeScript, xterm.js, Monaco Editor, and `node-pty`. The host and
-renderer boundary is mapped in [the architecture overview](docs/internals/overview.md)
-`current`; the full documentation index is [docs/README.md](docs/README.md) `current`, with
-user guides under [docs/user/](docs/user/getting-started.md) `current` and the build and
-release runbooks under [docs/operations/](docs/operations/development.md) `current`.
+renderer boundary is mapped in [the architecture overview](docs/internals/overview.md); the full documentation index is [docs/README.md](docs/README.md), with
+user guides under [docs/user/](docs/user/getting-started.md) and the build and
+release runbooks under [docs/operations/](docs/operations/development.md).
 
 ## Contributing
 
 Focused issues and pull requests are welcome. Please open an
 [issue](https://github.com/mxrsv/spacevibe-deck/issues) before starting a substantial product
 or architecture change, and keep each pull request to one concern.
-[CONTRIBUTING.md](CONTRIBUTING.md) `current` says what is likely to be accepted, what needs
+[CONTRIBUTING.md](CONTRIBUTING.md) says what is likely to be accepted, what needs
 an issue first, and what a pull request must carry.
 
 ## License
 
-[MIT](LICENSE) `current` © 2026 mxrsv
-
-## Chưa khớp thực tế
-
-| Claim | Intent | Status | Evidence |
-| ----- | ------ | ------ | -------- |
-| The README and both marketing images are visually approved | `current` | Verified | Owner approved the GitHub-rendered page, [hero](.github/assets/screenshot.png) and [social preview](.github/assets/social-preview.png) on 2026-08-22. |
-| SpaceVibe Deck 1.0 is runtime-verified on Windows | `building` | Unverified | The x64 installer ships unsigned by owner decision; the real-hardware Gate C remains open. |
+[MIT](LICENSE) © 2026 mxrsv
