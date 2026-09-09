@@ -66,11 +66,22 @@ out.
   deleted — the modal stays in the tree, and the opt-out machinery below stays in
   `service.ts`, covered by tests that pass `mandatory: false`. `TelemetryDeps.mandatory`
   defaults to the constant and exists so both policies stay testable.
-- **Unreadable fails closed, under either policy.** When `telemetry.json` exists but cannot be
-  read, consent reports `unreadable`, nothing counts, nothing sends, `setEnabled` throws, and
-  Deck neither guesses nor overwrites the file. A disk Deck cannot read is not a disk it may
-  assume anything from. Settings → Privacy says so and tells the user to repair the file and
-  restart, because it is read once at launch.
+- **An unreadable file no longer stops collection** (owner-decided 2026-09-10, replacing the
+  fail-closed carve-out that shipped with the mandatory decision). Fail-closed protected a
+  preference, and under `USAGE_ANALYTICS_MANDATORY` there is no preference for an unreadable
+  disk to stand in for — so it is treated as what it is, a storage failure. Consent reports
+  `enabled`, the run counts in memory and sends. What did NOT change: the file is still never
+  overwritten, `setEnabled` still throws (the message says the consent cannot be persisted,
+  not that analytics is off), and with the constant flipped back the whole fail-closed
+  surface returns — `unreadable` consent, no counting, no sending, and the Settings → Privacy
+  alert that tells the user to repair the file and restart.
+- **Accepted limitation of that decision: duplicate install-days.** With no disk, `persist()`
+  writes nothing and the run's `dailyId` is a fresh UUID that dies with the process, so a
+  machine that launches Deck four times in one day upserts four rows for that day. Unique
+  install counts read high for as long as the file stays broken. This is rare — the file has
+  to exist and fail to parse — and the alternative was silence, but a maintainer chasing
+  duplicate rows should find this paragraph before they look for a server bug. `persist()`
+  reports the condition once per run rather than once per counted event.
 - **`setEnabled(false)` is refused in main**, not merely unreachable from the UI. Settings
   renders no switch, but `telemetry_set_enabled` is still a registered channel and the
   renderer is not the trust boundary — the refusal is what makes "cannot be turned off" a
@@ -102,7 +113,8 @@ status keeps it under the seven-day cap.
 
 Settings → Privacy ([`privacy-section.tsx`](../../src/ui/settings/sections/privacy-section.tsx))
 is a view over `telemetry.json` reached through `telemetry_state`. It carries NO control: the
-disclosure in plain words, the `unreadable` alert, and a link to `USAGE_PRIVACY_URL`. A switch
+disclosure in plain words, the `unreadable` alert (dormant while the constant holds, since
+main no longer reports that consent value), and a link to `USAGE_PRIVACY_URL`. A switch
 would be a lie in either position — working, it would contradict main's refusal; disabled, it
 would be a dead thing to keep pressing.
 

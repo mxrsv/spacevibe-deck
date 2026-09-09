@@ -62,8 +62,8 @@ Tauri releases send no analytics. See the [payload contract](../../src/telemetry
 
 Analytics state and pending daily counters live in `telemetry.json` in Deck's data folder,
 separate from `settings.json`. A stored off choice from a development build becomes enabled
-on launch. If `telemetry.json` exists but cannot be read, counting and sending stay off;
-this page explains the error and asks you to repair the file and restart Deck.
+on launch. If `telemetry.json` cannot be read, Deck counts for that run in memory and leaves
+the file untouched; the day's counts are lost when you quit.
 
 ## Reset
 

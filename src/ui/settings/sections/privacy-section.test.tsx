@@ -68,9 +68,12 @@ describe("PrivacySection", () => {
     expect(host.telemetrySetEnabled).not.toHaveBeenCalled();
   });
 
-  it("says why an unreadable state file keeps sharing off", () => {
-    // Fail-closed survives the mandatory policy, and a page that says "always
-    // on" owes the reader the one case where it is in fact off.
+  it("still says why an unreadable state file keeps sharing off", () => {
+    // Dormant, not dead. Since 2026-09-10 main folds an unreadable file to
+    // `enabled`, so this phase never reaches a shipped renderer — but the
+    // alert is the whole fail-closed surface a reversal has to get back, and
+    // deleting it because nothing currently sends this value is how a
+    // one-constant reversal quietly stops being one.
     telemetryConsent.value = "unreadable";
     act(() => render(<PrivacySection />, mount));
     expect(mount.textContent).toContain("could not be read");

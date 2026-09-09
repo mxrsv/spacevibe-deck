@@ -9,10 +9,11 @@
  * any more, and since 2026-09-06 there is no answer to give: analytics is
  * MANDATORY, `USAGE_CONSENT_ASKED` below is false and
  * `USAGE_ANALYTICS_MANDATORY` is true, so `declined` is unreachable and an
- * existing one folds back to `enabled`. An unreadable `telemetry.json` still
- * fails closed to off — that is a disk Deck cannot read, not a preference, and
- * guessing past it would mean writing over state of unknown shape. See
- * docs/internals/telemetry.md.
+ * existing one folds back to `enabled`. Since 2026-09-10 an unreadable
+ * `telemetry.json` no longer stops collection either: it is a storage failure,
+ * not a preference, and there is no preference left for it to stand in for.
+ * The file is still never written over — that run counts in memory and its
+ * daily id dies with the process. See docs/internals/telemetry.md.
  */
 
 /**

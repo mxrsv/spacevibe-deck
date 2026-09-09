@@ -135,9 +135,12 @@ function parseBuffer(raw: unknown): DayBuffer | null {
  * unchanged — OFF becomes a state only the user can put the app in, and one
  * that is never inferred away.
  *
- * A file that cannot be READ at all is a different answer under either policy:
- * `consentNow` reports `unreadable` and nothing is sent, because a disk Deck
- * cannot read is not a disk it may assume a preference from.
+ * A file that cannot be READ at all no longer changes the answer while the
+ * constant holds (2026-09-10): `consentNow` reports `enabled` and the run
+ * counts and sends from memory, because with no preference to protect there
+ * is nothing an unreadable disk could be evidence of. It is still never
+ * overwritten. Under `!mandatory` it goes back to reporting `unreadable` and
+ * sending nothing.
  */
 export function parsePersisted(
   raw: unknown,
@@ -188,6 +191,8 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
   let stopTimer: (() => void) | null = null;
   let sending = false;
   let initialSnapshotDone = false;
+  /** One report per run for a write-locked store; see `persist`. */
+  let unreadableReported = false;
 
   const startTimer =
     deps.startTimer ??
@@ -199,7 +204,13 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     });
 
   function consentNow(): ConsentState {
-    if (deps.store.unreadable()) {
+    // An unreadable file is a preference question only where preferences
+    // exist. Under `USAGE_ANALYTICS_MANDATORY` there is nothing to infer —
+    // every install counts — so a disk Deck cannot read stops being an answer
+    // and becomes what it is, a storage failure (owner-decided 2026-09-10,
+    // overturning the fail-closed carve-out of DECK-38). With the constant
+    // flipped back, `unreadable` is again reported and nothing is sent.
+    if (deps.store.unreadable() && !mandatory) {
       return "unreadable";
     }
     // The version downgrade went with the question (2026-08-23). It existed to
@@ -216,6 +227,21 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
   }
 
   function persist(): void {
+    if (deps.store.unreadable()) {
+      // A mandatory build now counts through an unreadable file, but
+      // `electron/store.ts` write-locks that file and every `set` throws, so
+      // the fold below would be a throw per counted event. Skip the write and
+      // say it ONCE rather than never: silence here is the state where a
+      // maintainer reads duplicate install-days as a server bug.
+      if (!unreadableReported) {
+        unreadableReported = true;
+        deps.report(
+          "telemetry.json is unreadable; counting in memory only, and this run's daily id will not survive a restart",
+          null,
+        );
+      }
+      return;
+    }
     try {
       deps.store.write(state);
     } catch (error: unknown) {
@@ -458,9 +484,16 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
         throw new Error("usage analytics is mandatory in this build");
       }
       if (deps.store.unreadable()) {
-        // Fail closed: no consent is inferred and nothing is reset here.
-        // Recovering requires the user to repair or remove the file.
-        throw new Error("telemetry.json is unreadable; analytics stays off");
+        // Nothing is reset here under either policy: a failed read is never
+        // permission to overwrite. What changed is only the reason. A
+        // mandatory build is already counting, so the refusal is about the
+        // write, not the collection; a non-mandatory build is off and stays
+        // off. Recovering requires the user to repair or remove the file.
+        throw new Error(
+          mandatory
+            ? "telemetry.json is unreadable; consent cannot be persisted"
+            : "telemetry.json is unreadable; analytics stays off",
+        );
       }
       const previous = state;
       if (next) {

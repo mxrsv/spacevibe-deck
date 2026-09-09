@@ -1,8 +1,8 @@
 /**
  * Types and constants for the usage analytics main-process service.
  *
- * The consent policy (on by default, `declined` never inferred away, an
- * unreadable file fails closed) is stated once, in
+ * The consent policy (mandatory, `declined` folded back, an unreadable file
+ * counted through rather than failed closed) is stated once, in
  * `src/telemetry/usage-notice.ts` and docs/internals/telemetry.md; this file
  * only encodes it. Main owns EVERYTHING here — consent, daily ids
  * and buffers live in `telemetry.json`, never in `settings.json` (settings

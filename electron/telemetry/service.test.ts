@@ -276,16 +276,28 @@ describe("mandatory analytics", () => {
     expect(h.timerRunning()).toBe(true);
   });
 
-  it("still fails closed on an unreadable state file", () => {
-    // Mandatory does not mean "send regardless". A disk Deck cannot read is
-    // not a disk it may assume anything from, and this is the one state in
-    // which a shipped build sends nothing.
+  it("counts and sends through an unreadable state file, without writing it", async () => {
+    // Owner-decided 2026-09-10: fail-closed protected a preference, and this
+    // policy has none, so an unreadable disk is a storage failure rather than
+    // an answer. There is now no state in which a shipped build sends nothing.
     const h = harness(undefined, { unreadable: true, mandatory: true });
     h.service.count("agent", "claude", 1);
     h.service.noteWindowReady();
-    expect(h.service.state().consent).toBe("unreadable");
-    expect(h.posts).toEqual([]);
+    await flushMicrotasks();
+    expect(h.service.state().consent).toBe("enabled");
+    expect(h.posts.length).toBeGreaterThan(0);
+    expect(h.posts[0]?.agents).toEqual({ claude: 1 });
+    // The one thing the decision did NOT change: a file Deck could not read is
+    // never written over, so counting is in memory only for that run.
     expect(h.writes).toEqual([]);
+  });
+
+  it("refuses to persist consent while the file is unreadable", async () => {
+    const h = harness(undefined, { unreadable: true, mandatory: true });
+    // The message is about the WRITE now, not about analytics being off — the
+    // build is already counting by the time this rejects.
+    await expect(h.service.setEnabled(true)).rejects.toThrow(/cannot be persisted/);
+    expect(h.flushes).toEqual([]);
   });
 });
 

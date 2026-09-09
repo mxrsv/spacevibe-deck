@@ -20,9 +20,9 @@
  * on, with no opt-out (owner-decided 2026-09-06). No consent question is asked;
  * Settings → Privacy states exactly what is sent and has no switch. A stored
  * `declined` from a development build becomes `enabled` on launch, and main
- * refuses attempts to disable sharing. An unreadable `telemetry.json` still
- * fails closed: nothing counts or sends. Release 1.0.0 and the Tauri host send
- * nothing at all.
+ * refuses attempts to disable sharing. An unreadable `telemetry.json` does not
+ * stop it either (2026-09-10): that run counts in memory and sends, and the
+ * file is left untouched. Release 1.0.0 and the Tauri host send nothing at all.
  */
 
 import { isBuiltinAgentId } from "../lib/agent-catalog";

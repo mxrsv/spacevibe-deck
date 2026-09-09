@@ -42,9 +42,13 @@ export function PrivacySection() {
         build. No code, file paths or prompts are ever included.
       </p>
       {consent === "unreadable" ? (
-        // Fail-closed (spec §5): the state file exists but could not be read,
-        // so analytics stays off and Deck refuses to guess or overwrite it.
-        // Recovering is an explicit user action on the file itself.
+        // Dormant while `USAGE_ANALYTICS_MANDATORY` holds: since 2026-09-10
+        // main folds an unreadable file to `enabled`, so this consent value
+        // never arrives and this alert never renders. It is kept, not deleted,
+        // for the same reason `USAGE_CONSENT_ASKED`'s dialog is — flipping the
+        // constant back must restore the whole fail-closed surface in one
+        // move, and this sentence is the only place that tells a user their
+        // file is broken and how to recover it.
         <p class="settings-screen__note" role="alert">
           The analytics state file (telemetry.json in Deck's data folder) could not be read, so
           sharing stays off. Repair or remove that file, then restart Deck — reopening Settings is
