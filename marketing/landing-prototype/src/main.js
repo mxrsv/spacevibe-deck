@@ -5,11 +5,13 @@ import "../styles/direction-a.css";
 import "../styles/install-command.css";
 import "../styles/tour.css";
 import "../styles/scenes.css";
+import "../styles/release-modal.css";
 
 import { messages } from "./copy.js";
 import { renderDirectionA } from "./directions/a.js";
 import { upgradeReleaseLinks } from "./download-links.js";
 import { mountQuickInstall } from "./install-command.js";
+import { announceRelease, isReleaseModalForced } from "./release-modal.js";
 import { renderTour } from "./tour/index.js";
 
 const specimenRoot = document.querySelector("#specimen-root");
@@ -39,5 +41,22 @@ function render() {
 }
 
 render();
-// One-shot: the public landing is English-only.
-void upgradeReleaseLinks(specimenRoot);
+
+function safeLocalStorage() {
+  // Reading `localStorage` itself throws in a blocked third-party context, so
+  // the guard has to wrap the property access, not just the later get/set.
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// One-shot: the public landing is English-only. The release notice rides this
+// same request — see release-modal.js — so the page makes one GitHub call.
+void upgradeReleaseLinks(specimenRoot).then((releases) => {
+  announceRelease(document.body, messages.en, releases, {
+    storage: safeLocalStorage(),
+    forced: isReleaseModalForced(globalThis.location?.search),
+  });
+});

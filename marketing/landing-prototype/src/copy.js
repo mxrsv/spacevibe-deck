@@ -76,6 +76,14 @@ export const messages = {
     footerIssues: "Issues",
     footerLicense: "MIT License",
     footerBuilt: "Built with xterm.js · Preact",
+    releaseModalEyebrow: "// Deck · Release",
+    releaseModalTitleLead: "Deck",
+    releaseModalTitleTail: "is out.",
+    releaseModalBody:
+      "The newest build is published on GitHub Releases with notes and installers for every platform Deck ships on.",
+    releaseModalPrimary: "See the release",
+    releaseModalDismiss: "Later",
+    releaseModalClose: "Close release notice",
   },
   vi: {
     navProduct: "Deck",
@@ -157,6 +165,14 @@ export const messages = {
     footerIssues: "Báo lỗi",
     footerLicense: "Giấy phép MIT",
     footerBuilt: "Xây bằng xterm.js · Preact",
+    releaseModalEyebrow: "// Deck · Release",
+    releaseModalTitleLead: "Deck",
+    releaseModalTitleTail: "đã ra mắt.",
+    releaseModalBody:
+      "Bản dựng mới nhất đã lên GitHub Releases, kèm ghi chú phát hành và trình cài cho mọi nền tảng Deck hỗ trợ.",
+    releaseModalPrimary: "Xem bản phát hành",
+    releaseModalDismiss: "Để sau",
+    releaseModalClose: "Đóng thông báo phát hành",
   },
 };
 

@@ -82,6 +82,11 @@ function retargetInstallManualLinks(root, urls) {
   }
 }
 
+/**
+ * Returns the normalized release list so a second consumer (the release
+ * notice) can ride this one request rather than spending another against the
+ * unauthenticated GitHub quota. Returns an empty list on any failure.
+ */
 export async function upgradeReleaseLinks(root) {
   let releases;
 
@@ -89,7 +94,7 @@ export async function upgradeReleaseLinks(root) {
     releases = await fetchPublishedReleases();
   } catch {
     setDownloadProofState(root, "unavailable");
-    return;
+    return [];
   }
 
   const urls = selectDownloadUrls(releases);
@@ -106,4 +111,6 @@ export async function upgradeReleaseLinks(root) {
       label.textContent = stableTag;
     }
   }
+
+  return releases;
 }

@@ -115,8 +115,12 @@ export async function fetchPublishedReleases(fetcher = globalThis.fetch) {
   return normalizeReleases(payload);
 }
 
+export function latestStableRelease(releases) {
+  return releases.find((release) => !release.prerelease) ?? null;
+}
+
 export function latestStableTag(releases) {
-  return releases.find((release) => !release.prerelease)?.tag ?? null;
+  return latestStableRelease(releases)?.tag ?? null;
 }
 
 function assetUrl(release, matches) {

@@ -1,0 +1,402 @@
+/* The release notice.
+   ------------------------------------------------------------------------
+   Signature: a bulletin PINNED to the page by a green tick on its left spine.
+   Everything else on this landing is soft — 999px pills, radial washes, an oil
+   painting. The notice is the one square-cornered object, because it is the one
+   thing that interrupts you, and an interruption that looks like a toast reads
+   as ignorable.
+
+   Colour: this is the ONE saturated surface on a page whose doctrine (see
+   tokens.css) is "the signal colour is white". The exception is deliberate and
+   bounded — the green appears in exactly two places, the spine marker and the
+   version tag, and never on a face, a button or a body line. It is a status
+   light, not a theme.
+
+   The panel plane is the app's own stage colour (--sg-bg), so the notice reads
+   as coming from the product rather than from the marketing page it covers. */
+
+.release-modal {
+  /* Bright terminal green. Held at one value; the tag derives from it rather
+     than introducing a second literal to keep in sync. */
+  --rm-accent: #3ee07c;
+  --rm-accent-rgb: 62 224 124;
+  --rm-panel: var(--sg-bg);
+  --rm-ink: #ffffff;
+  --rm-ink-soft: rgb(255 255 255 / 62%);
+  --rm-ink-faint: rgb(255 255 255 / 40%);
+  --rm-line: rgb(255 255 255 / 14%);
+  --rm-line-strong: rgb(255 255 255 / 26%);
+  --rm-ease: cubic-bezier(0.22, 0.78, 0.18, 1);
+  width: min(33rem, calc(100vw - 2.5rem));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  color: var(--rm-ink);
+  background: transparent;
+  border: 0;
+}
+
+.release-modal::backdrop {
+  /* Slightly warm-black rather than neutral: the page underneath carries an
+     oil painting, and a pure-grey scrim over it turns the plate ashen. */
+  background: rgb(6 8 7 / 68%);
+  backdrop-filter: blur(7px) saturate(115%);
+  animation: release-modal-scrim 320ms var(--rm-ease) both;
+}
+
+.release-modal__panel {
+  position: relative;
+  padding: clamp(1.5rem, 3.2vw, 2.15rem) clamp(1.4rem, 3vw, 2.1rem)
+    clamp(1.5rem, 3vw, 1.9rem);
+  /* Square. See the header note — this is the composition, not an oversight. */
+  background:
+    radial-gradient(
+      120% 90% at 0% 0%,
+      rgb(var(--rm-accent-rgb) / 6%),
+      transparent 46%
+    ),
+    var(--rm-panel);
+  /* ONE hairline, nothing else. The earlier version stacked a light border, an
+     inset top highlight and a black outer ring — three edges reading as one
+     thick, fussy frame. Depth comes from the drop shadow; the spine is the only
+     edge allowed to speak. */
+  border: 1px solid var(--rm-line);
+  box-shadow: 0 2rem 5rem rgb(0 0 0 / 62%);
+  animation: release-modal-rise 460ms var(--rm-ease) both;
+}
+
+/* The spine: a hairline down the left edge that draws itself from the top,
+   with a square marker sitting astride it. Both together are the pin. */
+.release-modal__spine {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  display: block;
+  width: 3px;
+  /* Full strength through the top third, then a long tail. A spine that fades
+     at 62% read as a rendering artefact rather than as a deliberate edge. */
+  background: linear-gradient(
+    180deg,
+    var(--rm-accent) 0%,
+    var(--rm-accent) 34%,
+    rgb(var(--rm-accent-rgb) / 34%) 78%,
+    rgb(var(--rm-accent-rgb) / 8%) 100%
+  );
+  box-shadow: 0 0 1.2rem rgb(var(--rm-accent-rgb) / 22%);
+  transform-origin: top;
+  animation: release-modal-spine 560ms var(--rm-ease) 120ms both;
+}
+
+.release-modal__marker {
+  position: absolute;
+  top: clamp(1.55rem, 3.3vw, 2.2rem);
+  left: 50%;
+  width: 0.85rem;
+  height: 0.85rem;
+  background: var(--rm-accent);
+  /* The one lit pixel on the page. The halo is a shadow, not a loop — nothing
+     on this landing animates while the reader is idle. */
+  box-shadow:
+    0 0 0.5rem rgb(var(--rm-accent-rgb) / 70%),
+    0 0 1.6rem rgb(var(--rm-accent-rgb) / 30%);
+  transform: translate(-50%, -50%);
+  animation: release-modal-marker 420ms var(--rm-ease) 380ms both;
+}
+
+.release-modal__head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  /* Room for the close button, which lives in the same optical row. */
+  padding-right: 3.4rem;
+}
+
+.release-modal__eyebrow {
+  margin: 0;
+  color: var(--rm-ink-faint);
+  font: 400 0.7rem/1 var(--font-mono);
+  /* Wide tracking is what makes a mono label read as a stamp rather than as
+     code. Set on purpose at 0.24em; anything under 0.15em reads as a filename. */
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.release-modal__tag {
+  margin: 0 0 0 auto;
+  color: var(--rm-accent);
+  font: 400 0.74rem/1 var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.release-modal__close {
+  position: absolute;
+  top: clamp(1.1rem, 2.4vw, 1.5rem);
+  right: clamp(1.1rem, 2.4vw, 1.5rem);
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  padding: 0;
+  color: var(--rm-ink-faint);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition:
+    color 220ms var(--rm-ease),
+    background-color 220ms var(--rm-ease);
+}
+
+.release-modal__close:hover,
+.release-modal__close:focus-visible {
+  color: var(--rm-ink);
+  background: rgb(255 255 255 / 8%);
+}
+
+/* The dialog opens with this button focused, so its ring is the first thing on
+   screen — Chrome's default is a blue the page never uses. A quiet white
+   hairline, not the accent: a green box here competed with the spine. */
+.release-modal__close:focus-visible {
+  outline: 1px solid var(--rm-line-strong);
+  outline-offset: 0;
+}
+
+.release-modal__title {
+  max-width: 15ch;
+  margin: clamp(1.1rem, 2.6vw, 1.6rem) 0 0;
+  /* Same face, weight and tracking as the hero headline (direction-a.css):
+     500 and -0.032em. The notice speaks in the page's voice. */
+  font: 500 clamp(1.85rem, 4.4vw, 2.6rem) / 1.06 var(--font-display);
+  letter-spacing: -0.032em;
+}
+
+/* The one ornament. An italic serif numeral against a geometric sans reads as
+   an edition number stamped on a plate — it is what stops the headline being
+   "product + version" boilerplate. Kept to the number alone; the words stay
+   sans, so this is a gesture and not a second typeface in the system. */
+.release-modal__numeral {
+  padding: 0 0.06em;
+  color: rgb(255 255 255 / 78%);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 1.02em;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.release-modal__body {
+  max-width: 40ch;
+  margin: clamp(0.85rem, 2vw, 1.15rem) 0 0;
+  color: var(--rm-ink-soft);
+  /* 1.62 leading at 1.0625rem: the measure is short, so the block needs air to
+     stop reading as a dense paragraph pasted into a dialog. */
+  font: 400 1.0625rem/1.62 var(--font-display);
+  letter-spacing: -0.004em;
+}
+
+.release-modal__actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 1.75rem);
+  margin-top: clamp(1.4rem, 3vw, 2rem);
+  padding-top: clamp(1.3rem, 2.8vw, 1.8rem);
+  border-top: 1px solid var(--rm-line);
+}
+
+/* The CTA is split in two cells by a hairline — label, then the arrow in its
+   own tray. Same white face and inverted-sweep hover as the hero's install
+   button (direction-a.css .a-primary-cta), squared off to match this panel. */
+.release-modal__cta {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  color: var(--sg-bg);
+  text-decoration: none;
+  background: #ffffff;
+  border: 1px solid #ffffff;
+  box-shadow: 0 0.6rem 2rem rgb(255 255 255 / 9%);
+  isolation: isolate;
+  transition:
+    box-shadow 280ms var(--rm-ease),
+    color 380ms var(--rm-ease),
+    transform 280ms var(--rm-ease);
+}
+
+.release-modal__cta::before {
+  position: absolute;
+  z-index: -1;
+  inset: -2px;
+  background: var(--sg-bg);
+  content: "";
+  transform: translateX(-112%) skewX(-14deg);
+  transform-origin: left;
+  transition: transform 380ms var(--rm-ease);
+}
+
+.release-modal__cta:hover,
+.release-modal__cta:focus-visible {
+  color: var(--rm-ink);
+  box-shadow: 0 0.9rem 2.6rem rgb(255 255 255 / 16%);
+  transform: translateY(-2px);
+}
+
+.release-modal__cta:hover::before,
+.release-modal__cta:focus-visible::before {
+  transform: translateX(0) skewX(0);
+}
+
+.release-modal__cta:focus-visible {
+  outline: 1px solid var(--rm-line-strong);
+  outline-offset: 3px;
+}
+
+.release-modal__cta-label {
+  padding: 0.85rem clamp(1rem, 2.4vw, 1.4rem);
+  font: 500 0.95rem/1 var(--font-display);
+  letter-spacing: -0.008em;
+}
+
+.release-modal__cta-arrow {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  border-left: 1px solid currentColor;
+  /* The divider is `currentColor` at a tenth so it flips with the sweep rather
+     than staying a dark line on a dark face mid-hover. */
+  border-left-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.release-modal__cta-arrow svg {
+  transition: transform 280ms var(--rm-ease);
+}
+
+.release-modal__cta:hover .release-modal__cta-arrow svg,
+.release-modal__cta:focus-visible .release-modal__cta-arrow svg {
+  transform: translate(0.1rem, -0.1rem);
+}
+
+.release-modal__later {
+  padding: 0.2rem 0;
+  color: var(--rm-ink-soft);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: 400 0.95rem/1 var(--font-display);
+  text-decoration: underline;
+  text-underline-offset: 0.32em;
+  text-decoration-color: rgb(255 255 255 / 30%);
+  transition:
+    color 220ms var(--rm-ease),
+    text-decoration-color 220ms var(--rm-ease);
+}
+
+.release-modal__later:hover,
+.release-modal__later:focus-visible {
+  color: var(--rm-ink);
+  text-decoration-color: var(--rm-ink);
+}
+
+.release-modal__later:focus-visible {
+  outline: 1px solid var(--rm-line-strong);
+  outline-offset: 4px;
+}
+
+@keyframes release-modal-scrim {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes release-modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes release-modal-spine {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes release-modal-marker {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Phone: the notice is the whole screen's business, so it takes the width and
+   the actions stack — a 44px-tall CTA beside a text link at 375 leaves the link
+   inside the thumb zone of the button. */
+@media (max-width: 30rem) {
+  .release-modal {
+    width: calc(100vw - 1.75rem);
+  }
+
+  .release-modal__title {
+    max-width: none;
+  }
+
+  .release-modal__body {
+    font-size: 1rem;
+  }
+
+  .release-modal__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.1rem;
+  }
+
+  .release-modal__cta {
+    justify-content: space-between;
+  }
+
+  .release-modal__later {
+    align-self: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .release-modal::backdrop,
+  .release-modal__panel,
+  .release-modal__spine,
+  .release-modal__marker {
+    animation: none;
+  }
+
+  .release-modal__cta,
+  .release-modal__cta::before,
+  .release-modal__cta-arrow svg,
+  .release-modal__close,
+  .release-modal__later {
+    transition: none;
+  }
+
+  .release-modal__cta:hover,
+  .release-modal__cta:focus-visible {
+    transform: none;
+  }
+}
