@@ -9,7 +9,7 @@ import type { SignalConfidence } from "../terminal/agent-attention";
  * The parts a worktree card and its popovers BOTH draw.
  *
  * Split out of `worktree-card.tsx` on 2026-08-27 (spec
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5): the segment
+ * `docs/internals/agent-rail.md`): the segment
  * menu lists the panes behind a segment as the production `.asr-card__row`,
  * "reused rather than restated, so the glyph, the state dot, the model pill,
  * the hover wash and DL-27.21's ✕ all arrive for free". Reuse across two
@@ -93,8 +93,8 @@ export function CardMark({
   if (state === "idle") {
     return null;
   }
-  // `data-confidence` draws an inferred `asked`/`done` hollow, the same rule
-  // the rail's `RailStatusMark` follows (DL-27.3, amended 2026-09-03).
+  // Keep confidence available to callers; card dots use solid state colors.
+  // The row/segment label carries the inferred qualifier (DL-27.3).
   return (
     <span
       class="asr-card__dot"
@@ -106,15 +106,21 @@ export function CardMark({
 }
 
 /**
- * The trailing loading track: one compositor-friendly pulse while the pane is
- * working, nothing otherwise — but the ELEMENT always renders, so an idle
+ * The trailing loading track: three staggered bars while the pane is working,
+ * nothing otherwise — but the ELEMENT always renders, so an idle
  * row's model pill lands on the same right edge a busy row's does.
  */
 export function CardLoad({ state }: { readonly state: RailState }) {
   const busy = state === BUSY_STATE;
   return (
     <span class="asr-card__load" data-busy={busy} aria-hidden="true">
-      {busy && <i />}
+      {busy && (
+        <>
+          <i />
+          <i />
+          <i />
+        </>
+      )}
     </span>
   );
 }

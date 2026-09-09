@@ -101,7 +101,7 @@ const NOOP_CLOSE = (): void => {};
 /**
  * The actions menu every create control on a checkout raises
  * (`rail-create-consolidation`): one agent, so the first `menuitem` is
- * `Run Claude`. A fresh pair of mocks per test.
+ * `Claude`. A fresh pair of mocks per test.
  */
 function cardActions(): CardActions {
   return {
@@ -282,7 +282,7 @@ describe("WorktreeCard head (design §4)", () => {
     // vacuously against a card that was never opened until this was caught.
     //
     // Rewritten 2026-08-27 (spec
-    // `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4/§5.2): a
+    // `docs/internals/agent-rail.md`): a
     // segment is one agent KIND, so two Claudes are ONE segment carrying `×2`;
     // it is a `<button>` rather than a `<span role="img">`; and the native
     // `title` is gone (DL-23.10 — a `title` never appears on keyboard focus,
@@ -346,8 +346,7 @@ describe("WorktreeCard segment press (spec §16 §15.1, amended 2026-09-02)", ()
   // two — and since the pointer never left the segment, `pointerenter` never
   // fired again and the menu could not come back. A press on a merged segment
   // or on the `+N` tail now PINS the menu open instead; a single-pane segment
-  // keeps its press as a focus, because its menu says nothing the segment did
-  // not.
+  // keeps its press as a focus and does not raise a hover/focus menu.
   const TWO_CODEX = group({
     panes: [
       pane({ paneId: 1, agent: "codex", label: "Codex" }),
@@ -476,6 +475,74 @@ describe("WorktreeCard segment press (spec §16 §15.1, amended 2026-09-02)", ()
     expect(segment?.getAttribute("aria-haspopup")).toBeNull();
   });
 
+  it.each(["pointerenter", "focus"])("does not open a single-agent popover on %s", (event) => {
+    vi.useFakeTimers();
+    mount({ open: false, group: group({ panes: [pane()] }) });
+    const segment = host.querySelector<HTMLButtonElement>(".asr-card__seg");
+    if (event === "focus") act(() => segment?.focus());
+    else fire(segment, event);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+  });
+
+  it.each(["pending", "open"])("drops a %s popover when its group shrinks to one pane", (phase) => {
+    vi.useFakeTimers();
+    mount({ open: false, group: TWO_CODEX });
+    fire(host.querySelector(".asr-card__seg"), "pointerenter");
+    if (phase === "open") {
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(host.querySelector(".asr-pop--panes")).not.toBeNull();
+    }
+    mount({ open: false, group: group({ panes: [TWO_CODEX.panes[0]] }) });
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+    // Adding a pane later must not resurrect a dismissed hover target.
+    mount({ open: false, group: TWO_CODEX });
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+  });
+
+  it("cancels pending hover when a group shrinks and regrows before the delay", () => {
+    vi.useFakeTimers();
+    mount({ open: false, group: TWO_CODEX });
+    fire(host.querySelector(".asr-card__seg"), "pointerenter");
+    act(() => {
+      vi.advanceTimersByTime(40);
+    });
+    mount({ open: false, group: group({ panes: [TWO_CODEX.panes[0]] }) });
+    act(() => {
+      vi.advanceTimersByTime(40);
+    });
+    mount({ open: false, group: TWO_CODEX });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(host.querySelector(".asr-pop--panes")).toBeNull();
+  });
+
+  it("keeps another merged group's pending hover when the open group shrinks", () => {
+    vi.useFakeTimers();
+    const claudes = [pane({ paneId: 3, agent: "claude" }), pane({ paneId: 4, agent: "claude" })];
+    mount({ open: false, group: group({ panes: [...TWO_CODEX.panes, ...claudes] }) });
+    fire(host.querySelector('[data-fit-key^="codex|"]'), "pointerenter");
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(host.querySelector(".asr-pop--panes")).not.toBeNull();
+    fire(host.querySelector('[data-fit-key^="claude|"]'), "pointerenter");
+    mount({ open: false, group: group({ panes: [TWO_CODEX.panes[0], ...claudes] }) });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(host.querySelectorAll(".asr-pop--panes .asr-card__row")).toHaveLength(2);
+    expect(host.querySelector(".asr-pop--panes")?.textContent).toContain("2 Claude agents");
+  });
+
   it("pins exactly the hidden panes on the `+N` tail's press", () => {
     const onFocusPane = vi.fn();
     // Six kinds at the fallback widths overflow the 220px fallback budget.
@@ -538,7 +605,7 @@ describe("WorktreeCard actions menu", () => {
   it("carries the agent rows the `+` exists to offer", () => {
     const menu = openMenu();
     const first = menu?.querySelector(".asr-act__title");
-    expect(first?.textContent).toBe("Run Claude");
+    expect(first?.textContent).toBe("Claude");
   });
 
   it("states a probe still running as a note the arrow keys cannot land on", () => {
@@ -573,7 +640,7 @@ describe("WorktreeCard actions menu", () => {
     // The same node: the menu updated in place rather than being reopened.
     expect(after).toBe(menu);
     expect(after?.querySelector(".asr-act__note")).toBeNull();
-    expect(after?.querySelector(".asr-act__title")?.textContent).toBe("Run Claude");
+    expect(after?.querySelector(".asr-act__title")?.textContent).toBe("Claude");
   });
 
   it("routes an empty answer to Settings instead of leaving the group out", () => {
@@ -623,11 +690,21 @@ describe("WorktreeCard open list (design §5)", () => {
     const loads = host.querySelectorAll(".asr-card__load");
     expect(loads).toHaveLength(2);
     // The idle row's track is present but empty — no bars — while the busy
-    // row's carries one compositor-friendly pulse.
+    // row's carries the three-bar loading mark.
     expect(loads[0].children).toHaveLength(0);
     expect(loads[0].getAttribute("data-busy")).toBe("false");
-    expect(loads[1].children).toHaveLength(1);
+    expect(loads[1].children).toHaveLength(3);
     expect(loads[1].getAttribute("data-busy")).toBe("true");
+  });
+
+  it.each([false, true])("stops all loading bars when work finishes (open=%s)", (open) => {
+    mount({ open, group: group({ panes: [pane({ state: "working" })] }) });
+    expect(host.querySelectorAll(".asr-card__load > i")).toHaveLength(3);
+
+    mount({ open, group: group({ panes: [pane({ state: "done", confidence: "inferred" })] }) });
+    expect(host.querySelectorAll(".asr-card__load > i")).toHaveLength(0);
+    expect(host.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe("done");
+    expect(host.querySelector('[aria-label*="done (inferred)"]')).not.toBeNull();
   });
 
   it("puts busy state after the model in the trailing state/close slot", () => {

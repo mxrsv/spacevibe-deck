@@ -1,7 +1,7 @@
 /* ── The worktree card (WorktreeCard, DL-27.23/DL-27.24, amended) ──────────
    Ported from the owner-approved gallery specimen (`src/gallery/rail-worktree-cards.css`,
    `gxwc-` prefix) onto the production class names `worktree-card.tsx` emits, 1:1 where the
-   DOM allows it. Design: `docs/specs/2026-08-25-rail-worktree-card-design.md`.
+   DOM allows it. Design: `docs/internals/agent-rail.md`.
 
    A checkout renders as `.asr-card` (has panes) or `.asr-bare` (none) — see that component's
    own header for the full class inventory and why each exists. This file styles exactly those
@@ -333,7 +333,7 @@ button.asr-bare:hover {
 
 /*
  * A collapsed card states its agents as ONE segmented bar. Each segment is one AGENT KIND
- * since 2026-08-27 (`docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4) — glyph,
+ * since 2026-08-27 (`docs/internals/agent-rail.md`) — glyph,
  * state badge, and `×N` when it holds several panes. The divider is a `border-left` on every
  * segment but the first, rather than a `gap`, so the rule runs the segment's full height
  * instead of showing the card's own plane through a gap.
@@ -633,8 +633,6 @@ button.asr-bare:hover {
   --asr-badge-size: 5px;
   --asr-badge-ring: 1.5px;
   --asr-badge-outset: 2px;
-  --asr-badge-radius: calc(var(--asr-badge-size) / 2 + var(--asr-badge-ring));
-  --asr-badge-center: calc(var(--asr-badge-radius) - var(--asr-badge-outset));
 }
 
 /* Overflow stays visible for the closed strip's corner badge; row glyphs have no badge. */
@@ -668,8 +666,8 @@ button.asr-bare:hover {
   font: 620 var(--type-micro) / 1 var(--ui-font);
 }
 
-/* The corner badge uses content-box: the ring surrounds the 5px fill. Explicit marks
-   keep their sidebar-colored separator; inferred rings reveal the surface below. */
+/* Every card state dot has a solid fill, separated from the agent glyph by a quiet ring.
+   Confidence stays in the row/segment label, so inferred states do not become dark holes. */
 .asr-card__dot {
   position: absolute;
   bottom: calc(-1 * var(--asr-badge-outset));
@@ -704,60 +702,46 @@ button.asr-bare:hover {
   display: none;
 }
 
-/* Ended is a filled stop square, distinct from an inferred done ring (DL-27.3). */
+/* Ended is a filled stop square, distinct from the round done dot (DL-27.3). */
 .asr-card__dot[data-state="ended"] {
   background: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
   border-radius: var(--radius-flat);
 }
 
-/* Inferred marks reveal the actual surface, including its hover/focus wash. Mask only the
-   logo under the badge: a transparent fill alone would reveal the overlapping brand glyph.
-   The shared geometry keeps this cutout aligned in rows, strips and menus. */
-.asr-card__glyph:has(
-    > .asr-card__dot[data-confidence="inferred"]:is([data-state="asked"], [data-state="done"])
-  )
-  > .asr-card__logo {
-  mask-image: radial-gradient(
-    circle at var(--asr-badge-center) calc(100% - var(--asr-badge-center)),
-    transparent var(--asr-badge-radius),
-    #000 var(--asr-badge-radius)
-  );
-}
-
-.asr-card__dot[data-state="asked"][data-confidence="inferred"] {
-  background: transparent;
-  border-color: var(--status-unread);
-}
-
-.asr-card__dot[data-state="done"][data-confidence="inferred"] {
-  background: transparent;
-  border-color: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
-}
-
 /* -------------------------------------------------------------------- the loading track */
 
-/* One load mark for every busy agent. It stays legible under reduced motion. */
+/* Three staggered bars share the row/strip loading slot and stay legible without motion. */
 .asr-card__load {
-  display: grid;
-  place-items: center;
-  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 10px;
 }
 
 .asr-card__load > i {
   width: 2px;
-  height: 10px;
-  /* `999px`, DL-20.1's own capsule shape rather than a bare pixel value: on a 2px-wide bar it
-     clamps to the same half-width a small literal would draw, and it is already inside the
-     closed radius scale `scripts/design-language.test.ts` checks. */
+  height: 6px;
   border-radius: 999px;
   background: var(--asr-card-busy);
 }
 
-/* Motion is transform-only and added only when the user allows it. */
+.asr-card__load > i:nth-child(2) {
+  --asr-load-delay: -150ms;
+  height: 10px;
+}
+
+.asr-card__load > i:nth-child(3) {
+  --asr-load-delay: -300ms;
+  height: 8px;
+}
+
+/* Only working panes render bars. Reduced motion keeps the three static heights. */
 @media (prefers-reduced-motion: no-preference) {
   .asr-card__load[data-busy="true"] > i {
     transform-origin: center;
     animation: asr-card-bar 900ms var(--ease) infinite alternate;
+    animation-delay: var(--asr-load-delay, 0ms);
   }
 }
 
