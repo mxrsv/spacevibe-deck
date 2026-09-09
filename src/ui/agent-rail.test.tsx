@@ -535,11 +535,7 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     expect(rows()).toHaveLength(2);
   });
 
-  it("gives every row of a checkout its own state, model pill and close — never the session-tail sentence", async () => {
-    // DL-27.15 REVERSED (design §9.1): the row's line is the pane's own
-    // label and its model, not the agent's newest turn. `session-tail` keeps
-    // feeding the tab strip's chips through `tabTail`, but nothing it
-    // produces reaches a card row.
+  it("updates each row from its own session message while keeping its state and close", async () => {
     tabViews.value = [
       // Two separate tabs of the same checkout, each its first agent — so
       // neither label carries the `(Split)` suffix (spec §3's own case for
@@ -547,24 +543,43 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
       tab({ key: 1, panes: [pane({ paneId: 11, agent: "claude", attention: "requested" })] }),
       tab({ key: 2, panes: [pane({ paneId: 12, agent: "codex", phase: "working" })] }),
     ];
-    paneTails.value = new Map([
-      [11, "Permission needed: prisma migrate dev"],
-      [12, "Running the suite"],
-    ]);
     mount();
     await settle();
     openAllCards();
 
-    const listed = rows();
-    expect(listed.map((row) => row.dataset.state)).toEqual(["asked", "working"]);
-    expect(listed.map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
+    expect(rows().map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
       "Claude",
       "Codex",
     ]);
-    // The sentence itself appears nowhere in the rail.
-    expect(host.textContent).not.toContain("Permission needed");
-    expect(host.textContent).not.toContain("Running the suite");
+    act(() => {
+      paneTails.value = new Map([
+        [11, "Permission needed: prisma migrate dev"],
+        [12, "Running the suite"],
+      ]);
+    });
+    await settle();
+
+    const listed = rows();
+    expect(listed.map((row) => row.dataset.state)).toEqual(["asked", "working"]);
+    expect(listed.map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
+      "Permission needed: prisma migrate dev",
+      "Running the suite",
+    ]);
+    expect(listed[0]?.querySelector(".asr-card__hit")?.getAttribute("title")).toContain(
+      "Permission needed: prisma migrate dev",
+    );
+    expect(
+      listed[1]?.querySelector(".asr-row__action--close")?.getAttribute("aria-label"),
+    ).toContain("Running the suite");
     expect(host.querySelectorAll(".asr-row__action--close")).toHaveLength(2);
+    act(() => {
+      paneTails.value = new Map();
+    });
+    await settle();
+    expect(rows().map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
+      "Claude",
+      "Codex",
+    ]);
   });
 
   it("lets a project header collapse and restore its cards", async () => {
@@ -1141,7 +1156,7 @@ describe("AgentRail project close (close model, 2026-08-22, table row 4)", () =>
 });
 
 describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
-  it("puts the corner state badge on the glyph, ahead of the name and the trailing close", async () => {
+  it("keeps the agent glyph separate from the trailing state and close", async () => {
     // Both non-idle, deliberately: `idle` paints no badge at all (its own
     // pinned test below), so this checks the badge's PLACEMENT on a state
     // that actually draws one.
@@ -1165,9 +1180,9 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
       expect(row.firstElementChild?.classList.contains("asr-card__hit")).toBe(true);
       expect(row.querySelector(".asr-card__glyph")).not.toBeNull();
       expect(row.querySelector(".asr-card__glyph .asr-card__logo")).not.toBeNull();
-      // The state badge lives ON the glyph's corner (design §5), not a
-      // leading track of its own.
-      expect(row.querySelector(".asr-card__glyph .asr-card__dot")).not.toBeNull();
+      // DL-27.21: the state shares close's trailing slot, leaving the brand glyph clear.
+      expect(row.querySelector(".asr-card__glyph .asr-card__dot")).toBeNull();
+      expect(row.querySelector(".asr-card__status .asr-card__dot")).not.toBeNull();
       expect(row.querySelector(".asr-row__actions")).not.toBeNull();
     }
   });
@@ -1192,14 +1207,20 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
   it.each([
     { name: "working", pane: pane({ phase: "working" }), mark: "working" },
     { name: "done", pane: pane({ hasRun: true }), mark: "done" },
-  ])("keeps $name fully legible with its visible corner dot", async ({ pane: paneView, mark }) => {
+  ])("keeps $name legible with a trailing state mark", async ({ pane: paneView, mark }) => {
     tabViews.value = [tab({ panes: [paneView] })];
     mount();
     await settle();
     openAllCards();
 
     const row = rows()[0];
-    expect(row.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe(mark);
+    const status = row.querySelector(".asr-card__status");
+    if (mark === "working") {
+      expect(status?.querySelectorAll(".asr-card__load > i").length).toBeGreaterThan(0);
+      expect(status?.querySelector(".asr-card__dot")).toBeNull();
+    } else {
+      expect(status?.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe(mark);
+    }
   });
 
   // Agent-signal contract layer, stage 0 (2026-09-03; DL-27.3 amended): the
@@ -1285,6 +1306,8 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     const load = row.querySelector(".asr-card__load");
     expect(load?.getAttribute("data-busy")).toBe("true");
     expect(load?.children).toHaveLength(1);
+    expect(load?.parentElement?.classList.contains("asr-card__status")).toBe(true);
+    expect(row.querySelector(".asr-card__dot")).toBeNull();
   });
 });
 

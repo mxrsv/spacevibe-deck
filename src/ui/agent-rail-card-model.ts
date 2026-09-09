@@ -101,7 +101,8 @@ export function buildCardEntries(
           kind: "agent" as const,
           tabIndex: row.index,
           model: models?.get(pane.paneId) ?? "",
-          baseLabel: row.named ? row.title : displayAgent(pane.agent),
+          // DL-27.15 / DL-27.21: the pane's own sentence takes its default name.
+          baseLabel: row.named ? row.title : pane.message.trim() || displayAgent(pane.agent),
         })),
   );
 

@@ -139,6 +139,51 @@ function tabRow(fields: {
 }
 
 describe("buildCardEntries labels", () => {
+  it("replaces default names with each pane's message and restores them when cleared", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [paneRow("claude", 1), paneRow("claude", 2)],
+    });
+    const labels = (item: RailTabRow) =>
+      buildCardEntries([item], undefined).map((entry) => entry.label);
+    expect(labels(row)).toEqual(["Claude", "Claude 2"]);
+    expect(
+      labels({
+        ...row,
+        panes: row.panes.map((pane, index) => ({
+          ...pane,
+          message: ["Reading the source", "Running the tests"][index]!,
+        })),
+      }),
+    ).toEqual(["Reading the source", "Running the tests"]);
+    expect(labels(row)).toEqual(["Claude", "Claude 2"]);
+  });
+
+  it("keeps a user-authored name ahead of a message", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "My task",
+      named: true,
+      panes: [{ ...paneRow("claude", 1), message: "Reading the source" }],
+    });
+    expect(buildCardEntries([row], undefined)[0]?.label).toBe("My task");
+  });
+
+  it("uses the agent name for a whitespace-only message", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [{ ...paneRow("claude", 1), message: "  \n " }],
+    });
+    expect(buildCardEntries([row], undefined)[0]?.label).toBe("Claude");
+  });
+
   it("numbers repeats of one base label", () => {
     const entries = buildCardEntries(
       [

@@ -63,6 +63,7 @@
      the list measures against them so a later change to either is one edit. */
   --asr-card-row-h: 28px;
   --asr-card-row-gap: 2px;
+  --asr-card-action-size: 16px;
 }
 
 /* --------------------------------------------------- a checkout with no agents */
@@ -422,18 +423,8 @@ button.asr-bare:hover {
 
 /* -------------------------------------------------------------------- the agent row */
 
-/* Four tracks: glyph (with its corner badge), name, loading track, model pill. The loading
-   track is a FIXED 12px and reserved even on a row that draws no bars (design §10): with `auto`
-   it collapsed on an idle row and pulled that row's model pill 12px right of the pills above
-   it, so a still list read as a ragged right edge — `CardLoad` always renders the element for
-   exactly this reason.
-
-   The load track moved from column 4 to column 3 on the owner's ask (2026-08-26): it precedes
-   the model pill now, so a busy row reads "this model is working" instead of parking the mark
-   past the pill in the same trailing slot the close ✕ swaps into. The pills still share one
-   right edge — column 4 is the trailing column of a full-width row — and the bars accept a
-   ragged x in exchange, which is the point of putting them beside their own pill.
-
+/* DL-27.21: glyph, name, optional model, then one shared state/close slot.
+   The final 16px matches the close button, so hover never moves the text or model.
    `.asr-card__row` is a `<div>`, not a `<button>` (DL-27.1): DL-27.21 still requires its own
    close, so the full-bleed `.asr-card__hit` button beneath it is the row's real press target
    and every other child is inert content stacked above it (`pointer-events: none` block,
@@ -446,7 +437,7 @@ button.asr-bare:hover {
      `minmax(0, 1fr)`, the row is itself an item of `.asr-card`'s grid and keeps
      `min-width: auto` unless told otherwise — declared explicitly rather than assumed. */
   min-width: 0;
-  grid-template-columns: 14px minmax(0, 1fr) 12px auto;
+  grid-template-columns: 14px minmax(0, 1fr) auto var(--asr-card-action-size);
   align-items: center;
   column-gap: 7px;
   width: 100%;
@@ -493,44 +484,28 @@ button.asr-bare:hover {
 .asr-card__row > .asr-card__glyph,
 .asr-card__row > .asr-card__name,
 .asr-card__row > .asr-card__pill,
+.asr-card__row > .asr-card__status,
 .asr-card__row > .asr-card__load {
   position: relative;
   pointer-events: none;
 }
 
-/* Both trailing tracks are pinned explicitly — `.asr-row--tab > .asr-chips`'s own precedent
-   (04a), pinned there for the identical reason. `.asr-row__actions` (below) ALSO claims column
-   4 with an explicit placement, and explicitly-placed items are laid out before auto-placed
-   ones: leaving the pill to auto-flow would send it looking for the first free cell, find
-   column 4 already claimed by the actions, and drop the whole pill onto a SECOND grid row —
-   growing the row past `--asr-card-row-h`. The load carries the same pin for the mirror
-   failure: a row with no pill would otherwise let the load auto-place into whichever cell is
-   free rather than the reserved 12px track. */
+/* Explicit placement keeps the shared controls on one row even when the model is absent.
+   Shell rows retain an empty CardLoad in the same trailing slot. */
+.asr-card__row > .asr-card__status,
 .asr-card__row > .asr-card__load {
-  grid-row: 1;
-  grid-column: 3;
-}
-
-.asr-card__row > .asr-card__pill {
   grid-row: 1;
   grid-column: 4;
 }
 
-/* The close button. DL-27.5's established idiom is "close swaps in over the row's trailing
-   control column" — every existing row (`.asr-row--tab`, `.asr-leaf`) puts the agent glyph
-   there because their glyph IS trailing. This row's glyph is LEADING instead (design §5), so
-   the trailing-most column is column 4, and that is what close swaps over:
-   `.asr-row__actions`'s own base rule (04a) already pins it to `grid-column: 4` on any
-   4-column grid parent, which this row is.
+.asr-card__row > .asr-card__pill {
+  grid-row: 1;
+  grid-column: 3;
+}
 
-   Since the owner's 2026-08-26 swap, column 4 is the MODEL PILL rather than the load track, so
-   the pill is what fades under the ✕ — the busy bars now stay visible while the pointer is on
-   the row, which is the better half of the trade: hovering a row to close it no longer hides
-   whether that agent is mid-turn. `justify-self: end` overrides the shared rule's `center`,
-   which centred a 16px button inside a ~66px pill column and left the ✕ floating well short of
-   the row's right edge; on the old 12px track the difference was invisible. */
+/* DL-27.21: state yields to close on hover or keyboard focus; the model stays visible. */
 .asr-card__row:hover .asr-row__actions,
-.asr-card__row .asr-row__actions:focus-within {
+.asr-card__row:focus-within .asr-row__actions {
   opacity: 1;
   pointer-events: auto;
 }
@@ -539,9 +514,26 @@ button.asr-bare:hover {
   justify-self: end;
 }
 
-.asr-card__row:hover > .asr-card__pill,
-.asr-card__row:has(.asr-row__actions:focus-within) > .asr-card__pill {
+.asr-card__row:hover > .asr-card__status,
+.asr-card__row:focus-within > .asr-card__status {
   opacity: 0;
+}
+
+.asr-card__status {
+  display: grid;
+  width: var(--asr-card-action-size);
+  height: var(--asr-card-action-size);
+  place-items: center;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.asr-card__status > * {
+  grid-area: 1 / 1;
+}
+
+.asr-card__status > .asr-card__dot {
+  position: static;
+  border-color: transparent;
 }
 
 /* A busy row keeps one static hairline. Activity motion belongs only to the load mark below. */
@@ -605,15 +597,18 @@ button.asr-bare:hover {
 
 /* --------------------------------------------------------------------- the glyph + badge */
 
-/* `overflow` stays visible so the corner badge can hang 2px off the glyph — the row's own 8px
-   of left padding is what gives it room to sit there. Shared by the open row AND the closed
-   strip's segment: both render this exact structure via the same `CardMark`/`AgentGlyph` pair. */
-.asr-card__glyph {
+/* Row state and closed-strip badges share their mark size (DL-27.21). */
+.asr-card__glyph,
+.asr-card__status {
   --asr-badge-size: 5px;
   --asr-badge-ring: 1.5px;
   --asr-badge-outset: 2px;
   --asr-badge-radius: calc(var(--asr-badge-size) / 2 + var(--asr-badge-ring));
   --asr-badge-center: calc(var(--asr-badge-radius) - var(--asr-badge-outset));
+}
+
+/* Overflow stays visible for the closed strip's corner badge; row glyphs have no badge. */
+.asr-card__glyph {
   position: relative;
   display: grid;
   place-items: center;
@@ -756,7 +751,7 @@ button.asr-bare:hover {
   white-space: nowrap;
 }
 
-/* The model, as the row's trailing pill — state lives in the corner badge and the row's
+/* The model pill — state lives in the shared state/close slot and the row's
    `title`/accessible name (DL-27.2), never spelled out in words on the row itself. */
 .asr-card__pill {
   box-sizing: border-box;
@@ -768,9 +763,6 @@ button.asr-bare:hover {
   color: var(--text-muted);
   font: 500 var(--type-micro) / 1.5 var(--ui-font);
   white-space: nowrap;
-  /* Matches the `.asr-row__actions` fade it trades places with, so the ✕ arriving and the pill
-     leaving are one movement rather than a cut followed by a fade. */
-  transition: opacity var(--duration) var(--ease);
 }
 
 .asr-card__row[data-focused="true"] .asr-card__pill {
