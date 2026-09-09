@@ -54,7 +54,8 @@ import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
-import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
+import { detectedAgents, resetAgentDetectionForTests } from "../terminal/agent-detection-store";
+import { settings } from "../settings/settings-store";
 
 const NOW = 1_800_000_000_000;
 
@@ -99,6 +100,7 @@ describe("OpenBoard home view", () => {
     pickedFolder = null;
     detected = [];
     detectGate = null;
+    settings.value = { ...settings.value, disabledAgents: [], customAgents: [] };
   });
 
   afterEach(() => {
@@ -120,6 +122,7 @@ describe("OpenBoard home view", () => {
       canCancel?: boolean;
       canBrowseSessions?: boolean;
       openWorkspacePaths?: ReadonlySet<string>;
+      onManageAgents?: () => void;
     } = {},
   ): Promise<void> => {
     await act(async () => {
@@ -130,6 +133,7 @@ describe("OpenBoard home view", () => {
           openWorkspacePaths={props.openWorkspacePaths ?? new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
+          onManageAgents={props.onManageAgents ?? (() => {})}
           onResumeSession={async () => true}
         />,
         host,
@@ -209,6 +213,404 @@ describe("OpenBoard home view", () => {
     expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.objectContaining({ id: "p-grid" }), null);
   });
 
+  it("states the substitution instead of quietly running the wrong agent", async () => {
+    // The bug this covers: the row printed a remembered agent unconditionally
+    // and then opened whatever stood first on `$PATH` if that agent was gone.
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    // Said on the row, before anything is clicked.
+    expect(host.querySelector(".row__stale")?.textContent).toContain("Not installed");
+
+    const row = host.querySelector<HTMLButtonElement>(".row__open");
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    const decision = host.querySelector(".board-home__decision");
+    expect(decision?.getAttribute("role")).toBe("alert");
+    // Both halves: what cannot run, and what would run instead.
+    expect(decision?.textContent).toContain("Claude Code is not installed");
+    expect(decision?.textContent).toContain("Codex");
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "codex");
+  });
+
+  it("offers the agent catalog instead of the substitute, and drops the question", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    const onManageAgents = vi.fn();
+    await mount(onOpen, { onManageAgents });
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-fix")?.click();
+    });
+
+    expect(onManageAgents).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
+    // The answer it was built from is exactly what the user left to change.
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+  });
+
+  it("says the plain shell before opening one on a machine with no agent CLI", async () => {
+    seed(["/w/alpha"]);
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__decision")?.textContent).toContain(
+      "No agent CLI was found",
+    );
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).toHaveBeenCalledWith("/w/alpha", expect.anything(), null);
+  });
+
+  it("a remembered Shell-only open is not a substitution and never asks", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: null }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    expect(host.querySelector(".row__stale")).toBeNull();
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), null);
+  });
+
+  it("an agent switched off in Settings is a substitution too", async () => {
+    detected = [
+      { name: "claude", path: "/usr/local/bin/claude" },
+      { name: "codex", path: "/usr/local/bin/codex" },
+    ];
+    settings.value = { ...settings.value, disabledAgents: ["claude"] };
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    // Not "is not installed": the binary IS there, and the two are fixed by
+    // different controls on the screen `Manage agents…` opens.
+    expect(host.querySelector(".board-home__decision")?.textContent).toContain(
+      "Claude Code is switched off in Settings",
+    );
+    expect(host.querySelector(".row__stale")?.textContent).toContain("Turned off");
+  });
+
+  it("a declared agent whose binary is gone is not runnable either", async () => {
+    // `agentOptions` DROPS an undetected built-in but KEEPS a declared agent,
+    // flagging it `missing` — a display rule AgentQuickPicker needs. Read as a
+    // launch rule it would resolve `chosen` and open `command not found`.
+    settings.value = {
+      ...settings.value,
+      customAgents: [{ id: "custom:mine", label: "My Agent", command: "myagent --go" }],
+    };
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "custom:mine" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    expect(host.querySelector(".row__stale")?.textContent).toContain("Not installed");
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__decision")?.textContent).toContain(
+      "My Agent is not installed",
+    );
+  });
+
+  it("a declared agent whose binary IS there still runs", async () => {
+    settings.value = {
+      ...settings.value,
+      customAgents: [{ id: "custom:mine", label: "My Agent", command: "myagent --go" }],
+    };
+    detected = [{ name: "myagent", path: "/usr/local/bin/myagent" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "custom:mine" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    expect(host.querySelector(".row__stale")).toBeNull();
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "custom:mine");
+  });
+
+  it("probes the folder again when the question is answered, not just at mount", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    // The folder goes away while the question stands. `missing` is keyed on
+    // the recents list and nothing changed it, so only a FRESH probe can see
+    // this — which is the whole point: this question outlives its answer.
+    missingPaths.add("/w/beta");
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("beta is missing");
+  });
+
+  it("re-reads discovery on each click, so fixing it in Settings takes effect", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+    expect(host.querySelector(".row__stale")).not.toBeNull();
+
+    // What Settings' own Refresh does: the shared store is the board's source,
+    // and this board is still mounted underneath Settings.
+    act(() => {
+      detectedAgents.value = [
+        { name: "claude", path: "/usr/local/bin/claude" },
+        { name: "codex", path: "/usr/local/bin/codex" },
+      ];
+    });
+    expect(host.querySelector(".row__stale")).toBeNull();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    // No question at all now — the remembered agent runs.
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "claude");
+  });
+
+  it("a missing folder replaces the question rather than standing beside it", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    missingPaths.add("/w/ghost");
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" },
+        { path: "/w/ghost", lastOpenedAt: NOW - 1 },
+      ],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    act(() => {
+      host.querySelector<HTMLButtonElement>(".board-home__missing-toggle")?.click();
+    });
+    const rows = host.querySelectorAll<HTMLButtonElement>(".row__open");
+    await act(async () => {
+      rows[rows.length - 1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    // One message slot: the held launch is gone, not sitting under the notice
+    // where `Open anyway` would open a workspace nothing on screen names.
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("ghost is missing");
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("removing the row the question is about drops the question", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".row__x")?.click();
+    });
+
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("a confirmed open re-checks the folder it was asked about", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    // The folder goes away while the question stands — the recents effect
+    // keeps refreshing `missing` underneath it.
+    missingPaths.add("/w/beta");
+    await act(async () => {
+      workspacesData.value = {
+        version: WORKSPACES_VERSION,
+        recents: [{ path: "/w/beta", lastOpenedAt: NOW + 1, lastAgent: "claude" }],
+      };
+    });
+    await settle();
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("beta is missing");
+  });
+
+  it("clicking another row replaces the question rather than stacking one", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" },
+        { path: "/w/gamma", lastOpenedAt: NOW - 1, lastAgent: "codex" },
+      ],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    const rows = host.querySelectorAll<HTMLButtonElement>(".row__open");
+    await act(async () => {
+      rows[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    await act(async () => {
+      rows[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    // The second row runs its own remembered agent and the held launch for
+    // the first one is gone with it — a stale `Open anyway` must never be
+    // able to open a workspace nobody is looking at.
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith("/w/gamma", expect.anything(), "codex");
+  });
+
   it("waits for the agent probe before opening, so a fast click keeps its remembered agent", async () => {
     let release!: () => void;
     detectGate = new Promise<void>((resolve) => {
@@ -255,6 +657,10 @@ describe("OpenBoard home view", () => {
 
   it("a failed open is said on home — the board's only place to say it", async () => {
     seed(["/w/alpha"]);
+    // An agent the probe finds, so this click reaches the spawn: a board with
+    // nothing on `$PATH` now states the plain-shell fallback and waits, which
+    // is a different message with its own test below.
+    detected = [{ name: "claude", path: "/usr/bin/claude" }];
     const onOpen = vi.fn(async () => false);
     await mount(onOpen);
 
@@ -294,6 +700,7 @@ describe("OpenBoard home view", () => {
           openWorkspacePaths={new Set()}
           onCancel={onCancel}
           onOpen={async () => true}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,

@@ -1706,6 +1706,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 tabsRef.current?.focusActive();
               }}
               onOpen={(workspace, preset, agent) => handleOpen(workspace, preset, agent)}
+              // Settings paints over the board (z-35 over z-30) and its Back
+              // returns to it, so the board is NOT dismissed here — unlike the
+              // quick picker, which is a modal and cannot survive underneath.
+              onManageAgents={() => {
+                settingsOpen.value = true;
+              }}
             />
           ) : null}
           {/* The consent question (spec §6, reshaped to a modal 2026-08-22):

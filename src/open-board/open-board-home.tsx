@@ -8,6 +8,12 @@ import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
 import defaultLogoUrl from "../../.github/assets/icon.svg";
 
+/** What a row's badge shows about an unrunnable agent, and its hover sentence. */
+export interface StaleAgentNote {
+  readonly badge: string;
+  readonly detail: string;
+}
+
 /** The SpaceVibe Deck logo, shown until the user sets a logo in Settings. */
 function DefaultMark() {
   return <img src={defaultLogoUrl} alt="SpaceVibe Deck" />;
@@ -33,7 +39,22 @@ export interface OpenBoardHomeProps {
    * no other surface to put it on.
    */
   readonly notice: string | null;
+  /**
+   * A launch this board is holding back because the agent it would run is not
+   * the agent the row names — the sentence to show, or null when nothing is
+   * held. It replaces the notice while it stands (one message slot, and the
+   * board clears the notice before ever setting this), and it is the only
+   * thing on this screen a person must answer.
+   */
+  readonly decision: string | null;
   describeCombo(recent: RecentWorkspace): string;
+  /**
+   * What to say about a remembered agent that cannot run — uninstalled, or
+   * switched off in Settings, which are different failures with different
+   * fixes. Null when it can run, and null while discovery has not answered:
+   * an unanswered probe must not annotate every row.
+   */
+  staleAgent(recent: RecentWorkspace): StaleAgentNote | null;
   onPickFolder(): void;
   onCreateWorktree(): void;
   onBrowseSessions(): void;
@@ -43,6 +64,10 @@ export interface OpenBoardHomeProps {
    */
   onOpen(path: string): void;
   onRemove(paths: readonly string[]): void;
+  /** `Open anyway` — launch the substitute the decision line just named. */
+  onConfirmOpen(): void;
+  /** `Manage agents…` — Settings, the only place a dead memory is fixable. */
+  onManageAgents(): void;
 }
 
 /**
@@ -63,12 +88,16 @@ export function OpenBoardHome({
   openWorkspacePaths,
   opening,
   notice,
+  decision,
   describeCombo,
+  staleAgent,
   onPickFolder,
   onCreateWorktree,
   onBrowseSessions,
   onOpen,
   onRemove,
+  onConfirmOpen,
+  onManageAgents,
 }: OpenBoardHomeProps) {
   const hasRecents = alive.length > 0 || missingGroup.length > 0;
   const missingExpanded = useSignal(false);
@@ -76,6 +105,7 @@ export function OpenBoardHome({
   /** One recent: separate sibling buttons, never a button nested in a button. */
   function row(recent: RecentWorkspace, gone: boolean) {
     const combo = describeCombo(recent);
+    const stale = staleAgent(recent);
     const name = workspaceLabel(recent.path);
     const alreadyOpen = openWorkspacePaths.has(recent.path);
     return (
@@ -98,6 +128,15 @@ export function OpenBoardHome({
                 {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
               </span>
               {combo === "" ? null : <span class="row__combo">{combo}</span>}
+              {/* DL-3.2: `--yellow` is attention a person must act on, which
+                  is exactly what a remembered agent that can no longer run
+                  is. Said on the ROW, before the click — the decision line
+                  below repeats it only for the click that ignores it. */}
+              {stale === null ? null : (
+                <span class="row__stale" title={stale.detail}>
+                  {stale.badge}
+                </span>
+              )}
               <span class="row__time">{formatRelativeTime(recent.lastOpenedAt, Date.now())}</span>
             </span>
           </span>
@@ -175,6 +214,34 @@ export function OpenBoardHome({
         <p class="board-home__notice" role="status">
           {notice}
         </p>
+      ) : null}
+      {/* The board's second message shape, and the only one that asks rather
+          than reports: `role="alert"` because it INTERRUPTS a launch the user
+          already asked for, where the notice above only describes one that
+          did not happen. Both ways forward are here — the open the user meant,
+          and the catalog where the missing CLI is fixed. */}
+      {decision !== null ? (
+        <div class="board-home__decision" role="alert">
+          <p class="board-home__decision-text">{decision}</p>
+          <div class="board-home__decision-actions">
+            <button
+              type="button"
+              class="board-home__decision-go"
+              disabled={opening}
+              onClick={onConfirmOpen}
+            >
+              Open anyway
+            </button>
+            <button
+              type="button"
+              class="board-home__decision-fix"
+              disabled={opening}
+              onClick={onManageAgents}
+            >
+              Manage agents…
+            </button>
+          </div>
+        </div>
       ) : null}
       {hasRecents ? (
         <div class="board-home__recents">
