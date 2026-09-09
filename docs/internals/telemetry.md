@@ -1,5 +1,7 @@
 # Usage analytics
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 Deck sends one small usage snapshot per day, on by default, and the only state it never
 infers away is an explicit "off". This page is the contract: what leaves the machine, who
 owns the state, and when a POST fires. Electron only: the Tauri host sends nothing.

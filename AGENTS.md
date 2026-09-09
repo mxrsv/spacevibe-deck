@@ -1297,6 +1297,31 @@ it runs on rather than implying both.
   off their rows with nothing to scroll them back. It is `overflow: clip` now — keep it that
   way, and treat "the top bar looks misaligned" as a scroll report, not a layout one.
 
+## Documentation
+
+Most code changes need no documentation change; agents and maintainers can read the code.
+The index is [docs/README.md](docs/README.md) `current`.
+
+- `docs/internals/` holds architectural decisions and their reasons, constraints that span
+  modules, and traps that are hard to discover from the source. Before adding a paragraph,
+  ask what a maintainer would get wrong without it. If reading the relevant code answers the
+  question, leave it out. It is the one place in the repository that still takes new
+  documentation.
+- `docs/user/` helps users accomplish tasks, in the voice of the shipped product, with no
+  implementation detail and no contributor tooling. Update the feature's section when how to
+  use it changes; a UI tweak needs no entry and a new control needs no page.
+- `docs/operations/` is the maintainer runbook: setup, release, debugging. Every page under
+  `internals/` and `operations/` opens with the "For maintainers" callout.
+- Do not write file catalogs, field or method enumerations, control-flow narration, or
+  appended PR summaries. Types, tests and code already record the implementation. When a
+  documented decision changes, rewrite or remove the text; never append a second account of
+  the new behaviour. Keep a local explanation in a code comment; use an internal page only
+  when the reasoning crosses boundaries.
+- Plans, specs, research notes and review reports are not committed. A merged PR is the
+  implementation record, and active work lives in the issue that owns it.
+- `docs/DESIGN-LANGUAGE.md` stays at its path and keeps its numbering: a test reads it, and
+  code comments cite its rules. `CHANGELOG.md` is read by the release workflow.
+
 ## Chưa khớp thực tế
 
 _(Heading retained for the global living-doc convention.)_

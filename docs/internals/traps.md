@@ -1,5 +1,7 @@
 # Known traps and live switches
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 Things that have bitten this codebase and are not obvious from reading one file, plus the
 constants that currently switch behaviour off and are meant to be flipped back.
 

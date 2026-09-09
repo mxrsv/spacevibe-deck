@@ -1,5 +1,7 @@
 # Agent Rail
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 The rail is the left column: one cluster per project, one row per agent pane, each row
 saying what its agent last said and in what state. This page states the invariants of the
 model, the state derivation, the pairing that reads a sentence off the agent's own session

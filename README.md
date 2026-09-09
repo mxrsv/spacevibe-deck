@@ -154,6 +154,8 @@ release runbooks under [docs/operations/](docs/operations/development.md) `curre
 Focused issues and pull requests are welcome. Please open an
 [issue](https://github.com/mxrsv/spacevibe-deck/issues) before starting a substantial product
 or architecture change, and keep each pull request to one concern.
+[CONTRIBUTING.md](CONTRIBUTING.md) `current` says what is likely to be accepted, what needs
+an issue first, and what a pull request must carry.
 
 ## License
 

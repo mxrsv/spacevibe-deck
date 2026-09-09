@@ -1,5 +1,7 @@
 # Cutting a release
 
+> For maintainers. Using Deck? See [docs/user/](../user/).
+
 One pushed tag ships SpaceVibe Deck for macOS and Windows, both self-updating, through
 [`electron-release.yml`](../../.github/workflows/electron-release.yml). Nothing ships the
 Tauri host automatically any more; [`release.yml`](../../.github/workflows/release.yml) is a
