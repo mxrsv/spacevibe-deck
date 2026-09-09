@@ -1,9 +1,13 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { EXTERNAL_APP_CATALOG, bundlePath, repositoryRoot, resolveTarget } from "./external-apps";
 import { EXTERNAL_APPS } from "../src/lib/external-app-catalog";
+
+// These catalog/path tests need no Electron runtime. Its Node entry point can
+// download a binary during import on a cold CI runner, so isolate that boundary.
+vi.mock("electron", () => ({ app: { getPath: () => os.tmpdir() } }));
 
 const temps: string[] = [];
 
