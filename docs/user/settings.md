@@ -55,12 +55,15 @@ installed without your choice; Deck asks before closing panes to install.
 
 ## Privacy
 
-- **Share usage stats** — on by default. Off stops counting immediately, and an "off" choice
-  is never inferred away. The row states exactly what a daily snapshot contains.
+From release 1.1.0, usage analytics are always on, with no opt-out. This page states exactly
+what is sent and links to the privacy notice; it has no switch. Snapshots contain daily
+usage counts, never code, paths, prompts or agent output. Release 1.0.0 and the older
+Tauri releases send no analytics. See the [payload contract](../../src/telemetry/payload.ts).
 
-This switch is deliberately not part of `settings.json`: it is stored in `telemetry.json` in
-Deck's data folder so that a copied settings file never carries a consent choice. If that
-file exists but cannot be read, sharing stays off and Deck says so here.
+Analytics state and pending daily counters live in `telemetry.json` in Deck's data folder,
+separate from `settings.json`. A stored off choice from a development build becomes enabled
+on launch. If `telemetry.json` exists but cannot be read, counting and sending stay off;
+this page explains the error and asks you to repair the file and restart Deck.
 
 ## Reset
 
@@ -72,13 +75,13 @@ session logs.
 
 | File or folder        | Contents                                                             |
 | --------------------- | -------------------------------------------------------------------- |
-| `settings.json`       | Every setting above except the usage-stats choice                    |
+| `settings.json`       | App preferences; analytics state is stored separately                |
 | `workspaces.json`     | Recent workspaces and the layout and agent each was last opened with |
 | `presets.json`        | Layout presets                                                       |
 | `repositories.json`   | Cached git repository and worktree scans for the rail                |
 | `session.json`        | The live tab journal used by session restore                         |
 | `update-attempt.json` | The last update install attempt, so a failed relaunch is reported    |
-| `telemetry.json`      | The usage-stats choice and the current day's counters                |
+| `telemetry.json`      | Analytics state and pending daily counters                           |
 | `usage-cache.json`    | Parsed token-usage results, keyed by log file                        |
 | `themes/`             | Imported theme files                                                 |
 

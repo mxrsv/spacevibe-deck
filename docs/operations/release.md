@@ -111,6 +111,60 @@ section is empty**. Consequences:
 - Each section is written for users and frozen at its tag. It is never an auto-generated
   commit list.
 
+## Before tagging and recovering a failed run
+
+Require an ordinary [CI run](../../.github/workflows/ci.yml) on the exact integrated
+`main` commit to reach and pass Ubuntu **Test** and **Build frontend** before tagging.
+`prepare` runs tests and build but does not run lint; it must not be the first evidence
+that the source works on Ubuntu. A local macOS pass is not that evidence. If CI is still
+red, stop for an explicit owner decision rather than treating a tag as a test run.
+
+A retry depends on both the failed step and whether the source must change:
+
+- **Same commit, failure before draft creation:** fix the runner/service problem and rerun
+  the failed jobs. No release exists to delete; a missing release must be confirmed as a
+  404, not inferred from an authentication or network error.
+- **Same commit, draft exists and `prepare` succeeded:** rerun the failed platform or
+  `promote` jobs. Keep the draft so successful platform assets remain available. Do not
+  rerun successful `prepare`: its create-draft step would collide with the existing draft.
+- **Source must change:** failed-job reruns still use the original SHA. Complete the
+  corrected source and CI first, then remove the failed attempt and recreate the trigger
+  tag using the guarded procedure below.
+- **Already public:** do not delete the release or move either tag. Fix forward with a new
+  version, changelog section and release approval; installed clients may already have it.
+
+For example, recovery of an **unpublished** `build/v1.1.0` attempt after `prepare`:
+
+1. Inspect `gh run view <run-id>` and `gh release view v1.1.0 --json isDraft,tagName,url`.
+   Cancel any active run for this trigger with `gh run cancel <run-id>` and wait until every
+   such run reports `completed`. Never change a tag while a job can still upload or promote.
+   Record the failed SHA and preserve any logs/assets needed for diagnosis.
+2. Confirm owner approval for deleting this draft and recreating the trigger tag. The
+   following Bash commands abort unless the release still exists and is a draft. They
+   deliberately name only this version, and never use `--cleanup-tag`:
+
+   ```bash
+   set -euo pipefail
+   RELEASE_REPO=mxrsv/spacevibe-deck
+   test "$(gh release view v1.1.0 --repo "$RELEASE_REPO" --json isDraft --jq .isDraft)" = true
+   gh release delete v1.1.0 --repo "$RELEASE_REPO" --yes
+   git push origin --delete refs/tags/build/v1.1.0
+   git tag -d build/v1.1.0
+   ```
+
+   If a trigger tag is absent locally or remotely, omit only that deletion after checking
+   `git show-ref --verify refs/tags/build/v1.1.0` or
+   `git ls-remote --tags origin refs/tags/build/v1.1.0`. A failed `prepare` that never created
+   a draft needs only the trigger-tag cleanup. If a bare `v1.1.0` ref also exists, stop and
+   inspect its origin and SHA; do not remove or reuse it blindly.
+3. Confirm the corrected commit is on `origin/main`, its `package.json` and lock root are
+   `1.1.0`, and its `CHANGELOG.md` has a non-empty exact `## 1.1.0` section. Capture the green
+   Ubuntu Test + Build run for that commit. With release approval, tag **that exact SHA**
+   (`git tag build/v1.1.0 <verified-sha>`) and push only
+   `refs/tags/build/v1.1.0`. This push starts a new release, including signing and publishing.
+4. Inspect the new run and draft, then verify promotion and the full updater asset set.
+   Neither deleting the draft nor a green `prepare` means recovery is complete.
+
 ## Secrets
 
 Stored on the repository; `GITHUB_TOKEN` is supplied by Actions.
@@ -191,9 +245,18 @@ that dies releases the flight. The renderer side is host-agnostic
 The Tauri host is feature-frozen and its last shipped version is `0.12.3`
 ([`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json)). Its updater endpoint,
 `releases/latest/download/latest.json`, now answers 404 because `releases/latest` is an
-Electron release, so a deployed Tauri client's update check fails, and Tauri builds carry an
-in-app migration notice ([`migration-notice.ts`](../../src/updater/migration-notice.ts),
-`MIGRATION_NOTICE_ENABLED`) telling the user to reinstall by hand.
+Electron release, so a deployed Tauri client's update check fails. The migration notice in
+[`migration-notice.ts`](../../src/updater/migration-notice.ts) is enabled in source but was
+added by `28da0ad` after `v0.12.3`; it has never shipped in a Tauri release. Published Tauri
+installs therefore do not show it. The 1.1.0 transition is documented as a manual Electron
+download and clean install, not as a Tauri notice delivered through an update.
+
+On macOS, old Tauri data remains in `~/Library/Application Support/dev.spacevibe.deck`;
+on Windows, `%APPDATA%\dev.spacevibe.deck`. Electron uses `SpaceVibe Deck` instead.
+The shared bundle identifier does not make the data directories identical: Tauri keys its
+app data by identifier (see [`migrate.rs`](../../src-tauri/src/migrate.rs)), while Electron
+uses `app.getPath("userData")` in [`main.ts`](../../electron/main.ts). Neither settings nor
+workspaces are migrated between hosts.
 
 To rebuild a Tauri hotfix:
 
@@ -209,9 +272,10 @@ To rebuild a Tauri hotfix:
 3. Beyond the Apple secrets above it needs `TAURI_SIGNING_PRIVATE_KEY` and
    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
-A hotfix built from a commit on `main` carries the migration notice unless
-`MIGRATION_NOTICE_ENABLED` is set to false for that build; the notice is what tells its users
-the build no longer updates itself.
+A future hotfix containing the notice needs a separate release decision, a native Tauri
+banner check, and a verified delivery path to installed users. Rebuilding the old `v0.12.3`
+tag cannot add a later commit. Building a newer tag with `MIGRATION_NOTICE_ENABLED = true`
+also does not by itself restore the broken updater endpoint or deliver the banner to users.
 
 ## Preview and local builds
 

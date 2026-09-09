@@ -7,78 +7,121 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
-- **More reliable worktree creation.** Checkouts have up to a minute to finish,
-  failures explain invalid branches, access problems and disk space, and an
-  interrupted checkout is inspected before suggesting another attempt. Deck
-  preserves any branch or worktree left behind.
-  [Worktree creation](electron/git/worktree.ts) `current`.
+## 1.1.0
 
-- **Focus worktrees from their cards.** Click a card's heading or empty space to
-  focus its session; the heading also expands or collapses its agents. A persistent
-  chevron shows that state, and the heading highlights on hover or keyboard focus
-  ([worktree card](src/ui/worktree-card.tsx) `current`).
+This update brings Agent Board, makes starting new work more deliberate,
+and improves terminal startup on Windows.
 
-- **A color for each worktree.** Right-click it and choose **Worktree color**
-  to color its dot, selected frame and badge. Choices survive reopening Deck;
-  **Default** restores the original treatment.
-  [Worktree colors](src/ui/worktree-color-picker.tsx) `current`.
+### Highlights
+
+- **Agent Board (⌘⇧O).** See your agents together in one overview. Select a
+  card to jump to its terminal tab; the Board also has its own `Agents` tab.
 
 - **Arrange and pin tabs.** Drag terminal, file, browser and Agents tabs into
   place; right-click to pin, unpin, close others or close tabs to the right.
   Pinned tabs keep their icon and name and are skipped by bulk closes.
   Preferences last for the current window session.
-  [Tab strip](src/ui/tab-strip.tsx) `current`.
+
+- **Focus worktrees from their cards.** Click a card's heading or empty space to
+  focus its session; the heading also expands or collapses its agents. A persistent
+  chevron shows that state, and the heading highlights on hover or keyboard focus.
 
 - **Agent row messages and compact controls.**
-  [Agent rows show their latest message](src/ui/agent-rail-card-model.ts) `current`
+  Agent rows show their latest message
   once available; names you set yourself take precedence.
-  [State and close share the row's trailing slot](src/ui/worktree-card-row.tsx) `current`:
+  State and close share the row's trailing slot:
   hover or keyboard focus reveals close without shifting the message or model.
 
 - **Return to Agent Board.** When session restore is enabled, quitting while viewing Agent
   Board now brings the Board back on screen at the next launch. Switching away before quitting
-  keeps only its `Agents` tab open ([Board restore](src/terminal/session-restore.ts) `current`).
-
-## 1.0.1
-
-This update makes starting new work more deliberate and improves terminal
-startup on Windows.
-
-### Highlights
+  keeps only its `Agents` tab open.
 
 - **Return to unread conversations.** Recent activity now filters its latest
-  sessions to unread questions, warnings and results. Opening one focuses its
-  pane and acknowledges it; View all keeps the complete history available.
-  A session whose pane has closed can still resume in a new tab. Opening shows a
-  loading ring and blocks repeated clicks; unopened sessions no longer carry
+  sessions to unread questions, warnings and results from confirmed live sessions.
+  Opening one focuses its pane and acknowledges it; View all keeps the complete
+  history available. When a live session cannot be confirmed, selecting it resumes
+  that conversation instead of focusing a pane guessed from transcript activity.
+  Opening shows a loading ring and blocks repeated clicks; unopened sessions no longer carry
   a gray status dot. Time sits before the trailing state indicator.
-  [Recent activity](src/ui/sessions/recent-session-activity.tsx) `current`.
 
+- **More reliable worktree creation.** Checkouts have up to a minute to finish,
+  failures explain invalid branches, access problems and disk space, and an
+  interrupted checkout is inspected before suggesting another attempt. Deck
+  preserves any branch or worktree left behind.
+
+- **A color for each worktree.** Right-click it and choose **Worktree color**
+  to color its dot, selected frame and badge. Choices survive reopening Deck;
+  **Default** restores the original treatment.
+
+- **Choose before launching.** Selecting a recent workspace on the Open Board
+  fills the visible workspace and agent choices without starting a process.
+  Review the selected agent, then open it.
+- **Keep the window after the last tab.** Closing the last terminal tab returns
+  to the Open Board instead of closing the window.
 - ⚡ **Faster Windows terminal startup.** Deck no longer starts a PowerShell/WMI
   process census in front of a new shell, split or docked pane. Background
   inspection stays paused through shell startup and resumes on its normal
   interval after the prompt is ready.
-- ✍️ **One task draft, wherever you start.** The Open Board and Quick Launch
-  share the same prompt, workspace, agent, model and effort. Choosing a
-  workspace fills the draft without starting a process; the launch action
-  opens the agent with the task ready for you to review and submit.
 - 📝 **Markdown opens rendered.** Markdown files now open as formatted
   documents; ⌘⇧V switches between the rendered view and source.
 - 🎯 **A clearer agent rail.** The rail keeps each row paired with its own
-  session, marks the pane holding the keyboard, and lets you reorder or close
-  project groups.
+  session, groups each checkout into a card without losing shell tabs, marks
+  the pane holding the keyboard, and lets you reorder or close project groups.
+- ➕ **One `+` per checkout, and it always asks which agent.** Every checkout
+  card carries exactly one create control — the `+` on its strip, or its
+  `New agent` row when the card is open — and pressing it lists the agents you
+  can run there instead of silently opening a shell. The project header's `+`
+  and the tab strip's `+` are gone; `⌘T` (`Ctrl+Shift+T`) opens the same list
+  for the checkout you are working in, names that checkout at the top, and
+  ends with `Open another project…`. A plain shell is `New split here`.
 - 🧹 **The sidebar banner is gone.** The decorative artwork at the foot of the
   sidebar and its Appearance setting have been removed. The sidebar's action
   footer now closes the column, and any banner image you had chosen is no
   longer read.
-- 📊 **Usage analytics are on by default.** Deck reports limited daily usage
-  counts — never code, paths, prompts or agent output. Turn it off at any time
-  in Settings → Privacy.
+- 📁 **The file explorer names its folder, and that row acts.** The tree now
+  shows the folder it is rooted at as its first row, carrying New File, New
+  Folder, Refresh and Collapse All. A new file or folder is created in the
+  focused directory, falling back to the workspace root.
+- 📊 **Usage analytics are always on, with no opt-out.** Deck reports limited
+  daily usage counts — never code, paths, prompts or agent output.
+  Settings → Privacy states exactly what is sent.
+- 🔍 **The rail asks the agents instead of guessing, and says when it guessed.**
+  A Claude pane's session and its "waiting for permission" now come from
+  Claude's own session list and from hooks Deck installs for that pane alone
+  (never in your `~/.claude`); an opencode pane reports busy, idle, errors and
+  permission prompts from its own server; Codex rings its notification whether
+  or not the pane is focused. Labels distinguish inferred status from signals
+  reported by an agent. An agent whose process ended shows a small square
+  instead of reading as a finished run, and Cursor panes count as agents. Each
+  adapter can be switched off per agent under Settings → Agents.
+- **Agent integration is set up at launch.** Deck adds per-pane hook settings
+  and a session id to eligible new Claude launches, and configures a local
+  reporting port for opencode. Your saved commands stay unchanged; settings
+  supplied in your command are respected.
+- **Clearer agent status and loading.** Working agents show three staggered
+  loading bars, with a still version when reduced motion is enabled. Status
+  dots on worktree cards use solid yellow or gray; inferred
+  status is still named in tooltips and accessible labels. Ended agents keep
+  their distinct square mark.
+- **Quieter single-agent hover.** Only groups of two or more agents open a
+  popover on hover or keyboard focus. A single agent stays a direct focus
+  button; overflow menus still expose hidden agents.
 
 ### Upgrading
 
-- The Windows installer remains unsigned, and Windows runtime behaviour still
-  requires owner verification before this release is promoted.
+- **1.1.0 is the first release that sends usage analytics.** Analytics are
+  always on, with no opt-out, starting on the first launch after upgrading.
+  No code, paths, prompts or agent output are sent. Settings → Privacy states
+  exactly what is sent; 1.0.0 and the older Tauri releases send no analytics.
+- **Coming from a Tauri release?** Its update check fails and the published
+  build has no migration notice. Download the Electron installer from
+  [the releases page](https://github.com/mxrsv/spacevibe-deck/releases/latest)
+  and install it manually. Settings and workspaces do not migrate. Old Tauri
+  data remains in `~/Library/Application Support/dev.spacevibe.deck` on macOS
+  or `%APPDATA%\dev.spacevibe.deck` on Windows, separate from Electron's
+  `SpaceVibe Deck` data folder.
+- The Windows installer remains unsigned. Windows installation and auto-update
+  have not been runtime-verified for this release.
 - Intel Macs are not served by this build (Apple Silicon only).
 
 ## 1.0.0

@@ -1,6 +1,6 @@
 /**
  * The usage-analytics payload contract — the ONE readable statement of what a
- * participating install sends, written for a person who is not a programmer.
+ * Deck install sends, written for a person who is not a programmer.
  *
  * The behaviour around it is documented in docs/internals/telemetry.md. The
  * landing tour may `cat` this file on screen as a disclosure aid, so it must
@@ -16,11 +16,13 @@
  * local day, never derived from hardware or from the previous day's id, so no
  * field links one day to the next.
  *
- * Sharing is ON by default (owner-decided 2026-08-23): no consent question
- * is asked (`USAGE_CONSENT_ASKED` is false), and it stops the moment "Share
- * usage stats" is switched off in Settings → Privacy — `declined` is the only
- * state never inferred away, and an unreadable `telemetry.json` fails closed
- * to off. The Tauri host sends nothing at all.
+ * Release 1.1.0 is the first release that sends analytics. Sharing is always
+ * on, with no opt-out (owner-decided 2026-09-06). No consent question is asked;
+ * Settings → Privacy states exactly what is sent and has no switch. A stored
+ * `declined` from a development build becomes `enabled` on launch, and main
+ * refuses attempts to disable sharing. An unreadable `telemetry.json` still
+ * fails closed: nothing counts or sends. Release 1.0.0 and the Tauri host send
+ * nothing at all.
  */
 
 import { isBuiltinAgentId } from "../lib/agent-catalog";
@@ -51,7 +53,7 @@ export const SURFACE_KEYS = ["browser", "explorer", "usage"] as const;
 export type SurfaceKey = (typeof SURFACE_KEYS)[number];
 
 /**
- * One participating install-day, cumulative. Every send replaces the whole
+ * One install-day, cumulative. Every send replaces the whole
  * row server-side, so a retry can never double-count.
  */
 export interface UsagePayload {
@@ -60,7 +62,7 @@ export interface UsagePayload {
   readonly dailyId: string;
   /** The client's LOCAL calendar day (YYYY-MM-DD), not a timestamp. */
   readonly day: string;
-  /** The app version, e.g. "1.0.1". */
+  /** The app version, e.g. "1.1.0". */
   readonly version: string;
   /** "darwin" | "win32". */
   readonly platform: string;

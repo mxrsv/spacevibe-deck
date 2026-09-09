@@ -18,8 +18,12 @@ Download the current release from
 Deck checks for updates on its own, tells you when one is ready, and lets you choose when to
 download, install and relaunch. See [Settings → About](settings.md#about).
 
-If you ran the older Tauri-based Deck: that build no longer updates itself and shows a notice
-saying so. Install the current release by hand. Nothing migrates; it is a clean install.
+If you ran the older Tauri-based Deck: its update check fails, and the last published Tauri
+release does not contain the migration notice. Download and install the current Electron
+release by hand using the link above. Settings and workspaces do not migrate; it is a clean
+install. Your Tauri data remains in `~/Library/Application Support/dev.spacevibe.deck` on
+macOS or `%APPDATA%\dev.spacevibe.deck` on Windows. Electron uses a separate
+`SpaceVibe Deck` data folder; see [where Deck keeps its data](settings.md#where-deck-keeps-its-data).
 
 ## First launch
 
@@ -27,9 +31,9 @@ Deck opens on the **Open board**, the start surface. It offers:
 
 - **Open workspace…** — pick a folder. A workspace is a local folder that becomes the working
   root for a tab.
-- **Recent workspaces** — one click reopens a folder with the layout and agent it was last
-  opened with. A folder that has disappeared from disk is listed separately and cannot be
-  opened.
+- **Recent workspaces** — selecting a folder fills the workspace and agent choices.
+  Review the selected agent, then choose **Open agent** to launch it. A folder that has
+  disappeared from disk cannot be opened.
 - **Create worktree…** — for a git repository, create a new git worktree on a new branch and
   open it. Worktree and branch are one choice: Deck never offers a branch without its
   worktree.
@@ -43,16 +47,11 @@ file edits and window placement are not restored.
 
 ## Launch an agent
 
-Press **⌘T** (Windows: **Ctrl+Shift+T**) or the `+` on a project header in the Agent Rail.
-The quick picker lists the agents Deck found on your `PATH`; pick one with a click or its
-digit key. The agent starts in a new pane in the active tab's current directory, using the
-launch command shown in [Settings → Agents](agents.md). The picker also lets you choose
-which worktree of the repository to run in.
-
-**Shell** starts a plain shell with no agent.
-
-A declared agent whose binary has left your `PATH` shows as missing; choosing it opens
-Settings instead of a shell that prints `command not found`.
+Press **⌘T** (Windows: **Ctrl+Shift+T**) for the active checkout, or use `+` / **New agent**
+on a checkout card in the Agent Rail. The menu lists the agents Deck found on your `PATH`;
+choose one to launch it in that checkout using the command shown in
+[Settings → Agents](agents.md). **Open another project…** lets you choose another workspace.
+Use **New split here** for a plain shell.
 
 ## The window
 
@@ -99,10 +98,13 @@ the in-Deck half works in this release.
 The Token usage tab reads Claude Code's and Codex's own local session logs and groups tokens
 and estimated cost by agent and day. It needs no account.
 
-Deck sends one small usage snapshot per day by default: a fresh random id for that day,
+Starting with 1.1.0, Deck sends cumulative usage snapshots for each day. Analytics are
+always on, with no opt-out, beginning on the first launch after upgrading; 1.0.0 and the
+older Tauri releases send no analytics. Each snapshot contains a fresh random id for that day,
 Deck's version, platform and architecture, launch counts per built-in agent, how often the
 browser, explorer and usage surfaces were opened, the day's highest tab and pane counts,
 and whether sessions were restored. It never contains code, paths, prompts, file names,
-repository names or a permanent identifier. Turn it off in
-[Settings → Privacy](settings.md#privacy). The full field list is
+repository names or a permanent identifier.
+[Settings → Privacy](settings.md#privacy) states exactly what is sent and has no switch.
+The full field list is
 [`src/telemetry/payload.ts`](../../src/telemetry/payload.ts).

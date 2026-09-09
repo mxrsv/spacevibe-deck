@@ -3,8 +3,10 @@
  * it is allowed on screen.
  *
  * See `docs/operations/release.md` (section "Tauri hotfix"). Tauri-only, and
- * it ships ENABLED; the row costs `--notice-h` of stage height beneath the
- * strip (`06-stage-panes.css`).
+ * enabled in source, but added after the last published Tauri release
+ * (`v0.12.3`) and not yet shipped to Tauri users. In a build containing it,
+ * the row costs `--notice-h` of stage height beneath the strip
+ * (`06-stage-panes.css`).
  *
  * The cutover is a clean install with no updater bridge between the hosts, so
  * without an in-app surface everyone on a Tauri build sits on an app that
