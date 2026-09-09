@@ -817,6 +817,37 @@ superseded by `docs/internals/` wherever they disagree.
   the walk used a non-billing probe agent that has no session id. Windows is Gate C.
   Merging still waits for the daily-surfaces release (2026-09-02).
   [Plan](docs/plans/2026-09-04-agent-board-wiring.md) `building`.
+- **The open board stops running an agent it did not name (2026-09-04).** A recents row
+  printed its remembered agent unconditionally and then opened whatever stood first on
+  `$PATH` if that agent was gone — one click, wrong agent, nothing said — and a machine with
+  no agent CLI got a silent bare shell, which is the first run of anyone who installs Deck
+  before an agent. [`resolveAgent`](src/lib/workspace-recents.ts) `current` reports WHICH of
+  three things happened (`chosen` / `substituted` / `shell-fallback`) where
+  `resolveAgentChoice` only ever returned an id; a non-`chosen` answer is HELD as a
+  `PendingOpen` and stated — both halves named — with `Open anyway` and `Manage agents…`
+  under it, and the row itself says `Not installed` before the click. The payload carries
+  the resolved agent, so a discovery refresh between the question and the answer cannot swap
+  it; clicking another row clears the held launch; the question is raised on **home** even
+  when the launch came from the worktree form. An agent switched off in Settings is a
+  substitution too. Friction is bounded: the first open with nothing installed records
+  `lastAgent: null`, an explicit Shell memory that resolves `chosen` forever after, so the
+  plain-shell question is asked once per folder. **No new DL rule** — DL-3.2's yellow,
+  DL-1.3's inset hairline, DL-3.1's accent and the board's own `.gsep button` text-action
+  shape. Renderer-only, so it reaches BOTH hosts; `npm test` 3883/0, `npx tsc --noEmit`,
+  `npm run build`, `generate:menu:check` and the design-language gate green, after a medium
+  code review found five real defects in how the board HELD the question (a mount-time
+  discovery snapshot that defeated its own Settings recovery, a missing-folder return that
+  left two messages up, two paths that never cleared it, a confirmed open that skipped the
+  liveness check, and `is not installed` said of an agent merely switched OFF) — **no
+  `electron:dev` or `tauri dev` pass and no owner eye review**. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-board-stops-running-an-agent-it-did-not-name--2026-09-04)
+  `current`. **Its SURFACE is superseded (2026-09-09, on merge):** the click-opens flow this
+  entry fixes was replaced by [`BoardComposer`](src/open-board/board-composer.tsx) `current`,
+  which seeds a runnable agent into a visible draft and starts nothing — so `PendingOpen`,
+  `Open anyway` and the re-probe on confirm are NOT in the merged tree. What survives is
+  [`resolveAgent`](src/lib/workspace-recents.ts) `current` plus the composer's own
+  runnable/unavailable split; what was LOST is the `Not installed` vs `Turned off` wording.
+  Port it onto the composer before this claim reads true again.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -1290,6 +1321,7 @@ _(Heading retained for the global living-doc convention.)_
 | Dragging `New` onto a pane docks an agent pane there                          | `building` | unverified | Landed 2026-08-16 (new DL-27.14) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | The quick picker opens into a chosen worktree                                 | `building` | unverified | Landed 2026-08-16 (new DL-29.7) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | One click on the open board opens the workspace                               | `current`  | **false**  | Superseded 2026-08-24: choosing a workspace fills the visible draft and never starts a process — [detail](docs/CONTEXT.md#one-draft-two-task-launcher-surfaces--2026-08-24) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| The open board runs the agent its row prints                                  | `current`  | unverified | Was **false** until 2026-09-04 (MXR-7, from MXR-5's UX review): `describeCombo` printed the remembered agent unconditionally and `resolveAgentChoice` ended in `agents[0]?.id ?? null`, so a row reading `Default · claude` opened `codex` — one click, wrong agent, nothing said — and a machine with no agent CLI got a silent bare shell, which is the first run of anyone who installs Deck before an agent. Fixed by `resolveAgent`, which reports `chosen` / `substituted` / `shell-fallback`, and by a held `PendingOpen` the board states before it launches (`Open anyway` / `Manage agents…`), with `Not installed` on the row before the click. Renderer-only, so it reaches BOTH hosts. `npm test` 3887/0, `npx tsc --noEmit`, `npm run build`, `generate:menu:check` and the design-language gate green, plus 21 new assertions and a medium code review whose five findings were all fixed — but **no `electron:dev` or `tauri dev` pass and no owner eye review**; no substitution has been confirmed in a running app — [detail](docs/CONTEXT.md#the-board-stops-running-an-agent-it-did-not-name--2026-09-04) `current` |
 | The icon set is Phosphor everywhere                                           | `current`  | unverified | Swapped 2026-08-16 (DL-1.1's exception moved, DL-14.1 rewritten): `lucide-preact` uninstalled, 41 source files and 31 class assertions… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | A preset can be renamed or deleted                                            | `current`  | **false**  | Was true until 2026-08-16 and is now unreachable: the layout cards were the only call sites of `renamePreset` / `deletePreset`, and they went… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | The new chrome typography and the stateless toggles are native-verified       | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
