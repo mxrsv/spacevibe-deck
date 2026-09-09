@@ -1,17 +1,13 @@
-import { RELEASES_URL, WINDOWS_FALLBACK_URL } from "./release-data.js";
-
 export const INSTALL_PLATFORMS = {
   mac: {
     command: "curl -fsSL https://deck.spacevibe.dev/install.sh | sh",
     label: "macOS",
-    manualUrl: RELEASES_URL,
     prefix: "$",
     status: "Apple Silicon",
   },
   win: {
     command: "irm https://deck.spacevibe.dev/install.ps1 | iex",
     label: "Windows",
-    manualUrl: WINDOWS_FALLBACK_URL,
     prefix: "PS›",
     status: "x64 · unsigned installer",
   },
@@ -93,15 +89,11 @@ export function renderQuickInstall() {
         </button>
       </div>
 
+      <!-- No manual-download link here since 2026-09-10: the hero's two
+           install buttons carry that job, and a third path to the same
+           installer read as clutter. -->
       <div class="quick-install__footer">
         <span class="quick-install__feedback" role="status" aria-live="polite" data-install-feedback></span>
-        <a
-          class="quick-install__manual"
-          href="${RELEASES_URL}"
-          target="_blank"
-          rel="noreferrer"
-          data-install-manual
-        >Download manually <span aria-hidden="true">↗</span></a>
       </div>
     </section>
   `;
@@ -123,23 +115,17 @@ export function mountQuickInstall(
   const command = shell.querySelector("[data-install-command]");
   const prefix = shell.querySelector("[data-install-prefix]");
   const status = shell.querySelector("[data-install-status]");
-  const manual = shell.querySelector("[data-install-manual]");
   const copyButton = shell.querySelector("[data-install-copy]");
   const copyLabel = shell.querySelector("[data-install-copy-label]");
   const feedback = shell.querySelector("[data-install-feedback]");
 
-  if (!command || !prefix || !status || !manual || !copyButton || !copyLabel || !feedback) {
+  if (!command || !prefix || !status || !copyButton || !copyLabel || !feedback) {
     throw new Error("Quick install controls are incomplete.");
   }
 
   let selected = initialInstallPlatform(navigatorLike);
   let resetTimer = null;
   const clickHandlers = new Map();
-
-  function manualUrl(platformKey) {
-    const datasetKey = platformKey === "mac" ? "installMacUrl" : "installWinUrl";
-    return manual.dataset[datasetKey] || INSTALL_PLATFORMS[platformKey].manualUrl;
-  }
 
   function renderPlatform(nextPlatform, { focus = false } = {}) {
     const platform = INSTALL_PLATFORMS[nextPlatform];
@@ -154,8 +140,6 @@ export function mountQuickInstall(
     command.textContent = platform.command;
     prefix.textContent = platform.prefix;
     status.textContent = platform.status;
-    manual.href = manualUrl(selected);
-    manual.dataset.installManual = selected;
     copyLabel.textContent = "Copy";
     feedback.textContent = "";
 

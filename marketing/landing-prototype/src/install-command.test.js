@@ -63,16 +63,13 @@ describe("quick install command", () => {
     dispose();
   });
 
-  it("changes the command and manual fallback only after an explicit choice", () => {
+  it("changes the command only after an explicit choice", () => {
     const { dispose, root, shell } = fixture();
     root.querySelector('[data-install-platform="win"]').click();
 
     expect(shell.dataset.platform).toBe("win");
     expect(root.querySelector("[data-install-command]").textContent).toBe(
       INSTALL_PLATFORMS.win.command,
-    );
-    expect(root.querySelector("[data-install-manual]").href).toBe(
-      INSTALL_PLATFORMS.win.manualUrl,
     );
 
     dispose();

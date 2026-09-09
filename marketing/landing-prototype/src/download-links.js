@@ -63,25 +63,6 @@ function setDownloadProofState(root, state, count = null) {
   }
 }
 
-function retargetInstallManualLinks(root, urls) {
-  for (const link of root.querySelectorAll("[data-install-manual]")) {
-    if (urls.mac) {
-      link.dataset.installMacUrl = urls.mac;
-    }
-
-    if (urls.win) {
-      link.dataset.installWinUrl = urls.win;
-    }
-
-    const selectedUrl = link.dataset.installManual === "win" ? urls.win : urls.mac;
-
-    if (selectedUrl) {
-      link.href = selectedUrl;
-      link.removeAttribute("target");
-    }
-  }
-}
-
 /**
  * Returns the normalized release list so a second consumer (the release
  * notice) can ride this one request rather than spending another against the
@@ -101,7 +82,6 @@ export async function upgradeReleaseLinks(root) {
 
   retargetAnchors(root, ["downloadMac", "installMac"], urls.mac);
   retargetAnchors(root, ["downloadWin", "installWin"], urls.win);
-  retargetInstallManualLinks(root, urls);
   setDownloadProofState(root, "ready", totalInstallerDownloads(releases));
 
   const stableTag = latestStableTag(releases);

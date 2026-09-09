@@ -67,8 +67,7 @@
 }
 
 .quick-install__platform:focus-visible,
-.quick-install__copy:focus-visible,
-.quick-install__manual:focus-visible {
+.quick-install__copy:focus-visible {
   outline: 2px solid var(--install-signal);
   outline-offset: 3px;
 }
@@ -152,19 +151,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.quick-install__manual {
-  flex: 0 0 auto;
-  color: var(--a-ink-faint);
-  font: 520 0.57rem/1 var(--a-font-display);
-  text-decoration: none;
-  transition: color 180ms var(--a-ease-lock);
-}
-
-.quick-install__manual:hover,
-.quick-install__manual:focus-visible {
-  color: var(--a-ink);
 }
 
 .quick-install {
@@ -283,7 +269,6 @@
 @media (prefers-reduced-motion: reduce) {
   .quick-install__platform,
   .quick-install__copy,
-  .quick-install__manual,
   .quick-install[data-platform] .quick-install__command code,
   .quick-install[data-platform] .quick-install__prefix {
     animation: none;

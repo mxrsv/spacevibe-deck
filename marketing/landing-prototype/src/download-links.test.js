@@ -75,8 +75,6 @@ function renderFixture() {
       data-copy="footerReleases">Releases</a>
     <a class="release-version" href="/landing-prototype/changelog/"
       data-release-version>v0.8.0</a>
-    <a class="quick-manual" href="${WINDOWS_FALLBACK_URL}"
-      data-install-manual="win">Download manually</a>
     <aside data-download-proof data-download-state="loading">
       <strong data-download-count>—</strong>
       <span>downloads</span>
@@ -115,9 +113,6 @@ describe("upgradeReleaseLinks", () => {
       root.querySelector("[data-download-proof]").dataset.downloadState,
     ).toBe("ready");
     expect(root.querySelector("[data-download-count]").textContent).toBe("23");
-    expect(root.querySelector(".quick-manual").href).toBe(EXE_URL);
-    expect(root.querySelector(".quick-manual").dataset.installMacUrl).toBe(DMG_URL);
-    expect(root.querySelector(".quick-manual").dataset.installWinUrl).toBe(EXE_URL);
   });
 
   it("leaves non-download anchors alone", async () => {
