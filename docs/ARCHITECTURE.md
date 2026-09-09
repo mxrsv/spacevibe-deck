@@ -30,8 +30,13 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 | [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                                        | main          | terminal              |
 | [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store                           | chrome        | lib                   |
 | [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                                         | chrome        | lib                   |
+| [src/ui/agent-rail-model.ts](../src/ui/agent-rail-model.ts) `current` + [agent-rail-card-model.ts](../src/ui/agent-rail-card-model.ts) `current` | project/tab history projection plus worktree-card entries and ordering     | tab/scans     | rail renderer         |
+| [src/ui/agent-rail.tsx](../src/ui/agent-rail.tsx) `current` + [worktree-card.tsx](../src/ui/worktree-card.tsx) `current`        | host-routed rail: Electron cards, Tauri legacy repository navigation       | rail model    | tab/pane callbacks    |
 | [src/ui/controls/deck-icon.tsx](../src/ui/controls/deck-icon.tsx) `current`                                                   | the one icon primitive — Phosphor presentation defaults and the four sizes | every surface | @phosphor-icons/react |
 | [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action                | app           | Tauri                 |
+| [electron/agent-registry/](../electron/agent-registry) `current`                                                              | `claude agents --json` polled on demand; the pid → session registry         | renderer ask  | child process         |
+| [electron/agent-hooks/](../electron/agent-hooks) `current`                                                                    | loopback hook endpoint, Deck-owned Claude hooks file, opencode SSE client  | CLI hooks     | `hook:event` push     |
+| [src/terminal/agent-attention.ts](../src/terminal/agent-attention.ts) `current` + [agent-registry-sync.ts](../src/terminal/agent-registry-sync.ts) `current` | per-pane state with confidence; registry facts joined on pid | OSC/ps/hooks | rail projection |
 | [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | landing, live changelog and verified static install bootstraps              | Releases API  | dist                  |
 | [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock               | app stage     | video                 |
 
@@ -93,13 +98,36 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 ## Standing architecture decisions
 
 - English only across strings/comments/docs — [AGENTS.md](../AGENTS.md) `current`.
-- The repository rail renders one row per worktree rather than one row per
-  terminal tab. Each tab is projected as a separate focusable agent button;
-  same-agent tabs remain distinct, the active tab stays inside the three-button
-  visible budget, and `+N` exposes the rest. Selection and close still leave
-  through `App`'s existing callbacks, so ownership stays in `TabManager`
-  ([worktree row projection](../src/ui/repository-rail.tsx#L315-L442) `current`,
-  [agent tab controls](../src/ui/worktree-agent-stack.tsx#L41-L251) `current`).
+- **The agent-signal contract layer (2026-09-03) is main's first INBOUND
+  surface, and it is bounded on purpose.** Before it the app had outbound paths
+  only (updater, `gh`, telemetry). The hook endpoint
+  ([`hook-server.ts`](../electron/agent-hooks/hook-server.ts) `current`) binds
+  `127.0.0.1` on an OS-chosen port; every post must name a LIVE pane and carry
+  that pane's random `DECK_HOOK_TOKEN` (constant-time compare), is capped at
+  64 KiB on `Content-Length` and on the stream, must be a JSON object with a
+  safe `session_id`, and is generation-checked per pane by session id — all
+  in a pure module with its own test
+  ([`hook-request.ts`](../electron/agent-hooks/hook-request.ts) `current`), so
+  nothing reaches a renderer that the validator did not accept. Deck writes
+  its hooks file under `<userData>/agent-hooks/` and NEVER into the user's
+  `~/.claude`, `~/.codex`, `~/.config/opencode` or `~/.gemini` (spec §3.1: no
+  global injection); a launch is augmented at arm time and the journal keeps
+  the user's own command
+  ([`launch-augment.ts`](../src/lib/launch-augment.ts) `current`). The
+  process table and OSC stay the fallback, and every mark says which it is
+  (DL-27.3). Electron only; Tauri inherits nothing but the `cursor-agent`
+  classification fix. Spec:
+  [agent-signal contract layer](specs/2026-09-03-agent-signal-contract-layer-design.md)
+  `decided`.
+- Rail presentation is host-routed. Electron projects project → checkout cards:
+  every agent pane is pane-exact, every shell-only tab remains selectable and
+  closable, and labels are unique within the checkout. Tauri is feature-frozen
+  and keeps [`RepositoryRail`](../src/ui/repository-rail.tsx) `current`, with
+  its open/resume callbacks explicitly wired rather than receiving a partial
+  Electron card surface. Selection and close still leave through `App`'s
+  existing callbacks, so ownership stays in `TabManager`
+  ([host switch](../src/ui/agent-rail.tsx) `current`,
+  [card projection](../src/ui/agent-rail-card-model.ts) `current`).
 - Sidebar navigation owns presentation scope, not terminal ownership. Its
   [`TabStrip`](../src/ui/tab-strip.tsx) `current` derives the active worktree
   through the same repository model as the rail and projects only that row's

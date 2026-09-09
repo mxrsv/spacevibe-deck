@@ -152,6 +152,544 @@ the plan is [2026-09-03-agent-board-model-and-specimen.md](plans/2026-09-03-agen
   specimen surfaced was fixed the same day (`11070af`, placeholder now
   `Reply — Enter sends`), and the specimen itself was served from this worktree on
   port 5187 because ports 5175/5176 were held by other sessions.
+## The rail says how much it knows — 2026-09-03
+
+`building`. All four stages of the
+[agent-signal contract layer spec](specs/2026-09-03-agent-signal-contract-layer-design.md)
+`decided` landed in one pass on the owner's "implement this spec, skip plan", after
+the [trust audit](review/2026-09-03-agent-signal-trust-audit.md) found that the
+rail drew a documented signal, a heuristic and a guess with one pen. Electron only
+for stages 1–3; stage 0's classification fix reaches both hosts.
+
+- **Stage 0 — honest UI.** `cursor-agent` classifies as an agent on both hosts
+  ([`AGENT_BY_BINARY`](../electron/platform/classify.ts) `current`, `info.rs`'s
+  `PaneAgent::CursorAgent` with an explicit serde rename; a test walks
+  `BUILTIN_AGENTS`). The tracker records a `phaseConfidence` beside the
+  attention axis's `confidence`
+  ([`agent-attention.ts`](../src/terminal/agent-attention.ts) `current`), and
+  [`paneSignal`](../src/ui/agent-rail-model.ts) `current` returns
+  `{ state, confidence }` — DL-27.3 amended: an inferred `asked`/`done` is a
+  hollow ring, an explicit one a filled dot, `unknown` the resting dot. **A
+  working agent that leaves the foreground is `ended`**, the sixth rail word,
+  drawn as a 7px square; before this it latched an inferred `completed` and a
+  crash wore `asked`'s yellow (audit §4.3). It clears the agent's `requested`/
+  `completed` (a dead agent is never `asked`), keeps `error`/`warning`, and
+  clears when the user focuses the pane or types into the shell that replaced
+  it — which also drops the agent's name, so the shell's own later exit cannot
+  reprint it. The pane projection keeps the ended agent's name until then
+  (`syncViews` reads the tracker's `agentLabel`), because a row with no agent
+  is not a row. `noteExit` carries the PTY's exit status (Electron adds
+  `exitCode` to `pty:exit`; Tauri answers null). The startup blind window
+  (audit §4.5) is closed two ways: the launcher's `onFire` polls `pty_info` at
+  once and again 1 s later, and a gate that opens is SEEDED from the activity
+  module's OSC-backed snapshot — only OSC: a heuristic streak at gate-open is
+  the CLI's startup screen. The accessible name says `needs you (inferred)`
+  and `needs you — permission prompt`. Drawn as three candidates each for
+  the inferred mark and the ended mark in the gallery's `signal mark
+  direction` section; A ships.
+- **Stage 1 — the Claude registry.** Main polls `claude agents --json`
+  ([`claude-registry.ts`](../electron/agent-registry/claude-registry.ts)
+  `current`) on a 5 s clock that runs only while a renderer keeps asking and
+  stops 15 s after the last ask, through the discovered absolute path; a
+  failed or unparseable poll answers the previous list flagged `stale`. The
+  `agent_registry` channel answers the latest snapshot at once (measured
+  latency of the command on the owner's machine: 0.14–0.22 s, three runs).
+  [`agent-registry-sync.ts`](../src/terminal/agent-registry-sync.ts) `current`
+  joins each Claude pane on `pty_info`'s foreground pid — checked by hand: a
+  registry pid IS the tty's `tpgid` leader, so the join is exact — and hands
+  the tracker a fact: `waiting` latches an explicit `requested` with
+  `waitingFor` as its detail, a non-waiting fact clears only the registry's
+  own `requested` (a BEL stays latched), and a pane absent from two
+  consecutive fresh polls is forgotten; a stale snapshot counts for nothing.
+  `PaneView.sessionId` is now a FACT for such panes: the tail store sends it as
+  an `exact` pin and main never ranks for it (spec §10.7); the journal records
+  it and restore's `resume_lookup` reopens it when it is still on disk,
+  ranking only when it is not. Note the exposure: `agent_registry` returns
+  every interactive Claude session of the user on the box (cwd, name, id) to
+  a renderer that asks — same-user, loopback-free, but stated.
+- **Stage 2 — per-pane adapters.** Every shell learns `DECK_PANE_ID`, a random
+  `DECK_HOOK_TOKEN` and `DECK_HOOK_PORT` at spawn
+  ([`buildEnv`](../electron/pty/spawn.ts) `current`; the pane id is allocated
+  BEFORE the spawn now). Main listens on `127.0.0.1:0`
+  ([`hook-server.ts`](../electron/agent-hooks/hook-server.ts) `current`); the
+  request validator is its own module and test
+  ([`hook-request.ts`](../electron/agent-hooks/hook-request.ts) `current`:
+  POST `/hook` only, live pane, constant-time token compare, 64 KiB cap on
+  `Content-Length` AND on the stream, a JSON object with a safe `session_id`,
+  and a generation check per pane by session id — `SessionStart` names,
+  `SessionEnd` clears, anything else must match). An accepted post is one
+  flat `hook:event` to the pane's window. At startup main writes
+  `<userData>/agent-hooks/claude.json` and `deck-hook.sh`
+  ([`claude-hooks-file.ts`](../electron/agent-hooks/claude-hooks-file.ts)
+  `current`) — never under `~/.claude`; the script is POSIX `sh` + `curl`,
+  exits 0 on every path, and prints Claude's documented `terminalSequence`
+  (an OSC 777 the pane already reads as `requested`) when a `Notification`
+  post fails. **Verified 2026-09-03 on the owner's machine:** with thirteen
+  user-level hook events present, `claude --settings <deck file> --session-id
+  <uuid> -p …` fired Deck's `SessionStart` and `Stop` hooks from the file, so
+  `--settings` ADDS hooks rather than replacing them, and the `Stop` payload
+  carried `last_assistant_message`. Launches are augmented at ARM time only
+  ([`launch-augment.ts`](../src/lib/launch-augment.ts) `current`): claude gets
+  `--settings '<file>'` and, for a fresh launch, a Deck-minted `--session-id`
+  (the pairing exists before the first byte; a resuming command keeps its
+  own); codex gets `-c tui.notification_condition=always`; opencode gets
+  `--port <n>` with a port main reserved (`opencode_attach`) and then
+  subscribes to over `GET /event` (SSE frames and event shapes captured from
+  opencode 1.18.25's own `/doc`: `session.status`, `session.idle`,
+  `session.error`, both `permission.asked` spellings). The journal and the
+  strip keep the user's own command; a flag the user typed is never doubled;
+  a host with no `agent_signal_config` arms the command unchanged. The
+  [event map](../src/lib/agent-signal-map.ts) `current` is one module:
+  `Stop` → completed with its sentence (written straight into the tail
+  store, ahead of the transcript), `StopFailure` → the only `failed`,
+  `Notification` → requested for its two matched kinds only,
+  `PermissionRequest` → requested naming the tool, `SessionEnd` → nothing
+  (the process table makes `ended`), `SubagentStop`/`TeammateIdle` not
+  installed. `Settings.agentSignalAdapters` (default all on) switches each
+  adapter under Settings → Agents.
+- **Stage 3 — freshness and generation.** A contract-layer state older than
+  120 s with the agent still in the foreground turns inferred on the next
+  poll (`tracker.tick`); a fresh report restores it. A hook post naming a
+  session other than the pane's current one is dropped in main AND in the
+  tracker; a server event may rotate the session, since one opencode TUI runs
+  several. The registry's two-miss rule is the same idea one source over.
+
+**Departures from the spec, named:** `ended` is produced by the agent → shell
+transition rather than by `noteExit` (a pane whose PTY dies is auto-closed in a
+multi-pane tab, so the word would have nowhere to land); the hook endpoint's
+generation check lives in `hook-request.ts` as a pure decision, not in the
+listener; opencode's port is reserved by main and typed by the renderer, with
+the reservation race accepted; the registry poll is demand-driven rather than
+always-on. **Owner-veto defaults taken as written (spec §10):** the
+`completed` → `asked` fold stays, ids are minted for fresh Claude launches,
+augmentation is typed visibly, adapters are on by default, Gemini/Antigravity/
+Cursor stay on the fallback, Codex rings in a focused pane too, the tail store
+stops ranking for a registry-known pane.
+
+**Verification state:** both typechecks, `npm run build`, `npm run
+electron:build`, `generate:menu:check`, the design-language gate and Prettier
+over every touched file; targeted suites throughout and the full `npm test` at
+the end (numbers in the day's checkpoint); `cargo test --lib info::tests` for
+the Rust twin. Verified by hand, outside any host: `claude agents --json`'s pid
+is the tty's foreground leader; `--settings` hooks are additive; opencode's SSE
+frame and `/session/status` shapes. **Owed:** every live check in the audit's
+§8 in a running `electron:dev` (spec §9 — #0, #1, #4, #5, #11 with the
+latency, #2, #6, #7, #8, #12, the endpoint-killed run and the
+freeze-and-degrade run), the owner's pick among the gallery's mark candidates,
+the owner eye review, and Windows (Gate C: no hook script exists for it, and
+the Claude adapter is skipped there by design).
+
+## Finish the daily surfaces, then ship — 2026-09-02
+
+`decided`. Intent only: nothing is built, and no evidence exists yet. Recorded
+after an interview with the owner so the next session starts from this and does
+not ask again.
+
+- **Outcome:** cut the next release once three surfaces — the rail card, session
+  restore and the sidebar — are finished end to end and read as easy to look at
+  and easy to use. Every other feature is frozen where it stands.
+- **User:** the owner, running several agents side by side every day on macOS.
+- **Why now:** two weeks without a release. Code landed on many new surfaces
+  since `1.0.0`; each is green in isolation, but the owner has used them and
+  found that the flows come apart where the surfaces meet — a press that does
+  not answer, a path that stops halfway. The defect is joined-up use, not
+  visual polish and not the ideas themselves.
+- **Success:** the owner opens Deck, everything is where it was, and a full day
+  on the rail and the sidebar hits no dead press and no broken flow. **The
+  owner's own eye pass is the gate; a green suite is not.**
+- **Constraint:** no new feature opens in this pass. Electron on macOS only;
+  Windows stays Gate C.
+- **Out of scope:** Quick Launch (deferred, explicitly), the dock's
+  Sessions/Recent activity tab, the explorer root row, the rendered markdown
+  view, the telemetry Worker and privacy page, and marketing. None of these is
+  patched, hidden or removed — they ship as they are.
+
+**Next step, agreed:** walk the three flows in a running `electron:dev` host,
+record every gap with a screenshot, and write the list to `docs/review/`. The
+owner picks the fixes from that list; nothing is fixed before it is picked.
+Reading the "owed" lists in `../AGENTS.md` alone was declined, since they
+record what the code admits, not what breaks in use.
+
+## One create control per checkout — 2026-09-02
+
+`current`. Settled with the owner by interview the same day and implemented
+from `openspec/changes/rail-create-consolidation` (proposal, spec, design and
+tasks all under that folder). The owner's screenshot boxed four `+` in one
+276px rail column and asked for fewer, with a better flow.
+
+**What was wrong.** Five controls said "create" and did three things. Since
+Quick Launch was deferred (the section above), `⌘T`, the strip `+`, the
+project header's `+` and the open card's `New agent` row all routed through
+`openQuickAgent(null, path)` — a plain SHELL, started without a word about its
+agent or its place, under a label that said "agent". Only the closed card's
+strip `+` reached the agent list, and only the card beside it said where. The
+header's `+` silently resolved to the primary checkout. The strip's `+` meant
+"the active tab's workspace", said nowhere. And `openTaskLauncher(null)` called
+`TabManager.newTab()`, which called it back — a recursion whenever no tab was
+active.
+
+**What the owner settled.** Pressing `+` prefers opening an AGENT; the user
+must see which checkout it will run in; the destination is stated by the
+control's position and never re-chosen at that surface; fewer buttons. From
+that, one rule: **every checkout carries exactly one create control, and it
+opens the agent list.**
+
+**What changed.**
+
+- The project header's `+` is gone (DL-27.18 retired), with `groupPath`,
+  `headerDestination`, its CSS and its middle grid track. The tab strip's `+`
+  is gone in both layouts (`.tab-add`, `onNewTab`, `newTabDisabled`).
+- The open card's `New agent` row, the bare row of a checkout with nothing
+  open, and a folder's flat entries (which gained the row) all raise the
+  checkout's actions menu, anchored to the card or row — exactly as the closed
+  strip's `+` and a right-click do. [`useActionsMenu`](../src/ui/worktree-card.tsx)
+  `current` is the one open/anchor state the three shapes share; a second press
+  on the control that opened it closes it, and every such trigger carries
+  `aria-haspopup`/`aria-expanded` with no `title`. A press starts nothing;
+  `Run <agent>` does. `onNewTabIn` and `newTabDisabled` left `WorktreeCardProps`
+  and `AgentRailProps`.
+- A REMEMBERED project — whose header `+` was its only way back in — prints
+  its remembered checkouts as rowless groups
+  ([`rememberedWorktrees`](../src/ui/agent-rail-model.ts) `current`): the
+  repository's history entries resolve to their worktree roots, primary first;
+  a plain folder gets one unlabelled group, which renders as the flat-entries
+  row alone. The rail reads "live" off `tabIndexes.length`, not
+  `worktrees.length`, so the remembered header keeps its still label and its
+  forget-only ✕. This was NOT in the plan's task list; it surfaced when the
+  header `+` came off and is recorded as task 4.6.
+- `⌘T` (`new-tab`) raises the same `CardActionsMenu` FREE-STANDING under the
+  stage strip: `TabManager.newTab()` still hands `App` the active workspace,
+  and [`openTaskLauncher`](../src/ui/app.tsx) `current` writes it to
+  [`railKeyboardMenuFor`](../src/chrome/events.ts) `current` (or raises the
+  Open board when there is none), never calling `newTab()` back; it asks
+  `ensureRepositoriesScanned` for the path first, since the rail was the scan's
+  only caller and top-tab mode mounts no rail, and a second `⌘T` closes the
+  list. The menu reads
+  a [`MenuSubject`](../src/ui/agent-rail-card-model.ts) `current` rather than a
+  card's group — [`subjectOf`](../src/ui/agent-rail-card-model.ts) `current`
+  for a card, [`subjectForWorkspace`](../src/ui/agent-rail-model.ts) `current`
+  for the chord, from the same scans the rail reads — so the two placements
+  name one checkout with one set of words
+  ([`subjectWhere`](../src/ui/agent-rail-card-model.ts) `current`, which
+  `whereOf` now delegates to). The free-standing placement prints that
+  destination as a one-line heading (`.asr-act__where`) and ends with
+  `Open another project…`; it sets the existing `railCardMenuOpen`, so the
+  browser's native view is hidden under it. `new-tab` keeps its id and chords
+  and is labelled `New Agent…`; the Tauri menu was regenerated.
+- The strip spec's §7.4, §7.5, §15.2 and §15.3 are superseded by this section
+  and the openspec change; the frozen file is not edited.
+
+**Decided here and recorded for the owner's veto**, because the interview did
+not reach them: top-tab mode has no sidebar, so it now has no mouse create
+control and no mouse route to the board — covered by the free-standing list's
+board row (alternative: keep `.tab-add` in `TabBar` only); a plain shell is
+`New split here` and nowhere else, so a second shell TAB in a checkout that
+already has one is no longer reachable from the rail (alternative: a
+`New shell tab` row); Tauri loses the strip `+` and gains the free-standing
+menu with fewer rows, since both halves are renderer-wide; and the
+`taskOperationPending` guard the removed controls carried does not apply to
+the menu's rows, which the strip's `+` never had either.
+
+**Evidence.** Targeted suites green: `worktree-card-menus` (12),
+`menu-subject` (new, 12), `card-actions-menu` (new, 9), `worktree-card`,
+`agent-rail`, `agent-rail-model`, `tab-strip`, `tab-bar`, `rail-cluster-drag`,
+`repository-rail`, `app` and `keymap` — 411 across those files plus the two new
+ones; `npx tsc --noEmit` and `npx tsc -p tsconfig.electron.json` clean;
+`generate:menu:check` clean; the design-language gate 19/19; Prettier clean on
+every touched file. A Playwright pass on the gallery's new free-standing-menu
+specimen (popovers section, both themes) measured the real component: the
+heading in title ink on the rows' own text column, the board row last, the
+surface at the pad's leading edge and bottom-clamped, and `Run Claude` holding
+focus on open — **which found and fixed one defect: the menu focused its first
+row at mount, while the surface was still `visibility: hidden`, so `focus()`
+was a no-op and the anchored menu had shipped since 2026-08-31 with focus left
+on its trigger; the focus now waits for the placement.** The gallery's
+`navigation` section — where the rail specimens live — could not be looked at:
+it crashes the headless renderer on entry, and a pristine `HEAD` (`57d3f3f`)
+worktree served on another port crashed the same way, so that is pre-existing
+and not this change's. **NOT run: the full `npm test`, `npm run build`,
+`electron:build`, any `electron:dev` pass, and the owner eye review** — no
+create control has been pressed in a running app. Windows is Gate C.
+
+## The explorer names its root — 2026-08-25
+
+The tree never said what it was rooted at:
+[`flattenTree`](../src/files/file-tree.ts) `current` emitted the root's
+CHILDREN at depth 0, so two worktrees of one repository drew two identical
+columns of `src` / `electron` / `package.json`. The root is a `TreeRow` now, at
+index 0 — in the MODEL, never separate DOM above the scroller, because the
+spacer height, the window, the roving tabindex, `scrollIntoView` and every
+arrow key are index arithmetic over ONE array and a row outside it makes all
+five disagree with the screen.
+
+**`openDirectories` had to dedupe.** An expanded root row carries
+`expanded: true`, so the naive `[root, ...expandedRows]` named the root twice —
+a duplicated `list_dir` on every Refresh and a duplicate entry in the watch set
+that `watch_paths` replaces wholesale.
+
+**`rootExpanded` could not be folded into `expanded`.** That set already means
+"this child directory is open", so an empty set is a fully collapsed tree whose
+root is still showing its children; there is no value of it that says "the root
+is shut". It is a new per-workspace field on
+[`FileSurfaceState`](../src/files/file-surface-store.ts) `current`, window-scoped
+and deliberately not persisted.
+
+**Focus moved from an index to a path.** A create, a refresh or a `showHidden`
+flip re-sorts the rows, so the same index names a different file — and design
+§5.3 asks focus to land on a CREATED entry, which is an identity rather than a
+position. [`resolveFocusIndex`](../src/files/tree-focus.ts) `current` derives the
+index every render, falling back to the nearest surviving row. The component's
+`rowRefs` map was rekeyed from index to path with it: an index-keyed map hands
+the focus effect a stale element the moment the rows move.
+
+**Enter on a cluster button fired twice.** `stopPropagation` on the button's
+click covers the POINTER path only; the tree container's own `onKeyDown` still
+ran `activateRow(rows[0])` and collapsed the root. `handleKeyDown` now returns
+early for any target that is not the row itself — DL-27.1's
+container-plus-hit-layer shape, applied to a row.
+
+**The modal mounts in `App`, not in the panel.** `.dock-panel` carries
+`transform: translateX(100%)` at rest, and a `position: fixed` descendant of a
+transformed ancestor resolves against that ancestor — a dialog inside
+`FileTreeView` would be positioned by the panel through its 0.28s slide and
+inert while the panel closes. It is raised through
+[`createEntryRequest`](../src/chrome/events.ts) `current`, `editorRequest`'s own
+precedent, which also hands `browserPanelObscured` its input: a native
+`WebContentsView` cannot be covered by any DOM layer, and this repo has shipped
+that defect twice.
+
+**Refresh does not reuse the watcher's coalescer, and does not clear the
+cache.** Clearing first destroys the map `visibleDirectories` reads, so only the
+root would reload, and it throws away the deliberate "keep the last good listing
+when a reload fails" behaviour; the coalescer exists to absorb bursts, and a
+Refresh the user PRESSED must not be debounced with them. The scope is
+snapshotted before the first load, so an answer landing mid-pass cannot move the
+set being iterated. Collapse All is a CONTROLLER operation
+([`collapseAll`](../src/files/file-surface-controller.ts) `current`) because
+collapsing releases every descendant watcher and only the controller may call
+`refreshWatch()`.
+
+**Creating is one channel.**
+[`create_entry`](../electron/fs/create-entry.ts) `current` — `open(…, "wx")` for
+a file, a non-recursive `mkdir` for a folder — so it can never overwrite
+anything, a symlink included. `write_file` renames over its target and could
+silently truncate; `create_directory` is the task launcher's, is not bounded to
+a workspace root, and refuses every name starting with `.`, so `.github` could
+not be created through it. The validator
+([`checkEntryName`](../src/files/entry-name.ts) `current`) is ONE pure module
+both processes import: it accepts a leading dot and refuses the Windows device
+names on every platform, because a repository is shared and a name macOS accepts
+but Windows cannot check out is a defect the creating machine should refuse.
+
+**Gate figures, 2026-08-25 (run 2026-08-27).** `npx vitest run src/files
+src/ui/app.test.tsx electron/fs/create-entry.test.ts
+scripts/electron-ipc-contract.test.ts` → 441 passed / 0 failed (26 files).
+`npx tsc -p tsconfig.electron.json` clean and `npm run electron:build` green.
+The design-language gate resolved DL-19.9 and the amended DL-19.5 (19 tests) at
+the time Task 1 ran. Browser measurement on the gallery's `explorer tree`
+specimen at DL-19.4's 360px floor: every row 22px, each control a 17px square
+with 2.5px clearance top and bottom, `scrollWidth` 360 against `clientWidth`
+360, the root drawing a caret and no type glyph, a long name ellipsising while
+the 71px cluster does not shrink, and a collapsed root rendering ONE row that
+still carries all four controls.
+
+**Not clean, and not this work's:** the shared checkout's `npm test` reports
+4192 passed / 6 failed, and every one of the six belongs to another session's
+in-flight rail-card work (`worktree-card`, `agent-rail`, the radius and
+retired-glyph gates, and the known `Woven Flag` gallery assertion).
+`npm run build` cannot run in this tree at all — `src/terminal/tab-manager.ts`
+and `src/ui/worktree-card-strip.tsx` carry another session's type errors, and a
+pristine `HEAD` worktree does not compile either, because committed code imports
+modules other sessions have not committed yet.
+
+**Owed: a native `electron:dev` pass and the owner eye review.** No entry has
+been created, no tooltip seen and no status line read in a running app; Windows
+is Gate C.
+
+## The strip becomes the way in — 2026-08-27
+
+The card shipped that morning with a closed strip its own component called
+"a preview, not a set of controls". Hours later the owner asked for the
+opposite, in two passes against a live gallery specimen: *"mỗi item phải click
+được, và có thể cần hover để hiện popover có actions"*, then *"chia theo agents
+— Claude có 2 agent trở lên thì gộp lại để hiển thị"*. The
+[spec](specs/2026-08-27-rail-card-strip-actions-design.md) `decided` is what
+those two sentences became, and this is the build of it.
+
+**A segment is an agent KIND now.**
+[`groupSegments`](../src/ui/agent-rail-card-model.ts) `current` folds the
+checkout's panes by `agent`, ranks the GROUPS by their loudest pane through
+DL-27.3's own `outranks`, and renders each as one segment: glyph, that pane's
+state dot, and `×N` when it holds several. Two Claudes used to spend two
+identical-looking segments and push a sixth pane behind a number. **The cost is
+stated rather than argued: a merged segment wears ONE state mark.** A checkout
+running a failed Claude beside a working one shows `failed` and says nothing
+about the other until the menu opens — which is why that menu is not a
+convenience, it is the only place the full truth is told. The two counts a
+strip can carry take different inks on purpose: `×N` is `--text-muted` and
+names what the segment IS, `+N` keeps `--accent` and names what the strip is
+NOT showing.
+
+**Every segment presses, and hovering one raises the panes behind it.** A
+segment is a `<button>`, so Tab reaches it and the native `title` had to come
+off (DL-23.10: a `title` never appears on keyboard focus, so the state word
+moved into the accessible name). A single-pane segment's press focuses that
+pane. **A merged `×N` segment's press, and the `+N` tail's, PIN the menu open
+since 2026-09-02** (spec §16 §15.1 and DL-13.7, both amended): the press used
+to focus the loudest pane and close the hover menu, and the owner reported it
+from a card running two Codex agents as "click shows nothing, only a blink" —
+reproduced on the real component in a browser harness: hover mounts the menu
+at ~120ms, the press unmounts it, and because `pointerenter` never fires again
+while the pointer stays inside the segment, nothing can bring it back until
+the pointer leaves and returns. A pinned menu survives the pointer leaving and
+goes on Escape, an outside press, a second press, a chosen pane, or its
+segment leaving the shown set; hovering another segment re-targets it and
+drops the pin. Hover or
+focus raises [`SegmentMenu`](../src/ui/worktree-card-menus.tsx) `current`, one
+shape over three cases: a merged `Claude ×2` lists its two panes under a
+caption, a single-pane segment lists that pane plus an explicit `Focus pane`
+row, and `+N` lists exactly the panes it hides. The rows are the production
+`.asr-card__row`, moved to [`worktree-card-row.tsx`](../src/ui/worktree-card-row.tsx)
+`current` so the card and the menu share one owner rather than an import cycle
+— press, DL-27.21's ✕, the conditional model pill and the hover wash all arrive
+for free. The `Focus pane` row is this shape's own accepted cost, drawn in the
+gallery before it was chosen: a one-row list IS the segment, and without it the
+menu would say nothing the segment did not.
+
+**The drawing's four missing mechanics are all here**, because the specimen
+positioned its popover `absolute` inside a local anchor and its own header said
+not to inherit that: `position: fixed` off the trigger's client rect (
+`.asr-rail__list` is a scroll container with `overflow-x: hidden`, so a surface
+inside it is clipped on the left and scrolls away from its own segment), a
+120ms open delay with a 140ms close delay that the menu's own `pointerenter`
+cancels — which IS the bridge across the 6px gap — a pin by the segment's KEY
+rather than its index, so a mid-hover re-rank closes the menu instead of
+re-targeting it, and a close on scroll, since a fixed surface does not follow
+its anchor.
+
+**The fold measures.** `useStripMetrics` in
+[`worktree-card-strip.tsx`](../src/ui/worktree-card-strip.tsx) `current` reads
+the rendered segment boxes back into a window-scoped cache and reads the
+strip's own `max-width` used value as the budget, then hands both to the pure
+[`fitSegments`](../src/ui/agent-rail-card-model.ts) `current`. The spec's Chrome
+measurements survive as the fallback the very first paint uses, and they run
+~7px conservative, so an unmeasured shape folds one segment early rather than
+one late. `STRIP_VISIBLE = 3` and `stripSegments` are untouched and still
+exported — they are what a segment MEANT until this change, and the
+rail-worktree-card specimen still reads them.
+
+**The `+` closes a real gap, and it never folds.** A closed card with agents in
+it had NO create path pinned to its own checkout: `New agent` exists only while
+the card is open, `BareCheckout` only covers a checkout with nothing running,
+and the project header's `+` resolves through `groupPath` to `worktrees[0]` —
+always the primary, silently. It says so now (`New tab in <project> ·
+<checkout>`), and it stays, because a project with one checkout would otherwise
+lose its launcher whenever its card is open. The strip's trailing `+` costs the
+checkout name nothing — the strip is `width: fit-content`, so it spends strip
+width, never head width, which is exactly what the rejected card-head slot
+could not do: the spec measured `bench.ai-terminal` beside `feature/ai-terminal`
+going from 14px of clipping to 37px.
+
+**The actions menu is built entirely on seams that already existed**, which is
+the finding that made it cheap: `openQuickAgent(agentId, destination)` for
+every agent row (that argument already overrides both cwd and workspace tag),
+Quick Launch's own create-worktree subview prefilled with the card's repository
+for the branch row, and `open_in_app` with the catalog's `finder` and terminal
+entries for the last two. **No new IPC channel was added.** A right-click on
+the card raises the same surface, anchored to the CARD rather than the cursor
+so both entry points land in one place, and that place is to the RIGHT: the
+rail is a 276px column on the window's left edge, so a menu hanging below would
+cover the other checkouts and the card being acted on. It flips left and clamps
+against the bottom when the viewport is tight.
+
+**The one fork:** `split-row`/`split-column` act on the ACTIVE pane, and the
+card that raised the menu may not own it.
+[`splitInWorkspace`](../src/terminal/tab-manager.ts) `current` is the
+resolution the spec proposed — the rail passes a path and receives a boolean,
+exactly as `onNewTabIn` already does, so no pane id leaves the terminal layer.
+One departure from the spec's own wording, named: an empty checkout
+materializes a tab and STOPS rather than also splitting it, because a fresh
+tab's single pane is already the pane the row promised and splitting it too
+would spawn a second, unasked-for shell.
+
+**Two things had to be plumbed that the drawing never needed.** Both surfaces
+are placed over the STAGE, where the browser tab's `WebContentsView` is a
+native layer above the renderer — so `railCardMenuOpen` joined
+[`browserPanelObscured`](../src/ui/app-policy.ts) `current`, the same defect ⌘T
+carried until `agentQuickPickerOpen` joined it on 2026-08-16. The flag is
+reference-counted, because hovering one card's segment while another card's
+actions menu is open puts two surfaces on screen and the first to unmount would
+otherwise clear it out from under the second.
+
+**And a latent production bug went with the change.**
+[`.asr-card__strip`](../src/styles/04c-rail-worktree-card.css) `current` paired
+`margin-left: 22px` with `max-width: 100%` — a percentage that resolves against
+the card's 242px CONTENT box, not against the 220px the margin leaves, so a
+strip wider than 220px clamped at 242px and hung 22px past the card, where
+`.asr-rail__list`'s `overflow-x: hidden` cut it without reporting anything. It
+was unreachable only because the fold was a fixed cap of 3; the `+` segment and
+a width-aware fold are exactly what reach it. It is `calc(100% - 22px)` now,
+and that declaration's used value is also what the fold reads as its budget, so
+the stylesheet is the one source of truth for the room a strip has.
+
+**Evidence — and there is very little of it.** The code is written and two unit
+files cover the pure halves (`agent-rail-card-strip.test.ts` for the grouping,
+the fold and the panes-behind lookup; `worktree-card-menus.test.ts` for the
+row set and DL-19.7's host gating). **Nothing was run**: no `npm test`, no
+`npx tsc --noEmit`, no `npm run build`, no design-language gate, no
+`electron:dev` pass and no owner eye review — this repo's standing rule is that
+gates run only when the owner asks for them in that turn, so the W4 evidence
+rule is explicitly NOT claimed as satisfied here. One follow-on is known and
+unchecked: `agent-rail.test.tsx` asserts the old strip's `<span role="img">`
+segments, which are `<button>`s now. The gallery section is PARKED — its files
+stay as the drawn record of what was chosen and turned down, its registry entry
+is gone, because a "per-pane — what ships" control column stopped being current
+the moment this shipped.
+
+## The Electron rail card keeps every live route truthful — 2026-08-27
+
+The checkout card no longer assumes that every live tab contains a recognised
+agent. [`agent-rail-card-model.ts`](../src/ui/agent-rail-card-model.ts) `current`
+now builds one selectable entry for every agent pane and one shell entry for
+every shell-only tab, then assigns deterministic checkout-wide labels
+(`Claude`, `Claude 2`, `Claude 3`). The selected checkout is derived from its
+selected tab rather than from agent-pane focus, so a shell-only checkout can be
+active and reachable. [`WorktreeCard`](../src/ui/worktree-card.tsx) `current`
+selects and closes shell tabs through the existing tab callbacks; agent rows
+remain pane-exact. Closed-card segments expose their agent and state through
+accessible labels instead of relying on decorative glyphs alone.
+
+The host boundary is explicit. [`AgentRail`](../src/ui/agent-rail.tsx) `current`
+uses the card rail under Electron and routes Tauri to the existing
+[`RepositoryRail`](../src/ui/repository-rail.tsx) `current`; App wires its open,
+attention-focus and archived-worktree resume callbacks. This keeps the
+feature-frozen host on its supported navigation instead of rendering a card
+whose git/session data sources do not exist there. The model pill is withheld
+in production because the available pane/session model map is heuristic; the
+Gallery may still inject explicit specimen data, but the app does not present a
+guess as fact.
+
+The busy treatment was reduced from a rasterized conic beam, a blurred inset
+glow and three animated bars to one static inset hairline plus one
+transform-only pulse per working agent. Reduced motion keeps the state legible
+and still. Card-specific entries, priority and worktree ordering moved out of
+[`agent-rail-model.ts`](../src/ui/agent-rail-model.ts) `current` into the new
+card model; the files are now 751 and 152 lines respectively, and the card CSS
+is 722 lines.
+
+The legacy Tauri restore seam is serialized across all workspace rows. Its
+session journal now reference-counts overlapping restore and lifecycle
+suspensions, so a restore cannot release a quit/close hold, and the complete
+restored snapshot is captured before another archived row can start.
+
+Evidence: the five focused suites pass **224/224**; both renderer and Electron
+typechecks, `npm run build`, `npm run electron:build`, menu generation check and
+the design-language suite pass. The full suite is **4074 passed / 1 failed / 5
+skipped**: the pre-existing Woven Flag Gallery assertion still expects a
+removed candidate; the packaged-smoke cleanup suite passed **8/8** inside this
+run. No Gallery/dev server or native host was started. **Pending:** rendered
+Gallery evidence, native Electron click-through, owner eye review, and Windows
+Gate C.
 
 ## Recent agent activity — 2026-08-25
 
@@ -368,7 +906,7 @@ printed the branch word once per agent — the noise §2.1 existed to prevent,
 arriving by a different door. The tier was missing from the render, not from the
 data.
 
-[`RailWorktreeGroup`](../src/ui/agent-rail-model.ts) `current` is that tier:
+[`RailWorktreeGroup`](../src/ui/agent-rail-card-model.ts) `current` is that tier:
 branch, path, `primary`, `labelled` and its own rows, with `sortByOpenOrder`
 applied WITHIN the group. `RailStreamGroup.rows` became `worktrees`, and
 `RailTabRow.worktree` is **deleted** — the group above the row says that word
@@ -1121,7 +1659,7 @@ rail owned. The shared trailing slot stays reserved, so the hover close and row 
 not shift when a mark is absent.
 
 The project header reads folder → name → trailing caret
-([`AgentRail`](../src/ui/agent-rail.tsx#L493-L510) `current`); the folder names the group
+([`AgentRail`](../src/ui/agent-rail.tsx#L328-L346) `current`); the folder names the group
 genre and the caret keeps the far edge as the expand/collapse affordance. The same-day
 follow-up removed the redundant `Workspace` caption from the launcher row, which then moved
 intact into [`SidebarFrameActions`](../src/ui/sidebar-toggle.tsx) `current` after the hide
@@ -2621,6 +3159,30 @@ well now that the action's own target is a modal-tier overlay.
 `generate:menu:check` clean. The visual design was eye-approved against a real-component
 gallery specimen before being wired in. **Owed:** a native `electron:dev` click-through and the
 owner's eye review of the wired flow.
+
+### The panel states a worktree once, then lists agents as rows — 2026-08-16
+
+New [DL-29.7](DESIGN-LANGUAGE.md) `current`. A §5 config row at the top of the panel carries
+the destination as a `menu` value (`folder · branch`); below it the agents are a COLUMN, not
+the open board's wrapped grid.
+
+**Worktree and branch are one choice, because git makes them one** — a worktree is checked out
+on exactly one branch — so picking a branch independently (a `git checkout` into a
+possibly-dirty tree with agents running in it) is deliberately NOT offered; the open board's
+create-worktree flow stays the way to reach a branch with no worktree.
+
+- [`worktree-destinations.ts`](../src/repositories/worktree-destinations.ts) `current` is the
+  pure half. **No new IPC:** `git_repository` already reports every worktree with its branch,
+  and `repositories-store` already caches the scan for the rail.
+- `openQuickAgent` took a second argument — a destination overrides BOTH cwd and workspace
+  tag, `null` keeps the old behaviour. That is the one materialization seam that moved, an
+  owner-approved fork.
+- `git_repository` is Electron-only, so on Tauri the row is omitted entirely.
+
+**Evidence.** Suite/build plus a gallery specimen. **Owed:** a native pass; no worktree has
+been opened into. Superseded as a SURFACE on 2026-08-24, when `AgentQuickPicker` stopped being
+mounted in favour of `QuickLaunch` — the destination model below it is unchanged.
+
 ## Theme gallery, and themes as files — 2026-08-15
 
 **Retired as a SURFACE on 2026-08-19** (Settings shows Light/Dark), but every module below
