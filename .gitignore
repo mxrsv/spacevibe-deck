@@ -29,12 +29,6 @@ dist-electron-release
 *.sln
 *.sw?
 
-# Local design docs / specs (không track) — pipeline frozen docs ARE tracked
-# Keep pipeline artifacts:
-# docs/PRINCIPLES.md, docs/PRD.md, docs/BUSINESS-FLOW.md, docs/CONTEXT.md,
-# docs/CONTEXT-archive.md, docs/ARCHITECTURE.md, docs/UX-DESIGN.md,
-# docs/REQUIREMENTS.md, docs/adr/, docs/decisions/
-
 # Local tool state
 .playwright-mcp/
 .planning/
