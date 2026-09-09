@@ -413,7 +413,9 @@ pub(crate) mod tests {
     fn codex_transcript(home: &Path, name: &str) -> PathBuf {
         home.join(CODEX_DIR)
             .join(CODEX_SESSIONS_DIR)
-            .join("2026/08/10")
+            .join("2026")
+            .join("08")
+            .join("10")
             .join(format!("{CODEX_ROLLOUT_PREFIX}{name}.jsonl"))
     }
 
