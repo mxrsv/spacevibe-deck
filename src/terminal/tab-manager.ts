@@ -1228,6 +1228,18 @@ export function createTabManager(
     return (await materializeEntry(intent)) !== null;
   }
 
+  /** Causal launch destination for Recent activity before the CLI reports its session. */
+  async function materializePane(intent: MaterializeIntent) {
+    const entry = await materializeEntry(intent);
+    const paneId = entry?.manager.paneIds()[0];
+    return paneId === undefined
+      ? null
+      : {
+          paneId,
+          canFocus: () => ownerOf(paneId) !== undefined && !launcher.failed(paneId),
+        };
+  }
+
   /** One tab per Open; CWDs already resolved by the caller. */
   function openFromPreset(
     layout: SerializedNode,
@@ -3107,6 +3119,7 @@ export function createTabManager(
   return {
     init,
     materialize,
+    materializePane,
     openFromPreset,
     openQuickAgent,
     launchTask,

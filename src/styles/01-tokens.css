@@ -163,11 +163,13 @@
      --radius-flat is the fourth role (owner, 2026-08-17): a control packed
      into a DENSE row, where a 10px corner forces horizontal padding to keep
      text off the curve and the padding is width the text needed. The tab
-     strip's chips are the whole membership. */
+     strip's chips now use --radius-tab, keeping compact details at 2px. */
   --radius-tight: 8px;
   --radius-control: 10px;
   --radius-surface: 12px;
   --radius-flat: 2px;
+  /* DECK-39: tab chips and view buttons, owner-approved 2026-09-09. */
+  --radius-tab: 6px;
 
   /* DL-20.2: one motion pair for chrome state change. §7 carried this as a
      bare "0.13s ease" figure until the scale gave it a name. The panel

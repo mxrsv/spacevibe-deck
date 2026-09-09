@@ -154,7 +154,14 @@ export function agentRailNavigationSpecimen({
       legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
       cardActions={GALLERY_CARD_ACTIONS}
       fileController={fileControllerFixture}
-      recentActivity={<RecentSessionActivity onResume={NOOP} onViewAll={NOOP} />}
+      recentActivity={
+        <RecentSessionActivity
+          filter="unread"
+          onResume={NOOP}
+          onViewAll={NOOP}
+          onFocusPane={onFocusPane}
+        />
+      }
       footer={
         showFooter ? (
           <SidebarActions

@@ -29,7 +29,7 @@ import {
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { BUILT_IN_PRESET, type Preset } from "../lib/preset-schema";
-import { resolveInheritedCwds } from "../terminal/tab-materialize";
+import { resolveInheritedCwds, type PaneLaunchReceipt } from "../terminal/tab-materialize";
 import type { DockTab } from "../settings/settings-schema";
 import { agentOptions, agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
@@ -454,11 +454,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const resumeSessionEntry = async (
     entry: SessionEntry,
     unavailableProjects: ReadonlySet<string> = deadProjects.value,
+    materialize: Parameters<typeof resumeSession>[1]["materialize"] = (intent) =>
+      tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
   ): Promise<boolean> => {
     let resumed = false;
     try {
       resumed = await resumeSession(entry, {
-        materialize: (intent) => tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
+        materialize,
         customAgents: settings.value.customAgents,
         isDead: (cwd) => unavailableProjects.has(cwd),
       });
@@ -474,6 +476,21 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       reportPersistError("Couldn't resume that session.");
     }
     return resumed;
+  };
+
+  const resumeRecentSessionEntry = async (
+    entry: SessionEntry,
+  ): Promise<PaneLaunchReceipt | false> => {
+    const manager = tabsRef.current;
+    let receipt: PaneLaunchReceipt | null = null;
+    const resumed = await resumeSessionEntry(entry, recentDeadProjects.value, async (intent) => {
+      receipt = (await manager?.materializePane(intent)) ?? null;
+      return receipt !== null;
+    });
+    if (boardClosesAfterResume(resumed)) {
+      boardOpen.value = false;
+    }
+    return resumed ? (receipt ?? false) : false;
   };
 
   /** Restore the newest archived tab set belonging to one legacy rail row. */
@@ -591,13 +608,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         dockVisible({
           dockOpen: settings.value.dockOpen,
           boardOpen: boardOpen.value,
-          agentBoardActive: agentBoardSurfaceActive.value,
         }) && resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "explorer",
       usageVisible: () =>
         dockVisible({
           dockOpen: settings.value.dockOpen,
           boardOpen: boardOpen.value,
-          agentBoardActive: agentBoardSurfaceActive.value,
         }) && resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "usage",
     });
     if (updatePreview === null) {
@@ -1300,21 +1315,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       liveTabCount: tabViews.value.length,
       savedCollapsed: settings.value.sidebarCollapsed,
       dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
-      agentBoardActive: agentBoardSurfaceActive.value,
     });
   const sidebarPaintWidth = (): number => {
-    // DL-34.1: the Board's hiding is the SURFACE's, never written to
-    // `sidebarCollapsed`. Reading it as a branch here rather than as a
-    // settings write is the whole difference between "the Board hid it" and
-    // "the user collapsed it" — leaving the Board has to give back the width
-    // the user chose, and a write would have destroyed it.
-    //
-    // Its own early return because this function does NOT go through
-    // `sidebarEffectivelyCollapsed`: it reads `settings.value.sidebarCollapsed`
-    // directly, so the predicate's new branch does not reach it.
-    if (agentBoardSurfaceActive.value) {
-      return SIDEBAR_HIDDEN_WIDTH;
-    }
+    // DL-34.1 hid the column here too, with its own early return because this
+    // function reads `settings.value.sidebarCollapsed` directly rather than
+    // going through `sidebarEffectivelyCollapsed`. REVERSED by DECK-43: the
+    // Board shares the Inbox's frame, so the rail keeps the user's width.
     return liveRailAvailable(tabViews.value.length)
       ? (sidebarWidthLive.value ??
           (settings.value.sidebarCollapsed ? SIDEBAR_HIDDEN_WIDTH : settings.value.sidebarWidth))
@@ -1821,6 +1827,25 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   const chromeActions = (
     <DeckToolbar
+      agentView={
+        // Electron only, and only once a tab exists — spec §4.2: with zero
+        // tabs there is no Board to show. Hidden on the Open board and behind
+        // Settings, where the bar is not the way out.
+        (globalThis as { __deckHost?: unknown }).__deckHost !== undefined &&
+        tabViews.value.length > 0 &&
+        !boardOpen.value &&
+        !settingsOpen.value
+          ? {
+              active: agentBoardSurfaceActive.value ? "board" : "inbox",
+              // `toggle-agent-board` already goes both ways, so the press is
+              // unconditional: the single control opens the Board and steps
+              // back out of it, exactly as Cmd+Shift+O does.
+              onSelect: () => {
+                tabsRef.current?.runAction("toggle-agent-board");
+              },
+            }
+          : undefined
+      }
       externalApp={externalAppControl}
       compact={!sidebar}
       browserActive={browserSurfaceActive.value}
@@ -1850,10 +1875,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const dockState = {
     boardOpen: boardOpen.value,
     dockOpen: settings.value.dockOpen,
-    // DL-34.1: read, never written. It reaches `dockPaintedOpen` (what paints)
-    // and `dockToggleOnStage` (whether the strip carries the way back in) at
-    // once, so the column and its control leave together.
-    agentBoardActive: agentBoardSurfaceActive.value,
   };
   // A drag past the floor closes the column UNDER THE POINTER, the way the
   // navigation sidebar's seam always has (2026-08-19): while a drag is in
@@ -2058,7 +2079,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
             recentActivity={
               <RecentSessionActivity
-                onResume={(entry) => void resumeSessionEntry(entry, recentDeadProjects.value)}
+                filter="unread"
+                onResume={resumeRecentSessionEntry}
+                onFocusPane={focusRailPane}
                 onViewAll={() => openDockTab("sessions")}
               />
             }

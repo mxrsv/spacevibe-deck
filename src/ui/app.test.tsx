@@ -363,18 +363,17 @@ describe("recent agent activity wiring", () => {
 
     expect(source.match(/<RecentSessionActivity\b/g)).toHaveLength(1);
     expect(railMount).toContain("<RecentSessionActivity");
-    expect(railMount).toContain(
-      "onResume={(entry) => void resumeSessionEntry(entry, recentDeadProjects.value)}",
-    );
+    expect(railMount).toContain('filter="unread"');
+    expect(railMount).toContain("onResume={resumeRecentSessionEntry}");
     expect(railMount).toContain('onViewAll={() => openDockTab("sessions")}');
   });
 
   it("keeps recent activity and the full Sessions view on their matching liveness snapshots", () => {
     expect(source).toContain("unavailableProjects: ReadonlySet<string> = deadProjects.value");
     expect(source).toContain("isDead: (cwd) => unavailableProjects.has(cwd)");
-    expect(source).toContain(
-      "onResume={(entry) => void resumeSessionEntry(entry, recentDeadProjects.value)}",
-    );
+    expect(source).toContain("resumeSessionEntry(entry, recentDeadProjects.value,");
+    expect(source).toContain("onFocusPane={focusRailPane}");
+    expect(source).toContain("onResume={resumeRecentSessionEntry}");
     expect(source).toContain(
       "<SessionsDockTab onResume={(entry) => void resumeSessionEntry(entry)} />",
     );
@@ -505,7 +504,6 @@ describe("Open Board shell visibility", () => {
         liveTabCount: 0,
         savedCollapsed: false,
         dragCollapsed: false,
-        agentBoardActive: false,
       }),
     ).toBe(true);
     expect(
@@ -513,15 +511,14 @@ describe("Open Board shell visibility", () => {
         liveTabCount: 1,
         savedCollapsed: false,
         dragCollapsed: false,
-        agentBoardActive: false,
       }),
     ).toBe(false);
   });
 
   it("suppresses the dock while the board is open without changing dockOpen", () => {
-    expect(dockVisible({ boardOpen: true, dockOpen: true, agentBoardActive: false })).toBe(false);
-    expect(dockVisible({ boardOpen: false, dockOpen: true, agentBoardActive: false })).toBe(true);
-    expect(dockVisible({ boardOpen: false, dockOpen: false, agentBoardActive: false })).toBe(false);
+    expect(dockVisible({ boardOpen: true, dockOpen: true })).toBe(false);
+    expect(dockVisible({ boardOpen: false, dockOpen: true })).toBe(true);
+    expect(dockVisible({ boardOpen: false, dockOpen: false })).toBe(false);
   });
 
   // DL-19.4, amended 2026-08-19: mid-drag the gesture answers, not the setting
@@ -533,7 +530,6 @@ describe("Open Board shell visibility", () => {
         boardOpen: false,
         dockOpen: true,
         dragCollapsed: null,
-        agentBoardActive: false,
       }),
     ).toBe(true);
     expect(
@@ -541,7 +537,6 @@ describe("Open Board shell visibility", () => {
         boardOpen: false,
         dockOpen: false,
         dragCollapsed: null,
-        agentBoardActive: false,
       }),
     ).toBe(false);
 
@@ -552,7 +547,6 @@ describe("Open Board shell visibility", () => {
         boardOpen: false,
         dockOpen: true,
         dragCollapsed: true,
-        agentBoardActive: false,
       }),
     ).toBe(false);
     expect(
@@ -560,7 +554,6 @@ describe("Open Board shell visibility", () => {
         boardOpen: false,
         dockOpen: false,
         dragCollapsed: false,
-        agentBoardActive: false,
       }),
     ).toBe(true);
 
@@ -570,7 +563,6 @@ describe("Open Board shell visibility", () => {
         boardOpen: true,
         dockOpen: true,
         dragCollapsed: false,
-        agentBoardActive: false,
       }),
     ).toBe(false);
   });
@@ -584,113 +576,62 @@ describe("Open Board shell visibility", () => {
   // one is ever on screen. An open column carries its own at its outer edge,
   // so the chrome must NOT also carry one.
   it("hands the dock's hide control to the chrome only while the column is gone", () => {
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false, agentBoardActive: false })).toBe(
-      true,
-    );
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true, agentBoardActive: false })).toBe(
-      false,
-    );
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false })).toBe(true);
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true })).toBe(false);
     // Board open: the column is suppressed, but the setting still says open
     // and the board covers the stage — a "show the side panel" button there
     // would promise something the click cannot deliver.
-    expect(dockToggleOnStage({ boardOpen: true, dockOpen: true, agentBoardActive: false })).toBe(
-      false,
-    );
-    expect(dockToggleOnStage({ boardOpen: true, dockOpen: false, agentBoardActive: false })).toBe(
-      false,
-    );
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: true })).toBe(false);
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: false })).toBe(false);
   });
 });
 
-// DL-34.1: the Board hides the sidebar and leaves the dock unpainted while it
-// holds the stage. The whole point of these cases is the SECOND half of each —
-// the state the user chose comes straight back the moment the Board leaves,
-// because the Board reads `sidebarCollapsed`/`dockOpen` and never writes them.
-describe("the sidebar under the agent board", () => {
-  it("collapses while the board holds the stage, whatever the user's own state", () => {
+// DL-34.1 REVERSED by DECK-43 (2026-09-09, owner-asked). It made the Agent
+// Board hide the sidebar and leave the dock unpainted while it held the stage;
+// the Board now shares the Inbox's frame, so neither column knows the Board
+// exists. These cases are the reversal itself: the same states the old rule
+// answered `true`/`false` about are answered by the USER's own choice alone.
+describe("the sidebar and the dock under the agent board", () => {
+  it("leaves the sidebar exactly as the user set it", () => {
+    // The state DL-34.1 forced shut: three live tabs, an open column. The
+    // Board is on the stage in this case and no longer has a say.
     expect(
-      sidebarEffectivelyCollapsed({
-        liveTabCount: 3,
-        savedCollapsed: false,
-        dragCollapsed: null,
-        agentBoardActive: true,
-      }),
-    ).toBe(true);
-  });
-
-  it("gives the user's own state straight back when the board leaves", () => {
-    expect(
-      sidebarEffectivelyCollapsed({
-        liveTabCount: 3,
-        savedCollapsed: false,
-        dragCollapsed: null,
-        agentBoardActive: false,
-      }),
+      sidebarEffectivelyCollapsed({ liveTabCount: 3, savedCollapsed: false, dragCollapsed: null }),
     ).toBe(false);
-  });
-
-  it("hides the board's own collapse from the user's saved choice", () => {
-    // The discriminating pair: one `savedCollapsed` value, two answers, and
-    // the answer for `agentBoardActive: false` is the user's own. A branch
-    // that wrote the setting instead of reading it would make both `true`.
-    const user = { liveTabCount: 3, savedCollapsed: false, dragCollapsed: null } as const;
-    expect(sidebarEffectivelyCollapsed({ ...user, agentBoardActive: true })).toBe(true);
-    expect(sidebarEffectivelyCollapsed({ ...user, agentBoardActive: false })).toBe(false);
-  });
-
-  it("lets the board's hiding outrank an in-flight drag", () => {
-    // A drag in flight is the user's hand on the seam; the Board is not on the
-    // stage during one, but the ordering is stated rather than left to luck.
     expect(
-      sidebarEffectivelyCollapsed({
-        liveTabCount: 3,
-        savedCollapsed: false,
-        dragCollapsed: false,
-        agentBoardActive: true,
-      }),
+      sidebarEffectivelyCollapsed({ liveTabCount: 3, savedCollapsed: true, dragCollapsed: null }),
     ).toBe(true);
   });
-});
 
-describe("the dock under the agent board", () => {
-  it("leaves the dock unpainted while the agent board holds the stage", () => {
+  it("still lets an in-flight drag answer for the column", () => {
+    // The ordering DL-34.1 outranked. With the rule gone the drag is the only
+    // thing above the setting, which is DL-18.9's own arrangement.
+    expect(
+      sidebarEffectivelyCollapsed({ liveTabCount: 3, savedCollapsed: false, dragCollapsed: true }),
+    ).toBe(true);
+  });
+
+  it("paints and shows the dock beside the board", () => {
     const base = { dockOpen: true, boardOpen: false, dragCollapsed: null } as const;
-    expect(dockPaintedOpen({ ...base, agentBoardActive: true })).toBe(false);
-    expect(dockPaintedOpen({ ...base, agentBoardActive: false })).toBe(true);
-    expect(dockVisible({ dockOpen: true, boardOpen: false, agentBoardActive: true })).toBe(false);
-    expect(dockVisible({ dockOpen: true, boardOpen: false, agentBoardActive: false })).toBe(true);
+    expect(dockPaintedOpen(base)).toBe(true);
+    expect(dockVisible({ dockOpen: true, boardOpen: false })).toBe(true);
   });
 
-  it("outranks an armed drag, the way the Open Board already does", () => {
-    expect(
-      dockPaintedOpen({
-        dockOpen: false,
-        boardOpen: false,
-        dragCollapsed: false,
-        agentBoardActive: true,
-      }),
-    ).toBe(false);
+  // The Open Board keeps every term it had: it is a start screen with no
+  // window behind it, which is exactly what the Agent Board is not.
+  it("keeps the OPEN board's suppression untouched", () => {
+    expect(dockPaintedOpen({ dockOpen: true, boardOpen: true, dragCollapsed: null })).toBe(false);
+    expect(dockVisible({ dockOpen: true, boardOpen: true })).toBe(false);
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: true })).toBe(false);
   });
 
-  // NOT in the plan, and the plan's own step 4 is what creates the problem:
-  // `dockToggleOnStage` is `!boardOpen && !dockVisible(state)`, so suppressing
-  // the column through `dockVisible` alone turns the strip's "show the side
-  // panel" control ON while the Board covers the stage. Pressing it runs
-  // `toggle-dock`, which WRITES `dockOpen` for a column the user cannot see —
-  // a settings write caused by a surface state, which is the one thing
-  // DL-34.1's transient hiding exists to prevent. Same argument the function's
-  // own docblock already makes for `boardOpen`.
-  it("keeps the strip's dock control off the stage while the board is up", () => {
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true, agentBoardActive: true })).toBe(
-      false,
-    );
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false, agentBoardActive: true })).toBe(
-      false,
-    );
-    // And it comes straight back when the Board leaves a closed column behind.
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false, agentBoardActive: false })).toBe(
-      true,
-    );
+  // `dockToggleOnStage` carried its own `agentBoardActive` term so the strip's
+  // "show the side panel" control could not turn ON over a Board — pressing it
+  // WROTE `dockOpen` for a column nobody could see. With the column visible
+  // under the Board there is nothing left to guard: the answer is the dock's.
+  it("hands the strip's dock control back to the dock's own state", () => {
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true })).toBe(false);
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false })).toBe(true);
   });
 });
 

@@ -100,6 +100,13 @@ export async function capturePresetLayout(
   return { layout, cwds };
 }
 
+/** Navigation receipt, separate from the CLI's confirmed session identity. */
+export interface PaneLaunchReceipt {
+  readonly paneId: number;
+  /** False after launch cancellation/write failure or removal of this pane. */
+  readonly canFocus: () => boolean;
+}
+
 /** Optional tab chrome applied under the new tab key after spawn. */
 export interface MaterializeChrome {
   readonly name?: string;

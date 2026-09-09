@@ -61,6 +61,18 @@ const ACTIVE: ToolbarItemState = { kind: "active" };
 
 interface DeckToolbarProps {
   /**
+   * The Board's own entry on the bar. It was a two-tab Inbox|Board switch
+   * (DECK-39) until 2026-09-09, when the owner cut it to the Board alone: with
+   * DECK-43 the Board is an OVERVIEW you step into and back out of, so "Inbox"
+   * was naming the absence of the Board rather than a place of its own.
+   * `active` is still the two-view fact, because that is what the pressed
+   * state reports; only the rendering is one item.
+   */
+  readonly agentView?: {
+    readonly active: "inbox" | "board";
+    onSelect(view: "inbox" | "board"): void;
+  };
+  /**
    * Top-tab mode. Prompts and Settings then ride in the `More` menu instead
    * of the bar: sidebar mode carries them in the rail's own footer, and this
    * layout has no rail, so one menu stands in for that footer.
@@ -187,26 +199,44 @@ export function DeckToolbar(props: DeckToolbarProps) {
   ];
 
   return (
-    <FeatureToolbar
-      // Nothing is drawn as an icon on the bar any more (DL-23.8): the pane
-      // group lives in `More`, and the global pair never rode here in the
-      // first place — sidebar mode shows those as rows in the rail's footer
-      // (DL-28.3) and top-tab mode stands the same rows up in `More`, which
-      // is what keeps a second Prompt Board popover off the screen.
-      items={[]}
-      externalApp={props.externalApp}
-      updateAction={props.updateAction}
-      pinnedMenu={
-        props.compact || SIDEBAR_TOOLS_HIDDEN ? [...paneItems, ...globalItems] : paneItems
-      }
-      // Only while the popover's own row lives in the menu. That is top-tab
-      // mode always, and sidebar mode too while the rail's footer is hidden —
-      // with no footer there is no other row to anchor the Prompt Board to.
-      pinnedMenuAnchored={
-        (props.compact || SIDEBAR_TOOLS_HIDDEN) && props.promptsOpen
-          ? props.promptPopover
-          : undefined
-      }
-    />
+    <>
+      {props.agentView ? (
+        <div class="agent-view-switch" role="group" aria-label="Agent view">
+          {/* One item. A press fires even while pressed, unlike the two-tab
+              version's no-op on the selected side: with nothing beside it,
+              refusing the press would leave the control with no way back and
+              make the Board reachable only by chord or strip chip. */}
+          <button
+            type="button"
+            class={`tab agent-view-switch__tab ${props.agentView.active === "board" ? "is-active" : ""}`}
+            aria-pressed={props.agentView.active === "board"}
+            onClick={() => props.agentView?.onSelect("board")}
+          >
+            Board
+          </button>
+        </div>
+      ) : null}
+      <FeatureToolbar
+        // Nothing is drawn as an icon on the bar any more (DL-23.8): the pane
+        // group lives in `More`, and the global pair never rode here in the
+        // first place — sidebar mode shows those as rows in the rail's footer
+        // (DL-28.3) and top-tab mode stands the same rows up in `More`, which
+        // is what keeps a second Prompt Board popover off the screen.
+        items={[]}
+        externalApp={props.externalApp}
+        updateAction={props.updateAction}
+        pinnedMenu={
+          props.compact || SIDEBAR_TOOLS_HIDDEN ? [...paneItems, ...globalItems] : paneItems
+        }
+        // Only while the popover's own row lives in the menu. That is top-tab
+        // mode always, and sidebar mode too while the rail's footer is hidden —
+        // with no footer there is no other row to anchor the Prompt Board to.
+        pinnedMenuAnchored={
+          (props.compact || SIDEBAR_TOOLS_HIDDEN) && props.promptsOpen
+            ? props.promptPopover
+            : undefined
+        }
+      />
+    </>
   );
 }

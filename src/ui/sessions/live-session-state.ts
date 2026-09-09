@@ -1,51 +1,43 @@
-/**
- * Which listed session a live pane is running, and what state that pane is in.
- *
- * Recent activity lists sessions, not panes: a row is a conversation on disk,
- * and a conversation on disk has no state of its own. The only honest source
- * for "what is this agent doing right now" is the pane that happens to be
- * running that exact session — so this module joins the two by SESSION ID and
- * nothing else.
- *
- * The id comes from `session-tail-store`'s pairings, which the main process
- * confirmed by answering with the id it actually read. Matching by (agent, cwd)
- * or by mtime proximity instead is precisely the guess that printed one
- * sentence on three rail rows at once (2026-08-22); a row whose session no pane
- * holds simply has no live state, which the caller draws as the quiet dot.
- */
-import { computed, type ReadonlySignal } from "@preact/signals";
+/** Exact session-to-pane lookup shared by Recent activity rendering and clicks. */
+import type { SessionEntry } from "../../lib/session-history";
 import { paneSessionIds } from "../../terminal/session-tail-store";
 import { NO_PANES, tabViews } from "../../terminal/tabs-store";
-import { paneSignal, type RailSignal } from "../agent-rail-model";
-
-const NO_STATES: ReadonlyMap<string, RailSignal> = new Map();
+import { paneSignal } from "../agent-rail-model";
 
 /**
- * Session id → the rail signal of the pane running it — state AND confidence
- * (DL-27.3, amended 2026-09-03) — for every pairing this window holds. Absent
- * means "no pane in this window is in that conversation", never "quiet" — the
- * two are different facts and only the row decides how to draw the second one.
- *
- * `paneSignal` is the rail's own mapping (DL-27.3), imported rather than
- * copied so the sidebar cannot grow a second state vocabulary — and so an
- * inferred `asked` draws hollow on a Recent row exactly as it does on the
- * pane's rail row, rather than the two surfaces disagreeing about one pane.
+ * Re-read this at click time: a rendered row may outlive its pane. A contract
+ * session id outranks a tail pairing, and an exited agent is never a focus
+ * destination. Keep an exited match only to report its state on the row.
+ * No matching by directory or transcript time: those do not identify a session.
  */
-export const liveSessionStates: ReadonlySignal<ReadonlyMap<string, RailSignal>> = computed(() => {
+export function findSessionPane(entry: Pick<SessionEntry, "agent" | "sessionId">) {
   const pairings = paneSessionIds.value;
+  const matches = tabViews.value.flatMap((tab, tabIndex) =>
+    (tab.panes ?? NO_PANES)
+      .filter(
+        (pane) =>
+          pane.agent === entry.agent &&
+          (pane.sessionId ?? pairings.get(pane.paneId)) === entry.sessionId,
+      )
+      .map((pane) => ({
+        tabIndex,
+        paneId: pane.paneId,
+        open: pane.phase !== "exited",
+        signal: paneSignal(pane),
+      })),
+  );
+  return matches.find((match) => match.open) ?? matches[0];
+}
+
+/** A receipt identifies our launch destination, not a confirmed conversation. */
+export function findOpeningPane(entry: Pick<SessionEntry, "agent" | "sessionId">, paneId: number) {
   const tabs = tabViews.value;
-  if (pairings.size === 0 || tabs.length === 0) {
-    return NO_STATES;
-  }
-  const states = new Map<string, RailSignal>();
-  for (const tab of tabs) {
-    for (const pane of tab.panes ?? NO_PANES) {
-      const sessionId = pairings.get(pane.paneId);
-      if (sessionId === undefined || states.has(sessionId)) {
-        continue;
-      }
-      states.set(sessionId, paneSignal(pane));
-    }
-  }
-  return states;
-});
+  const tabIndex = tabs.findIndex((tab) => tab.panes?.some((pane) => pane.paneId === paneId));
+  const pane = tabs[tabIndex]?.panes?.find((candidate) => candidate.paneId === paneId);
+  if (pane === undefined || pane.phase === "exited") return undefined;
+  if (pane.agent !== null && pane.agent !== entry.agent) return undefined;
+  const sessionId = pane.sessionId ?? paneSessionIds.value.get(paneId);
+  if (sessionId !== undefined && sessionId !== null && sessionId !== entry.sessionId)
+    return undefined;
+  return { tabIndex, paneId };
+}

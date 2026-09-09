@@ -145,6 +145,24 @@ describe("createAgentLauncher", () => {
     expect(pty.writes).toEqual([]);
   });
 
+  it("reports a rejected launch write so re-entry can retry the session", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const pty = {
+      ...createMemoryPtyClient(),
+      writePty: vi.fn().mockRejectedValue(new Error("closed")),
+    };
+    const launcher = createAgentLauncher(pty);
+    launcher.arm([{ id: 1, command: "codex resume sample" }]);
+    expect(launcher.failed(1)).toBe(false);
+    launcher.noteOutput(1);
+    await Promise.resolve();
+    expect(launcher.failed(1)).toBe(true);
+    launcher.prune([]);
+    expect(launcher.failed(1)).toBe(false);
+    launcher.dispose();
+    error.mockRestore();
+  });
+
   it("does not launch Windows agents from banner or prompt-start output", () => {
     const { pty, launcher } = setup("windows");
     launcher.arm([{ id: 1, command: "claude" }]);
@@ -248,6 +266,7 @@ describe("createAgentLauncher", () => {
     expect(pty.writes).toEqual([]);
     expect(onTimeout).toHaveBeenCalledOnce();
     expect(onTimeout).toHaveBeenCalledWith(1);
+    expect(launcher.failed(1)).toBe(true);
   });
 
   it("prune cancels a Windows timeout message", () => {

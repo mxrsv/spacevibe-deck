@@ -27,6 +27,8 @@ export interface AgentLauncher {
   notePromptReady(id: number): void;
   /** Drop panes that no longer exist, cancelling their pending timers. */
   prune(alive: readonly number[]): void;
+  /** A readiness timeout or rejected PTY write cancelled this launch. */
+  failed(id: number): boolean;
   /** Cancel every pending timer (teardown). */
   dispose(): void;
 }
@@ -103,6 +105,9 @@ export function createAgentLauncher(
     };
     pty.writePty(id, `${entry.command}\r`).catch((err: unknown) => {
       // A failed write leaves the pane as an empty shell — never sink the tab.
+      if (state.launched.has(id)) {
+        state = { ...state, cancelled: addId(state.cancelled, id) };
+      }
       console.error("agent launch write_pty failed:", err);
     });
     try {
@@ -180,6 +185,9 @@ export function createAgentLauncher(
         launched: new Set([...state.launched].filter((id) => aliveSet.has(id))),
         cancelled: new Set([...state.cancelled].filter((id) => aliveSet.has(id))),
       };
+    },
+    failed(id) {
+      return state.cancelled.has(id);
     },
     dispose() {
       for (const entry of state.armed.values()) {

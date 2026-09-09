@@ -24,9 +24,48 @@
   overflow: hidden;
 }
 
+/* DECK-39: persistent view choices beside the shared toolbar in both layouts. */
+.agent-view-switch {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  /* Keep the whole group inside the frame with space above and below. */
+  height: 26px;
+  box-sizing: border-box;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-tight);
+  background: var(--chrome-2);
+  -webkit-app-region: no-drag;
+}
+
+.agent-view-switch .agent-view-switch__tab {
+  height: 100%;
+  justify-content: center;
+  padding-inline: 10px;
+  font-family: inherit;
+}
+
+.agent-view-switch .agent-view-switch__tab.is-active {
+  background: color-mix(in srgb, var(--tone) 18%, var(--chrome-2));
+  color: var(--tone);
+  border-color: transparent;
+}
+
+.agent-view-switch__tab:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+/* The frame's existing spacer keeps the view choices beside the actions. */
+.tabbar > .agent-view-switch + .ftoolbar {
+  flex-grow: 0;
+}
+
 /* Since 2026-08-17 (owner) a chip carries the tab's newest turn, not its
    process name (DL-18.10 amended), and the three declarations below are what
-   pay for the extra text: `--radius-flat` (DL-20.1's fourth role) drops the
+   pay for the extra text: `--radius-tab` (DL-20.1) drops the
    corner so the left padding no longer has to hold text off a curve, the label
    steps down to `--type-meta`, and `max-width` keeps ONE chip from eating the
    strip — a sentence is trimmed to a glance, never spelled out here. */
@@ -43,7 +82,7 @@
   box-sizing: border-box;
   border: 1px solid transparent;
   padding: 0 4px 0 6px;
-  border-radius: var(--radius-flat);
+  border-radius: var(--radius-tab);
   /* Not transparent (DL-21.7): every chip is a visible object at rest, and the
      three states are one ladder — 3% at rest, 6% on hover, `--tab-active-bg`
      plus the frame when selected. */

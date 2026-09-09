@@ -8,7 +8,7 @@ import type { TerminalManager, TerminalManagerDeps } from "./terminal-manager";
 import type { PaneAttentionSnapshot } from "./agent-attention";
 import type { AgentNotifier } from "./agent-notifier";
 import type { InjectOutcome } from "../prompts/inject";
-import type { MaterializeIntent } from "./tab-materialize";
+import type { MaterializeIntent, PaneLaunchReceipt } from "./tab-materialize";
 import type { LaunchTaskOutcome, LaunchTaskResult } from "./task-prompt-send";
 import type { Settings } from "../settings/settings-schema";
 import type { SurfaceStrip } from "./surface-strip";
@@ -138,6 +138,8 @@ export interface TabManager {
   init(): Promise<void>;
   /** Materialize one tab from a MaterializeIntent (Open / Closed / preset). */
   materialize(intent: MaterializeIntent): Promise<boolean>;
+  /** Return the created first pane for exact re-entry during agent startup. */
+  materializePane(intent: MaterializeIntent): Promise<PaneLaunchReceipt | null>;
   /** Materialize one tab from a preset layout + resolved CWDs; launches the agent. */
   openFromPreset(
     layout: SerializedNode,

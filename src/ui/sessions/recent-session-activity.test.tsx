@@ -82,12 +82,110 @@ describe("RecentSessionActivity", () => {
     });
   });
 
-  const mount = (onResume = vi.fn(), onViewAll = vi.fn()) => {
+  const mount = (onResume = vi.fn(), onViewAll = vi.fn(), onFocusPane = vi.fn()) => {
     act(() => {
-      render(<RecentSessionActivity onResume={onResume} onViewAll={onViewAll} />, host);
+      render(
+        <RecentSessionActivity
+          onResume={onResume}
+          onViewAll={onViewAll}
+          onFocusPane={onFocusPane}
+        />,
+        host,
+      );
     });
-    return { onResume, onViewAll };
+    return { onResume, onViewAll, onFocusPane };
   };
+
+  const mountUnread = (onFocusPane = vi.fn()) => {
+    act(() => {
+      render(
+        <RecentSessionActivity
+          filter="unread"
+          onResume={vi.fn()}
+          onFocusPane={onFocusPane}
+          onViewAll={vi.fn()}
+        />,
+        host,
+      );
+    });
+  };
+
+  it("filters Recent to the unread signal without reordering its entries", () => {
+    recentSessionEntries.value = [
+      entry({ sessionId: "working" }),
+      entry({ sessionId: "question", summary: "Question summary" }),
+      entry({ sessionId: "read" }),
+      entry({ sessionId: "completed", summary: "Completed summary" }),
+      entry({ sessionId: "unpaired" }),
+    ];
+    tabViews.value = [
+      tabWith([
+        pane(1, "none", "working"),
+        pane(2, "requested", "idle"),
+        pane(3, "none", "idle"),
+        pane(4, "completed", "idle"),
+      ]),
+    ];
+    paneSessionIds.value = new Map([
+      [1, "working"],
+      [2, "question"],
+      [3, "read"],
+      [4, "completed"],
+    ]);
+    mountUnread();
+    expect(host.querySelector("h2")?.textContent).toBe("Unread");
+    expect(
+      [...host.querySelectorAll(".recent-session-activity__summary")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual(["Question summary", "Completed summary"]);
+    expect(
+      [...host.querySelectorAll(".asr-row__mark")].every(
+        (mark) => mark.getAttribute("data-state") === "asked",
+      ),
+    ).toBe(true);
+    expect(host.querySelector('[aria-label="Unread recent sessions"]')).not.toBeNull();
+  });
+
+  it("removes a session from the unread filter as soon as focus acknowledges it", () => {
+    tabViews.value = [tabWith([pane(1, "completed", "idle")])];
+    paneSessionIds.value = new Map([[1, "session-id"]]);
+    const focus = vi.fn(() => {
+      tabViews.value = [tabWith([pane(1, "none", "idle")])];
+    });
+    mountUnread(focus);
+    act(() => host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click());
+    expect(focus).toHaveBeenCalledWith(0, 1);
+    expect(host.querySelector(".recent-session-activity__row")).toBeNull();
+    expect(host.textContent).toContain("No unread recent sessions.");
+  });
+
+  it("shows an empty unread result during a warm refresh instead of a cold loading message", () => {
+    recentSessionsLoadState.value = { status: "loading" };
+    mountUnread();
+    expect(host.textContent).toContain("No unread recent sessions.");
+    expect(host.textContent).not.toContain("Reading recent activity…");
+  });
+
+  it("includes warnings but excludes failed, ended and unpaired sessions from unread", () => {
+    recentSessionEntries.value = [
+      entry({ sessionId: "warning" }),
+      entry({ sessionId: "failure" }),
+      entry({ sessionId: "ended" }),
+      entry({ sessionId: "unpaired" }),
+    ];
+    tabViews.value = [
+      tabWith([pane(1, "warning", "idle"), pane(2, "error", "idle"), pane(3, "none", "exited")]),
+    ];
+    paneSessionIds.value = new Map([
+      [1, "warning"],
+      [2, "failure"],
+      [3, "ended"],
+    ]);
+    mountUnread();
+    expect(host.querySelectorAll(".recent-session-activity__row")).toHaveLength(1);
+    expect(host.querySelector(".asr-row__mark")?.getAttribute("data-state")).toBe("asked");
+  });
 
   it("renders the store's newest-first five rows with their supplied summaries", () => {
     recentSessionEntries.value = [
@@ -174,12 +272,11 @@ describe("RecentSessionActivity", () => {
     );
   });
 
-  it("marks a listed session no pane is running with the quiet dot", () => {
+  it("leaves the state slot empty when no pane holds the session", () => {
     mount();
 
     const mark = host.querySelector(".recent-session-activity__row .asr-row__mark");
-    expect(mark?.getAttribute("data-state")).toBe("done");
-    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(mark).toBeNull();
     expect(host.querySelector(".recent-session-activity__state-word")).toBeNull();
   });
 
@@ -211,7 +308,6 @@ describe("RecentSessionActivity", () => {
       "working",
       "asked",
       "failed",
-      "done",
     ]);
     // `working` is the one state drawn as the ring rather than a dot.
     expect(marks[0]?.classList.contains("asr-row__mark--spinner")).toBe(true);
@@ -229,25 +325,17 @@ describe("RecentSessionActivity", () => {
 
     mount();
 
-    expect(
-      host
-        .querySelector(".recent-session-activity__row .asr-row__mark")
-        ?.getAttribute("data-state"),
-    ).toBe("done");
+    expect(host.querySelector(".recent-session-activity__row .asr-row__mark")).toBeNull();
   });
 
-  it("keeps a dead row's mark in the column rather than dropping the track", () => {
+  it("does not invent a live state for a missing folder", () => {
     const recent = entry({ cwd: "/gone" });
     recentSessionEntries.value = [recent];
     recentDeadProjects.value = new Set([recent.cwd]);
 
     mount();
 
-    expect(
-      host
-        .querySelector(".recent-session-activity__row .asr-row__mark")
-        ?.getAttribute("data-state"),
-    ).toBe("done");
+    expect(host.querySelector(".recent-session-activity__row .asr-row__mark")).toBeNull();
   });
 
   it("keeps the store's nonblank title or id fallback visible as the summary", () => {
@@ -277,6 +365,198 @@ describe("RecentSessionActivity", () => {
     });
 
     expect(onResume).toHaveBeenCalledWith(recent);
+  });
+
+  it("focuses the exact open pane instead of resuming a duplicate", () => {
+    tabViews.value = [tabWith([pane(1, "none", "working"), pane(2, "requested", "idle")])];
+    paneSessionIds.value = new Map([
+      [1, "other"],
+      [2, "session-id"],
+    ]);
+    const { onResume, onFocusPane } = mount();
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    expect(row.textContent).toContain("Open Claude — Build recent activity:");
+    act(() => row.click());
+    expect(onFocusPane).toHaveBeenCalledWith(0, 2);
+    expect(onResume).not.toHaveBeenCalled();
+  });
+
+  it("resumes after the paired agent exits instead of focusing its shell", async () => {
+    tabViews.value = [tabWith([pane(1, "error", "exited")])];
+    paneSessionIds.value = new Map([[1, "session-id"]]);
+    const { onResume, onFocusPane } = mount();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click(),
+    );
+    expect(onFocusPane).not.toHaveBeenCalled();
+    expect(onResume).toHaveBeenCalledOnce();
+  });
+
+  it("rechecks the pane at click time and refuses another agent with the same id", async () => {
+    tabViews.value = [tabWith([{ ...pane(1, "none", "working"), agent: "codex" }])];
+    paneSessionIds.value = new Map([[1, "session-id"]]);
+    const { onResume, onFocusPane } = mount();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click(),
+    );
+    expect(onFocusPane).not.toHaveBeenCalled();
+    expect(onResume).toHaveBeenCalledOnce();
+  });
+
+  it("locks repeated clicks while opening, then shows failure and allows retry", async () => {
+    let finish!: (opened: boolean) => void;
+    const onResume = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    mount(onResume);
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    act(() => {
+      row.click();
+      row.click();
+    });
+    expect(onResume).toHaveBeenCalledOnce();
+    expect(row.getAttribute("aria-busy")).toBe("true");
+    expect(row.getAttribute("aria-disabled")).toBe("true");
+    expect(row.querySelector(".recent-session-activity__opening")).not.toBeNull();
+    expect(row.textContent).toContain("Opening…");
+    expect(row.querySelector('[data-state="working"]')).toBeNull();
+    await act(async () => finish(false));
+    expect(row.hasAttribute("aria-busy")).toBe(false);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "Couldn't open this session",
+    );
+    act(() => row.click());
+    expect(onResume).toHaveBeenCalledTimes(2);
+    await act(async () => finish(true));
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("clears a row's failure when the next press focuses an open pane", async () => {
+    // The clear used to live only on the resume path, so a row that had failed
+    // once and then became focusable kept printing "Couldn't open this
+    // session" underneath the pane the press had just brought into view.
+    const onResume = vi.fn(async () => false);
+    const { onFocusPane } = mount(onResume);
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    await act(async () => row.click());
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "Couldn't open this session",
+    );
+
+    // A pane holding this exact session appears, so the next press takes the
+    // focus branch and never reaches the resume path at all.
+    tabViews.value = [tabWith([pane(2, "none", "idle")])];
+    paneSessionIds.value = new Map([[2, "session-id"]]);
+    await act(async () => row.click());
+
+    expect(onFocusPane).toHaveBeenCalledWith(0, 2);
+    expect(onResume).toHaveBeenCalledOnce();
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("reuses the created pane before pairing arrives and resumes again after it closes", async () => {
+    const onResume = vi.fn(async () => {
+      tabViews.value = [tabWith([{ ...pane(9, "none", "idle", false), agent: null }])];
+      return { paneId: 9, canFocus: () => true };
+    });
+    const { onFocusPane } = mount(onResume);
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    await act(async () => row.click());
+    expect(paneSessionIds.value.size).toBe(0);
+    act(() => row.click());
+    expect(onResume).toHaveBeenCalledOnce();
+    expect(onFocusPane).toHaveBeenCalledWith(0, 9);
+    act(() => {
+      tabViews.value = [];
+    });
+    await act(async () => row.click());
+    expect(onResume).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not reuse a launch receipt after its agent exits", async () => {
+    const onResume = vi.fn(async () => {
+      tabViews.value = [tabWith([pane(9, "none", "idle", false)])];
+      return { paneId: 9, canFocus: () => true };
+    });
+    const { onFocusPane } = mount(onResume);
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    await act(async () => row.click());
+    act(() => {
+      tabViews.value = [tabWith([pane(9, "none", "exited")])];
+    });
+    await act(async () => row.click());
+    expect(onResume).toHaveBeenCalledTimes(2);
+    expect(onFocusPane).not.toHaveBeenCalled();
+  });
+
+  it("allows retry when a created pane's launch is later cancelled", async () => {
+    let available = true;
+    const onResume = vi.fn(async () => {
+      tabViews.value = [tabWith([{ ...pane(9, "none", "idle", false), agent: null }])];
+      return { paneId: 9, canFocus: () => available };
+    });
+    const { onFocusPane } = mount(onResume);
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    await act(async () => row.click());
+    available = false;
+    await act(async () => row.click());
+    expect(onResume).toHaveBeenCalledTimes(2);
+    expect(onFocusPane).not.toHaveBeenCalled();
+  });
+
+  it("shows rejected opens as retryable errors and releases the click lock", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onResume = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Host disconnected"))
+      .mockResolvedValue(true);
+    mount(onResume);
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    await act(async () => row.click());
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "Couldn't open this session",
+    );
+    expect(row.hasAttribute("aria-busy")).toBe(false);
+    await act(async () => row.click());
+    expect(onResume).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    warn.mockRestore();
+  });
+
+  it("uses the contract id ahead of an outdated tail pairing", async () => {
+    tabViews.value = [tabWith([{ ...pane(1, "none", "working"), sessionId: "another-session" }])];
+    paneSessionIds.value = new Map([[1, "session-id"]]);
+    const { onFocusPane, onResume } = mount();
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!.click(),
+    );
+    expect(onResume).toHaveBeenCalledOnce();
+    expect(onFocusPane).not.toHaveBeenCalled();
+  });
+
+  it("rechecks a rendered row whose pane closes before click", async () => {
+    tabViews.value = [tabWith([pane(1, "none", "working")])];
+    paneSessionIds.value = new Map([[1, "session-id"]]);
+    const { onFocusPane, onResume } = mount();
+    const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row")!;
+    await act(async () => {
+      tabViews.value = [];
+      row.click();
+    });
+    expect(onResume).toHaveBeenCalledOnce();
+    expect(onFocusPane).not.toHaveBeenCalled();
+  });
+
+  it("places time before the trailing status and keeps the quiet slot", () => {
+    mount();
+    const time = host.querySelector("time")!;
+    expect(time.nextElementSibling?.classList.contains("recent-session-activity__state")).toBe(
+      true,
+    );
+    expect(time.nextElementSibling?.textContent).toBe("");
   });
 
   it("keeps View all separate from row resume", () => {
@@ -421,8 +701,8 @@ describe("RecentSessionActivity", () => {
     act(() => {
       render(
         <>
-          <RecentSessionActivity onResume={() => {}} onViewAll={() => {}} />
-          <RecentSessionActivity onResume={() => {}} onViewAll={() => {}} />
+          <RecentSessionActivity onResume={() => {}} onViewAll={() => {}} onFocusPane={() => {}} />
+          <RecentSessionActivity onResume={() => {}} onViewAll={() => {}} onFocusPane={() => {}} />
         </>,
         host,
       );

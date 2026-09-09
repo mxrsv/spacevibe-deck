@@ -154,20 +154,11 @@ interface SidebarVisibilityState {
   readonly liveTabCount: number;
   readonly savedCollapsed: boolean;
   readonly dragCollapsed: boolean | null;
-  /**
-   * The Agent Board holds the stage (DL-34.1). A SURFACE's doing, never the
-   * user's — which is why it is read here and never written to
-   * `sidebarCollapsed`: the hiding must not survive the surface, and leaving
-   * the Board has to give back whatever the user had.
-   */
-  readonly agentBoardActive: boolean;
 }
 
 interface DockVisibilityState {
   readonly boardOpen: boolean;
   readonly dockOpen: boolean;
-  /** The Agent Board holds the stage (DL-34.1) — same argument as `boardOpen`. */
-  readonly agentBoardActive: boolean;
 }
 
 /** The Agent Rail is a projection of live work, never persisted history. */
@@ -183,16 +174,18 @@ export function sidebarEffectivelyCollapsed(state: SidebarVisibilityState): bool
   if (!liveRailAvailable(state.liveTabCount)) {
     return true;
   }
-  // DL-34.1, and it outranks the drag: the column is not on screen to drag.
-  if (state.agentBoardActive) {
-    return true;
-  }
+  // DL-34.1 had a second branch here — the Agent Board forced the column shut
+  // while it held the stage. REVERSED by DECK-43 (2026-09-09, owner-asked):
+  // the Board shares the Inbox's frame, so the rail keeps whatever width the
+  // user gave it and the Board is what changed, not the window.
   return state.dragCollapsed ?? state.savedCollapsed;
 }
 
 /** The Open Board owns the stage, so the dock waits without losing its state. */
 export function dockVisible(state: DockVisibilityState): boolean {
-  return state.dockOpen && !state.boardOpen && !state.agentBoardActive;
+  // `boardOpen` only: the OPEN board is a start screen with no window behind
+  // it, while the Agent Board is a surface among surfaces (DECK-43).
+  return state.dockOpen && !state.boardOpen;
 }
 
 /**
@@ -211,10 +204,7 @@ export function dockVisible(state: DockVisibilityState): boolean {
  * gets the setting back.
  */
 export function dockPaintedOpen(state: DockPaintState): boolean {
-  // DL-34.1: the Agent Board leaves the dock unpainted exactly as the Open
-  // Board does — both cover the stage, and a docked column beside a covering
-  // surface is a column about a thing nobody can see.
-  if (state.boardOpen || state.agentBoardActive) {
+  if (state.boardOpen) {
     return false;
   }
   return state.dragCollapsed === null ? state.dockOpen : !state.dragCollapsed;
@@ -253,15 +243,14 @@ export function archivedWorkspaceResumeAvailable(inFlight: ReadonlySet<string>):
  * without touching the setting, and offering a way to "show" a panel the board
  * is standing on top of promises something the click cannot deliver.
  *
- * The Agent Board needs its OWN term rather than riding `dockVisible` (DL-34.1,
- * 2026-09-04). Suppressing the column there makes `!dockVisible(state)` true,
- * which would turn this control ON while the Board covers the stage — and its
- * press runs `toggle-dock`, WRITING `dockOpen` for a column nobody can see. A
- * settings write caused by a surface state is the one thing the Board's
- * transient hiding exists to prevent.
+ * The Agent Board carried its own term here from 2026-09-04 until DECK-43,
+ * because DL-34.1 suppressed the column and `!dockVisible(state)` would then
+ * have turned this control ON over a Board the press could not reach past.
+ * With DL-34.1 reversed the dock is simply visible under the Board, so the
+ * term has nothing left to guard against.
  */
 export function dockToggleOnStage(state: DockVisibilityState): boolean {
-  return !state.boardOpen && !state.agentBoardActive && !dockVisible(state);
+  return !state.boardOpen && !dockVisible(state);
 }
 
 /**

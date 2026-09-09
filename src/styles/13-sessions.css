@@ -521,14 +521,9 @@
 .recent-session-activity__row {
   box-sizing: border-box;
   display: grid;
-  /* glyph · copy · status mark · age. The mark is DL-27.3's own 14px box
-     (DL-33.2, amended 2026-08-26), placed TRAILING rather than at the head:
-     a leading mark would push the copy off the 29px text edge this block
-     shares with the rail's rows above it, and the `asked` ripple scales to
-     2.1x, which `.asr-rail__list`'s `overflow-x: hidden` would clip silently
-     on the LEFT. Beside the 4em age column it has the whole trailing inset to
-     grow into. */
-  grid-template-columns: 15px minmax(0, 1fr) 14px 4em;
+  /* Identity · summary · age · state. Keep the trailing slot even for
+     unopened sessions, so state changes never move the summary or time. */
+  grid-template-columns: 15px minmax(0, 1fr) 4em 14px;
   width: 100%;
   min-width: 0;
   min-height: 30px;
@@ -642,13 +637,43 @@
   text-overflow: ellipsis;
 }
 
-/* The rail's mark component, reused verbatim (DL-27.3): one 14px box in every
-   state, so a dot, the working ring and the `asked` ripple trade places
-   without moving the age beside them. `.asr-row__mark` rests at
-   `justify-self: end`, which is the tab row's trailing geometry, not this
-   row's — the box IS the track here. */
-.recent-session-activity__row > .asr-row__mark {
+/* The state keeps the rail's geometry: its largest 27.3px ripple fits
+   inside the 14px slot plus the row's 7px trailing inset. */
+.recent-session-activity__state {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+.recent-session-activity__state > .asr-row__mark {
   justify-self: center;
+}
+
+.recent-session-activity__opening {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+.recent-session-activity__opening .wsitem__spinner {
+  position: static;
+  color: inherit;
+  width: 14px;
+  height: 14px;
+}
+
+.recent-session-activity__row[aria-busy="true"] {
+  cursor: progress;
+}
+
+.recent-session-activity__error {
+  margin: 0;
+  padding: 3px 7px 7px 29px;
+  color: var(--red);
+  font-size: var(--type-micro);
 }
 
 .recent-session-activity__time {

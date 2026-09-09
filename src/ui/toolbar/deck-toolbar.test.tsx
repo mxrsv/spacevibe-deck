@@ -84,6 +84,35 @@ describe("DeckToolbar", () => {
     expect(labels).toEqual(["More actions"]);
   });
 
+  it.each([false, true])(
+    "shows one Board entry in compact=%s, pressed while the Board holds the stage",
+    (compact) => {
+      const onSelect = vi.fn();
+      mount({ compact, agentView: { active: "inbox", onSelect } });
+      const buttons = () =>
+        Array.from(host.querySelectorAll<HTMLButtonElement>(".agent-view-switch button"));
+      // One item since 2026-09-09: "Inbox" named the absence of the Board, not
+      // a place of its own (DECK-43).
+      expect(buttons().map((button) => button.textContent)).toEqual(["Board"]);
+      expect(buttons()[0].getAttribute("aria-pressed")).toBe("false");
+      act(() => buttons()[0].click());
+      expect(onSelect).toHaveBeenCalledWith("board");
+
+      onSelect.mockClear();
+      mount({ compact, agentView: { active: "board", onSelect } });
+      expect(buttons()[0].getAttribute("aria-pressed")).toBe("true");
+      // And it fires WHILE pressed — the two-tab version refused this, which
+      // with one item would strand the user on the Board.
+      act(() => buttons()[0].click());
+      expect(onSelect).toHaveBeenCalledWith("board");
+    },
+  );
+
+  it("omits the Board entry entirely when no agentView is handed in", () => {
+    mount({ agentView: undefined });
+    expect(host.querySelector(".agent-view-switch")).toBeNull();
+  });
+
   it("carries the whole pane group as named rows inside More", () => {
     const on = mount();
     act(() => button("More actions").click());
