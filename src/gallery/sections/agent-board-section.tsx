@@ -205,7 +205,11 @@ const SNAPSHOT = [
  * gallery drives the same actions the wiring plan will.
  */
 function LiveBoard() {
-  const selected = useSignal<number | null>(103);
+  // `null` since DECK-43: nothing in the app selects a card any more, so a
+  // specimen that opened with one washed would be showing a state the owner
+  // cannot reach. The signal and its action stay wired — `onSelect` is still
+  // on the actions type, and a revert re-mounts what reads it.
+  const selected = useSignal<number | null>(null);
   const status = useSignal<BoardStatusFilter>("all");
   const project = useSignal<string | null>(null);
   const held = useSignal<readonly number[] | null>(null);
@@ -268,14 +272,14 @@ export function AgentBoardSection() {
     <>
       <SectionHead
         title="Agent Board"
-        blurb="The real AgentBoard over a fixture: two projects, three checkouts, nine cards through buildAgentBoard. Click a card to open its panel; the nav filters. Spec docs/specs/2026-09-03-agent-board-design.md, DL §34."
+        blurb="The real AgentBoard over a fixture: two projects, three checkouts, nine cards through buildAgentBoard. Since DECK-43 the grid is the whole Board — no filter nav, no detail panel — and a press opens that agent's pane on the stage. Spec docs/specs/2026-09-03-agent-board-design.md, DL §34."
       />
       {/* No `framed` and no `tall`: `.window` is a three-row grid, so an
           unplaced child lands on the frame row and the board is clipped to
           `--frame-h` (measured 2026-09-03: 640px of board inside a 64px
           stage). The board occupies the STAGE in the app, not the window
           shell, so the specimen hands it its own box instead. */}
-      <Specimen name="board — live, one asked card selected" surface="bg">
+      <Specimen name="board — live, nine cards" surface="bg">
         <div style={STAGE_TALL}>
           <LiveBoard />
         </div>

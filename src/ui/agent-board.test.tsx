@@ -86,14 +86,26 @@ function mount(v: AgentBoardView, a = actions()) {
 }
 
 describe("AgentBoard", () => {
-  it("states the result in its heading and opens the panel for the selected card", () => {
+  // DECK-43: the grid is the whole Board. Both side columns left the render,
+  // and this asserts it with a view that WOULD have raised the panel — a
+  // selected card — so a re-mount cannot pass unnoticed.
+  it("states the result in its heading and draws neither side column", () => {
     const cards = [card(1, 1, "asked", true), card(2, 2, "working")];
     const { host } = mount(view(cards, cards[0]));
     expect(host.querySelector(".agent-board__heading")!.textContent).toBe("2 of 2");
-    expect(host.querySelector(".agent-board")!.getAttribute("data-panel")).toBe("open");
-    expect(host.querySelector(".agent-board__panel .board-panel__title")!.textContent).toBe(
-      "Agent 1",
-    );
+    expect(host.querySelector(".agent-board__nav")).toBeNull();
+    expect(host.querySelector(".agent-board__panel")).toBeNull();
+    expect(host.querySelector(".agent-board")!.hasAttribute("data-panel")).toBe(false);
+  });
+
+  it("opens the pressed card's pane on the stage", () => {
+    const cards = [card(1, 1, "asked"), card(2, 2, "working")];
+    const { host, a } = mount(view(cards));
+    act(() => host.querySelectorAll<HTMLButtonElement>(".board-card__hit")[1].click());
+    expect(a.onOpenInStage).toHaveBeenCalledWith(expect.objectContaining({ paneId: 2 }));
+    // The press SELECTED until DECK-43, and a selection with no panel behind
+    // it would be a state the user cannot see.
+    expect(a.onSelect).not.toHaveBeenCalled();
   });
   it("draws the empty Board with its launcher and the empty filter without it", () => {
     const empty = mount(view([]));
@@ -106,19 +118,24 @@ describe("AgentBoard", () => {
     expect(filtered.host.querySelector(".agent-board__heading")!.textContent).toBe("0 of 1");
     expect(filtered.host.querySelector(".agent-board__empty")).toBeNull();
   });
-  it("selects by digit while the grid holds focus, and not from the nav", () => {
+  it("opens by digit while the grid holds focus", () => {
     const cards = [card(1, 1, "idle"), card(2, 2, "idle")];
     const { host, a } = mount(view(cards));
     const grid = host.querySelector<HTMLElement>(".agent-board__grid")!;
     act(() => {
       grid.dispatchEvent(new KeyboardEvent("keydown", { key: "2", bubbles: true }));
     });
-    expect(a.onSelect).toHaveBeenCalledWith(expect.objectContaining({ paneId: 2 }));
-    const nav = host.querySelector<HTMLElement>(".agent-board__nav")!;
+    // The keyboard twin of a press since DECK-43: the digit that names a card
+    // does what pressing it does.
+    expect(a.onOpenInStage).toHaveBeenCalledWith(expect.objectContaining({ paneId: 2 }));
+    // The digit is read on the GRID, so a key pressed anywhere else in the
+    // Board still cannot open a pane.
     act(() => {
-      nav.dispatchEvent(new KeyboardEvent("keydown", { key: "1", bubbles: true }));
+      host
+        .querySelector<HTMLElement>(".agent-board__main")!
+        .dispatchEvent(new KeyboardEvent("keydown", { key: "1" }));
     });
-    expect(a.onSelect).toHaveBeenCalledTimes(1);
+    expect(a.onOpenInStage).toHaveBeenCalledTimes(1);
   });
   it("opens the focused card in the stage on ⌘Enter / Ctrl+Enter", () => {
     const cards = [card(1, 1, "idle"), card(2, 2, "idle")];
@@ -130,18 +147,6 @@ describe("AgentBoard", () => {
       );
     });
     expect(a.onOpenInStage).toHaveBeenCalledWith(expect.objectContaining({ paneId: 1 }));
-  });
-  it("hands focus back to the selected card when Escape closes the panel", () => {
-    const cards = [card(1, 1, "working"), card(2, 2, "idle", true)];
-    const { host, a } = mount(view(cards, cards[1]));
-    const aside = host.querySelector<HTMLElement>(".agent-board__panel")!;
-    aside.focus();
-    expect(document.activeElement).toBe(aside);
-    act(() => {
-      aside.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    });
-    expect(a.onSelect).toHaveBeenCalledWith(null);
-    expect(document.activeElement).toBe(host.querySelectorAll(".board-card__hit")[1]);
   });
   it("moves roving focus with the arrow keys", () => {
     const cards = [card(1, 1, "idle"), card(2, 2, "idle"), card(3, 3, "idle")];
@@ -158,21 +163,19 @@ describe("AgentBoard", () => {
     });
     expect(document.activeElement).toBe(hits[2]);
   });
-  it("Escape closes the panel first, then steps the Board back", () => {
+  // One Escape, not two. It closed the panel first and stepped the Board back
+  // on the second press (DL-34.9) until DECK-43 removed the panel.
+  it("steps the Board back on the first Escape", () => {
     const cards = [card(1, 1, "asked", true)];
+    // A selected card in the view — the state that used to absorb the first
+    // press — proves the branch is gone rather than merely unreached.
     const { host, a } = mount(view(cards, cards[0]));
-    const root = host.querySelector<HTMLElement>(".agent-board")!;
     act(() => {
-      root.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    });
-    expect(a.onSelect).toHaveBeenCalledWith(null);
-    expect(a.onEscape).not.toHaveBeenCalled();
-    const bare = mount(view(cards));
-    act(() => {
-      bare.host
+      host
         .querySelector<HTMLElement>(".agent-board")!
         .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
-    expect(bare.a.onEscape).toHaveBeenCalledTimes(1);
+    expect(a.onEscape).toHaveBeenCalledTimes(1);
+    expect(a.onSelect).not.toHaveBeenCalled();
   });
 });
