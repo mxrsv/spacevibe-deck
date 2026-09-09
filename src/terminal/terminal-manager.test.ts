@@ -34,21 +34,31 @@ function fakePane(
   selections?: Set<number>,
 ): Pane {
   const element = document.createElement("div");
+  // Everything written to the pane, so `serializeScrollback` answers something.
+  // It returned "" before the Agent Board's `serializePane` needed it, which
+  // made every `toContain(...)` on a snapshot pass vacuously.
+  let buffer = "";
   return {
     id,
     element,
     search: {} as Pane["search"],
     mount() {},
-    write() {},
+    write(data) {
+      buffer += data;
+    },
     cols: 80,
     rows: 24,
     flush() {
       return Promise.resolve();
     },
     serializeScrollback() {
-      return "";
+      return buffer;
     },
-    writeln() {},
+    writeln(line) {
+      // What `term.writeln` does — the line plus a CRLF. `handleExit`'s
+      // "[Session ended]" banner is written this way, escapes and all.
+      buffer += `${line}\r\n`;
+    },
     fit() {
       fitCounts?.set(id, (fitCounts.get(id) ?? 0) + 1);
     },
@@ -679,5 +689,46 @@ describe("createTerminalManager onActivePaneChange (DL-27.22)", () => {
 
     expect(tm.focusPane(first!)).toBe(true);
     expect(tm.activePaneId()).toBe(first);
+  });
+});
+
+describe("createTerminalManager serializePane / paneAlive (spec §11.5, DL-34.6)", () => {
+  it("answers one pane's scrollback, and null for a pane it does not hold", async () => {
+    const { tm } = setup();
+    await tm.initFresh();
+    const [id] = tm.paneIds();
+    expect(id).not.toBeUndefined();
+
+    tm.handleOutput(id!, "hello\r\n");
+
+    // The escapes are NOT stripped here: `pane-detach.ts` reads the same
+    // `serializeScrollback` and needs them, so the terminal layer keeps
+    // answering what the buffer holds. Stripping is the tab layer's job.
+    expect(tm.serializePane(id!, 10)).toContain("hello");
+    expect(tm.serializePane(999999, 10)).toBeNull();
+  });
+
+  it("still answers after the pane's PTY exits, and paneAlive reports the exit", async () => {
+    const { tm } = setup();
+    await tm.initFresh();
+    const [id] = tm.paneIds();
+    expect(id).not.toBeUndefined();
+    tm.handleOutput(id!, "last words\r\n");
+    // The before-check is the discriminator: without it "an exited pane still
+    // answers" passes trivially for a pane that never exited.
+    expect(tm.paneAlive(id!)).toBe(true);
+
+    tm.handleExit(id!);
+
+    // Deliberately not gated on `life.exited`: a pane whose PTY has gone still
+    // holds the last thing the agent said, which is what the panel is for.
+    expect(tm.serializePane(id!, 10)).toContain("last words");
+    expect(tm.paneAlive(id!)).toBe(false);
+  });
+
+  it("says a pane it never held is not alive", async () => {
+    const { tm } = setup();
+    await tm.initFresh();
+    expect(tm.paneAlive(999999)).toBe(false);
   });
 });

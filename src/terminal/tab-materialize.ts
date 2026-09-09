@@ -132,6 +132,14 @@ export interface MaterializeIntent {
    * Session restore is the caller: each pane resumes its own conversation.
    */
   readonly paneCommands?: readonly (string | null)[];
+  /**
+   * Per-pane task prompts, zipped to leaves left-to-right — the `paneCommands`
+   * shape, for the same reason and the same caller. Session restore has no
+   * pane ids (`materialize` answers a boolean), so the prompt a card prints
+   * has to travel with the intent and become a pane id in `TabManager`.
+   * A null slot records nothing.
+   */
+  readonly panePrompts?: readonly (string | null)[];
   readonly chrome?: MaterializeChrome;
   /** Workspace the new tab belongs to; absent = a tab with no workspace. */
   readonly workspacePath?: string;

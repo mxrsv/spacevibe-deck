@@ -337,6 +337,9 @@ ipcMain.handle(CHANNELS.resizePty, (event, payload: unknown) => {
   return pty.resize(labelOf(event), id, cols, rows);
 });
 ipcMain.handle(CHANNELS.killPty, (event, { id }) => pty.kill(labelOf(event), id));
+ipcMain.handle(CHANNELS.ptyKillForeground, (event, { id }) =>
+  pty.killForeground(labelOf(event), id),
+);
 ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
   ptyInfo(pty.snapshots(ids), validateAgentProcessMatchers(agents), waitForCwd !== false),
 );

@@ -20,6 +20,16 @@ export interface PtyClient {
   writePty(id: number, data: string): Promise<void>;
   resizePty(id: number, cols: number, rows: number): Promise<void>;
   killPty(id: number): Promise<void>;
+  /**
+   * End the agent process in a pane, leaving the pane's shell alive
+   * (spec §5.6) — the Agent Board's Stop.
+   *
+   * Electron-only: no `#[tauri::command]` counterpart exists and Tauri is
+   * feature-frozen, so the member is ABSENT there and every call site uses
+   * `?.()`. That optional call is how "this host cannot do it" is said, the way
+   * `sessionCwds` below says it.
+   */
+  killForeground?(id: number): Promise<void>;
   /** Fresh pty_info; throws on IPC failure (poll keeps last-known on catch). */
   ptyInfo(
     ids: readonly number[],
@@ -107,6 +117,13 @@ export function createTauriPtyClient(): PtyClient {
     },
     killPty(id) {
       return invoke("kill_pty", { id });
+    },
+    // Implemented unconditionally, unlike `sessionCwds` below: this factory is
+    // the ONE production client — both hosts run it, and `invoke` goes through
+    // `__deckHost`, which is the Electron path. Its name is historical, so a
+    // no-op "for Tauri" here would disable Stop on the only host that has it.
+    killForeground(id) {
+      return invoke("pty_kill_foreground", { id });
     },
     async ptyInfo(ids, agentMatchers = [], waitForCwd = true) {
       if (ids.length === 0) {

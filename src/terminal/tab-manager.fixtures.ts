@@ -64,21 +64,31 @@ export function fakePane(
   // the synthetic event below (which mirrors production's `focusin` listener).
   element.tabIndex = -1;
   let selected = overrides.selection ?? false;
+  // Everything written to the pane, so `serializeScrollback` answers something.
+  // It returned "" before the Agent Board's `serializePane` needed it, which
+  // made every `toContain(...)` on a snapshot pass vacuously.
+  let buffer = "";
   return {
     id,
     element,
     search: overrides.search ?? ({} as Pane["search"]),
     mount() {},
-    write() {},
+    write(data) {
+      buffer += data;
+    },
     cols: 80,
     rows: 24,
     flush() {
       return Promise.resolve();
     },
     serializeScrollback() {
-      return "";
+      return buffer;
     },
-    writeln() {},
+    writeln(line) {
+      // What `term.writeln` does — the line plus a CRLF. `handleExit`'s
+      // "[Session ended]" banner is written this way, escapes and all.
+      buffer += `${line}\r\n`;
+    },
     fit() {},
     clear() {},
     copySelection: overrides.copySelection ?? (() => {}),

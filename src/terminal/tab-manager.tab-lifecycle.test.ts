@@ -10,6 +10,8 @@ import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { flush, freshWindowFocusController, processInfo, setup } from "./tab-manager.fixtures";
+import { noteTaskPrompt, resetTaskPrompts } from "./board-task-prompts";
+import { MAX_TASK_PROMPT_BYTES, TASK_PROMPT_CUT_MARK } from "../lib/session-schema";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -269,6 +271,14 @@ describe("createTabManager workspace identity", () => {
           // `splitActive` left pane 2 active, so the agent pane is NOT the
           // one holding this tab's focus (DL-27.22).
           focused: false,
+          // The Board's three inputs (spec §11.1, §11.11) ride the same
+          // projection. The exact ordinal is the window's shared open-order
+          // clock, which every earlier test in this file has already advanced
+          // — the number is meaningless here, the presence is not.
+          ordinal: expect.any(Number),
+          startedAt: expect.any(Number),
+          lastAgent: "claude",
+          confidence: "explicit",
         },
         // Polled and recognised as a shell: no agent identity, and the
         // tracker's gate never opened for it, so nothing latched, the phase is
@@ -281,6 +291,11 @@ describe("createTabManager workspace identity", () => {
           changedAt: 0,
           hasRun: false,
           focused: true,
+          ordinal: expect.any(Number),
+          // A shell pane has no agent generation, so it has neither a
+          // `startedAt` nor a `lastAgent` — the two absences a Board card
+          // reads as "nothing has ever run here".
+          confidence: "explicit",
         },
       ]);
       expect(tabViews.value[0].panes?.[0].changedAt).toBeGreaterThan(0);
@@ -322,7 +337,7 @@ describe("createTabManager captureSession (session journal)", () => {
       {
         workspacePath: "/w/a",
         layout: { type: "leaf" },
-        panes: [{ cwd: "/w/a", agent: "claude", launchCommand: null }],
+        panes: [{ cwd: "/w/a", agent: "claude", launchCommand: null, taskPrompt: null }],
         // Always null since 2026-08-16: `renameTab` went with `TabPopover`,
         // so nothing can set a name any more. The FIELD stays because the
         // snapshot shape is shared with the transfer payload.
@@ -332,11 +347,32 @@ describe("createTabManager captureSession (session journal)", () => {
       {
         workspacePath: null,
         layout: { type: "leaf" },
-        panes: [{ cwd: null, agent: null, launchCommand: null }],
+        panes: [{ cwd: null, agent: null, launchCommand: null, taskPrompt: null }],
         name: null,
         dotColor: null,
       },
     ]);
+  });
+
+  it("captures the pane's task prompt, capped at the schema's byte bound", async () => {
+    resetTaskPrompts();
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/w/a", "claude", "agent", "claude")],
+    ]);
+    const { tm } = setup({ infos });
+    await tm.openFromPreset({ type: "leaf" }, ["/w/a"], { workspacePath: "/w/a" });
+    await flush();
+    const paneId = tabViews.value[0].panes?.[0].paneId ?? -1;
+    // Past the cap on purpose: the journal is rewritten on a debounce, so an
+    // uncapped field would let one paste dominate every write.
+    noteTaskPrompt(paneId, "z".repeat(MAX_TASK_PROMPT_BYTES + 10));
+    const prompt = tm.captureSession()[0].panes[0].taskPrompt ?? "";
+    expect(prompt.endsWith(TASK_PROMPT_CUT_MARK)).toBe(true);
+    expect(new TextEncoder().encode(prompt).length).toBeLessThanOrEqual(
+      MAX_TASK_PROMPT_BYTES + new TextEncoder().encode(TASK_PROMPT_CUT_MARK).length,
+    );
+    tm.dispose();
+    resetTaskPrompts();
   });
 });
 

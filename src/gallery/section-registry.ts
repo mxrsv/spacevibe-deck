@@ -1,4 +1,5 @@
 import type { ComponentType } from "preact";
+import { AgentBoardSection } from "./sections/agent-board-section";
 import { AttentionDirectionSection } from "./sections/attention-direction";
 import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
@@ -67,6 +68,7 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
   { id: "board", label: "open board", Section: BoardSection },
+  { id: "agent-board", label: "agent board", Section: AgentBoardSection },
   { id: "explorer-tree", label: "explorer tree", Section: ExplorerTreeSection },
   /* PARKED 2026-08-30, the same day it was registered — the `unread-mark-variants`
      precedent again: the owner picked `SquareHalf` and `GitFork`, they shipped into

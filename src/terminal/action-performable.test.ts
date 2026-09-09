@@ -82,3 +82,35 @@ describe("isActionPerformable", () => {
     );
   });
 });
+
+describe("toggle-agent-board", () => {
+  it("consumes the chord on a host that has the Board", () => {
+    expect(isActionPerformable("toggle-agent-board", context({ hostHasAgentBoard: true }))).toBe(
+      true,
+    );
+  });
+
+  it("leaves the keystroke alone on a host that does not (Tauri)", () => {
+    expect(isActionPerformable("toggle-agent-board", context({ hostHasAgentBoard: false }))).toBe(
+      false,
+    );
+  });
+
+  it("reads an absent hostHasAgentBoard as no Board", () => {
+    // The field is optional so every context literal written before this keeps
+    // compiling; absent must fail toward not consuming, exactly as
+    // `surfaceCanToggleView` does.
+    expect(isActionPerformable("toggle-agent-board", context())).toBe(false);
+  });
+
+  it("consumes the chord whatever owns the stage, so the Board can be left", () => {
+    // Deliberately NOT stage-conditional: the chord's close branch fires while
+    // the Board itself owns the stage, which `stageOwner()` reports as
+    // "surface". A stage predicate would make the toggle one-way.
+    for (const stageOwner of ["terminal", "surface"] as const) {
+      expect(
+        isActionPerformable("toggle-agent-board", context({ stageOwner, hostHasAgentBoard: true })),
+      ).toBe(true);
+    }
+  });
+});

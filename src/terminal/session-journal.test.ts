@@ -20,6 +20,8 @@ import {
   type FileSurfaceState,
 } from "../files/file-surface-store";
 import { persistError } from "../chrome/events";
+import { agentBoardOpen, openAgentBoard, resetAgentBoardStore } from "../ui/agent-board-store";
+import { noteTaskPrompt, paneTaskPrompts, resetTaskPrompts } from "./board-task-prompts";
 
 const LEAF = { type: "leaf" } as const;
 const DEBOUNCE_MS = 1000;
@@ -28,7 +30,7 @@ function tab(workspacePath: string | null): SessionTab {
   return {
     workspacePath,
     layout: LEAF,
-    panes: [{ cwd: "/w/a", agent: "claude", launchCommand: null }],
+    panes: [{ cwd: "/w/a", agent: "claude", launchCommand: null, taskPrompt: null }],
     name: null,
     dotColor: null,
   };
@@ -85,6 +87,10 @@ describe("session journal", () => {
 
   afterEach(() => {
     resetSessionJournal();
+    // The Board store is a window-scoped singleton, so a case that opened it
+    // would leave every later `toMatchObject` in this file reading `true`.
+    resetAgentBoardStore();
+    resetTaskPrompts();
     vi.useRealTimers();
   });
 
@@ -317,6 +323,74 @@ describe("session journal", () => {
     await clearWindowRecord("secondary");
     records = await readWindowRecords();
     expect(records.has("secondary")).toBe(false);
+  });
+
+  describe("agentBoardOpen", () => {
+    it("writes the board's open state while the window holds tabs", async () => {
+      const { store, data } = createFakeStore();
+      await initSessionJournal(deps({ isMain: true, store, capture: () => [tab("/w")] }));
+      openAgentBoard();
+      await flushSessionJournal();
+      expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(true);
+    });
+
+    it("rewrites it false with no tabs", async () => {
+      const { store, data } = createFakeStore();
+      await initSessionJournal(deps({ isMain: true, store, capture: () => [] }));
+      openAgentBoard();
+      await flushSessionJournal();
+      // Zero tabs = no Board: the chip cannot render and the action is scope
+      // "pane", so a remembered `true` would restore a surface with no way out.
+      expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(false);
+    });
+
+    it("re-runs the write effect when only the board's state moved", async () => {
+      const { store, data } = createFakeStore();
+      await initSessionJournal(deps({ isMain: true, store, capture: () => [tab("/w")] }));
+      // The first debounced write lands with the board closed...
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+      expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(false);
+      // ...and opening the chip is the ONLY signal that moves before the next
+      // one, so this fails unless the effect reads `agentBoardOpen`.
+      openAgentBoard();
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+      expect((data.get("window:main") as { agentBoardOpen: boolean }).agentBoardOpen).toBe(true);
+      expect(agentBoardOpen.value).toBe(true);
+    });
+  });
+
+  it("re-runs the write effect when only a pane's task prompt was noted", async () => {
+    // `TASK_PROMPT_AUTOSEND` is false, so the prompt is normally recorded
+    // AFTER the agent appeared and `tabViews` already moved: nothing else
+    // changes while it sits unsent in the composer, and without this
+    // dependency a crash in that window loses the one field the Board's card
+    // is for.
+    const { store, data } = createFakeStore();
+    const capture = (): SessionTab[] => [
+      {
+        workspacePath: "/w",
+        layout: LEAF,
+        panes: [
+          {
+            cwd: "/w/a",
+            agent: "claude",
+            launchCommand: null,
+            taskPrompt: paneTaskPrompts.value.get(1) ?? null,
+          },
+        ],
+        name: null,
+        dotColor: null,
+      },
+    ];
+    await initSessionJournal(deps({ isMain: true, store, capture }));
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    const written = () =>
+      (data.get("window:main") as { tabs: SessionTab[] }).tabs[0].panes[0].taskPrompt;
+    expect(written()).toBeNull();
+
+    noteTaskPrompt(1, "Ship the rail");
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(written()).toBe("Ship the rail");
   });
 
   describe("sessionRestoreMarker", () => {

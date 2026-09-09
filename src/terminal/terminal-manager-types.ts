@@ -181,6 +181,28 @@ export interface TerminalManager {
    * whether Enter reached the PTY.
    */
   submitPane(id: number): Promise<boolean> | null;
+  /**
+   * The newest `lines` rows of one pane's scrollback, as the buffer holds them
+   * (Agent Board spec §11.5, DL-34.6) — null for a pane this manager does not
+   * have.
+   *
+   * A read-only passthrough to the pane's own `serializeScrollback`, the same
+   * call `pane-detach.ts` makes when a pane travels: no element moves, no PTY
+   * resizes and no second renderer exists. The escape sequences are LEFT IN —
+   * pane transfer replays them — so the plain-text stripping the panel needs
+   * happens one layer up, in `TabManager.serializePane`.
+   *
+   * Not gated on the pane's exit: an exited pane still holds the last thing
+   * the agent said, which is what the panel is for.
+   */
+  serializePane(id: number, lines: number): string | null;
+  /**
+   * Whether this pane's PTY is still running (Agent Board spec §7's disabled
+   * actions). `pasteIntoPane` and `submitPane` already fail on the same fact;
+   * this states it, rather than leaving a caller to infer it from a null
+   * paste or an empty snapshot.
+   */
+  paneAlive(id: number): boolean;
   /** Scroll the active pane's viewport by one page (⇧PageUp/⇧PageDown). */
   scrollActivePage(dir: 1 | -1): void;
   /** Jump the active pane's viewport to the top or bottom of scrollback. */

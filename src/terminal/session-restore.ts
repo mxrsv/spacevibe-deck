@@ -23,6 +23,7 @@ import type { FileSurfaceController } from "../files/file-surface-controller";
 import { applyResumeFlags } from "../lib/launch-command";
 import { materializeChromeFrom } from "./tab-materialize";
 import { noteResumedPane } from "./session-tail-store";
+import { openAgentBoard } from "../ui/agent-board-store";
 import { countAgentLaunch } from "../telemetry/usage-counters";
 import type { TabManager } from "./tab-manager";
 
@@ -65,6 +66,8 @@ interface LivePane {
   readonly skipLookup: boolean;
   /** The command the pane was journalled with; its flags are re-applied. */
   readonly launchCommand: string | null;
+  /** The task this pane was opened for (spec §11.2), handed back to the Board. */
+  readonly taskPrompt: string | null;
 }
 
 interface LiveTab {
@@ -121,6 +124,7 @@ function livePaneOf(pane: SessionPane, alive: ReadonlyMap<string, boolean>): Liv
       agent: pane.agent,
       skipLookup: true,
       launchCommand: pane.launchCommand,
+      taskPrompt: pane.taskPrompt,
     };
   }
   return {
@@ -128,6 +132,7 @@ function livePaneOf(pane: SessionPane, alive: ReadonlyMap<string, boolean>): Liv
     agent: pane.agent,
     skipLookup: false,
     launchCommand: pane.launchCommand,
+    taskPrompt: pane.taskPrompt,
   };
 }
 
@@ -246,6 +251,11 @@ async function materializeAll(
         layout: tab.source.layout,
         cwds: tab.panes.map((pane) => pane.cwd),
         paneCommands,
+        // Spec §11.2: a restored pane resumes its own conversation, so its
+        // card must still say what it was opened for. Zipped to leaves like
+        // `paneCommands`, because this module has no pane ids — `materialize`
+        // answers a boolean, and the id it allocates is TabManager's.
+        panePrompts: tab.panes.map((pane) => pane.taskPrompt),
         chrome: materializeChromeFrom(tab.source.name, tab.source.dotColor),
         ...(tab.source.workspacePath !== null ? { workspacePath: tab.source.workspacePath } : {}),
       });
@@ -378,6 +388,15 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
       mainRecord !== null
         ? await restoreFiles(deps.files, deps.statFiles, mainRecord, result.alive)
         : null;
+
+    // Spec §4.2: the Board opens itself at boot and never otherwise. The MAIN
+    // record only, like `files`: boot restore folds secondary windows into
+    // this one, and a secondary record's flag would raise a Board in a window
+    // that never had one. `restored > 0` because a Board with no panes has
+    // nothing to show and no chip to leave by.
+    if (mainRecord?.agentBoardOpen === true && restored > 0) {
+      openAgentBoard();
+    }
 
     deps.manager.selectTab(clampIndex(mainRecord?.activeTabIndex ?? 0, restored));
     if (activeFileTarget !== null) {

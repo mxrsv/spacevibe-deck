@@ -24,6 +24,9 @@ interface TabBarProps {
   /** Passed straight through to `TabStrip`, like `fileController`. */
   onSelectBrowser(): void;
   onCloseBrowser(): void;
+  /** The Agent Board chip's pair, passed through the same way. */
+  onSelectAgentBoard(): void;
+  onCloseAgentBoard(): void;
 }
 
 /**
@@ -52,6 +55,8 @@ export function TabBar(props: TabBarProps) {
         fileController={props.fileController}
         onSelectBrowser={props.onSelectBrowser}
         onCloseBrowser={props.onCloseBrowser}
+        onSelectAgentBoard={props.onSelectAgentBoard}
+        onCloseAgentBoard={props.onCloseAgentBoard}
         scopeToActiveRepository={false}
       />
       <div class="tabbar__spacer" data-tauri-drag-region />

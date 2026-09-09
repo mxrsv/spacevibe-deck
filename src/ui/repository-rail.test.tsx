@@ -142,6 +142,8 @@ function mountSidebarLayout(): void {
             onNewTab={NOOP}
             onSelectBrowser={NOOP}
             onCloseBrowser={NOOP}
+            onSelectAgentBoard={NOOP}
+            onCloseAgentBoard={NOOP}
             scopeToActiveRepository
           />
         </div>

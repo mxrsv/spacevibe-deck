@@ -777,6 +777,46 @@ superseded by `docs/internals/` wherever they disagree.
   rail. **Owed: a native `electron:dev` pass and the owner eye review.** See
   [spec](docs/specs/2026-08-25-rail-worktree-tier-design.md) `decided` and
   [docs/CONTEXT.md](docs/CONTEXT.md#the-rail-groups-its-rows-by-checkout--2026-08-25) `current`.
+- **The Agent Board is wired, and it has been walked in a running app (2026-09-06).**
+  A grid of live agent panes with a STATUS/PROJECTS nav and a right detail panel, toggled
+  against the rail, never replacing it — the owner's answer to "every agent app is a
+  sidebar". [Spec](docs/specs/2026-09-03-agent-board-design.md) `decided` (three forks
+  answered, 24 grilling decisions, two reviews folded in); DL §34 is new and DL-4.1/4.3
+  are amended: **chrome is monospace inside `.agent-board` and nowhere else**, and
+  `.board-label` is uppercase copy — the first since the ban.
+  [`agent-board-model.ts`](src/ui/agent-board-model.ts) `current` is a second pure
+  projection over `buildAgentRail`, joined to `PaneView` by pane id;
+  [`agent-board-store.ts`](src/ui/agent-board-store.ts) `current` is the window state and
+  the snapshot's cadence; [`agent-board-actions.ts`](src/ui/agent-board-actions.ts)
+  `current` is every control's RULE, injectable because this repo has no `<App>` render
+  harness. The wiring is a third `stageSurfaceDescriptors` kind and its `Agents` chip,
+  **⌘⇧O**, the sidebar AND dock at width 0 while it holds the stage,
+  `agentBoardOpen` + `SessionPane.taskPrompt` in the journal, `pty_kill_foreground`, and
+  four tab-layer seams — `acknowledgePane`, `serializePane`/`paneAlive`, `restartPane`.
+  **Restart RESUMES**: [`pane-restart.ts`](src/terminal/pane-restart.ts) `current` composes
+  the pane's confirmed session id, its launch flags and the CLI's own resume form, and a
+  null id asks for the LATEST session rather than relaunching bare. That id had to be kept
+  on purpose — `session-tail-store`'s `forget` empties the live pairing at the exact
+  agent → shell transition after which Restart is offered, so
+  [`lastSessionIdFor`](src/terminal/session-tail-store.ts) `current` keeps it, and **only
+  when the generation ends with no agent**: `isNewGeneration` is true for four transitions,
+  and an unconditional keep would pin a freshly started agent to the previous conversation.
+  DL-34.7's second condition lives in `onReply`, not in `submitAllowed`, which has no
+  `hasRun` input — a fresh `claude` on its trust-this-folder menu reads `idle` and passes
+  every check that gate makes, so `autoSend` is the card's own `hasRun` and a pane that has
+  never run a turn can only be pasted into. Facts Deck cannot know are drawn as absent, not
+  invented (spec §8). **Evidence:** `npm test` 4436 passed / 1 failed (the design-language
+  citation gate at its nine baseline citations, none of this work's), both typechecks,
+  `npm run build`, `npm run electron:build` and `generate:menu:check` green, plus a **native
+  `electron:dev` walk under an isolated `userData`** — chip restored from the journal,
+  ⌘⇧O both ways, sidebar 275px → 0px → 275px (and a collapse that survives), a card's real
+  scrollback in the panel with focus staying on the panel, Stop → `ENDED` → Restart
+  relaunching the agent, a reply landing as _placed — confirm in the terminal_, DL-34.9's
+  two-step Escape, and the chip surviving quit + relaunch. **Owed: the owner's eye review**,
+  and one walk step that could not run — **Restart resuming a real conversation id**, since
+  the walk used a non-billing probe agent that has no session id. Windows is Gate C.
+  Merging still waits for the daily-surfaces release (2026-09-02).
+  [Plan](docs/plans/2026-09-04-agent-board-wiring.md) `building`.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -802,6 +842,38 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 
 Open queue:
 
+- **The Agent Board: two typography rules reopened, §34 added, four more DL rules
+  amended, and four seams named (2026-09-03, owner-decided in a 24-question grilling,
+  then "execute the spec").** Fork-listed categories: **a rule in `docs/DESIGN-LANGUAGE.md`**
+  — DL-4.1 (mono belongs to the terminal AND the Board), DL-4.3 (a third exception, the
+  first that is copy), DL-4.4/DL-3.4 (the Board's group label at `--type-meta`/faint),
+  DL-1.2 (the spinner as a fourth loop exception), DL-21.7 (the card's resting wash), §34
+  new; **PTY ownership and an R6 channel** — `pty_kill_foreground` for Stop, decided, not
+  built; **tab-layer seams** — `acknowledgePane`, `restartPane`, `serializePane`, decided,
+  not built; **session schema** — `agentBoardOpen` on `WindowRecord`, `taskPrompt` on
+  `SessionPane`, decided, not built. Chosen over an Inbox-only rail redesign (the two
+  toggle), over an automatic count-based flip (a surprise the 2026-09-02 pass exists to
+  remove), over reparenting the live xterm (a snapshot instead; the loan is an upgrade),
+  and over relaunching fresh on Restart (it resumes). NOT touched: process classification,
+  the window coordinator, layout/pane mounting, the settings schema, any sibling repo.
+- **The Agent Board's wiring took the four seams the spec named, plus one it did not
+  (2026-09-06, executed on the owner's "execute the spec" instruction).** Built as decided:
+  `pty_kill_foreground` on `PtyClient` and `CHANNELS`; `acknowledgePane`,
+  `serializePane`/`paneAlive` and `restartPane` on `TabManager`; `agentBoardOpen` on
+  `WindowRecord` and `taskPrompt` on `SessionPane`. **The one the spec did not foresee is
+  `MaterializeIntent.panePrompts`** — a tab-materialization widening, taken because spec
+  §11.2's persisted prompt has to reach a PANE and `session-restore.ts` never learns a pane
+  id. It mirrors `paneCommands` exactly (same map, same zip, same call site), so removing it
+  is deleting one field; the alternative — a `(workspace, agent)` mark the pane claims — is
+  the shape WITHDRAWN on 2026-08-22 for having no causal link to a pane. **The Tauri
+  exposure is a named parity gap, not a guard:** `hostHasAgentBoard` gates the KEYSTROKE
+  only. The menu path never asks it, `menu_registry.rs` carries View ▸ Agent Board, and the
+  surface mounts on `agentBoardSurfaceActive` with no host gate — so on Tauri that menu item
+  opens a Board with no tails and no worktree grouping. `toggle-browser` has the identical
+  exposure today, which is why this is recorded as the repo's existing posture rather than
+  fixed here. NOT touched: process classification, the window coordinator, layout or pane
+  mounting, close/quit coordination, the settings schema, release configuration, any
+  sibling repo.
 - **Recent activity rows carry a status mark, lose the agent label, drop two
   type rungs and stop being a boot-time snapshot (2026-08-26, owner-asked, in
   two passes the same day).** One fork-listed category, repeatedly: **rules in
@@ -1247,5 +1319,7 @@ _(Heading retained for the global living-doc convention.)_
 | The rail groups a project's rows by checkout                                  | `building` | unverified | Built 2026-08-25 from the [spec](docs/specs/2026-08-25-rail-worktree-tier-design.md) `decided` (new DL-27.23, DL-27.24): `RailWorktreeGroup` is a tier between the cluster and its rows, `RailStreamGroup.rows` became `worktrees`, `RailTabRow.worktree` and its CSS are deleted, and a checkout Deck's history knows keeps a header with no rows. Renderer-only, so it reaches BOTH hosts by code — but the DATA is Electron-only: `git_repository` does not exist under Tauri, where every scan answers `plain` and a project renders as one unlabelled implicit group, which is today's behaviour preserved and a named parity gap. `npm test` 3954 passed / 0 failed / 3 skipped, `npx tsc --noEmit`, `npm run build`, `npm run electron:build` and the design-language gate (18/18, two new rule assertions) all green, plus a gallery pass on the REAL rail measuring three tiers on one left edge (39px in every tier), six sub-headers, both tiers' launchers in one column (x=222 in a 275px rail), exactly one washed row, a history-only group rendering its `+`, and zero horizontal overflow. **Owed: a native `electron:dev` pass and the owner eye review** — no worktree has been grouped in a running app and no sub-header `+` has opened the launcher; Windows is Gate C — [detail](docs/CONTEXT.md#the-rail-groups-its-rows-by-checkout--2026-08-25) `current` |
 | A rail row names the worktree it runs in                                      | `current`  | **false**  | True from 2026-08-16 to 2026-08-25 and deliberately reversed: the checkout is the labelled group above the row (DL-27.23), and a suffix printed the branch once per agent in that checkout — the noise the primary-only rule existed to prevent. `RailTabRow.worktree` and `.asr-row__worktree` are DELETED, not parked, so restoring the suffix means restoring the field first. The composed `project · branch` string still reaches every accessible name and tooltip through `whereOf` — [detail](docs/CONTEXT.md#the-rail-groups-its-rows-by-checkout--2026-08-25) `current` |
 | A Recent activity row reports what its agent is doing, and stays current     | `building` | unverified | Built 2026-08-26 on the owner's ask, in two passes (DL-33.2 amended twice, DL-33.5 new, DL-4.4 records a metadata-rung group label): a fourth 14px track carries the rail's own `RailStatusMark` — `working` is the sidebar's dot-ring `WorkspaceSpinner`, not a second spinner — and the state comes from the pane running that EXACT session id through the tail store's confirmed pairings, never from the listing, so a row whose session no pane holds takes the quiet dot. The visible agent label is DELETED (the glyph names the agent; the word survives in the row's hidden prefix, `Resume Claude — <title>:`), and the type dropped to heading 11px / sentence 10.5px / `View all` 10.5px. [`recent-activity-sync.ts`](src/sessions/recent-activity-sync.ts) `current` replaced the boot-only load: `paneTails` and `tabViews` plus window focus drive it, a burst collapses into one scan and two scans keep a 4s floor, because a scan is two directory walks on the process that owns every PTY. `npm test` 4016 passed / 1 failed (the `Woven Flag` assertion another session left behind in `scripts/gallery-entry.test.ts` after deleting that specimen from `chrome-section.tsx` — neither file is touched here), `npx tsc --noEmit`, `npm run build`, Prettier and the design-language gate green, plus a gallery pass on the REAL block measuring all five states, a 30px row, an 11px/10.5px ladder, no agent label and zero horizontal overflow. **Owed: a native `electron:dev` pass and the owner eye review** — no live pane has been watched updating a row, the 4s scan cadence has never run against a real `~/.claude` corpus, and only `deck-dark` was looked at |
+| The Agent Board is a shipping surface | `building` | wired and natively walked; owner eye review owed | Model, treatment and specimen built 2026-09-03; the four eye-pass fixes and the whole wiring landed 2026-09-06 across 17 tasks (`73cd1b1`..`69f58cf`). `npm test` **4436 passed / 1 failed** — that one the design-language citation gate listing exactly the nine baseline citations from `main`'s uncommitted DESIGN-LANGUAGE (DL-19.9 x4, DL-27.25 x3, DL-13.7, DL-13.8), none of them this work's; three `marketing/landing-prototype` suites also fail at COLLECTION on the untracked `install-command.js`, the pre-existing blocker already in this table. Both typechecks, `npm run build`, `npm run electron:build`, `generate:menu:check` and Prettier clean. A **native `electron:dev` walk** ran under an isolated `userData` (a `/tmp` wrapper calling `app.setPath` before requiring the compiled main; the real `~/Library/Application Support/Electron` mtimes were unchanged afterwards) covering: the chip restored from the journal, Cmd+Shift+O opening AND closing, the sidebar 275px -> 0px -> 275px with an already-collapsed sidebar surviving both ways, a card's own live scrollback in the panel with `document.activeElement` staying on the panel, Stop killing only that pane's process and leaving the card `ENDED` with Restart in place of Stop, Restart relaunching the agent, a reply landing as `placed — confirm in the terminal` because the pane had not run a turn, DL-34.9's two-step Escape, and `agentBoardOpen` surviving quit + relaunch. **Owed: the owner's eye review**, and the one step that could not run — **Restart resuming a real conversation id**, because the walk used a non-billing probe agent with no session id, so `lastSessionId` -> `--resume <id>` is unit-tested only. Windows is Gate C — [plan](docs/plans/2026-09-04-agent-board-wiring.md) `building` |
+| The landing page is findable and shareable                                     | `building` | unverified | Built 2026-09-04, marketing only (no `src/`, no `electron/`, no DL rule): absolute canonicals on both pages, Open Graph/Twitter cards over a captured 1800x942 cover, a real favicon and touch icon, `robots.txt` + `sitemap.xml` at the site root, a `SoftwareApplication`/`WebSite` JSON-LD graph, 301s on the four literal directory spellings of `/landing-prototype` (never a wildcard, which would eat the runtime assets, and never the `index.html` the rewrite itself targets — the canonical folds that one), and a `closeBundle` prerender that puts the rendered page INTO the shipped HTML — measured with JavaScript off, 0 words became 1110 words, one `h1`, eight `h2`s and 17 links. `npx vitest run marketing/` 187 passed / 2 skipped (11 new, mutation-proven), `npm run build:landing`, Prettier and oxlint clean over the new scripts, plus a headless pass on the built bundle with zero console errors and 200s for both crawler files and both images. **Owed: everything only production answers** — no Vercel redirect or rewrite has ever been exercised, no scraper has fetched the card, Search Console has never seen the sitemap, and the owner has not eyed the cover. Pre-existing blocker, not caused here: `install-command.js`, `install.sh` and `install.ps1` have NEVER been committed, so the landing build is red on any clean clone — [detail](docs/CONTEXT.md#the-landing-page-becomes-findable-and-shareable--2026-09-04) `current` |
 
-Updated 2026-08-26.
+Updated 2026-09-06.

@@ -362,10 +362,46 @@ function merged(
   return { tails, models };
 }
 
+/**
+ * The session id each pane's agent was running when it LEFT (spec §11.11).
+ *
+ * `paneSessions` cannot answer this: `forget` deletes from it at the exact
+ * transition — agent → shell — at which the Board starts offering Restart. A
+ * Restart reading the live pairing would therefore always find nothing, always
+ * fall back to `{ kind: "latest" }`, and resume whatever conversation the CLI
+ * happened to touch last.
+ *
+ * Deliberately not a signal, for `paneSessions`' own reason: the fetch path
+ * writes it, and a signal read there would re-arm the effect that fetches.
+ * `TabManager.syncViews` projects it onto `PaneView.lastSessionId` instead.
+ */
+const lastSessionIdByPane = new Map<number, string>();
+
+/** The session id the agent that has left this pane was running, if any. */
+export function lastSessionIdFor(paneId: number): string | undefined {
+  return lastSessionIdByPane.get(paneId);
+}
+
 /** Everything this store remembers about one pane, gone, from both maps. */
-function forget(tails: Map<number, string>, models: Map<number, string>, paneId: number): void {
+function forget(
+  tails: Map<number, string>,
+  models: Map<number, string>,
+  paneId: number,
+  // A pane that CLOSED takes its last id with it; a pane whose agent merely
+  // left keeps it, because that is precisely when Restart needs it
+  // (spec §11.10, §11.11).
+  keepLastSessionId: boolean,
+): void {
   tails.delete(paneId);
   models.delete(paneId);
+  const going = paneSessions.get(paneId);
+  if (keepLastSessionId) {
+    if (going !== undefined) {
+      lastSessionIdByPane.set(paneId, going);
+    }
+  } else {
+    lastSessionIdByPane.delete(paneId);
+  }
   paneSessions.delete(paneId);
   resumedPaneIds.delete(paneId);
 }
@@ -396,14 +432,25 @@ function prune(
     ...paneGenerations.keys(),
   ]) {
     if (!live.has(paneId)) {
-      forget(tails, models, paneId);
+      // The pane is GONE: it takes its last id with it.
+      forget(tails, models, paneId, false);
       paneGenerations.delete(paneId);
     }
   }
   for (const tab of tabs) {
     for (const pane of panesOf(tab)) {
       if (isNewGeneration(pane, paneGenerations.get(pane.paneId))) {
-        forget(tails, models, pane.paneId);
+        // Keep the id ONLY when the generation ends with no agent — spec
+        // §11.11's own words. `isNewGeneration` is true for four transitions,
+        // not one: agent→shell (keep), shell→agent, agentA→agentB, and
+        // same-agent-`ran`-then-not. On the middle two, `paneSessions` still
+        // holds the OLD agent's id at this instant, so an unconditional keep
+        // would PIN a freshly started agent to the previous conversation —
+        // the 2026-08-22 one-sentence-on-three-rows failure, but worse,
+        // because a pin does not self-correct. Passing `false` there is also
+        // what delivers §11.11's "overwritten by the next shell→agent
+        // generation", through `forget`'s own delete branch.
+        forget(tails, models, pane.paneId, pane.agent === null);
       }
       paneGenerations.set(pane.paneId, { agent: pane.agent, ran: pane.hasRun });
     }
@@ -542,6 +589,9 @@ export function resetSessionTailStore(): void {
   resumeClaims.clear();
   resumedPaneIds.clear();
   paneSessions.clear();
+  // Cleared HERE as well as in `forget`, because this path empties the store's
+  // state directly and never goes through it.
+  lastSessionIdByPane.clear();
   paneGenerations.clear();
   paneTails.value = new Map();
   paneModels.value = new Map();

@@ -91,6 +91,12 @@ pub fn build_view_menu<R: Runtime>(
         "Browser",
         Some("CmdOrCtrl+Shift+I"),
     )?;
+    let toggle_agent_board = action_item(
+        handle,
+        "toggle-agent-board",
+        "Agent Board",
+        Some("CmdOrCtrl+Shift+O"),
+    )?;
     let toggle_dock = action_item(
         handle,
         "toggle-dock",
@@ -138,6 +144,7 @@ pub fn build_view_menu<R: Runtime>(
         .separator()
         .item(&toggle_browser)
         .separator()
+        .item(&toggle_agent_board)
         .item(&toggle_dock)
         .item(&toggle_explorer)
         .item(&toggle_usage)

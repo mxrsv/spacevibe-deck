@@ -5,6 +5,8 @@ import type { CustomAgent } from "../lib/agent-catalog";
 import type { ResumeRef, ResumeRequest } from "../lib/agent-resume";
 import type { FileStatResult } from "../files/file-client";
 import type { MaterializeIntent } from "./tab-materialize";
+import { agentBoardOpen, resetAgentBoardStore } from "../ui/agent-board-store";
+import { resetTaskPrompts } from "./board-task-prompts";
 
 /**
  * The rail's tail store is a window-scoped signal module; restore only ever
@@ -26,7 +28,7 @@ function tab(overrides: Partial<SessionTab> = {}): SessionTab {
   return {
     workspacePath: "/w",
     layout: LEAF,
-    panes: [{ cwd: "/w", agent: "claude", launchCommand: null }],
+    panes: [{ cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null }],
     name: null,
     dotColor: null,
     ...overrides,
@@ -40,6 +42,7 @@ function record(overrides: Partial<WindowRecord> = {}): WindowRecord {
     tabs: [tab()],
     files: [],
     activeFileTab: null,
+    agentBoardOpen: false,
     ...overrides,
   };
 }
@@ -159,9 +162,15 @@ function createFakeDeps(
 describe("restoreSession", () => {
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => {});
+    // Both are window-scoped singletons; a case that opened the Board or
+    // recorded a prompt would otherwise satisfy a later one for free.
+    resetAgentBoardStore();
+    resetTaskPrompts();
   });
   afterEach(() => {
     vi.restoreAllMocks();
+    resetAgentBoardStore();
+    resetTaskPrompts();
   });
 
   it("point 1: marker.take() true skips restore and clears the marker", async () => {
@@ -227,7 +236,7 @@ describe("restoreSession", () => {
   it("point 3: a dead pane cwd survives with cwd null and no resume request for it", async () => {
     const oneTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w/dead", agent: "claude", launchCommand: null }],
+      panes: [{ cwd: "/w/dead", agent: "claude", launchCommand: null, taskPrompt: null }],
     });
     const records = new Map<string, WindowRecord>([["main", record({ tabs: [oneTab] })]]);
     const dirsExist = vi.fn(async (paths: readonly string[]) =>
@@ -244,8 +253,8 @@ describe("restoreSession", () => {
     const twoPaneTab = tab({
       workspacePath: "/w",
       panes: [
-        { cwd: "/w", agent: "claude", launchCommand: null },
-        { cwd: "/w", agent: "claude", launchCommand: null },
+        { cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null },
+        { cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null },
       ],
     });
     const records = new Map<string, WindowRecord>([["main", record({ tabs: [twoPaneTab] })]]);
@@ -275,6 +284,7 @@ describe("restoreSession", () => {
           cwd: "/w",
           agent: "claude",
           launchCommand: "claude --permission-mode plan",
+          taskPrompt: null,
         },
       ],
     });
@@ -300,6 +310,7 @@ describe("restoreSession", () => {
           cwd: "/w",
           agent: "codex",
           launchCommand: "codex --sandbox workspace-write",
+          taskPrompt: null,
         },
       ],
     });
@@ -318,7 +329,7 @@ describe("restoreSession", () => {
   it("restores a pane with no recorded options exactly as before", async () => {
     const plainTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: "claude", launchCommand: null }],
+      panes: [{ cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null }],
     });
     const records = new Map<string, WindowRecord>([["main", record({ tabs: [plainTab] })]]);
     const lookup = vi.fn(
@@ -335,7 +346,7 @@ describe("restoreSession", () => {
   it("point 4: a custom-agent-label pane skips the lookup and uses its declared command", async () => {
     const customTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: "MyBot", launchCommand: null }],
+      panes: [{ cwd: "/w", agent: "MyBot", launchCommand: null, taskPrompt: null }],
     });
     const records = new Map<string, WindowRecord>([["main", record({ tabs: [customTab] })]]);
     const customAgents: readonly CustomAgent[] = [
@@ -351,7 +362,7 @@ describe("restoreSession", () => {
   it("point 4: a null-agent pane gets a null command and no lookup request", async () => {
     const plainTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: null, launchCommand: null }],
+      panes: [{ cwd: "/w", agent: null, launchCommand: null, taskPrompt: null }],
     });
     const records = new Map<string, WindowRecord>([["main", record({ tabs: [plainTab] })]]);
     const { deps, mocks } = createFakeDeps({ records });
@@ -387,8 +398,8 @@ describe("restoreSession", () => {
     const twoPaneTab = tab({
       workspacePath: "/w",
       panes: [
-        { cwd: "/w", agent: "claude", launchCommand: null },
-        { cwd: "/w", agent: "claude", launchCommand: null },
+        { cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null },
+        { cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null },
       ],
     });
     const records = new Map<string, WindowRecord>([["main", record({ tabs: [twoPaneTab] })]]);
@@ -605,6 +616,73 @@ describe("restoreSession", () => {
     expect(result).toBe(true);
     expect(mocks.clear).toHaveBeenCalledTimes(1);
   });
+
+  it("reopens the board from a main record that restored tabs", async () => {
+    const { deps } = createFakeDeps({
+      records: new Map([["main", record({ tabs: [tab()], agentBoardOpen: true })]]),
+    });
+    await restoreSession(deps, "main");
+    expect(agentBoardOpen.value).toBe(true);
+  });
+
+  it("does not reopen it from a record with no tabs", async () => {
+    const { deps } = createFakeDeps({
+      records: new Map([["main", record({ tabs: [], agentBoardOpen: true })]]),
+    });
+    await restoreSession(deps, "main");
+    expect(agentBoardOpen.value).toBe(false);
+  });
+
+  it("does not reopen it when the record had tabs but none came back", async () => {
+    // The `restored > 0` guard's own case: the empty-tabs case above returns
+    // before ever reaching it, so without this one the guard is untested.
+    const { deps } = createFakeDeps({
+      records: new Map([["main", record({ tabs: [tab()], agentBoardOpen: true })]]),
+      materializeResults: [false],
+    });
+    await restoreSession(deps, "main");
+    expect(agentBoardOpen.value).toBe(false);
+  });
+
+  it("does not reopen it from a SECONDARY record", async () => {
+    // Boot restore folds secondary windows into the main one, so a secondary
+    // record's flag would raise a Board in a window that never had one.
+    const { deps } = createFakeDeps({
+      records: new Map([
+        ["main", record({ tabs: [tab()], agentBoardOpen: false })],
+        ["b", record({ tabs: [tab({ workspacePath: "/b" })], agentBoardOpen: true })],
+      ]),
+    });
+    await restoreSession(deps, "main");
+    expect(agentBoardOpen.value).toBe(false);
+  });
+
+  it("hands each restored pane its own task prompt, zipped to the layout leaves", async () => {
+    const records = new Map<string, WindowRecord>([
+      [
+        "main",
+        record({
+          tabs: [
+            tab({
+              layout: { type: "split", direction: "row", ratio: 0.5, first: LEAF, second: LEAF },
+              panes: [
+                { cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: "Ship the rail" },
+                { cwd: "/w", agent: "codex", launchCommand: null, taskPrompt: null },
+              ],
+            }),
+          ],
+        }),
+      ],
+    ]);
+    const { deps, mocks } = createFakeDeps({ records });
+    await restoreSession(deps, "main");
+    // Pane ids do not exist in this module — `materialize` answers a boolean —
+    // so the prompt travels as an intent field zipped to leaves, exactly the
+    // way `paneCommands` does. `TabManager` is what turns it into a pane id;
+    // `tab-manager.pane-views.test.ts` owns the other half of this round trip.
+    const intent = mocks.materialize.mock.calls[0]?.[0];
+    expect(intent?.panePrompts).toEqual(["Ship the rail", null]);
+  });
 });
 
 describe("resumeWorkspace", () => {
@@ -644,7 +722,10 @@ describe("resumeWorkspace", () => {
     const entry: ArchiveEntry = {
       savedAt: 42,
       tabs: [
-        tab({ workspacePath: "/w", panes: [{ cwd: "/w", agent: "claude", launchCommand: null }] }),
+        tab({
+          workspacePath: "/w",
+          panes: [{ cwd: "/w", agent: "claude", launchCommand: null, taskPrompt: null }],
+        }),
       ],
     };
     const { deps, mocks } = createFakeDeps({});

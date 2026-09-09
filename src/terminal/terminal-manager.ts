@@ -717,6 +717,19 @@ export function createTerminalManager(
       }
       return life.enqueueWrite(id, "\r");
     },
+    serializePane(id, lines) {
+      const pane = life.panes.get(id);
+      if (!pane) {
+        return null;
+      }
+      // Deliberately NOT gated on `life.exited`: a pane whose PTY has gone
+      // still holds the last thing the agent said, which is exactly what the
+      // panel is for (DL-34.6). `paneAlive` below answers the other question.
+      return pane.serializeScrollback(lines);
+    },
+    paneAlive(id) {
+      return life.panes.has(id) && !life.exited.has(id);
+    },
     scrollActivePage(dir) {
       if (activeId !== null) {
         life.panes.get(activeId)?.scrollPage(dir);

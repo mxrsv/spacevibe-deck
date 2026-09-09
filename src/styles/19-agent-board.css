@@ -1,0 +1,533 @@
+/* ── The Agent Board (DL §34) ─────────────────────────────────────────────
+   A stage surface: a STATUS/PROJECTS nav, a grid of cards, a detail panel.
+   One face over the subtree (DL-34.5, DL-4.1 amended), sizes from the DL-4.4
+   ladder only, hierarchy from weight, case and tone. Every colour is a token;
+   every radius is `--radius-control` (DL-20.1). No blurred shadow (DL-1.3). */
+
+/* The Board's rectangle on the stage is `.stage__surface` itself (spec §4.1),
+   and that class has carried `padding: 0` since 2026-08-17 — so unlike
+   `.stage__surface--browser`, which zeroed a gutter that no longer exists, the
+   Board's modifier needs no declaration of its own. The class stays on the
+   element as the surface's name in the DOM; a rule that only restated the base
+   would be dead the day someone tried to change it. */
+
+.agent-board {
+  /* DL-34.5 / DL-4.1: the one place chrome is monospace. */
+  font-family: var(--board-font);
+  font-size: var(--type-body);
+  color: var(--text-primary);
+  background: var(--bg); /* DL-18.7: the stage is the deepest plane. */
+  /* The three figures the fold below is derived from, in one place. */
+  --board-nav-w: 200px;
+  --board-panel-w: 360px;
+  --board-nav-folded-w: 44px;
+  display: grid;
+  /* `auto` rather than the widths themselves: each column carries its own
+     width, so a column that leaves the flow (the folded panel) collapses its
+     track instead of holding 360px of empty grid. */
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: clip;
+  position: relative; /* the folded panel's containing block */
+  /* Spec §5.7's fold measures the BOARD, never the viewport: the Board hides
+     the sidebar (DL-34.1) in the app but stands inside a 290px rail in the
+     gallery, and a viewport rule would fold at two different widths in the
+     two places. */
+  container-type: inline-size;
+}
+
+.agent-board[data-panel="open"] {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* DL-4.3's third exception: two nav headings and the state word. */
+.board-label {
+  font-size: var(--type-meta);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: var(--label-tracking);
+  color: var(--text-faint);
+}
+
+/* ── nav ── */
+.agent-board__nav {
+  width: var(--board-nav-w);
+  background: var(--sidebar-bg); /* DL-29.6: the chrome plane. */
+  border-right: 1px solid var(--seam-recessed);
+  padding: 12px 8px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.board-nav__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.board-nav__group > .board-label {
+  padding: 0 8px 6px;
+}
+
+.board-nav__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-meta); /* DL-34.5: nav rows sit on the meta rung (spec §9.2). */
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration) var(--ease); /* DL-21.5 */
+}
+
+.board-nav__row:hover {
+  background: var(--state-hover-bg); /* DL-21.2 */
+}
+
+.board-nav__row[aria-selected="true"] {
+  background: var(--tab-active-bg); /* DL-21.1 */
+}
+
+.board-nav__row:focus-visible {
+  outline: 2px solid var(--accent); /* DL-21.3 */
+  outline-offset: -2px;
+}
+
+.board-nav__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-nav__count {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums; /* DL-4.2 */
+}
+
+/* ── main ── */
+.agent-board__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.agent-board__heading {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-board__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.agent-board__empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+/* ── card (DL-34.2, DL-34.3, DL-34.4) ── */
+.board-card {
+  position: relative; /* DL-27.1: a container with a full-bleed hit layer. */
+  display: grid;
+  grid-template-rows: auto auto auto auto auto;
+  gap: 4px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border-radius: var(--radius-control);
+  background: var(--tab-rest-bg); /* DL-21.7, amended: the resting wash. */
+  /* DL-1.3's inset hairline is the frame; DL-34.3 colours it by state. */
+  box-shadow: inset 0 0 0 1px var(--hair);
+  transition: background-color var(--duration) var(--ease);
+}
+
+.board-card:hover {
+  background: var(--state-hover-bg);
+}
+
+.board-card[aria-current="true"] {
+  background: var(--tab-active-bg); /* DL-34.4 with DL-27.22's token. */
+}
+
+.board-card[data-state="asked"] {
+  box-shadow: inset 0 0 0 1px var(--status-unread); /* DL-34.3 */
+}
+
+.board-card[data-state="failed"] {
+  box-shadow: inset 0 0 0 1px var(--red); /* DL-34.3 */
+}
+
+/* DL-34.3: the frame is the whole `asked` signal; the rail's ripple stays on
+   the rail, where its disc is sized against the list's edge. */
+.agent-board .asr-row__mark[data-state="asked"]::after {
+  animation: none;
+  display: none;
+}
+
+.board-card__hit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: var(--radius-control); /* DL-20.1: `inherit` is not a rung the gate accepts. */
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.board-card__hit:focus-visible {
+  outline: 2px solid var(--accent); /* DL-21.3 */
+  outline-offset: -2px;
+}
+
+/* Text rows above the hit layer, clicks falling through. Listed by class:
+   `:not(.board-card__hit)` is (0,2,0) and would outrank the actions and menu. */
+.board-card > .board-card__row,
+.board-card > .board-card__where,
+.board-card > .board-card__what,
+.board-card > .board-card__meta {
+  position: relative;
+  pointer-events: none;
+}
+
+.board-card__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The hover column's own track, reserved on row 1 at ALL times. The eye pass
+   measured `.board-card__actions` (x 663–739) drawn straight over
+   `.board-card__num` (x 721–735) at full opacity, both unreadable — and the
+   number is the digit the keyboard shortcut uses, so hiding it on reveal
+   would delete the hint exactly when a focused card wants it. Reserving is
+   the alternative the report named. The value is the column's own width plus
+   its inset: three 24px `.iconbtn` (DL-14.2's box) + two 2px gaps + the 8px
+   right inset, less the card's 12px padding, rounded up by 2px of air. */
+.board-card__row--head {
+  padding-inline-end: 74px;
+}
+
+.board-card__state {
+  flex: 1 1 auto;
+}
+
+.board-card[data-state="asked"] .board-card__state {
+  color: var(--status-unread); /* DL-27.6 */
+}
+
+.board-card[data-state="failed"] .board-card__state {
+  color: var(--red); /* DL-3.2 */
+}
+
+/* DL-34.4 amended, with DL-3.5: a selected card's wash is the lightest plane
+   a card ever wears, and on it the three state inks measured 4.32 / 4.30 /
+   3.43 — under the 4.5 floor. Inside the wash only, each word takes its
+   second ink (`01-tokens.css` carries the mix and the measurements). The two
+   state rules carry BOTH attributes so they outrank the neutral one by
+   specificity rather than by source order. */
+.board-card[aria-current="true"] .board-card__state {
+  color: var(--board-state-neutral-ink);
+}
+
+.board-card[aria-current="true"][data-state="asked"] .board-card__state {
+  color: var(--board-state-asked-ink);
+}
+
+.board-card[aria-current="true"][data-state="failed"] .board-card__state {
+  color: var(--board-state-failed-ink);
+}
+
+.board-card__num {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-card__glyph {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border-radius: 50%;
+}
+
+.board-card__glyph--letter {
+  display: grid;
+  place-items: center;
+  font-size: var(--type-meta); /* DL-34.5: no `--type-micro` on the Board (spec §9.2). */
+  color: var(--text-muted);
+  background: var(--state-hover-bg);
+}
+
+.board-card__name {
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-card__where,
+.board-card__meta {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-card__what {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 1.4em;
+}
+
+.board-card__what-prefix {
+  color: var(--text-faint);
+  margin-right: 6px;
+}
+
+/* DL-27.5: a fixed trailing column, revealed on hover or focus. */
+.board-card__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  /* An `opacity: 0` element still takes the pointer, so at rest the column
+     was three invisible buttons over the card's top-right corner. A mouse
+     hovers before it clicks, which is why nothing was ever reported — a
+     touch or a pen press does not. */
+  pointer-events: none;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.board-card:hover .board-card__actions,
+.board-card:focus-within .board-card__actions,
+.board-card[data-menu="open"] .board-card__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.board-card__menu {
+  position: absolute;
+  top: 34px;
+  right: 8px;
+  z-index: 2;
+  min-width: 160px;
+  padding: 4px;
+  box-sizing: border-box;
+  border-radius: var(--radius-control);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.board-card__menu-row {
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.board-card__menu-row:hover,
+.board-card__menu-row:focus-visible {
+  background: var(--state-hover-bg);
+  outline: none;
+}
+
+/* ── panel (DL-34.6, DL-34.7) ── */
+.agent-board__panel {
+  width: var(--board-panel-w);
+  background: var(--sidebar-bg);
+  border-left: 1px solid var(--seam-recessed);
+  padding: 12px 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.board-panel__title {
+  font-size: var(--type-title);
+  font-weight: 600;
+  margin: 0;
+}
+
+.board-panel__kv {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 4px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.board-panel__key {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+}
+
+.board-panel__value {
+  margin: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.board-panel__confidence {
+  color: var(--text-faint);
+}
+
+.board-panel__snapshot {
+  margin: 0;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--text-muted);
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.board-panel__reply {
+  width: 100%;
+  min-height: 32px;
+  max-height: 96px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--text-primary);
+  font: inherit;
+  resize: none;
+}
+
+.board-panel__reply:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.board-panel__reply:disabled {
+  color: var(--text-faint); /* DL-21.4 */
+}
+
+.board-panel__notice {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.board-panel__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.board-panel__action {
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.board-panel__action:hover {
+  background: var(--tab-active-bg);
+}
+
+.board-panel__action:disabled {
+  color: var(--text-faint);
+  background: transparent;
+}
+
+/* ── the fold (spec §5.7, DL-34.1 amended) ───────────────────────────────
+   Two thresholds, each derived from what stops fitting, not chosen:
+
+   832px — nav 200 + panel 360 + `.agent-board__main`'s 32 of padding + one
+   240px card. Below it a shared row squeezes the grid until cards are sliced
+   (the eye pass measured a grid of 218px against 240px cards at an 810px
+   board, and 18px at 610px), so the panel leaves the flow and COVERS the
+   grid instead. Only while a panel is open — that is the only arrangement
+   that ever collapsed.
+
+   472px — nav 200 + that same 32 + one card. Below it the nav itself is what
+   the grid cannot afford, so it folds to its counts (DL-11.7's shape, not
+   its rule); every row keeps an `aria-label` of label + count, so a hidden
+   label still announces. */
+@container (max-width: 832px) {
+  .agent-board[data-panel="open"] .agent-board__panel {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: min(var(--board-panel-w), 100%);
+    z-index: 3; /* over the card menu's 2 */
+    /* DL-2.3: a covering panel is ABOVE the plane it edges, not beside it,
+       so the recessed seam that reads as a shared boundary in the wide
+       layout becomes the raised one here. */
+    border-inline-start-color: var(--seam-raised);
+  }
+}
+
+@container (max-width: 472px) {
+  .agent-board__nav {
+    width: var(--board-nav-folded-w);
+    padding-inline: 6px;
+    align-items: center;
+  }
+
+  .agent-board__nav .board-label,
+  .agent-board__nav .board-nav__label {
+    display: none;
+  }
+
+  .agent-board__nav .board-nav__row {
+    grid-template-columns: auto;
+    justify-items: center;
+    padding: 0 4px;
+  }
+}

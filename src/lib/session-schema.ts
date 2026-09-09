@@ -7,6 +7,10 @@ export const SESSION_VERSION = 1;
 // Sanity bounds so a corrupt file cannot flood the rail or a boot restore.
 export const MAX_ARCHIVE_WORKSPACES = 24;
 export const MAX_JOURNAL_TABS = 32;
+/** Spec §11.2's 4 KiB cap on a persisted task prompt. */
+export const MAX_TASK_PROMPT_BYTES = 4096;
+/** Appended to a prompt cut at the cap, so a card never claims the whole text. */
+export const TASK_PROMPT_CUT_MARK = "…";
 
 export interface SessionPane {
   /** Polled cwd at capture time; null = unknown (spawn falls back to $HOME). */
@@ -20,6 +24,16 @@ export interface SessionPane {
    * recover this — it reports the binary, never its flags.
    */
   readonly launchCommand: string | null;
+  /**
+   * The launch prompt this pane was started with (spec §11.2), or null.
+   *
+   * Capped at `MAX_TASK_PROMPT_BYTES`: a prompt is arbitrary user text and the
+   * journal is rewritten on a debounce, so an unbounded field would let one
+   * paste dominate every write. A cut prompt is MARKED rather than silently
+   * shortened — a card that quietly truncated its task would be lying about
+   * what the pane was asked to do.
+   */
+  readonly taskPrompt: string | null;
 }
 
 export interface SessionTab {
@@ -50,6 +64,16 @@ export interface WindowRecord {
   /** Main window only; secondary windows write []. */
   readonly files: readonly SessionFileSurface[];
   readonly activeFileTab: string | null;
+  /**
+   * The Agent Board's chip was open when this window was last written (spec
+   * §4.2). Restored from the MAIN record only, the way `files` is: boot
+   * restore folds secondary windows into the main one, so a secondary
+   * record's value would raise a Board in a window that never had one.
+   *
+   * No `SESSION_VERSION` bump: a file written before the field existed
+   * validates to `false`, which is exactly the old behaviour.
+   */
+  readonly agentBoardOpen: boolean;
 }
 
 /** Last known session per workspace; key `archive`. Survives restore. */
@@ -58,10 +82,29 @@ export interface ArchiveEntry {
   readonly tabs: readonly SessionTab[];
 }
 
+/**
+ * A prompt at or under the cap, unchanged; anything longer cut to the cap and
+ * marked. Measured in BYTES, not characters: the cap exists to bound what the
+ * journal writes, and one emoji is four bytes.
+ */
+export function capTaskPrompt(prompt: string): string {
+  const bytes = new TextEncoder().encode(prompt);
+  if (bytes.length <= MAX_TASK_PROMPT_BYTES) {
+    return prompt;
+  }
+  // `TextDecoder` with `fatal: false` (the default) replaces a split code
+  // point rather than throwing, which is what makes a byte cap safe on UTF-8.
+  // The replacement itself is then stripped: the cut is stated by the MARK,
+  // and leaving U+FFFD in front of it would both print visible garbage and
+  // cost three bytes more than the character it stands in for.
+  const cut = new TextDecoder().decode(bytes.slice(0, MAX_TASK_PROMPT_BYTES));
+  return `${cut.replace(/\uFFFD+$/u, "")}${TASK_PROMPT_CUT_MARK}`;
+}
+
 /** Malformed field → default null; never rejects the pane (drop is by the caller's array). */
 function validateSessionPane(raw: unknown): SessionPane {
   if (typeof raw !== "object" || raw === null) {
-    return { cwd: null, agent: null, launchCommand: null };
+    return { cwd: null, agent: null, launchCommand: null, taskPrompt: null };
   }
   const source = raw as Record<string, unknown>;
   return {
@@ -72,6 +115,10 @@ function validateSessionPane(raw: unknown): SessionPane {
     // restoring. No SESSION_VERSION bump — the field is optional and a file
     // written before it existed validates to null unchanged.
     launchCommand: isLaunchCommand(source.launchCommand) ? source.launchCommand : null,
+    // Capped on READ as well as on write (C7): `session.json` is a file on
+    // disk that anyone can hand-edit, so the bound the writer respects has to
+    // be re-imposed on whatever comes back.
+    taskPrompt: typeof source.taskPrompt === "string" ? capTaskPrompt(source.taskPrompt) : null,
   };
 }
 
@@ -182,6 +229,10 @@ export function validateWindowRecord(raw: unknown): WindowRecord | null {
     tabs,
     files,
     activeFileTab: typeof source.activeFileTab === "string" ? source.activeFileTab : null,
+    // A real boolean only. `Boolean(source.agentBoardOpen)` would resurrect
+    // the Board from the string "false", which is what a hand-edited or
+    // half-migrated file contains.
+    agentBoardOpen: source.agentBoardOpen === true,
   };
 }
 

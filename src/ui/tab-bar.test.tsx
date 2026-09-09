@@ -92,6 +92,8 @@ describe("TabBar", () => {
     fileController,
     onSelectBrowser: vi.fn(),
     onCloseBrowser: vi.fn(),
+    onSelectAgentBoard: vi.fn(),
+    onCloseAgentBoard: vi.fn(),
   });
 
   const mount = (props: ReturnType<typeof baseProps>): void => {

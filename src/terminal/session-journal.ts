@@ -19,6 +19,8 @@ import { Store } from "../host/store-host";
 import { reportPersistError } from "../chrome/events";
 import { tabViews, activeTabIndex } from "./tabs-store";
 import { fileSurfaces, activeFileTab } from "../files/file-surface-store";
+import { agentBoardOpen } from "../ui/agent-board-store";
+import { paneTaskPrompts } from "./board-task-prompts";
 import {
   MAX_JOURNAL_TABS,
   pushArchiveEntry,
@@ -180,12 +182,18 @@ function cappedTabs(deps: SessionJournalDeps): readonly SessionTab[] {
 }
 
 function buildRecord(deps: SessionJournalDeps): WindowRecord {
+  const tabs = cappedTabs(deps);
   return {
     savedAt: Date.now(),
     activeTabIndex: activeTabIndex.value,
-    tabs: cappedTabs(deps),
+    tabs,
     files: deps.isMain ? fileSurfacesToRecords() : [],
     activeFileTab: deps.isMain ? activeFileTab.value : null,
+    // Zero tabs = no Board (spec §4.2): the chip cannot render and
+    // `toggle-agent-board` is scope "pane", so a remembered `true` would
+    // restore a surface with nothing to show and no way out. Written false
+    // rather than left alone, so the next launch does not retry it.
+    agentBoardOpen: tabs.length > 0 && agentBoardOpen.value,
   };
 }
 
@@ -283,6 +291,16 @@ export async function initSessionJournal(deps: SessionJournalDeps): Promise<void
     void activeTabIndex.value;
     void fileSurfaces.value;
     void activeFileTab.value;
+    // Opening or closing the chip is a change a write must react to; without
+    // this read the effect never re-runs for it, and the state is saved only
+    // when something else happens to move.
+    void agentBoardOpen.value;
+    // Same reason, and it bites harder: `TASK_PROMPT_AUTOSEND` is false, so a
+    // launch's prompt is normally recorded AFTER the agent appeared and
+    // `tabViews` already moved. Nothing else changes while the text sits
+    // unsent in the composer, so without this read the field a Board card
+    // exists to print is the one thing a crash loses.
+    void paneTaskPrompts.value;
     schedule(deps);
   });
 }

@@ -419,6 +419,22 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "browser" },
   },
   {
+    id: "toggle-agent-board",
+    label: "Agent Board",
+    // Tier "pane", the same reasoning `toggle-browser` above carries: the
+    // Board is a surface ON the stage, and every overlay covers the stage. A
+    // file surface does NOT block it, and neither does the Board itself —
+    // the command is in tab-manager's `isSurfaceRoutedAction` set, because
+    // toggling the Board IS a surface transition. Leaving it out would make
+    // the chord one-way: the composed strip reports `activeIndex() >= 0`
+    // while the Board holds the stage, so the close branch would be blocked
+    // by the very surface it is trying to leave.
+    scope: "pane",
+    // Grouped with the dock's toggles rather than the browser's, per the
+    // wiring plan's Task 6.
+    menu: { submenu: "View", group: "explorer" },
+  },
+  {
     id: "toggle-dock",
     label: "Side Panel",
     // Tier "pane", same overlay reasoning as toggle-browser above: the dock is

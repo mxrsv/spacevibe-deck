@@ -104,6 +104,9 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   // "app", not "panes": the panel is a surface of the window like Settings and
   // the Prompt Board, not something that acts on the focused pane.
   "toggle-browser": "app",
+  // Same reasoning as toggle-browser: the Agent Board is a surface of the
+  // window, not something that acts on the focused pane.
+  "toggle-agent-board": "app",
   "toggle-dock": "app",
   "toggle-explorer": "app",
   "toggle-sessions": "app",

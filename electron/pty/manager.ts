@@ -132,6 +132,47 @@ export class PtyManager {
   }
 
   /**
+   * End the agent running in a pane and leave the pane alive (spec §5.6).
+   *
+   * The first half of `terminate` — the foreground group's SIGHUP, then SIGKILL
+   * after `KILL_GRACE_MS` — with the shell's own group deliberately spared,
+   * which is the whole difference between Stop and `kill`. That split is
+   * exactly how `terminateProcessGroups` is already parameterised, so this is a
+   * reuse rather than a second signal choice, and the PTY is never killed here:
+   * the pane, its scrollback and its shell all survive.
+   *
+   * A pane with no foreground job signals NOTHING rather than falling back to
+   * the shell. `foregroundProcess` answers the shell's own row when nothing
+   * else holds the tty, so that case is a group equal to the shell's pid — not
+   * a null answer, which means the tty was missing from the table.
+   */
+  async killForeground(windowLabel: string, id: number): Promise<void> {
+    const session = this.store.get(id);
+    if (session === undefined) {
+      return;
+    }
+    this.deps.assertOwner(id, windowLabel);
+    let rows: readonly PsRow[] = [];
+    try {
+      rows = await platform().readProcessTable();
+    } catch {
+      // No table, no group to signal. Unlike `killAll`, there is no shell group
+      // to fall back on here — guessing at a pid is how Stop closes a pane.
+      return;
+    }
+    const foreground = platform().foregroundProcess(rows, session.ttyName, session.pty.pid);
+    if (foreground?.group == null || foreground.group === session.pty.pid) {
+      // No job, an unresolvable group, or the shell IS the foreground group:
+      // nothing to stop.
+      return;
+    }
+    // `group`, never `pid`, for `terminate`'s reason: a group MEMBER's pid is
+    // not a group id. The second argument is the shell's group and is null on
+    // purpose — that is the pane staying alive.
+    platform().terminateProcessGroups(foreground.group, null);
+  }
+
+  /**
    * Terminate without consulting ownership — used when the owning window is
    * already gone, which is precisely when there is nobody to validate against.
    *

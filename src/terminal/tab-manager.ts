@@ -3,13 +3,19 @@ import type { UnlistenFn } from "../host/bridge";
 import { clampFontSize, DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { settings, revealDockTab, toggleDock, updateSettings } from "../settings/settings-store";
 import { type Direction, type Edge, type SerializedNode } from "../lib/split-tree";
-import { explicitAgent, processLabel, type PaneProcessInfo } from "../lib/process-info";
-import type { SessionTab } from "../lib/session-schema";
+import {
+  explicitAgent,
+  processLabel,
+  type PaneAgent,
+  type PaneProcessInfo,
+} from "../lib/process-info";
+import { capTaskPrompt, type SessionTab } from "../lib/session-schema";
 import type { DetachTarget } from "./pane-detach";
 import { defaultTransferClient } from "./transfer-client";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
 import { mergeStripOrder, type StripSlot } from "../lib/strip-order";
+import { lastRows, stripAnsiSequences } from "../lib/strip-ansi-sequences";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
 import { BUILT_IN_PRESET } from "../lib/preset-schema";
@@ -47,6 +53,9 @@ import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
+import { forgetTaskPrompt, noteTaskPrompt, paneTaskPrompts } from "./board-task-prompts";
+import { lastSessionIdFor } from "./session-tail-store";
+import { restartCommandFor } from "./pane-restart";
 import {
   launchClearsDraft,
   promptReadyToSend,
@@ -67,6 +76,11 @@ import {
   deactivateBrowserSurface,
   openBrowser,
 } from "../browser/browser-store";
+import {
+  agentBoardSurfaceActive,
+  openAgentBoard,
+  stepAgentBoardBack,
+} from "../ui/agent-board-store";
 import { createAgentLauncher } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
@@ -142,6 +156,25 @@ export function createTabManager(
   // running. This manager-level lock keeps the invariant alive across those
   // remounts and rejects overlap before a second paste reaches the write queue.
   const injectingPanes = new Set<number>();
+  // Per-pane ordinal (spec §11.1) — the window's open-order rank, allocated
+  // once and never reused. `TabView.openedAt` exists once per TAB and cannot
+  // number the panes inside one, so this is a second reader of the same clock,
+  // not a second clock. A plain Map in this per-window closure (R5), not a
+  // signal: nothing renders off it directly, so there is no write to schedule
+  // and no ordering trap. Named `…ById` because `allPaneIds()` is already a
+  // function in this closure and the two must not read alike.
+  const paneOrdinalById = new Map<number, number>();
+  // Per-pane agent generation (spec §11.1, §11.11). `startedAt` is when the
+  // CURRENT agent generation began and `agent` is the one it runs (or ran);
+  // both are keyed by pane id and dropped with the pane. Kept here rather than
+  // on the attention tracker because the tracker's own generation boundary is
+  // about attention latches, and reading it would couple the Board's uptime to
+  // when a pane last got someone's attention.
+  interface PaneGeneration {
+    readonly agent: PaneAgent;
+    readonly startedAt: number;
+  }
+  const paneGenerations = new Map<number, PaneGeneration>();
   // An incomplete task handoff belongs to the exact pane that received (or
   // should receive) the prompt, not merely to the tab. A split can replace
   // pane 1 with another instance of the same agent; resolving the tab's first
@@ -262,6 +295,16 @@ export function createTabManager(
   }
 
   function syncViews(): void {
+    // Number every live pane BEFORE any view is built: a pane split in this
+    // very sync must already have its ordinal, or the first render after a
+    // split ships `ordinal: undefined` and the Board's cards jump a frame
+    // later. The set is also what the prune at the bottom measures against.
+    const live = allPaneIds();
+    for (const id of live) {
+      if (!paneOrdinalById.has(id)) {
+        paneOrdinalById.set(id, nextOpenSequence());
+      }
+    }
     tabViews.value = tabs.map((tab) => {
       const paneId = tab.manager.activePaneId();
       const info = paneId === null ? undefined : poller.infoFor(paneId);
@@ -300,6 +343,25 @@ export function createTabManager(
         const snap = tracker.snapshot(id);
         const agent = explicitAgent(poller.infoFor(id));
         tab.manager.setPaneWorking(id, agent !== null && snap?.phase === "working");
+        if (agent !== null && paneGenerations.get(id)?.agent !== agent) {
+          // A different agent in the same pane is a new generation; the FIRST
+          // agent in a fresh pane is one too. An agent LEAVING is not: the
+          // card keeps counting from when the agent started (spec §11.11).
+          const replacing = paneGenerations.get(id) !== undefined;
+          paneGenerations.set(id, { agent, startedAt: now() });
+          if (replacing) {
+            // Spec §11.2: the task prompt is dropped on pane close "or
+            // generation change". Only the SECOND agent onward — the first
+            // agent in a pane is the one `launchTask` just recorded the
+            // prompt FOR, and clearing it here would erase the launch that
+            // caused this very transition. Without this, claude launched with
+            // a task, then replaced by codex in the same pane, would print
+            // claude's task on codex's card: the same stale-pin failure the
+            // 2026-08-22 rail bug was, one store over.
+            forgetTaskPrompt(id);
+          }
+        }
+        const generation = paneGenerations.get(id);
         return {
           paneId: id,
           agent,
@@ -311,6 +373,18 @@ export function createTabManager(
           // for the header info — so the rail's focused row (DL-27.22) costs
           // one comparison here and no second call into the manager.
           focused: id === paneId,
+          ordinal: paneOrdinalById.get(id),
+          startedAt: generation?.startedAt,
+          lastAgent: generation?.agent,
+          // Read from the tail store rather than tracked here: it is the only
+          // module that knows which conversation a pane was in, and the only
+          // one that sees the moment that knowledge is about to be dropped
+          // (spec §11.11).
+          lastSessionId: lastSessionIdFor(id),
+          // The tracker's own trust bit, projected rather than re-derived —
+          // `snap` is the same snapshot `attention` and `phase` come from, so
+          // this costs no second lookup.
+          confidence: snap?.confidence,
         };
       });
       return applyTabOverride(
@@ -345,6 +419,19 @@ export function createTabManager(
       paneCount: surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
       home,
     };
+    // One prune for every per-pane store. `syncViews` runs after every path
+    // that can retire a pane — close, detach, tab dispose — so this is the
+    // single place that has to know, and an ordinal is never handed back (a
+    // reopened pane is a new pane, exactly as a reopened chip is). The task
+    // prompt lives in its own module store rather than in this closure, and
+    // is dropped here for the same reason and at the same moment.
+    for (const id of [...paneOrdinalById.keys()]) {
+      if (!live.includes(id)) {
+        paneOrdinalById.delete(id);
+        paneGenerations.delete(id);
+        forgetTaskPrompt(id);
+      }
+    }
   }
 
   function allPaneIds(): number[] {
@@ -553,6 +640,38 @@ export function createTabManager(
     unread.delete(tabs[index].key); // opening the tab clears its unread badge
     tabs[index].manager.show();
     syncViews();
+  }
+
+  /**
+   * Acknowledge one pane explicitly (spec §11.4).
+   *
+   * `tracker.acknowledge` lives inside `onPaneFocus` today, so the only way
+   * to clear a latch was to FOCUS the pane. The Board's `sent` reply (§7.4)
+   * clears one without focusing anything, so the call needs a door of its
+   * own. (The plan named a second caller, the step to the full stage; that
+   * one goes through `activateForAttention`, which focuses the pane and so
+   * already acks — but only while the window is foreground, which is
+   * `onPaneFocus`'s own gate and this door's is not.)
+   *
+   * Selection is deliberately NOT one of them: an ack on select would drop
+   * an `asked` card out of the top group the moment the user opened its
+   * panel (spec §5.5).
+   *
+   * Routes through `maybeNotify` for the reason `onPaneFocus` does: that
+   * function dedupes on the latch identity in `lastNotifiedKind`, and only a
+   * `"none"` snapshot resets it. Acking without the call would leave the key
+   * at the acked kind, and this pane's next request of that kind would be
+   * dropped as a phase-only re-emit.
+   */
+  function acknowledgePane(paneId: number): void {
+    if (ownerOf(paneId) === undefined) {
+      return; // not this window's pane — nothing to acknowledge
+    }
+    const ackSnap = tracker.acknowledge(paneId);
+    if (ackSnap !== null) {
+      maybeNotify(paneId, ackSnap);
+      syncViews();
+    }
   }
 
   /**
@@ -880,6 +999,17 @@ export function createTabManager(
         launchCommandByPane.set(id, launchCommand);
       }
     }
+    // Spec §11.2: a restored pane keeps the task its card was started with.
+    // The intent carries the prompts because session restore knows leaves, not
+    // pane ids; this is the one place the two meet. Safe against `syncViews`'s
+    // generation forget — a fresh pane's FIRST agent is not a replacement, so
+    // nothing clears what is recorded here.
+    paneIds.forEach((id, index) => {
+      const prompt = intent.panePrompts?.[index];
+      if (prompt != null) {
+        noteTaskPrompt(id, prompt);
+      }
+    });
     launcher.arm(
       paneIds.map((id, index) => ({
         id,
@@ -1048,6 +1178,17 @@ export function createTabManager(
       return { outcome: "prompt-not-sent", tabKey: entry.key };
     }
     const delivery = await deliverTaskPrompt(paneId, text, expectedAgent);
+    // Spec §11.2: the Board is the only surface that can say what a pane was
+    // opened for, and this is the one moment the text exists in this layer.
+    // BOTH successful outcomes record, because `TASK_PROMPT_AUTOSEND` is false
+    // and `prompt-pending` is therefore the NORMAL result — a store that only
+    // knew `sent` would be empty for almost every launch. The outcome check is
+    // what keeps a readiness FAILURE out: that path still answers with a
+    // target, so a target-only condition would record a prompt the pane never
+    // received.
+    if (delivery.outcome === "sent" || delivery.outcome === "prompt-pending") {
+      noteTaskPrompt(paneId, text);
+    }
     if (!launchClearsDraft(delivery.outcome) && delivery.target !== null) {
       taskPromptTargetByTab.set(entry.key, delivery.target);
     } else {
@@ -1154,6 +1295,12 @@ export function createTabManager(
       return "prompt-not-sent";
     }
     const delivery = await deliverTaskPrompt(paneId, text, expectedAgent, target);
+    // A retry that lands is the same fact as a launch that landed — without
+    // this, a pane whose FIRST paste failed would print no Task line for the
+    // rest of its life.
+    if (delivery.outcome === "sent" || delivery.outcome === "prompt-pending") {
+      noteTaskPrompt(paneId, text);
+    }
     if (launchClearsDraft(delivery.outcome) || delivery.target === null) {
       taskPromptTargetByTab.delete(tabKey);
     } else {
@@ -1188,6 +1335,12 @@ export function createTabManager(
   /** The command a pane started with; null when it had none. */
   function launchCommandFor(paneId: number): string | null {
     return launchCommandByPane.get(paneId) ?? null;
+  }
+
+  /** This pane's task prompt as the session schema will accept it back. */
+  function capturedTaskPrompt(paneId: number): string | null {
+    const prompt = paneTaskPrompts.value.get(paneId);
+    return prompt === undefined ? null : capTaskPrompt(prompt);
   }
 
   /**
@@ -1292,6 +1445,12 @@ export function createTabManager(
           // falls back to the bare resume command. Cross-window transfer is a
           // `transfer-client.ts` change and a separate decision.
           launchCommand: launchCommandFor(id),
+          // Capped here rather than at the store: the cap is the SCHEMA's
+          // bound on what a journal write may cost, and the live map has no
+          // reason to hold a shortened copy of what the pane was actually
+          // sent. Same limit as `launchCommand` above — a detached pane's
+          // prompt does not travel with it.
+          taskPrompt: capturedTaskPrompt(id),
         };
       });
       return [
@@ -1312,6 +1471,89 @@ export function createTabManager(
 
   function ownerOf(paneId: number): TabEntry | undefined {
     return tabs.find((tab) => tab.manager.paneIds().includes(paneId));
+  }
+
+  /**
+   * The Agent Board panel's snapshot of one pane (spec §11.5, DL-34.6).
+   *
+   * Resolved by pane id through `ownerOf`, never through the active tab: a
+   * hidden tab is `display: none` and its xterm instances are all still alive,
+   * which is what lets selecting a card leave the tab and the active pane
+   * where they are (spec §5.4).
+   *
+   * The shaping happens HERE rather than in the terminal layer, so
+   * `serializeScrollback` keeps answering what the buffer holds —
+   * `pane-detach.ts` replays those escapes when a pane travels. `lines` is
+   * both the addon's scrollback depth and the row cap: the addon always adds
+   * the whole viewport on top of the rows it was asked for, so the raw string
+   * runs past `lines` and usually ends in blank rows (spec §7.3).
+   */
+  function serializePane(paneId: number, lines: number): string | null {
+    const raw = ownerOf(paneId)?.manager.serializePane(paneId, lines) ?? null;
+    return raw === null ? null : lastRows(stripAnsiSequences(raw), lines);
+  }
+
+  /**
+   * Whether this window still has that pane, with a PTY that is running.
+   *
+   * Two facts in one answer on purpose: a caller asking "can this pane still
+   * be acted on" needs both, and a pane the window never held is not alive in
+   * any sense.
+   */
+  function paneAlive(paneId: number): boolean {
+    return ownerOf(paneId)?.manager.paneAlive(paneId) ?? false;
+  }
+
+  /**
+   * Restart the agent a pane was running, resuming its conversation
+   * (spec §5.6, §11.10).
+   *
+   * The write is what `AgentLauncher.arm` does — `writePty(command + "\r")`
+   * into the pane's live shell — but `arm` itself fires once per pane id and
+   * cannot be reused. The task prompt is deliberately NOT re-sent, and the
+   * ordinal, the selection and the task line are all kept, because the pane
+   * never goes away. `pane-lifecycle`'s respawn is a bare shell and is not
+   * this.
+   *
+   * Answers false rather than writing anything when the pane is unknown, its
+   * PTY has exited, an agent is STILL running in it, it never ran one, or that
+   * agent has no resume form.
+   */
+  async function restartPane(paneId: number): Promise<boolean> {
+    const owner = ownerOf(paneId);
+    // An exited PTY still belongs to its tab, so `ownerOf` alone would let a
+    // command be typed into a dead session and reported as a restart.
+    if (owner === undefined || !owner.manager.paneAlive(paneId)) {
+      return false;
+    }
+    // The poll cache `syncViews` itself reads, rather than the `tabViews`
+    // projection this closure writes: same freshness, one fewer hop, and no
+    // dependence on a sync having run.
+    if (explicitAgent(poller.infoFor(paneId)) !== null) {
+      return false; // an agent is still there — Restart is for one that left
+    }
+    const agent = paneGenerations.get(paneId)?.agent ?? null;
+    if (agent === null) {
+      return false; // this pane has never run an agent
+    }
+    const command = restartCommandFor({
+      agent,
+      // The id the tail store KEPT on the agent's way out, never the live
+      // pairing in `paneSessionIds`: `forget` empties that one at the exact
+      // agent → shell transition after which Restart is offered, so reading it
+      // would silently degrade every Restart to "latest".
+      sessionId: lastSessionIdFor(paneId) ?? null,
+      launchCommand: launchCommandFor(paneId),
+      customAgents: settings.value.customAgents,
+    });
+    if (command === null) {
+      return false;
+    }
+    // `paneIo`, not `pty`: its `writePty` calls `activity.noteInput(id)` first,
+    // which is what keeps the echoed command out of the working spinner.
+    // `AgentLauncher` is built on it for exactly this reason.
+    await paneIo.writePty(paneId, `${command}\r`);
+    return true;
   }
 
   /**
@@ -1837,6 +2079,50 @@ export function createTabManager(
       }
       syncViews();
     },
+    // The Board is the browser's twin as a stage surface, and its toggle walks
+    // the same take-the-stage / step-back path — never through close, since
+    // the chip's own ✕ (and ⌘W) are what close the tab (spec §4.4).
+    "toggle-agent-board": () => {
+      if (agentBoardSurfaceActive.value) {
+        stepAgentBoardBack();
+        // `syncViews()` because TabManager's derived views cannot see a
+        // store-signal transition on their own; `focusActive()` because the
+        // keyboard has to land somewhere and the terminal is where it came
+        // from — this path unmounts the surface without going through a close
+        // callback of the Board's own, so nothing else would hand focus back
+        // and the caret would land on <body>. Both copied from
+        // `toggle-browser`'s close branch above.
+        syncViews();
+        activeManager()?.focusActive();
+        return;
+      }
+      // Exactly one surface owns the stage, and this is a synchronous path
+      // that keeps it so: the chord reaches the store directly rather than
+      // going through `composeSurfaceStrip.activate`, so it must clear the
+      // others itself. `takeStageForSurface` (stage-surface-strip.ts) is the
+      // chip's version of the same rule; it cannot serve here because it
+      // requires the chip to already EXIST, and the chord is what creates it.
+      //
+      // `surfaces.deactivate()` alone — it already steps the browser back
+      // through the client the strip was INJECTED with, and calling
+      // `deactivateBrowserSurface(defaultBrowserClient)` here as well would
+      // reach past that injection to the real client, which a test cannot
+      // stand in for.
+      //
+      // Deactivate first, THEN open, for two independent reasons. The strip's
+      // own `deactivate()` runs `stepBoardBack()` before anything else, so the
+      // other order raises the Board and takes it down again in this very
+      // block. And `App` runs a "the Board yields" backstop effect that steps
+      // the Board off the stage while the browser or a file surface is still
+      // active — omitting the deactivate entirely would leave BOTH flags up
+      // and have that effect undo the chord a frame later, exactly when a
+      // document is open. `activateTerminalSurface()` is synchronous, so
+      // deactivating here is what makes the effect a no-op rather than a
+      // race.
+      surfaces.deactivate();
+      openAgentBoard();
+      syncViews();
+    },
     // Plain setting flips, unlike toggle-browser above: the dock is pure DOM
     // content, so there is no host view to create or tear down. Focus still
     // returns to the pane on close, same reasoning as toggle-browser and
@@ -2002,6 +2288,13 @@ export function createTabManager(
       // (every fake written before 2026-08-23, and `INERT_SURFACES`) answers
       // "no second view", so the chord is never consumed on its behalf.
       surfaceCanToggleView: surfaces.canToggleView?.() ?? false,
+      // `__deckHost` presence — the same one-line tell five modules in
+      // `src/host/` already use (e.g. `worktree-host.ts`'s `available`).
+      // Read here rather than imported from `electron-updater-adapter.ts`,
+      // whose `hasDeckHost()` is private. An unanswered host is a third
+      // state, and here it means "no Board", which is the direction that does
+      // not consume the chord.
+      hostHasAgentBoard: (globalThis as { __deckHost?: unknown }).__deckHost !== undefined,
     };
   }
 
@@ -2059,10 +2352,14 @@ export function createTabManager(
    * three in the `commands` table below),
    * `move-pane-to-new-window`, which refuses with its own chrome message
    * (`movePane` above) rather than acting on `activeManager()`, and
-   * `toggle-browser`, whose command IS a surface transition — blocking it
-   * while an editor holds the stage would make the chord a no-op exactly
-   * when it is most useful. `overlayBlocksAction` exempts exactly these five
-   * from the surface block so that surface-aware behavior still runs.
+   * `toggle-browser`/`toggle-agent-board`, whose commands ARE surface
+   * transitions — blocking one while an editor holds the stage would make the
+   * chord a no-op exactly when it is most useful. The Board's is load-bearing
+   * in a second way the browser's is not: `composeSurfaceStrip.activeIndex()`
+   * answers the BOARD's own slot while the Board holds the stage, so without
+   * this exemption ⌘⇧O could open the Board and never close it again.
+   * `overlayBlocksAction` exempts exactly these six from the surface block so
+   * that surface-aware behavior still runs.
    */
   function isSurfaceRoutedAction(action: ShortcutAction): boolean {
     return (
@@ -2070,6 +2367,7 @@ export function createTabManager(
       action === "save-file" ||
       action === "toggle-markdown-view" ||
       action === "toggle-browser" ||
+      action === "toggle-agent-board" ||
       action === "move-pane-to-new-window"
     );
   }
@@ -2551,6 +2849,10 @@ export function createTabManager(
       return activeManager()?.activePaneId() ?? null;
     },
     paneAttention,
+    acknowledgePane,
+    serializePane,
+    paneAlive,
+    restartPane,
     injectIntoPane,
     newTab,
     movePaneToNewWindow,

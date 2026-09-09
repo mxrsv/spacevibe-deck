@@ -5,9 +5,18 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../files/file-surface-controller";
-import { resetFileSurfaces } from "../files/file-surface-store";
+import { activeFileTab, resetFileSurfaces } from "../files/file-surface-store";
 import type { FileClient } from "../files/file-client";
 import { agentQuickPickerOpen, boardOpen, persistError, settingsOpen } from "../chrome/events";
+import {
+  agentBoardOpen,
+  agentBoardSurfaceActive,
+  openAgentBoard,
+  resetAgentBoardStore,
+} from "../ui/agent-board-store";
+import { browserSurfaceActive } from "../browser/browser-store";
+import type { BrowserClient } from "../browser/browser-client";
+import { composeSurfaceStrip } from "../ui/stage-surface-strip";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -642,11 +651,13 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     resetFileSurfaces();
     writeFile.mockClear();
     surfaces = createFileSurfaceController({ client });
+    resetAgentBoardStore();
   });
 
   afterEach(() => {
     surfaces.dispose();
     resetFileSurfaces();
+    resetAgentBoardStore();
   });
 
   it("⌘⇧] / ⌘⇧[ cycle across the combined index space and wrap both ways", async () => {
@@ -668,6 +679,95 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
 
     tm.runAction("prev-tab");
     expect(surfaces.activeIndex()).toBe(1); // wraps the other way too
+
+    tm.dispose();
+  });
+
+  /**
+   * ⌘⇧O over an open document, against the REAL file controller.
+   *
+   * `openAgentBoard()` raises `agentBoardSurfaceActive` immediately, and
+   * `App` runs a "the Board yields" backstop effect that steps the Board
+   * straight back off the stage if the browser or a file surface is STILL
+   * active when it next runs (`app.tsx`, beside the file/browser one). So the
+   * order in the handler is not a stylistic choice: open first and the chord
+   * looks broken exactly when a document is up.
+   *
+   * What this pins is the effect's own guard, evaluated here after the chord:
+   * `activeFileTab` is null because `surfaces.deactivate()` reaches the real
+   * `activateTerminalSurface()` SYNCHRONOUSLY, so the effect's condition is
+   * already false by the time it runs. The effect itself is inline in `App`,
+   * which has no render harness in this repo — asserting its INPUTS at this
+   * layer is as close as a tab-manager test can get, and the effect actually
+   * firing is owed to the native pass.
+   */
+  it("takes the stage from a real document, leaving nothing for App's yield effect to undo", async () => {
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
+    expect(surfaces.activeIndex()).toBe(0); // the document holds the stage
+
+    tm.runAction("toggle-agent-board");
+
+    // The Board is up...
+    expect(agentBoardSurfaceActive.value).toBe(true);
+    // ...and BOTH halves of "the Board yields" read false, so the backstop
+    // has nothing to step back. Either one left true is the bug.
+    expect(activeFileTab.value).toBeNull();
+    expect(browserSurfaceActive.value).toBe(false);
+    expect(surfaces.activeIndex()).toBe(-1);
+
+    tm.dispose();
+  });
+
+  /**
+   * The same press through the strip `App` actually injects.
+   *
+   * The test above uses the bare controller, so it cannot see the ordering
+   * hazard `composeSurfaceStrip` creates: ITS `deactivate()` calls
+   * `stepBoardBack()` first, so `openAgentBoard()` followed by
+   * `surfaces.deactivate()` raises the Board and takes it down again in the
+   * same synchronous block. Deactivate-then-open is the only order that
+   * survives both this and App's yield effect.
+   *
+   * The browser client is never reached — `stepBrowserBack()` early-returns
+   * while the browser is not on the stage — but it is a real-shaped stub
+   * rather than a cast so a future path that DOES call it fails loudly here.
+   */
+  it("keeps the board on the stage through the composed strip App injects", async () => {
+    const browser = {
+      open: vi.fn(),
+      close: vi.fn(),
+      navigate: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      reload: vi.fn(),
+      setBounds: vi.fn(),
+      setVisible: vi.fn(),
+      setInspect: vi.fn(),
+      onState: vi.fn(),
+      onGrab: vi.fn(),
+      onNavigated: vi.fn(),
+    } as unknown as BrowserClient;
+    const composed = composeSurfaceStrip({
+      files: surfaces,
+      client: browser,
+      onChanged: () => {},
+    });
+    const { tm } = setup({ deps: { surfaces: composed }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
+    expect(composed.activeIndex()).toBe(0);
+
+    tm.runAction("toggle-agent-board");
+
+    expect(agentBoardSurfaceActive.value).toBe(true);
+    expect(agentBoardOpen.value).toBe(true);
+    expect(activeFileTab.value).toBeNull();
+    expect(browserSurfaceActive.value).toBe(false);
+    expect(browser.close).not.toHaveBeenCalled();
+    // The strip now reports the BOARD's own slot, not the document's.
+    expect(composed.activeIndex()).toBe(surfaces.count());
 
     tm.dispose();
   });
@@ -965,6 +1065,135 @@ describe("performable chords (Ctrl+C copies or falls through)", () => {
     const event = press(input, { key: "V", metaKey: true, shiftKey: true });
 
     expect(event.defaultPrevented).toBe(false);
+    tm.dispose();
+  });
+});
+
+/**
+ * ⌘⇧O, the Agent Board's toggle (spec §4.2).
+ *
+ * Two things this suite exists to pin, both invisible in the diff that adds
+ * the action. The chord is host-gated, so it must LEAVE the keystroke alone
+ * under Tauri rather than dying in the renderer; and it has to be exempt from
+ * the surface half of `overlayBlocksAction`, because the composed strip
+ * answers `activeIndex() >= 0` while the BOARD holds the stage — without the
+ * exemption the toggle opens the Board and can never close it again.
+ */
+describe("the agent board toggle (Cmd+Shift+O)", () => {
+  beforeEach(() => {
+    resetAgentBoardStore();
+  });
+
+  afterEach(() => {
+    resetAgentBoardStore();
+    vi.unstubAllGlobals();
+  });
+
+  function terminalInput(): HTMLTextAreaElement {
+    const input = document.querySelector<HTMLTextAreaElement>(
+      '[data-testid="fake-terminal-input"]',
+    );
+    if (input === null) {
+      throw new Error("Expected the fake terminal input to be mounted");
+    }
+    return input;
+  }
+
+  function press(target: HTMLElement, init: KeyboardEventInit): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  it("opens the board and takes the stage from a document that had it", async () => {
+    // `activeIndex: 0` is a file surface holding the stage — the case the
+    // surface half of `overlayBlocksAction` blocks for every unexempted
+    // "pane" action. Drop `toggle-agent-board` from `isSurfaceRoutedAction`
+    // and this goes red.
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    surfaces.calls.length = 0;
+
+    tm.runAction("toggle-agent-board");
+
+    // Deactivate BEFORE the open, or the step-back takes down what was just
+    // raised — exactly one surface owns the stage.
+    expect(surfaces.calls).toEqual(["deactivate"]);
+    expect(agentBoardOpen.value).toBe(true);
+    expect(agentBoardSurfaceActive.value).toBe(true);
+    tm.dispose();
+  });
+
+  it("steps the board back off the stage and hands the keyboard to the terminal", async () => {
+    // The composed strip reports the board's OWN slot as `activeIndex()`
+    // while the board holds the stage, which is why this fake says 0 too.
+    const surfaces = fakeSurfaces({ count: 0, total: 0, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    openAgentBoard();
+    // Set AFTER init: `materialize` runs `surfaces.deactivate()`, which puts
+    // the fake back to -1 and would quietly stop this case reproducing the
+    // production one.
+    surfaces.activeIndexValue = 0;
+    // Take the caret OFF the pane first, with a real focusable element:
+    // `document.body.focus()` moves nothing, which would leave the focus
+    // assertion below true no matter what the handler did.
+    const elsewhere = document.createElement("button");
+    document.body.appendChild(elsewhere);
+    elsewhere.focus();
+    expect(document.activeElement).toBe(elsewhere);
+
+    tm.runAction("toggle-agent-board");
+
+    expect(agentBoardSurfaceActive.value).toBe(false);
+    // The CHIP survives: ⌘⇧O is the stage toggle, and only the chip's own ✕
+    // (or ⌘W) closes the tab (spec §4.4).
+    expect(agentBoardOpen.value).toBe(true);
+    // `focusActive()` ran: the keyboard is back on the pane it came from,
+    // which nothing else on this path would do.
+    expect(document.activeElement).toBe(terminalInput().closest(".pane__term"));
+    tm.dispose();
+  });
+
+  it("leaves Cmd+Shift+O alone on a host with no Board (Tauri)", async () => {
+    const { tm } = setup({ infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    // Stubbed after init, not before: `performableContext()` reads the global
+    // per keystroke, and standing a bridge up around `init()` would have this
+    // suite exercising the host transport rather than the predicate.
+    vi.stubGlobal("__deckHost", undefined);
+    const input = terminalInput();
+    const downstream = vi.fn();
+    input.addEventListener("keydown", downstream);
+
+    const event = press(input, { key: "o", metaKey: true, shiftKey: true });
+
+    // Not consumed means the keystroke reaches the PTY instead of dying in
+    // the renderer — the whole reason the predicate is host-gated.
+    expect(event.defaultPrevented).toBe(false);
+    expect(agentBoardOpen.value).toBe(false);
+    expect(downstream).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  it("consumes Cmd+Shift+O and opens the board once the Electron bridge is there", async () => {
+    const { tm } = setup({ infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    // Presence is the whole tell — see the previous test on why it is stubbed
+    // here rather than before `init()`.
+    vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
+
+    const event = press(terminalInput(), { key: "o", metaKey: true, shiftKey: true });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(agentBoardOpen.value).toBe(true);
+    expect(agentBoardSurfaceActive.value).toBe(true);
     tm.dispose();
   });
 });

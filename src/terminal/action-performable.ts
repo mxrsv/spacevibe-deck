@@ -31,6 +31,17 @@ export interface PerformableContext {
    * does not consume.
    */
   readonly surfaceCanToggleView?: boolean;
+  /**
+   * Whether THIS host can show the Agent Board (spec §4.2, §13).
+   *
+   * The Board needs `session_tail`, `git_repository` and the
+   * `pty_kill_foreground` channel, none of which exist under Tauri — so the
+   * chord must not be consumed there, or ⌘⇧O would die in the renderer
+   * instead of reaching the terminal. Optional so every context literal
+   * written before this keeps compiling; absent reads as "no Board", the
+   * direction that does not consume.
+   */
+  readonly hostHasAgentBoard?: boolean;
 }
 
 type Predicate = (context: PerformableContext) => boolean;
@@ -55,6 +66,12 @@ const PREDICATES: ReadonlyMap<ShortcutAction, Predicate> = new Map<ShortcutActio
     "toggle-markdown-view",
     (context) => context.stageOwner === "surface" && context.surfaceCanToggleView === true,
   ],
+  // Host-conditional ONLY — deliberately not stage-conditional. The Board is
+  // itself a stage surface, so its own close branch runs while `stageOwner()`
+  // answers "surface"; a stage test here would make the toggle one-way. What
+  // the Board may do while an overlay is up is `overlayBlocksAction`'s
+  // question, and it already answers it from the action's "pane" tier.
+  ["toggle-agent-board", (context) => context.hostHasAgentBoard === true],
 ]);
 
 export function isActionPerformable(action: ShortcutAction, context: PerformableContext): boolean {

@@ -70,3 +70,20 @@ describe("createTauriPtyClient Electron session CWDs", () => {
     expect(invoke).toHaveBeenCalledWith("pty_cwds", { ids: [1] });
   });
 });
+
+describe("createTauriPtyClient Agent Board Stop", () => {
+  it("asks the host to end a pane's foreground job with a flat { id }", async () => {
+    const invoke = vi.fn(async () => undefined);
+    vi.stubGlobal("__deckHost", { invoke, listen: vi.fn() });
+    const pty = createTauriPtyClient();
+    // The member is OPTIONAL — that is how a host without the channel says so —
+    // but this is the one production client, and it must carry it.
+    if (pty.killForeground === undefined) {
+      throw new Error("Expected the Electron kill-foreground capability");
+    }
+
+    await pty.killForeground(7);
+
+    expect(invoke).toHaveBeenCalledWith("pty_kill_foreground", { id: 7 });
+  });
+});

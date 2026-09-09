@@ -3,8 +3,10 @@ import type { ResumeRequest, SessionTailAnswer } from "../lib/agent-resume";
 import { tabViews, type PaneView, type TabView } from "./tabs-store";
 import {
   installSessionTailSync,
+  lastSessionIdFor,
   noteResumedPane,
   paneModels,
+  paneSessionIds,
   paneTails,
   resetSessionTailStore,
 } from "./session-tail-store";
@@ -625,5 +627,108 @@ describe("session tail store — paneModels", () => {
     expect(paneModels.value.has(101)).toBe(false);
     expect(paneModels.value).not.toBe(modelsBeforePrune);
     expect(paneTails.value).toBe(tailsBeforePrune);
+  });
+});
+
+/**
+ * `lastSessionId` — the one fact that has to OUTLIVE a generation change.
+ *
+ * `forget` deletes a pane's live pairing at the agent → shell transition, and
+ * that is exactly the transition after which the Board offers Restart. So the
+ * id Restart resumes cannot come from `paneSessionIds`; it comes from what
+ * `forget` remembered on its way out (spec §11.10, §11.11).
+ */
+describe("session tail store — lastSessionId", () => {
+  let dispose: (() => void) | null = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    resetSessionTailStore();
+    tabViews.value = [];
+    hosts.available = true;
+    hosts.sessionTails.mockReset();
+    hosts.sessionTails.mockResolvedValue(tails());
+  });
+
+  afterEach(() => {
+    dispose?.();
+    dispose = null;
+    resetSessionTailStore();
+    tabViews.value = [];
+    vi.useRealTimers();
+  });
+
+  /** A pane paired with `sess-abc`, which is where all four cases start. */
+  async function pairClaude(): Promise<void> {
+    tabViews.value = [tab(1, "/w", [pane(101)])];
+    hosts.sessionTails.mockResolvedValue([pairing("sess-abc", "what claude said")]);
+    dispose = installSessionTailSync();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(paneSessionIds.value.get(101)).toBe("sess-abc");
+  }
+
+  it("keeps the id when the agent leaves, and drops it when the pane does", async () => {
+    await pairClaude();
+
+    // agent → shell IS a new generation, so `forget` runs here and takes the
+    // live pairing with it — the empty `paneSessionIds` and the dropped tail
+    // below are the proof that it did, which is what stops this case from
+    // passing for free.
+    tabViews.value = [tab(1, "/w", [pane(101, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(paneSessionIds.value.get(101)).toBeUndefined();
+    expect(paneTails.value.has(101)).toBe(false);
+    expect(lastSessionIdFor(101)).toBe("sess-abc");
+
+    // The PANE closing is a different event: nothing about it survives. The
+    // snapshot keeps another pane in it because an EMPTY one prunes nothing
+    // (case 24 above), and would leave this passing on a technicality.
+    tabViews.value = [tab(1, "/w", [pane(102, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(lastSessionIdFor(101)).toBeUndefined();
+  });
+
+  it("clears it when a new agent starts in the shell the old one left", async () => {
+    await pairClaude();
+    tabViews.value = [tab(1, "/w", [pane(101, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(lastSessionIdFor(101)).toBe("sess-abc");
+
+    // shell → agent is a new generation too, and this one must CLEAR: spec
+    // §11.11's "overwritten by the next shell→agent generation". Keeping it
+    // would leave a freshly started agent's card offering to resume the
+    // previous agent's conversation.
+    tabViews.value = [
+      tab(1, "/w", [pane(101, { agent: "codex", hasRun: false, changedAt: NOW + 5_000 })]),
+    ];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(lastSessionIdFor(101)).toBeUndefined();
+  });
+
+  it("clears it when the pane goes straight from one agent to another", async () => {
+    await pairClaude();
+
+    // No shell step, so `paneSessions` STILL holds claude's id at the instant
+    // `forget` runs — an unconditional keep would write it as codex's, which
+    // is a pin rather than a drift and does not self-correct.
+    tabViews.value = [
+      tab(1, "/w", [pane(101, { agent: "codex", hasRun: false, changedAt: NOW + 5_000 })]),
+    ];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(lastSessionIdFor(101)).toBeUndefined();
+  });
+
+  it("is cleared by the store's own reset, which bypasses forget", async () => {
+    await pairClaude();
+    tabViews.value = [tab(1, "/w", [pane(101, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(lastSessionIdFor(101)).toBe("sess-abc");
+
+    // `resetSessionTailStore` empties this state DIRECTLY rather than through
+    // `forget`, so the map leaks between tests in one file — and between
+    // windows in one process — unless the reset clears it too.
+    resetSessionTailStore();
+    expect(lastSessionIdFor(101)).toBeUndefined();
   });
 });

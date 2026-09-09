@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { fakePane, flush, processInfo, setupControllable, wire } from "./tab-manager.fixtures";
+import { paneTaskPrompts, resetTaskPrompts } from "./board-task-prompts";
 import { TASK_PROMPT_POLL_MS, TASK_PROMPT_READY_TIMEOUT_MS } from "./task-prompt-send";
 import type { MaterializeIntent } from "./tab-materialize";
 
@@ -87,6 +88,10 @@ beforeEach(() => {
   tabViews.value = [];
   activeTabIndex.value = 0;
   settings.value = DEFAULT_SETTINGS;
+  // Window-scoped module state, and pane ids restart at 1 in every case: a
+  // key left behind by an earlier launch would satisfy the negative
+  // assertions below without the production code doing anything.
+  resetTaskPrompts();
   vi.mocked(sendAgentNotification).mockClear();
 });
 
@@ -443,5 +448,89 @@ describe("launchTask", () => {
     expect(await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude")).toBe(
       "prompt-not-sent",
     );
+  });
+});
+
+describe("the launch prompt a Board card prints", () => {
+  it("records the prompt a pending launch left in the composer", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const { tm, pty } = setupControllable(infos);
+    await tm.init();
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    // `TASK_PROMPT_AUTOSEND` is false, so this — not `sent` — is what a
+    // prompted launch normally answers. A store that only knew `sent` would be
+    // empty for almost every launch the app ever makes.
+    expect((await running).outcome).toBe("prompt-pending");
+    expect(paneTaskPrompts.value.get(1)).toBe("ship it");
+  });
+
+  it("records nothing when readiness never arrives, though the target resolved", async () => {
+    // The pane IS the expected agent, so `taskPromptTarget` answers a real
+    // target — it never reaches `phase: "idle"`, so readiness times out. This
+    // is the case that separates the outcome check from a target-only one: a
+    // condition written on `delivery.target !== null` would record a prompt
+    // this pane was never handed.
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const { tm, pty } = setupControllable(infos);
+    await tm.init();
+    vi.useFakeTimers();
+
+    const running = tm.launchTask(INTENT, "ship it");
+    await vi.advanceTimersByTimeAsync(TASK_PROMPT_READY_TIMEOUT_MS + TASK_PROMPT_POLL_MS);
+
+    expect((await running).outcome).toBe("prompt-not-sent");
+    expect(written(pty)).not.toContain("ship it");
+    expect(paneTaskPrompts.value.has(1)).toBe(false);
+  });
+
+  it("records nothing for a failed paste, and records it once the retry lands", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    let pasteSucceeds = false;
+    const { tm, pty } = controllableWithPaste(infos, async () => pasteSucceeds);
+    await tm.init();
+
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    expect((await running).outcome).toBe("prompt-failed");
+    expect(paneTaskPrompts.value.has(1)).toBe(false);
+
+    pasteSucceeds = true;
+    // A retry that lands is the same fact as a launch that landed, so the
+    // retry path records too — otherwise the card of a pane whose FIRST paste
+    // failed would print no Task line for the rest of its life.
+    const tabKey = tabViews.value[0].key;
+    expect(await tm.retryTaskPrompt(tabKey, "ship it", "claude")).toBe("prompt-pending");
+    expect(paneTaskPrompts.value.get(1)).toBe("ship it");
+  });
+
+  it("forgets the prompt when the pane holding it closes", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const { tm, pty } = controllableWithPaste(infos, async () => true);
+    await tm.init();
+
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    expect((await running).outcome).toBe("prompt-pending");
+    expect(paneTaskPrompts.value.get(1)).toBe("ship it");
+
+    // A second pane so the tab survives the close, and pane 1 polling as an
+    // explicit `idle-shell` so `confirmClose` skips its native dialog — jsdom
+    // cannot answer one, and an unanswerable dialog refuses the close.
+    await tm.splitActive("row");
+    infos.set(2, processInfo(2, "/repo", "claude", "agent", "claude"));
+    await driveToIdle(tm, pty, 2);
+    infos.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
+    await tm.closePaneAt(0, 1);
+
+    expect(paneTaskPrompts.value.has(1)).toBe(false);
   });
 });

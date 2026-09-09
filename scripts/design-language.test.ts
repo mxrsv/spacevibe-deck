@@ -60,6 +60,14 @@ const GLYPH_GEOMETRY_SELECTORS = new Set([".pane__anchor-grip"]);
  */
 const OPTICAL_TRACKING_SELECTORS = new Set([".settings-screen__title"]);
 /**
+ * DL-4.3's third exception (2026-09-03, the Agent Board): `.board-label` is
+ * uppercase WITH positive tracking, and it is copy — two nav group headings
+ * and the state word. Unlike the optical list above, which exempts negative
+ * tracking only, this list exempts BOTH regexes the scan rejects on one
+ * branch. A second selector here is an edit to DL-4.3 first.
+ */
+const LABEL_TREATMENT_SELECTORS = new Set([".board-label"]);
+/**
  * DL-20.1's closed radius scale, plus the two shapes it names as shapes rather
  * than scale values (the circle and the capsule) and the square corner. A
  * number picked by feel at a use site is what this list exists to reject: the
@@ -134,6 +142,7 @@ function styledCasingViolations(): string[] {
   for (const [, prelude, body] of css.matchAll(CSS_BLOCK)) {
     const selector = prelude.trim().replace(/\s+/g, " ");
     if (GLYPH_GEOMETRY_SELECTORS.has(selector)) continue;
+    if (LABEL_TREATMENT_SELECTORS.has(selector)) continue;
     for (const raw of body.split(";")) {
       const declaration = raw.trim().replace(/\s+/g, " ");
       if (!declaration) continue;
@@ -490,5 +499,89 @@ describe("active pane focus current", () => {
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.pane\.is-agent-working::after,[\s\S]*?\.pane-ping\s*\{[^}]*animation:\s*none\s*;[^}]*opacity:\s*0\s*;/,
     );
+  });
+});
+
+describe("DL-34 agent board", () => {
+  it("declares the board rules and the two treatment tokens", () => {
+    const rulebook = readFileSync(RULEBOOK, "utf8");
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+    expect(rulebook).toContain("## 34. The agent board");
+    for (const rule of [
+      "34.1",
+      "34.2",
+      "34.3",
+      "34.4",
+      "34.5",
+      "34.6",
+      "34.7",
+      "34.8",
+      "34.9",
+      "34.10",
+    ]) {
+      expect(rulebook).toContain(`**DL-${rule}**`);
+    }
+    // DL-4.1 (amended): one face token, declared once, never read from the terminal setting.
+    expect([...css.matchAll(/--board-font\s*:/g)].length).toBe(1);
+    expect(css).toMatch(/--board-font\s*:\s*ui-monospace,/);
+    // DL-4.3 (third exception): a treatment token, not a size rung.
+    expect([...css.matchAll(/--label-tracking\s*:/g)].length).toBe(1);
+    expect(css).toMatch(/--label-tracking\s*:\s*0\.06em\s*;/);
+
+    const index = readFileSync(STYLESHEET, "utf8");
+    expect(index).toContain('@import "./styles/19-agent-board.css";');
+    // DL-34.5: one face over the subtree, from the token.
+    expect(css).toMatch(/\.agent-board\s*\{[^}]*font-family:\s*var\(--board-font\)/s);
+    // DL-4.3's third exception, on exactly this class.
+    expect(css).toMatch(/\.board-label\s*\{[^}]*text-transform:\s*uppercase/s);
+    expect(css).toMatch(/\.board-label\s*\{[^}]*letter-spacing:\s*var\(--label-tracking\)/s);
+    // DL-34.4 (amended 2026-09-04) with DL-3.5: three second inks, declared
+    // once each, read ONLY inside a selected card — a resting card keeps the
+    // pure hue, so a rule that dropped `aria-current` would change every card.
+    for (const ink of ["failed", "asked", "neutral"]) {
+      expect([...css.matchAll(new RegExp(`--board-state-${ink}-ink\\s*:`, "g"))].length).toBe(1);
+      expect(css).toMatch(new RegExp(`--board-state-${ink}-ink\\s*:\\s*color-mix\\(`));
+    }
+    for (const [selector, ink] of [
+      ['\\.board-card\\[aria-current="true"\\]', "neutral"],
+      ['\\.board-card\\[aria-current="true"\\]\\[data-state="asked"\\]', "asked"],
+      ['\\.board-card\\[aria-current="true"\\]\\[data-state="failed"\\]', "failed"],
+    ]) {
+      expect(css).toMatch(
+        new RegExp(
+          `${selector} \\.board-card__state\\s*\\{[^}]*var\\(--board-state-${ink}-ink\\)`,
+          "s",
+        ),
+      );
+    }
+    // DL-34.1 (amended 2026-09-04) / spec §5.7: the fold measures the BOARD
+    // through a container query, and both thresholds are derived from the
+    // three widths declared above them — never a viewport media query, which
+    // would fold at one width in the app and another in the gallery.
+    for (const token of ["--board-nav-w", "--board-panel-w", "--board-nav-folded-w"]) {
+      expect([...css.matchAll(new RegExp(`${token}\\s*:`, "g"))].length).toBe(1);
+    }
+    expect(css).toMatch(/\.agent-board\s*\{[^}]*container-type:\s*inline-size/s);
+    expect(css).toMatch(
+      /@container \(max-width: 832px\)\s*\{\s*\.agent-board\[data-panel="open"\] \.agent-board__panel\s*\{[^}]*position:\s*absolute/s,
+    );
+    expect(css).toMatch(
+      /@container \(max-width: 472px\)\s*\{\s*\.agent-board__nav\s*\{[^}]*width:\s*var\(--board-nav-folded-w\)/s,
+    );
+    // DL-34.3: the frame carries state; the rail's ripple is off on the Board.
+    expect(css).toMatch(/\.board-card\[data-state="asked"\]\s*\{[^}]*var\(--status-unread\)/s);
+    expect(css).toMatch(
+      /\.agent-board \.asr-row__mark\[data-state="asked"\]::after\s*\{[^}]*animation:\s*none/s,
+    );
+    // DL-1.3: no blurred shadow anywhere in the sheet. The whitespace sits
+    // INSIDE the lookahead: outside it, `\s*` backtracks to zero width and
+    // the lookahead trivially succeeds against the space before "inset",
+    // matching every well-formed declaration and making this assertion
+    // unsatisfiable against prettier-formatted CSS.
+    const board = readFileSync(join(ROOT, "src/styles/19-agent-board.css"), "utf8").replace(
+      CSS_COMMENT,
+      "",
+    );
+    expect(board).not.toMatch(/box-shadow:(?!\s*inset 0 0 0 1px)/);
   });
 });

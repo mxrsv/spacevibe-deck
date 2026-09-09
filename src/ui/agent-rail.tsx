@@ -4,7 +4,6 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
-import { WorkspaceSpinner } from "./workspace-spinner";
 import {
   ensureRepositoriesScanned,
   installRepositoryRescanOnFocus,
@@ -16,7 +15,7 @@ import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
-import { buildAgentRail, type RailState, type RailStreamGroup } from "./agent-rail-model";
+import { buildAgentRail, type RailStreamGroup } from "./agent-rail-model";
 import { checkoutLabel } from "./agent-rail-card-model";
 import { WorktreeCard } from "./worktree-card";
 import type { CardActions } from "./worktree-card-menus";
@@ -55,6 +54,8 @@ import { isTauriHost } from "../updater/migration-notice";
  * itself is `agent-rail-model.ts`; this file and `worktree-card.tsx` only
  * render it.
  */
+
+export { RailStatusMark } from "./controls/rail-status-mark";
 
 export interface AgentRailProps {
   /** Stable Tauri fallback callbacks; worktree cards are Electron-only. */
@@ -148,37 +149,6 @@ export interface AgentRailProps {
    * passes it to both; the rail lists no file tabs and opens none regardless.
    */
   fileController: FileSurfaceController;
-}
-
-/**
- * DL-27.3, amended 2026-08-19 (owner, second pass): the slot draws THREE
- * shapes, not one static dot.
- *
- * `working` is the workspace rail's dot-ring, its ink running around a still
- * circle (`WorkspaceSpinner`) rather than a neutral dot — a run in progress is the
- * one state that changes on its own, and a still dot said the opposite. The
- * attention states keep the dot: red `failed`, and `asked` in
- * `--status-unread`, which is what "unread" meant in `AgentAttentionMark`
- * before the rail collapsed the vocabulary. `asked` covers BOTH a question
- * and a finished run nobody has read yet — `agent-rail-model` folds
- * `completed` into it, which is the owner's rule that a finished run you have
- * not checked is unread.
- *
- * `done` and `idle` stop painting nothing: both wear one quiet gray dot, so a
- * row that is simply quiet still says "an agent is here" instead of leaving
- * the column empty. Every state's word stays in `title` and the accessible
- * name either way.
- */
-export function RailStatusMark({ state }: { readonly state: RailState }) {
-  if (state === "working") {
-    return (
-      <span class="asr-row__mark asr-row__mark--spinner" data-state="working" aria-hidden="true">
-        <WorkspaceSpinner />
-      </span>
-    );
-  }
-
-  return <span class="asr-row__mark" data-state={state} aria-hidden="true" />;
 }
 
 /**

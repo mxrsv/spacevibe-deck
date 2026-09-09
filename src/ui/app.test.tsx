@@ -5,10 +5,12 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { boardOpen, editorRequest, saveDialogOpen, settingsOpen } from "../chrome/events";
 import {
+  agentBoardClosesWithLastTab,
   archivedWorkspaceResumeAvailable,
   boardClosesAfterResume,
   bootOpensTheBoard,
   browserPanelObscured,
+  startSurfaceFollowsBoardClose,
   closeSettingsPanel,
   dockPaintedOpen,
   dockToggleOnStage,
@@ -163,6 +165,7 @@ describe("settings load recovery layer", () => {
         promptsOpen: false,
         createEntryOpen: false,
         railCardMenuOpen: false,
+        agentBoardActive: false,
         persistErrorVisible: false,
         settingsLoadError: true,
       }),
@@ -182,6 +185,7 @@ describe("settings load recovery layer", () => {
         promptsOpen: false,
         createEntryOpen: false,
         railCardMenuOpen: false,
+        agentBoardActive: false,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -202,6 +206,7 @@ describe("settings load recovery layer", () => {
         promptsOpen: false,
         createEntryOpen: true,
         railCardMenuOpen: false,
+        agentBoardActive: false,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -218,6 +223,27 @@ describe("settings load recovery layer", () => {
         promptsOpen: false,
         createEntryOpen: false,
         railCardMenuOpen: false,
+        agentBoardActive: false,
+        persistErrorVisible: false,
+        settingsLoadError: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides the native browser view while the Agent Board holds the stage", () => {
+    // A DOM surface cannot cover a native `WebContentsView`: with the Board on
+    // the stage the browser's view has to go, or the Board draws underneath
+    // the page it just replaced.
+    expect(
+      browserPanelObscured({
+        overlayCoversPane: false,
+        agentQuickPickerOpen: false,
+        quickLaunchOpen: false,
+        usageConsentOpen: false,
+        promptsOpen: false,
+        createEntryOpen: false,
+        railCardMenuOpen: false,
+        agentBoardActive: true,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -400,6 +426,43 @@ describe("full-window surfaces leave the stage strip's row alone", () => {
 // controls do; a list of tab chips does not — the surface replaced the tabs.
 // A modal is deliberately absent: it floats on a scrim with the strip legible
 // underneath it, and hiding the chips there would be a second, silent change.
+describe("the Agent Board and the window's last tab", () => {
+  // Spec §4.2: zero tabs = no Board. The chip has to go, but closing it is not
+  // the whole rule — see the second case, which is the trap.
+  it("takes the chip when the last tab goes", () => {
+    expect(
+      agentBoardClosesWithLastTab({ liveTabCount: 0, agentBoardOpen: true, otherSurfaces: 0 }),
+    ).toBe(true);
+    expect(
+      agentBoardClosesWithLastTab({ liveTabCount: 1, agentBoardOpen: true, otherSurfaces: 0 }),
+    ).toBe(false);
+    expect(
+      agentBoardClosesWithLastTab({ liveTabCount: 0, agentBoardOpen: false, otherSurfaces: 0 }),
+    ).toBe(false);
+  });
+
+  it("raises the start surface when the Board was the only surface left", () => {
+    // `disposeTab`'s empty branch reads `surfaces.total()` SYNCHRONOUSLY
+    // (tab-manager.ts, the `tabs.length === 0` arm): the Board's own chip
+    // makes that total 1, so it takes `surfaces.activate(0)` — the Board — and
+    // never reaches `boardOpen.value = true`. Closing the chip a frame later
+    // would then leave a window with no tab, no surface and no start screen,
+    // with the rail hidden because `liveRailAvailable(0)` is false.
+    expect(
+      startSurfaceFollowsBoardClose({ liveTabCount: 0, agentBoardOpen: true, otherSurfaces: 0 }),
+    ).toBe(true);
+  });
+
+  it("leaves a surviving file tab or browser chip holding the stage", () => {
+    // With another surface open, `activate(0)` landed on IT rather than on the
+    // Board, so the stage is already occupied and the Open board would cover
+    // a document the user still has open.
+    expect(
+      startSurfaceFollowsBoardClose({ liveTabCount: 0, agentBoardOpen: true, otherSurfaces: 1 }),
+    ).toBe(false);
+  });
+});
+
 describe("stripShowsTabs", () => {
   it("keeps the chips while only the terminal grid is on the stage", () => {
     expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(true);
@@ -425,6 +488,7 @@ describe("Open Board shell visibility", () => {
         liveTabCount: 0,
         savedCollapsed: false,
         dragCollapsed: false,
+        agentBoardActive: false,
       }),
     ).toBe(true);
     expect(
@@ -432,42 +496,66 @@ describe("Open Board shell visibility", () => {
         liveTabCount: 1,
         savedCollapsed: false,
         dragCollapsed: false,
+        agentBoardActive: false,
       }),
     ).toBe(false);
   });
 
   it("suppresses the dock while the board is open without changing dockOpen", () => {
-    expect(dockVisible({ boardOpen: true, dockOpen: true })).toBe(false);
-    expect(dockVisible({ boardOpen: false, dockOpen: true })).toBe(true);
-    expect(dockVisible({ boardOpen: false, dockOpen: false })).toBe(false);
+    expect(dockVisible({ boardOpen: true, dockOpen: true, agentBoardActive: false })).toBe(false);
+    expect(dockVisible({ boardOpen: false, dockOpen: true, agentBoardActive: false })).toBe(true);
+    expect(dockVisible({ boardOpen: false, dockOpen: false, agentBoardActive: false })).toBe(false);
   });
 
   // DL-19.4, amended 2026-08-19: mid-drag the gesture answers, not the setting
   // — the same way the navigation sidebar's seam has always behaved.
   it("lets an armed drag close the dock before the pointer is released", () => {
     // No drag in flight: the setting is the whole answer.
-    expect(dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: null })).toBe(true);
+    expect(
+      dockPaintedOpen({
+        boardOpen: false,
+        dockOpen: true,
+        dragCollapsed: null,
+        agentBoardActive: false,
+      }),
+    ).toBe(true);
     expect(
       dockPaintedOpen({
         boardOpen: false,
         dockOpen: false,
         dragCollapsed: null,
+        agentBoardActive: false,
       }),
     ).toBe(false);
 
     // Dragging past the floor hides it at once; dragging back out brings it
     // back, still without having written anything.
-    expect(dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: true })).toBe(false);
+    expect(
+      dockPaintedOpen({
+        boardOpen: false,
+        dockOpen: true,
+        dragCollapsed: true,
+        agentBoardActive: false,
+      }),
+    ).toBe(false);
     expect(
       dockPaintedOpen({
         boardOpen: false,
         dockOpen: false,
         dragCollapsed: false,
+        agentBoardActive: false,
       }),
     ).toBe(true);
 
     // The board still wins over both: it owns the stage.
-    expect(dockPaintedOpen({ boardOpen: true, dockOpen: true, dragCollapsed: false })).toBe(false);
+    expect(
+      dockPaintedOpen({
+        boardOpen: true,
+        dockOpen: true,
+        dragCollapsed: false,
+        agentBoardActive: false,
+      }),
+    ).toBe(false);
   });
 
   it("closes the board only after a session actually resumes", () => {
@@ -479,13 +567,113 @@ describe("Open Board shell visibility", () => {
   // one is ever on screen. An open column carries its own at its outer edge,
   // so the chrome must NOT also carry one.
   it("hands the dock's hide control to the chrome only while the column is gone", () => {
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false })).toBe(true);
-    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true })).toBe(false);
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false, agentBoardActive: false })).toBe(
+      true,
+    );
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true, agentBoardActive: false })).toBe(
+      false,
+    );
     // Board open: the column is suppressed, but the setting still says open
     // and the board covers the stage — a "show the side panel" button there
     // would promise something the click cannot deliver.
-    expect(dockToggleOnStage({ boardOpen: true, dockOpen: true })).toBe(false);
-    expect(dockToggleOnStage({ boardOpen: true, dockOpen: false })).toBe(false);
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: true, agentBoardActive: false })).toBe(
+      false,
+    );
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: false, agentBoardActive: false })).toBe(
+      false,
+    );
+  });
+});
+
+// DL-34.1: the Board hides the sidebar and leaves the dock unpainted while it
+// holds the stage. The whole point of these cases is the SECOND half of each —
+// the state the user chose comes straight back the moment the Board leaves,
+// because the Board reads `sidebarCollapsed`/`dockOpen` and never writes them.
+describe("the sidebar under the agent board", () => {
+  it("collapses while the board holds the stage, whatever the user's own state", () => {
+    expect(
+      sidebarEffectivelyCollapsed({
+        liveTabCount: 3,
+        savedCollapsed: false,
+        dragCollapsed: null,
+        agentBoardActive: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("gives the user's own state straight back when the board leaves", () => {
+    expect(
+      sidebarEffectivelyCollapsed({
+        liveTabCount: 3,
+        savedCollapsed: false,
+        dragCollapsed: null,
+        agentBoardActive: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("hides the board's own collapse from the user's saved choice", () => {
+    // The discriminating pair: one `savedCollapsed` value, two answers, and
+    // the answer for `agentBoardActive: false` is the user's own. A branch
+    // that wrote the setting instead of reading it would make both `true`.
+    const user = { liveTabCount: 3, savedCollapsed: false, dragCollapsed: null } as const;
+    expect(sidebarEffectivelyCollapsed({ ...user, agentBoardActive: true })).toBe(true);
+    expect(sidebarEffectivelyCollapsed({ ...user, agentBoardActive: false })).toBe(false);
+  });
+
+  it("lets the board's hiding outrank an in-flight drag", () => {
+    // A drag in flight is the user's hand on the seam; the Board is not on the
+    // stage during one, but the ordering is stated rather than left to luck.
+    expect(
+      sidebarEffectivelyCollapsed({
+        liveTabCount: 3,
+        savedCollapsed: false,
+        dragCollapsed: false,
+        agentBoardActive: true,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("the dock under the agent board", () => {
+  it("leaves the dock unpainted while the agent board holds the stage", () => {
+    const base = { dockOpen: true, boardOpen: false, dragCollapsed: null } as const;
+    expect(dockPaintedOpen({ ...base, agentBoardActive: true })).toBe(false);
+    expect(dockPaintedOpen({ ...base, agentBoardActive: false })).toBe(true);
+    expect(dockVisible({ dockOpen: true, boardOpen: false, agentBoardActive: true })).toBe(false);
+    expect(dockVisible({ dockOpen: true, boardOpen: false, agentBoardActive: false })).toBe(true);
+  });
+
+  it("outranks an armed drag, the way the Open Board already does", () => {
+    expect(
+      dockPaintedOpen({
+        dockOpen: false,
+        boardOpen: false,
+        dragCollapsed: false,
+        agentBoardActive: true,
+      }),
+    ).toBe(false);
+  });
+
+  // NOT in the plan, and the plan's own step 4 is what creates the problem:
+  // `dockToggleOnStage` is `!boardOpen && !dockVisible(state)`, so suppressing
+  // the column through `dockVisible` alone turns the strip's "show the side
+  // panel" control ON while the Board covers the stage. Pressing it runs
+  // `toggle-dock`, which WRITES `dockOpen` for a column the user cannot see —
+  // a settings write caused by a surface state, which is the one thing
+  // DL-34.1's transient hiding exists to prevent. Same argument the function's
+  // own docblock already makes for `boardOpen`.
+  it("keeps the strip's dock control off the stage while the board is up", () => {
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true, agentBoardActive: true })).toBe(
+      false,
+    );
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false, agentBoardActive: true })).toBe(
+      false,
+    );
+    // And it comes straight back when the Board leaves a closed column behind.
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false, agentBoardActive: false })).toBe(
+      true,
+    );
   });
 });
 

@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  capTaskPrompt,
   pushArchiveEntry,
   validateArchive,
   validateWindowRecord,
   MAX_ARCHIVE_WORKSPACES,
+  MAX_TASK_PROMPT_BYTES,
+  TASK_PROMPT_CUT_MARK,
 } from "./session-schema";
 
 const LEAF = { type: "leaf" } as const;
 // `launchOptions` is explicit here because the validator always answers with
 // the field: a fixture without it round-trips to a record that has it, and
 // every `toEqual(RECORD)` below would fail on the difference.
-const PANE = { cwd: "/tmp/x", agent: "claude", launchCommand: null };
+const PANE = { cwd: "/tmp/x", agent: "claude", launchCommand: null, taskPrompt: null };
 const TAB = {
   workspacePath: "/tmp/x",
   layout: LEAF,
@@ -24,6 +27,7 @@ const RECORD = {
   tabs: [TAB],
   files: [],
   activeFileTab: null,
+  agentBoardOpen: false,
 };
 
 describe("validateWindowRecord", () => {
@@ -109,7 +113,7 @@ describe("SessionPane.launchCommand", () => {
         {
           workspacePath: null,
           layout: { type: "leaf" },
-          panes: [{ cwd: "/tmp", agent: "claude", launchCommand }],
+          panes: [{ cwd: "/tmp", agent: "claude", launchCommand, taskPrompt: null }],
           name: null,
           dotColor: null,
         },
@@ -135,5 +139,89 @@ describe("SessionPane.launchCommand", () => {
 
   it("reads a file written before the field existed", () => {
     expect(paneOf(undefined)?.launchCommand).toBeNull();
+  });
+});
+
+describe("WindowRecord.agentBoardOpen", () => {
+  // `savedAt` is mandatory: the envelope returns null without a finite number
+  // (`validateTabEnvelope`), so a payload missing it asserts nothing.
+  const base = { savedAt: 1, activeTabIndex: 0, tabs: [], files: [], activeFileTab: null };
+
+  it("defaults to false for a record written before the field existed", () => {
+    expect(validateWindowRecord(base)?.agentBoardOpen).toBe(false);
+  });
+
+  it("takes only a real boolean — never a truthy string", () => {
+    expect(validateWindowRecord({ ...base, agentBoardOpen: true })?.agentBoardOpen).toBe(true);
+    expect(validateWindowRecord({ ...base, agentBoardOpen: "yes" })?.agentBoardOpen).toBe(false);
+    expect(validateWindowRecord({ ...base, agentBoardOpen: "false" })?.agentBoardOpen).toBe(false);
+    expect(validateWindowRecord({ ...base, agentBoardOpen: 1 })?.agentBoardOpen).toBe(false);
+  });
+});
+
+describe("SessionPane.taskPrompt", () => {
+  /** The pane the record validator answers with, for a raw `taskPrompt`.
+   *  `validateSessionPane` is not exported — this is the same round-trip
+   *  through `validateWindowRecord` the launchCommand cases above use. */
+  function paneWith(taskPrompt: unknown) {
+    const record = validateWindowRecord({
+      savedAt: 1,
+      activeTabIndex: 0,
+      tabs: [
+        {
+          workspacePath: null,
+          layout: { type: "leaf" },
+          panes: [{ cwd: "/tmp", agent: "claude", launchCommand: null, taskPrompt }],
+          name: null,
+          dotColor: null,
+        },
+      ],
+      files: [],
+      activeFileTab: null,
+    });
+    return record?.tabs[0].panes[0];
+  }
+
+  it("keeps a short task prompt and caps a long one with a mark", () => {
+    expect(capTaskPrompt("short")).toBe("short");
+    const long = "x".repeat(MAX_TASK_PROMPT_BYTES + 100);
+    const capped = capTaskPrompt(long);
+    expect(new TextEncoder().encode(capped).length).toBeLessThanOrEqual(
+      MAX_TASK_PROMPT_BYTES + new TextEncoder().encode(TASK_PROMPT_CUT_MARK).length,
+    );
+    expect(capped.endsWith(TASK_PROMPT_CUT_MARK)).toBe(true);
+  });
+
+  it("counts BYTES, not characters", () => {
+    // Four bytes each, so a quarter of the cap in characters is the whole cap.
+    const emoji = "🙂".repeat(MAX_TASK_PROMPT_BYTES / 4);
+    expect(capTaskPrompt(emoji)).toBe(emoji);
+    expect(capTaskPrompt(`${emoji}🙂`).endsWith(TASK_PROMPT_CUT_MARK)).toBe(true);
+  });
+
+  it("never leaves half a code point where the cut landed", () => {
+    // 2 + 4096 bytes, so the byte cut lands two bytes into the LAST emoji —
+    // the case a naive decode turns into a trailing U+FFFD, which would put
+    // visible garbage in front of the mark and push the result past the bound.
+    const split = `ab${"🙂".repeat(MAX_TASK_PROMPT_BYTES / 4)}`;
+    const capped = capTaskPrompt(split);
+    expect(capped).not.toContain("�");
+    expect(capped.endsWith(TASK_PROMPT_CUT_MARK)).toBe(true);
+    expect(new TextEncoder().encode(capped).length).toBeLessThanOrEqual(
+      MAX_TASK_PROMPT_BYTES + new TextEncoder().encode(TASK_PROMPT_CUT_MARK).length,
+    );
+  });
+
+  it("reads a missing or non-string taskPrompt as null", () => {
+    expect(paneWith(undefined)?.taskPrompt).toBeNull();
+    expect(paneWith(42)?.taskPrompt).toBeNull();
+  });
+
+  it("caps on READ too — a session file is untrusted input", () => {
+    const pane = paneWith("y".repeat(MAX_TASK_PROMPT_BYTES + 1));
+    expect(pane?.taskPrompt?.endsWith(TASK_PROMPT_CUT_MARK)).toBe(true);
+    expect(new TextEncoder().encode(pane?.taskPrompt ?? "").length).toBeLessThanOrEqual(
+      MAX_TASK_PROMPT_BYTES + new TextEncoder().encode(TASK_PROMPT_CUT_MARK).length,
+    );
   });
 });

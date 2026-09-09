@@ -19,6 +19,12 @@ export const CHANNELS = {
   // main-owned, OSC-updated CWD without starting the WMI process census that
   // `pty_info` needs for close guards and process classification.
   ptyCwds: "pty_cwds",
+  // The Agent Board's Stop (spec §5.6, §11.6): end the agent running in a pane
+  // and leave the pane's shell alive. Electron-only like `pty_cwds` above — no
+  // `#[tauri::command]` counterpart, and Tauri is feature-frozen. Flat `{ id }`
+  // per R6: main resolves the foreground process GROUP itself, because a pgid
+  // does not cross IPC and signalling a group member's pid hits nothing.
+  ptyKillForeground: "pty_kill_foreground",
   gitBranch: "git_branch",
   // Repository/worktree rail. Electron-only, like the two blocks at the foot
   // of this table: no `#[tauri::command]` counterpart exists, and writing one

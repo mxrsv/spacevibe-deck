@@ -33,6 +33,7 @@ import {
   resetBrowserStore,
 } from "../browser/browser-store";
 import { paneTails } from "../terminal/session-tail-store";
+import { agentBoardSurfaceActive, openAgentBoard, resetAgentBoardStore } from "./agent-board-store";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -90,6 +91,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     repositoryScans.value = new Map();
     resetFileSurfaces();
     resetBrowserStore();
+    resetAgentBoardStore();
     resetOpenSequence();
     paneTails.value = new Map();
     fileController = createFileSurfaceController({ client: fileClient });
@@ -103,6 +105,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     resetDesktopEnvironmentForTests();
     fileController.dispose();
     resetFileSurfaces();
+    resetAgentBoardStore();
     paneTails.value = new Map();
   });
 
@@ -117,6 +120,8 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
             onNewTab={vi.fn()}
             onSelectBrowser={vi.fn()}
             onCloseBrowser={vi.fn()}
+            onSelectAgentBoard={vi.fn()}
+            onCloseAgentBoard={vi.fn()}
             fileController={fileController}
             scopeToActiveRepository
             {...props}
@@ -315,5 +320,47 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onCloseBrowser).toHaveBeenCalledTimes(1);
     expect(onSelectBrowser).toHaveBeenCalledTimes(1); // ✕ never selects
+  });
+
+  it("draws an agent board chip that is neither a file nor the browser", () => {
+    // The strip used to read every non-file slot as the browser, which was
+    // true at two surface kinds and silently wrong at three: a board chip
+    // would have rendered as a globe labelled with the browser's page title.
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    const onSelectAgentBoard = vi.fn();
+    const onCloseAgentBoard = vi.fn();
+    mount({ onSelectAgentBoard, onCloseAgentBoard });
+    expect(host.querySelector(".tab--agent-board")).toBeNull();
+
+    act(() => {
+      openAgentBoard();
+    });
+    const chip = host.querySelector<HTMLElement>(".tab--agent-board")!;
+    expect(chip).not.toBeNull();
+    expect(chip.textContent).toContain("Agents");
+    expect(host.querySelectorAll(".tab--browser")).toHaveLength(0);
+    // `openAgentBoard` puts it on the stage, so the terminal chip stands down.
+    expect(chip.getAttribute("aria-selected")).toBe("true");
+    expect(
+      host
+        .querySelector(".tab:not(.tab--file):not(.tab--agent-board)")
+        ?.getAttribute("aria-selected"),
+    ).toBe("false");
+
+    // A click on the ALREADY-active chip must not re-fire selection.
+    chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onSelectAgentBoard).not.toHaveBeenCalled();
+
+    act(() => {
+      agentBoardSurfaceActive.value = false;
+    });
+    chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onSelectAgentBoard).toHaveBeenCalledTimes(1);
+
+    chip
+      .querySelector<HTMLButtonElement>(".tab__close")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onCloseAgentBoard).toHaveBeenCalledTimes(1);
+    expect(onSelectAgentBoard).toHaveBeenCalledTimes(1); // ✕ never selects
   });
 });

@@ -69,7 +69,9 @@
      the monospace face belongs to the terminal (DL-4.1), and the terminal
      takes its font from the user's setting via toFontStack() in
      terminal/pane.ts, never from a CSS token. A --mono token here would only
-     be an invitation to leak terminal typography back into native UI. */
+     be an invitation to leak terminal typography back into native UI.
+     Amended 2026-09-03: `--board-font` below is that token, scoped to the
+     Agent Board by DL-4.1's amendment. */
   --ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   /* DL-4.4 names the four standard chrome text sizes (Native balanced,
@@ -83,6 +85,33 @@
   /* DL-27.9's one scoped chrome-text exception: the project header sits 2px
      above metadata without climbing to the 14px title rung. */
   --type-project: 13px;
+  /* DL-4.1, amended 2026-09-03: the Agent Board's face. A SECOND face for
+     chrome, scoped to `.agent-board` by DL-34.5 and to nothing else. It is
+     the §31 code stack, so it costs no file and no dependency (DL-1.1), and
+     it does NOT read the terminal's `fontFamily` — DL-4.1's isolation clause
+     holds: changing the terminal font never changes the Board, and vice
+     versa. */
+  --board-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* DL-4.3's third exception (2026-09-03): the Board's label treatment,
+     `.board-label`. A TREATMENT token, declared once so it is measured in one
+     place — not a size rung, so DL-4.4's ladder and DL-4.5's closed list are
+     untouched. */
+  --label-tracking: 0.06em;
+  /* DL-34.4 (amended 2026-09-04) with DL-3.5: the state word's ink INSIDE a
+     selected card. The selection wash is opaque `--tab-active-bg`, which is
+     the lightest plane a Board card ever stands on, and the eye pass measured
+     three of six state words under DL-3.5's 4.5 floor on it — dark FAILED
+     4.32, light FAILED 4.30, light ASKED 3.43 — with two more clearing it by
+     under a tenth. Each ink is therefore mixed 70% toward the theme's own
+     `--fg`, which LIGHTENS on a dark theme and DARKENS on a light one with no
+     branch, since `--fg` is the contrasting end of both palettes. Measured
+     over the wash at 70%: dark failed 5.56 · asked 8.29 · neutral 5.97;
+     light failed 5.85 · asked 4.77 · neutral 5.82 — every cell over the
+     floor, worst 4.77. A RESTING card keeps the pure hue (its wash is 3% and
+     every cell already passes there), so the hue only shifts where it must. */
+  --board-state-failed-ink: color-mix(in srgb, var(--red) 70%, var(--fg));
+  --board-state-asked-ink: color-mix(in srgb, var(--status-unread) 70%, var(--fg));
+  --board-state-neutral-ink: color-mix(in srgb, var(--text-faint) 70%, var(--fg));
 
   /* DL-31.1: the rendered document's own reading scale — a SECOND ladder,
      scoped to `.md-doc` and to nothing else, which is why DL-4.5's

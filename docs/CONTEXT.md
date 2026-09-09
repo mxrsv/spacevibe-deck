@@ -15,6 +15,144 @@
   original length.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## The agent board is wired — 2026-09-06
+
+The [spec](specs/2026-09-03-agent-board-design.md) `decided` was executed in two plans. Part A
+built the model, the treatment and a gallery specimen; part B
+([plan](plans/2026-09-04-agent-board-wiring.md) `building`, 17 tasks,
+`73cd1b1`..`69f58cf`) wired it into the app.
+
+**What the wiring is.** A third `stageSurfaceDescriptors` kind and its `Agents` chip, so
+⌘W, tab cycling and "last surface, not last tab" reach the Board without touching an R4
+seam. **⌘⇧O** as the 55th registry action, `scope: "pane"` and performable-gated. The
+sidebar AND the dock go to width 0 while the Board holds the stage — no settings write, so
+leaving gives back exactly the state the user had, collapsed included. `agentBoardOpen` on
+`WindowRecord` and `taskPrompt` on `SessionPane` in the journal. `pty_kill_foreground` for
+Stop. Four tab-layer seams: [`acknowledgePane`](../src/terminal/tab-manager.ts) `current`
+(the Board's selection is Board-local, so acknowledging cannot go through
+`activateForAttention`), `serializePane`/`paneAlive`, and `restartPane`.
+
+**Three things the plan got wrong, and its implementers proved wrong rather than followed.**
+`tm.newTab()` raises Quick Launch and materializes nothing. `app.test.tsx` never renders
+`<App>`, which is why every Board control's RULE lives in the injectable
+[`agent-board-actions.ts`](../src/ui/agent-board-actions.ts) `current` rather than in a
+closure inside `App` — behaviour written inline in `App` is behaviour no test can reach. And
+`deps.notice()` did not exist: `boardNotice` was written by every reply and read by nothing,
+so spec §7.4's "the panel says so" was a claim no user would ever have seen.
+
+**Restart resumes; it does not relaunch.**
+[`restartCommandFor`](../src/terminal/pane-restart.ts) `current` composes the pane's
+confirmed session id, its own launch flags and the CLI's resume form. A null id asks for the
+LATEST session rather than passing a null ref — `buildResumeCommand` answers null with
+`forms.bare`, the fresh start §17 Q4 refused, and a Restart that quietly began a new
+conversation would be a destructive act wearing a soft label. That id had to be KEPT on
+purpose: `session-tail-store`'s `forget` empties the live pairing at the exact agent → shell
+transition after which Restart is offered, so a Restart reading `paneSessionIds` would always
+find nothing and always degrade to "latest" — code that compiles, passes and is wrong.
+[`lastSessionIdFor`](../src/terminal/session-tail-store.ts) `current` keeps it, and **only
+when the generation ends with no agent**: `isNewGeneration` is true for four transitions, and
+an unconditional keep would pin a freshly started agent to the previous conversation — the
+2026-08-22 one-sentence-on-three-rows failure, but worse, because a pin does not
+self-correct.
+
+**The reply's safety condition is enforced outside the gate that looks like it owns it.**
+`injectIntoPane` already pastes, re-reads fresh pane info, requires the attention revision to
+be unchanged across the await and asks `submitAllowed` — but `submitAllowed` has no `hasRun`
+input, so it cannot enforce DL-34.7's second condition. A fresh `claude` sitting on its
+trust-this-folder menu reads `idle` and PASSES every check that gate makes, so `autoSend` is
+the CARD's own `hasRun` and a pane that has never run a turn can only ever be pasted into.
+One consequence to expect rather than report as a bug: `hasRun` goes true → false at the
+agent → shell transition, so for the seconds between a Restart and its resumed agent's first
+turn, the reply box places text without pressing Enter.
+
+**Two defects found and fixed during the wiring, both of the same class.** A pane's task
+prompt outlived its agent generation, so a `claude` → shell → `codex` pane wore the first
+agent's task line. And the panel's notice was window-scoped and cleared only by the next
+press, so replying to card A and then selecting card B printed "placed — confirm in the
+terminal" under B — a claim about B's terminal that was never made. The notice carries a pane
+id now, which is the fix that needs no module to remember to clear anything at the selection
+boundary. Both are the failure this repo keeps rediscovering: state one module writes,
+another reads, and nobody deletes.
+
+**The snapshot's cadence was missing entirely** and no task in the plan built it; Task 10's
+implementer found it. `boardPanelState` read the buffer during `App`'s render, so the cadence
+was whatever re-rendered `App` — incidental in BOTH directions. It re-read while the Board
+was OFF the stage, because `stepAgentBoardBack` deliberately keeps the selection so the chord
+returns to the same panel; and it did NOT re-read for a selected pane streaming inside the
+ACTIVE tab, because `unread` marking is background-only and that output fires no `syncViews`.
+The second is the Board's own core case. One signal says WHEN and `boardPanelState` reads it,
+the timer requires all three of a selection, the Board on the stage and a working pane, and
+the effect that installs it is keyed on the same fact so no interval exists while the Board
+is away — DL-1.2 bans a loop while the user is idle.
+
+**The seam the spec did not foresee** is `MaterializeIntent.panePrompts`. Spec §11.2's
+persisted prompt has to reach a PANE and `session-restore.ts` never learns a pane id, so
+materialization had to carry it; it mirrors `paneCommands` exactly, and removing it is
+deleting one field.
+
+**Evidence.** `npm test` 4436 passed / 1 failed — the one failure the design-language
+citation gate at exactly its nine baseline citations from `main`'s uncommitted
+DESIGN-LANGUAGE, none of them this work's; three `marketing/landing-prototype` suites also
+fail at COLLECTION on the untracked `install-command.js`, the pre-existing blocker. Both
+typechecks, `npm run build`, `npm run electron:build`, `generate:menu:check` and Prettier
+clean. Every implementer ran a **mutation table** — mutate the implementation, watch a
+specific test go red, restore and verify with `diff` — which caught five vacuous assertions,
+three of them in implementers' own new tests.
+
+**The native walk.** `electron:dev` under an isolated `userData`: `electron/main.ts:81`
+builds its `StoreRegistry` from `app.getPath("userData")` and never calls `setPath`, and
+Chromium's `--user-data-dir` switch does not move that path, so the run went through a `/tmp`
+wrapper that calls `app.setPath` BEFORE requiring the compiled main. Screen recording is not
+granted to this session, so the renderer was driven and photographed over CDP. Verified in
+the running app: the chip restored from the journal; ⌘⇧O opening AND closing; the sidebar
+275px → 0px → 275px, with a sidebar the user had already collapsed surviving both ways; a
+card's own live scrollback in the panel with `document.activeElement` staying on the panel
+and the strip's active chip unchanged; the persisted task prompt printed as
+`… — placed, not sent`; Stop killing only that pane's process and leaving the card standing
+as `ENDED` with Restart where Stop was; Restart relaunching the agent; a reply reaching the
+pane and coming back `placed — confirm in the terminal`; DL-34.9's two-step Escape with focus
+handed back to the card and then to the terminal; and `agentBoardOpen` surviving quit +
+relaunch. Afterwards the real `~/Library/Application Support/Electron` mtimes were unchanged,
+which is how the isolation is claimed rather than assumed.
+
+**What the walk could NOT show.** It used a non-billing probe agent — an ad-hoc-signed copy
+of `/bin/cat` declared as a custom agent — so **Restart resuming a real conversation id was
+never exercised**: a custom agent has no session id and `buildResumeCommand` returns its
+declared command with the ref ignored. `lastSessionId` → `--resume <id>` is unit-tested only.
+The **owner's eye review is owed**, and Windows is Gate C.
+
+## The Agent Board — model, treatment and specimen — 2026-09-03
+
+`building`. The owner chose the direction in the morning (a card grid of live agent
+panes, a STATUS/PROJECTS nav, a right panel — style and layout from a fleet-dashboard
+reference, none of its features), answered three forks, grilled the spec in 24
+questions, and said "execute" in the afternoon. The spec is
+[2026-09-03-agent-board-design.md](specs/2026-09-03-agent-board-design.md) `decided`;
+the plan is [2026-09-03-agent-board-model-and-specimen.md](plans/2026-09-03-agent-board-model-and-specimen.md)
+`building`.
+
+- **Built:** `agent-board-model.ts` (a pure projection over `buildAgentRail`, joined to
+  `PaneView` by pane id; `boardWhere` formats `project · label · branch` itself because
+  main's `subjectWhere` is not on this branch), `agent-board-store.ts` (the browser
+  store's three-signal shape plus selection, filters, held order and the pane-ordinal
+  allocator), `19-agent-board.css`, `agent-board.tsx` + card/nav/panel, `RailStatusMark`
+  moved to `controls/`, `strip-ansi-sequences.ts`, DL §34 with the gate's
+  `LABEL_TREATMENT_SELECTORS`, and a gallery section mounting the real component.
+- **Decided in the build, for veto:** the card's row 2 is the agent brand glyph plus the
+  agent's short name; a single-agent tab's custom name replaces the name, a multi-agent
+  tab's closes the where-line (spec §5.3). The rail's `asked` ripple is off on the Board;
+  the yellow frame is the whole signal (DL-34.3).
+- **Not built:** every seam the spec's §11–§12 name. The model takes `ordinals`,
+  `startedAt`, `tasks`, `lastAgents` and `confidence` as input maps until the wiring plan
+  puts them on `PaneView`.
+- **Evidence:** per-task suites, `npx tsc --noEmit`, the design-language gate, prettier,
+  and two gallery screenshots (`deck-dark`, `deck-light`) with the measurement the plan's
+  Task 12 records. **Owed:** the owner's eye pass on the specimen (gate 1), then the
+  wiring plan, then a native `electron:dev` pass. The reply-placeholder clip the
+  specimen surfaced was fixed the same day (`11070af`, placeholder now
+  `Reply — Enter sends`), and the specimen itself was served from this worktree on
+  port 5187 because ports 5175/5176 were held by other sessions.
+
 ## Recent agent activity — 2026-08-25
 
 Electron now places a separate five-row Recent activity block after the live
@@ -3590,6 +3728,101 @@ passed / 3 Windows-native skipped; renderer and Electron typechecks plus the IPC
 green. **No Windows runtime measurement has run, so the performance claim remains unverified
 on the target OS.**
 
+## The landing page becomes findable and shareable — 2026-09-04
+
+The site shipped with a `<title>`, a `<meta name=description>` and nothing else:
+no canonical, no Open Graph or Twitter card, no `robots.txt`, no `sitemap.xml`,
+no favicon (the `<link rel=icon>` was a blank 1x1 SVG data URI), no structured
+data — and an empty `<main>`, because the whole page is built by JavaScript on
+boot. A link shared into Slack, Discord or X rendered as a bare URL, and a
+crawler that does not run JavaScript downloaded **zero words**.
+
+Marketing only: no file under `src/` or `electron/` changed, and no DL rule
+moved — the design language binds app chrome, and this is the page that draws
+it.
+
+**The page had two URLs and named neither.** `vercel.json` rewrites `/` onto
+`/landing-prototype/index.html`, and the built file answers at its own path too,
+so the same document sat at two addresses with nothing saying which was the
+page. Every page now carries an absolute `<link rel=canonical>`; the long
+spellings 301 to the short ones, and the redirects are scoped to the four
+literal directory paths — **never `/landing-prototype/(.*)`**, which would eat
+the runtime assets, and never the `index.html` spelling, which is the rewrite's
+own destination. Internal links follow: [`site-urls.js`](../marketing/landing-prototype/src/site-urls.js)
+`current` is one module resolving `/` and `/changelog` in production and the
+long paths under `npm run prototype:landing`, so nothing ships a link that
+costs a redirect hop and nothing 404s in dev. The dead `?direction=A` query on
+the brand link — a crawlable duplicate of the home page — is gone.
+
+**The HTML now carries the page.** A `closeBundle` pass in
+[`vite.build.mjs`](../marketing/landing-prototype/vite.build.mjs) `current`
+loads `renderDirectionA` and `renderTour` through a Vite SSR server in
+**production mode** (so `site-urls.js` resolves the same canonical URLs the
+bundle uses) and writes their markup into the shipped `index.html`. It is the
+SAME renderer, never a second implementation: `main.js` overwrites `innerHTML`
+with the identical string on boot. Measured with JavaScript disabled, the page
+went from 0 words to **1110 words, one `h1`, eight `h2`s and 17 links**, fully
+styled.
+
+Asset URLs were the one trap, and the first run shipped into it: under SSR an
+asset import resolves to the maintainer's own `file:///Users/...` path. Assets
+Rollup emitted are matched by source name against `dist/assets`; assets under
+`assetsInlineLimit` have no file to match and are **base64-inlined at build**,
+which is what the client bundle does with them anyway. Any URL that still
+starts with `file:`, `/@fs` or `../` **fails the build** — the guard exists
+because a silent 404 in prerendered markup is invisible until a crawler reads
+it. An `http(s):` URL is skipped before the map is consulted at all: anchors
+share the `href` attribute with assets and the map is keyed by basename, so
+`.../releases/latest` would otherwise look up `latest`.
+
+The cost is stated: inlining takes the document to 258 KB raw / **40 KB
+gzipped**, of which roughly 17 KB is agent marks the bundle also carries. Two
+consecutive builds are **byte-identical** (`cmp`), so the renderers are pure —
+every `Math.random` and `performance.now` in the tree sits inside a mount
+closure, never in a markup builder. The extracted CSS is two render-blocking
+`<link rel=stylesheet>` tags in `<head>`, which is why the static copy paints
+styled rather than flashing.
+
+**The card image is the real hero, not a drawing of it.**
+[`capture-og-cover.mjs`](../scripts/capture-og-cover.mjs) `current`
+(`npm run capture:og`) shoots the BUILT bundle at 1200x628 CSS px, zoomed to
+0.75 and clipped to the content column so the frame holds the wordmark, the
+headline, the install command and the app window with its agent rail — the
+composition that survives a thumbnail. Reduced motion is emulated, which pins
+the hero's scene cycle on the agents frame. 1.5x, not 2x: the file is 1800x942
+(520 KB) where 2x cost 949 KB and looked no sharper in any card. The touch icon
+comes off the same `deck-icon.svg` the favicon uses. The loopback dist server
+both captures share moved to
+[`serve-landing-dist.mjs`](../scripts/serve-landing-dist.mjs) `current`.
+
+`robots.txt` deliberately disallows **nothing**, the built spellings included:
+blocking a duplicate URL stops a crawler reading the canonical that folds it
+away, and a blocked URL can still be indexed by URL alone. Both files ride the
+copy list `install.sh` and `install.ps1` already took —
+`BOOTSTRAP_ENDPOINTS` is `ROOT_FILES` now, since neither is a bootstrap
+endpoint. The JSON-LD graph states only what the repo backs: MIT, free, the two
+platforms the release workflow builds, and `releases/latest` rather than a
+version string that drifts on the next tag. No rating, no review count.
+
+Verified by `npx vitest run marketing/` (13 files, 187 passed / 2 skipped,
+including 11 new assertions in
+[`seo-metadata.test.js`](../marketing/landing-prototype/src/seo-metadata.test.js)
+`current` — proven non-vacuous by a mutation), `npm run build:landing`,
+Prettier and oxlint over the two new scripts, and a headless browser pass on the
+built bundle: **zero console errors on both pages**, `robots.txt`/`sitemap.xml`
+served 200 at the root, and both images fetched 200 at the exact URL the meta
+tags name. **Owed: everything only production can answer** — the Vercel
+redirect and rewrite rules have never been exercised, no scraper has fetched the
+card, and Search Console has never seen the sitemap. The owner's eye pass on the
+cover image is owed too.
+
+**Blocked, pre-existing, not caused here:** `marketing/landing-prototype/`
+imports `install-command.js` and copies `install.sh`/`install.ps1`, and **none
+of the three has ever been committed** — they exist only in the main checkout's
+dirty tree, so `npm run build:landing` and three test files are red on any
+clean clone, Vercel's included. The build and browser evidence above was taken
+with those six untracked files copied in and removed again afterwards.
+
 ## Verification state ledger
 
 Full evidence behind [`../AGENTS.md`](../AGENTS.md) `current`'s "Chưa khớp thực tế" table.
@@ -3637,6 +3870,8 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 | "Both docked seams close by drag, and the sidebar collapses to a rail" | `current` | `unverified`   | Landed 2026-08-16 (new DL-18.9, DL-19.4 amended). Evidence: `npm test` 2804 passed / 1 failed of 2805 (the one red outside this work), `npm run build` and `npm run generate:menu:check` exit 0, five new/extended suites, and a Chrome pass against `npm run dev` measuring the collapse, the drag and both controls. **No owner eye review**, no `npm run electron:dev` pass, no `npm run tauri dev` pass though the code is shared with that host. Windows collapse floor unverified (Gate C). See [the section above](#panel-seams-that-close--2026-08-16) `current`                                    |
 | "One click on the open board opens the workspace"                      | `current` | `contradicted` | Superseded 2026-08-24: choosing a workspace fills the shared draft and never launches by itself. See [the task-launcher section](#one-draft-two-task-launcher-surfaces--2026-08-24) `current`                                                                                                                                                                                                                                                                                                                                                                                                     |
 | "A preset can be renamed or deleted"                                   | `current` | `contradicted` | True until 2026-08-16. `renamePreset` / `deletePreset` are still exported from [presets-store.ts](../src/presets/presets-store.ts) `current` and have no caller: the board's layout cards were the only one. Create (⌘⇧N) and overwrite (⌘⇧S) are unaffected. Disclosed and accepted when the config view was removed                                                                                                                                                                                                                                                                                       |
+| "Shared links render a card, and the short URLs are the only ones indexed" | `current` | `unverified`   | Built 2026-09-04. The tags, the images, the two crawler files and the prerendered HTML are all verified in the built bundle by suite, build and a headless browser pass — but the half that only production can answer is untouched: no Vercel redirect or rewrite has been exercised, no scraper has fetched the cover, and nothing has been submitted to Search Console. See [the section above](#the-landing-page-becomes-findable-and-shareable--2026-09-04) `current` |
+| "`npm run build:landing` works on a clean clone"                          | `current` | `contradicted` | Measured 2026-09-04 and never true: [`a.js`](../marketing/landing-prototype/src/directions/a.js) `current` imports `install-command.js` and [`vite.build.mjs`](../marketing/landing-prototype/vite.build.mjs) `current` copies `install.sh`/`install.ps1`, and none of the three is in git — they exist only in the main checkout's dirty tree. So the build throws and three marketing test files fail to collect on any fresh checkout, Vercel's build included. Not caused by, and not fixed by, the SEO pass |
 
 The historical comment drift was found on 2026-07-27. The delivery-state drift
 found by the [2026-08-01 audit](review/2026-08-01-doc-drift.md) `current` was

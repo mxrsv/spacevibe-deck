@@ -178,6 +178,50 @@ export interface TabManager {
   /** Attention snapshot for one pane — the tracker's read side (gate 2). */
   paneAttention(paneId: number): PaneAttentionSnapshot | null;
   /**
+   * Acknowledge one pane's attention explicitly (spec §11.4) — the tracker's
+   * write side, without focusing the pane.
+   *
+   * `tracker.acknowledge` is reached only from `onPaneFocus` otherwise, so
+   * clearing a latch meant FOCUSING the pane, and `onPaneFocus` acks only
+   * while the window is foreground. The Agent Board's sent reply clears a
+   * latch without focusing anything. Selecting a card deliberately does not.
+   *
+   * A pane this window does not hold is a complete no-op — no view sync.
+   */
+  acknowledgePane(paneId: number): void;
+  /**
+   * The Agent Board panel's snapshot of one pane (spec §11.5, DL-34.6): the
+   * newest `lines` rows of its scrollback as PLAIN text, trailing blank rows
+   * trimmed. Null for a pane no tab in this window holds.
+   *
+   * Resolved by pane id, never through the active tab — a hidden tab is
+   * `display: none` and its panes are all still alive, which is what lets
+   * selecting a card leave the tab and the active pane alone (spec §5.4). An
+   * EXITED pane still answers: the panel exists to show what the agent last
+   * said. `paneAlive` is the separate question.
+   */
+  serializePane(paneId: number, lines: number): string | null;
+  /**
+   * Whether this window still holds that pane AND its PTY is running (spec
+   * §7's disabled actions). False for an unknown pane, so a caller never has
+   * to ask both questions.
+   */
+  paneAlive(paneId: number): boolean;
+  /**
+   * Restart the agent a pane was running, resuming its conversation
+   * (spec §5.6, §11.10). The pane, its ordinal, its selection and its task
+   * line all stay — only the agent process is started again, and the task
+   * prompt is deliberately NOT re-sent.
+   *
+   * Resolves false without writing anything when the pane is unknown, its PTY
+   * has exited, an agent is still running in it, it never ran one, or that
+   * agent has no resume form. A pane whose session id was never confirmed
+   * asks the CLI for its LATEST session rather than relaunching bare — a
+   * Restart that quietly started a new conversation would be a destructive
+   * act wearing a soft label.
+   */
+  restartPane(paneId: number): Promise<boolean>;
+  /**
    * Paste `text` into `paneId`, then submit only when the triple gate still
    * holds (spec §7). Never throws: a failed gate degrades to `"pasted"`, a
    * failed paste to `"failed"`, an overlapping attempt to `"busy"`, and an

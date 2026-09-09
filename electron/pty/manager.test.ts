@@ -28,11 +28,28 @@ vi.mock("./spawn", () => ({
   spawnShell: () => ({ pty: fakePty, ttyName: "ttys999" }),
 }));
 const terminateSpy = vi.hoisted(() => vi.fn());
+interface Foreground {
+  readonly pid: number;
+  readonly group: number | null;
+  readonly name: string | null;
+}
+/**
+ * What the mocked `foregroundProcess` answers — a box, so a case can change it.
+ *
+ * Hoisted for the reason `terminateSpy` is: the mock factory runs while the
+ * module graph is still being imported, before any ordinary module-scope
+ * binding in this file has been initialised.
+ *
+ * The default is a leader whose pid IS its group id — the ordinary case, and
+ * the one `kill` below asserts against.
+ */
+const foreground = vi.hoisted(() => ({
+  value: { pid: 4242, group: 4242, name: "claude" } as Foreground | null,
+}));
 vi.mock("../platform/macos", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   readProcessTable: async () => [],
-  // A leader whose pid IS its group id — the ordinary case.
-  foregroundProcess: () => ({ pid: 4242, group: 4242, name: "claude" }),
+  foregroundProcess: () => foreground.value,
   terminateProcessGroups: terminateSpy,
 }));
 
@@ -42,6 +59,8 @@ let manager: PtyManager;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // A case that changed the foreground job must not decide the next one's.
+  foreground.value = { pid: 4242, group: 4242, name: "claude" };
   emitted = [];
   unregistered = [];
   manager = new PtyManager({
@@ -164,5 +183,98 @@ describe("PtyManager", () => {
     fireExit();
 
     expect(() => manager.write("main", id, "x")).toThrow(/not found/);
+  });
+});
+
+/**
+ * The Agent Board's Stop (spec §5.6, §11.6): end the AGENT, keep the pane.
+ *
+ * `foregroundProcess` answers the SHELL's own row when nothing else holds the
+ * tty, so "bare shell" is a group equal to the shell's pid — not a null answer.
+ * Null means the tty was missing from the table. Both are covered below,
+ * because only one of them is the case Stop exists to refuse.
+ */
+describe("killForeground", () => {
+  /** A foreground group that is NOT the fake shell's own pid (4242). */
+  const AGENT: Foreground = { pid: 5150, group: 5150, name: "claude" };
+
+  it("signals the foreground GROUP and spares the shell's own", async () => {
+    foreground.value = AGENT;
+    const id = manager.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+    await manager.killForeground("main", id);
+
+    // The pgid is resolved in MAIN: a pgid does not cross IPC, and signalling a
+    // group MEMBER's pid would hit nothing. `null` is the shell's own group,
+    // deliberately spared — that is the whole difference from `kill`.
+    expect(terminateSpy).toHaveBeenCalledWith(5150, null);
+  });
+
+  it("leaves the pane itself alive — Stop is not close", async () => {
+    foreground.value = AGENT;
+    const id = manager.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+    await manager.killForeground("main", id);
+
+    // `terminate` kills the PTY and the exit path then drops the route. Stop
+    // must do neither, or it takes away the card it was pressed from.
+    expect(fakePty.kill).not.toHaveBeenCalled();
+    expect(unregistered).toEqual([]);
+    expect(emitted).toEqual([]);
+  });
+
+  it("does nothing when the pane is already a bare shell", async () => {
+    // A shell in the foreground IS its own process group, so the answer here is
+    // the shell's row rather than null. Signalling it would close the pane.
+    foreground.value = { pid: fakePty.pid, group: fakePty.pid, name: "zsh" };
+    const id = manager.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+    await manager.killForeground("main", id);
+
+    expect(terminateSpy).not.toHaveBeenCalled();
+  });
+
+  it("signals nothing when the leader was reaped and members still hold the tty", async () => {
+    // `group: null` is `foregroundProcess` reporting that it could not
+    // establish a group id. A member's pid is not one.
+    foreground.value = { pid: 5151, group: null, name: "claude" };
+    const id = manager.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+    await manager.killForeground("main", id);
+
+    expect(terminateSpy).not.toHaveBeenCalled();
+  });
+
+  it("signals nothing when the tty is missing from the process table", async () => {
+    foreground.value = null;
+    const id = manager.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+    await manager.killForeground("main", id);
+
+    expect(terminateSpy).not.toHaveBeenCalled();
+  });
+
+  it("refuses a pane another window owns", async () => {
+    // The shared manager's `assertOwner` is a no-op, so ownership is only
+    // observable against a manager built with a real one.
+    const guarded = new PtyManager({
+      emitToOwner: () => {},
+      register: () => {},
+      unregister: () => {},
+      assertOwner: (_paneId, windowLabel) => {
+        if (windowLabel !== "main") {
+          throw new Error("pane is owned by another window");
+        }
+      },
+    });
+    const id = guarded.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+    await expect(guarded.killForeground("other", id)).rejects.toThrow(/another window/);
+    expect(terminateSpy).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op for an id with no session", async () => {
+    await expect(manager.killForeground("main", 9999)).resolves.toBeUndefined();
+    expect(terminateSpy).not.toHaveBeenCalled();
   });
 });

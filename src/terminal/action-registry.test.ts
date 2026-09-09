@@ -64,6 +64,25 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
+  it("binds toggle-agent-board on both platforms without colliding", () => {
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-agent-board");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-agent-board");
+    expect(mac).toEqual([{ key: "o", meta: true, shift: true, action: "toggle-agent-board" }]);
+    expect(win).toEqual([{ key: "o", ctrl: true, shift: true, action: "toggle-agent-board" }]);
+    // `o` was unbound at every modifier combination in both maps when this
+    // landed (2026-09-04); a second claimant of the same chord is a conflict,
+    // and the same-kind collision test below cannot say which action is at
+    // fault. Asserted per map so a Windows-only clash is not hidden by macOS.
+    expect(
+      MACOS_KEYMAP.filter((b) => "key" in b && b.key === "o" && b.meta && b.shift),
+    ).toHaveLength(1);
+    expect(
+      WINDOWS_KEYMAP.filter((b) => "key" in b && b.key === "o" && b.ctrl && b.shift),
+    ).toHaveLength(1);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
   it("binds save-file on macOS, and leaves bare Ctrl+S unbound on Windows (PTY-reserved)", () => {
     const mac = MACOS_KEYMAP.filter((binding) => binding.action === "save-file");
     const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "save-file");
@@ -101,7 +120,7 @@ describe("ACTION_REGISTRY", () => {
   // renderer because their native Cocoa roles cannot reach Monaco.
   // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
   // copy-selection — see docs/internals/terminal.md.
-  it("has exactly the 54 action ids including updater menu actions", () => {
+  it("has exactly the 55 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -131,6 +150,7 @@ describe("ACTION_REGISTRY", () => {
         "split-row",
         "split-column",
         "toggle-zoom-pane",
+        "toggle-agent-board",
         "toggle-browser",
         "toggle-dock",
         "toggle-explorer",

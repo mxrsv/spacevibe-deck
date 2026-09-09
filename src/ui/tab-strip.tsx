@@ -29,7 +29,7 @@
  * keeps ownership. Only the sidebar projection is scoped; file chips continue
  * through `FileSurfaceController` exactly as before.
  */
-import { Globe, Plus, TerminalWindow, X } from "@phosphor-icons/react";
+import { Globe, Plus, SquaresFour, TerminalWindow, X } from "@phosphor-icons/react";
 import { activeTabIndex, tabViews, type TabView } from "../terminal/tabs-store";
 import type { PaneAgent } from "../lib/process-info";
 import { UNSEQUENCED } from "../lib/open-sequence";
@@ -41,12 +41,9 @@ import { titleWithShortcut } from "../lib/shortcut-label";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { activeWorkspace } from "../files/file-surface-store";
 import { fileTabViews } from "../files/file-tab-views";
-import {
-  browserOpen,
-  browserOpenedAt,
-  browserState,
-  browserSurfaceActive,
-} from "../browser/browser-store";
+import { browserState, browserSurfaceActive } from "../browser/browser-store";
+import { agentBoardSurfaceActive } from "./agent-board-store";
+import { stageSurfaceDescriptors } from "./stage-surface-strip";
 import { repositoryScans } from "../repositories/repositories-store";
 import { activeRepositoryTabIndexes } from "../repositories/repository-model";
 import { paneTails } from "../terminal/session-tail-store";
@@ -73,6 +70,13 @@ export interface TabStripProps {
    */
   onSelectBrowser(): void;
   onCloseBrowser(): void;
+  /**
+   * The Agent Board chip's two actions, owned by `App` for the browser's
+   * reason: taking the stage means stepping BOTH other surfaces off it, and
+   * `App` is the only module that sees all three stores.
+   */
+  onSelectAgentBoard(): void;
+  onCloseAgentBoard(): void;
   /**
    * Sidebar mode follows the active tab's REPOSITORY. Top-tab mode has no rail
    * to switch that scope, so it deliberately keeps the global strip.
@@ -108,26 +112,33 @@ export function TabStrip(props: TabStripProps) {
     const tab = tabs[index];
     return tab === undefined ? [] : [{ index, tab }];
   });
-  // A file or browser surface can hold the stage while `active` still names
-  // whichever terminal tab it sits on top of (selecting a surface never
-  // touches `TabManager`'s own `active` index) — so a terminal chip is only
-  // the VISIBLE active tab when neither is true.
+  // A file, browser or Agent Board surface can hold the stage while `active`
+  // still names whichever terminal tab it sits on top of (selecting a surface
+  // never touches `TabManager`'s own `active` index) — so a terminal chip is
+  // only the VISIBLE active tab when none of the three is true.
   const fileTabs = fileTabViews(props.fileController);
-  const surfaceActive = props.fileController.activeIndex() >= 0 || browserSurfaceActive.value;
+  const surfaceActive =
+    props.fileController.activeIndex() >= 0 ||
+    browserSurfaceActive.value ||
+    agentBoardSurfaceActive.value;
   // The row, in open order. The surface list is built in the SurfaceStrip
-  // index space on purpose — files, then the browser's one slot — because
-  // that is the space `fileController.activate(index)` and the keyboard both
-  // speak. Where a chip PAINTS is this merge's answer; what it addresses is
-  // still its owner's own index.
+  // index space on purpose — files, then the browser's slot, then the Board's
+  // — because that is the space `fileController.activate(index)` and the
+  // keyboard both speak. Where a chip PAINTS is this merge's answer; what it
+  // addresses is still its owner's own index.
+  //
+  // `stageSurfaceDescriptors` is the same reading `composeSurfaceStrip`
+  // publishes, so the two can never disagree about which slot is which — the
+  // inference this used to make ("no file tab at this index ⇒ the browser")
+  // was true at two surface kinds and silently wrong at three.
+  const surfaceSlots = stageSurfaceDescriptors(props.fileController);
   const slots = mergeStripOrder(
     visibleTabs.map(({ tab }) => ({ openedAt: tab.openedAt ?? UNSEQUENCED })),
-    [
-      // `?? UNSEQUENCED` is not defensive noise: the comparator is arithmetic,
-      // so ONE undefined key would produce NaN and scramble the whole row
-      // rather than misplace one chip. Every production path fills it in.
-      ...fileTabs.map((tab) => ({ openedAt: tab.openedAt ?? UNSEQUENCED })),
-      ...(browserOpen.value ? [{ openedAt: browserOpenedAt.value }] : []),
-    ],
+    // `openedAt` is never undefined here — the descriptor fills a missing key
+    // with `UNSEQUENCED` itself, which matters because the comparator is
+    // arithmetic: ONE undefined key would produce NaN and scramble the whole
+    // row rather than misplace one chip.
+    surfaceSlots.map((slot) => ({ openedAt: slot.openedAt })),
   );
   /**
    * One terminal chip. The glyph slot holds the agent's brand mark, or a
@@ -271,21 +282,72 @@ export function TabStrip(props: TabStripProps) {
     );
   }
 
+  /**
+   * The Agent Board chip (spec §4.1). Its glyph is `SquaresFour` — the grid
+   * the surface itself draws — and its label is the word `Agents`, fixed: a
+   * chip says what is open and nothing else (DL-18.10), so it reports neither
+   * how many agents the Board lists nor what any of them is doing.
+   */
+  function agentBoardChip() {
+    return (
+      <div
+        key="agent-board"
+        role="tab"
+        aria-selected={agentBoardSurfaceActive.value}
+        tabIndex={0}
+        class={`tab tab--agent-board ${agentBoardSurfaceActive.value ? "is-active" : ""}`}
+        onClick={() => {
+          if (!agentBoardSurfaceActive.value) {
+            props.onSelectAgentBoard();
+          }
+        }}
+      >
+        <span class="tab__glyph" aria-hidden="true">
+          <DeckIcon icon={SquaresFour} size={CHROME_ICON} />
+        </span>
+        <span class="tab__label">Agents</span>
+        <button
+          type="button"
+          class="tab__close"
+          aria-label="Close the agent board tab"
+          onClick={(event) => {
+            event.stopPropagation();
+            props.onCloseAgentBoard();
+          }}
+        >
+          <DeckIcon icon={X} size={CHROME_ICON} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div class="tabbar__tabs" role="tablist" aria-label="Open tabs">
         {/* One row, one order (DL-18.6). `slots` speaks two index spaces:
             a `"tab"` index addresses `visibleTabs`, a `"surface"` index
             addresses the SurfaceStrip space `composeSurfaceStrip` publishes —
-            every file tab, then the browser slot — so the chip a keyboard
-            command activates and the chip painted here are the same one. */}
+            every file tab, then the browser slot, then the Agent Board's — so
+            the chip a keyboard command activates and the chip painted here
+            are the same one. Which KIND that slot is comes from the
+            descriptor, never from what is missing at its index. */}
         {slots.map((slot) => {
           if (slot.kind === "tab") {
             const entry = visibleTabs[slot.index];
             return entry === undefined ? null : terminalChip(entry.tab, entry.index);
           }
-          const fileTab = fileTabs[slot.index];
-          return fileTab === undefined ? browserChip() : fileChip(fileTab, slot.index);
+          const surface = surfaceSlots[slot.index];
+          if (surface === undefined) {
+            return null;
+          }
+          if (surface.kind === "agent-board") {
+            return agentBoardChip();
+          }
+          if (surface.kind === "browser") {
+            return browserChip();
+          }
+          const fileTab = fileTabs[surface.index];
+          return fileTab === undefined ? null : fileChip(fileTab, surface.index);
         })}
       </div>
       <button

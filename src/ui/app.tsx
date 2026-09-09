@@ -130,14 +130,31 @@ import { PromptPopover } from "../prompts/prompt-popover";
 import { BrowserSurface } from "../browser/browser-surface";
 import { defaultBrowserClient } from "../browser/browser-client";
 import {
-  activateBrowserSurface,
+  browserOpen,
   browserSurfaceActive,
   closeBrowser,
   deactivateBrowserSurface,
   initBrowserBridge,
 } from "../browser/browser-store";
 import { installSessionTailSync } from "../terminal/session-tail-store";
-import { composeSurfaceStrip } from "./stage-surface-strip";
+import { composeSurfaceStrip, takeStageForSurface } from "./stage-surface-strip";
+import {
+  agentBoardOpen,
+  agentBoardSurfaceActive,
+  boardSelectedPaneId,
+  closeAgentBoard,
+  installSnapshotRefresh,
+  selectBoardCard,
+  stepAgentBoardBack,
+} from "./agent-board-store";
+import { useAgentBoardView } from "./agent-board-view";
+import { AgentBoardSurface } from "./agent-board-surface";
+import {
+  boardPanelState,
+  createBoardActions,
+  type BoardActionDeps,
+  type BoardNotice,
+} from "./agent-board-actions";
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
@@ -213,7 +230,9 @@ import {
   archivedWorkspaceResumeAvailable,
   boardClosesAfterResume,
   bootOpensTheBoard,
+  agentBoardClosesWithLastTab,
   browserPanelObscured,
+  startSurfaceFollowsBoardClose,
   closeSettingsPanel,
   dockPaintedOpen,
   dockToggleOnStage,
@@ -588,11 +607,17 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       paneCount: () => tabViews.value.reduce((total, tab) => total + (tab.panes?.length ?? 0), 0),
       browserVisible: () => browserSurfaceActive.value,
       explorerVisible: () =>
-        dockVisible({ dockOpen: settings.value.dockOpen, boardOpen: boardOpen.value }) &&
-        resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "explorer",
+        dockVisible({
+          dockOpen: settings.value.dockOpen,
+          boardOpen: boardOpen.value,
+          agentBoardActive: agentBoardSurfaceActive.value,
+        }) && resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "explorer",
       usageVisible: () =>
-        dockVisible({ dockOpen: settings.value.dockOpen, boardOpen: boardOpen.value }) &&
-        resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "usage",
+        dockVisible({
+          dockOpen: settings.value.dockOpen,
+          boardOpen: boardOpen.value,
+          agentBoardActive: agentBoardSurfaceActive.value,
+        }) && resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "usage",
     });
     if (updatePreview === null) {
       // Read the previous run's breadcrumb before starting a new check: if the
@@ -1365,12 +1390,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       liveTabCount: tabViews.value.length,
       savedCollapsed: settings.value.sidebarCollapsed,
       dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
+      agentBoardActive: agentBoardSurfaceActive.value,
     });
-  const sidebarPaintWidth = (): number =>
-    liveRailAvailable(tabViews.value.length)
+  const sidebarPaintWidth = (): number => {
+    // DL-34.1: the Board's hiding is the SURFACE's, never written to
+    // `sidebarCollapsed`. Reading it as a branch here rather than as a
+    // settings write is the whole difference between "the Board hid it" and
+    // "the user collapsed it" — leaving the Board has to give back the width
+    // the user chose, and a write would have destroyed it.
+    //
+    // Its own early return because this function does NOT go through
+    // `sidebarEffectivelyCollapsed`: it reads `settings.value.sidebarCollapsed`
+    // directly, so the predicate's new branch does not reach it.
+    if (agentBoardSurfaceActive.value) {
+      return SIDEBAR_HIDDEN_WIDTH;
+    }
+    return liveRailAvailable(tabViews.value.length)
       ? (sidebarWidthLive.value ??
-        (settings.value.sidebarCollapsed ? SIDEBAR_HIDDEN_WIDTH : settings.value.sidebarWidth))
+          (settings.value.sidebarCollapsed ? SIDEBAR_HIDDEN_WIDTH : settings.value.sidebarWidth))
       : SIDEBAR_HIDDEN_WIDTH;
+  };
   // Written to `:root`, not handed to the shell as props — see
   // `sidebar-shell.ts` for the defect that forces it and the evidence behind
   // it. Reading the signals INSIDE the effect is what subscribes it, so a
@@ -1469,12 +1508,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * wiring: a store-signal transition is invisible to `syncViews` otherwise.
    */
   const selectBrowserTab = (): void => {
-    if (browserSurfaceActive.value) {
-      return;
+    // One body for both chips (`takeStageForSurface`), because the asymmetry
+    // is the defect: this one used to leave the Board on the stage, so a press
+    // left both flags true and ⌘W closed the Board's chip while the user was
+    // looking at the browser.
+    if (takeStageForSurface("browser", { files: fileController, client: defaultBrowserClient })) {
+      tabsRef.current?.notifySurfacesChanged();
     }
-    fileController.deactivate();
-    activateBrowserSurface();
-    tabsRef.current?.notifySurfacesChanged();
   };
   /** The browser chip's ✕: the chip leaves the strip, the page is kept. */
   const closeBrowserTab = (): void => {
@@ -1482,6 +1522,150 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     tabsRef.current?.notifySurfacesChanged();
     tabsRef.current?.focusActive();
   };
+  /**
+   * The Agent Board chip: it takes the stage from whichever surface has it.
+   * Same reason as `selectBrowserTab` for living here — App is the one module
+   * that sees all three surface stores, so "exactly one surface owns the
+   * stage" runs here for chip clicks and inside `composeSurfaceStrip` for
+   * TabManager-initiated paths.
+   */
+  const selectAgentBoardTab = (): void => {
+    if (
+      takeStageForSurface("agent-board", { files: fileController, client: defaultBrowserClient })
+    ) {
+      tabsRef.current?.notifySurfacesChanged();
+    }
+  };
+  /**
+   * The Board chip's ✕: the chip leaves the strip and the Board's own state
+   * resets (spec §4.4). Every pane it listed keeps running — the Board is a
+   * view of the agents, never their owner.
+   */
+  const closeAgentBoardTab = (): void => {
+    closeAgentBoard();
+    tabsRef.current?.notifySurfacesChanged();
+    tabsRef.current?.focusActive();
+  };
+  /**
+   * The Board's notice line and its in-flight flag (spec §7). Window-scoped
+   * and unpersisted, like every other surface-local signal in this component:
+   * a reply that failed is a fact about this window's last press.
+   *
+   * The notice carries the pane it was said about, so selecting another card
+   * cannot inherit it — see `BoardNotice`.
+   */
+  const boardNotice = useSignal<BoardNotice | null>(null);
+  const boardSending = useSignal(false);
+  /**
+   * ONE call, shared with the panel state below, so the panel and the grid can
+   * never disagree about which card is selected. `useAgentBoardView` is named
+   * for its call site but is not a hook — it holds no state and calls none.
+   */
+  const boardView = useAgentBoardView();
+  /**
+   * The selected card's state, for the snapshot timer below.
+   *
+   * A ref rather than a closure over `boardView`, because the effect installs
+   * ONCE and a captured `boardView` would be the one from the render that
+   * installed it — permanently. The ref is written every render, so the timer
+   * always asks about the selection the user is actually looking at.
+   */
+  const boardSelectedStateRef = useRef<string | null>(null);
+  boardSelectedStateRef.current = boardView.selected?.state ?? null;
+  const boardDeps: BoardActionDeps = {
+    // The one production client, for Stop. Its `killForeground` is optional
+    // because the channel is Electron-only; the action calls it with `?.()`.
+    pty: defaultPtyClient,
+    // A per-render snapshot: `null` until the manager is constructed, which
+    // every member that uses it has to handle.
+    manager: tabsRef.current,
+    openTaskLauncher: () => openTaskLauncher(tabsRef.current?.activeWorkspacePath() ?? null),
+    notifySurfacesChanged: () => tabsRef.current?.notifySurfacesChanged(),
+    focusActive: () => tabsRef.current?.focusActive(),
+    setNotice: (notice) => {
+      boardNotice.value = notice;
+    },
+    notice: () => boardNotice.value,
+    setSending: (sending) => {
+      boardSending.value = sending;
+    },
+    isSending: () => boardSending.value,
+    clearSelection: () => selectBoardCard(null, []),
+    selectedPaneId: () => boardSelectedPaneId.value,
+  };
+  const boardActions = createBoardActions(boardDeps);
+  const boardPanel = boardPanelState(boardDeps, boardView.selected);
+  /**
+   * The Board's half of the stage's exclusion backstop, beside the file/browser
+   * one above. Same reason it exists: a click reaching one store directly — an
+   * explorer row, a chip — never goes through `composeSurfaceStrip`'s mutual
+   * exclusion.
+   *
+   * ONE effect, and the Board is the one that YIELDS. The winner is stated
+   * rather than left to whichever signal moved last: a document and the browser
+   * are opened by naming a THING (a file, a page), the Board by naming a VIEW.
+   * The mirror image would close the document the user just opened.
+   */
+  useSignalEffect(() => {
+    if (!agentBoardSurfaceActive.value) {
+      return;
+    }
+    if (browserSurfaceActive.value || activeFileTab.value !== null) {
+      stepAgentBoardBack();
+      tabsRef.current?.notifySurfacesChanged();
+    }
+  });
+  /**
+   * Spec §7.3's refresh cadence. The timer only EXISTS while the Board holds
+   * the stage — installing it unconditionally would leave a 500ms interval
+   * running for the life of every window, and `installSnapshotRefresh`'s own
+   * `onStage` guard covers the frames between the signal moving and this
+   * effect re-running.
+   */
+  /* oxlint-disable react-hooks/exhaustive-deps -- Preact signal: agentBoardSurfaceActive.value is the reactive dep (the timer exists only while the board holds the stage) */
+  useEffect(() => {
+    if (!agentBoardSurfaceActive.value) {
+      return;
+    }
+    return installSnapshotRefresh({
+      selectedPaneId: () => boardSelectedPaneId.value,
+      paneState: () => boardSelectedStateRef.current,
+      onStage: () => agentBoardSurfaceActive.value,
+    });
+  }, [agentBoardSurfaceActive.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
+  /**
+   * Zero tabs = no Board (spec §4.2). `disposeTab`'s empty branch activates
+   * surface 0 while `surfaces.total() > 0`, so a Board left open would take
+   * the stage where the Open board belongs — and its chord is `scope: "pane"`,
+   * so nothing could leave it. Closing the chip here keeps `total()` honest
+   * WITHOUT touching close coordination, which is a fork this work does not
+   * open.
+   *
+   * The second half is what makes that safe. `disposeTab` reads
+   * `surfaces.total()` SYNCHRONOUSLY, a frame before this runs, and the
+   * Board's chip is what makes that total 1 — so it activated the BOARD and
+   * never reached its own `boardOpen.value = true`. Closing the chip here and
+   * stopping would leave a window with no tab, no surface and no start
+   * screen. `startSurfaceFollowsBoardClose` raises exactly what that branch
+   * would have raised, and only when the Board was the last surface standing.
+   */
+  useSignalEffect(() => {
+    const zeroTabs = {
+      liveTabCount: tabViews.value.length,
+      agentBoardOpen: agentBoardOpen.value,
+      otherSurfaces: fileController.total() + (browserOpen.value ? 1 : 0),
+    };
+    if (!agentBoardClosesWithLastTab(zeroTabs)) {
+      return;
+    }
+    closeAgentBoard();
+    if (startSurfaceFollowsBoardClose(zeroTabs)) {
+      // `boardOpen` is the OPEN board's signal (chrome/events), never the
+      // Agent Board's — the same write `disposeTab`'s else arm makes.
+      boardOpen.value = true;
+    }
+  });
   const updateAction = (
     <UpdateAction
       view={updatePreview ?? updater.view.value}
@@ -1581,6 +1765,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // rail, i.e. over the stage — so the native browser view must go or they
       // draw underneath it.
       railCardMenuOpen: railCardMenuOpen.value,
+      // A DOM surface cannot cover a native `WebContentsView`: with the Board
+      // on the stage the browser's view must go, or the Board draws underneath
+      // the page it just replaced.
+      agentBoardActive: agentBoardSurfaceActive.value,
       // `agentQuickPickerOpen` is deliberately here and NOT in
       // `overlayCoversPane()`: it is a modal on the same scrim as the other two
       // (`openOverlayRanks()` already ranks it as one), so it paints over the
@@ -1773,6 +1961,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const dockState = {
     boardOpen: boardOpen.value,
     dockOpen: settings.value.dockOpen,
+    // DL-34.1: read, never written. It reaches `dockPaintedOpen` (what paints)
+    // and `dockToggleOnStage` (whether the strip carries the way back in) at
+    // once, so the column and its control leave together.
+    agentBoardActive: agentBoardSurfaceActive.value,
   };
   // A drag past the floor closes the column UNDER THE POINTER, the way the
   // navigation sidebar's seam always has (2026-08-19): while a drag is in
@@ -2033,6 +2225,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           fileController={fileController}
           onSelectBrowser={selectBrowserTab}
           onCloseBrowser={closeBrowserTab}
+          onSelectAgentBoard={selectAgentBoardTab}
+          onCloseAgentBoard={closeAgentBoardTab}
           trailing={
             // Only while the column is gone: an open panel carries its own
             // hide control at its outer edge (`DockPanel`), the way the
@@ -2079,7 +2273,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   no frame row, so the control moves here — first in the strip,
                   after the inset that keeps it clear of the OS buttons — and
                   is the way back out. */}
-              {railAvailable && effectiveSidebarCollapsed() ? (
+              {/* DL-34.1 omits this control while the Board holds the stage.
+                  The guard is needed BECAUSE of the predicate change above:
+                  `effectiveSidebarCollapsed()` now answers true for the
+                  Board, which would turn this branch on and draw the one
+                  control that un-hides a column the Board hid — one click
+                  would produce a state neither the user nor the Board asked
+                  for. The other arm (`!effectiveSidebarCollapsed()`, the
+                  frame row's `SidebarFrameActions`) goes false on its own. */}
+              {railAvailable && effectiveSidebarCollapsed() && !agentBoardSurfaceActive.value ? (
                 <SidebarToggle collapsed onToggle={toggleSidebarCollapsed} />
               ) : null}
               {/* The window's controls survive a full-window surface; the
@@ -2098,6 +2300,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   fileController={fileController}
                   onSelectBrowser={selectBrowserTab}
                   onCloseBrowser={closeBrowserTab}
+                  onSelectAgentBoard={selectAgentBoardTab}
+                  onCloseAgentBoard={closeAgentBoardTab}
                   scopeToActiveRepository
                 />
               ) : null}
@@ -2155,6 +2359,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               popover is `right: 0` and 320px wide, so it opens INSIDE the
               surface and the user types into something they cannot see. */}
           <BrowserSurface hidden={panelObscured()} onClose={closeBrowserTab} />
+          {/* The Agent Board, on the stage the same way the other two are
+              (spec §4.1) — its own component owns the mount condition, so it
+              is testable without an `<App>` harness. `boardView` is built once
+              above and shared with `boardPanel`, so the grid and the panel
+              cannot disagree about the selected card. */}
+          <AgentBoardSurface view={boardView} actions={boardActions} panel={boardPanel} />
           {quickLaunchOpen.value ? (
             quickLaunchView.value === "workspace" ? (
               <QuickLaunchSubview

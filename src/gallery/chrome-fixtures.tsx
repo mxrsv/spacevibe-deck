@@ -82,6 +82,8 @@ export function tabBarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}
       toolbar={deckToolbarSpecimen({ promptsDisabled })}
       onSelectBrowser={NOOP}
       onCloseBrowser={NOOP}
+      onSelectAgentBoard={NOOP}
+      onCloseAgentBoard={NOOP}
       fileController={fileControllerFixture}
     />
   );
@@ -197,6 +199,8 @@ export function repositoryScopedTabStripSpecimen() {
       onNewTab={NOOP}
       onSelectBrowser={NOOP}
       onCloseBrowser={NOOP}
+      onSelectAgentBoard={NOOP}
+      onCloseAgentBoard={NOOP}
       fileController={fileControllerFixture}
       scopeToActiveRepository
     />

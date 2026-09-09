@@ -54,6 +54,13 @@ constraint: **consume as few machine resources as possible.**
   over a still ring that separates the mark in a screenshot but not in the
   corner of an eye. The still ring is what `prefers-reduced-motion: reduce`
   gets. No other surface inherits any of the three.
+  **A fourth scoped exception was added 2026-09-03 by DL-34.3:** the Agent
+  Board draws DL-27.3's `WorkspaceSpinner` on every card whose pane is
+  `working` — one loop per working pane, the same budget the rail already
+  spends, ended by the state's removal. The rail's `asked` ripple does NOT
+  cross to the Board (DL-34.3); the yellow frame is the whole signal there.
+  "No other surface inherits any of the three" therefore no longer holds as
+  written: the Board inherits exactly the spinner.
 - **DL-1.3** Banned: **blurred/offset** `box-shadow` (the app is a flat system —
   depth comes from background steps and 1px hairlines), `backdrop-filter`,
   `filter`, JS animation loops (`requestAnimationFrame`) for chrome, timers that
@@ -182,6 +189,12 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   column headers, disabled states. Amended 2026-08-16 with DL-4.4: a group
   label left the faint tone when it stopped being smaller than its rows — the
   two changes are one decision and neither holds alone.
+  **Amended 2026-09-03 by DL-34.5:** inside `.agent-board` a group label
+  (`STATUS`, `PROJECTS`) is `--text-faint`, not `--text-muted`, and sits at
+  `--type-meta` — the Board's near-flat scale puts hierarchy in weight, case
+  and tone rather than size, and its label is the quietest thing on the
+  surface by design. Scoped to that subtree; the rail's group label is
+  unchanged.
 - **DL-3.5** **The three text tones have measured contrast floors, and the
   floors are app-wide.** As WCAG contrast ratios: `--text-primary` ≥ **8:1**,
   `--text-muted` ≥ **6:1**, `--text-faint` ≥ **4.5:1**. Each floor is measured
@@ -244,7 +257,8 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
 ## 4. Typography
 
-- **DL-4.1** **The monospace face belongs to the terminal, and nowhere else.**
+- **DL-4.1** **The monospace face belongs to the terminal and to the Agent
+  Board, and nowhere else.**
   Every pixel of chrome — labels, descriptions, values, paths, hex colours,
   theme ids, keyboard-shortcut chips, headings — uses `--ui-font`. Chrome is
   native UI and should read as native UI; mono there reads as terminal output
@@ -252,6 +266,16 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   all: it comes from the user's `fontFamily` setting through
   [`toFontStack`](../src/terminal/pane.ts) `current`, so changing chrome
   typography can never change the terminal, and vice versa.
+  **Amended 2026-09-03 (owner, Agent Board spec §9):** the Agent Board is
+  set in `--board-font` — the §31 code stack, declared once in
+  `01-tokens.css` — over its whole `.agent-board` subtree, and nothing
+  outside it. The rule's argument does not object: it banned mono in chrome
+  because "mono there reads as terminal output that leaked out of its pane",
+  and the Board is not chrome around a terminal but a picture OF the
+  terminals, whose flat-size hierarchy only works when every glyph shares one
+  advance width. The isolation clause is untouched: `--board-font` never reads
+  the terminal's `fontFamily`. App-wide mono is a separate, unmade decision;
+  DL-11.4 (rail labels are `--ui-font`) is untouched.
 - **DL-4.2** Values still need `font-variant-numeric: tabular-nums`. Under mono
   this was nearly inert; under a proportional face it is what stops `13px` and
   `10k lines` from jittering as they change.
@@ -287,6 +311,19 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   Clarified 2026-08-15: acronyms and proper nouns keep their dictionary casing
   (`USD`, `PNG`, `VS Code`, `iTerm2`) — the ban is on all-caps LABELS, not on
   words whose spelling is uppercase.
+  **A third exception, added 2026-09-03, and it IS copy:** the Agent Board's
+  `.board-label` class — `--type-meta`, uppercase, `letter-spacing:
+  var(--label-tracking)` (0.06em), weight 400, `--text-faint` — for exactly
+  two things: the nav's two group headings (`STATUS`, `PROJECTS`) and the
+  state word on a card and in the panel's `State` value. No key, no
+  description, no value, no title, no button. The gate's
+  `LABEL_TREATMENT_SELECTORS` holds that one selector and, unlike the optical
+  list, exempts BOTH the uppercase and the tracking regex — a fourth entry
+  amends this rule again. Why it is safe here and nowhere else: the ban was
+  measured against a proportional face at chrome sizes; the Board IS mono,
+  which is the advance width the old tracking was tuned against. The
+  worktree card spec's §9.9 refused this reopening on purpose so it could not
+  happen by accident; the Agent Board spec §9.5 is the deliberate one.
 - **DL-4.4** **Four text sizes, and they are named.** Standard chrome text
   comes from one ladder — the Native balanced hierarchy, selected 2026-08-16:
 
@@ -332,6 +369,13 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   lowercase (amended 2026-08-15 — chrome text that NAMES or DESCRIBES
   something is capitalized, text that IS the value is not; until then
   everything but keys was lowercase).
+  **Amended 2026-09-03 by DL-34.5, twice:** the casing clause above gains
+  DL-4.3's third exception (the Board's `.board-label` is uppercase), and the
+  group-label clause — a label heading a list of rows is `--type-title` —
+  gains a Board-scoped exception: `STATUS` and `PROJECTS` head their lists at
+  `--type-meta`, because the Board's scale is near-flat by design (spec §9.2)
+  and its hierarchy comes from case and tone. No new size exists; DL-4.5's
+  closed list is untouched.
 
 - **DL-4.5** **The ladder is variables, not repeated literals.** Standard
   chrome text takes its size from `--type-title` / `--type-body` /
@@ -1355,6 +1399,12 @@ window's identity and its actions at the same time.
   the stage strip. The feature toolbar remains on the stage side; this
   amendment adds one sidebar action, not a second toolbar.
 
+  **Cross-reference, 2026-09-03:** the hidden state can now be PRODUCED by a
+  surface rather than by the user — the Agent Board hides the sidebar while it
+  holds the stage (DL-34.1), without writing `sidebarCollapsed`, and omits the
+  strip-mounted toggle meanwhile. `sidebarCollapsed` is no longer the only way
+  the column is at width 0.
+
 - **DL-18.10** **One chip shape, one row, one order (2026-08-16).** The strip
   had two segments until this rule: every terminal tab, a `.tabbar__sep`
   hairline, then every non-terminal surface. Both are gone. A chip is a
@@ -1690,6 +1740,10 @@ looking at rendered specimens across four themes.
   `:root`, riding the `--tone` that `theme-vars.ts` already keeps current, and
   it sits between `--bg` and `--tab-active-bg`, both of which DL-3.5's contrast
   floors already measure.
+  **Amended 2026-09-03 by DL-34.2:** an Agent Board card carries the same
+  resting wash, by this rule's own argument — a card floats alone on the
+  stage's `--bg` exactly as a chip does, and "no wash" there reads as
+  _nothing here_. "Everywhere else, rest means no wash" gains that one place.
 
 - **DL-21.8** **An icon button whose whole job is to toggle a surface paints no
   active state (2026-08-16).** `.iconbtn` has hover, focus and unavailable, and
@@ -2936,19 +2990,124 @@ Numbered 33 because §22 stays reserved and §32 was the previous highest rule.
   existing retry control. Reduced motion inherits the app-wide chrome rule:
   the only row transition is the tokenized background response.
 
+## 34. The agent board
+
+Added 2026-09-03 from the owner-decided
+[Agent Board spec](specs/2026-09-03-agent-board-design.md) `decided`. The
+surface is a grid of live agent panes with a status-counting nav and a right
+detail panel, toggled against the rail; it is built by
+[`agent-board-model.ts`](../src/ui/agent-board-model.ts) `building`,
+[`agent-board.tsx`](../src/ui/agent-board.tsx) `building` and
+[`19-agent-board.css`](../src/styles/19-agent-board.css) `building`.
+Numbered 34 because §33 was the previous highest rule.
+
+- **DL-34.1** **The Board is a stage surface that hides the sidebar while it
+  holds the stage.** It covers `.stage__surface` as the document and the
+  browser do (DL-18.8), has one chip on the strip, and produces DL-18.9's
+  hidden sidebar transiently — never writing `sidebarCollapsed`, omitting the
+  strip-mounted `SidebarToggle` meanwhile, and leaving the dock unpainted as
+  the Open Board does. Leaving the Board restores whatever the user had.
+  **Amended 2026-09-04, from the eye pass:** the surface FOLDS on its own
+  width, measured with a container query rather than a viewport one — the
+  Board is the window in the app and a column inside the rail in the gallery,
+  and a viewport rule would fold at two different widths in the two. Below
+  832px of board (nav + panel + the grid's padding + one card) an open panel
+  leaves the flow and covers the grid instead of squeezing it to slivers;
+  below 472px (nav + padding + one card) the nav folds to its counts,
+  DL-11.7's shape, each row keeping an `aria-label` of label and count so a
+  hidden label still announces.
+- **DL-34.2** **A card is a pane, and it outlives its agent.** One card per
+  agent pane (the rail's own unit); a pane whose agent has left keeps its
+  card as `idle` wearing the departed agent's name until the pane closes.
+  **Amended 2026-09-04, from the eye pass:** it prints the word **`ended`**
+  in the state slot instead of `idle`. The eye pass found a departed card
+  identical to an idle one in picture AND in accessible name while offering
+  a different action — Restart against Stop — so the glance disagreed with
+  the control. `ended` is a WORD, not a sixth state: the sort, the filters
+  and the nav's counts still read `idle`, since a card the user can restart
+  is still a quiet pane and a `Ended` nav row would claim a state Deck does
+  not track.
+  Cards sort loudest-first (DL-27.3's fold), live, and the order is held
+  while a panel is open; a card's number is its rank among live cards in
+  pane-ordinal order, never its sort position. A card carries DL-21.7's
+  resting wash (amended) inside DL-1.3's inset hairline at
+  `--radius-control`.
+- **DL-34.3** **`asked` and `failed` colour the card's frame, and nothing else
+  does.** The inset hairline takes `--status-unread` or `--red`; `working`,
+  `done` and `idle` keep `--hair`. `working` is DL-27.3's `WorkspaceSpinner`
+  in the state slot (DL-1.2's fourth exception); the rail's `asked` ripple is
+  switched off inside `.agent-board` — the frame is the whole signal at the
+  size of the whole card. Green appears nowhere: DL-3.2 and the worktree
+  card's colour rule already own it.
+- **DL-34.4** **Selection is the Board's own, drawn with DL-27.22's token.**
+  The selected card — the one whose panel is open — wears `--tab-active-bg`
+  and `aria-current`; at most one. Selecting neither focuses a pane nor
+  acknowledges it; only a `sent` reply or a step to the full stage does.
+  **Amended 2026-09-04, from the eye pass:** that wash is the lightest plane a
+  card ever wears, and on it the state word fell under DL-3.5's floor in three
+  of six cells (dark `FAILED` 4.32, light `FAILED` 4.30, light `ASKED` 3.43).
+  Inside a selected card the word therefore takes a **second ink** —
+  `--board-state-failed-ink` / `--board-state-asked-ink` /
+  `--board-state-neutral-ink`, each the resting ink mixed 70% toward `--fg`,
+  which lightens on a dark theme and darkens on a light one with no branch.
+  A resting card keeps the pure hue. The wash itself did not move: lightening
+  it would have changed every card's plane to fix one word.
+- **DL-34.5** **The Board is mono, near-flat, and its hierarchy is weight,
+  case and tone.** `--board-font` over the whole subtree (DL-4.1 amended);
+  only `--type-title` / `--type-body` / `--type-meta`; 600 weight for the
+  card name and the panel title alone; `.board-label` (DL-4.3's third
+  exception) for the two nav headings and the state word; `--text-primary`
+  for names and values, `--text-muted` for the task or tail, `--text-faint`
+  for labels, the where-line, meta and the number.
+- **DL-34.6** **The panel's terminal is a snapshot of the pane's own
+  scrollback.** Plain text, colour stripped, the last rows of the real
+  buffer; no element moves, no PTY resizes, no second renderer exists.
+- **DL-34.7** **The reply box goes through the inject gate.** Text is placed;
+  Enter follows only when `submitAllowed` allows it AND the pane has reached
+  `working` once; a real question gets the text placed and not sent, and the
+  panel says so. Only a `sent` outcome acknowledges the pane.
+- **DL-34.8** **The nav is STATUS then PROJECTS, live only, totals not
+  filtered.** `Failed` appears only while some pane is `failed`; a PROJECTS
+  row is a checkout holding at least one card; counts are totals and the
+  grid's heading states the filtered result. **Each group is a real listbox
+  (2026-09-04, from the eye pass):** roving `tabindex`, ↑/↓/Home/End inside
+  the group, one Tab stop per group. Claiming the role without the keys was
+  worse than claiming nothing — it tells a screen-reader user to reach for
+  arrows that do not answer. Escape belongs to DL-34.9 and passes through.
+- **DL-34.9** **Escape closes the panel, then steps the Board back to the
+  terminal.** A Board rule, not DL-29.8's — the Board is not a modal.
+- **DL-34.10** **Stop leaves the shell and the card; Restart resumes the
+  conversation and exists only once the agent has left; Close lives in
+  `More`.** The hover column carries at most Stop-or-Restart, `Open in
+  stage` and `More`; `More` carries all four rows. **Amended 2026-09-04, from
+  the eye pass, twice.** `More` carries **every row the card's state admits**
+  — three, not four: Stop and Restart are mutually exclusive by state, and a
+  disabled fourth row would name an act the card forbids. And the hover
+  column is **out of the Tab order**: at three buttons a card it put 27 stops
+  between the grid and the panel, so the keyboard reaches the actions through
+  `More` alone, opened on the card with the context-menu key (Shift+F10),
+  with Escape returning focus to the card rather than to `<body>`. The
+  column also reserves its own track on the card's first row — an
+  `opacity: 0` overlay drew over the rank digit, which is the handle the
+  digit keys use.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-**Empty.** The only standing entry — `DL-16`'s text being cited from nine
-places in `src/` but never written — was closed on 2026-08-12 when the rule was
-transcribed from its call sites as §18 and the citations moved with it.
-`scripts/design-language.test.ts` now fails the suite when a citation names a
-number with no declared rule or section. It reads both spellings this repo
-uses — `DL-17.1` and `DL §17` / `DESIGN-LANGUAGE §17` — but deliberately not a
-bare `§17`, which cites a spec, a plan or a review far more often than it cites
-this document. Citing DL by section therefore means naming DL, or the gate does
-not see the citation.
+**One open claim, in the table below.** The only prior standing entry —
+`DL-16`'s text being cited from nine places in `src/` but never written — was
+closed on 2026-08-12 when the rule was transcribed from its call sites as §18
+and the citations moved with it. `scripts/design-language.test.ts` now fails
+the suite when a citation names a number with no declared rule or section. It
+reads both spellings this repo uses — `DL-17.1` and `DL §17` /
+`DESIGN-LANGUAGE §17` — but deliberately not a bare `§17`, which cites a spec,
+a plan or a review far more often than it cites this document. Citing DL by
+section therefore means naming DL, or the gate does not see the citation.
+
+| Claim | Intent | Status | Evidence |
+| --- | --- | --- | --- |
+| The Agent Board is a shipping surface | `building` | wired, natively walked, owner eye review owed | §34 landed 2026-09-03 with the spec; the wiring landed 2026-09-06 (17 tasks, `73cd1b1`..`69f58cf`). `npm test` 4436/1 with the one failure the DL citation gate at its nine baseline citations, both typechecks, `npm run build`, `npm run electron:build` and `generate:menu:check` green, plus a **native `electron:dev` walk** under an isolated `userData` — the chip, ⌘⇧O both ways, the sidebar at width 0 and restored (collapsed included), a card's real scrollback in the panel with no focus theft, Stop → `ENDED` → Restart, a reply landing as _placed_, the two-step Escape, and the chip surviving a relaunch. **Not walked: Restart resuming a real session id** (the probe agent has none) — [plan](plans/2026-09-04-agent-board-wiring.md) `building` |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).

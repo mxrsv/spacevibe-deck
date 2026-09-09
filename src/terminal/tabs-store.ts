@@ -49,6 +49,50 @@ export interface PaneView {
    * test or a seed fixture predates the field.
    */
   readonly focused?: boolean;
+  /**
+   * This pane's rank in the window's open order (spec §11.1) — allocated from
+   * the same `lib/open-sequence.ts` clock the tab strip orders by, the first
+   * time the tab layer lists the pane, and stable for its life. `TabView`'s own
+   * `openedAt` exists once per TAB and cannot number the panes inside one.
+   *
+   * Optional for the reason `panes` itself is: a `PaneView` built by a test or
+   * a seed fixture predates the field.
+   */
+  readonly ordinal?: number;
+  /**
+   * Epoch ms at which this pane's CURRENT agent generation began — what an
+   * uptime is measured from (spec §11.1). A pane whose agent LEAVES keeps the
+   * value (the generation has not restarted); a pane that starts a different
+   * agent takes a new one, which is the same generation boundary
+   * `agent-attention.ts` already detects.
+   */
+  readonly startedAt?: number;
+  /**
+   * The agent this pane most recently ran, kept after it leaves (spec §11.11).
+   * A Board card exists iff the pane has an `agent` or a `lastAgent`, which is
+   * what lets Stop leave a card standing with Restart on it.
+   */
+  readonly lastAgent?: PaneAgent;
+  /**
+   * The session id this pane's agent was running when it LEFT (spec §11.11).
+   * Restart resumes THAT conversation, and it cannot be read off the live
+   * pairing: `session-tail-store` drops that one at the very transition —
+   * agent → shell — after which Restart starts being offered.
+   */
+  readonly lastSessionId?: string;
+  /**
+   * Whether the pane's current state was ANNOUNCED by the agent or inferred by
+   * Deck (spec §11.8) — the trust audit's own bit, reaching one pixel: the
+   * panel's `State` row (`WORKING · inferred`).
+   *
+   * Projected straight from the attention tracker's snapshot
+   * (`agent-attention.ts:37`, `confidence: "explicit" | "inferred"`). It is NOT
+   * derivable from `attention`: that union is
+   * `"none" | "completed" | "requested" | "warning" | "error"` and carries no
+   * such distinction. Undefined while the poller has never classified the pane,
+   * because the tracker has no snapshot for it yet.
+   */
+  readonly confidence?: "explicit" | "inferred";
 }
 
 /** `TabView.panes` before the first sync — a shared empty list, not a new one. */

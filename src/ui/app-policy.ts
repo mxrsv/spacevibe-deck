@@ -8,6 +8,12 @@ interface BrowserPanelObscuredState {
   readonly usageConsentOpen: boolean;
   /** A worktree card's segment or actions menu, both placed over the stage. */
   readonly railCardMenuOpen: boolean;
+  /**
+   * The Agent Board holds the stage. A DOM surface cannot cover a native
+   * `WebContentsView`, so with the Board on the stage the browser's view must
+   * go or the Board draws underneath the page it just replaced.
+   */
+  readonly agentBoardActive: boolean;
   readonly promptsOpen: boolean;
   readonly createEntryOpen: boolean;
   readonly persistErrorVisible: boolean;
@@ -22,6 +28,7 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
     state.quickLaunchOpen ||
     state.usageConsentOpen ||
     state.railCardMenuOpen ||
+    state.agentBoardActive ||
     state.promptsOpen ||
     state.createEntryOpen ||
     state.persistErrorVisible ||
@@ -103,6 +110,41 @@ export function toggleSettingsPanel(focusActive: () => void): void {
   settingsOpen.value = true;
 }
 
+interface ZeroTabBoardState {
+  readonly liveTabCount: number;
+  readonly agentBoardOpen: boolean;
+  /** Every surface that is NOT the Board: the file tabs plus the browser chip. */
+  readonly otherSurfaces: number;
+}
+
+/**
+ * Whether the Agent Board's chip must leave the strip (spec §4.2): zero tabs =
+ * no Board. Its chord is `scope: "pane"`, so a Board left standing over an
+ * empty window could not be dismissed by the keyboard.
+ */
+export function agentBoardClosesWithLastTab(state: ZeroTabBoardState): boolean {
+  return state.liveTabCount === 0 && state.agentBoardOpen;
+}
+
+/**
+ * Whether closing that chip has to raise the start surface itself.
+ *
+ * `disposeTab`'s empty branch (tab-manager.ts, the `tabs.length === 0` arm)
+ * reads `surfaces.total()` SYNCHRONOUSLY, one frame before the renderer can
+ * react — and the Board's own chip makes that total 1. So it takes
+ * `surfaces.activate(0)`, which with no file tab and no browser IS the Board,
+ * and never reaches its own `boardOpen.value = true`. Closing the chip
+ * afterwards would leave a window with no tab, no surface and no start screen,
+ * its rail hidden because `liveRailAvailable(0)` is false.
+ *
+ * Only when the Board was the ONLY surface: with a file tab or the browser
+ * still open, `activate(0)` landed on one of those, and raising the Open board
+ * over it would cover a document the user still has open.
+ */
+export function startSurfaceFollowsBoardClose(state: ZeroTabBoardState): boolean {
+  return agentBoardClosesWithLastTab(state) && state.otherSurfaces === 0;
+}
+
 interface StripSurfaceState {
   readonly boardOpen: boolean;
   readonly settingsOpen: boolean;
@@ -112,11 +154,20 @@ interface SidebarVisibilityState {
   readonly liveTabCount: number;
   readonly savedCollapsed: boolean;
   readonly dragCollapsed: boolean | null;
+  /**
+   * The Agent Board holds the stage (DL-34.1). A SURFACE's doing, never the
+   * user's — which is why it is read here and never written to
+   * `sidebarCollapsed`: the hiding must not survive the surface, and leaving
+   * the Board has to give back whatever the user had.
+   */
+  readonly agentBoardActive: boolean;
 }
 
 interface DockVisibilityState {
   readonly boardOpen: boolean;
   readonly dockOpen: boolean;
+  /** The Agent Board holds the stage (DL-34.1) — same argument as `boardOpen`. */
+  readonly agentBoardActive: boolean;
 }
 
 /** The Agent Rail is a projection of live work, never persisted history. */
@@ -132,12 +183,16 @@ export function sidebarEffectivelyCollapsed(state: SidebarVisibilityState): bool
   if (!liveRailAvailable(state.liveTabCount)) {
     return true;
   }
+  // DL-34.1, and it outranks the drag: the column is not on screen to drag.
+  if (state.agentBoardActive) {
+    return true;
+  }
   return state.dragCollapsed ?? state.savedCollapsed;
 }
 
 /** The Open Board owns the stage, so the dock waits without losing its state. */
 export function dockVisible(state: DockVisibilityState): boolean {
-  return state.dockOpen && !state.boardOpen;
+  return state.dockOpen && !state.boardOpen && !state.agentBoardActive;
 }
 
 /**
@@ -156,7 +211,10 @@ export function dockVisible(state: DockVisibilityState): boolean {
  * gets the setting back.
  */
 export function dockPaintedOpen(state: DockPaintState): boolean {
-  if (state.boardOpen) {
+  // DL-34.1: the Agent Board leaves the dock unpainted exactly as the Open
+  // Board does — both cover the stage, and a docked column beside a covering
+  // surface is a column about a thing nobody can see.
+  if (state.boardOpen || state.agentBoardActive) {
     return false;
   }
   return state.dragCollapsed === null ? state.dockOpen : !state.dragCollapsed;
@@ -194,9 +252,16 @@ export function archivedWorkspaceResumeAvailable(inFlight: ReadonlySet<string>):
  * the board covers the stage, `dockVisible` already suppresses the column
  * without touching the setting, and offering a way to "show" a panel the board
  * is standing on top of promises something the click cannot deliver.
+ *
+ * The Agent Board needs its OWN term rather than riding `dockVisible` (DL-34.1,
+ * 2026-09-04). Suppressing the column there makes `!dockVisible(state)` true,
+ * which would turn this control ON while the Board covers the stage — and its
+ * press runs `toggle-dock`, WRITING `dockOpen` for a column nobody can see. A
+ * settings write caused by a surface state is the one thing the Board's
+ * transient hiding exists to prevent.
  */
 export function dockToggleOnStage(state: DockVisibilityState): boolean {
-  return !state.boardOpen && !dockVisible(state);
+  return !state.boardOpen && !state.agentBoardActive && !dockVisible(state);
 }
 
 /**
