@@ -31,7 +31,7 @@ import { NOOP } from "./chrome-fixtures";
  *    `navigation-section.tsx`) is the end-to-end picture; this one exists so
  *    a reviewer can look at nothing else.
  *  - `railColorRuleSpecimen`: the one value the card sheet still leaves open
- *    (`docs/specs/2026-08-25-rail-worktree-card-design.md` §13, Task 10's
+ *    (`docs/internals/agent-rail.md`, Task 10's
  *    gate) — which hue `--asr-card-busy` takes. `neutral` is the shipped
  *    default and needs no override; `magenta`/`cyan` are compared by
  *    restating that one custom property under a `[data-busy]` attribute, in

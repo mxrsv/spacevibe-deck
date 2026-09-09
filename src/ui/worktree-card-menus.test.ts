@@ -4,7 +4,7 @@ import type { MenuSubject } from "./agent-rail-card-model";
 
 /**
  * The actions menu's row set (spec
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §8, §12;
+ * `docs/internals/agent-rail.md`;
  * `openspec/changes/rail-create-consolidation` for the subject, the
  * free-standing placement and the board row).
  *

@@ -20,7 +20,7 @@ import type { RailCardPane, RailWorktreeGroup } from "./agent-rail-model";
 
 /**
  * The two popovers a closed worktree card raises (spec
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5 and §8).
+ * `docs/internals/agent-rail.md`).
  *
  * Both are anchored to a card that lives inside `.asr-rail__list` — a scroll
  * container with `overflow-x: hidden`. A surface rendered INSIDE it is clipped

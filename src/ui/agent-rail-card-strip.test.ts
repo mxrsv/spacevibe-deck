@@ -15,7 +15,7 @@ import type { RailCardPane, RailState } from "./agent-rail-model";
 
 /**
  * The closed strip's grouped fold (spec
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4, §5, §6).
+ * `docs/internals/agent-rail.md`).
  *
  * Pure only: the measuring half lives in `worktree-card-strip.tsx`'s
  * `useStripMetrics`, which hands `fitSegments` real boxes — the rule below is

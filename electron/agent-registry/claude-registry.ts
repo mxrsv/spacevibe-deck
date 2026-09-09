@@ -1,7 +1,7 @@
 /**
  * The Claude session registry — `claude agents --json`, polled from the main
  * process on its own clock (agent-signal contract layer, stage 1; spec
- * `docs/specs/2026-09-03-agent-signal-contract-layer-design.md` §4).
+ * `docs/internals/terminal.md`).
  *
  * Claude Code documents the command as printing "active sessions as a JSON
  * array": per session `cwd`, `kind`, `startedAt`, `sessionId`, and — while

@@ -21,7 +21,7 @@ import "./signal-mark-variants.css";
  *    rail's sixth word now, and needs a drawing that is neither a failure
  *    (`--red` is the CLI's own error) nor a question.
  *
- * The spec (`docs/specs/2026-09-03-agent-signal-contract-layer-design.md`
+ * The spec (`docs/internals/terminal.md`
  * stage 0) names the default — hollow for inferred — and asks for candidates
  * to be DRAWN rather than described, per the owner's standing rule that ink is
  * chosen by eye. Variant A is what ships in `04a-agent-rail.css` today; B and

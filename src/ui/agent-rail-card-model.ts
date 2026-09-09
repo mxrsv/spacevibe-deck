@@ -238,7 +238,7 @@ export function checkoutBadge(group: RailWorktreeGroup): CheckoutBadge {
 /* ─────────────────────────── the closed strip, as agent kinds ───────────────
  * Ported from the owner-approved gallery specimen
  * (`src/gallery/sections/strip-actions-model.ts`, parked with its section) per
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4/§6/§14.
+ * `docs/internals/agent-rail.md`
  *
  * `stripSegments` above is kept: it is one pane per segment, which is what a
  * segment MEANT until this change, and the rail-worktree-card gallery specimen

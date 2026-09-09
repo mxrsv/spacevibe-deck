@@ -30,7 +30,7 @@ vi.mock("../host/window-host", () => ({
 
 /**
  * `splitInWorkspace` — the seam a worktree card's `New split here` row rides
- * (spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §11.1).
+ * (`docs/internals/agent-rail.md`).
  *
  * The rule under test is CONTAINMENT: the card that raises the row groups its
  * tabs by `worktreeForPath`'s longest-prefix match, so a tab whose cwd is a

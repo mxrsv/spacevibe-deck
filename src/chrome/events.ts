@@ -40,7 +40,7 @@ export const agentQuickPickerOpen = signal(false);
 export const quickPickerWorkspace = signal<string | null>(null);
 /**
  * Whether a worktree card is showing one of its two popovers (spec
- * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5, §8).
+ * `docs/internals/agent-rail.md`).
  *
  * Both are `position: fixed` and both are placed to the RIGHT of the rail —
  * i.e. over the STAGE, which is exactly where the browser tab's

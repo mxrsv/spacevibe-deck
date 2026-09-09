@@ -17,7 +17,7 @@ import type { RailCardEntry, RailCardShell, RailWorktreeGroup } from "./agent-ra
 
 /**
  * The rail's worktree card (DL-27.23/DL-27.24, amended; design
- * `docs/specs/2026-08-25-rail-worktree-card-design.md`).
+ * `docs/internals/agent-rail.md`).
  *
  * The tab tier is gone: `agent-rail.tsx` used to render a sub-header
  * (`.asr-wt__head`) followed by one row per TAB, each optionally expanding

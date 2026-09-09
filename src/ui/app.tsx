@@ -1907,7 +1907,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const quickAgents = launcherAgents();
   /**
    * The worktree card's actions menu (spec
-   * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §8) — every row
+   * `docs/internals/agent-rail.md`) — every row
    * on a seam that already exists, so this menu adds **no new IPC**.
    *
    * Each optional callback is the DL-19.7 gate for its own row: a host that

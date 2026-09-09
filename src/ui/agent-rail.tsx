@@ -40,7 +40,7 @@ import { isTauriHost } from "../updater/migration-notice";
  * their bare rows are the way back in.
  *
  * One `WorktreeCard` per checkout (DL-27.23/DL-27.24, amended 2026-08-26 —
- * design `docs/specs/2026-08-25-rail-worktree-card-design.md`): the tab tier
+ * `docs/internals/agent-rail.md`): the tab tier
  * is gone from the rail entirely. A checkout is a boxed, pressable, expandable
  * card whose rows retain every agent PANE plus every shell-only tab, flattened
  * across whichever tabs hold them — `worktree-card.tsx` owns that render;
@@ -107,7 +107,7 @@ export interface AgentRailProps {
   onFocusPane(index: number, paneId: number): void;
   /**
    * The actions menu every worktree card raises from its strip's `+` or a
-   * right-click (spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md`
+   * right-click (`docs/internals/agent-rail.md`
    * §8). Omitted where nothing owns those seams (the gallery), in which case no
    * card carries a `+` at all (DL-19.7) — a launcher that opens nothing is
    * worse than none.

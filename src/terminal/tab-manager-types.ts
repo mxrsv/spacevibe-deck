@@ -169,7 +169,7 @@ export interface TabManager {
    * The rail card's `New split here`: split a tab that belongs to
    * `workspacePath`, materializing one first when the checkout has none. The
    * one fork the strip-actions work opened (spec
-   * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §11.1) — the
+   * `docs/internals/agent-rail.md`) — the
    * caller passes a PATH and receives a boolean, so no pane id leaves the
    * terminal layer, exactly as the rail's other path-in callbacks work.
    */

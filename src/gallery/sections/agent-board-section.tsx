@@ -12,7 +12,7 @@ import { SEED_HOME } from "../seed-data";
 import { SectionHead, Specimen } from "../specimen";
 
 /**
- * The REAL Agent Board over a fixture (spec docs/specs/2026-09-03-agent-board-design.md,
+ * The REAL Agent Board over a fixture (`docs/internals/agent-board.md`,
  * DL §34). Nothing here is drawn: the cards come out of `buildAgentBoard` and the
  * markup out of `AgentBoard`, so what the owner judges by eye is what the app will
  * render once the wiring plan binds the same component to the stores.
@@ -272,7 +272,7 @@ export function AgentBoardSection() {
     <>
       <SectionHead
         title="Agent Board"
-        blurb="The real AgentBoard over a fixture: two projects, three checkouts, nine cards through buildAgentBoard. Since DECK-43 the grid is the whole Board — no filter nav, no detail panel — and a press opens that agent's pane on the stage. Spec docs/specs/2026-09-03-agent-board-design.md, DL §34."
+        blurb="The real AgentBoard over a fixture: two projects, three checkouts, nine cards through buildAgentBoard. Since DECK-43 the grid is the whole Board — no filter nav, no detail panel — and a press opens that agent's pane on the stage. `docs/internals/agent-board.md`, DL §34."
       />
       {/* No `framed` and no `tall`: `.window` is a three-row grid, so an
           unplaced child lands on the frame row and the board is clipped to

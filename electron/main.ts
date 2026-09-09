@@ -132,7 +132,7 @@ const browserPanels = new BrowserPanels({
 });
 
 // ---------------------------------------------- Agent-signal contract layer
-// Stage 2 (spec `docs/specs/2026-09-03-agent-signal-contract-layer-design.md`):
+// Stage 2 (`docs/internals/terminal.md`):
 // a loopback endpoint the CLI hooks Deck installs post to, and one opencode
 // subscription per pane. Both deliver through the coordinator, so an event
 // reaches the window that owns the pane and no other. Created BEFORE the PTY
