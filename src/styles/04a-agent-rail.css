@@ -117,9 +117,16 @@
      already carry, and it is what makes DL-27.4's "trimmed by the layout"
      true here. */
   grid-template-columns: minmax(0, 1fr);
-  /* Four pixels keep adjacent compact rows from reading as one text block.
-     The header's own top padding adds the stronger break between projects. */
-  gap: 4px;
+  /* The BREAK between one project and the next: 10px here plus the header's
+     own 6px top padding = 16px. It was 4px + 6px = 10px until 2026-09-10,
+     against a 6px hug below — a ratio tuned in 2026-08-17 for a cluster of
+     flat compact rows, where 4px of difference was a visible paragraph break.
+     DL-27.25 then made the tier under the header a bordered CARD, and the same
+     two figures were left spacing a label off a box and a box off the next
+     label: 10 against 6 read as one distance, so the header floated between
+     two cards instead of belonging to one, and the column had no boundary the
+     eye could find without reading the folder glyph. */
+  gap: 10px;
   flex: 1;
 }
 
@@ -134,9 +141,11 @@
      and BOTH have to declare the floor or the row simply overflows one level
      further down. */
   grid-template-columns: minmax(0, 1fr);
-  /* The gap between two tabs of one project. Same 4px as the stream so rows
-     keep one rhythm regardless of how many siblings they have. */
-  gap: 4px;
+  /* One CARD to the next inside a project. It rose from 4px to 6px with the
+     break above (2026-09-10): once the header is pulled onto its first card,
+     4px between two checkouts of one repository is the tightest pair left in
+     the column, and two cards that close up read as one card with a seam. */
+  gap: 6px;
 }
 
 /* One project control above its tabs. It folds the whole group rather than
@@ -184,6 +193,14 @@
   grid-template-columns: minmax(0, 1fr) 17px;
   gap: 7px;
   padding: 6px 4px 2px 7px;
+  /* The HUG: this header belongs to the card directly under it, so it sits
+     2px off it — the 6px padding-bottom + `.asr-cluster`'s gap, pulled back by
+     this margin (2026-09-10). Spent as a negative margin rather than out of
+     that gap because the same gap also separates two CHECKOUTS of one project:
+     collapsing it would fuse a repository's cards into one block while fixing
+     the header. The padding is untouched, so the header's own hit area does
+     not change with the rhythm. */
+  margin-bottom: -6px;
 }
 
 .asr-cluster__toggle {
@@ -468,6 +485,15 @@
   overflow: hidden;
   padding-right: 4px;
   padding-left: 4px;
+}
+
+/* The 2026-09-10 rhythm is a rule about a HEADER and the card it heads, and a
+   collapsed rail prints no header — so the break it buys would be blank column
+   between marks. Both gaps stay at the figure the expanded rail used before
+   that pass. */
+[data-sidebar-collapsed="true"] .asr-stream,
+[data-sidebar-collapsed="true"] .asr-cluster {
+  gap: 4px;
 }
 
 [data-sidebar-collapsed="true"] .asr-cluster__head,

@@ -2368,6 +2368,24 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   the scoped 13px `--type-project` role, exactly the requested +2px. It stays
   below the 14px title rung and keeps `--text-muted`; the project becomes
   easier to locate without taking the agents' primary tone.
+  **The header's vertical rhythm is re-tuned 2026-09-10 (owner, chosen from
+  three drawn candidates): the BREAK is 16px and the HUG is 2px.** The figures
+  above set both, and the pair had drifted apart in meaning: the break between
+  one project and the next was `.asr-stream`'s 4px gap plus this header's 6px
+  top padding = 10px, and the hug between the header and the card it heads was
+  its 2px bottom padding plus `.asr-cluster`'s 4px gap = 6px. 10 against 6 was
+  a visible paragraph break while a cluster was a run of FLAT rows; DL-27.25
+  then made the tier under the header a bordered card, so the same two numbers
+  were spacing a label off a box and a box off the next label, where they read
+  as one distance — the header floated between two cards instead of belonging
+  to one, and the column's boundaries had to be found by reading the folder
+  glyph rather than seen. The stream gap rises to 10px (break 16), the cluster
+  gap to 6px so two CHECKOUTS of one repository do not close up into one block,
+  and the hug is spent as a −6px `margin-bottom` on the header rather than out
+  of that cluster gap, which carries both jobs. Padding is untouched, so no hit
+  area moves; the collapsed rail keeps the old 4px on both gaps, since it
+  prints no header and the break would be blank column
+  ([rail spacing](../src/styles/04a-agent-rail.css)).
 - **DL-27.10** **A project is printed once, its tabs are all under it, and the
   list never reorders itself.** Added 2026-08-16, replacing the pinned
   `Needs you` block and recency ordering with three things that hold together:
