@@ -345,12 +345,20 @@ describe("the English-only header", () => {
 });
 
 describe("the public install action", () => {
-  it("renders the selected quick-install prompt instead of legacy download buttons", () => {
+  // The install buttons came back above the quick-install block (owner,
+  // 2026-09-10): the curl card alone left the hero with nothing to press. The
+  // copy command stays the recommended path, so both surfaces render.
+  it("renders both platform install buttons above the quick-install prompt", () => {
     const root = renderHero();
 
-    expect(root.querySelector("[data-quick-install]")).not.toBeNull();
+    const quickInstall = root.querySelector("[data-quick-install]");
+    const actions = root.querySelector(".a-actions");
+    expect(quickInstall).not.toBeNull();
     expect(root.querySelectorAll("[data-install-platform]")).toHaveLength(2);
-    expect(root.querySelector(".a-actions")).toBeNull();
-    expect(root.querySelector(".a-quiet-cta")).toBeNull();
+    expect(actions).not.toBeNull();
+    expect(actions?.querySelectorAll(".a-quiet-cta")).toHaveLength(2);
+    expect(
+      actions?.compareDocumentPosition(quickInstall) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
