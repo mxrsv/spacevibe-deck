@@ -7,6 +7,17 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+## 1.1.1
+
+This update fixes a freeze that could lock Deck right after it opened.
+
+- **No more freeze on restore.** With several agents spread across more than one
+  checkout, Deck could stop responding a few seconds after launch and had to be
+  force-quit. The rail now settles on its first layout pass.
+
+- **Clearer project breaks in the rail.** More space between projects, and each
+  header sits closer to the card it names.
+
 ## 1.1.0
 
 This update brings Agent Board, makes starting new work more deliberate,
