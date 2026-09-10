@@ -7,6 +7,14 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Deck types the command you chose, and nothing else.** Agent reporting is now
+  off out of the box for every agent, so a pane opens with exactly the command
+  in your launch profile — no hook settings file, session id, notification
+  option or reporting port added to the line. The rail falls back to reading
+  status from the terminal and labels it as inferred. Turn reporting back on per
+  agent under Settings → Agents; anyone who already set that switch keeps their
+  choice.
+
 ## 1.1.1
 
 This update fixes a freeze that could lock Deck right after it opened.

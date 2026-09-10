@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import type { HookEvent } from "../lib/agent-signal-map";
+import type { SignalAdapters } from "../lib/launch-augment";
 import { tabViews } from "./tabs-store";
 import { paneTails } from "./session-tail-store";
 import { settings } from "../settings/settings-store";
@@ -48,6 +49,18 @@ beforeEach(() => {
   settings.value = DEFAULT_SETTINGS;
   paneTails.value = new Map();
 });
+
+/**
+ * Every adapter ships OFF — a pane opens with the command the user chose. The
+ * cases below are about what an adapter does once the user switches it on.
+ */
+function signalsOn(...agents: readonly (keyof SignalAdapters)[]): void {
+  const on = Object.fromEntries(agents.map((agent) => [agent, true]));
+  settings.value = {
+    ...settings.value,
+    agentSignalAdapters: { ...settings.value.agentSignalAdapters, ...on },
+  };
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -103,6 +116,7 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
   });
 
   it("restarts the confirmed Claude session with hooks when no transcript tail was read", async () => {
+    signalsOn("claude");
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
@@ -128,6 +142,7 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
   });
 
   it("forgets a previous session when a new same-name agent runs without a confirmed id", async () => {
+    signalsOn("claude");
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
@@ -156,6 +171,7 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
   });
 
   it("reattaches an opencode port on Restart", async () => {
+    signalsOn("opencode");
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "opencode", "agent", "opencode")],
     ]);
@@ -178,7 +194,39 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
     }
   });
 
+  // The shipped defaults, for every agent that HAS an adapter: the pane types
+  // the command the user chose and nothing else, and main is not asked for a
+  // port it would then have to reserve.
+  for (const [agent, launchCommand] of [
+    ["claude", "claude --dangerously-skip-permissions"],
+    ["codex", "codex --full-auto"],
+    ["opencode", "opencode"],
+  ] as const) {
+    it(`types the user's ${agent} command unchanged with the shipped defaults`, async () => {
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", agent, "agent", agent)],
+      ]);
+      const { tm, pty, opencodeAttach } = harness(infoByPane);
+      await tm.init();
+      await tm.materialize({
+        layout: null,
+        cwds: ["/repo"],
+        workspacePath: "/repo",
+        agent,
+        launchCommand,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      pty.emitOutput(1, "$ ");
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(pty.writes.find((write) => write.id === 1)?.data).toBe(`${launchCommand}\r`);
+      expect(opencodeAttach).not.toHaveBeenCalled();
+      tm.dispose();
+    });
+  }
+
   it("types the settings file and a minted session id after the user's claude command, and journals the user's", async () => {
+    signalsOn("claude");
     const infoByPane = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
@@ -215,6 +263,7 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
   });
 
   it("asks main for a port before typing opencode, and appends it", async () => {
+    signalsOn("opencode");
     const infoByPane = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "opencode", "agent", "opencode")],
     ]);
@@ -239,10 +288,7 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
     const infoByPane = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "codex", "agent", "codex")],
     ]);
-    settings.value = {
-      ...DEFAULT_SETTINGS,
-      agentSignalAdapters: { claude: false, codex: true, opencode: true },
-    };
+    signalsOn("codex");
     const { tm, pty } = harness(infoByPane);
     await tm.init();
     await tm.materialize({

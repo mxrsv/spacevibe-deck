@@ -135,10 +135,36 @@ export interface Settings {
    * Which per-pane signal adapters a launch is augmented with (agent-signal
    * contract layer, stage 2; spec §5, §10.4): Claude's hooks file and minted
    * session id, Codex's always-ring notification flag, opencode's pinned
-   * server port. ON by default — a sidebar whose truth depends on the user
-   * having run a setup command cannot claim trust (spec §3.1) — and switched
-   * per agent under Settings → Agents; off, that agent is inferred and drawn
-   * so.
+   * server port. Switched per agent under Settings → Agents; off, that half of
+   * the row is inferred and drawn so.
+   *
+   * EVERY adapter is OFF by default (owner decision, 2026-09-10). A pane that
+   * opens with flags the user did not choose reads as Deck editing the command
+   * rather than running it, and Deck is a terminal: the line is the product.
+   * The rule is the same for all three rather than argued per agent, because
+   * "Deck types what you typed" is only true if it has no exceptions.
+   *
+   * Not a claim about the field. Peer tools split both ways: ccmanager appends
+   * `--teammate-mode in-process` to every `claude` session and still reads
+   * state by parsing the terminal, while tmux-claude-session-manager injects
+   * nothing and reads `claude agents --json`. Tools whose user never sees a
+   * command line (Conductor, Vibe Kanban, AgentAPI) pay nothing to inject. The
+   * default here is Deck's own choice about ITS surface, not the industry's.
+   *
+   * What it costs, stated honestly rather than minimised:
+   * - claude — loses `StopFailure`, the ONLY source of `error` that is the
+   *   CLI's own word, so a turn that died on an API error can read as
+   *   completed. Loses `PermissionRequest`'s early mark and `Stop`'s identified
+   *   sentence. The registry poll survives, but it is a poll: identity exists
+   *   after a matching snapshot, not before, and two fresh misses withdraw it.
+   * - codex — keeps its own `notification_condition` default; loses only the
+   *   guarantee that the BEL also rings for a focused pane.
+   * - opencode — the steepest. No port, no SSE, so no server-confirmed state
+   *   AND no contract session id, which is what `live-session-state.ts` needs
+   *   to focus an existing pane instead of offering Resume.
+   *
+   * A pane still reads OSC 9;4, OSC 9/777 and BEL, and transcript tails still
+   * come off disk for all three, so "off" is degraded, not blind.
    */
   agentSignalAdapters: SignalAdapters;
   /**
@@ -233,7 +259,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultLaunchProfiles: {},
   agentModels: {},
   agentRuntimeDefaults: {},
-  agentSignalAdapters: { claude: true, codex: true, opencode: true },
+  agentSignalAdapters: { claude: false, codex: false, opencode: false },
   quickLaunchPromptExpanded: true,
   promptTemplates: [],
   browserHomeUrl: "http://localhost:3000",
@@ -486,9 +512,10 @@ function validateAgentRuntimeDefaults(raw: unknown): Readonly<Record<string, Age
 }
 
 /**
- * Each adapter is on unless the stored value says `false` for it: an absent
+ * Each adapter is off unless the stored value says `true` for it: an absent
  * key, a settings file from before the field, or a non-boolean all mean the
- * default, which is on (spec §10.4).
+ * default, which is off. A stored boolean always wins, so a user who switched
+ * an agent's signals on keeps them.
  */
 function validateSignalAdapters(raw: unknown): SignalAdapters {
   const defaults = DEFAULT_SETTINGS.agentSignalAdapters;

@@ -510,23 +510,27 @@ describe("agentRuntimeDefaults", () => {
 });
 
 describe("agentSignalAdapters (agent-signal contract layer, stage 2)", () => {
-  it("is on for every adapter by default, including for a file that predates the field", () => {
+  it("ships every adapter off, including for a file that predates the field", () => {
     expect(validateSettings({}).agentSignalAdapters).toEqual({
-      claude: true,
-      codex: true,
-      opencode: true,
+      claude: false,
+      codex: false,
+      opencode: false,
     });
   });
 
-  it("keeps an explicit off per agent and ignores anything that is not a boolean", () => {
+  it("keeps an explicit on per agent and ignores anything that is not a boolean", () => {
     expect(
-      validateSettings({ agentSignalAdapters: { claude: false, codex: "no", gemini: false } })
+      validateSettings({ agentSignalAdapters: { claude: true, codex: "yes", gemini: true } })
+        .agentSignalAdapters,
+    ).toEqual({ claude: true, codex: false, opencode: false });
+    expect(
+      validateSettings({ agentSignalAdapters: { codex: true, opencode: true } })
         .agentSignalAdapters,
     ).toEqual({ claude: false, codex: true, opencode: true });
     expect(validateSettings({ agentSignalAdapters: [] }).agentSignalAdapters).toEqual({
-      claude: true,
-      codex: true,
-      opencode: true,
+      claude: false,
+      codex: false,
+      opencode: false,
     });
   });
 });
