@@ -62,15 +62,84 @@ const HOVER_CLOSE_MS = 140;
  * shapes, so the first card to render warms the cache for all of them, and a
  * shape nobody has drawn yet falls back to the spec's own Chrome measurements
  * — which run ~7px conservative, folding one segment early rather than late.
+ *
+ * **A width is learned once and never re-learned (DECK-62).** Two cards can
+ * read the same shape one pixel apart — measured 2026-09-10 in the shipped
+ * 1.1.0 build: `codex|1|still` was 47px on the card where it sat behind a
+ * 65.773px `×5` segment and 46px on the cards where it sat first. While the
+ * cache was overwritable, each card's layout effect re-learned its own number
+ * and re-rendered, inside one synchronous Preact `process()` call that has no
+ * update-depth guard, and the renderer never came back. First writer wins:
+ * the number of bumps is then bounded by the number of distinct shapes, and
+ * the worst case is a 1px estimate, well inside the fallback's own margin.
+ *
+ * The cache is dropped when `devicePixelRatio` changes — a move to another
+ * display re-snaps every box — the one event that makes a learned width wrong
+ * rather than a pixel off.
  */
 const measuredSegments = new Map<string, number>();
+let measuredAtRatio = 0;
 
-function fitKey(agent: string, merged: boolean, busy: boolean): string {
-  return `${agent}|${merged ? "n" : "1"}|${busy ? "busy" : "still"}`;
+/**
+ * Defence in depth against the same loop: every state bump the measuring
+ * effect makes in one task is counted, and past this many the strips stop
+ * learning for the rest of the session and say so once. Legitimate bumps stay
+ * far below it — one per distinct shape, plus one per strip for its own
+ * metrics — so the guard only engages if the once-only rule above is broken
+ * again. The counter resets on a macrotask, not a microtask, because the loop
+ * it guards against never yields to either.
+ */
+const MAX_STRIP_BUMPS_PER_TASK = 200;
+let stripBumps = 0;
+let stripBumpReset: number | null = null;
+let stripLearningHalted = false;
+
+function noteStripBump(): boolean {
+  if (stripLearningHalted) {
+    return false;
+  }
+  stripBumps += 1;
+  if (stripBumpReset === null) {
+    stripBumpReset = window.setTimeout(() => {
+      stripBumps = 0;
+      stripBumpReset = null;
+    }, 0);
+  }
+  if (stripBumps > MAX_STRIP_BUMPS_PER_TASK) {
+    stripLearningHalted = true;
+    console.error(
+      `Deck: the rail strip re-measured ${stripBumps} times in one task; segment widths stay at their fallbacks for this session`,
+    );
+    return false;
+  }
+  return true;
+}
+
+/** Test seam: the cache and the guard are module-level, so a test file must
+ *  reset them between cases. */
+export function resetStripMeasurementsForTests(): void {
+  measuredSegments.clear();
+  measuredAtRatio = 0;
+  stripBumps = 0;
+  if (stripBumpReset !== null) {
+    window.clearTimeout(stripBumpReset);
+    stripBumpReset = null;
+  }
+  stripLearningHalted = false;
+}
+
+/**
+ * The shape that decides a segment's width. A merged segment prints `×N`, so
+ * its width moves with the count's DIGITS — `×5` and `×12` are different
+ * shapes and must not share one learned width (DECK-62's second trigger).
+ */
+export function fitKey(agent: string, count: number, busy: boolean): string {
+  const shape = count > 1 ? `n${String(count).length}` : "1";
+  return `${agent}|${shape}|${busy ? "busy" : "still"}`;
 }
 
 function estimateWidth(group: StripGroup): number {
-  const key = fitKey(group.agent, group.panes.length > 1, group.state === "working");
+  const key = fitKey(group.agent, group.panes.length, group.state === "working");
   return (
     measuredSegments.get(key) ??
     SEGMENT_WIDTH_FALLBACK + (group.panes.length > 1 ? SEGMENT_COUNT_WIDTH : 0)
@@ -138,8 +207,12 @@ function stripBudget(strip: HTMLElement): number {
  * checkout name, and the reason a `100%` cap let a wide strip hang 22px past
  * its card where `.asr-rail__list`'s `overflow-x: hidden` cut it silently.
  *
- * It converges: a segment's width depends on its own shape, never on how many
- * of them are shown, so re-folding cannot change a width it already read.
+ * It terminates because nothing here is ever re-learned: a shape's width is
+ * written to the shared cache once (see `measuredSegments`), and a strip's own
+ * metrics come from its own boxes, which one DOM cannot report two ways. The
+ * earlier claim that it "converges because a width depends only on its own
+ * shape" was false by one pixel across cards, and one pixel was enough to
+ * hang the renderer.
  */
 function useStripMetrics(): {
   readonly ref: { current: HTMLDivElement | null };
@@ -160,19 +233,22 @@ function useStripMetrics(): {
     if (strip === null) {
       return;
     }
+    const ratio = window.devicePixelRatio || 1;
+    if (ratio !== measuredAtRatio) {
+      measuredSegments.clear();
+      measuredAtRatio = ratio;
+    }
     let learned = false;
     for (const node of strip.querySelectorAll<HTMLElement>("[data-fit-key]")) {
       const key = node.dataset.fitKey;
-      if (
-        key !== undefined &&
-        node.offsetWidth > 0 &&
-        measuredSegments.get(key) !== node.offsetWidth
-      ) {
+      // Once only: a second card may read this shape a pixel apart, and
+      // letting it overwrite the first reading is the loop DECK-62 describes.
+      if (key !== undefined && node.offsetWidth > 0 && !measuredSegments.has(key)) {
         measuredSegments.set(key, node.offsetWidth);
         learned = true;
       }
     }
-    if (learned) {
+    if (learned && noteStripBump()) {
       setMeasuredAt((value) => value + 1);
     }
     const addBox = strip.querySelector<HTMLElement>('[data-fit-role="add"]');
@@ -183,7 +259,10 @@ function useStripMetrics(): {
       add: addBox !== null && addBox.offsetWidth > 0 ? addBox.offsetWidth : metrics.add,
       tail: tailBox !== null && tailBox.offsetWidth > 0 ? tailBox.offsetWidth : metrics.tail,
     };
-    if (next.budget !== metrics.budget || next.add !== metrics.add || next.tail !== metrics.tail) {
+    if (
+      (next.budget !== metrics.budget || next.add !== metrics.add || next.tail !== metrics.tail) &&
+      noteStripBump()
+    ) {
       setMetrics(next);
     }
   });
@@ -353,7 +432,11 @@ export function CardStrip(props: CardStripProps) {
               key={segment.agent}
               type="button"
               class="asr-card__seg"
-              data-fit-key={fitKey(segment.agent, merged, segment.state === "working")}
+              data-fit-key={fitKey(
+                segment.agent,
+                segment.panes.length,
+                segment.state === "working",
+              )}
               data-origin={hovered?.key === segment.agent}
               // DL-23.10 applied: no native `title` on a control the keyboard
               // reaches. The state word lives in the accessible name (DL-27.2).
