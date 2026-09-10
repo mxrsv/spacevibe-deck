@@ -328,7 +328,7 @@ describe("the English-only header", () => {
     const root = renderHero();
     const discord = root.querySelector(".a-topbar__discord");
 
-    expect(discord?.getAttribute("href")).toBe("https://discord.gg/Ve7xaVJ9J");
+    expect(discord?.getAttribute("href")).toBe("https://discord.gg/eWWuzaweU");
     expect(discord?.textContent).toContain(messages.en.navDiscord);
     expect(root.querySelector("[data-locale]")).toBeNull();
     expect(root.querySelector(".a-topbar__lang")).toBeNull();

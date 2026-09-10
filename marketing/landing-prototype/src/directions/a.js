@@ -44,7 +44,7 @@ export const HERO_SCENES = [
 ];
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
-const DISCORD_URL = "https://discord.gg/Ve7xaVJ9J";
+const DISCORD_URL = "https://discord.gg/eWWuzaweU";
 
 /** Anchor on the feature panel stack (tour/index.js renders the target). */
 export const FEATURES_ID = "features";
