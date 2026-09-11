@@ -99,7 +99,7 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 | `--chrome-1` / `--chrome-2`                                                  | background steps for bars / panels       |
 | `--input-bg`                                                                 | recessed input surfaces                  |
 | `--hair` / `--hair-strong`                                                   | 1px hairlines inside a surface           |
-| `--seam-recessed` / `--seam-divider` / `--seam-raised`                       | the boundaries BETWEEN surfaces (DL-2.3) |
+| `--seam-recessed` / `--seam-divider` / `--seam-split` / `--seam-raised`      | the boundaries BETWEEN surfaces (DL-2.3) |
 | `--text-primary` / `--text-muted` / `--text-faint`                           | text hierarchy                           |
 | `--ui-font`                                                                  | the one chrome typeface (DL-4.1)         |
 | `--type-title` … `--type-micro`                                              | the four standard text sizes (DL-4.4)    |
@@ -138,6 +138,12 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   layouts left `--seam-recessed` and joined them (DL-18.6), because two
   boundaries in one window drawn in two different greys made the quieter one
   read as an artefact rather than as something somebody chose.
+  **Amended 2026-09-11, owner:** the pane split alone left `--seam-divider`
+  for `--seam-split` — 20% of `--tone`, `--hair-strong`'s weight — and went
+  from 1px to 2px. At 12% and one pixel a grid of panes still read too faint,
+  while the strip's bottom edge did not, so the split is now the one line
+  inside the work area drawn heavier than the rest. Its hover and drag accent
+  is unchanged.
   `--seam-raised` frames a surface that floats above chrome (popovers,
   dialogs).
   **The step must stay louder than the seam that marks it.** Before this rule a
@@ -1351,7 +1357,8 @@ window's identity and its actions at the same time.
   work area begins in the same way. The owner asked for it after reading a
   strip whose chips looked like they were floating in the terminal.
   **Amended 2026-08-17: that hairline is `--seam-divider`, not
-  `--seam-recessed`** — the same line a pane split draws. The owner asked for
+  `--seam-recessed`** — the same line a pane split drew until DL-2.3's
+  2026-09-11 amendment made the split heavier. The owner asked for
   the match directly: the strip's bottom edge and a split are both lines the
   eye meets INSIDE the work area, and drawing them in two different greys made
   the quieter one read as a rendering artefact rather than as a boundary

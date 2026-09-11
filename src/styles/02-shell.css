@@ -166,8 +166,8 @@
 }
 
 /* DL-18.9, amended 2026-08-19: at rest the target paints nothing, but hovering
-   it — or dragging it — lights the seam it sits on, the same 1px accent line a
-   pane split divider has always drawn (`.split__divider:hover`). A drag target
+   it — or dragging it — lights the seam it sits on in the accent, as a pane
+   split divider has always done (`.split__divider:hover`). A drag target
    that gives no feedback until the column moves is a target the user finds by
    guessing; this is the app's existing answer to that, applied to the other
    two seams rather than a second idiom invented for them.

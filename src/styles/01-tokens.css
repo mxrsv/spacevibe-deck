@@ -57,6 +57,7 @@
      inside one surface rather than the boundary between two. */
   --seam-recessed: color-mix(in srgb, var(--bg) 98%, var(--tone));
   --seam-divider: color-mix(in srgb, var(--tone) 12%, transparent);
+  --seam-split: color-mix(in srgb, var(--tone) 20%, transparent);
   /* Measured from --sidebar-bg like the rest of the ladder: from --bg it would
      land BELOW --chrome-2 now that the ladder starts at the sidebar, framing a
      popover in a line darker than its own body. */

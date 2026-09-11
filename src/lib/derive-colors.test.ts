@@ -204,6 +204,12 @@ describe("deriveChromeColors", () => {
       expect(c.seamDivider).toBe("rgba(255, 255, 255, 0.12)");
       expect(deriveChromeColors("#ffffff", "#333333").seamDivider).toBe("rgba(0, 0, 0, 0.12)");
     });
+
+    it("draws the pane split one step louder than the strip's edge", () => {
+      const c = deriveChromeColors("#16161e", "#c0caf5");
+      expect(c.seamSplit).toBe("rgba(255, 255, 255, 0.2)");
+      expect(deriveChromeColors("#ffffff", "#333333").seamSplit).toBe("rgba(0, 0, 0, 0.2)");
+    });
   });
 
   describe("the interaction-state pair (DL-21)", () => {

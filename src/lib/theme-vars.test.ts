@@ -75,6 +75,7 @@ describe("applyThemeVars", () => {
       // that proves tokens follow the theme.
       "--seam-recessed",
       "--seam-divider",
+      "--seam-split",
       "--seam-raised",
       "--text-primary",
       "--text-muted",

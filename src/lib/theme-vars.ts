@@ -57,6 +57,7 @@ export function applyThemeVars(rootStyle: CSSStyleDeclaration, theme: ITheme): v
   rootStyle.setProperty("--hair-strong", chrome.hairStrong);
   rootStyle.setProperty("--seam-recessed", chrome.seamRecessed);
   rootStyle.setProperty("--seam-divider", chrome.seamDivider);
+  rootStyle.setProperty("--seam-split", chrome.seamSplit);
   rootStyle.setProperty("--seam-raised", chrome.seamRaised);
   rootStyle.setProperty("--text-primary", chrome.textPrimary);
   rootStyle.setProperty("--text-muted", chrome.textMuted);

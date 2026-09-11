@@ -109,7 +109,7 @@
 
 /* DL-19.4, amended 2026-08-19: the target still paints nothing at rest, and
    hovering or dragging it lights the panel's own hairline in the accent — the
-   same 1px line `.split__divider:hover` draws, and the same one the sidebar's
+   same answer `.split__divider:hover` gives, and the same one the sidebar's
    seam now draws. 4px in, which is where `border-left` sits once the target
    starts 4px outside the panel: the existing hairline lights up rather than
    gaining a second line beside it. */

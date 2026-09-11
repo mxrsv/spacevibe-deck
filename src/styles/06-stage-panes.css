@@ -51,12 +51,11 @@
   background: transparent;
   /* DL-18.6 amended 2026-08-16, then again 2026-08-17: the strip closes with a
      hairline so the chips read as chrome rather than as something floating in
-     the work area — but on `--seam-divider` now, the SAME line the pane splits
-     draw, not `--seam-recessed`. The owner asked for the match directly: the
-     strip's bottom edge and a split are both lines the eye meets inside the
-     work area, and drawing them in two different greys made the quieter one
-     look like a rendering artefact. `.tabbar` took the same change so the two
-     layouts still close the same way. */
+     the work area — but on `--seam-divider` now, not `--seam-recessed`. The
+     owner asked for the match with the pane splits directly, then on
+     2026-09-11 asked for the splits alone to go heavier (`--seam-split`,
+     DL-2.3); this edge kept the lighter line. `.tabbar` took the same change
+     so the two layouts still close the same way. */
   border-bottom: 1px solid var(--seam-divider);
   min-width: 0;
 }
@@ -366,12 +365,14 @@
   transition: none;
 }
 
-/* A 1px hairline between panes — no gap. The grab zone is widened past the
-   visible line with a pseudo-element so a 1px line stays easy to drag. */
+/* A 2px seam between panes — no gap. `--seam-split`, not `--seam-divider`:
+   the owner asked for a heavier split on 2026-09-11 (DL-2.3), and the strip's
+   bottom edge keeps the lighter line. The grab zone is widened past the
+   visible line with a pseudo-element so a thin line stays easy to drag. */
 .split__divider {
   position: relative;
-  flex: 0 0 1px;
-  background: var(--seam-divider);
+  flex: 0 0 2px;
+  background: var(--seam-split);
   transition: background var(--duration) var(--ease);
 }
 
@@ -565,7 +566,7 @@
 
 .pane__anchor {
   position: absolute;
-  /* Clears the divider above: `.split__divider::after` widens the 1px seam's
+  /* Clears the divider above: `.split__divider::after` widens the 2px seam's
      grab zone 3px into this pane, and the pill used to start at y=-1px once
      its hidden `translateY(-6px)` was applied — sitting right on the grab
      zone the pointer was aiming for. */

@@ -61,6 +61,8 @@ export interface ChromeColors {
    */
   readonly seamRecessed: string;
   readonly seamDivider: string;
+  /** The pane split alone — louder than `seamDivider` since 2026-09-11 (DL-2.3). */
+  readonly seamSplit: string;
   readonly seamRaised: string;
   readonly textPrimary: string;
   readonly textMuted: string;
@@ -347,6 +349,10 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     // the boundary and 3% left a terminal grid reading as one undivided sheet.
     // 12% is the same weight `hair` carries, one ladder step below `hairStrong`.
     seamDivider: alpha(tone, 0.12),
+    // The pane split left `seamDivider` on 2026-09-11 at the owner's request:
+    // at 12% and 1px a grid of panes still read too faint, while the strip's
+    // bottom edge was fine. 20% is `hairStrong`'s weight — one ladder step up.
+    seamSplit: alpha(tone, 0.2),
     textPrimary,
     textMuted: ensureContrast(mixHex(textPrimary, bg, 0.28), surfaces, TEXT_MUTED_FLOOR, tone),
     // 4.5, not 3: this token styles 10.5–11px text — config row descriptions,

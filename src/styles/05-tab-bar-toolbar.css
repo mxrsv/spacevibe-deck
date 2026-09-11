@@ -9,9 +9,9 @@
   height: var(--frame-h);
   padding: 0 8px 0 0;
   background: var(--chrome-1);
-  /* `--seam-divider`, matching the pane splits and `.stage__strip` (DL-18.6
-     amended 2026-08-17, owner). Both layouts close their strip with one line,
-     and it is now the same line the work area uses everywhere else. */
+  /* `--seam-divider`, matching `.stage__strip` (DL-18.6 amended 2026-08-17,
+     owner). Both layouts close their strip with one line; the pane splits
+     went heavier on 2026-09-11 (`--seam-split`) and this edge did not. */
   border-bottom: 1px solid var(--seam-divider);
   min-width: 0;
 }

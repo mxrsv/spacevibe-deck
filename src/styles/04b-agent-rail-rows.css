@@ -368,7 +368,7 @@ button.attn-mark {
 
 /* Widen the 14px button to a 20px circle so a mark whose visible core is
    only 8px stays easy to click — the same widen-past-the-paint trick the
-   1px split divider uses. */
+   2px split divider uses. */
 button.attn-mark::after {
   content: "";
   position: absolute;

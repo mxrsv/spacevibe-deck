@@ -1182,6 +1182,7 @@
 
   --seam-recessed: color-mix(in srgb, var(--fg) 12%, transparent);
   --seam-divider: color-mix(in srgb, var(--fg) 12%, transparent);
+  --seam-split: var(--seam-divider);
   --seam-raised: color-mix(in srgb, var(--fg) 20%, transparent);
 }
 
@@ -1201,6 +1202,7 @@
 
   --seam-recessed: var(--gx-seam-low);
   --seam-divider: var(--gx-seam-low);
+  --seam-split: var(--gx-seam-low);
   --seam-raised: var(--gx-seam-low);
 }
 
