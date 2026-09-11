@@ -257,19 +257,24 @@
    hero keeps `--plate-image` and no panel takes it.
 
    That was affordable while there were five panels and five plates to spend.
-   There are SIX panels now and still five plates, so one painting is read
-   twice: `cloudstudy` paints panel 1 and panel 6, at crops far enough apart
-   to read as two views rather than one picture repeated. Nothing else
-   repeats, and no panel repeats the hero. Cutting the old `grid` panel is
-   what freed `plateau` for panel 5. Rejected: a seventh painting — a 30-60 kB
-   asset that does not exist, and which picture goes where is an owner's
-   choice, not a stylesheet's.
+   There are SEVEN panels now and still five plates, so two paintings are read
+   twice: `cloudstudy` paints the rail and catalog panels, and `clouds` the
+   Board and restore panels, each pair at crops far enough apart to read as two
+   views rather than one picture repeated. No panel repeats the hero. Cutting
+   the old `grid` panel is what freed `plateau` for the usage panel. Rejected:
+   more paintings — 30-60 kB assets that do not exist, and which picture goes
+   where is an owner's choice, not a stylesheet's.
 
-   The order below is the panel order, so the six rules read against the
+   The order below is the panel order, so the seven rules read against the
    plan's own table top to bottom. */
 .panel[data-scene="rail"] .panel__stage-art {
   background-image: var(--plate-cloudstudy);
   background-position: 42% 46%;
+}
+
+.panel[data-scene="board"] .panel__stage-art {
+  background-image: var(--plate-clouds);
+  background-position: 50% 82%;
 }
 
 .panel[data-scene="menu"] .panel__stage-art {

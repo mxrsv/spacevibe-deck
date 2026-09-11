@@ -135,7 +135,7 @@ describe("the product-stage export barrel", () => {
 });
 
 describe("the landing's appwin shim", () => {
-  it("names all ten renderers", () => {
+  it("names all eleven renderers", () => {
     expect(Object.keys(shim).sort()).toEqual([
       "BRAND_ICON_SRC",
       "STAGE_ICONS",
@@ -145,6 +145,7 @@ describe("the landing's appwin shim", () => {
       "renderStageRail",
       "renderStageSidebar",
       "renderStageStatus",
+      "renderStageStatusMark",
       "renderStageStrip",
       "renderStageTitlebar",
     ]);

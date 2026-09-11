@@ -18,6 +18,7 @@ export {
   renderStageRail,
   renderStageSidebar,
   renderStageStatus,
+  renderStageStatusMark,
   renderStageStrip,
   renderStageTitlebar,
 } from "../../stage/appwin.js";

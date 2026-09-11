@@ -10,6 +10,7 @@
  * scene module directly.
  */
 
+import { board } from "./scenes/agent-board.js";
 import { catalog } from "./scenes/catalog.js";
 import { menu } from "./scenes/new-agent-menu.js";
 import { rail } from "./scenes/rail.js";
@@ -17,4 +18,4 @@ import { restore } from "./scenes/restore.js";
 import { surfaces } from "./scenes/surfaces.js";
 import { usage } from "./scenes/usage.js";
 
-export const SCENES = { rail, menu, restore, surfaces, usage, catalog };
+export const SCENES = { rail, board, menu, restore, surfaces, usage, catalog };

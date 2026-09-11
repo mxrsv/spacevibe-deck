@@ -107,7 +107,7 @@ function hero({ mount = false, reduceMotion = true } = {}) {
   return root;
 }
 
-/** The tour's six panels, rendered. `mount` is what needs an observer; this does not. */
+/** The tour's panels, rendered. `mount` is what needs an observer; this does not. */
 function tour() {
   const root = document.createElement("div");
   root.innerHTML = renderTour(messages.en).markup;
@@ -219,7 +219,7 @@ describe("the panel registry and its copy", () => {
       .map((panel) => panel.querySelector("h2")?.dataset.copy)
       .map((copyKey) => copyKey?.replace(/Title$/, ""));
 
-    expect(keys).toHaveLength(6);
+    expect(keys).toHaveLength(7);
 
     for (const key of keys) {
       for (const locale of ["en", "vi"]) {
@@ -548,9 +548,9 @@ describe("AGENT_MARKS mirrors the app's catalog", () => {
 /* ------------------------------------------------------------------ */
 
 describe("the scene registry", () => {
-  const SCENE_KEYS = ["rail", "menu", "restore", "surfaces", "usage", "catalog"];
+  const SCENE_KEYS = ["rail", "board", "menu", "restore", "surfaces", "usage", "catalog"];
 
-  it("holds exactly the six panel scenes, under the keys the panels name", () => {
+  it("holds exactly the seven panel scenes, under the keys the panels name", () => {
     // `panel-scenes.js` is pure shorthand — `export const SCENES = { rail, … }`
     // — so renaming a scene module's export silently breaks the registry.
     expect(Object.keys(SCENES)).toEqual(SCENE_KEYS);

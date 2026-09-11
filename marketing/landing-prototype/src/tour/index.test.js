@@ -24,6 +24,7 @@ import { renderTour, updateTourLocale } from "./index.js";
 /** §3.6, in order. The table is the contract; this is it transcribed. */
 const PANEL_TABLE = [
   { key: "panelRail", scene: "rail", shape: "side", flip: true },
+  { key: "panelBoard", scene: "board", shape: "wide", flip: false },
   { key: "panelWorktree", scene: "menu", shape: "side", flip: false },
   { key: "panelRestore", scene: "restore", shape: "wide", flip: false },
   { key: "panelSurfaces", scene: "surfaces", shape: "wide", flip: false },
@@ -112,10 +113,10 @@ afterEach(() => {
 });
 
 describe("the panel stack", () => {
-  it("renders the six panels of the plan's table, in its order", () => {
+  it("renders the seven panels of the plan's table, in its order", () => {
     const rendered = panels(renderIntoRoot());
 
-    expect(rendered).toHaveLength(6);
+    expect(rendered).toHaveLength(7);
     expect(rendered.map((panel) => panel.dataset.scene)).toEqual(
       PANEL_TABLE.map((entry) => entry.scene),
     );
@@ -141,12 +142,12 @@ describe("the panel stack", () => {
     expect(flipped.filter(Boolean)).toHaveLength(2);
   });
 
-  it("numbers the panels 01 through 06", () => {
+  it("numbers the panels 01 through 07", () => {
     const numbers = panels(renderIntoRoot()).map(
       (panel) => panel.querySelector(".panel__num").textContent,
     );
 
-    expect(numbers).toEqual(["01", "02", "03", "04", "05", "06"]);
+    expect(numbers).toEqual(["01", "02", "03", "04", "05", "06", "07"]);
   });
 
   it("prints a real sentence for every panel's copy keys", () => {
@@ -170,7 +171,7 @@ describe("the panel stack", () => {
   it("draws one window mock per panel and no board or pane grid", () => {
     const root = renderIntoRoot();
 
-    expect(root.querySelectorAll(".panel__stage .a-appwin")).toHaveLength(6);
+    expect(root.querySelectorAll(".panel__stage .a-appwin")).toHaveLength(7);
     // The cut chain's own classes. Nothing renders them any more, so a hit
     // here means the stranded renderers came back.
     for (const dead of [

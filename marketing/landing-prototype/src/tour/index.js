@@ -166,10 +166,11 @@ function mountProofTerm(section, reduceMotion) {
  * Nothing the 16-second reel already tells survives here. Its beats are
  * `Open board → three agents → ⌘⇧A → ⌘E`, and the last panel that still redrew
  * the pane grid was handing the reader a still of what they had just watched
- * move. What replaced it is six things the page never said at all: what the
- * rail reads off a running agent, opening one straight into a worktree, what
- * survives a quit, the surfaces that are not terminals, what the agents cost,
- * and the catalog of commands Deck will type.
+ * move. What replaced it is seven things the page never said at all: what the
+ * rail reads off a running agent, every agent on one board (1.1's headline),
+ * opening one straight into a worktree, what survives a quit, the surfaces
+ * that are not terminals, what the agents cost, and the catalog of commands
+ * Deck will type.
  *
  * `shape` picks the panel's layout — `side` stands the mock beside the copy,
  * `wide` puts it under a full-width sentence — and `flip` moves the art to the
@@ -178,6 +179,7 @@ function mountProofTerm(section, reduceMotion) {
  */
 const PANELS = [
   { key: "panelRail", scene: "rail", shape: "side", flip: true },
+  { key: "panelBoard", scene: "board", shape: "wide" },
   { key: "panelWorktree", scene: "menu", shape: "side" },
   { key: "panelRestore", scene: "restore", shape: "wide" },
   { key: "panelSurfaces", scene: "surfaces", shape: "wide" },

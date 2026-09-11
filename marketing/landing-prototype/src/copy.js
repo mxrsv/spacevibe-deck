@@ -33,6 +33,9 @@ export const messages = {
     panelRailTitle: "Read the room without opening a single pane.",
     panelRailBody:
       "Every rail row carries the last thing that agent actually said, read straight from its own session log. A dot says the rest — red failed, yellow waiting on you, a live ring while it works, quiet gray once it is done. Claude Code, Codex and OpenCode today.",
+    panelBoardTitle: "Every agent on one board.",
+    panelBoardBody:
+      "⌘⇧O opens the Agent Board: one card per running agent, across every project and worktree in the window — its state, the last thing it said, how long it has been up. The loudest cards come first, and pressing one takes you straight to that agent's pane.",
     panelWorktreeTitle: "Open an agent straight into a branch.",
     panelWorktreeBody:
       "⌘T lists every worktree in the project beside the branch it is checked out on. Pick one, pick an agent, and the pane spawns in that directory — no cd, no wrong tree.",
@@ -119,6 +122,9 @@ export const messages = {
     panelRailTitle: "Biết cả đội đang làm gì mà không cần mở pane nào.",
     panelRailBody:
       "Mỗi dòng trong rail mang đúng câu agent đó vừa nói, đọc thẳng từ session log của nó. Phần còn lại gói trong một chấm — đỏ là lỗi, vàng là đang đợi bạn, vòng sáng là đang chạy, xám nhạt là đã xong. Hiện có cho Claude Code, Codex và OpenCode.",
+    panelBoardTitle: "Mọi agent trên cùng một bảng.",
+    panelBoardBody:
+      "⌘⇧O mở Agent Board: mỗi agent đang chạy là một thẻ, gom từ mọi dự án và worktree trong cửa sổ — trạng thái, câu nó vừa nói, đã chạy được bao lâu. Thẻ cần bạn nhất đứng đầu, bấm vào một thẻ là vào thẳng pane của agent đó.",
     panelWorktreeTitle: "Mở agent thẳng vào một branch.",
     panelWorktreeBody:
       "⌘T liệt kê mọi worktree trong dự án kèm branch nó đang đứng. Chọn một cái, chọn agent, pane mọc lên ngay trong thư mục đó — không cd, không nhầm cây.",

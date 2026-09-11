@@ -425,6 +425,170 @@
   height: 1.3cqw;
 }
 
+/* ---------- board: every agent on one grid (⌘⇧O) ---------- */
+
+/* `19-agent-board.css` at build/v1.1.1, one app pixel to 0.1cqw. One face
+   over the whole surface — the Board's mono (DL-34.5) — and hierarchy from
+   weight, case and tone rather than from size. */
+.scene-board {
+  flex-direction: column;
+  gap: 1.2cqw;
+  padding: 1.2cqw 1.6cqw;
+  overflow: hidden;
+  font-family: var(--a-font-mono);
+}
+
+.scene-board__heading {
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-board__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(24cqw, 1fr));
+  gap: 1cqw;
+  align-content: start;
+}
+
+/* Four groups placed by area, spaced by unequal gaps so the eye gets a
+   hierarchy rather than a stack: 8px binds the name to its checkout, 11px
+   separates the groups. */
+.scene-board__card {
+  display: grid;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "status num"
+    "id     id"
+    "where  where"
+    "what   what"
+    "meta   meta";
+  column-gap: 0.8cqw;
+  padding: 0.9cqw 1.2cqw;
+  border-radius: 1cqw;
+  background: var(--sg-tab-rest);
+  box-shadow: inset 0 0 0 1px var(--sg-hairline);
+  opacity: 0;
+}
+
+:is(.panel, .a-appwin__stage).is-revealed .scene-board__card {
+  animation-name: scene-rise;
+  animation-duration: 460ms;
+  animation-timing-function: ease;
+  animation-delay: var(--scene-delay);
+  animation-fill-mode: both;
+}
+
+/* The two states that want the reader frame their whole card (DL-34.3). */
+.scene-board__card[data-state="asked"] {
+  box-shadow: inset 0 0 0 1px var(--sg-yellow);
+}
+
+.scene-board__card[data-state="failed"] {
+  box-shadow: inset 0 0 0 1px var(--sg-red);
+}
+
+.scene-board__status,
+.scene-board__id {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6cqw;
+}
+
+.scene-board__status {
+  grid-area: status;
+}
+
+.scene-board__state {
+  flex: 1 1 auto;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scene-board__card[data-state="asked"] .scene-board__state {
+  color: var(--sg-yellow);
+}
+
+.scene-board__card[data-state="failed"] .scene-board__state {
+  color: var(--sg-red);
+}
+
+.scene-board__num {
+  grid-area: num;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-board__id {
+  grid-area: id;
+  margin-top: 0.8cqw;
+}
+
+.scene-board__glyph {
+  width: 1.5cqw;
+  height: 1.5cqw;
+  flex: none;
+  object-fit: contain;
+}
+
+.scene-board__name {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--sg-fg);
+  font-size: max(1.25cqw, 9px);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Indented to the name's own left edge — 15px glyph + 6px gap — so the two
+   read as one block. */
+.scene-board__where {
+  grid-area: where;
+  margin-top: 0.1cqw;
+  padding-left: 2.1cqw;
+}
+
+.scene-board__where,
+.scene-board__meta {
+  overflow: hidden;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Two lines, and a floor of two, so every card in the grid stands the same
+   height whatever its agent said. */
+.scene-board__what {
+  display: -webkit-box;
+  overflow: hidden;
+  grid-area: what;
+  min-height: 2.9em;
+  margin-top: 1.1cqw;
+  color: var(--sg-fg);
+  font-size: max(1.25cqw, 9px);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.scene-board__prefix {
+  color: var(--sg-fg-faint);
+}
+
+.scene-board__meta {
+  grid-area: meta;
+  margin-top: 1.1cqw;
+}
+
 /* ---------- surfaces: the strip carries more than terminals ---------- */
 
 /* Panel 4's strip is `renderStageStrip`'s, not a shape drawn twice — the five
@@ -1103,6 +1267,30 @@
     font-size: 7px;
   }
 
+  /* Board: one column, and the two loudest cards — the failed one and the
+     one waiting on the reader. Six cards in one 170px column would be a list,
+     and the two frames that demand attention are the Board's whole argument. */
+  .scene-board__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scene-board__card:nth-child(n + 3) {
+    display: none;
+  }
+
+  .scene-board__name,
+  .scene-board__what {
+    font-size: 8px;
+  }
+
+  .scene-board__heading,
+  .scene-board__state,
+  .scene-board__num,
+  .scene-board__where,
+  .scene-board__meta {
+    font-size: 7px;
+  }
+
   /* Surfaces: the file tree goes. The beat is a printed path opening the
      DOCUMENT at its line, and the editor is the half that says so — at 254.8px
      the tree would take 40% of the width to show four truncated names. */
@@ -1236,6 +1424,7 @@
   :is(.panel, .a-appwin__stage).is-revealed .scene-restore__line,
   :is(.panel, .a-appwin__stage).is-revealed .scene-rail__pane,
   :is(.panel, .a-appwin__stage).is-revealed .scene-menu__pop,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-board__card,
   :is(.panel, .a-appwin__stage).is-revealed .scene-catalog__head,
   :is(.panel, .a-appwin__stage).is-revealed .scene-catalog__agent {
     animation: none;
