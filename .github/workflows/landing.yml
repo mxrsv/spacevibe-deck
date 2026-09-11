@@ -1,0 +1,43 @@
+name: Landing
+
+# The landing (`marketing/**`) is a browser page deployed by Vercel on push; it
+# needs neither the Tauri toolchain nor the Windows runner `ci.yml` spends on
+# the app, which is why `ci.yml` ignores these paths. `npm run lint` is not
+# repeated here: `.prettierignore` and `.oxlintrc.json` both exclude
+# `marketing/**`, so it checks nothing of the landing.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "marketing/**"
+      - ".github/workflows/landing.yml"
+  pull_request:
+    paths:
+      - "marketing/**"
+      - ".github/workflows/landing.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  landing-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npx vitest run marketing
+
+      - name: Build landing
+        run: npm run build:landing

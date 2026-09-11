@@ -1,9 +1,18 @@
 name: CI
 
+# A change that touches only the landing (`marketing/**`) has nothing for these
+# jobs to check — the app suite, the Tauri toolchain and the Windows runner —
+# and runs `landing.yml` instead. A change touching both runs both.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "marketing/**"
+      - ".github/workflows/landing.yml"
   pull_request:
+    paths-ignore:
+      - "marketing/**"
+      - ".github/workflows/landing.yml"
   workflow_dispatch:
 
 permissions:
