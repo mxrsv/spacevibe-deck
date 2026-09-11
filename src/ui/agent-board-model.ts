@@ -102,7 +102,7 @@ export interface AgentBoardView {
  * `idle` by construction, so before this a departed card and an idle one were
  * identical in picture AND in accessible name while offering different actions
  * — Restart against Stop. The word is the tell; nothing else moves. It is NOT
- * a sixth state: filtering, sorting and the nav's counts still read `idle`,
+ * a sixth state: filtering and the nav's counts still read `idle`,
  * because a card the user can restart is still a quiet pane.
  */
 export const DEPARTED_WORD = "ended";
