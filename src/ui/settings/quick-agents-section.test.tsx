@@ -39,16 +39,20 @@ function click(label: string) {
 
 describe("QuickAgentsSection", () => {
   it("limits the automatic selection to five and allows swapping the sixth in", () => {
+    // Five built-ins ship, so an installed declared agent is the sixth.
+    const sixth = { id: "custom:aider", label: "Aider", command: "aider" };
+    settings.value = { ...DEFAULT_SETTINGS, customAgents: [sixth] };
+    detectedAgents.value = [...detectedAgents.value, { name: "aider", path: "/bin/aider" }];
     mount();
     expect(host.querySelectorAll('[aria-checked="true"]')).toHaveLength(5);
-    const sixth = BUILTIN_AGENTS[5];
     expect(button(sixth.label).disabled).toBe(true);
     click(BUILTIN_AGENTS[0].label);
     expect(button(sixth.label).disabled).toBe(false);
     click(sixth.label);
-    expect(settings.value.quickAgentIds).toEqual(
-      BUILTIN_AGENTS.slice(1, 6).map((agent) => agent.id),
-    );
+    expect(settings.value.quickAgentIds).toEqual([
+      ...BUILTIN_AGENTS.slice(1, 5).map((agent) => agent.id),
+      sixth.id,
+    ]);
     expect(button(BUILTIN_AGENTS[0].label).disabled).toBe(true);
   });
 
