@@ -3369,13 +3369,16 @@ Numbered 34 because §33 was the previous highest rule.
   in the state slot instead of `idle`. The eye pass found a departed card
   identical to an idle one in picture AND in accessible name while offering
   a different action — Restart against Stop — so the glance disagreed with
-  the control. `ended` is a WORD, not a sixth state: the sort, the filters
-  and the nav's counts still read `idle`, since a card the user can restart
+  the control. `ended` is a WORD, not a sixth state: the filters and the
+  nav's counts still read `idle`, since a card the user can restart
   is still a quiet pane and a `Ended` nav row would claim a state Deck does
   not track.
-  Cards sort loudest-first (DL-27.3's fold), live, and the order is held
-  while a panel is open; a card's number is its rank among live cards in
-  pane-ordinal order, never its sort position. A card carries DL-21.7's
+  Cards stay in rank order — a card's number is its rank among live cards in
+  pane-ordinal order, and its position is that number. **Amended 2026-09-11
+  (DECK-72):** cards no longer sort loudest-first. With the panel gone
+  (DECK-43) nothing held the order any more, so every state change re-sorted
+  the grid and moved cards under the pointer; state now shows only on the
+  card itself. A card carries DL-21.7's
   resting wash (amended) inside DL-1.3's inset hairline at
   `--radius-control`.
   **Four groups:** status, identity, what-the-agent-said and footer.
