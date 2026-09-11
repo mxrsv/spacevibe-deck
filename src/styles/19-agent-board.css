@@ -253,6 +253,20 @@
   align-self: center;
 }
 
+/* The worktree sits in a pill, the same surface as the rail card's checkout
+   badge (04c). `justify-self: end` shrinks the pill to its text; `max-width`
+   and `border-box` keep a long name ellipsizing inside the column rather than
+   pushing past it (no global box-sizing reset — Known traps). */
+.board-card > .board-card__checkout {
+  box-sizing: border-box;
+  justify-self: end;
+  max-width: 100%;
+  padding: 1px 5px;
+  border-radius: var(--radius-flat);
+  background: color-mix(in srgb, var(--tone) 8%, transparent);
+  color: var(--text-muted);
+}
+
 .board-card__num {
   grid-area: num;
   align-self: center;
