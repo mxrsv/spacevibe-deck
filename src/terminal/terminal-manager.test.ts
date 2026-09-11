@@ -25,6 +25,12 @@ import {
  * over output, and `clearSelection()` removes it, so `activeHasSelection()`
  * is observed through the same state the manager mutates rather than a spy
  * that cannot answer differently after the clear.
+ *
+ * `rendererLog`, when given, is the shared ORDERED log of renderer-affecting
+ * calls as `"<id>:<call>"`. Order is the assertion that matters here, not
+ * counts: suspend has to land before `mount`, and resume before the `fit` that
+ * repaints — getting either backwards still passes a counting test while
+ * leaving the pane on the DOM renderer for good.
  */
 function fakePane(
   id: number,
@@ -32,6 +38,7 @@ function fakePane(
   emitFocusEvent = true,
   fitCounts?: Map<number, number>,
   selections?: Set<number>,
+  rendererLog?: string[],
 ): Pane {
   const element = document.createElement("div");
   // Everything written to the pane, so `serializeScrollback` answers something.
@@ -42,7 +49,15 @@ function fakePane(
     id,
     element,
     search: {} as Pane["search"],
-    mount() {},
+    mount() {
+      rendererLog?.push(`${id}:mount`);
+    },
+    suspendRenderer() {
+      rendererLog?.push(`${id}:suspend`);
+    },
+    resumeRenderer() {
+      rendererLog?.push(`${id}:resume`);
+    },
     write(data) {
       buffer += data;
     },
@@ -61,6 +76,7 @@ function fakePane(
     },
     fit() {
       fitCounts?.set(id, (fitCounts.get(id) ?? 0) + 1);
+      rendererLog?.push(`${id}:fit`);
     },
     clear() {},
     copySelection() {},
@@ -108,6 +124,7 @@ function setup(emitFocusEvent = true): {
   fitCounts: Map<number, number>;
   panesById: Map<number, Pane>;
   selections: Set<number>;
+  rendererLog: string[];
 } {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -116,9 +133,10 @@ function setup(emitFocusEvent = true): {
   const fitCounts = new Map<number, number>();
   const panesById = new Map<number, Pane>();
   const selections = new Set<number>();
+  const rendererLog: string[] = [];
   const createPane: CreatePaneFn = (id, _settings, events) => {
     eventsById.set(id, events);
-    const pane = fakePane(id, events, emitFocusEvent, fitCounts, selections);
+    const pane = fakePane(id, events, emitFocusEvent, fitCounts, selections, rendererLog);
     panesById.set(id, pane);
     return pane;
   };
@@ -142,6 +160,7 @@ function setup(emitFocusEvent = true): {
     fitCounts,
     panesById,
     selections,
+    rendererLog,
   };
 }
 
@@ -396,6 +415,83 @@ describe("createTerminalManager show", () => {
     }
     expect(onPaneFocus).not.toHaveBeenCalled();
     expect(tm.activePaneId()).toBe(activeBefore);
+  });
+});
+
+/**
+ * A manager is born hidden — `addTab` sets `display: none` before it ever runs
+ * `initFresh`/`initFromLayout` — so a GPU context must be handed out only from
+ * `show()`, and only in that order. Every assertion here is about ORDER: a
+ * suspend that lands after `mount()` still built the context it was meant to
+ * prevent, and a resume that lands after `fit()` builds the renderer against
+ * geometry `fit()` is about to change, allocating a surface set twice.
+ */
+describe("createTerminalManager renderer suspension", () => {
+  it("suspends each pane before mounting it while the container is hidden", async () => {
+    const { tm, rendererLog } = setup();
+
+    await tm.initFresh();
+
+    for (const id of tm.paneIds()) {
+      expect(rendererLog.indexOf(`${id}:suspend`)).toBeGreaterThanOrEqual(0);
+      expect(rendererLog.indexOf(`${id}:suspend`)).toBeLessThan(rendererLog.indexOf(`${id}:mount`));
+    }
+  });
+
+  it("show() resumes each pane before fitting it", async () => {
+    const { tm, rendererLog } = setup();
+    await tm.initFresh();
+    await tm.splitActive("row");
+    rendererLog.length = 0;
+
+    tm.show();
+
+    for (const id of tm.paneIds()) {
+      expect(rendererLog.indexOf(`${id}:resume`)).toBeGreaterThanOrEqual(0);
+      expect(rendererLog.indexOf(`${id}:resume`)).toBeLessThan(rendererLog.indexOf(`${id}:fit`));
+    }
+  });
+
+  it("hide() suspends every pane", async () => {
+    const { tm, rendererLog } = setup();
+    await tm.initFresh();
+    await tm.splitActive("row");
+    tm.show();
+    rendererLog.length = 0;
+
+    tm.hide();
+
+    expect(rendererLog).toEqual(tm.paneIds().map((id) => `${id}:suspend`));
+  });
+
+  it("does not suspend a pane split into an already visible tab", async () => {
+    const { tm, rendererLog } = setup();
+    await tm.initFresh();
+    tm.show();
+    const before = new Set(tm.paneIds());
+    rendererLog.length = 0;
+
+    await tm.splitActive("row");
+
+    const added = tm.paneIds().filter((id) => !before.has(id));
+    expect(added).toHaveLength(1);
+    expect(rendererLog).not.toContain(`${added[0]}:suspend`);
+    expect(rendererLog).toContain(`${added[0]}:mount`);
+  });
+
+  it("show() on an already visible tab still resumes, so surface close is idempotent", async () => {
+    const { tm, rendererLog } = setup();
+    await tm.initFresh();
+    tm.show();
+    rendererLog.length = 0;
+
+    // `selectTab` takes this path when a file or browser surface closes over
+    // the tab that is already active.
+    tm.show();
+
+    for (const id of tm.paneIds()) {
+      expect(rendererLog).toContain(`${id}:resume`);
+    }
   });
 });
 

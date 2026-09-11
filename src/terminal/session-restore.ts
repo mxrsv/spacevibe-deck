@@ -243,12 +243,17 @@ function noteResumedPanes(
 }
 
 /** Materialize every live tab sequentially. A failed materialize (thrown or
- *  returning false) skips that tab and continues — only successes count. */
+ *  returning false) skips that tab and continues — only successes count.
+ *
+ *  `select` is passed straight through per tab. Boot restore sends `false`
+ *  because it selects the saved tab once afterwards; the rail's resume leaves
+ *  it default, since there landing on the tab it just rebuilt IS the point. */
 async function materializeAll(
   manager: RestoreDeps["manager"],
   tabs: readonly LiveTab[],
   refs: ReadonlyMap<string, ResumeRef>,
   customAgents: readonly CustomAgent[],
+  select: boolean,
 ): Promise<number> {
   let restored = 0;
   for (const [tabIndex, tab] of tabs.entries()) {
@@ -264,6 +269,7 @@ async function materializeAll(
         // answers a boolean, and the id it allocates is TabManager's.
         panePrompts: tab.panes.map((pane) => pane.taskPrompt),
         chrome: materializeChromeFrom(tab.source.name, tab.source.dotColor),
+        select,
         ...(tab.source.workspacePath !== null ? { workspacePath: tab.source.workspacePath } : {}),
       });
       if (ok) {
@@ -292,6 +298,7 @@ async function restoreTabs(
   deps: Pick<RestoreDeps, "manager" | "dirsExist" | "lookup" | "customAgents">,
   entries: readonly DatedTab[],
   extraLivenessPaths: readonly string[] = [],
+  select = true,
 ): Promise<{
   readonly restored: number;
   readonly alive: ReadonlyMap<string, boolean>;
@@ -300,7 +307,7 @@ async function restoreTabs(
   const alive = await checkLiveness(deps.dirsExist, paths);
   const live = applyLiveness(entries, alive);
   const refs = await resolveRefs(deps.lookup, live);
-  const restored = await materializeAll(deps.manager, live, refs, deps.customAgents());
+  const restored = await materializeAll(deps.manager, live, refs, deps.customAgents(), select);
   return { restored, alive };
 }
 
@@ -383,7 +390,10 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
 
     const mainRecord = records.get(mainLabel) ?? null;
     const fileWorkspaces = mainRecord?.files.map((surface) => surface.workspacePath) ?? [];
-    const result = await restoreTabs(deps, ordered, fileWorkspaces);
+    // `select: false`: the saved tab is chosen once below. Selecting each tab
+    // as it lands would build and immediately tear down a WebGL renderer per
+    // restored tab, for a choice this loop overwrites anyway (DECK-64).
+    const result = await restoreTabs(deps, ordered, fileWorkspaces, false);
     restored = result.restored;
 
     // Clear secondary records as soon as their tabs are folded in, BEFORE

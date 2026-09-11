@@ -78,8 +78,31 @@ Ids are process-local integers from 1, never reused.
   overlay that a structural rebuild drops first, and hit-testing goes through the engine so
   no consumer queries `.pane-slot` itself.
 - **Pane** ([`pane.ts`](../../src/terminal/pane.ts)): xterm with fit, search, serialize,
-  unicode-graphemes and WebGL addons. WebGL is attempted once at mount; failure or context
-  loss disposes the addon and leaves the DOM renderer, never restarting the pane. `flush()`
+  unicode-graphemes and WebGL addons. WebGL is scoped to the tab on screen: a pane mounted
+  into a hidden tab never opens a context, [`hide()`](../../src/terminal/terminal-manager.ts)
+  releases the ones it has, and `show()` builds them back before it fits. `display: none`
+  frees none of this on its own — a WebGL drawing buffer belongs to the GL context, not the
+  compositor, so it survives at full pane size.
+
+  Cost is paid at ACTIVATION, not at first paint: `WebglRenderer`'s constructor runs
+  `_initializeWebGLState()` → `handleCharSizeChanged()`, which sizes the canvas to the whole
+  pane and acquires an atlas, outside `RenderService`'s IntersectionObserver pause gate — the
+  pause only defers repainting and glyph upload. And each pane carries **two** pane-sized
+  canvases: the WebGL one plus `LinkRenderLayer`'s 2D underline canvas. So loading the addon
+  on a pane the user cannot see costs its full surface budget immediately, which is why the
+  gate belongs at mount and not at first render.
+
+  One measured 8-hour window with all eight tabs visited held **745 MB across 72 pane-sized
+  surfaces in 15 distinct geometries** — more sizes than there were panes, and several wider
+  than the window then was, so historical geometry from resizes and zoom toggles is retained
+  too. Disposal removes both canvases, but it does not call `WEBGL_lose_context`, so release
+  is collection-timed rather than immediate: treat reclamation as expected, not guaranteed.
+  The initial `visible = false` in
+  [`terminal-manager.ts`](../../src/terminal/terminal-manager.ts) is only correct because
+  `addTab` sets `display: none` before it runs `initFresh`/`initFromLayout`; a path that
+  showed a tab before initializing it would hand contexts back to hidden panes. Activation
+  failure or a lost context still drops to the DOM renderer, now until the next `show()`
+  rather than for the life of the pane. `flush()`
   waits for xterm's write drain so a transfer serializes after every byte landed. Paste is
   bracketed and `\n` becomes `\r`, the only route that lands a multi-line body in an agent
   TUI's composer as one block.

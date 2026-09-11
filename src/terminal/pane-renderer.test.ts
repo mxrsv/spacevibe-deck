@@ -196,3 +196,83 @@ describe("createPane OpenCode glyph rendering", () => {
     expect(webgl.instances[0].disposed).toBe(1);
   });
 });
+
+/**
+ * A WebGL drawing buffer belongs to the GL context, not to the compositor, so
+ * hiding a tab with `display: none` frees none of it. These cover the two ways
+ * a pane must end up WITHOUT a context — restored straight into a hidden tab,
+ * and hidden after being seen — and the resume that must build exactly one
+ * back, never two: the assignment in `activateWebglRenderer` overwrites, so a
+ * second one would strand the first with nothing left holding its reference.
+ */
+describe("createPane renderer suspension", () => {
+  it("never opens a context when suspended before mount", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.suspendRenderer();
+    pane.mount();
+    expect(webgl.instances).toHaveLength(0);
+  });
+
+  it("releases the live context on suspend", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.suspendRenderer();
+    expect(webgl.instances[0].disposed).toBe(1);
+  });
+
+  it("suspending twice disposes once", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.suspendRenderer();
+    pane.suspendRenderer();
+    expect(webgl.instances).toHaveLength(1);
+    expect(webgl.instances[0].disposed).toBe(1);
+  });
+
+  it("resume builds exactly one fresh context", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.suspendRenderer();
+    pane.resumeRenderer();
+    expect(webgl.instances).toHaveLength(2);
+    expect(webgl.instances[1].activatedAfterOpen).toBe(true);
+    expect(webgl.instances[1].disposed).toBe(0);
+  });
+
+  it("resuming twice does not strand a second context", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.suspendRenderer();
+    pane.resumeRenderer();
+    pane.resumeRenderer();
+    expect(webgl.instances).toHaveLength(2);
+  });
+
+  it("resume on an unmounted pane is a no-op, and mount still activates", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.resumeRenderer();
+    expect(webgl.instances).toHaveLength(0);
+    pane.mount();
+    expect(webgl.instances).toHaveLength(1);
+  });
+
+  it("resume recovers a pane that lost its context", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    webgl.instances[0].emitContextLoss();
+    // Before suspension existed there was no path back: a pane that lost its
+    // context stayed on the DOM renderer until it was closed.
+    pane.resumeRenderer();
+    expect(webgl.instances).toHaveLength(2);
+    expect(webgl.instances[1].disposed).toBe(0);
+  });
+
+  it("dispose after suspend does not double-dispose", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.suspendRenderer();
+    pane.dispose();
+    expect(webgl.instances[0].disposed).toBe(1);
+  });
+});

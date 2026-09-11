@@ -1148,8 +1148,12 @@ export function createTabManager(
     const pollDeferred = deferWindowsStartupPoll(paneIds);
     // By key, not by "last": a concurrent materialize may have pushed after
     // this one, and selecting its tab would put the user in a pane they did
-    // not ask for.
-    selectTab(tabs.indexOf(entry));
+    // not ask for. Boot restore opts out (`select: false`) and picks the saved
+    // tab once at the end — see the field's own note for why that is worth an
+    // option rather than always selecting.
+    if (intent.select !== false) {
+      selectTab(tabs.indexOf(entry));
+    }
     if (!pollDeferred) {
       void poller.poll();
     }

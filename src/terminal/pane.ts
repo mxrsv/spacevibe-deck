@@ -46,6 +46,35 @@ export interface Pane {
   readonly search: SearchAddon;
   /** Call after the element is in the DOM — opens xterm and observes resize. */
   mount(): void;
+  /**
+   * Release the WebGL renderer and stay on xterm's DOM renderer until
+   * `resumeRenderer`. Safe before `mount`, and that is the important case: a
+   * pane materialized into a hidden tab must never build a context it would
+   * immediately have to give back.
+   *
+   * A hidden tab is `display: none`, which frees nothing here — a WebGL
+   * drawing buffer belongs to the GL context, not to the compositor, so it
+   * survives at full pane size for as long as the addon lives.
+   * Worse, the cost lands at ACTIVATION, not at first paint: `WebglRenderer`'s
+   * constructor sizes both of its pane-sized canvases — the WebGL one and
+   * `LinkRenderLayer`'s 2D underline canvas — outside the render pause. So
+   * loading the addon on a pane the user cannot see buys nothing and pays
+   * everything. One measured 8-hour window held 745 MB across 72 pane-sized
+   * surfaces.
+   */
+  suspendRenderer(): void;
+  /**
+   * Re-activate the WebGL renderer. Call while the pane is on screen at its
+   * real size: `WebglRenderer`'s constructor sizes both of its canvases from
+   * the terminal's current dimensions, so activating against stale geometry
+   * allocates a full surface set that the following `fit()` then has to
+   * replace. Activation can also throw, and the catch in
+   * `activateWebglRenderer` drops the pane to the DOM renderer until the next
+   * resume — silently, since nothing fails, it only gets slower.
+   *
+   * Also the way back from a lost context, which before this had none.
+   */
+  resumeRenderer(): void;
   write(data: string): void;
   /**
    * Resolves once xterm's parser has consumed everything written so far.
@@ -303,6 +332,9 @@ export function createPane(
   });
   let opened = false;
   let webglAddon: WebglAddon | undefined;
+  // Authoritative over `webglAddon`, and settable before `mount()` — that is
+  // what keeps a pane restored into a hidden tab from ever opening a context.
+  let rendererSuspended = false;
 
   function retireWebglAddon(addon: WebglAddon): boolean {
     if (webglAddon !== addon) {
@@ -314,6 +346,13 @@ export function createPane(
   }
 
   function activateWebglRenderer(): void {
+    // All three guards are load-bearing on the resume path: `opened` because
+    // activation needs the element `term.open()` builds, and `webglAddon`
+    // because the assignment below overwrites without disposing — a second
+    // activate would strand the first context with no reference to release it.
+    if (!opened || rendererSuspended || webglAddon !== undefined) {
+      return;
+    }
     let addon: WebglAddon | undefined;
     try {
       addon = new WebglAddon();
@@ -333,6 +372,20 @@ export function createPane(
     }
   }
 
+  function suspendRenderer(): void {
+    rendererSuspended = true;
+    if (webglAddon !== undefined) {
+      retireWebglAddon(webglAddon);
+    }
+  }
+
+  function resumeRenderer(): void {
+    rendererSuspended = false;
+    // No-op before `mount()` and on an already-active pane; the guards in
+    // `activateWebglRenderer` own both cases.
+    activateWebglRenderer();
+  }
+
   function mount(): void {
     if (!opened) {
       term.open(termEl);
@@ -342,7 +395,8 @@ export function createPane(
       observer.observe(termEl);
       opened = true;
       // Last, and only now: WebGL activation needs the element created by
-      // `open()`. Failure leaves xterm's DOM renderer active for this pane.
+      // `open()`. Failure leaves xterm's DOM renderer active for this pane, as
+      // does a `suspendRenderer()` that landed before this mount.
       activateWebglRenderer();
     }
     fit();
@@ -450,6 +504,8 @@ export function createPane(
     element,
     search: searchAddon,
     mount,
+    suspendRenderer,
+    resumeRenderer,
     write,
     flush,
     serializeScrollback,

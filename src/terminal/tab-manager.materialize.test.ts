@@ -465,6 +465,31 @@ describe("createTabManager materialize (through the createPane seam)", () => {
 
     tm.dispose();
   });
+
+  /**
+   * The other half of the test above. `select: false` is what boot restore
+   * sends so it can pick the saved tab once instead of once per tab; a tab
+   * reaching the stage builds its panes' WebGL renderers, and each of those
+   * sizes two pane-sized canvases up front (DECK-64).
+   */
+  it("select: false builds the tabs without putting any of them on the stage", async () => {
+    const { tm } = setup({});
+
+    await tm.materialize({ layout: null, cwds: ["/a"], select: false });
+    await tm.materialize({ layout: null, cwds: ["/b"], select: false });
+    await tm.materialize({ layout: null, cwds: ["/c"], select: false });
+    await flush();
+
+    expect(tabViews.value).toHaveLength(3);
+    expect(activeTabIndex.value).toBe(-1); // no tab selected yet
+
+    tm.selectTab(1);
+    await flush();
+
+    expect(activeTabIndex.value).toBe(1);
+
+    tm.dispose();
+  });
 });
 
 describe("createTabManager openQuickAgent (legacy picker confirm)", () => {

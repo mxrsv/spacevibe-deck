@@ -150,6 +150,20 @@ export interface MaterializeIntent {
   readonly chrome?: MaterializeChrome;
   /** Workspace the new tab belongs to; absent = a tab with no workspace. */
   readonly workspacePath?: string;
+  /**
+   * Put the new tab on the stage. Default `true`, because for every
+   * interactive caller — Open board, rail drop, a reopen, a single resume —
+   * "open a tab" and "go to it" are one action, and making them ask twice only
+   * creates a way to forget.
+   *
+   * `false` is for boot restore, which materializes N tabs in a loop and then
+   * selects the saved one itself. Selecting each tab as it lands is not free
+   * any more: a tab reaching the stage builds its panes' WebGL renderers, and
+   * each one sizes two pane-sized canvases up front (DECK-64). Eight restored
+   * tabs meant eight build-and-tear-down cycles for a choice overwritten one
+   * line later.
+   */
+  readonly select?: boolean;
 }
 
 /** Build chrome overrides from a Closed tab snapshot. */

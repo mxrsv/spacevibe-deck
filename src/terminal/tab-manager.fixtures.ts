@@ -73,6 +73,8 @@ export function fakePane(
     element,
     search: overrides.search ?? ({} as Pane["search"]),
     mount() {},
+    suspendRenderer() {},
+    resumeRenderer() {},
     write(data) {
       buffer += data;
     },

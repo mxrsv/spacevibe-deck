@@ -67,6 +67,13 @@ export function createTerminalManager(
   // an element that already holds DOM focus never fires one), so the
   // lifecycle handler must not double- or zero-emit around it.
   let inProgrammaticFocus = false;
+  // Starts false because that is how a tab is actually born: `addTab` sets
+  // `display: none` on the container BEFORE `initFresh`/`initFromLayout` runs,
+  // so every pane of a new or restored tab materializes off screen. `show()`
+  // is the single seam that puts a tab on the stage — every activation path
+  // (`selectTab`, board card selection, closing the active tab) goes through
+  // it — so it is also the single seam that may hand out a GPU context.
+  let visible = false;
 
   // Pane bar visibility is CSS-only: pane.ts always builds and populates the
   // bar (the drag ghost and anchor still read its cwd) — this class hides it.
@@ -97,7 +104,17 @@ export function createTerminalManager(
   const layout = createLayoutEngine(container, {
     getPaneElement: (id) => life.panes.get(id)?.element,
     mountPane: (id) => {
-      life.panes.get(id)?.mount();
+      const pane = life.panes.get(id);
+      if (pane === undefined) {
+        return;
+      }
+      // Before `mount()`, not after: suspending afterwards would still build
+      // the context and hand it straight back, and a boot restoring eight tabs
+      // would churn eight of them for nothing.
+      if (!visible) {
+        pane.suspendRenderer();
+      }
+      pane.mount();
     },
     fitPane: (id) => {
       life.panes.get(id)?.fit();
@@ -603,8 +620,17 @@ export function createTerminalManager(
     initFresh,
     initFromLayout,
     show(options) {
+      visible = true;
+      // Order matters. `display` first, so the pane has its real geometry when
+      // the renderer's constructor sizes its canvases from it — activating
+      // against stale dimensions allocates a whole surface set that `fit()`
+      // then replaces. `fit()` after, so any cols/rows correction lands on a
+      // renderer that already exists. `selectTab` also calls this on the
+      // ALREADY active tab when a surface closes over it, so both calls have
+      // to be idempotent; `resumeRenderer` is.
       container.style.display = "";
       for (const pane of life.panes.values()) {
+        pane.resumeRenderer();
         pane.fit();
       }
       if ((options?.focus ?? true) && activeId !== null) {
@@ -612,7 +638,11 @@ export function createTerminalManager(
       }
     },
     hide() {
+      visible = false;
       container.style.display = "none";
+      for (const pane of life.panes.values()) {
+        pane.suspendRenderer();
+      }
     },
     splitActive,
     dockNewPaneAt,

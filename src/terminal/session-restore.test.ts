@@ -218,6 +218,41 @@ describe("restoreSession", () => {
     expect(names).toEqual(["main-tab", "c-tab", "b-tab"]);
   });
 
+  /**
+   * Boot restore selects the saved tab once, at the end. Selecting each tab as
+   * it lands would build and immediately tear down a WebGL renderer per tab —
+   * both of its pane-sized canvases — for a choice this same run overwrites
+   * (DECK-64). The ordering half matters as much as the flag: a `selectTab`
+   * that stopped happening would leave the stage blank after a restore.
+   */
+  it("materializes every tab unselected and selects the saved one once, last", async () => {
+    const records = new Map<string, WindowRecord>([
+      [
+        "main",
+        record({
+          activeTabIndex: 2,
+          tabs: [
+            tab({ workspacePath: "/w", name: "a" }),
+            tab({ workspacePath: "/w", name: "b" }),
+            tab({ workspacePath: "/w", name: "c" }),
+          ],
+        }),
+      ],
+    ]);
+    const { deps, mocks, log } = createFakeDeps({ records });
+
+    await restoreSession(deps, "main");
+
+    expect(mocks.materialize).toHaveBeenCalledTimes(3);
+    for (const [intent] of mocks.materialize.mock.calls) {
+      expect(intent.select).toBe(false);
+    }
+    expect(mocks.selectTab).toHaveBeenCalledTimes(1);
+    expect(mocks.selectTab).toHaveBeenCalledWith(2);
+    const lastMaterialize = log.findLastIndex((entry) => entry.startsWith("materialize:"));
+    expect(log.indexOf("selectTab:2")).toBeGreaterThan(lastMaterialize);
+  });
+
   it("point 3: a dead workspace drops only its own tab", async () => {
     const aliveTab = tab({ workspacePath: "/alive", name: "alive-tab" });
     const deadTab = tab({ workspacePath: "/dead", name: "dead-tab" });
@@ -742,6 +777,18 @@ describe("resumeWorkspace", () => {
     expect(mocks.materialize).toHaveBeenCalledTimes(1);
     expect(mocks.take).not.toHaveBeenCalled();
     expect(mocks.readWindowRecords).not.toHaveBeenCalled();
+  });
+
+  it("still selects each tab as it lands — here the rebuilt tab IS the request", async () => {
+    const entry: ArchiveEntry = {
+      savedAt: 5,
+      tabs: [tab({ workspacePath: "/w" }), tab({ workspacePath: "/w" })],
+    };
+    const { deps, mocks } = createFakeDeps({});
+    await resumeWorkspace(deps, entry, "/w");
+    for (const [intent] of mocks.materialize.mock.calls) {
+      expect(intent.select).not.toBe(false);
+    }
   });
 
   it("drops tabs from a dead workspace and reports failure when none survive", async () => {

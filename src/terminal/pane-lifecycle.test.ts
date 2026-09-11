@@ -15,6 +15,8 @@ function fakePane(id: number, events: PaneEvents): Pane & { focusCalls: number }
     search: {} as Pane["search"],
     focusCalls: 0,
     mount() {},
+    suspendRenderer() {},
+    resumeRenderer() {},
     write() {},
     cols: 80,
     rows: 24,
