@@ -7,7 +7,14 @@
  * been storing bare binary names since long before user-declared agents
  * existed, so keeping ids identical for the built-ins means every entry
  * already on disk resolves unchanged and there is no migration to get wrong.
+ *
+ * The built-ins themselves are defined one file each under `agents/`; this
+ * module sees only the ones the registry has not withdrawn.
  */
+import type { BuiltinAgent } from "./agents/agent-definition";
+import { ACTIVE_AGENTS } from "./agents/agent-registry";
+
+export type { BuiltinAgent } from "./agents/agent-definition";
 
 /** An agent the user declared: a display name plus a full command line. */
 export interface CustomAgent {
@@ -18,75 +25,18 @@ export interface CustomAgent {
   readonly command: string;
 }
 
-export interface BuiltinAgent {
-  /** Also the binary name and the bare command — see the module comment. */
-  readonly id: string;
-  readonly label: string;
-  /**
-   * The command Deck launches this agent with out of the box, flags included.
-   *
-   * This is a RECOMMENDATION shipped with the app, not a user setting: a fresh
-   * install shows it immediately and can launch it without anyone typing a
-   * flag. A user preset for the same agent replaces it; nothing merges.
-   *
-   * Several of these skip the agent's own confirmation prompts, which is the
-   * point — Deck exists to run agents that keep working — but it is also why
-   * every one of them is spelled out on screen rather than hidden behind a
-   * label, and why the row can be disabled.
-   *
-   * Absent = launch the bare binary.
-   */
-  readonly defaultCommand?: string;
-  /** Where to read about it. Opened by the row's ↗ control. */
-  readonly url: string;
-}
-
 /** Process identity sent with `pty_info` for one declared agent. */
 export interface AgentProcessMatcher {
   readonly binary: string;
   readonly agent: string;
 }
 
-/** Recognised out of the box; always probed, whatever the user declared. */
-export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
-  {
-    id: "claude",
-    label: "Claude Code",
-    defaultCommand: "claude --dangerously-skip-permissions",
-    url: "https://claude.com/claude-code",
-  },
-  {
-    id: "codex",
-    label: "Codex",
-    defaultCommand: "codex --dangerously-bypass-approvals-and-sandbox",
-    url: "https://developers.openai.com/codex/cli",
-  },
-  // No flag: opencode's `--auto` is opt-in per session and its prompts are
-  // already coarse enough that skipping them is not the default anyone wants.
-  { id: "opencode", label: "OpenCode", url: "https://opencode.ai" },
-  // Google's successor to Gemini CLI. Gemini CLI keeps its place below it
-  // rather than being dropped: paid Code Assist licences still reach the
-  // service, and every `lastAgent` on disk holding "gemini" must keep
-  // resolving. Order here is reach, not history — it decides both the chip
-  // order and the digit key that opens each one.
-  {
-    id: "agy",
-    label: "Antigravity",
-    defaultCommand: "agy --dangerously-skip-permissions",
-    url: "https://antigravity.google",
-  },
-  {
-    id: "gemini",
-    label: "Gemini CLI",
-    defaultCommand: "gemini --yolo",
-    url: "https://github.com/google-gemini/gemini-cli",
-  },
-  // `cursor-agent` (Cursor CLI) is withdrawn for now on the owner's ask
-  // (2026-09-11): not probed, not listed, not classified. Its resume row in
-  // `agent-resume.ts` and runtime row in `runtime-catalog.ts` stay dormant, so
-  // bringing it back means re-appending it LAST here — order is the digit-key
-  // contract — plus `electron/agents.ts` and `electron/platform/classify.ts`.
-];
+/**
+ * Recognised out of the box; always probed, whatever the user declared. The
+ * registry's active agents in its order, which is the digit-key contract —
+ * see `agents/agent-registry.ts`.
+ */
+export const BUILTIN_AGENTS: readonly BuiltinAgent[] = ACTIVE_AGENTS;
 
 export const CUSTOM_ID_PREFIX = "custom:";
 

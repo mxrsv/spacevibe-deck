@@ -1,3 +1,5 @@
+import { ACTIVE_AGENTS } from "./agents/agent-registry";
+
 export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
 /** Built-ins use stable ids; declared agents use their validated display label. */
 export type PaneAgent = string;
@@ -21,18 +23,12 @@ export interface PaneHeaderInfo {
   readonly agent: boolean;
 }
 
-const AGENT_DOT_VARS: Readonly<Record<string, string>> = {
-  claude: "var(--magenta)",
-  codex: "var(--green)",
-  gemini: "var(--cyan)",
-  opencode: "var(--yellow)",
-  // Shares Gemini's cyan on purpose. The theme hands chrome eight colors;
-  // four are taken, `--red` is error-only (DL-3.2) and `--accent` is the
-  // theme's blue, reserved for interactive (DL-3.1) — so a fifth distinct
-  // agent color does not exist without changing the token set. Google's two
-  // CLIs sharing a hue is the honest reading, and the header names which one.
-  agy: "var(--cyan)",
-};
+/** Tab-dot colours, from each active agent's own file (`agents/agent-registry.ts`). */
+const AGENT_DOT_VARS: Readonly<Record<string, string>> = Object.fromEntries(
+  ACTIVE_AGENTS.flatMap((agent) =>
+    agent.dotColor === undefined ? [] : [[agent.id, agent.dotColor] as const],
+  ),
+);
 
 function agentColor(agent: string | null): string | undefined {
   if (agent === null || !Object.prototype.hasOwnProperty.call(AGENT_DOT_VARS, agent)) {

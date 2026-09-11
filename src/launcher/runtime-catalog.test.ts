@@ -26,8 +26,8 @@ describe("runtime-catalog", () => {
     expect(runtimeFor("agy")?.effortFlag).toBe("--effort");
   });
 
-  it("gives codex, opencode, gemini and cursor-agent no effort flag", () => {
-    for (const id of ["codex", "opencode", "gemini", "cursor-agent"]) {
+  it("gives codex, opencode and gemini no effort flag", () => {
+    for (const id of ["codex", "opencode", "gemini"]) {
       expect(runtimeFor(id)?.modelFlag).toBe("--model");
       expect(runtimeFor(id)?.effortFlag).toBeNull();
     }

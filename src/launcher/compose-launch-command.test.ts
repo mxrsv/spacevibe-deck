@@ -99,12 +99,12 @@ describe("compose-launch-command", () => {
 
   it("refuses a model value the shell guard would reject", () => {
     const result = composeLaunchCommand({
-      agentId: "cursor-agent",
-      capability: runtimeFor("cursor-agent"),
-      baseCommand: "cursor-agent --force",
-      modelId: "claude-opus-4-8[context=1m]",
+      agentId: "codex",
+      capability: runtimeFor("codex"),
+      baseCommand: "codex",
+      modelId: "gpt-5[context=1m]",
       reasoningEffort: null,
-      declaredModels: { "cursor-agent": ["claude-opus-4-8[context=1m]"] },
+      declaredModels: { codex: ["gpt-5[context=1m]"] },
     });
     expect(result.ok).toBe(false);
   });

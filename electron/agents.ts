@@ -13,6 +13,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import * as macos from "./platform/macos";
 import * as windows from "./platform/windows";
+import { ACTIVE_AGENT_IDS } from "../src/lib/agents/agent-registry";
 
 /** A login shell that hangs (a `.zprofile` waiting on the network) must not
  * wedge the picker forever — degrade to empty after this. */
@@ -24,8 +25,8 @@ export interface AgentInfo {
 }
 
 /** Recognised out of the box; always probed, whatever the caller asks for.
- * Mirrors `BUILTIN_AGENTS` in `src/lib/agent-catalog.ts`. */
-export const BUILTIN_AGENTS = ["claude", "codex", "opencode", "agy", "gemini"] as const;
+ * The registry's active agents — the same list the renderer's catalog reads. */
+export const BUILTIN_AGENTS: readonly string[] = ACTIVE_AGENT_IDS;
 
 /** Upper bound on a probed name; mirrors `PROBE_NAME_MAX` in agent-catalog.ts. */
 const PROBE_NAME_MAX = 128;

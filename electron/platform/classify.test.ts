@@ -16,10 +16,9 @@ describe("classifyProcess", () => {
     });
   });
 
-  // Agent-signal contract layer, stage 0 (2026-09-03): `cursor-agent` was a
-  // catalog built-in for two weeks while this table did not know it, so a
-  // Cursor pane was a busy shell to every consumer of the classification.
-  // Walking the built-in list is what stops the two from drifting again.
+  // Both lists derive from the agent registry (DECK-71). Walking the built-in
+  // list still proves it: `cursor-agent` once spent two weeks as a catalog
+  // built-in that classification did not know.
   it.each([...BUILTIN_AGENTS])("classifies built-in %s as an agent", (id) => {
     expect(classifyProcess(id, true)).toEqual({ kind: "agent", agent: id });
     expect(classifyProcess(`/opt/homebrew/bin/${id}`, true)).toEqual({ kind: "agent", agent: id });

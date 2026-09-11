@@ -5,6 +5,8 @@
  * module so this builder stays unit-testable without a fake bridge.
  */
 import type { CustomAgent } from "./agent-catalog";
+import type { ResumeForms } from "./agents/agent-definition";
+import { ACTIVE_AGENTS } from "./agents/agent-registry";
 
 /** Wire mirror of `electron/resume/resolve.ts`'s `ResumeRef` — see that file. */
 export type ResumeRef =
@@ -43,55 +45,16 @@ export interface SessionTailAnswer {
  */
 const SESSION_REF_SAFE = /^[A-Za-z0-9._-]{1,128}$/;
 
-interface CommandForms {
-  readonly id: (id: string) => string;
-  readonly latest: string;
-  readonly bare: string;
-}
-
 /**
- * One entry per built-in agent (`src/lib/agent-catalog.ts`'s `BUILTIN_AGENTS`).
- * `gemini` has no id-precise resume form — `resolveResume` never produces a
- * `{ kind: "id" }` ref for it, but an id form is still defined here (falling
- * back to the latest form) so this table stays total and never throws on an
- * unexpected input.
+ * One entry per active built-in, from each agent's own file
+ * (`agents/agent-registry.ts`). A withdrawn agent has no entry, so a pane
+ * journaled under it restores as a plain shell. A Map rather than an object
+ * literal, so an agent string like `constructor` cannot reach an inherited
+ * property.
  */
-const COMMAND_TABLE: Readonly<Record<string, CommandForms>> = {
-  claude: {
-    id: (id) => `claude --resume ${id}`,
-    latest: "claude --continue",
-    bare: "claude",
-  },
-  codex: {
-    id: (id) => `codex resume ${id}`,
-    latest: "codex resume --last",
-    bare: "codex",
-  },
-  opencode: {
-    id: (id) => `opencode -s ${id}`,
-    latest: "opencode -c",
-    bare: "opencode",
-  },
-  gemini: {
-    id: () => "gemini --resume latest",
-    latest: "gemini --resume latest",
-    bare: "gemini",
-  },
-  agy: {
-    id: (id) => `agy --conversation ${id}`,
-    latest: "agy --continue",
-    bare: "agy",
-  },
-  // Added 2026-08-19 with the catalog entry. No Cursor session scanner exists
-  // in `electron/resume/`, so `resume_lookup` answers null for these panes and
-  // `bare` is what actually gets typed today — the two forms above are here so
-  // that adding a scanner later is one file, not two.
-  "cursor-agent": {
-    id: (id) => `cursor-agent --resume ${id}`,
-    latest: "cursor-agent --continue",
-    bare: "cursor-agent",
-  },
-};
+const COMMAND_TABLE: ReadonlyMap<string, ResumeForms> = new Map(
+  ACTIVE_AGENTS.map((agent) => [agent.id, agent.resume] as const),
+);
 
 /**
  * Command typed into the restored pane's shell.
@@ -113,7 +76,7 @@ export function buildResumeCommand(
   if (custom !== undefined) {
     return custom.command;
   }
-  const forms = COMMAND_TABLE[agent];
+  const forms = COMMAND_TABLE.get(agent);
   if (forms === undefined) {
     return null;
   }

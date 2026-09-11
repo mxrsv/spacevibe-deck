@@ -2,32 +2,27 @@
  * What model and reasoning effort each agent can be launched with, and how the
  * two become one composite select. Pure — no signals, no host, no DOM.
  *
- * **Every flag here was read off that CLI's own `--help` on the owner's machine
- * on 2026-08-24**, the same rule `BuiltinAgent.defaultCommand` follows. Nothing
- * is inferred from another agent, and an undocumented flag is `null` rather
- * than a guess — a wrong flag is typed verbatim into a live shell.
+ * **The flags live in each agent's own file** under `lib/agents/`, read off that
+ * CLI's `--help` on the owner's machine, the same rule
+ * `BuiltinAgent.defaultCommand` follows. Nothing is inferred from another
+ * agent, and an undocumented flag is `null` rather than a guess — a wrong flag
+ * is typed verbatim into a live shell.
  *
- * ```
- * claude        --model <model>              --effort <level>  (low|medium|high|xhigh|max)
- * agy           --model                      --effort          (low|medium|high)
- * codex         -m, --model <MODEL>          none
- * opencode      -m, --model provider/model   none
- * gemini        -m, --model                  none
- * cursor-agent  --model <model>              none
- * ```
- *
- * **No CLI enumerates its model list.** Only two name examples in prose —
- * claude ("an alias for the latest model (e.g. 'fable', 'opus', or 'sonnet')")
- * and cursor-agent ("e.g., gpt-5, sonnet-4-thinking") — and those are the whole
- * seed. Every other agent seeds EMPTY, which is not an oversight: the user adds
- * model values per agent in Settings → Agents (`agentModels`), and until they
- * do, an agent with no efforts either renders no runtime select at all
- * (DL-19.7's omit-don't-disable rule) rather than an empty control.
+ * **No CLI enumerates its model list.** Only two name examples in their help
+ * prose, and those are the whole seed. Every other agent seeds EMPTY, which is
+ * not an oversight: the user adds model values per agent in Settings → Agents
+ * (`agentModels`), and until they do, an agent with no efforts either renders
+ * no runtime select at all (DL-19.7's omit-don't-disable rule) rather than an
+ * empty control.
  *
  * The two values stay independent data even though they present as one control
  * — spec §3.5 — because only the composition step knows which flag each half
  * belongs to, and an agent with no effort flag must never be handed an effort.
  */
+import { values, type RuntimeValue } from "../lib/agents/agent-definition";
+import { ACTIVE_AGENTS } from "../lib/agents/agent-registry";
+
+export type { RuntimeValue } from "../lib/agents/agent-definition";
 
 /**
  * A stored per-agent runtime preference. Either half null means "whatever the
@@ -37,11 +32,6 @@
 export interface AgentRuntimeDefault {
   readonly model: string | null;
   readonly effort: string | null;
-}
-
-export interface RuntimeValue {
-  readonly value: string;
-  readonly label: string;
 }
 
 export interface AgentRuntimeCapability {
@@ -58,73 +48,18 @@ export interface AgentRuntimeCapability {
   readonly defaultEffort: string | null;
 }
 
-/** Every value is its own label: these are what the user types at the CLI. */
-function values(...raw: readonly string[]): readonly RuntimeValue[] {
-  return raw.map((value) => ({ value, label: value }));
-}
-
 /**
  * `defaultModel`/`defaultEffort` are null across the board on purpose: absent
  * means "whatever the CLI itself defaults to", which is the only honest answer
  * before the user has expressed a preference. Settings' `agentRuntimeDefaults`
  * is what fills them, through `mergeRuntimeDefaults` below.
  */
-export const AGENT_RUNTIMES: readonly AgentRuntimeCapability[] = [
-  {
-    agentId: "claude",
-    modelFlag: "--model",
-    models: values("fable", "opus", "sonnet"),
-    effortFlag: "--effort",
-    efforts: values("low", "medium", "high", "xhigh", "max"),
-    defaultModel: null,
-    defaultEffort: null,
-  },
-  {
-    agentId: "codex",
-    modelFlag: "--model",
-    models: [],
-    effortFlag: null,
-    efforts: [],
-    defaultModel: null,
-    defaultEffort: null,
-  },
-  {
-    agentId: "opencode",
-    modelFlag: "--model",
-    models: [],
-    effortFlag: null,
-    efforts: [],
-    defaultModel: null,
-    defaultEffort: null,
-  },
-  {
-    agentId: "agy",
-    modelFlag: "--model",
-    models: [],
-    effortFlag: "--effort",
-    efforts: values("low", "medium", "high"),
-    defaultModel: null,
-    defaultEffort: null,
-  },
-  {
-    agentId: "gemini",
-    modelFlag: "--model",
-    models: [],
-    effortFlag: null,
-    efforts: [],
-    defaultModel: null,
-    defaultEffort: null,
-  },
-  {
-    agentId: "cursor-agent",
-    modelFlag: "--model",
-    models: values("gpt-5", "sonnet-4-thinking"),
-    effortFlag: null,
-    efforts: [],
-    defaultModel: null,
-    defaultEffort: null,
-  },
-];
+export const AGENT_RUNTIMES: readonly AgentRuntimeCapability[] = ACTIVE_AGENTS.map((agent) => ({
+  agentId: agent.id,
+  ...agent.runtime,
+  defaultModel: null,
+  defaultEffort: null,
+}));
 
 /**
  * The capability for an agent, or null. A custom agent always lands here: Deck

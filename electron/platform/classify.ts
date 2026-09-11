@@ -6,6 +6,7 @@
  * agents keep the lowercase ids sent by Tauri (`opencode`, `agy`), while a
  * validated user-declared agent carries its display label.
  */
+import { ACTIVE_AGENT_IDS } from "../../src/lib/agents/agent-registry";
 
 export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
 
@@ -18,23 +19,19 @@ export interface AgentProcessMatcher {
 }
 
 /**
- * Built-in agent binaries. A built-in id equals its binary name — that
- * invariant is why `gemini` survived the Antigravity addition, since every
- * `lastAgent` already on disk resolves through it.
+ * Built-in agent binaries: the registry's active agents. A built-in id equals
+ * its binary name — that invariant is why `gemini` survived the Antigravity
+ * addition, since every `lastAgent` already on disk resolves through it.
  *
- * This table and `BUILTIN_AGENTS` must list the same agents: a catalog
- * built-in missing here classifies as a busy SHELL — no rail row, no attention
- * gate, no tail request, no restore. `classify.test.ts` walks `BUILTIN_AGENTS`
- * against it. `cursor-agent` was withdrawn from both on 2026-09-11, so a
- * Cursor pane is deliberately a busy shell for now.
+ * Derived from the same list the catalog reads, because a built-in missing
+ * here classifies as a busy SHELL — no rail row, no attention gate, no tail
+ * request, no restore. `cursor-agent` spent two weeks like that while this was
+ * a hand-kept copy. A withdrawn agent is a busy shell on purpose. A Map, so a
+ * process named `constructor` cannot hit an inherited property.
  */
-const AGENT_BY_BINARY: Readonly<Record<string, PaneAgent>> = {
-  claude: "claude",
-  codex: "codex",
-  gemini: "gemini",
-  opencode: "opencode",
-  agy: "agy",
-};
+const AGENT_BY_BINARY: ReadonlyMap<string, PaneAgent> = new Map(
+  ACTIVE_AGENT_IDS.map((id) => [id, id] as const),
+);
 
 /** Shells that mean "nothing is running here". */
 const SHELL_NAMES: ReadonlySet<string> = new Set([
@@ -188,7 +185,8 @@ export function classifyProcess(
   }
   const entrypoint = interpretedEntrypoint(commandLine);
   const agent =
-    AGENT_BY_BINARY[normalized] ?? (entrypoint === null ? undefined : AGENT_BY_BINARY[entrypoint]);
+    AGENT_BY_BINARY.get(normalized) ??
+    (entrypoint === null ? undefined : AGENT_BY_BINARY.get(entrypoint));
   if (agent !== undefined) {
     return { kind: "agent", agent };
   }

@@ -10,33 +10,22 @@
  * per-flag modelling the string format removed, and a hand-typed command would
  * then need a migration to survive.
  *
- * **Every flag was read off that CLI's own `--help` on the owner's machine on
- * 2026-09-11**, the rule `runtime-catalog.ts` follows: claude 2.1.268, codex
- * 0.154.0, opencode 1.18.30, agy 1.1.13, gemini 0.55.1. Left out on purpose:
- * model and effort (their own rows), print and headless flags, session resume/continue/fork, prompts, directories and
- * worktrees (Deck owns the pane's cwd), debug and logging, and opencode's
- * port/hostname (the signal adapter pins the port).
+ * **The flags live in each agent's own file** under `agents/`, read off that
+ * CLI's `--help` with the version and date written beside them. Left out on
+ * purpose: model and effort (their own rows), print and headless flags,
+ * session resume/continue/fork, prompts, directories and worktrees (Deck owns
+ * the pane's cwd), debug and logging, and opencode's port/hostname (the signal
+ * adapter pins the port).
  *
  * **No token is ever dropped.** Whatever no control claims — an unknown flag, a
  * menu value this catalog does not list, a second flag for a control already
  * filled — is kept in `other`, in its original order and spelling.
  */
 
-/** One value a control can hold. `forms[0]` is written; every form is read. */
-export interface LaunchFlagOption {
-  readonly value: string;
-  readonly label: string;
-  readonly forms: readonly (readonly string[])[];
-}
+import type { LaunchFlag } from "./agents/agent-definition";
+import { ACTIVE_AGENTS } from "./agents/agent-registry";
 
-/** One control. A `toggle` has exactly one option: on means its flag is present. */
-export interface LaunchFlag {
-  readonly id: string;
-  readonly label: string;
-  readonly desc: string;
-  readonly kind: "toggle" | "menu";
-  readonly options: readonly LaunchFlagOption[];
-}
+export type { LaunchFlag, LaunchFlagOption } from "./agents/agent-definition";
 
 /** Which option each control holds; null is "the CLI's own default". */
 export type LaunchFlagValues = Readonly<Record<string, string | null>>;
@@ -47,127 +36,18 @@ export interface ParsedLaunchFlags {
   readonly other: string;
 }
 
-const toggle = (
-  id: string,
-  label: string,
-  desc: string,
-  ...forms: readonly (readonly string[])[]
-): LaunchFlag => ({ id, label, desc, kind: "toggle", options: [{ value: "on", label, forms }] });
+/** Every active built-in's controls, keyed by agent id (`agents/agent-registry.ts`). */
+export const LAUNCH_FLAGS: Readonly<Record<string, readonly LaunchFlag[]>> = Object.fromEntries(
+  ACTIVE_AGENTS.map((agent) => [agent.id, agent.launchFlags] as const),
+);
 
-const option = (
-  value: string,
-  label: string,
-  ...forms: readonly (readonly string[])[]
-): LaunchFlagOption => ({ value, label, forms });
-
-/** A `--flag value` option, also read as `-x value` when the CLI has a short form. */
-const valued = (flags: readonly string[], value: string, label: string): LaunchFlagOption =>
-  option(value, label, ...flags.map((flag) => [flag, value]));
-
-const CLAUDE_MODE = ["--permission-mode"];
-const CODEX_SANDBOX = ["--sandbox", "-s"];
-const CODEX_APPROVAL = ["--ask-for-approval", "-a"];
-const AGY_MODE = ["--mode"];
-const GEMINI_APPROVAL = ["--approval-mode"];
-
-export const LAUNCH_FLAGS: Readonly<Record<string, readonly LaunchFlag[]>> = {
-  claude: [
-    {
-      id: "permissions",
-      label: "Permissions",
-      desc: "How Claude Code asks before it acts.",
-      kind: "menu",
-      options: [
-        option("skip", "Skip all checks", ["--dangerously-skip-permissions"]),
-        valued(CLAUDE_MODE, "acceptEdits", "Accept edits"),
-        valued(CLAUDE_MODE, "auto", "Auto"),
-        valued(CLAUDE_MODE, "bypassPermissions", "Bypass permissions"),
-        valued(CLAUDE_MODE, "manual", "Manual"),
-        valued(CLAUDE_MODE, "dontAsk", "Don't ask"),
-        valued(CLAUDE_MODE, "plan", "Plan"),
-      ],
-    },
-    toggle("ide", "Connect to IDE", "Attach to the IDE on startup when exactly one is open.", [
-      "--ide",
-    ]),
-    toggle("verbose", "Verbose", "Override the verbose setting from config.", ["--verbose"]),
-  ],
-  codex: [
-    toggle(
-      "bypass",
-      "No approvals or sandbox",
-      "Skip every approval and run commands without a sandbox.",
-      ["--dangerously-bypass-approvals-and-sandbox"],
-    ),
-    toggle("approveForMe", "Auto review", "Route approval requests through automatic review.", [
-      "--approve-for-me",
-    ]),
-    {
-      id: "sandbox",
-      label: "Sandbox",
-      desc: "Where model-generated commands may write.",
-      kind: "menu",
-      options: [
-        valued(CODEX_SANDBOX, "read-only", "Read only"),
-        valued(CODEX_SANDBOX, "workspace-write", "Workspace write"),
-        valued(CODEX_SANDBOX, "danger-full-access", "Full access"),
-      ],
-    },
-    {
-      id: "approval",
-      label: "Approval policy",
-      desc: "When Codex stops to ask before running a command.",
-      kind: "menu",
-      options: [
-        valued(CODEX_APPROVAL, "on-request", "On request"),
-        valued(CODEX_APPROVAL, "never", "Never"),
-      ],
-    },
-    toggle("search", "Web search", "Let the model search the web without asking.", ["--search"]),
-    toggle("inline", "Inline mode", "Keep terminal scrollback instead of an alternate screen.", [
-      "--no-alt-screen",
-    ]),
-  ],
-  opencode: [
-    toggle("auto", "Auto-approve", "Approve permissions that are not explicitly denied.", [
-      "--auto",
-    ]),
-    toggle("pure", "Without plugins", "Run without external plugins.", ["--pure"]),
-    toggle("mini", "Minimal interface", "Start the minimal interactive interface.", ["--mini"]),
-  ],
-  agy: [
-    toggle("skip", "Skip permissions", "Approve every tool request without asking.", [
-      "--dangerously-skip-permissions",
-    ]),
-    {
-      id: "mode",
-      label: "Mode",
-      desc: "How the agent works through a session.",
-      kind: "menu",
-      options: [valued(AGY_MODE, "accept-edits", "Accept edits"), valued(AGY_MODE, "plan", "Plan")],
-    },
-    toggle("sandbox", "Sandbox", "Run with terminal restrictions.", ["--sandbox"]),
-  ],
-  gemini: [
-    {
-      id: "approval",
-      label: "Approval",
-      desc: "Which actions Gemini runs without asking.",
-      kind: "menu",
-      options: [
-        option("yolo", "Everything", ["--yolo"], ["-y"], ["--approval-mode", "yolo"]),
-        valued(GEMINI_APPROVAL, "auto_edit", "Edits only"),
-        valued(GEMINI_APPROVAL, "plan", "Plan (read only)"),
-      ],
-    },
-    toggle("sandbox", "Sandbox", "Run tools inside a sandbox.", ["--sandbox"], ["-s"]),
-    toggle("trust", "Trust folder", "Trust the current folder for this session.", ["--skip-trust"]),
-  ],
-};
-
-/** The controls an agent offers; empty for an agent this catalog does not know. */
+/**
+ * The controls an agent offers; empty for an agent this catalog does not know.
+ * `hasOwnProperty`, not plain indexing: the id comes off a typed command, and
+ * `LAUNCH_FLAGS["constructor"]` would answer with a function.
+ */
 export function launchFlagsFor(agentId: string): readonly LaunchFlag[] {
-  return LAUNCH_FLAGS[agentId] ?? [];
+  return Object.prototype.hasOwnProperty.call(LAUNCH_FLAGS, agentId) ? LAUNCH_FLAGS[agentId] : [];
 }
 
 /** One matchable word, remembering which command token it came from. */
