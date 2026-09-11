@@ -25,10 +25,12 @@
  * - `permission.replied` / `.v2.` → the ask was answered
  */
 
-export type ContractKind = "session" | "working" | "completed" | "requested" | "answered" | "error";
+export type ContractKind =
+  "session" | "working" | "completed" | "requested" | "answered" | "error" | "interrupted";
 
 /** One flat `hook:event` payload, as the renderer facade validated it. */
 export interface HookEvent {
+  readonly turnId?: string;
   readonly paneId: number;
   readonly source: "hook" | "server";
   readonly agent: string;
@@ -42,6 +44,8 @@ export interface HookEvent {
 
 /** What the tracker takes: the kind, the session it is about, the detail and the sentence. */
 export interface ContractSignal {
+  readonly agent?: string;
+  readonly turnId?: string;
   readonly source: "hook" | "server";
   readonly kind: ContractKind;
   readonly sessionId: string;
@@ -64,6 +68,23 @@ function claudeKind(event: HookEvent): ContractKind | null {
       return "requested";
     case "Notification":
       return event.detail !== null && NOTIFICATION_KINDS.has(event.detail) ? "requested" : null;
+    default:
+      return null;
+  }
+}
+
+function codexKind(event: HookEvent): ContractKind | null {
+  if (event.event === "SessionStart") return "session";
+  if (!event.turnId) return null;
+  switch (event.event) {
+    case "UserPromptSubmit":
+      return "working";
+    case "Stop":
+      return "completed";
+    case "Interrupt":
+      return "interrupted";
+    case "PermissionRequest":
+      return "requested";
     default:
       return null;
   }
@@ -95,9 +116,11 @@ export function contractSignalOf(event: HookEvent): ContractSignal | null {
   const kind =
     event.source === "hook" && event.agent === "claude"
       ? claudeKind(event)
-      : event.source === "server" && event.agent === "opencode"
-        ? opencodeKind(event)
-        : null;
+      : event.source === "hook" && event.agent === "codex"
+        ? codexKind(event)
+        : event.source === "server" && event.agent === "opencode"
+          ? opencodeKind(event)
+          : null;
   if (kind === null) {
     return null;
   }
@@ -118,6 +141,7 @@ export function contractSignalOf(event: HookEvent): ContractSignal | null {
         ? event.detail
         : null;
   return {
+    ...(event.agent === "codex" ? { agent: "codex", turnId: event.turnId } : {}),
     source: event.source,
     kind,
     sessionId: event.sessionId,
@@ -148,6 +172,9 @@ export function parseHookEvent(raw: unknown): HookEvent | null {
     return null;
   }
   return {
+    ...(typeof node.turnId === "string" && SESSION_ID_SAFE.test(node.turnId)
+      ? { turnId: node.turnId }
+      : {}),
     paneId: node.paneId,
     source: node.source,
     agent: node.agent,

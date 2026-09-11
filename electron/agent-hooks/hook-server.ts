@@ -16,6 +16,8 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import {
   HOOK_MAX_BODY_BYTES,
+  CODEX_HOOK_PATH,
+  CODEX_HOOK_MAX_BODY_BYTES,
   nextPaneSession,
   parseHookBody,
   validateHookHead,
@@ -24,6 +26,7 @@ import {
 
 /** The flat payload the renderer's `hook:event` listener receives (R6). */
 export interface HookEventPayload {
+  readonly turnId?: string;
   readonly paneId: number;
   /** `hook` for a CLI hook post, `server` for opencode's own event stream. */
   readonly source: "hook" | "server";
@@ -73,7 +76,8 @@ export function createHookServer(deps: HookServerDeps): HookServer {
     deps.emitToOwner(post.paneId, {
       paneId: post.paneId,
       source: "hook",
-      agent: "claude",
+      agent: post.agent ?? "claude",
+      ...(post.turnId === undefined ? {} : { turnId: post.turnId }),
       event: post.event,
       sessionId: post.sessionId,
       cwd: post.cwd,
@@ -94,6 +98,8 @@ export function createHookServer(deps: HookServerDeps): HookServer {
       request.resume();
       return;
     }
+    const codex = request.url?.split("?")[0] === CODEX_HOOK_PATH;
+    const limit = codex ? CODEX_HOOK_MAX_BODY_BYTES : HOOK_MAX_BODY_BYTES;
     const chunks: Buffer[] = [];
     let received = 0;
     let refused = false;
@@ -102,7 +108,7 @@ export function createHookServer(deps: HookServerDeps): HookServer {
         return;
       }
       received += chunk.length;
-      if (received > HOOK_MAX_BODY_BYTES) {
+      if (received > limit) {
         // Cut the stream rather than buffer to the end and refuse afterwards.
         refused = true;
         response.statusCode = 413;
@@ -116,7 +122,11 @@ export function createHookServer(deps: HookServerDeps): HookServer {
       if (refused) {
         return;
       }
-      const post = parseHookBody(head.paneId, Buffer.concat(chunks).toString("utf8"));
+      const post = parseHookBody(
+        head.paneId,
+        Buffer.concat(chunks).toString("utf8"),
+        codex ? "codex" : "claude",
+      );
       if (post === null) {
         response.statusCode = 400;
         response.end();

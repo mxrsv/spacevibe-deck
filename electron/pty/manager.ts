@@ -63,6 +63,7 @@ export interface PtyManagerDeps {
    */
   readonly hookPort?: () => number | null;
   readonly hookScript?: () => string | null;
+  readonly codexHookScript?: () => string | null;
 }
 
 export class PtyManager {
@@ -84,6 +85,7 @@ export class PtyManager {
       hookToken,
       hookPort: this.deps.hookPort?.() ?? null,
       hookScript: this.deps.hookScript?.() ?? null,
+      ...(this.deps.codexHookScript ? { codexHookScript: this.deps.codexHookScript() } : {}),
     });
     const decode = createStreamDecoder();
 

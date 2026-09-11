@@ -1,3 +1,4 @@
+import { advanceCodexTurn, type CodexLifecycle } from "./codex-lifecycle";
 import type { ActivitySnapshot, AgentPhase, ActivityTransition } from "./agent-activity";
 
 /**
@@ -140,8 +141,11 @@ export interface RegistryFact {
  * direction.
  */
 export interface ContractSignal {
+  readonly agent?: string;
+  readonly turnId?: string;
   readonly source: "hook" | "server";
-  readonly kind: "session" | "working" | "completed" | "requested" | "answered" | "error";
+  readonly kind:
+    "session" | "working" | "completed" | "requested" | "answered" | "error" | "interrupted";
   readonly sessionId: string;
   readonly detail: string | null;
   readonly message: string | null;
@@ -244,10 +248,13 @@ export interface AgentAttentionTracker {
   actionable(): AttentionCandidate[];
   /** Forget every pane outside `live` — call after a pane/tab closes. */
   prune(live: readonly number[]): void;
+  releaseCodexLifecycle(): void;
+  canReceiveContract(id: number, agent: string): boolean;
 }
 
 /** Internal per-pane record. Treated immutably: reducers return fresh copies. */
 interface PaneState {
+  readonly codexLifecycle: CodexLifecycle | null;
   readonly phase: AgentPhase;
   readonly attention: AttentionKind;
   readonly source: AttentionSource | null;
@@ -300,6 +307,7 @@ const TAB_KIND_BY_RANK: readonly TabAttentionKind[] = [
 
 function freshState(): PaneState {
   return {
+    codexLifecycle: null,
     phase: "unknown",
     attention: "none",
     source: null,
@@ -518,7 +526,7 @@ export function createAgentAttentionTracker(
    * have begun after the gate (its tail cannot ride past the gate).
    */
   function gateAccepts(s: PaneState, transition: ActivityTransition): boolean {
-    if (!s.isAgent) {
+    if (!s.isAgent || s.codexLifecycle !== null) {
       return false;
     }
     if (transition.observedAt < s.gateOpenedAt) {
@@ -596,6 +604,19 @@ export function createAgentAttentionTracker(
           next = { ...next, attention: "none", source: null, confidence: "explicit" };
         }
         return next;
+      }
+      case "interrupted": {
+        const keepAttention = prev.attention === "error" || prev.attention === "warning";
+        return {
+          ...stamped,
+          phase: "idle",
+          phaseConfidence: "explicit",
+          phaseFromContract: true,
+          hasRun: false,
+          attention: keepAttention ? prev.attention : "none",
+          source: keepAttention ? prev.source : null,
+          detail: keepAttention ? prev.detail : null,
+        };
       }
       case "completed": {
         const wasWorking = prev.phase === "working";
@@ -729,6 +750,7 @@ export function createAgentAttentionTracker(
             agentLabel: process,
             sessionId: prev.pendingSessionId,
             pendingSessionId: null,
+            codexLifecycle: null,
             contractAt: null,
             phaseFromContract: false,
             detail: null,
@@ -753,6 +775,7 @@ export function createAgentAttentionTracker(
             // unless Deck minted one for the command it just typed (stage 2).
             sessionId: prev.pendingSessionId,
             pendingSessionId: null,
+            codexLifecycle: null,
             contractAt: null,
             phaseFromContract: false,
             detail: null,
@@ -770,6 +793,7 @@ export function createAgentAttentionTracker(
         // live agent; see `endedAgent`.
         candidate = {
           ...endedAgent(prev),
+          codexLifecycle: null,
           isAgent: false,
           hasProcess: true,
           lastProcess: process,
@@ -795,6 +819,7 @@ export function createAgentAttentionTracker(
       const candidate: PaneState = {
         ...(prev.isAgent ? endedAgent(prev) : prev),
         phase: "exited",
+        codexLifecycle: null,
         phaseConfidence: "explicit",
         exitCode: typeof exitCode === "number" && Number.isFinite(exitCode) ? exitCode : null,
         isAgent: false,
@@ -846,6 +871,25 @@ export function createAgentAttentionTracker(
         signal.kind !== "session"
       ) {
         return null;
+      }
+      if (signal.agent === "codex") {
+        if (prev.agentLabel !== "codex") return null;
+        if (signal.kind === "session") {
+          return commit(
+            id,
+            prev,
+            reduceContract(
+              {
+                ...prev,
+                codexLifecycle: prev.sessionId === signal.sessionId ? prev.codexLifecycle : null,
+              },
+              signal,
+            ),
+          );
+        }
+        const lifecycle = advanceCodexTurn(prev.codexLifecycle, signal);
+        if (lifecycle === null) return null;
+        return commit(id, prev, reduceContract({ ...prev, codexLifecycle: lifecycle }, signal));
       }
       return commit(id, prev, reduceContract(prev, signal));
     },
@@ -967,6 +1011,15 @@ export function createAgentAttentionTracker(
       return candidates;
     },
 
+    canReceiveContract(id, agent) {
+      const state = panes.get(id);
+      return state?.isAgent === true && state.agentLabel === agent;
+    },
+    releaseCodexLifecycle() {
+      for (const [id, state] of panes) {
+        if (state.codexLifecycle !== null) panes.set(id, { ...state, codexLifecycle: null });
+      }
+    },
     prune(live) {
       const keep = new Set(live);
       const doomed: number[] = [];

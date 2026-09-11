@@ -1,3 +1,4 @@
+import { createCodexIntegration } from "./agent-hooks/codex-integration";
 /**
  * Electron main process — the host.
  *
@@ -140,13 +141,16 @@ const browserPanels = new BrowserPanels({
 const hookServer = createHookServer({
   tokenFor: (paneId) => pty.hookTokenOf(paneId),
   emitToOwner: (paneId, payload) => {
-    if (claudeIntegration.enabled()) coordinator.deliver(paneId, EVENTS.hookEvent, payload);
+    const enabled =
+      payload.agent === "codex" ? codexIntegration.enabled() : claudeIntegration.enabled();
+    if (enabled) coordinator.deliver(paneId, EVENTS.hookEvent, payload);
   },
 });
 const opencodeClients = createOpencodeClients({
   emitToOwner: (paneId, payload) => coordinator.deliver(paneId, EVENTS.hookEvent, payload),
 });
 const claudeIntegration = createClaudeIntegration({ userData: app.getPath("userData") });
+const codexIntegration = createCodexIntegration({ userData: app.getPath("userData") });
 
 const pty = new PtyManager({
   emitToOwner: (paneId, event, payload) => coordinator.deliver(paneId, event, payload),
@@ -160,6 +164,7 @@ const pty = new PtyManager({
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
   hookPort: () => hookServer.port(),
   hookScript: () => claudeIntegration.scriptPath(),
+  codexHookScript: () => codexIntegration.scriptPath(),
 });
 
 /** The label of the window that sent an IPC message. Every pane command needs
@@ -411,7 +416,9 @@ registerSettingsIpc({
   windows,
   emitTo,
   adoptMenuKeymap: menuState.adoptMenuKeymap,
-  syncAgentSettings: (settings) => claudeIntegration.sync(settings),
+  syncAgentSettings: async (settings) => {
+    await Promise.all([claudeIntegration.sync(settings), codexIntegration.sync(settings)]);
+  },
 });
 
 // ------------------------------------------------------- Usage analytics
@@ -587,7 +594,7 @@ app.whenReady().then(async () => {
     .then(async (store) => {
       const settings = store.get("settings");
       menuState.adoptMenuKeymap(settings);
-      await claudeIntegration.sync(settings);
+      await Promise.all([claudeIntegration.sync(settings), codexIntegration.sync(settings)]);
     })
     .catch((error: unknown) => {
       // Defaults are already installed; an unreadable settings file must not

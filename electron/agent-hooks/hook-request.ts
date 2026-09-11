@@ -28,7 +28,10 @@
 import { timingSafeEqual } from "node:crypto";
 
 export const HOOK_PATH = "/hook";
+export const CODEX_HOOK_PATH = "/hook/codex";
 export const HOOK_MAX_BODY_BYTES = 64 * 1024;
+/** Codex sends the full prompt on UserPromptSubmit; only bounded metadata is forwarded. */
+export const CODEX_HOOK_MAX_BODY_BYTES = 8 * 1024 * 1024;
 export const HEADER_PANE = "x-deck-pane";
 export const HEADER_TOKEN = "x-deck-token";
 
@@ -45,6 +48,8 @@ export interface HookRequestHead {
 
 /** What survives validation: the fields the renderer's map reads, and nothing else. */
 export interface HookPost {
+  readonly agent?: "codex";
+  readonly turnId?: string;
   readonly paneId: number;
   readonly event: string;
   readonly sessionId: string;
@@ -74,7 +79,7 @@ export function validateHookHead(
 ): HookRefusal {
   const url = head.url ?? "";
   const pathOnly = url.split("?")[0];
-  if (pathOnly !== HOOK_PATH) {
+  if (pathOnly !== HOOK_PATH && pathOnly !== CODEX_HOOK_PATH) {
     return { ok: false, status: 404, reason: "unknown path" };
   }
   if (head.method !== "POST") {
@@ -93,7 +98,11 @@ export function validateHookHead(
     return { ok: false, status: 403, reason: "pane or token" };
   }
   const length = headerValue(head.headers, "content-length");
-  if (length !== undefined && Number(length) > HOOK_MAX_BODY_BYTES) {
+  if (
+    length !== undefined &&
+    Number(length) >
+      (pathOnly === CODEX_HOOK_PATH ? CODEX_HOOK_MAX_BODY_BYTES : HOOK_MAX_BODY_BYTES)
+  ) {
     return { ok: false, status: 413, reason: "body too large" };
   }
   return { ok: true, paneId };
@@ -128,8 +137,15 @@ function optionalText(value: unknown): string | null {
  * The body, once buffered under the cap. Returns the flat post the renderer
  * receives, or null for anything that is not the shape a CLI hook writes.
  */
-export function parseHookBody(paneId: number, body: string): HookPost | null {
-  if (Buffer.byteLength(body, "utf8") > HOOK_MAX_BODY_BYTES) {
+export function parseHookBody(
+  paneId: number,
+  body: string,
+  agent: "claude" | "codex" = "claude",
+): HookPost | null {
+  if (
+    Buffer.byteLength(body, "utf8") >
+    (agent === "codex" ? CODEX_HOOK_MAX_BODY_BYTES : HOOK_MAX_BODY_BYTES)
+  ) {
     return null;
   }
   let parsed: unknown;
@@ -152,12 +168,23 @@ export function parseHookBody(paneId: number, body: string): HookPost | null {
   ) {
     return null;
   }
+  if (agent === "codex") {
+    if (!["SessionStart", "UserPromptSubmit", "Stop", "Interrupt"].includes(event)) return null;
+    if (
+      event !== "SessionStart" &&
+      (typeof node.turn_id !== "string" || !SESSION_ID_SAFE.test(node.turn_id))
+    )
+      return null;
+  }
   const detail =
     optionalText(node.notification_type) ??
     optionalText(node.matcher) ??
     optionalText(node.tool_name) ??
     null;
   return {
+    ...(agent === "codex"
+      ? { agent, ...(typeof node.turn_id === "string" ? { turnId: node.turn_id } : {}) }
+      : {}),
     paneId,
     event,
     sessionId,

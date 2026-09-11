@@ -382,7 +382,27 @@ export function createTabManager(
    * map decides what it means; the tracker decides whether it applies (gate
    * and generation); a `Stop`'s sentence goes straight to the tail store.
    */
+  const pendingCodexHooks = new Map<number, HookEvent>();
+
   function onHookEvent(event: HookEvent): void {
+    if (ownerOf(event.paneId) === undefined) return;
+    if (event.agent === "codex") {
+      if (!settings.value.agentSignalAdapters.codex) return;
+      if (
+        pendingCodexHooks.has(event.paneId) ||
+        !tracker.canReceiveContract(event.paneId, "codex")
+      ) {
+        // A launch can report before its first process poll. Keep only its newest event,
+        // then recheck ownership and process identity after one fresh poll.
+        pendingCodexHooks.set(event.paneId, event);
+        void poller.poll().then(() => {
+          if (pendingCodexHooks.get(event.paneId) !== event) return;
+          pendingCodexHooks.delete(event.paneId);
+          if (tracker.canReceiveContract(event.paneId, "codex")) onHookEvent(event);
+        });
+        return;
+      }
+    }
     if (ownerOf(event.paneId) === undefined) {
       return;
     }
@@ -429,6 +449,7 @@ export function createTabManager(
   }
 
   function syncViews(): void {
+    if (!settings.value.agentSignalAdapters.codex) tracker.releaseCodexLifecycle();
     // Number every live pane BEFORE any view is built: a pane split in this
     // very sync must already have its ordinal, or the first render after a
     // split ships `ordinal: undefined` and the Board's cards jump a frame
@@ -465,9 +486,16 @@ export function createTabManager(
           }),
         ),
       ];
-      const agentBusy = paneIds.some(
-        (id) => explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
-      );
+      const agentBusy = paneIds.some((id) => {
+        const agent = explicitAgent(poller.infoFor(id));
+        const snap = tracker.snapshot(id);
+        return (
+          agent !== null &&
+          (agent === "codex" && snap?.sessionId != null
+            ? snap.phase === "working"
+            : activity.working(id))
+        );
+      });
       // The per-pane projection the agent rail's chips and expanded rows both
       // need (agent-status-rail spec §5, tier 2). It reports every pane, agent
       // or not — filtering shell panes out of a ROW list is the rail's job,
@@ -3165,6 +3193,7 @@ export function createTabManager(
       launcher.dispose();
       poller.stop();
       registrySync.stop();
+      pendingCodexHooks.clear();
       for (const pending of activityResync.values()) {
         clearTimeout(pending);
       }

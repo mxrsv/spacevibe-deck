@@ -128,6 +128,7 @@ export interface PaneEnv {
   readonly hookPort: number | null;
   /** Identifies this installation's guarded global hook, including for manual launches. */
   readonly hookScript?: string | null;
+  readonly codexHookScript?: string | null;
 }
 
 export function buildEnv(
@@ -153,6 +154,8 @@ export function buildEnv(
     } else {
       delete env.DECK_CLAUDE_HOOK_SCRIPT;
     }
+    if (pane.codexHookScript) env.DECK_CODEX_HOOK_SCRIPT = pane.codexHookScript;
+    else delete env.DECK_CODEX_HOOK_SCRIPT;
     if (pane.hookPort !== null) {
       env.DECK_HOOK_PORT = String(pane.hookPort);
     } else {
