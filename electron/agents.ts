@@ -25,14 +25,7 @@ export interface AgentInfo {
 
 /** Recognised out of the box; always probed, whatever the caller asks for.
  * Mirrors `BUILTIN_AGENTS` in `src/lib/agent-catalog.ts`. */
-export const BUILTIN_AGENTS = [
-  "claude",
-  "codex",
-  "opencode",
-  "agy",
-  "gemini",
-  "cursor-agent",
-] as const;
+export const BUILTIN_AGENTS = ["claude", "codex", "opencode", "agy", "gemini"] as const;
 
 /** Upper bound on a probed name; mirrors `PROBE_NAME_MAX` in agent-catalog.ts. */
 const PROBE_NAME_MAX = 128;

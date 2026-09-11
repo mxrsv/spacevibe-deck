@@ -81,18 +81,11 @@ export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
     defaultCommand: "gemini --yolo",
     url: "https://github.com/google-gemini/gemini-cli",
   },
-  // Appended on 2026-08-19 (owner-approved fork: this list reaches process
-  // classification). LAST on purpose — order is the digit-key contract in
-  // AgentQuickPicker and the Open board, so appending leaves every existing
-  // key on the agent it already opened. The id is the binary name, as it is
-  // for every built-in; note it is `cursor-agent`, not `cursor`.
-  {
-    id: "cursor-agent",
-    label: "Cursor",
-    // `--force` is the long form; `--yolo` is documented as its alias.
-    defaultCommand: "cursor-agent --force",
-    url: "https://cursor.com/cli",
-  },
+  // `cursor-agent` (Cursor CLI) is withdrawn for now on the owner's ask
+  // (2026-09-11): not probed, not listed, not classified. Its resume row in
+  // `agent-resume.ts` and runtime row in `runtime-catalog.ts` stay dormant, so
+  // bringing it back means re-appending it LAST here — order is the digit-key
+  // contract — plus `electron/agents.ts` and `electron/platform/classify.ts`.
 ];
 
 export const CUSTOM_ID_PREFIX = "custom:";

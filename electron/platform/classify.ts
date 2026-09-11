@@ -22,11 +22,11 @@ export interface AgentProcessMatcher {
  * invariant is why `gemini` survived the Antigravity addition, since every
  * `lastAgent` already on disk resolves through it.
  *
- * `cursor-agent` joined on 2026-09-03 (agent-signal contract layer, stage 0):
- * it had been a catalog built-in since 2026-08-19 but was missing here, so a
- * Cursor pane classified as a busy SHELL — no rail row, no attention gate, no
- * tail request, no restore. `electron/agents.test.ts` walks `BUILTIN_AGENTS`
- * against this table so the two lists cannot drift apart again.
+ * This table and `BUILTIN_AGENTS` must list the same agents: a catalog
+ * built-in missing here classifies as a busy SHELL — no rail row, no attention
+ * gate, no tail request, no restore. `classify.test.ts` walks `BUILTIN_AGENTS`
+ * against it. `cursor-agent` was withdrawn from both on 2026-09-11, so a
+ * Cursor pane is deliberately a busy shell for now.
  */
 const AGENT_BY_BINARY: Readonly<Record<string, PaneAgent>> = {
   claude: "claude",
@@ -34,7 +34,6 @@ const AGENT_BY_BINARY: Readonly<Record<string, PaneAgent>> = {
   gemini: "gemini",
   opencode: "opencode",
   agy: "agy",
-  "cursor-agent": "cursor-agent",
 };
 
 /** Shells that mean "nothing is running here". */
