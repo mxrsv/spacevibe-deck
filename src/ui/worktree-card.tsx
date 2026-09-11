@@ -575,6 +575,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
       data-open={props.open}
       data-active={group.active}
       data-live={group.live}
+      data-primary={group.primary}
       onClick={(event) => {
         // Only card whitespace and metadata: child controls and popovers
         // retain their own targets, including close and new-agent actions.

@@ -234,6 +234,28 @@ button.asr-bare:hover {
   box-shadow: inset 0 0 0 1px var(--asr-card-active-frame);
 }
 
+/* A linked worktree (not the primary checkout) draws its frame dashed. An inset box-shadow
+   cannot dash, so the hairline moves to an inset outline: like the shadow it takes no layout
+   space, so the left-edge bleed the note above warns about cannot come back. Same tones and
+   precedence as the solid frame — rest, hover/open, then active. */
+.asr-card[data-primary="false"] {
+  box-shadow: none;
+  outline: 1px dashed var(--hair);
+  outline-offset: -1px;
+  transition: outline-color var(--duration) var(--ease);
+}
+
+.asr-card[data-primary="false"]:hover,
+.asr-card[data-primary="false"][data-open="true"] {
+  box-shadow: none;
+  outline-color: var(--hair-strong);
+}
+
+.asr-card[data-primary="false"][data-active="true"] {
+  box-shadow: none;
+  outline-color: var(--asr-card-active-frame);
+}
+
 /* ---------------------------------------------------------------------- the head */
 
 /* DL-27.25: a fixed trailing caret makes disclosure visible without shifting the name
