@@ -618,36 +618,40 @@
   min-height: 0;
   align-content: start;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.4cqw;
+  /* The break between two projects: 10px here + the header's 6px top
+     padding (1.1.1's rhythm pass, 04a:117-129). */
+  gap: 1cqw;
   padding: 0.8cqw 0.2cqw 0.7cqw 0.8cqw;
   overflow: hidden;
 }
 
 /* The same floor one level down: both containers declare it or the row
-   overflows the inner one (04a:132-142). */
+   overflows the inner one (04a:132-142). The gap is one CARD to the next
+   inside a project. */
 .a-appwin__cluster {
   display: grid;
   align-content: start;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.4cqw;
+  gap: 0.6cqw;
 }
 
 /* ---- The cluster header. ----
-   THREE tracks holding TWO children (or three when the project is
-   remembered). The caret lives inside the toggle, which spans every track;
-   the launcher is pinned over track 2 on top of it. Four direct children
-   would auto-place onto an implicit second row — the misalignment the app's
-   own wrapper exists to prevent (04a:166-209).
+   TWO tracks holding TWO children (1.1, `rail-create-consolidation`): the
+   toggle spans both, so its own caret lands in the last 17px slot, and the
+   close is pinned into that same slot on top of it. The middle track that
+   held DL-27.18's `+` went with that control — every checkout now carries its
+   own create control on its card (04a:175-205 at build/v1.1.1).
 
-   7 + 17 + 7 is the rows' grid restated, not new numbers: the project name
-   starts on the same left edge as the sentences under it, and the two
-   trailing tracks are the rows' age and glyph slots. */
+   The header HUGS the card under it: `margin-bottom` pulls it back by the
+   cluster's own gap, so it sits 2px off the card it names while two
+   checkouts of one project keep their full gap (1.1.1's rhythm pass). */
 .a-appwin__clusterhead {
   display: grid;
   box-sizing: border-box;
   align-items: center;
-  grid-template-columns: minmax(0, 1fr) 1.7cqw 1.7cqw;
+  grid-template-columns: minmax(0, 1fr) 1.7cqw;
   gap: 0.7cqw;
+  margin-bottom: -0.6cqw;
   padding: 0.6cqw 0.4cqw 0.2cqw 0.7cqw;
 }
 
@@ -659,9 +663,8 @@
 
 /* A live header's spanning toggle and a remembered one's still label draw the
    SAME line and differ only in which tracks they occupy: the toggle bleeds
-   across all three so its own caret lands in the last slot, while the still
-   label stops at track 1 so it can never run under the invisible `+`
-   (04a:188-239). */
+   across both so its own caret lands in the last slot, while the still label
+   stops at track 1 so it can never run under the close (04a:188-239). */
 .a-appwin__clustertoggle,
 .a-appwin__clusterstill {
   display: flex;
@@ -736,37 +739,14 @@
   height: 1.3cqw;
 }
 
-/* DL-27.18: the per-project launcher, pinned into the middle track ON TOP of
-   the spanning toggle. `plusSquare` at FEATURE_ICON — one rung above the
-   frame row's `New` and the strip's `+`, because a framed mark spends its
-   outer pixels on the frame (owner, 2026-08-20). The track supplies its width
-   and both gaps, so it carries no margin of its own. */
-.a-appwin__clusteradd {
-  display: flex;
-  grid-row: 1;
-  grid-column: 2;
-  z-index: 1;
-  align-items: center;
-  justify-content: center;
-  width: 1.7cqw;
-  height: 1.7cqw;
-  border-radius: 1cqw;
-  color: var(--sg-fg-faint);
-}
-
-.a-appwin__clusteradd svg {
-  display: block;
-  width: 1.5cqw;
-  height: 1.5cqw;
-}
-
-/* A remembered header's close takes the caret's track — column 3, which a
-   still label leaves empty. Neutral, never `--red`: forgetting a folder is
-   undoable by reopening it (DL-21.2, 04a:293-297). */
+/* The header's close, pinned into the caret's track (column 2). A remembered
+   header leaves that track empty; a live one trades it with the caret on
+   hover, so nothing reflows. Neutral, never `--red`: forgetting a folder is
+   undoable by reopening it (DL-21.2, 04a:272-330). */
 .a-appwin__clusterremove {
   display: flex;
   grid-row: 1;
-  grid-column: 3;
+  grid-column: 2;
   z-index: 1;
   align-items: center;
   justify-content: center;
@@ -782,39 +762,35 @@
   height: 1.3cqw;
 }
 
-/* The launcher's track, reserved from INSIDE the toggle: gap + slot + gap =
-   7 + 17 + 7 (04a:373-375). It only works because the caret lives inside the
-   spanning toggle — a margin on an element placed directly into a 17px track
-   would mean nothing. */
-.a-appwin__clusterhead:has(.a-appwin__clusteradd) .a-appwin__clustercaret {
-  margin-left: 2.4cqw;
-}
-
-/* Rest is folder + name and nothing else: all three controls keep their 17px
-   boxes at all times and only their INK fades in, so the pointer can never
-   reflow the header (04a:255-262). `.is-hover` is the same reveal baked into
-   the data, which is how a still drawing says what the live page does on
-   hover; a COLLAPSED cluster keeps its caret, since with the rows gone the
-   turned caret is the only thing saying "folded, not empty".
+/* Rest is folder + name and nothing else: both controls keep their 17px boxes
+   at all times and only their INK fades in, so the pointer can never reflow
+   the header (04a:341-365). `.is-hover` is the same reveal baked into the
+   data, which is how a still drawing says what the live page does on hover; a
+   COLLAPSED cluster keeps its caret, since with its cards gone the turned
+   caret is the only thing saying "folded, not empty".
 
    The app's `:focus-visible` half of these reveals is deliberately NOT ported:
-   the mock's controls are `<span>`s inside `aria-hidden="true"` and its rows
-   are `tabindex="-1"`, so nothing here can take focus and the rule could never
-   match. */
+   the mock's controls are `<span>`s inside `aria-hidden="true"`, so nothing
+   here can take focus and the rule could never match. */
 .a-appwin__clustercaret,
-.a-appwin__clusteradd,
 .a-appwin__clusterremove {
   opacity: 0;
 }
 
 .a-appwin__cluster:hover .a-appwin__clustercaret,
-.a-appwin__cluster:hover .a-appwin__clusteradd,
 .a-appwin__cluster:hover .a-appwin__clusterremove,
 .a-appwin__clusterhead.is-hover .a-appwin__clustercaret,
-.a-appwin__clusterhead.is-hover .a-appwin__clusteradd,
 .a-appwin__clusterhead.is-hover .a-appwin__clusterremove,
 .a-appwin__cluster.is-collapsed .a-appwin__clustercaret {
   opacity: 1;
+}
+
+/* Under the pointer the live header's close takes the caret's slot, the way
+   a row's close swaps in over its glyph (04a:324-327). A still header has no
+   caret to hide. */
+.a-appwin__cluster:hover .a-appwin__clusterhead:not(.is-still) .a-appwin__clustercaret,
+.a-appwin__clusterhead.is-hover:not(.is-still) .a-appwin__clustercaret {
+  opacity: 0;
 }
 
 /* CaretRight turned down means expanded, exactly as `[aria-expanded="true"]`
@@ -824,161 +800,448 @@
   transform: rotate(90deg);
 }
 
-/* ---- The tab item. ----
-   DL-27.19 (owner, 2026-08-20): a tab running several agents is ONE tab, with
-   an edge rather than a parent row. The frame is an INSET hairline, and the
-   two shapes it is not both shipped and both broke that day — a border is
-   layout and has to be bled back with a negative margin, which overflows the
-   list; an outline paints on the 1px OUTSIDE the box, which the list's own
-   clipping then removes (04b:86-112). An inset shadow paints inside: same
-   ring, no layout, nothing to clip. Neutral on purpose — red and yellow are
-   the status dot's words. */
-.a-appwin__item {
-  position: relative;
+/* ---- The checkout card (DL-27.23/DL-27.24, 1.1). ----
+   Ported from `src/styles/04c-rail-worktree-card.css` at build/v1.1.1, one
+   app pixel to 0.1cqw — the mock's design width is 1000px, so every number
+   below is the app's own divided by ten. Classes are the landing's
+   (`a-appwin__card*`), shaped like the app's `asr-card__*` one for one.
+
+   `box-sizing` is declared on everything that takes a width beside a
+   padding: `src/styles.css` has no global reset, and neither does this page's
+   stage (AGENTS.md, Known traps). */
+.a-appwin__card {
+  --card-tone: var(--sg-fg);
+  /* The busy hue is NEUTRAL (04c:55): colour stays reserved for the two
+     states that want the reader's eyes. */
+  --card-busy: color-mix(in srgb, var(--card-tone) 62%, transparent);
+
+  display: grid;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  padding: 0.6cqw 0.9cqw 0.7cqw;
+  border-radius: 0.6cqw;
+  background: var(--sg-tab-rest);
+  box-shadow: inset 0 0 0 1px var(--sg-hairline);
 }
 
-.a-appwin__item.is-framed {
-  margin: 0.3cqw 0;
-  padding: 0.3cqw 0;
-  border-radius: 1cqw;
+.a-appwin__card:hover {
   box-shadow: inset 0 0 0 1px var(--sg-hair-strong);
 }
 
-/* ---- Rows and leaves. ----
-   A leaf and a tab row are the same object seen twice since the turn moved
-   into the agent name's slot (DL-27.15): one line, 34px tall, the same
-   vertical padding. They differ in build — the leaf is a flex line
-   (04b:184-211, `--flat` at :287-297), the row a four-track grid (04b:17-27)
-   — and in the colour of their age, which is why the markup names both sets.
-
-   `box-sizing` and `width` are declared rather than assumed: a `<button>`
-   does not stretch to its parent on its own, and a percentage width beside a
-   padding needs the border box or the age and the glyph fall off the row. */
-.a-appwin__leaf,
-.a-appwin__row {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 3.4cqw;
-  border: 0;
-  border-radius: 1cqw;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+.a-appwin__card[data-open="true"] {
+  background: var(--sg-raised);
+  box-shadow: inset 0 0 0 1px var(--sg-hair-strong);
 }
 
-.a-appwin__leaf {
-  display: flex;
-  align-items: center;
-  gap: 0.7cqw;
-  /* The 8px trailing edge is the leaf's own: it puts the agent glyph on the
-     tab row's glyph slot, which reserves a track instead. */
-  padding: 0.6cqw 0.8cqw 0.6cqw 0.7cqw;
+/* The ACTIVE checkout — the one the window is working in — framed in the
+   worktree identity colour, green by default (04c:61, :227-230). Border
+   only: the background already says open or closed. */
+.a-appwin__card[data-active="true"],
+.a-appwin__card[data-active="true"]:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sg-green) 72%, transparent);
 }
 
-.a-appwin__row {
+/* The head: mark, name, badge and an always-visible chevron (DL-27.25). */
+.a-appwin__cardhead {
   display: grid;
-  align-items: center;
-  /* ONE trailing slot (DL-27.5, amended 2026-08-19): the agent glyph rests in
-     it, and the app's hover close would replace the glyph IN PLACE rather
-     than take a fifth column. No fixture draws that close — a close that
-     cannot close is a worse lie than an absent one. */
-  grid-template-columns: 1.7cqw minmax(0, 1fr) auto 1.7cqw;
-  gap: 0.2cqw 0.7cqw;
-  padding: 0.6cqw 0.4cqw 0.6cqw 0.7cqw;
-}
-
-.a-appwin__rowmark {
-  grid-row: 1;
-  grid-column: 1;
-  justify-self: center;
-}
-
-.a-appwin__rowmsg {
-  grid-column: 2;
-}
-
-.a-appwin__rowage {
-  grid-column: 3;
-}
-
-.a-appwin__rowlogo {
-  grid-row: 1;
-  grid-column: 4;
-  justify-self: center;
-}
-
-/* The leaf's counterparts (`__leafmark`, `__leaflogo`, `__leafage`) need no
-   placement of their own: a flex line puts them in DOM order, and the shared
-   rules below already give each one `flex: none`. Only the grid needs to be
-   told where its cells go, which is why just one of the two sets is placed
-   here. */
-
-/* Name and sentence stand on the SAME rung and are told apart by tone alone
-   (owner, 2026-08-20): they trade places in one slot, so a row printing a
-   name and a row printing a turn must read as one list, not two
-   (04a:512-523, :566-578). Trimmed by the layout, never by slicing the
-   string (DL-27.4).
-
-   `[data-tail]` nodes are rewritten with `textContent` by the stream engine,
-   so nothing may be nested inside one — a decoration here is wiped by the
-   first step that carries a tail. */
-.a-appwin__leafmsg,
-.a-appwin__rowmsg {
+  box-sizing: border-box;
   min-width: 0;
+  grid-template-columns: 1.4cqw minmax(0, 1fr) auto 1.3cqw;
+  align-items: center;
+  column-gap: 0.6cqw;
+  min-height: 2.4cqw;
+}
+
+/* The mark and the bare row's twin: a 14px box painting a 9px dot. */
+.a-appwin__cardmark,
+.a-appwin__baremark {
+  position: relative;
+  width: 1.4cqw;
+  height: 1.4cqw;
+}
+
+.a-appwin__cardmark::before,
+.a-appwin__baremark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 0.9cqw;
+  height: 0.9cqw;
+  margin: auto;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--sg-fg) 26%, transparent);
+}
+
+/* Live: work is moving somewhere in this checkout. Read off the card's own
+   state marks with `:has()` rather than a flag written at render, so the
+   hero's streamed card goes quiet the moment its last pane does. */
+.a-appwin__card:has([data-state="working"]) .a-appwin__cardmark::before {
+  background: var(--card-busy);
+}
+
+.a-appwin__cardname {
   overflow: hidden;
-  color: var(--sg-fg-dim);
+  color: var(--sg-fg);
   font-size: max(1.25cqw, 9px);
-  font-weight: 450;
+  font-weight: 620;
   line-height: 1.25;
-  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The leaf's slot is a flex item, so it needs the growth its grid twin gets
-   from `minmax(0, 1fr)`. Without `flex: 1` beside `min-width: 0` the
-   sentence sits at its content width and pushes the age off the row. */
-.a-appwin__leafmsg {
-  flex: 1;
-}
-
-/* The one asymmetry between the two sets, and the reason they are two sets:
-   a leaf's age is `--text-muted` (04b:272-275) and a tab row's is
-   `--text-faint` (04a:544-551). */
-.a-appwin__leafage,
-.a-appwin__rowage {
-  flex: none;
-  font-size: max(1.05cqw, 9px);
-  font-weight: 450;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  text-align: left;
-}
-
-.a-appwin__leafage {
+.a-appwin__cardchevron {
+  display: grid;
+  place-items: center;
+  width: 1.3cqw;
+  height: 1.3cqw;
   color: var(--sg-fg-dim);
 }
 
-.a-appwin__rowage {
-  color: var(--sg-fg-faint);
+.a-appwin__cardchevron svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
 }
 
-/* Identity only. The one leading mark carries state; a badge on the brand
-   glyph would restate it as confetti (04b:157-159). */
-.a-appwin__leaflogo,
-.a-appwin__rowlogo {
+.a-appwin__card[data-open="true"] .a-appwin__cardchevron {
+  transform: rotate(90deg);
+}
+
+/* The badge — the fact the name did not say. `max-width` lets a long branch
+   truncate before the checkout's own name does (04c:137-184). */
+.a-appwin__cardbadge,
+.a-appwin__barebadge {
+  display: grid;
+  box-sizing: border-box;
+  grid-auto-flow: column;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  max-width: 13.2cqw;
+  column-gap: 0.3cqw;
+  padding: 0.1cqw 0.5cqw 0.1cqw 0.4cqw;
+  border-radius: 0.3cqw;
+  background: color-mix(in srgb, var(--sg-fg) 8%, transparent);
+  color: var(--sg-fg-dim);
+  font-size: max(1.05cqw, 8px);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.a-appwin__cardbadge svg,
+.a-appwin__barebadge svg {
+  display: block;
+  width: 1.2cqw;
+  height: 1.2cqw;
+}
+
+.a-appwin__cardbadge span,
+.a-appwin__barebadge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.a-appwin__cardbadge[data-kind="role"],
+.a-appwin__barebadge[data-kind="role"] {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0.1cqw 0.5cqw;
+}
+
+.a-appwin__card[data-active="true"] .a-appwin__cardbadge {
+  background: color-mix(in srgb, var(--sg-green) 15%, transparent);
+  color: color-mix(in srgb, var(--sg-green) 78%, var(--sg-fg));
+}
+
+/* The age alone, aligned to the checkout name: 14px mark + 8px gap. */
+.a-appwin__cardmeta {
+  margin: -1px 0 0;
+  padding-left: 2.2cqw;
+  color: var(--sg-fg-faint);
+  font-size: max(1.05cqw, 8px);
+  font-weight: 450;
+  line-height: 1.4;
+}
+
+/* ---- Closed: the agents as ONE segmented bar. ----
+   Each segment is one agent KIND (glyph, corner dot, `×N`, the bars when it
+   works), the divider a `border-left` so it runs the full height. The strip
+   is indented under the checkout name, and its `max-width` is taken off that
+   indent rather than off the card, or a full strip hangs past the card's
+   edge where the list's own clip hides it (04c:344-363). */
+.a-appwin__cardstrip {
+  display: flex;
+  box-sizing: border-box;
+  min-width: 0;
+  align-items: stretch;
+  width: fit-content;
+  max-width: calc(100% - 2.2cqw);
+  margin: 0.5cqw 0 0.1cqw 2.2cqw;
+  border-radius: 0.6cqw;
+  box-shadow: inset 0 0 0 1px var(--sg-hairline);
+}
+
+.a-appwin__cardseg {
+  display: grid;
+  box-sizing: border-box;
+  grid-auto-flow: column;
+  align-items: center;
+  column-gap: 0.6cqw;
+  min-height: 2.4cqw;
+  padding: 0 0.8cqw;
+}
+
+.a-appwin__cardseg + .a-appwin__cardseg {
+  border-left: 1px solid var(--sg-hairline);
+}
+
+/* The merge count: muted, never the accent — `+N` spends the accent on a
+   count of what is NOT shown, and the two numbers must not read alike. */
+.a-appwin__cardtimes {
+  color: var(--sg-fg-dim);
+  font-size: max(1.05cqw, 8px);
+  font-weight: 560;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* The overflow tail: the one colour no state mark uses. */
+.a-appwin__cardseg--more {
+  place-items: center;
+  color: var(--sg-accent);
+  font-size: max(1.05cqw, 8px);
+  font-weight: 560;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* The checkout's `+` — it creates, it does not report, so it takes the muted
+   ink of the `New agent` row's glyph. */
+.a-appwin__cardseg--add {
+  place-items: center;
+  color: var(--sg-fg-dim);
+}
+
+.a-appwin__cardseg--add svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* ---- Open: the count, one row per agent, then `New agent`. ---- */
+.a-appwin__cardcount {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.3cqw;
+  padding: 0.2cqw 0.6cqw 0.3cqw 0.8cqw;
+  color: var(--sg-fg-faint);
+  font-size: max(1.05cqw, 8px);
+  font-weight: 450;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* DL-27.21: glyph, label, then one shared state slot. `min-height`, never a
+   fixed height: a cqw box stops holding its own floored type at 390. */
+.a-appwin__cardrow,
+.a-appwin__cardnew {
+  display: grid;
+  box-sizing: border-box;
+  min-width: 0;
+  grid-template-columns: 1.4cqw minmax(0, 1fr) 1.6cqw;
+  align-items: center;
+  column-gap: 0.7cqw;
+  min-height: 2.8cqw;
+  margin-top: 1px;
+  padding: 0 0.6cqw 0 0.8cqw;
+  border-radius: 0.6cqw;
+}
+
+.a-appwin__cardrow {
+  background: color-mix(in srgb, var(--sg-fg) 5%, transparent);
+}
+
+.a-appwin__cardrow:hover,
+.a-appwin__cardnew:hover {
+  background: color-mix(in srgb, var(--sg-fg) 9%, transparent);
+}
+
+/* The agent holding the keyboard: one louder wash (DL-27.22, candidate A). */
+.a-appwin__cardrow[data-focused="true"] {
+  background: color-mix(in srgb, var(--sg-fg) 20%, transparent);
+}
+
+/* A busy row keeps one static hairline; the motion is the bars'. Read off the
+   status cell, which is the node the stream engine repaints — the row itself
+   never learns its state changed. */
+.a-appwin__cardrow:has(> .a-appwin__cardstatus[data-state="working"]) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sg-fg) 21%, transparent);
+}
+
+/* The label is the pane's latest sentence, trimmed by the layout and never by
+   slicing the string (DL-27.4). It is a `[data-tail]` hook, rewritten with
+   `textContent`, so nothing may be nested inside it. */
+.a-appwin__cardlabel {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sg-fg);
+  font-size: max(1.1cqw, 8px);
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.a-appwin__cardnew,
+.a-appwin__cardnew .a-appwin__cardlabel {
+  color: var(--sg-fg-dim);
+}
+
+/* The glyph slot. A segment's glyph carries the corner dot, so it is the
+   positioning context for it. */
+.a-appwin__cardglyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.a-appwin__cardglyph svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+.a-appwin__cardlogo {
+  box-sizing: border-box;
   width: 1.4cqw;
   height: 1.4cqw;
-  flex: none;
   object-fit: contain;
 }
 
+/* ---- The card's state marks. ----
+   The corner dot: 5px of solid fill in a 1.5px ring of the rail's ground,
+   badged on a segment's glyph and standing alone in a row's state slot. The
+   bars: three staggered 2px bars for `working`. Both are in the DOM in every
+   state and the parent's `data-state` decides which paints — `idle` paints
+   nothing at all (04c:631-756). */
+.a-appwin__carddot {
+  position: absolute;
+  bottom: -0.2cqw;
+  left: -0.2cqw;
+  box-sizing: content-box;
+  width: 0.5cqw;
+  height: 0.5cqw;
+  border: 0.15cqw solid var(--sg-rail);
+  border-radius: 50%;
+}
+
+.a-appwin__cardstatus {
+  display: grid;
+  width: 1.6cqw;
+  height: 1.6cqw;
+  place-items: center;
+}
+
+.a-appwin__cardstatus > * {
+  grid-area: 1 / 1;
+}
+
+.a-appwin__cardstatus > .a-appwin__carddot {
+  position: static;
+  border-color: transparent;
+}
+
+[data-state="working"] > .a-appwin__cardglyph > .a-appwin__carddot {
+  background: var(--card-busy);
+}
+
+[data-state="asked"] > * > .a-appwin__carddot,
+.a-appwin__cardstatus[data-state="asked"] > .a-appwin__carddot {
+  background: var(--sg-yellow);
+}
+
+[data-state="failed"] > * > .a-appwin__carddot,
+.a-appwin__cardstatus[data-state="failed"] > .a-appwin__carddot {
+  background: var(--sg-red);
+}
+
+[data-state="done"] > * > .a-appwin__carddot,
+.a-appwin__cardstatus[data-state="done"] > .a-appwin__carddot,
+[data-state="ended"] > * > .a-appwin__carddot,
+.a-appwin__cardstatus[data-state="ended"] > .a-appwin__carddot {
+  background: color-mix(in srgb, var(--sg-fg) 42%, var(--sg-rail));
+}
+
+/* Ended is a stop SQUARE, distinct from the round done dot (DL-27.3). */
+[data-state="ended"] > * > .a-appwin__carddot,
+.a-appwin__cardstatus[data-state="ended"] > .a-appwin__carddot {
+  border-radius: 0.2cqw;
+}
+
+.a-appwin__cardstatus[data-state="working"] > .a-appwin__carddot,
+[data-state="idle"] > * > .a-appwin__carddot,
+.a-appwin__cardstatus[data-state="idle"] > .a-appwin__carddot {
+  display: none;
+}
+
+.a-appwin__cardload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2cqw;
+}
+
+.a-appwin__cardstatus:not([data-state="working"]) > .a-appwin__cardload {
+  display: none;
+}
+
+.a-appwin__cardload > i {
+  width: 0.2cqw;
+  height: 0.6cqw;
+  border-radius: 999px;
+  background: var(--card-busy);
+}
+
+.a-appwin__cardload > i:nth-child(2) {
+  --load-delay: -150ms;
+  height: 1cqw;
+}
+
+.a-appwin__cardload > i:nth-child(3) {
+  --load-delay: -300ms;
+  height: 0.8cqw;
+}
+
+/* ---- A checkout with nothing open. ----
+   The head row's shape alone, on the card head's mark track and gap, so a
+   bare `main` starts on the same left edge as every card under it. */
+.a-appwin__bare {
+  display: grid;
+  box-sizing: border-box;
+  min-width: 0;
+  grid-template-columns: 1.4cqw minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.6cqw;
+  min-height: 2.6cqw;
+  padding: 0 0.9cqw;
+}
+
+.a-appwin__barename {
+  overflow: hidden;
+  color: var(--sg-fg-dim);
+  font-size: max(1.3cqw, 9px);
+  font-weight: 500;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- The status mark. ----
-   DL-27.3, amended twice on 2026-08-19/20. One 14px box in EVERY state — the
-   working ring's own size — so a ring and a dot trade places without moving
-   the text beside them; the resting dot keeps its 9px of ink, painted centred
-   by the `::before` rather than by the box (04a:674-703).
+   The Agent Board's cards still draw this one (`RailStatusMark`): one 14px
+   box in EVERY state — the working ring's own size — so a ring and a dot
+   trade places without moving the text beside them; the resting dot keeps its
+   9px of ink, painted centred by the `::before` rather than by the box
+   (04a:674-703).
 
    The mock has NO `--spinner` modifier class: `data-state` is the whole
    switch, which is what lets the stream engine repaint a pane's status by
@@ -1016,10 +1279,17 @@
 }
 
 /* done and idle — one quiet dot. Neither asks for anything, so neither spends
-   a hue; they differ only in the word a tooltip would say (04a:739-742). */
+   a hue; they differ only in the word a tooltip would say (04a:739-742).
+   ended — the agent's process left the pane — is the same ink as a stop
+   SQUARE, so a card that can be restarted reads apart from one that finished. */
 .a-appwin__mark[data-state="done"]::before,
-.a-appwin__mark[data-state="idle"]::before {
+.a-appwin__mark[data-state="idle"]::before,
+.a-appwin__mark[data-state="ended"]::before {
   background: var(--sg-quiet-dot);
+}
+
+.a-appwin__mark[data-state="ended"]::before {
+  border-radius: 0.2cqw;
 }
 
 /* working — the ring IS the mark, so the dot withdraws entirely. */
@@ -1061,9 +1331,8 @@
    same fallback the app's rail rows and chips use. Untinted: the strip's own
    monogram (`.agent-strip__mark--mono`, direction-a.css) made the same call,
    and a per-agent tint would invent an identity the catalog does not have.
-   No hero fixture reaches this branch; a scene passing `cursor-agent` does. */
-.a-appwin__leaflogo--mono,
-.a-appwin__rowlogo--mono,
+   No hero fixture reaches this branch; a fixture passing `cursor-agent` does. */
+.a-appwin__cardlogo--mono,
 .a-appwin__chiplogo--mono {
   display: grid;
   place-items: center;
@@ -1209,22 +1478,6 @@
   height: 1.3cqw;
 }
 
-.a-appwin__chipadd {
-  display: grid;
-  place-items: center;
-  width: 2.4cqw;
-  height: 2.4cqw;
-  flex: none;
-  border-radius: 1cqw;
-  color: var(--sg-fg-dim);
-}
-
-.a-appwin__chipadd svg {
-  display: block;
-  width: 1.3cqw;
-  height: 1.3cqw;
-}
-
 /* `margin-left: auto` and nothing else (06-stage-panes.css:69-74): a long tab
    list shortens itself before the actions move. */
 .a-appwin__stripactions {
@@ -1241,6 +1494,25 @@
 
   .a-appwin__spinner {
     animation: a-appwin-pulse 1.2s ease-in-out infinite;
+  }
+
+  /* The card's working bars (04c:740-756). ADDED here rather than switched
+     off under reduced motion: without motion the three static heights still
+     read as "working" (DL-1.5). Only `transform` animates. */
+  .a-appwin__cardload > i {
+    transform-origin: center;
+    animation: a-appwin-bar 900ms ease-in-out infinite alternate;
+    animation-delay: var(--load-delay, 0ms);
+  }
+}
+
+@keyframes a-appwin-bar {
+  from {
+    transform: scaleY(0.4);
+  }
+
+  to {
+    transform: scaleY(1);
   }
 }
 
@@ -1318,8 +1590,9 @@
      298px, and the rail's job here is to stay READABLE at ~24 characters
      before it ellipsizes, not to hold a rung. */
   .a-appwin__clustername,
-  .a-appwin__leafmsg,
-  .a-appwin__rowmsg,
+  .a-appwin__cardname,
+  .a-appwin__cardlabel,
+  .a-appwin__barename,
   .a-appwin__chiplabel,
   .a-appwin__new {
     font-size: 8px;
@@ -1327,8 +1600,12 @@
 
   .a-appwin__footline,
   .a-appwin__status,
-  .a-appwin__leafage,
-  .a-appwin__rowage {
+  .a-appwin__cardmeta,
+  .a-appwin__cardbadge,
+  .a-appwin__barebadge,
+  .a-appwin__cardcount,
+  .a-appwin__cardtimes,
+  .a-appwin__cardseg--more {
     font-size: 7px;
   }
 }

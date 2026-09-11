@@ -61,17 +61,10 @@ function lastTail(paneId) {
 
 /** The sentence the RESTING rail fixture carries, before any mount. */
 function restingMessage(paneId) {
-  for (const cluster of stageRail) {
-    for (const tab of cluster.tabs) {
-      for (const pane of tab.panes) {
-        if (pane.id === paneId) {
-          return pane.message;
-        }
-      }
-    }
-  }
-
-  return undefined;
+  return stageRail
+    .flatMap((project) => project.checkouts)
+    .flatMap((checkout) => checkout.panes)
+    .find((pane) => pane.id === paneId)?.label;
 }
 
 afterEach(() => {

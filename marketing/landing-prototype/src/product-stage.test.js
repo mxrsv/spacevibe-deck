@@ -172,14 +172,15 @@ describe("the hooks a pane owns", () => {
     expect(tailNodes(figure, "opencode")).toHaveLength(1);
   });
 
-  it("emits nothing at all for a static row", () => {
+  it("emits nothing at all for a static card", () => {
     const { figure } = mountHeroMarkup();
-    const staticRow = figure.querySelector(".a-appwin__row");
+    const staticCard = figure.querySelector('.a-appwin__card[data-open="false"]');
 
-    // spacevibe-api's pane is `id: null` — a drawn row with no live pane
-    // behind it, so it carries neither hook and the engine never finds it.
-    expect(staticRow.querySelector("[data-tail]")).toBeNull();
-    expect(staticRow.querySelector("[data-dot]")).toBeNull();
+    // The closed cards' panes are `id: null` — drawn with no live pane behind
+    // them, so they carry neither hook and the engine never finds them.
+    expect(staticCard).not.toBeNull();
+    expect(staticCard.querySelector("[data-tail]")).toBeNull();
+    expect(staticCard.querySelector("[data-dot]")).toBeNull();
   });
 });
 
@@ -254,13 +255,13 @@ describe("the animated path", () => {
     for (const paneId of ["codex", "opencode"]) {
       const pane = stagePanes.find((entry) => entry.id === paneId);
       const resting = stageRail
-        .flatMap((cluster) => cluster.tabs)
-        .flatMap((tab) => tab.panes)
+        .flatMap((project) => project.checkouts)
+        .flatMap((checkout) => checkout.panes)
         .find((railPane) => railPane.id === paneId);
 
       expect(dotNodes(figure, paneId)[0].dataset.state).toBe("working");
       expect(tailNodes(figure, paneId)[0].textContent).not.toBe(
-        resting.message,
+        resting.label,
       );
       expect(tailNodes(figure, paneId)[0].textContent).toBe(
         firstRailValues(pane).tail,
@@ -296,7 +297,7 @@ describe("hook lookup", () => {
 
     const first = document.querySelector('[data-stage="a"] .a-appwin');
     const second = document.querySelector('[data-stage="b"] .a-appwin');
-    const restingClaude = stageRail[0].tabs[0].panes[0].message;
+    const restingClaude = stageRail[0].checkouts[0].panes[0].label;
 
     track(
       mountStageStream(first.querySelector(".a-appwin__grid"), {
@@ -358,21 +359,18 @@ describe("every step kind carries the rail", () => {
     },
   ];
 
+  // OPEN, so the pane has a row for its hooks: a closed card folds it into
+  // the strip, which carries no sentence.
   const FIXTURE_RAIL = [
     {
       project: "solo-project",
-      tabs: [
+      checkouts: [
         {
-          framed: false,
-          panes: [
-            {
-              id: "solo",
-              agent: "claude",
-              message: "resting sentence",
-              age: "2m",
-              state: "idle",
-            },
-          ],
+          name: "main",
+          badge: { kind: "role", text: "Primary" },
+          age: "2m",
+          open: true,
+          panes: [{ id: "solo", agent: "claude", label: "resting sentence", state: "idle" }],
         },
       ],
     },

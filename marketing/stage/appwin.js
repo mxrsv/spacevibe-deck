@@ -39,20 +39,25 @@ export const STAGE_ICONS = {
    */
   sidebar:
     '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h3v15H6A2.5 2.5 0 0 1 3.5 17Z" fill="currentColor" stroke="none"/>',
-  /** Plus, regular — the frame row's `New`, and the strip's own tab-add. */
+  /*
+   * Plus, regular — the frame row's `New`, a closed card strip's trailing `+`
+   * and an open card's `New agent` row. Since 1.1 those two are the ONLY
+   * create controls a checkout has: the project header's `+` and the tab
+   * strip's `+` both came off (`rail-create-consolidation`).
+   */
   plus: '<path d="M12 4.75v14.5M4.75 12h14.5"/>',
   /*
-   * PlusSquare, regular — a per-project launcher on a cluster header, and
-   * ONLY there. The owner replaced the bare cross with this on 2026-08-20
-   * (after a circled mark read too round beside the rail's rectangular rows),
-   * and moved it one rung up to 15px, since a framed mark spends its outer
-   * pixels on the frame. Drawing `plus` here would reproduce the glyph that
-   * ask removed. Geometry is Phosphor's own, scaled off the 256 grid: a
-   * 192-square at r16 (3 / 18 / 1.5 here) around a plus spanning 88…168
-   * (8.25…15.75).
+   * SquaresFour, regular — the Agent Board's own tab chip (`tab-strip.tsx`,
+   * the `Agents` chip). Four rounded squares at Phosphor's proportions.
    */
-  plusSquare:
-    '<rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M12 8.25v7.5M8.25 12h7.5"/>',
+  squares:
+    '<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/>',
+  /*
+   * GitBranch, regular — a worktree card's branch badge (`worktree-card.tsx`,
+   * `Badge`). The primary checkout's `Primary` badge carries no glyph.
+   */
+  branch:
+    '<circle cx="6.5" cy="6" r="2.25"/><circle cx="6.5" cy="18" r="2.25"/><circle cx="17.5" cy="6" r="2.25"/><path d="M6.5 8.25v7.5"/><path d="M17.5 8.25v1.25a3 3 0 0 1-3 3h-5a3 3 0 0 0-3 3"/>',
   /*
    * DotsThreeOutline at `fill`, never `DotsThree` at `fill`
    * (feature-toolbar.tsx:235-249): the bare glyph knocks its dots out of a
@@ -212,10 +217,12 @@ export function renderStageStatus() {
  *
  * Everything above this line draws the July window and is kept because the
  * marketing video still renders it (`marketing/video/src/stage-driver.js`).
- * Everything below draws the shipped one: a rail of project clusters whose
- * rows carry each agent's newest sentence, and one strip of one chip shape
- * over the panes. The two sets share `STAGE_ICONS` and `renderChromeIcon` and
- * nothing else, so neither can quietly restyle the other.
+ * Everything below draws the shipped one, as of Deck 1.1: a rail of project
+ * clusters whose checkouts are worktree cards — open ones list each agent's
+ * newest sentence, closed ones fold their agents into a strip — and one strip
+ * of one chip shape over the panes. The two sets share `STAGE_ICONS` and
+ * `renderChromeIcon` and nothing else, so neither can quietly restyle the
+ * other.
  *
  * All three new renderers are pure functions of their argument — no fixture is
  * read from module scope, which is what lets a tour scene hand in its own rail
@@ -315,123 +322,255 @@ function renderWorkspaceSpinner() {
 }
 
 /**
- * A rail row's status mark: the 14px box the app keeps at one size in every
- * state (`04a-agent-rail.css:668-742`), painting a 9px dot for `failed`,
- * `asked`, `done` and `idle` and the ring for `working`.
+ * The status mark the Agent Board's cards still draw (`RailStatusMark`, in
+ * `agent-board-card.tsx`): one 14px box in every state, a 9px dot for
+ * `failed`, `asked`, `done` and `idle`, a square for `ended`, and the ring for
+ * `working`. The rail itself stopped drawing this mark in 1.1 — its cards
+ * wear the corner dot and the loading bars below.
  *
- * The ring's SVG is in the DOM in EVERY state and CSS decides what shows.
- * That is a deliberate divergence from the app, which pairs `data-state` with
- * a `--spinner` modifier class: here `data-state` is the whole switch, so the
- * stream engine repaints a pane's status by writing one attribute and never
- * touching markup — and every rule about the working state is written
- * `[data-state="working"]`, never as a `--spinner` selector.
+ * The ring's SVG is in the DOM in EVERY state and CSS decides what shows, so
+ * a state is one attribute and every rule about the working state is written
+ * `[data-state="working"]`, never as a `--spinner` modifier.
  *
- * @param {"failed" | "asked" | "working" | "done" | "idle"} state
- * @param {string | null} paneId the `data-dot` hook, or null for a static row
- * @param {string} className the geometry class — `__leafmark` or `__rowmark`
+ * @param {"failed" | "asked" | "working" | "done" | "idle" | "ended"} state
+ * @param {string} className the caller's geometry class
  */
-function renderStageRailMark(state, paneId, className) {
-  return `<span class="a-appwin__mark ${className}" data-state="${state}"${hookAttr("data-dot", paneId)}>${renderWorkspaceSpinner()}</span>`;
+export function renderStageStatusMark(state, className) {
+  return `<span class="a-appwin__mark ${className}" data-state="${state}">${renderWorkspaceSpinner()}</span>`;
 }
 
 /*
- * A leaf and a tab row hold the same four cells and name them differently on
- * purpose: the app's two ages are not the same colour — a leaf's is
- * `--text-muted` (04b:272-275) and a tab row's is `--text-faint` (04a:522-533)
- * — and one shared class could not reproduce that. The painting hook
- * `a-appwin__mark` rides beside both mark classes, since the four dot states
- * and the ring ARE identical on the two.
+ * DL-27.3's fold (`agent-rail-model.ts`): the loudest pane speaks for a
+ * group, ties going to the pane that came first.
  */
-const RAIL_PANE_CLASSES = {
-  leaf: {
-    root: "a-appwin__leaf",
-    mark: "a-appwin__leafmark",
-    message: "a-appwin__leafmsg",
-    age: "a-appwin__leafage",
-    logo: "a-appwin__leaflogo",
-  },
-  row: {
-    root: "a-appwin__row",
-    mark: "a-appwin__rowmark",
-    message: "a-appwin__rowmsg",
-    age: "a-appwin__rowage",
-    logo: "a-appwin__rowlogo",
-  },
-};
+const STATE_RANK = { failed: 4, asked: 3, working: 2, done: 1, ended: 1, idle: 0 };
+
+/*
+ * The closed strip's fold, `fitSegments` with the app's own fallback widths
+ * (`agent-rail-card-model.ts`): a plain segment 39px, +21 for a `×N` count,
+ * the `+` 30, the `+N` tail 31, inside a 220px budget. The app then MEASURES
+ * the real boxes; a drawing has nothing to measure, so the fallbacks are the
+ * whole rule here — plus the working bars, which the fallback leaves out and
+ * which put a busy segment near 55px. The `+` never folds.
+ */
+const STRIP_WIDTH = { segment: 39, count: 21, busy: 16, add: 30, overflow: 31, budget: 220 };
 
 /**
- * One rail row: mark, sentence, age, brand glyph.
+ * Every agent KIND on a checkout, loudest group first (`groupSegments`): a
+ * segment is one kind, however many panes run it, and wears one mark — its
+ * loudest pane's.
  *
- * `tabindex="-1"` because the window is a drawing: the body it lands in is
- * `aria-hidden`, and a focusable control inside that is a tab stop a reader
- * can reach but not hear. The app's own hover close is deliberately NOT drawn
- * — a close that cannot close is a worse lie than an absent one.
- *
- * @param {{ id: string | null, agent: string, message: string, age: string,
- *           state: "failed" | "asked" | "working" | "done" | "idle" }} pane
- * @param {"leaf" | "row"} kind
+ * @param {Array<{ agent: string, state: string }>} panes
  */
-function renderRailPane(pane, kind) {
-  const names = RAIL_PANE_CLASSES[kind];
-  const age =
-    pane.age === "" ? "" : `<span class="${names.age}">${pane.age}</span>`;
+function groupSegments(panes) {
+  const agents = [...new Set(panes.map((pane) => pane.agent))];
+
+  return agents
+    .map((agent, order) => {
+      const members = panes.filter((pane) => pane.agent === agent);
+      const state = members.reduce(
+        (loudest, pane) => (STATE_RANK[pane.state] > STATE_RANK[loudest] ? pane.state : loudest),
+        members[0].state,
+      );
+
+      return { agent, count: members.length, state, order };
+    })
+    .sort((a, b) => STATE_RANK[b.state] - STATE_RANK[a.state] || a.order - b.order);
+}
+
+function segmentWidth(group) {
+  return (
+    STRIP_WIDTH.segment +
+    (group.count > 1 ? STRIP_WIDTH.count : 0) +
+    (group.state === "working" ? STRIP_WIDTH.busy : 0)
+  );
+}
+
+/**
+ * Fold agent kinds until the segments, the `+N` tail and the `+` fit. The
+ * prefix widths only grow, so a filter on them is the app's take-while.
+ */
+function fitSegments(groups) {
+  const widths = groups.map(segmentWidth);
+  const total = widths.reduce((sum, width) => sum + width, 0);
+
+  if (total + STRIP_WIDTH.add <= STRIP_WIDTH.budget) {
+    return { shown: groups, overflow: 0 };
+  }
+
+  const room = STRIP_WIDTH.budget - STRIP_WIDTH.overflow - STRIP_WIDTH.add;
+  const shown = groups.filter(
+    (_, index) => widths.slice(0, index + 1).reduce((sum, width) => sum + width, 0) <= room,
+  );
+  const overflow = groups.slice(shown.length).reduce((sum, group) => sum + group.count, 0);
+
+  return { shown, overflow };
+}
+
+/*
+ * The two state marks a card draws (`worktree-card-row.tsx`). Both are in the
+ * DOM in every state and `data-state` on their parent decides what paints:
+ * the three loading bars for `working`, the 5px dot for everything else, and
+ * nothing for `idle` — so the stream engine repaints a streamed row by
+ * writing one attribute, exactly as it did the old ring.
+ */
+const CARD_LOAD = `<span class="a-appwin__cardload"><i></i><i></i><i></i></span>`;
+const CARD_DOT = `<span class="a-appwin__carddot"></span>`;
+
+/**
+ * A checkout's badge: the fact its name did not say. `role` is a bare word
+ * (`Primary`); `branch` carries the GitBranch glyph.
+ *
+ * @param {{ kind: "role" | "branch", text: string }} badge
+ * @param {string} className `__cardbadge` or `__barebadge`
+ */
+function renderCheckoutBadge(badge, className) {
+  const glyph = badge.kind === "branch" ? renderChromeIcon(STAGE_ICONS.branch) : "";
+
+  return `<span class="${className}" data-kind="${badge.kind}">${glyph}<span>${badge.text}</span></span>`;
+}
+
+/**
+ * One closed-strip segment: glyph with its corner dot, the `×N` count when
+ * several panes share the kind, and the bars when it is working.
+ */
+function renderStripSegment(group) {
+  const count = group.count > 1 ? `<span class="a-appwin__cardtimes">×${group.count}</span>` : "";
+  const load = group.state === "working" ? CARD_LOAD : "";
 
   return `
-          <button class="${names.root}" data-state="${pane.state}" tabindex="-1">
-            ${renderStageRailMark(pane.state, pane.id, names.mark)}
-            <span class="${names.message}"${hookAttr("data-tail", pane.id)}>${pane.message}</span>
-            ${age}
-            ${renderStageAgentMark(pane.agent, names.logo)}
-          </button>
+          <span class="a-appwin__cardseg" data-state="${group.state}">
+            <span class="a-appwin__cardglyph">${renderStageAgentMark(group.agent, "a-appwin__cardlogo")}${CARD_DOT}</span>
+            ${count}
+            ${load}
+          </span>
         `;
 }
 
 /**
- * One tab. A `framed` tab is the app's headless multi-agent item (DL-27.19):
- * its panes stand as flat leaves inside one inset hairline and NO parent row
- * is drawn, because `PANE_TREE_HIDDEN` is true (`agent-rail.tsx:201`). A bare
- * tab is the single-pane case and draws one row.
+ * A closed card's agents as ONE segmented bar, then the `+N` tail for what
+ * did not fit, then the checkout's `+`.
  */
-function renderRailTab(tab) {
-  const framed = tab.framed === true;
-  const panes = tab.panes
-    .map((pane) => renderRailPane(pane, framed ? "leaf" : "row"))
-    .join("");
+function renderCardStrip(panes) {
+  const { shown, overflow } = fitSegments(groupSegments(panes));
+  const more =
+    overflow > 0 ? `<span class="a-appwin__cardseg a-appwin__cardseg--more">+${overflow}</span>` : "";
 
   return `
-        <div class="a-appwin__item${framed ? " is-framed" : ""}">
-          ${panes}
+        <div class="a-appwin__cardstrip">
+          ${shown.map(renderStripSegment).join("")}
+          ${more}
+          <span class="a-appwin__cardseg a-appwin__cardseg--add">${renderChromeIcon(STAGE_ICONS.plus)}</span>
         </div>
       `;
 }
 
 /**
+ * One agent row of an open card: glyph · label · state (DL-27.21). The label
+ * is the pane's latest sentence — the `data-tail` hook — and the status cell
+ * is the `data-dot` hook.
+ *
+ * No model pill: production withholds it while the pane → session pairing is
+ * heuristic. No close either — the app's hover close is deliberately NOT
+ * drawn, since a close that cannot close is a worse lie than an absent one.
+ */
+function renderCardRow(pane) {
+  const focused = pane.focused === true ? ' data-focused="true"' : "";
+
+  return `
+          <div class="a-appwin__cardrow"${focused}>
+            <span class="a-appwin__cardglyph">${renderStageAgentMark(pane.agent, "a-appwin__cardlogo")}</span>
+            <span class="a-appwin__cardlabel"${hookAttr("data-tail", pane.id)}>${pane.label}</span>
+            <span class="a-appwin__cardstatus" data-state="${pane.state}"${hookAttr("data-dot", pane.id)}>${CARD_LOAD}${CARD_DOT}</span>
+          </div>
+        `;
+}
+
+/** The open card's create control — the closed strip's `+`, in row form. */
+function renderNewAgentRow() {
+  return `
+          <div class="a-appwin__cardnew">
+            <span class="a-appwin__cardglyph">${renderChromeIcon(STAGE_ICONS.plus)}</span>
+            <span class="a-appwin__cardlabel">New agent</span>
+          </div>
+        `;
+}
+
+/**
+ * A checkout with agents: head (mark, name, badge, chevron), the age, then
+ * either the rows (open) or the strip (closed).
+ *
+ * The head's mark turns busy off the CSS `:has()` of a working state inside
+ * the card rather than off a flag written here, so the hero's streamed card
+ * goes quiet with its panes.
+ */
+function renderCheckoutCard(checkout) {
+  const open = checkout.open === true;
+  const meta = checkout.age ? `<p class="a-appwin__cardmeta">${checkout.age}</p>` : "";
+  const body = open
+    ? `
+        <div class="a-appwin__cardcount">${checkout.panes.length} active</div>
+        ${checkout.panes.map(renderCardRow).join("")}
+        ${renderNewAgentRow()}
+      `
+    : renderCardStrip(checkout.panes);
+
+  return `
+      <article class="a-appwin__card" data-open="${open}" data-active="${checkout.active === true}">
+        <div class="a-appwin__cardhead">
+          <span class="a-appwin__cardmark"></span>
+          <span class="a-appwin__cardname">${checkout.name}</span>
+          ${renderCheckoutBadge(checkout.badge, "a-appwin__cardbadge")}
+          <span class="a-appwin__cardchevron">${renderChromeIcon(STAGE_ICONS.caret)}</span>
+        </div>
+        ${meta}
+        ${body}
+      </article>
+    `;
+}
+
+/**
+ * A checkout with nothing open: the head row's shape alone — no box, no age,
+ * no strip. In the app the whole row is that checkout's create control.
+ */
+function renderBareCheckout(checkout) {
+  return `
+      <div class="a-appwin__bare">
+        <span class="a-appwin__baremark"></span>
+        <span class="a-appwin__barename">${checkout.name}</span>
+        ${renderCheckoutBadge(checkout.badge, "a-appwin__barebadge")}
+      </div>
+    `;
+}
+
+function renderCheckout(checkout) {
+  return checkout.panes.length === 0 ? renderBareCheckout(checkout) : renderCheckoutCard(checkout);
+}
+
+/**
  * One project cluster.
  *
- * The header is a THREE-TRACK GRID HOLDING TWO CHILDREN, not four: the caret
- * lives inside `.a-appwin__clustertoggle`, which spans every track, and the
- * `+` is laid over track 2. Four direct children would auto-place onto an
- * implicit second row — the misalignment the app's own wrapper exists to
- * prevent (`04a-agent-rail.css:166-209`).
- *
- * The `+` is `plusSquare`, not the bare `plus` the frame row and the strip
- * draw — the app's launcher is a framed mark, one size larger, and only on
- * this header.
+ * The header is a TWO-TRACK GRID HOLDING TWO CHILDREN: the caret lives inside
+ * `.a-appwin__clustertoggle`, which spans both tracks, and the close is laid
+ * over track 2 — the app's pin-to-overlap idiom, where the two trade the slot
+ * on hover (`04a-agent-rail.css:175-330` at build/v1.1.1). There is no `+`
+ * here any more: every checkout carries its own.
  *
  * A remembered project swaps that toggle for a still span in track 1 and has
- * NO caret element at all — there are no rows to collapse, so the disclosure
- * is omitted rather than disabled (DL-19.7) — and takes track 3's `×`.
+ * NO caret element at all — there is nothing to collapse, so the disclosure
+ * is omitted rather than disabled (DL-19.7). Its checkouts print as bare rows,
+ * which are its way back in.
  *
- * `is-hover` is a state the DATA asks for, so a scene can bake one reveal;
- * the live page's own hover is CSS, and at rest a header is folder → name and
- * nothing else. A collapsed cluster draws no rows, exactly as the app's
- * `{!collapsed && group.rows.map(…)}` does, and keeps its caret visible.
+ * `is-hover` is a state the DATA asks for, so a scene can bake one reveal; the
+ * live page's own hover is CSS, and at rest a header is folder → name and
+ * nothing else. A collapsed cluster draws no checkouts, exactly as the app's
+ * `{!collapsed && group.worktrees.map(…)}` does, and keeps its caret visible.
  */
 function renderRailCluster(cluster) {
   const hover = cluster.hovered === true ? " is-hover" : "";
   const folder = `<span class="a-appwin__clusterfolder">${renderChromeIcon(STAGE_ICONS.folder)}</span>`;
   const name = `<span class="a-appwin__clustername">${cluster.project}</span>`;
-  const add = `<span class="a-appwin__clusteradd">${renderChromeIcon(STAGE_ICONS.plusSquare)}</span>`;
+  const remove = `<span class="a-appwin__clusterremove">${renderChromeIcon(STAGE_ICONS.close)}</span>`;
 
   const head =
     cluster.remembered === true
@@ -441,8 +580,7 @@ function renderRailCluster(cluster) {
           ${folder}
           ${name}
         </span>
-        ${add}
-        <span class="a-appwin__clusterremove">${renderChromeIcon(STAGE_ICONS.close)}</span>
+        ${remove}
       </div>
     `
       : `
@@ -452,17 +590,17 @@ function renderRailCluster(cluster) {
           ${name}
           <span class="a-appwin__clustercaret">${renderChromeIcon(STAGE_ICONS.caret)}</span>
         </span>
-        ${add}
+        ${remove}
       </div>
     `;
 
   const collapsed = cluster.collapsed === true;
-  const tabs = collapsed ? "" : cluster.tabs.map(renderRailTab).join("");
+  const checkouts = collapsed ? "" : cluster.checkouts.map(renderCheckout).join("");
 
   return `
     <section class="a-appwin__cluster${collapsed ? " is-collapsed" : ""}">
       ${head}
-      ${tabs}
+      ${checkouts}
     </section>
   `;
 }
@@ -498,7 +636,9 @@ export function renderStageFrameRow() {
  * renamed, in the hero, the tour and the video alike.
  *
  * @param {Array<{ project: string, remembered?: boolean, collapsed?: boolean,
- *                 hovered?: boolean, tabs: Array<object> }>} rail
+ *                 hovered?: boolean, checkouts: Array<{ name: string,
+ *                 badge: { kind: "role" | "branch", text: string }, age?: string,
+ *                 open?: boolean, active?: boolean, panes: Array<object> }> }>} rail
  */
 export function renderStageRail(rail) {
   const clusters = rail.map(renderRailCluster).join("");
@@ -525,14 +665,18 @@ export function renderStageRail(rail) {
  * chrome there (`05-tab-bar-toolbar.css:169-172`), where on a quiet chip it
  * would be a control that appears on hover and then does nothing.
  */
+const CHIP_ICONS = {
+  file: STAGE_ICONS.file,
+  browser: STAGE_ICONS.globe,
+  board: STAGE_ICONS.squares,
+};
+
 function renderStripChip(chip) {
   const active = chip.active === true;
   const mark =
     chip.kind === "terminal"
       ? renderStageAgentMark(chip.agent, "a-appwin__chiplogo")
-      : `<span class="a-appwin__chiplogo">${renderChromeIcon(
-          chip.kind === "file" ? STAGE_ICONS.file : STAGE_ICONS.globe,
-        )}</span>`;
+      : `<span class="a-appwin__chiplogo">${renderChromeIcon(CHIP_ICONS[chip.kind])}</span>`;
   const close = active
     ? `<span class="a-appwin__chipclose">${renderChromeIcon(STAGE_ICONS.close)}</span>`
     : "";
@@ -547,16 +691,17 @@ function renderStripChip(chip) {
 }
 
 /**
- * The tab strip: the chips and their `+`, then the trailing actions — `More`
- * and the side-panel toggle, in that order (`app.tsx:1462-1509`; the panel
- * toggle is present because `dockOpen` defaults to false).
+ * The tab strip: the chips, then the trailing actions — `More` and the
+ * side-panel toggle, in that order (`app.tsx:1462-1509`; the panel toggle is
+ * present because `dockOpen` defaults to false). No `+` after the chips since
+ * 1.1: ⌘T raises the New Agent list instead (`rail-create-consolidation`).
  *
  * The toggle's glyph is mirrored HERE, in the markup, rather than by a CSS
  * transform: it is the same SidebarSimple the frame row draws, and the app
  * flips it because this one points at a panel on the right (`DeckIcon`'s
  * `mirrored` clause, DL-14.1). Mirroring it again in CSS would restore it.
  *
- * @param {Array<{ kind: "terminal" | "file" | "browser", agent?: string,
+ * @param {Array<{ kind: "terminal" | "file" | "browser" | "board", agent?: string,
  *                 paneId?: string | null, label: string, active: boolean }>} strip
  */
 export function renderStageStrip(strip) {
@@ -567,7 +712,6 @@ export function renderStageStrip(strip) {
       <div class="a-appwin__strip">
         <div class="a-appwin__chips">
           ${chips}
-          <span class="a-appwin__chipadd">${renderChromeIcon(STAGE_ICONS.plus)}</span>
         </div>
         <div class="a-appwin__stripactions">
           <span class="a-appwin__ctl">${renderChromeIcon(STAGE_ICONS.dots)}</span>

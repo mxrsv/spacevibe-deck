@@ -2,10 +2,10 @@
 /**
  * T2's own assertions, next to the file it owns.
  *
- * Fixtures are LOCAL rather than imported from `stage-data.js`: the three new
- * renderers are pure functions of their argument, and a test that reached for
- * the shipped hero fixture would fail the day a scene changed a sentence.
- * The shapes below are §3.1's, spelled out.
+ * Fixtures are LOCAL rather than imported from `stage-data.js`: the renderers
+ * are pure functions of their argument, and a test that reached for the
+ * shipped hero fixture would fail the day a scene changed a sentence. The
+ * shapes below are the 1.1 rail's — project → checkout → pane — spelled out.
  */
 
 import { describe, expect, it } from "vitest";
@@ -24,35 +24,35 @@ import {
   renderStageRail,
   renderStageSidebar,
   renderStageStatus,
+  renderStageStatusMark,
   renderStageStrip,
   renderStageTitlebar,
 } from "./appwin.js";
 
-const FRAMED_CLUSTER = {
+const PRIMARY = { kind: "role", text: "Primary" };
+
+const OPEN_PROJECT = {
   project: "spacevibe-deck",
-  tabs: [
+  checkouts: [
     {
-      framed: true,
+      name: "main",
+      badge: PRIMARY,
+      age: "now",
+      open: true,
+      active: true,
       panes: [
         {
           id: "claude",
           agent: "claude",
-          message: "I'll trace why the pane divider drifts on resize.",
-          age: "now",
+          label: "I'll trace why the pane divider drifts on resize.",
           state: "working",
+          focused: true,
         },
-        {
-          id: "codex",
-          agent: "codex",
-          message: "96 passed · 0 failed",
-          age: "2m",
-          state: "done",
-        },
+        { id: "codex", agent: "codex", label: "96 passed · 0 failed", state: "done" },
         {
           id: "opencode",
           agent: "opencode",
-          message: "typecheck clean · the branch follows cwd now",
-          age: "2m",
+          label: "typecheck clean · the branch follows cwd now",
           state: "done",
         },
       ],
@@ -60,31 +60,45 @@ const FRAMED_CLUSTER = {
   ],
 };
 
-const BARE_CLUSTER = {
+const CLOSED_PROJECT = {
   project: "spacevibe-api",
-  tabs: [
+  checkouts: [
     {
-      framed: false,
+      name: "main",
+      badge: PRIMARY,
+      age: "3h",
       panes: [
         {
           id: null,
           agent: "gemini",
-          message: "Should I apply the pending migration?",
-          age: "3h",
+          label: "Should I apply the pending migration?",
           state: "asked",
         },
       ],
     },
+    { name: "billing", badge: { kind: "branch", text: "feat/billing" }, panes: [] },
   ],
 };
 
-const REMEMBERED_CLUSTER = {
+const REMEMBERED_PROJECT = {
   project: "spacevibe-hub",
   remembered: true,
-  tabs: [],
+  checkouts: [{ name: "main", badge: PRIMARY, panes: [] }],
 };
 
-const RAIL = [FRAMED_CLUSTER, BARE_CLUSTER, REMEMBERED_CLUSTER];
+const RAIL = [OPEN_PROJECT, CLOSED_PROJECT, REMEMBERED_PROJECT];
+
+/** One closed card holding `panes`, for the strip's own assertions. */
+function closedCard(panes) {
+  return [
+    {
+      project: "p",
+      checkouts: [
+        { name: "wt", badge: { kind: "branch", text: "feat/wt" }, age: "2m", panes },
+      ],
+    },
+  ];
+}
 
 const STRIP = [
   {
@@ -96,6 +110,7 @@ const STRIP = [
   },
   { kind: "file", label: "layout-engine.ts", active: false },
   { kind: "browser", label: "localhost:5173", active: false },
+  { kind: "board", label: "Agents", active: false },
 ];
 
 /**
@@ -121,22 +136,17 @@ function childClasses(element) {
 
 describe("STAGE_ICONS", () => {
   it("keeps the five the video's titlebar still reads", () => {
-    for (const name of [
-      "splitRow",
-      "splitColumn",
-      "closePane",
-      "expand",
-      "gear",
-    ]) {
+    for (const name of ["splitRow", "splitColumn", "closePane", "expand", "gear"]) {
       expect(typeof STAGE_ICONS[name]).toBe("string");
     }
   });
 
-  it("gains the ten the redesign draws", () => {
+  it("carries every glyph the 1.1 chrome draws", () => {
     for (const name of [
       "sidebar",
       "plus",
-      "plusSquare",
+      "squares",
+      "branch",
       "dots",
       "globe",
       "file",
@@ -149,12 +159,10 @@ describe("STAGE_ICONS", () => {
     }
   });
 
-  it("keeps the framed launcher and the bare cross apart", () => {
-    // The rail's per-project `+` became `PlusSquare` on 2026-08-20 and the
-    // circled and bare forms were both rejected; the frame row's `New` and the
-    // strip's tab-add stayed the bare `Plus`. One key cannot serve both.
-    expect(STAGE_ICONS.plusSquare).not.toBe(STAGE_ICONS.plus);
-    expect(STAGE_ICONS.plusSquare).toContain("<rect");
+  it("dropped the project header's framed launcher with the control", () => {
+    // 1.1 took the header's `+` off (`rail-create-consolidation`); its
+    // PlusSquare glyph had no other caller.
+    expect(STAGE_ICONS.plusSquare).toBeUndefined();
     expect(STAGE_ICONS.plus).not.toContain("<rect");
   });
 
@@ -185,7 +193,7 @@ describe("renderStageFrameRow", () => {
     expect(row.querySelectorAll(".a-appwin__iconbtn")).toHaveLength(0);
   });
 
-  it("draws the bare Plus on `New`, not the rail's framed launcher", () => {
+  it("draws the bare Plus on `New`", () => {
     const glyph = row.querySelector(".a-appwin__newglyph");
     expect(glyph.querySelector("svg")).not.toBe(null);
     expect(glyph.querySelector("svg rect")).toBe(null);
@@ -196,7 +204,7 @@ describe("renderStageFrameRow", () => {
   });
 });
 
-describe("renderStageRail", () => {
+describe("renderStageRail — the frame and the project headers", () => {
   it("returns markup for a fixture and for an empty rail", () => {
     for (const html of [renderStageRail(RAIL), renderStageRail([])]) {
       expect(typeof html).toBe("string");
@@ -219,22 +227,15 @@ describe("renderStageRail", () => {
 
   it("stands the frame row inside the rail, above the list", () => {
     const aside = parse(renderStageRail(RAIL)).firstElementChild;
-    expect(childClasses(aside)).toEqual([
-      "a-appwin__framerow",
-      "a-appwin__raillist",
-    ]);
+    expect(childClasses(aside)).toEqual(["a-appwin__framerow", "a-appwin__raillist"]);
   });
 
-  it("gives a live header exactly two children — the toggle and the +", () => {
-    // A three-track grid with four direct children auto-places the caret onto
-    // an implicit second row; the caret therefore lives INSIDE the toggle.
-    const head = parse(renderStageRail([FRAMED_CLUSTER])).querySelector(
-      ".a-appwin__clusterhead",
-    );
-    expect(childClasses(head)).toEqual([
-      "a-appwin__clustertoggle",
-      "a-appwin__clusteradd",
-    ]);
+  it("gives a live header exactly two children — the toggle and the close", () => {
+    // A two-track grid with a third direct child auto-places onto an implicit
+    // second row; the caret therefore lives INSIDE the toggle. The header's
+    // `+` is gone since 1.1 — every checkout carries its own.
+    const head = parse(renderStageRail([OPEN_PROJECT])).querySelector(".a-appwin__clusterhead");
+    expect(childClasses(head)).toEqual(["a-appwin__clustertoggle", "a-appwin__clusterremove"]);
 
     const toggle = head.querySelector(".a-appwin__clustertoggle");
     expect(childClasses(toggle)).toEqual([
@@ -242,178 +243,33 @@ describe("renderStageRail", () => {
       "a-appwin__clustername",
       "a-appwin__clustercaret",
     ]);
-    expect(toggle.querySelector(".a-appwin__clustername").textContent).toBe(
-      "spacevibe-deck",
-    );
+    expect(toggle.querySelector(".a-appwin__clustername").textContent).toBe("spacevibe-deck");
   });
 
-  it("gives a remembered header a still label, a +, a ×, and no caret at all", () => {
-    const rail = parse(renderStageRail([REMEMBERED_CLUSTER]));
+  it("gives a remembered header a still label, a ×, no caret, and bare checkouts", () => {
+    const rail = parse(renderStageRail([REMEMBERED_PROJECT]));
     const head = rail.querySelector(".a-appwin__clusterhead");
 
     expect(head.classList.contains("is-still")).toBe(true);
-    expect(rail.querySelectorAll(".a-appwin__clusterstill")).toHaveLength(1);
     expect(rail.querySelectorAll(".a-appwin__clustercaret")).toHaveLength(0);
     expect(rail.innerHTML).not.toContain("clustercaret");
-    expect(childClasses(head)).toEqual([
-      "a-appwin__clusterstill",
-      "a-appwin__clusteradd",
-      "a-appwin__clusterremove",
-    ]);
-    // Nothing is open, so nothing is drawn under the header.
-    expect(rail.querySelectorAll(".a-appwin__item")).toHaveLength(0);
+    expect(childClasses(head)).toEqual(["a-appwin__clusterstill", "a-appwin__clusterremove"]);
+    // Nothing is open, so its checkout is a bare row and never a card.
+    expect(rail.querySelectorAll(".a-appwin__bare")).toHaveLength(1);
+    expect(rail.querySelectorAll(".a-appwin__card")).toHaveLength(0);
   });
 
-  it("draws a framed tab as N leaves and no rows", () => {
-    const rail = parse(renderStageRail([FRAMED_CLUSTER]));
-    const item = rail.querySelector(".a-appwin__item");
-
-    expect(item.classList.contains("is-framed")).toBe(true);
-    expect(rail.querySelectorAll(".a-appwin__leaf")).toHaveLength(3);
-    expect(rail.querySelectorAll(".a-appwin__row")).toHaveLength(0);
-    // DL-27.19's frame is drawn on the item; no parent row stands above the
-    // leaves, because `PANE_TREE_HIDDEN` is true in the app.
-    expect(childClasses(item)).toEqual([
-      "a-appwin__leaf",
-      "a-appwin__leaf",
-      "a-appwin__leaf",
-    ]);
+  it("draws no `+` on any header", () => {
+    const rail = renderStageRail([...RAIL, { ...OPEN_PROJECT, hovered: true }]);
+    expect(rail).not.toContain("clusteradd");
   });
 
-  it("draws a bare tab as one row, under its own child class names", () => {
-    const rail = parse(renderStageRail([BARE_CLUSTER]));
+  it("hides a collapsed project's checkouts and keeps its caret", () => {
+    const rail = parse(renderStageRail([{ ...OPEN_PROJECT, collapsed: true }]));
 
-    expect(rail.querySelectorAll(".a-appwin__leaf")).toHaveLength(0);
-    expect(rail.querySelectorAll(".a-appwin__row")).toHaveLength(1);
-    expect(
-      rail.querySelector(".a-appwin__item").classList.contains("is-framed"),
-    ).toBe(false);
-    expect(childClasses(rail.querySelector(".a-appwin__row"))).toEqual([
-      "a-appwin__mark a-appwin__rowmark",
-      "a-appwin__rowmsg",
-      "a-appwin__rowage",
-      "a-appwin__rowlogo",
-    ]);
-  });
-
-  it("names a leaf's four cells apart from a row's", () => {
-    const leaf = parse(renderStageRail([FRAMED_CLUSTER])).querySelector(
-      ".a-appwin__leaf",
-    );
-    expect(childClasses(leaf)).toEqual([
-      "a-appwin__mark a-appwin__leafmark",
-      "a-appwin__leafmsg",
-      "a-appwin__leafage",
-      "a-appwin__leaflogo",
-    ]);
-  });
-
-  it("hooks a pane that has an id, and only that pane", () => {
-    const rail = parse(renderStageRail(RAIL));
-
-    expect(rail.querySelectorAll("[data-tail]")).toHaveLength(3);
-    expect(rail.querySelectorAll("[data-dot]")).toHaveLength(3);
-    expect(
-      rail.querySelector('[data-tail="claude"]').getAttribute("class"),
-    ).toBe("a-appwin__leafmsg");
-    expect(rail.querySelector('[data-dot="claude"]').getAttribute("class")).toBe(
-      "a-appwin__mark a-appwin__leafmark",
-    );
-
-    // The bare row's pane is static — an attribute spelled "null" would be a
-    // hook the stream engine could still match.
-    const row = rail.querySelector(".a-appwin__row");
-    expect(row.querySelector("[data-tail]")).toBe(null);
-    expect(row.querySelector("[data-dot]")).toBe(null);
-  });
-
-  it("omits the age cell when a pane has no age", () => {
-    const pane = { ...FRAMED_CLUSTER.tabs[0].panes[0], age: "" };
-    const rail = parse(
-      renderStageRail([{ project: "p", tabs: [{ framed: true, panes: [pane] }] }]),
-    );
-
-    expect(rail.querySelectorAll(".a-appwin__leafage")).toHaveLength(0);
-    expect(childClasses(rail.querySelector(".a-appwin__leaf"))).toEqual([
-      "a-appwin__mark a-appwin__leafmark",
-      "a-appwin__leafmsg",
-      "a-appwin__leaflogo",
-    ]);
-  });
-
-  it("puts the state on the mark as well as on the button", () => {
-    const rail = parse(renderStageRail(RAIL));
-    const marks = [...rail.querySelectorAll(".a-appwin__mark")];
-
-    expect(marks.map((mark) => mark.getAttribute("data-state"))).toEqual([
-      "working",
-      "done",
-      "done",
-      "asked",
-    ]);
-    expect(
-      [...rail.querySelectorAll(".a-appwin__leaf, .a-appwin__row")].map((row) =>
-        row.getAttribute("data-state"),
-      ),
-    ).toEqual(["working", "done", "done", "asked"]);
-  });
-
-  it("keeps the spinner in every mark, in every state", () => {
-    // CSS decides what shows, which is what lets the stream engine repaint a
-    // pane's whole status by writing one attribute.
-    const rail = parse(renderStageRail(RAIL));
-    const marks = rail.querySelectorAll(".a-appwin__mark");
-
-    expect(marks).toHaveLength(4);
-    for (const mark of marks) {
-      expect(mark.querySelectorAll(".a-appwin__wsspinner")).toHaveLength(1);
-      expect(mark.querySelectorAll(".a-appwin__wsdot")).toHaveLength(8);
-    }
-  });
-
-  it("numbers the spinner's dots from ZERO", () => {
-    // The delay is `calc((var(--dot) - 8) * 0.15s)`: at 1…8 nothing is
-    // negative and the ring pops in on its first painted frame.
-    const dots = [
-      ...parse(renderStageRail([FRAMED_CLUSTER])).querySelectorAll(
-        ".a-appwin__leafmark .a-appwin__wsdot",
-      ),
-    ].slice(0, 8);
-    const indices = dots.map((dot) =>
-      Number(dot.getAttribute("style").replace("--dot:", "").trim()),
-    );
-
-    expect(indices).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-    for (const index of indices) {
-      expect(index).toBeGreaterThanOrEqual(0);
-      expect(index).toBeLessThanOrEqual(7);
-    }
-  });
-
-  it("starts the ring at twelve o'clock on a 26 box", () => {
-    const spinner = parse(renderStageRail([FRAMED_CLUSTER])).querySelector(
-      ".a-appwin__wsspinner",
-    );
-    const first = spinner.querySelector(".a-appwin__wsdot");
-
-    expect(spinner.getAttribute("viewBox")).toBe("0 0 26 26");
-    expect(first.getAttribute("cx")).toBe("13");
-    expect(first.getAttribute("cy")).toBe("2.6");
-    expect(first.getAttribute("r")).toBe("2.2");
-  });
-
-  it("hides a collapsed cluster's rows and keeps its caret", () => {
-    const rail = parse(
-      renderStageRail([{ ...FRAMED_CLUSTER, collapsed: true }]),
-    );
-
-    expect(
-      rail
-        .querySelector(".a-appwin__cluster")
-        .classList.contains("is-collapsed"),
-    ).toBe(true);
-    expect(rail.querySelectorAll(".a-appwin__item")).toHaveLength(0);
-    expect(rail.querySelectorAll(".a-appwin__leaf")).toHaveLength(0);
+    expect(rail.querySelector(".a-appwin__cluster").classList.contains("is-collapsed")).toBe(true);
+    expect(rail.querySelectorAll(".a-appwin__card")).toHaveLength(0);
+    expect(rail.querySelectorAll(".a-appwin__bare")).toHaveLength(0);
     expect(rail.querySelectorAll(".a-appwin__clustercaret")).toHaveLength(1);
   });
 
@@ -423,59 +279,261 @@ describe("renderStageRail", () => {
 
     const hovered = parse(
       renderStageRail([
-        { ...FRAMED_CLUSTER, hovered: true },
-        { ...REMEMBERED_CLUSTER, hovered: true },
+        { ...OPEN_PROJECT, hovered: true },
+        { ...REMEMBERED_PROJECT, hovered: true },
       ]),
     );
-    const heads = [...hovered.querySelectorAll(".a-appwin__clusterhead")];
-    expect(heads.map((head) => head.getAttribute("class"))).toEqual([
-      "a-appwin__clusterhead is-hover",
-      "a-appwin__clusterhead is-still is-hover",
+    expect(
+      [...hovered.querySelectorAll(".a-appwin__clusterhead")].map((head) =>
+        head.getAttribute("class"),
+      ),
+    ).toEqual(["a-appwin__clusterhead is-hover", "a-appwin__clusterhead is-still is-hover"]);
+  });
+});
+
+describe("renderStageRail — the checkout card", () => {
+  it("names the card by the head's four cells", () => {
+    const head = parse(renderStageRail([OPEN_PROJECT])).querySelector(".a-appwin__cardhead");
+
+    expect(childClasses(head)).toEqual([
+      "a-appwin__cardmark",
+      "a-appwin__cardname",
+      "a-appwin__cardbadge",
+      "a-appwin__cardchevron",
     ]);
+    expect(head.querySelector(".a-appwin__cardname").textContent).toBe("main");
   });
 
-  it("wears the app's framed launcher on a project header", () => {
-    // `PlusSquare`'s frame is the one thing that tells the two glyphs apart in
-    // the DOM: if a refactor collapses them, this rect goes missing here or
-    // appears at the two bare `+` controls below.
-    const add = parse(renderStageRail([FRAMED_CLUSTER])).querySelector(
-      ".a-appwin__clusteradd",
-    );
-    expect(add.querySelector("svg rect")).not.toBe(null);
-    expect(add.querySelectorAll("svg path")).toHaveLength(1);
+  it("badges the primary by its role and a worktree by its branch", () => {
+    // The app's naming rule: the primary is named by its branch, so its badge
+    // says `Primary`; a worktree is named by its folder, so its badge carries
+    // the branch and the GitBranch glyph.
+    const primary = parse(renderStageRail([OPEN_PROJECT])).querySelector(".a-appwin__cardbadge");
+    expect(primary.dataset.kind).toBe("role");
+    expect(primary.textContent).toBe("Primary");
+    expect(primary.querySelector("svg")).toBeNull();
 
-    const remembered = parse(renderStageRail([REMEMBERED_CLUSTER])).querySelector(
-      ".a-appwin__clusteradd",
+    const branch = parse(renderStageRail([CLOSED_PROJECT])).querySelector(".a-appwin__barebadge");
+    expect(branch.dataset.kind).toBe("branch");
+    expect(branch.textContent).toBe("feat/billing");
+    expect(branch.querySelector("svg")).not.toBeNull();
+  });
+
+  it("states open, active and the age on the card", () => {
+    const card = parse(renderStageRail([OPEN_PROJECT])).querySelector(".a-appwin__card");
+
+    expect(card.dataset.open).toBe("true");
+    expect(card.dataset.active).toBe("true");
+    expect(card.querySelector(".a-appwin__cardmeta").textContent).toBe("now");
+
+    const closed = parse(renderStageRail([CLOSED_PROJECT])).querySelector(".a-appwin__card");
+    expect(closed.dataset.open).toBe("false");
+    expect(closed.dataset.active).toBe("false");
+  });
+
+  it("omits the age line when a checkout has none", () => {
+    const rail = parse(
+      renderStageRail(closedCard([{ id: null, agent: "codex", label: "x", state: "done" }]).map(
+        (project) => ({
+          ...project,
+          checkouts: project.checkouts.map(({ age: _age, ...checkout }) => checkout),
+        }),
+      )),
     );
-    expect(remembered.querySelector("svg rect")).not.toBe(null);
+    expect(rail.querySelectorAll(".a-appwin__cardmeta")).toHaveLength(0);
+  });
+
+  it("lists an open card's agents as rows, then `New agent`, and draws no strip", () => {
+    const card = parse(renderStageRail([OPEN_PROJECT])).querySelector(".a-appwin__card");
+
+    expect(card.querySelector(".a-appwin__cardcount").textContent).toBe("3 active");
+    expect(card.querySelectorAll(".a-appwin__cardrow")).toHaveLength(3);
+    expect(card.lastElementChild.getAttribute("class")).toBe("a-appwin__cardnew");
+    expect(card.lastElementChild.textContent.trim()).toBe("New agent");
+    expect(card.querySelector(".a-appwin__cardstrip")).toBeNull();
+  });
+
+  it("gives a row its glyph, its sentence and one state slot", () => {
+    const row = parse(renderStageRail([OPEN_PROJECT])).querySelector(".a-appwin__cardrow");
+
+    expect(childClasses(row)).toEqual([
+      "a-appwin__cardglyph",
+      "a-appwin__cardlabel",
+      "a-appwin__cardstatus",
+    ]);
+    expect(row.querySelector(".a-appwin__cardlabel").textContent).toBe(
+      "I'll trace why the pane divider drifts on resize.",
+    );
+    expect(row.dataset.focused).toBe("true");
+  });
+
+  it("keeps both state marks in every status cell, in every state", () => {
+    // CSS decides what paints, which is what lets the stream engine repaint a
+    // pane's whole status by writing one attribute.
+    const cells = parse(renderStageRail([OPEN_PROJECT])).querySelectorAll(".a-appwin__cardstatus");
+
+    expect([...cells].map((cell) => cell.dataset.state)).toEqual(["working", "done", "done"]);
+    for (const cell of cells) {
+      expect(cell.querySelectorAll(".a-appwin__cardload > i")).toHaveLength(3);
+      expect(cell.querySelectorAll(".a-appwin__carddot")).toHaveLength(1);
+    }
+  });
+
+  it("hooks a pane that has an id, and only that pane", () => {
+    const rail = parse(renderStageRail(RAIL));
+
+    expect(rail.querySelectorAll("[data-tail]")).toHaveLength(3);
+    expect(rail.querySelectorAll("[data-dot]")).toHaveLength(3);
+    expect(rail.querySelector('[data-tail="claude"]').getAttribute("class")).toBe(
+      "a-appwin__cardlabel",
+    );
+    expect(rail.querySelector('[data-dot="claude"]').getAttribute("class")).toBe(
+      "a-appwin__cardstatus",
+    );
+
+    // A closed card has no row for a sentence to land in, and its static pane
+    // carries no hook — an attribute spelled "null" would still match.
+    const closed = parse(renderStageRail([CLOSED_PROJECT]));
+    expect(closed.querySelector("[data-tail]")).toBe(null);
+    expect(closed.querySelector("[data-dot]")).toBe(null);
+  });
+
+  it("draws a checkout with nothing open as a bare row", () => {
+    const bare = parse(renderStageRail([CLOSED_PROJECT])).querySelector(".a-appwin__bare");
+
+    expect(childClasses(bare)).toEqual([
+      "a-appwin__baremark",
+      "a-appwin__barename",
+      "a-appwin__barebadge",
+    ]);
+    expect(bare.querySelector(".a-appwin__barename").textContent).toBe("billing");
   });
 
   it("draws a monogram for an agent with no brand file", () => {
-    const pane = {
-      id: null,
-      agent: "cursor-agent",
-      message: "Ready.",
-      age: "5w",
-      state: "idle",
-    };
-    const rail = renderStageRail([
-      { project: "p", tabs: [{ framed: false, panes: [pane] }] },
-    ]);
+    const rail = renderStageRail(
+      closedCard([{ id: null, agent: "cursor-agent", label: "Ready.", state: "idle" }]),
+    );
 
     expect(rail).not.toContain('src="null"');
     expect(rail).not.toContain('src="undefined"');
-    const mono = parse(rail).querySelector(".a-appwin__rowlogo");
+    const mono = parse(rail).querySelector(".a-appwin__cardlogo");
     expect(mono.tagName).toBe("SPAN");
-    expect(mono.getAttribute("class")).toBe(
-      "a-appwin__rowlogo a-appwin__rowlogo--mono",
-    );
+    expect(mono.getAttribute("class")).toBe("a-appwin__cardlogo a-appwin__cardlogo--mono");
     expect(mono.textContent).toBe("C");
   });
 
   it("draws no close on a row — a control that cannot close is a lie", () => {
     const rail = renderStageRail(RAIL);
     expect(rail).not.toContain("rowclose");
-    expect(rail).not.toContain("leafclose");
+    expect(rail).not.toContain("cardclose");
+  });
+});
+
+describe("renderStageRail — the closed strip", () => {
+  const segments = (rail) => [...parse(renderStageRail(rail)).querySelectorAll(".a-appwin__cardseg")];
+
+  it("folds the agents into one segmented bar that ends in the checkout's `+`", () => {
+    const strip = parse(renderStageRail([CLOSED_PROJECT])).querySelector(".a-appwin__cardstrip");
+    const last = strip.lastElementChild;
+
+    expect(strip.querySelectorAll(".a-appwin__cardseg")).toHaveLength(2);
+    expect(last.getAttribute("class")).toBe("a-appwin__cardseg a-appwin__cardseg--add");
+    // The bare Plus, not a framed launcher.
+    expect(last.querySelector("svg path")).not.toBeNull();
+    expect(last.querySelector("svg rect")).toBeNull();
+  });
+
+  it("gives every segment its glyph and a corner dot carrying the state", () => {
+    const [segment] = segments([CLOSED_PROJECT]);
+
+    expect(segment.dataset.state).toBe("asked");
+    expect(segment.querySelectorAll(".a-appwin__cardglyph .a-appwin__carddot")).toHaveLength(1);
+  });
+
+  it("merges one agent kind into one segment, counted, wearing its loudest state", () => {
+    const [claude] = segments(
+      closedCard([
+        { id: null, agent: "claude", label: "a", state: "done" },
+        { id: null, agent: "claude", label: "b", state: "failed" },
+      ]),
+    );
+
+    expect(claude.dataset.state).toBe("failed");
+    expect(claude.querySelector(".a-appwin__cardtimes").textContent).toBe("×2");
+  });
+
+  it("puts the loudest kind first and draws the bars only on a working one", () => {
+    const shown = segments(
+      closedCard([
+        { id: null, agent: "codex", label: "a", state: "done" },
+        { id: null, agent: "claude", label: "b", state: "working" },
+        { id: null, agent: "gemini", label: "c", state: "failed" },
+        { id: null, agent: "opencode", label: "d", state: "ended" },
+      ]),
+    ).filter((segment) => segment.dataset.state !== undefined);
+
+    expect(shown.map((segment) => segment.dataset.state)).toEqual([
+      "failed",
+      "working",
+      "done",
+      "ended",
+    ]);
+    expect(shown.map((segment) => segment.querySelectorAll(".a-appwin__cardload").length)).toEqual([
+      0, 1, 0, 0,
+    ]);
+  });
+
+  it("folds what does not fit into a `+N` tail and never folds the `+`", () => {
+    // The gallery's own `ai-terminal` card: five kinds, three shown, `+2`.
+    const all = segments(
+      closedCard([
+        { id: null, agent: "claude", label: "a", state: "working" },
+        { id: null, agent: "codex", label: "b", state: "working" },
+        { id: null, agent: "cursor-agent", label: "c", state: "done" },
+        { id: null, agent: "opencode", label: "d", state: "asked" },
+        { id: null, agent: "gemini", label: "e", state: "idle" },
+      ]),
+    );
+
+    expect(all.map((segment) => segment.dataset.state ?? segment.className)).toEqual([
+      "asked",
+      "working",
+      "working",
+      "a-appwin__cardseg a-appwin__cardseg--more",
+      "a-appwin__cardseg a-appwin__cardseg--add",
+    ]);
+    expect(all[3].textContent.trim()).toBe("+2");
+  });
+});
+
+describe("renderStageStatusMark", () => {
+  it("keeps the ring in the mark in every state", () => {
+    for (const state of ["failed", "asked", "working", "done", "idle", "ended"]) {
+      const mark = parse(renderStageStatusMark(state, "x")).firstElementChild;
+
+      expect(mark.getAttribute("class")).toBe("a-appwin__mark x");
+      expect(mark.dataset.state).toBe(state);
+      expect(mark.querySelectorAll(".a-appwin__wsdot")).toHaveLength(8);
+    }
+  });
+
+  it("numbers the ring's dots from ZERO", () => {
+    // The delay is `calc((var(--dot) - 8) * 0.15s)`: at 1…8 nothing is
+    // negative and the ring pops in on its first painted frame.
+    const dots = [...parse(renderStageStatusMark("working", "x")).querySelectorAll(".a-appwin__wsdot")];
+    const indices = dots.map((dot) => Number(dot.getAttribute("style").replace("--dot:", "").trim()));
+
+    expect(indices).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("starts the ring at twelve o'clock on a 26 box", () => {
+    const spinner = parse(renderStageStatusMark("working", "x")).querySelector(".a-appwin__wsspinner");
+    const first = spinner.querySelector(".a-appwin__wsdot");
+
+    expect(spinner.getAttribute("viewBox")).toBe("0 0 26 26");
+    expect(first.getAttribute("cx")).toBe("13");
+    expect(first.getAttribute("cy")).toBe("2.6");
+    expect(first.getAttribute("r")).toBe("2.2");
   });
 });
 
@@ -498,40 +556,45 @@ describe("renderStageStrip", () => {
       "terminal",
       "file",
       "browser",
+      "board",
     ]);
     expect(chips.map((chip) => chip.classList.contains("is-active"))).toEqual([
       true,
       false,
       false,
+      false,
     ]);
-    // One mark slot: an <img> for the agent, an <svg> for the other two.
-    expect(
-      chips.map((chip) => chip.querySelector(".a-appwin__chiplogo").tagName),
-    ).toEqual(["IMG", "SPAN", "SPAN"]);
+    // One mark slot: an <img> for the agent, an <svg> for the other three.
+    expect(chips.map((chip) => chip.querySelector(".a-appwin__chiplogo").tagName)).toEqual([
+      "IMG",
+      "SPAN",
+      "SPAN",
+      "SPAN",
+    ]);
     for (const chip of chips.slice(1)) {
       expect(chip.querySelectorAll(".a-appwin__chiplogo svg")).toHaveLength(1);
     }
   });
 
+  it("draws the Agent Board's chip as `Agents` with four squares", () => {
+    const board = parse(renderStageStrip(STRIP)).querySelector('[data-kind="board"]');
+
+    expect(board.querySelector(".a-appwin__chiplabel").textContent).toBe("Agents");
+    expect(board.querySelectorAll(".a-appwin__chiplogo svg rect")).toHaveLength(4);
+  });
+
   it("hooks the terminal chip's label and closes only the active chip", () => {
     const strip = parse(renderStageStrip(STRIP));
-    const [terminal, file, browser] = [
-      ...strip.querySelectorAll(".a-appwin__chip"),
-    ];
+    const [terminal, ...others] = [...strip.querySelectorAll(".a-appwin__chip")];
 
     expect(childClasses(terminal)).toEqual([
       "a-appwin__chiplogo",
       "a-appwin__chiplabel",
       "a-appwin__chipclose",
     ]);
-    expect(
-      terminal.querySelector(".a-appwin__chiplabel").getAttribute("data-tail"),
-    ).toBe("claude");
-    for (const chip of [file, browser]) {
-      expect(childClasses(chip)).toEqual([
-        "a-appwin__chiplogo",
-        "a-appwin__chiplabel",
-      ]);
+    expect(terminal.querySelector(".a-appwin__chiplabel").getAttribute("data-tail")).toBe("claude");
+    for (const chip of others) {
+      expect(childClasses(chip)).toEqual(["a-appwin__chiplogo", "a-appwin__chiplabel"]);
       expect(chip.querySelector("[data-tail]")).toBe(null);
     }
   });
@@ -545,30 +608,23 @@ describe("renderStageStrip", () => {
     }
   });
 
-  it("closes the chips with the +, then More, then the panel toggle", () => {
+  it("ends the chips with no `+` — 1.1 took it off — then More and the panel toggle", () => {
     const strip = parse(renderStageStrip(STRIP)).firstElementChild;
     const chips = strip.querySelector(".a-appwin__chips");
     const actions = strip.querySelector(".a-appwin__stripactions");
 
-    expect(childClasses(strip)).toEqual([
-      "a-appwin__chips",
-      "a-appwin__stripactions",
-    ]);
-    expect(chips.lastElementChild.getAttribute("class")).toBe(
-      "a-appwin__chipadd",
+    expect(childClasses(strip)).toEqual(["a-appwin__chips", "a-appwin__stripactions"]);
+    expect([...chips.children].every((child) => child.classList.contains("a-appwin__chip"))).toBe(
+      true,
     );
-    // The strip's `+` is the bare Plus the app draws at 13px, not the rail's
-    // framed launcher.
-    expect(chips.lastElementChild.querySelector("svg rect")).toBe(null);
+    expect(strip.outerHTML).not.toContain("chipadd");
     expect(childClasses(actions)).toEqual(["a-appwin__ctl", "a-appwin__ctl"]);
   });
 
   it("mirrors the panel toggle's glyph in the markup, not in CSS", () => {
     // The frame row's toggle and this one are the same icon; the app flips
     // this one because it points at a panel on the right.
-    const actions = parse(renderStageStrip(STRIP)).querySelector(
-      ".a-appwin__stripactions",
-    );
+    const actions = parse(renderStageStrip(STRIP)).querySelector(".a-appwin__stripactions");
     const [more, dock] = [...actions.children];
 
     expect(more.querySelectorAll("circle")).toHaveLength(3);

@@ -44,10 +44,11 @@ export function sceneAgentMark(id, className, size = 18) {
 /**
  * The rail a scene that is not ABOUT the rail can stand on.
  *
- * Two clusters and four rows — the hero's live half, compressed: one framed
- * multi-agent tab (DL-27.19, no parent row) and one bare single-pane tab. It
- * is a RESTING frame, so no cluster is collapsed and none is hovered, which
- * means no caret and no `+` paint on it; panel 1 is where those get said.
+ * Two projects, two cards — the hero's live half, compressed: the open
+ * `main` card of spacevibe-deck with the hero's three sentences, and a closed
+ * spacevibe-api card whose one agent is waiting. It is a RESTING frame, so no
+ * project is collapsed and none is hovered, which means no caret and no close
+ * paint on it; panel 1 is where those get said.
  *
  * Every `id` is null. A scene mounts no stream, and a `data-tail` hook with
  * nothing driving it is a hook that lies about being live.
@@ -58,29 +59,26 @@ export function sceneAgentMark(id, className, size = 18) {
 export const SCENE_RAIL = deepFreeze([
   {
     project: "spacevibe-deck",
-    tabs: [
+    checkouts: [
       {
-        framed: true,
+        name: "main",
+        badge: { kind: "role", text: "Primary" },
+        age: "now",
+        open: true,
+        active: true,
         panes: [
           {
             id: null,
             agent: "claude",
-            message: "I'll trace why the pane divider drifts on resize.",
-            age: "now",
+            label: "I'll trace why the pane divider drifts on resize.",
             state: "working",
+            focused: true,
           },
-          {
-            id: null,
-            agent: "codex",
-            message: "96 passed · 0 failed",
-            age: "2m",
-            state: "done",
-          },
+          { id: null, agent: "codex", label: "96 passed · 0 failed", state: "done" },
           {
             id: null,
             agent: "opencode",
-            message: "typecheck clean · the branch follows cwd now",
-            age: "2m",
+            label: "typecheck clean · the branch follows cwd now",
             state: "done",
           },
         ],
@@ -89,15 +87,16 @@ export const SCENE_RAIL = deepFreeze([
   },
   {
     project: "spacevibe-api",
-    tabs: [
+    checkouts: [
       {
-        framed: false,
+        name: "main",
+        badge: { kind: "role", text: "Primary" },
+        age: "3h",
         panes: [
           {
             id: null,
             agent: "gemini",
-            message: "Should I apply the pending migration?",
-            age: "3h",
+            label: "Should I apply the pending migration?",
             state: "asked",
           },
         ],

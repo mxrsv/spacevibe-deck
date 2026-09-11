@@ -173,12 +173,12 @@ describe("the hero's stream hooks", () => {
   });
 
   it("gives a static rail row no hook at all, so nothing claims to be live", () => {
-    // `id: null` in `stageRail` is §3.1's static row. The hero's
-    // `spacevibe-api` pane is one; a hook on it would be a promise the engine
-    // never keeps, because `stagePanes` holds no script for it.
+    // `id: null` in `stageRail` is §3.1's static pane. The hero's closed
+    // cards hold them; a hook on one would be a promise the engine never
+    // keeps, because `stagePanes` holds no script for it.
     const root = hero();
     const staticPanes = stageRail
-      .flatMap((cluster) => cluster.tabs.flatMap((tab) => tab.panes))
+      .flatMap((project) => project.checkouts.flatMap((checkout) => checkout.panes))
       .filter((pane) => pane.id === null);
 
     expect(staticPanes.length).toBeGreaterThan(0);
@@ -282,7 +282,7 @@ describe("no renderer prints a hole", () => {
 /* Seam assertion 5 — the rail renderer's two shapes                   */
 /* ------------------------------------------------------------------ */
 
-describe("renderStageRail's two shapes", () => {
+describe("renderStageRail's three checkout shapes", () => {
   function railDom(fixture) {
     const host = document.createElement("div");
     host.innerHTML = renderStageRail(fixture);
@@ -290,20 +290,18 @@ describe("renderStageRail's two shapes", () => {
     return host;
   }
 
-  it("draws a remembered cluster with no caret and no toggle", () => {
-    // §1.1 / D6: `.asr-cluster__still` has no caret at all, ever. The hero
-    // fixture carries one (`spacevibe-hub`); `SCENE_RAIL`, the resting rail
-    // the six panels share, deliberately carries none — panel 1 passes its
-    // own fixture for the remembered header, and asserts it further down.
-    expect(stageRail.some((cluster) => cluster.remembered)).toBe(true);
-    expect(SCENE_RAIL.some((cluster) => cluster.remembered)).toBe(false);
+  const checkoutsOf = (fixture) => fixture.flatMap((project) => project.checkouts);
 
-    // One still head per remembered fixture entry — counted off the fixture
-    // rather than pinned to a number, so densifying the rail (2026-08-20:
-    // hub AND active are remembered now) cannot silently draw one short.
-    const rememberedCount = stageRail.filter((cluster) => cluster.remembered).length;
+  it("draws a remembered project with no caret and no toggle", () => {
+    // DL-19.7: `.asr-cluster__still` has no caret at all, ever. The hero
+    // fixture carries one (`spacevibe-hub`); `SCENE_RAIL`, the resting rail
+    // the panels share, deliberately carries none — panel 1 passes its own
+    // fixture for the remembered header, and asserts it further down.
+    expect(stageRail.some((project) => project.remembered)).toBe(true);
+    expect(SCENE_RAIL.some((project) => project.remembered)).toBe(false);
+
+    const rememberedCount = stageRail.filter((project) => project.remembered).length;
     const remembered = [...railDom(stageRail).querySelectorAll(".a-appwin__clusterhead.is-still")];
-    expect(rememberedCount).toBeGreaterThan(0);
     expect(remembered).toHaveLength(rememberedCount);
 
     for (const head of remembered) {
@@ -313,55 +311,66 @@ describe("renderStageRail's two shapes", () => {
     }
   });
 
-  it("draws a live header as exactly two children — the toggle and the launcher", () => {
-    // R6: a fourth child auto-places onto an implicit SECOND grid row and
+  it("draws a live header as exactly two children — the toggle and the close", () => {
+    // R6: a third child auto-places onto an implicit SECOND grid row and
     // drops the caret below the project name. The owner caught that class of
-    // defect in the app on 2026-08-19.
+    // defect in the app on 2026-08-19. The header's `+` is gone since 1.1.
     const heads = [...railDom(stageRail).querySelectorAll(".a-appwin__clusterhead:not(.is-still)")];
     expect(heads.length).toBeGreaterThan(0);
 
     for (const head of heads) {
       expect([...head.children].map((child) => child.className)).toEqual([
         "a-appwin__clustertoggle",
-        "a-appwin__clusteradd",
+        "a-appwin__clusterremove",
       ]);
     }
   });
 
-  it("draws a framed tab as N leaves and zero rows", () => {
-    // D7: `PANE_TREE_HIDDEN` is true in the app, so a multi-agent tab renders
-    // headless — the panes are flat leaves and no parent row exists.
+  it("draws an open card's panes as rows, one per pane, and no strip", () => {
     for (const [name, fixture] of [
       ["hero", stageRail],
       ["scene", SCENE_RAIL],
     ]) {
-      const host = railDom(fixture);
-      const framedTabs = fixture.flatMap((cluster) => cluster.tabs).filter((tab) => tab.framed);
+      const open = checkoutsOf(fixture).filter((checkout) => checkout.open);
+      const cards = [...railDom(fixture).querySelectorAll('.a-appwin__card[data-open="true"]')];
 
-      expect(framedTabs.length, name).toBeGreaterThan(0);
+      expect(open.length, name).toBeGreaterThan(0);
+      expect(cards, name).toHaveLength(open.length);
 
-      const items = [...host.querySelectorAll(".a-appwin__item.is-framed")];
-      expect(items, name).toHaveLength(framedTabs.length);
-
-      items.forEach((item, index) => {
-        expect(item.querySelectorAll(".a-appwin__leaf"), name).toHaveLength(
-          framedTabs[index].panes.length,
+      cards.forEach((card, index) => {
+        expect(card.querySelectorAll(".a-appwin__cardrow"), name).toHaveLength(
+          open[index].panes.length,
         );
-        expect(item.querySelectorAll(".a-appwin__row"), name).toHaveLength(0);
+        expect(card.querySelector(".a-appwin__cardstrip"), name).toBeNull();
       });
     }
   });
 
-  it("draws an unframed tab as rows, never as leaves", () => {
-    const host = railDom(stageRail);
-    const bare = [...host.querySelectorAll(".a-appwin__item:not(.is-framed)")];
+  it("draws a closed card as a strip, never as rows", () => {
+    const closed = [...railDom(stageRail).querySelectorAll('.a-appwin__card[data-open="false"]')];
 
-    expect(bare.length).toBeGreaterThan(0);
+    expect(closed.length).toBeGreaterThan(0);
 
-    for (const item of bare) {
-      expect(item.querySelectorAll(".a-appwin__leaf")).toHaveLength(0);
-      expect(item.querySelectorAll(".a-appwin__row").length).toBeGreaterThan(0);
+    for (const card of closed) {
+      expect(card.querySelectorAll(".a-appwin__cardrow")).toHaveLength(0);
+      expect(card.querySelector(".a-appwin__cardstrip")).not.toBeNull();
     }
+  });
+
+  it("draws a checkout with nothing open as a bare row, never a card", () => {
+    const empty = checkoutsOf(stageRail).filter((checkout) => checkout.panes.length === 0);
+
+    expect(empty.length).toBeGreaterThan(0);
+    expect(railDom(stageRail).querySelectorAll(".a-appwin__bare")).toHaveLength(empty.length);
+  });
+
+  it("keeps exactly one active card in the hero, and it is the open one", () => {
+    // The active card is the checkout holding the window's focus; the hero's
+    // streamed panes are in it, so it must be open for their rows to exist.
+    const active = [...railDom(stageRail).querySelectorAll('.a-appwin__card[data-active="true"]')];
+
+    expect(active).toHaveLength(1);
+    expect(active[0].dataset.open).toBe("true");
   });
 });
 
@@ -408,8 +417,8 @@ describe("the reduced-motion frame", () => {
     // its last tail, so it is the one pane that can tell a live rail from a
     // dead one. An assertion written against codex or opencode proves nothing.
     const resting = stageRail
-      .flatMap((cluster) => cluster.tabs.flatMap((tab) => tab.panes))
-      .find((pane) => pane.id === "claude").message;
+      .flatMap((project) => project.checkouts.flatMap((checkout) => checkout.panes))
+      .find((pane) => pane.id === "claude").label;
 
     expect(lastRailValues(stagePanes.find((pane) => pane.id === "claude")).tail).not.toBe(resting);
 
@@ -597,9 +606,11 @@ describe("the scenes' shared frame", () => {
 
   it("shares one frozen resting rail across all six scenes", () => {
     expect(Object.isFrozen(SCENE_RAIL)).toBe(true);
-    expect(Object.isFrozen(SCENE_RAIL[0].tabs[0].panes[0])).toBe(true);
+    expect(Object.isFrozen(SCENE_RAIL[0].checkouts[0].panes[0])).toBe(true);
 
-    const panes = SCENE_RAIL.flatMap((cluster) => cluster.tabs.flatMap((tab) => tab.panes));
+    const panes = SCENE_RAIL.flatMap((project) =>
+      project.checkouts.flatMap((checkout) => checkout.panes),
+    );
     expect(panes.every((pane) => pane.id === null)).toBe(true);
     expect(SCENE_RAIL.some((cluster) => cluster.collapsed)).toBe(false);
     expect(SCENE_RAIL.some((cluster) => cluster.hovered)).toBe(false);
@@ -637,44 +648,58 @@ describe("the rail panel", () => {
     expect(host.querySelector(".scene-rail__list")).toBeNull();
   });
 
-  it("is the one surface that carries all five rail states", () => {
-    const states = [...panel().querySelectorAll(".a-appwin__mark")].map(
-      (mark) => mark.dataset.state,
-    );
+  it("is the one surface that carries all six card states", () => {
+    // Open rows state theirs on the status cell, closed segments on the
+    // segment itself — the same attribute either way.
+    const states = [
+      ...panel().querySelectorAll(".a-appwin__cardstatus, .a-appwin__cardseg[data-state]"),
+    ].map((node) => node.dataset.state);
 
-    expect(new Set(states)).toEqual(new Set(["failed", "asked", "working", "done", "idle"]));
+    expect(new Set(states)).toEqual(
+      new Set(["failed", "asked", "working", "done", "idle", "ended"]),
+    );
   });
 
-  it("bakes exactly one hover, on the remembered header, and reveals its two controls", () => {
-    // D6: the launcher and the forget control are said here or nowhere on
-    // the page — every other header on the site is at rest.
+  it("draws one open card and one closed card, the closed one ending in its `+`", () => {
+    const host = panel();
+    const open = host.querySelectorAll('.a-appwin__card[data-open="true"]');
+    const closed = host.querySelectorAll('.a-appwin__card[data-open="false"]');
+
+    expect(open).toHaveLength(1);
+    expect(closed).toHaveLength(1);
+    expect(closed[0].querySelector(".a-appwin__cardstrip").lastElementChild.className).toBe(
+      "a-appwin__cardseg a-appwin__cardseg--add",
+    );
+    // Two asked Claude panes fold into one counted segment.
+    expect(closed[0].querySelector(".a-appwin__cardtimes").textContent).toBe("×2");
+  });
+
+  it("bakes exactly one hover, on the remembered header, and reveals its close", () => {
+    // The forget control is said here or nowhere on the page — every other
+    // header on the site is at rest.
     const hovered = [...panel().querySelectorAll(".a-appwin__clusterhead.is-hover")];
 
     expect(hovered).toHaveLength(1);
     expect(hovered[0].classList.contains("is-still")).toBe(true);
-    expect(hovered[0].querySelector(".a-appwin__clusteradd")).not.toBeNull();
     expect(hovered[0].querySelector(".a-appwin__clusterremove")).not.toBeNull();
   });
 
-  it("draws one collapsed cluster: its caret kept, its rows gone", () => {
+  it("draws one collapsed project: its caret kept, its cards gone", () => {
     // The one legitimate resting state in which a caret is visible, and the
     // only place on the page one appears without a pointer.
     const collapsed = [...panel().querySelectorAll(".a-appwin__cluster.is-collapsed")];
 
     expect(collapsed).toHaveLength(1);
     expect(collapsed[0].querySelector(".a-appwin__clustercaret")).not.toBeNull();
-    expect(collapsed[0].querySelectorAll(".a-appwin__item")).toHaveLength(0);
+    expect(collapsed[0].querySelectorAll(".a-appwin__card, .a-appwin__bare")).toHaveLength(0);
   });
 
-  it("gives its ageless idle row an agent name and no age cell", () => {
-    // `age: ""` omits the `<span>` entirely, so the row's four-track grid has
-    // an empty third cell and the brand glyph must still land in the fourth.
-    const idle = [...panel().querySelectorAll(".a-appwin__row")].find(
-      (row) => row.dataset.state === "idle",
+  it("gives its idle row the agent's name, because it has said nothing yet", () => {
+    const idle = [...panel().querySelectorAll(".a-appwin__cardrow")].find(
+      (row) => row.querySelector(".a-appwin__cardstatus").dataset.state === "idle",
     );
 
-    expect(idle.querySelector(".a-appwin__rowmsg").textContent).toBe("Gemini CLI");
-    expect(idle.querySelector(".a-appwin__rowage")).toBeNull();
+    expect(idle.querySelector(".a-appwin__cardlabel").textContent).toBe("Gemini");
   });
 
   it("keeps the panel's work on the stage side and draws no tab strip", () => {
@@ -715,8 +740,8 @@ describe("the mount's two roots", () => {
 
     const claude = stagePanes.find((pane) => pane.id === "claude");
     const resting = stageRail
-      .flatMap((cluster) => cluster.tabs.flatMap((tab) => tab.panes))
-      .find((pane) => pane.id === "claude").message;
+      .flatMap((project) => project.checkouts.flatMap((checkout) => checkout.panes))
+      .find((pane) => pane.id === "claude").label;
 
     expect(second.querySelector('[data-tail="claude"]').textContent).toBe(
       lastRailValues(claude).tail,

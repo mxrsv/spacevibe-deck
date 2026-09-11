@@ -11,23 +11,26 @@
  * The panel is `flip: true` (§3.6), so the window's rail sits on the reader's
  * right, next to the sentence that explains it.
  *
- * Four clusters cover every state the app's rail has, and every one of them is
+ * Three projects cover every shape the 1.1 rail has, and every one of them is
  * a frame the app really produces at rest:
  *
- *   1. a live project whose multi-agent tab is framed — three flat leaves
- *      inside one inset hairline and NO parent row, because `PANE_TREE_HIDDEN`
- *      is true (D7). The framed item paints no selection wash;
- *   2. a live project of single-pane tabs — bare rows, red, yellow and quiet;
- *   3. a COLLAPSED project — the one resting state in which the caret is
- *      visible (D6), and it draws no rows at all;
- *   4. a REMEMBERED project, hovered — folder and name with no caret element
- *      in the markup at all, and the reveal baked so the per-project launcher
- *      gets said somewhere on the page (D6, §1.1).
+ *   1. a live project with an OPEN card — one row per agent, each printing
+ *      what that agent last said — and a CLOSED card beside it, its agents
+ *      folded into the segmented strip with the checkout's one `+`;
+ *   2. a COLLAPSED project — the one resting state in which the caret is
+ *      visible, and it draws no cards at all;
+ *   3. a REMEMBERED project, hovered — folder and name with no caret element
+ *      in the markup at all, its close revealed, and its checkout as a bare
+ *      row: the way back into a project with nothing running.
  *
- * The hover on cluster 4 is the plan's single baked one. Everything else is at
- * rest: no other header shows a caret or a `+`, because the live page reveals
- * those on real hover and a drawing that shows them everywhere would be
- * claiming they are always on.
+ * Between the open rows and the closed strip, all six states the card draws
+ * are on screen: working (the bars), done, idle (a row with no mark), asked,
+ * failed, and ended (the stop square).
+ *
+ * The hover on project 3 is the panel's single baked one. Everything else is
+ * at rest: no other header shows a caret or a close, because the live page
+ * reveals those on real hover and a drawing that shows them everywhere would
+ * be claiming they are always on.
  */
 
 import { deepFreeze } from "../../product-stage.js";
@@ -37,124 +40,88 @@ import { frame } from "./chrome.js";
  * This panel's rail.
  *
  * Every `id` is null: a panel mounts no stream, and a `data-tail` hook with
- * nothing driving it is markup that claims to be live and is not. The sentences
- * are therefore the whole story the panel tells, and they are chosen to match
- * the panel's own copy — claude, codex and opencode are the three agents whose
- * session logs Deck can actually read today, so they are the three that carry a
- * sentence here. The row that carries none is a gemini pane, which is honest
- * twice over: it has not run yet, and its scanner answers null anyway.
+ * nothing driving it is markup that claims to be live and is not. The open
+ * card's sentences are therefore the whole story the panel tells, and they
+ * are chosen to match the panel's own copy — claude, codex and opencode are
+ * the three agents whose session logs Deck can actually read today, so they
+ * are the ones that carry a sentence. The row that carries none is a gemini
+ * pane, which is honest twice over: it has not run yet, and its scanner
+ * answers null anyway — so the row keeps the agent's name, the app's own
+ * fallback.
  *
  * Frozen for the same reason the shared rail is: a fixture that can be edited
  * in place is a fixture that can be edited by accident.
  */
 const PANEL_RAIL = deepFreeze([
   /*
-   * The hero's own multi-agent tab, zoomed. Deliberately the same three
-   * sentences: this panel is the hero's rail read at a size where it can be
-   * read, not a second window with a second story.
+   * The hero's own open card, zoomed — deliberately the same sentences, so
+   * this panel is the hero's rail read at a size where it can be read, not a
+   * second window with a second story. Gemini replaces opencode's row for the
+   * idle state; the closed worktree card carries the loud three.
    */
   {
     project: "spacevibe-deck",
-    tabs: [
+    checkouts: [
       {
-        framed: true,
+        name: "main",
+        badge: { kind: "role", text: "Primary" },
+        age: "now",
+        open: true,
+        active: true,
         panes: [
           {
             id: null,
             agent: "claude",
-            message: "I'll trace why the pane divider drifts on resize.",
-            age: "now",
+            label: "I'll trace why the pane divider drifts on resize.",
             state: "working",
+            focused: true,
           },
-          {
-            id: null,
-            agent: "codex",
-            message: "96 passed · 0 failed",
-            age: "2m",
-            state: "done",
-          },
-          {
-            id: null,
-            agent: "opencode",
-            message: "typecheck clean · the branch follows cwd now",
-            age: "2m",
-            state: "done",
-          },
+          { id: null, agent: "codex", label: "96 passed · 0 failed", state: "done" },
+          { id: null, agent: "gemini", label: "Gemini", state: "idle" },
         ],
       },
-    ],
-  },
-  /*
-   * Single-pane tabs, so each renders as a bare row rather than a framed leaf.
-   * Three rows, not the two the panel's headline names: `idle` is a rail state
-   * like the other four and this is the only cluster with room for it, since
-   * the framed tab is fixed at three leaves and a collapsed cluster draws no
-   * rows for a state to appear on.
-   */
-  {
-    project: "spacevibe-api",
-    tabs: [
       {
-        framed: false,
+        name: "deck-detach",
+        badge: { kind: "branch", text: "feat/pane-detach" },
+        age: "4m",
         panes: [
           {
             id: null,
             agent: "codex",
-            message: "npm run build failed — DATABASE_URL is unset.",
-            age: "4m",
+            label: "npm run build failed — DATABASE_URL is unset.",
             state: "failed",
           },
-        ],
-      },
-      {
-        framed: false,
-        panes: [
           {
             id: null,
             agent: "claude",
-            message: "Should I apply the pending migration?",
-            age: "3h",
+            label: "Should I apply the pending migration?",
             state: "asked",
           },
-        ],
-      },
-      /*
-       * A pane that has not run. There is no turn to print, so the row keeps
-       * its agent's name — the app's own fallback — and carries no age,
-       * because nothing has changed for an age to measure.
-       */
-      {
-        framed: false,
-        panes: [
-          {
-            id: null,
-            agent: "gemini",
-            message: "Gemini CLI",
-            age: "",
-            state: "idle",
-          },
+          { id: null, agent: "claude", label: "Which branch should the fix land on?", state: "asked" },
+          { id: null, agent: "opencode", label: "OpenCode", state: "ended" },
         ],
       },
     ],
   },
   /*
-   * Collapsed. Its rows exist and are simply not drawn — the app's own
-   * `{!collapsed && group.rows.map(…)}` — which is why the fixture still
+   * Collapsed. Its cards exist and are simply not drawn — the app's own
+   * `{!collapsed && group.worktrees.map(…)}` — which is why the fixture still
    * carries one. The caret is the point: this is the only resting frame in
    * which the rail shows a disclosure at all.
    */
   {
     project: "spacevibe-arena",
     collapsed: true,
-    tabs: [
+    checkouts: [
       {
-        framed: false,
+        name: "main",
+        badge: { kind: "role", text: "Primary" },
+        age: "2d",
         panes: [
           {
             id: null,
             agent: "claude",
-            message: "Seeded 42 rooms · arena is up on 5174",
-            age: "2d",
+            label: "Seeded 42 rooms · arena is up on 5174",
             state: "done",
           },
         ],
@@ -162,25 +129,24 @@ const PANEL_RAIL = deepFreeze([
     ],
   },
   /*
-   * Remembered: a project whose last tab closed. It keeps a header and no
-   * rows, and it has no caret element in the markup at all — there is nothing
-   * to fold, so the disclosure is omitted rather than disabled (DL-19.7).
-   * Hovered, so its `+` and its `×` paint: the `+` is a launcher into a
-   * project with nothing running, which is exactly what a remembered row is
-   * for, and this is the one place on the page it is said.
+   * Remembered: a project whose last tab closed. It keeps a header and has no
+   * caret element in the markup at all — there is nothing to fold, so the
+   * disclosure is omitted rather than disabled (DL-19.7). Its checkout prints
+   * as a bare row, which in the app is that checkout's create control. Hovered,
+   * so its close paints: this is the one place on the page it is said.
    */
   {
     project: "spacevibe-hub",
     remembered: true,
     hovered: true,
-    tabs: [],
+    checkouts: [{ name: "main", badge: { kind: "role", text: "Primary" }, panes: [] }],
   },
 ]);
 
 /**
  * The stage side, held down.
  *
- * Three faint panes — the three the framed tab up in the rail is reporting on
+ * Three faint panes — the three the open card up in the rail is reporting on
  * — and one line saying they are still going. The panel's subject is the
  * sentences on the left of this, so the work itself is present and out of
  * focus rather than absent: a blank half would say the rail is all there is.

@@ -69,134 +69,111 @@ export const stageStatus = deepFreeze({
 });
 
 /**
- * Agent rail — one cluster per project, one row per pane, as the app has
- * drawn it since the 2026-08 rail work. `id` is the pane id the stream engine
- * writes through (`data-tail` / `data-dot`); a null id is a static row that
- * nothing animates. `framed: true` marks a tab whose several panes stand
- * inside the DL-27.19 inset frame. `remembered` is a closed-but-remembered
- * project: a rowless header, no caret, ever. Ages use the app's own
- * vocabulary — "" | now | 2m | 3h | 2d | 5w, weeks being the largest unit.
+ * Agent rail — project → checkout card → agent pane, as Deck 1.1 draws it
+ * (`src/ui/worktree-card.tsx`, `docs/internals/agent-rail.md`). A project
+ * holds its checkouts; a checkout with panes is a CARD, one with none is a
+ * bare row (mark, name, badge and nothing else).
  *
- * The resting sentences are the ones the pane scripts below leave on screen:
- * claude carries its first `tail` because it is still working, codex and
- * opencode their last.
+ * A card's `name` and `badge` follow the app's naming rule rather than the
+ * folder: the primary checkout is named by its BRANCH and badged `Primary`,
+ * every other checkout by its folder and badged with its branch — so no head
+ * says the project name twice. `open` shows the agent rows, closed folds them
+ * into the segmented strip. `active` is the checkout holding the window's
+ * focus, and gets the green frame.
+ *
+ * A pane's `label` is what its row prints: the agent's latest sentence, or
+ * its name when it has not said anything yet. `id` is the pane id the stream
+ * engine writes through (`data-tail` on the label, `data-dot` on the status
+ * cell); a null id is a static pane nothing animates. `remembered` is a
+ * project with nothing open: a still header, and its checkouts as bare rows.
+ *
+ * The spacevibe-deck `main` card is OPEN on purpose: its three rows are where
+ * the three streamed panes' sentences land. A closed card has no row to write
+ * a sentence into. The resting sentences are the ones the pane scripts below
+ * leave on screen: claude carries its first `tail` because it is still
+ * working, codex and opencode their last.
  */
 export const stageRail = deepFreeze([
   {
     project: "spacevibe-deck",
-    tabs: [
+    checkouts: [
       {
-        framed: true,
+        name: "main",
+        badge: { kind: "role", text: "Primary" },
+        age: "now",
+        open: true,
+        active: true,
         panes: [
           {
             id: "claude",
             agent: "claude",
-            message: "I'll trace why the pane divider drifts on resize.",
-            age: "now",
+            label: "I'll trace why the pane divider drifts on resize.",
             state: "working",
+            focused: true,
           },
           {
             id: "codex",
             agent: "codex",
-            message: "96 passed · 0 failed",
-            age: "2m",
+            label: "96 passed · 0 failed",
             state: "done",
           },
           {
             id: "opencode",
             agent: "opencode",
-            message: "typecheck clean · the branch follows cwd now",
-            age: "2m",
+            label: "typecheck clean · the branch follows cwd now",
             state: "done",
           },
+        ],
+      },
+      {
+        name: "deck-detach",
+        badge: { kind: "branch", text: "feat/pane-detach" },
+        age: "12m",
+        panes: [
+          {
+            id: null,
+            agent: "codex",
+            label: "npm test failed — 3 assertions in vote-panel.",
+            state: "failed",
+          },
+          { id: null, agent: "claude", label: "Claude", state: "working" },
         ],
       },
     ],
   },
   {
     project: "spacevibe-api",
-    tabs: [
+    checkouts: [
       {
-        framed: false,
+        name: "main",
+        badge: { kind: "role", text: "Primary" },
+        age: "3h",
         panes: [
           {
             id: null,
             agent: "gemini",
-            message: "Should I apply the pending migration?",
-            age: "3h",
+            label: "Should I apply the pending migration?",
             state: "asked",
           },
-        ],
-      },
-      {
-        framed: false,
-        panes: [
           {
             id: null,
             agent: "agy",
-            message: "Batching the artifact uploads into one R2 write.",
-            age: "12m",
+            label: "Batching the artifact uploads into one R2 write.",
             state: "working",
           },
         ],
       },
-    ],
-  },
-  {
-    project: "spacevibe-bench",
-    tabs: [
       {
-        framed: false,
-        panes: [
-          {
-            id: null,
-            agent: "codex",
-            message: "npm test failed — 3 assertions in vote-panel.",
-            age: "5m",
-            state: "failed",
-          },
-        ],
-      },
-      {
-        framed: false,
-        panes: [
-          {
-            id: null,
-            agent: "cursor-agent",
-            message: "Split the arena grid into virtual rows.",
-            age: "26m",
-            state: "done",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    project: "spacevibe-academy",
-    tabs: [
-      {
-        framed: false,
-        panes: [
-          {
-            id: null,
-            agent: "opencode",
-            message: "Drafting the lesson checkpoint schema.",
-            age: "44m",
-            state: "working",
-          },
-        ],
+        name: "billing",
+        badge: { kind: "branch", text: "feat/billing" },
+        panes: [],
       },
     ],
   },
   {
     project: "spacevibe-hub",
     remembered: true,
-    tabs: [],
-  },
-  {
-    project: "spacevibe-active",
-    remembered: true,
-    tabs: [],
+    checkouts: [{ name: "main", badge: { kind: "role", text: "Primary" }, panes: [] }],
   },
 ]);
 
@@ -204,9 +181,12 @@ export const stageRail = deepFreeze([
  * Tab strip — one chip shape per surface, in open order rather than by
  * recency. The mark comes from `kind` alone: a terminal chip draws its
  * agent's brand glyph, a file chip a file-type icon, the browser chip a
- * globe. The active terminal chip's label is the focused pane's sentence,
- * which the stream engine keeps in step through the same `data-tail` hook
- * the rail row uses.
+ * globe, the Agent Board's chip four squares (`tab-strip.tsx`). The active
+ * terminal chip's label is the focused pane's sentence, which the stream
+ * engine keeps in step through the same `data-tail` hook the rail row uses.
+ *
+ * No `+` closes the strip: 1.1 took it off, and ⌘T raises the New Agent
+ * list instead.
  */
 export const stageStrip = deepFreeze([
   {
@@ -218,6 +198,7 @@ export const stageStrip = deepFreeze([
   },
   { kind: "file", label: "layout-engine.ts", active: false },
   { kind: "browser", label: "localhost:5173", active: false },
+  { kind: "board", label: "Agents", active: false },
 ]);
 
 /**
