@@ -198,7 +198,22 @@ explicit one is filled, and a contract state older than 120 seconds turns inferr
 mark also gained a sixth word, `ended`, for an agent whose process left the pane — it used
 to wear `asked`'s yellow as an inferred `completed`. `phaseConfidence` in
 [`agent-attention.ts`](../../src/terminal/agent-attention.ts) is the axis; each adapter is
-switchable under Settings → Agents through the `agentSignalAdapters` setting, default on.
+switchable under Settings → Agents through the `agentSignalAdapters` setting.
+
+**Every adapter ships off.** Each one works by putting a flag on the command line the user
+reads, and a pane that opens with flags the user did not choose reads as Deck editing the
+command rather than running it. The rule holds for all three rather than being argued per
+agent: "Deck types what you typed" is only true without exceptions. So an out-of-the-box rail
+is inferred, and a user who wants explicit marks switches the agent on and accepts the flags
+that come with it.
+
+Two losses are worth naming because neither is only a drawn mark. Claude's registry poll below
+is a **separate** adapter that still runs, so session id and `waiting` survive — but
+`StopFailure` does not, and it is the only producer of `failed` that is the CLI's own word, so
+a turn killed by an API error can read as completed. opencode loses more: no port means no
+server, and therefore no contract session id, which is what
+[`live-session-state.ts`](../../src/ui/sessions/live-session-state.ts) requires before it will
+focus an existing pane rather than offer Resume.
 
 - **Claude answers a registry.** Main polls `claude agents --json`
   ([`claude-registry.ts`](../../electron/agent-registry/claude-registry.ts)) and the renderer
