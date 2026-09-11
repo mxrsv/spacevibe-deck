@@ -7,30 +7,16 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
-- **Agent Board cards stay where they are.** Cards keep the order of their numbers
-  instead of jumping whenever an agent changes state, so the card you are about to
-  press no longer moves away. The state still shows on each card.
+## 1.2.0
 
-- **Codex cards stop loading when a response finishes.** With Codex Signals enabled,
-  lifecycle hooks keep terminal repaints from marking a completed turn as working.
-  Resumed sessions also stay idle while restoring history, until a new prompt starts.
-  Existing hooks and notifications are preserved; reopen the shell and Codex session
-  after updating to load the integration. [Agent lifecycle](docs/internals/terminal.md#the-contract-layer).
+This update opens shells and quick agents from each checkout, tidies agent
+settings, and keeps agent cards steady while their state changes.
+
+### Highlights
 
 - **Open a shell from the checkout menu.** Open shell starts a new terminal tab in
   Deck at that checkout. Choose up to five quick agents in Settings → Agents;
   the menu no longer opens an external terminal app.
-  [Quick agents](docs/user/agents.md#quick-agents).
-
-- **Claude Signals also covers manual launches in Deck.** Enabling Signals registers
-  Deck's guarded hooks in your Claude settings; turning it off removes those hooks.
-  Claude launch commands no longer receive extra settings or session-ID flags.
-  [Agent settings](docs/user/agents.md).
-
-- **Clearer agent settings.** Agents start collapsed with their command and availability
-  visible. Expanded settings put Command and its reset arrow first, followed by Launch,
-  Model and Integrations. Short choices stay visible as segments; agents not yet installed
-  offer optional launch configuration ([agent settings](src/ui/settings/launch-profile-editor.tsx)).
 
 - **Deck types the command you chose, and nothing else.** Agent reporting is now
   off out of the box for every agent, so a pane opens with exactly the command
@@ -39,6 +25,53 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   status from the terminal and labels it as inferred. Turn reporting back on per
   agent under Settings → Agents; anyone who already set that switch keeps their
   choice.
+
+- **Claude Signals also covers manual launches in Deck.** Enabling Signals registers
+  Deck's guarded hooks in your Claude settings; turning it off removes those hooks.
+  Claude launch commands no longer receive extra settings or session-ID flags.
+
+- **Clearer agent settings.** Agents start collapsed with their command and availability
+  visible. Expanded settings put Command and its reset arrow first, followed by Launch,
+  Model and Integrations. Short choices stay visible as segments; agents not yet installed
+  offer optional launch configuration.
+
+### Agent Board
+
+- **Cards stay where they are.** Cards keep the order of their numbers instead of
+  jumping whenever an agent changes state, so the card you are about to press no
+  longer moves away. The state still shows on each card.
+
+- **Codex cards stop loading when a response finishes.** With Codex Signals enabled,
+  lifecycle hooks keep terminal repaints from marking a completed turn as working.
+  Resumed sessions also stay idle while restoring history, until a new prompt starts.
+  Existing hooks and notifications are preserved; reopen the shell and Codex session
+  after updating to load the integration.
+
+- **Simpler cards.** Each card shows its repo name at full ink, its checkout in a
+  pill badge, and a pending ring while the agent works.
+
+### Rail and panes
+
+- **Linked worktrees stand apart.** A linked worktree's card has a dashed frame, and
+  its Worktree badge carries a fork glyph.
+
+- **Recent activity stays in view.** Only the project list scrolls; recent activity
+  stays pinned above the footer.
+
+- **Tidier project headers.** Project names are larger, and checkout dots line up
+  beneath them.
+
+- **Clearer pane splits.** Splits are drawn at 2px on a heavier seam, so a grid of
+  panes no longer reads as one sheet.
+
+- **Less graphics memory.** Only the tab on screen holds a GPU renderer; hidden tabs
+  release theirs and pick it back up when shown.
+
+### Removed
+
+- **Cursor CLI is no longer built in.** Deck no longer detects or lists
+  `cursor-agent`. To keep using it, add `cursor-agent --force` as a custom agent in
+  Settings → Agents. A restored Cursor pane reopens as a plain shell.
 
 ## 1.1.1
 
