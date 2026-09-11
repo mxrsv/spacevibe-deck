@@ -22,6 +22,7 @@ function card(over: Partial<BoardCard> = {}): BoardCard {
     hasRun: true,
     state: "asked",
     name: "Claude",
+    project: "deck",
     where: "deck · main",
     checkoutKey: "k",
     checkout: "main",
@@ -57,7 +58,7 @@ function mount(c: BoardCard, a = actions()) {
 }
 
 describe("AgentBoardCard", () => {
-  it("prints the four groups: state, rank, glyph, name, where, task and meta", () => {
+  it("prints the repo beside the logo and the checkout beside the ordinal", () => {
     const { host } = mount(card());
     const el = host.querySelector(".board-card")!;
     expect(el.getAttribute("data-state")).toBe("asked");
@@ -65,18 +66,17 @@ describe("AgentBoardCard", () => {
     expect(host.querySelector(".board-card__state")!.classList.contains("board-label")).toBe(true);
     expect(host.querySelector(".board-card__num")!.textContent).toBe("03");
     expect(host.querySelector(".board-card__glyph")).not.toBeNull();
-    expect(host.querySelector(".board-card__name")!.textContent).toBe("Claude");
-    expect(host.querySelector(".board-card__where")!.textContent).toBe("deck · main");
+    expect(host.querySelector(".board-card__id")!.textContent).toBe("deck");
+    expect(host.querySelector(".board-card__where")!.textContent).toBe("deck");
+    expect(host.querySelector(".board-card__checkout")!.textContent).toBe("main");
     // A real space, so assistive tech does not announce "TaskRefactor".
     expect(host.querySelector(".board-card__what")!.textContent).toBe("Task Refactor the rail");
-    // `ago` names the second figure: two bare durations printed side by side
-    // said what only one of them meant.
-    expect(host.querySelector(".board-card__meta")!.textContent).toBe("up 12m · 2m ago");
+    expect(host.querySelector(".board-card__meta")!.textContent).toBe("2m ago");
   });
-  it("prints -- for an unknown uptime and nothing in the what group when there is nothing", () => {
-    const { host } = mount(card({ up: "", what: { kind: "none", text: "" } }));
+  it("prints -- for an unknown last update and marks an absent message", () => {
+    const { host } = mount(card({ changed: "", what: { kind: "none", text: "" } }));
     // An unknown figure stays a bare `--`: `-- ago` would claim a measurement.
-    expect(host.querySelector(".board-card__meta")!.textContent).toBe("up -- · 2m ago");
+    expect(host.querySelector(".board-card__meta")!.textContent).toBe("--");
     expect(host.querySelector(".board-card__what")!.getAttribute("data-kind")).toBe("none");
   });
   it("marks the selected card with aria-current and a departed one with data-departed", () => {
@@ -170,6 +170,11 @@ describe("AgentBoardCard", () => {
   });
   it("carries the tier in the accessible name", () => {
     const { host } = mount(card({ confidence: "inferred", state: "working" }));
+    expect(host.querySelector(".board-card__state")!.textContent).toBe("working...");
+    expect(host.querySelector(".board-card__working-dots")!.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+    expect(host.querySelector(".board-card__status .asr-row__mark")).toBeNull();
     expect(host.querySelector(".board-card__hit")!.getAttribute("aria-label")).toBe(
       "Claude, working, inferred, deck · main",
     );

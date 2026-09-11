@@ -28,6 +28,7 @@ function card(
     hasRun: true,
     state,
     name: `Agent ${rank}`,
+    project: "deck",
     where: "deck · main",
     checkoutKey: "k",
     checkout: "main",

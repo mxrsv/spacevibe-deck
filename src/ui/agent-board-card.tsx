@@ -38,15 +38,10 @@ export function formatRank(rank: number): string {
 }
 
 /**
- * The footer's two figures. `up 12m · 2m` printed two bare durations and only
- * named one of them, so the second read as noise — it is the age of the last
- * output, and `ago` is the word that says so. An unknown figure is still `--`
- * rather than `-- ago`, which would claim a measurement Deck does not have.
+ * Only the age of the last output, with `--` for an unknown measurement.
  */
 export function metaLine(card: BoardCard): string {
-  const up = card.up === "" ? "--" : card.up;
-  const changed = card.changed === "" ? "--" : `${card.changed} ago`;
-  return `up ${up} · ${changed}`;
+  return card.changed === "" ? "--" : `${card.changed} ago`;
 }
 
 function accessibleName(card: BoardCard): string {
@@ -149,18 +144,33 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
         onFocus={() => onFocusRequest(card)}
       />
       <div class="board-card__status">
-        <RailStatusMark
-          state={card.departed ? "ended" : card.state}
-          confidence={card.confidence ?? "unknown"}
-        />
-        <span class="board-label board-card__state">{word}</span>
+        {word !== "working" && (
+          <RailStatusMark
+            state={card.departed ? "ended" : card.state}
+            confidence={card.confidence ?? "unknown"}
+          />
+        )}
+        <span class="board-label board-card__state">
+          {word}
+          {word === "working" && (
+            <span class="board-card__working-dots" aria-hidden="true">
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
+          )}
+        </span>
       </div>
+      <span class="board-card__checkout" title={card.checkout}>
+        {card.checkout}
+      </span>
       <span class="board-card__num">{formatRank(card.rank)}</span>
       <div class="board-card__id">
         <AgentGlyph agent={card.agent} className="board-card__glyph" />
-        <span class="board-card__name">{card.name}</span>
+        <span class="board-card__where" title={card.where}>
+          {card.project}
+        </span>
       </div>
-      <div class="board-card__where">{card.where}</div>
       <div class="board-card__what" data-kind={card.what.kind}>
         {card.what.kind === "task" && (
           <>

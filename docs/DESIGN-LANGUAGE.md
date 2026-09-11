@@ -60,13 +60,12 @@ constraint: **consume as few machine resources as possible.**
   900ms alternate cycle with a 150ms stagger; there is no beam. Leaving working
   removes all three bars. Reduced motion keeps their static heights. No other
   surface inherits these exceptions.
-  **A fourth scoped exception was added 2026-09-03 by DL-34.3:** the Agent
-  Board draws DL-27.3's `WorkspaceSpinner` on every card whose pane is
-  `working` — one loop per working pane, the same budget the rail already
-  spends, ended by the state's removal. The rail's `asked` ripple does NOT
-  cross to the Board (DL-34.3); the yellow frame is the whole signal there.
-  "No other surface inherits any of the three" therefore no longer holds as
-  written: the Board inherits exactly the spinner.
+  **The fourth scoped exception, DL-34.3:** the Agent Board's `WORKING...`
+  label uses three staggered opacity loops with a 1.2s cycle, replacing its
+  spinner. The dots exist only while the card displays `working`; reduced
+  motion keeps all three static. The rail's `asked` ripple does not cross
+  to the Board, where the yellow frame carries attention. See the
+  [Board motion rules](../src/styles/19-agent-board.css).
 - **DL-1.3** Banned: **blurred/offset** `box-shadow` (the app is a flat system —
   depth comes from background steps and 1px hairlines), `backdrop-filter`,
   `filter`, JS animation loops (`requestAnimationFrame`) for chrome, timers that
@@ -3356,7 +3355,8 @@ Numbered 34 because §33 was the previous highest rule.
   `19-agent-board.css`, unmatched, as what a revert restores.
 - **DL-34.2** **A card is a pane, and it outlives its agent.** One card per
   agent pane (the rail's own unit); a pane whose agent has left keeps its
-  card as `idle` wearing the departed agent's name until the pane closes.
+  card as `idle` wearing the departed agent's logo until the pane closes;
+  its accessible name retains the agent's name.
   **Amended 2026-09-04, from the eye pass:** it prints the word **`ended`**
   in the state slot instead of `idle`. The eye pass found a departed card
   identical to an idle one in picture AND in accessible name while offering
@@ -3370,26 +3370,31 @@ Numbered 34 because §33 was the previous highest rule.
   pane-ordinal order, never its sort position. A card carries DL-21.7's
   resting wash (amended) inside DL-1.3's inset hairline at
   `--radius-control`.
-  **Amended 2026-09-09 (DECK-43), on the owner's report that the card read as
-  a list: it is FOUR GROUPS, not five rows.** The five facts sat on one even
-  4px rhythm, so nothing led. They are `grid-template-areas` now and the
-  UNEQUAL gaps do the work — 8px binds the name to its checkout, which sits
-  1px under it and indented to the name's own left edge, and 11px separates
-  status, identity, what-the-agent-said and footer. **What the agent said is
+  **Four groups:** status, identity, what-the-agent-said and footer.
+  The [card](../src/ui/agent-board-card.tsx) identifies the agent by a 17px
+  logo (or its letter fallback), beside the repo name at `--type-title`
+  (14px). The worktree label shares the status row with the ordinal; it
+  truncates before displacing the ordinal. The agent name remains in
+  accessible labels only. The identity starts 8px below
+  status, with 11px before the message and footer, as defined in the
+  [card styles](../src/styles/19-agent-board.css). **What the agent said is
   the subject**: it takes `--text-primary` (it shared `--text-muted` with the
   checkout) and two clamped lines instead of one truncated one, with a
   `min-height` so every card in an `auto-fill` row is one height. A pane with
   nothing to quote prints `—`, the footer's own convention for a figure Deck
-  does not have, rather than a blank band. The footer names its second figure
-  (`up 12m · 2m ago`); two bare durations said what only one of them meant.
+  does not have, rather than a blank band. The footer shows only the last
+  output's age (`2m ago`), or `--` when unknown; uptime is not displayed.
   **DL-27.5's hover column moved to the FOOT** and lost its third control:
   pinned top-right it collided with the rank, which cost that row a permanent
   74px reserve visible as a hole on every unhovered card, and `Open in stage`
   is what pressing the card does now.
 - **DL-34.3** **`asked` and `failed` colour the card's frame, and nothing else
   does.** The inset hairline takes `--status-unread` or `--red`; `working`,
-  `done` and `idle` keep `--hair`. `working` is DL-27.3's `WorkspaceSpinner`
-  in the state slot (DL-1.2's fourth exception); the rail's `asked` ripple is
+  `done` and `idle` keep `--hair`. `working` displays `WORKING...` with three
+  staggered opacity pulses in a fixed-width slot, replacing the spinner
+  (DL-1.2's fourth exception). Reduced motion keeps the dots static. See the
+  [status markup](../src/ui/agent-board-card.tsx) and
+  [animation](../src/styles/19-agent-board.css). The rail's `asked` ripple is
   switched off inside `.agent-board` — the frame is the whole signal at the
   size of the whole card. Green appears nowhere: DL-3.2 and the worktree
   card's colour rule already own it.

@@ -574,10 +574,12 @@ describe("DL-34 agent board", () => {
     // places by area and spends UNEQUAL margins between them, which is what
     // the amendment is about — a uniform `row-gap` would satisfy a shape
     // assertion and still read as the list the owner reported.
-    expect(css).toMatch(/\.board-card\s*\{[^}]*grid-template-areas:\s*\n?\s*"status num"/s);
+    expect(css).toMatch(
+      /\.board-card\s*\{[^}]*grid-template-areas:\s*\n?\s*"status checkout num"/s,
+    );
     expect(css).toMatch(/\.board-card\s*\{[^}]*row-gap:\s*0/s);
     expect(css).toMatch(/\.board-card__id\s*\{[^}]*margin-top:\s*8px/s);
-    expect(css).toMatch(/\.board-card__where\s*\{[^}]*margin-top:\s*1px/s);
+    expect(css).toMatch(/\.board-card__where\s*\{[^}]*min-width:\s*0/s);
     // What the agent said is the subject: primary ink, two clamped lines, and
     // a floor so an `auto-fill` row is one height.
     expect(css).toMatch(/\.board-card__what\s*\{[^}]*color:\s*var\(--text-primary\)/s);

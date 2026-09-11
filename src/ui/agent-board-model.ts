@@ -57,6 +57,7 @@ export interface BoardCard {
   readonly hasRun: boolean;
   readonly state: RailState;
   readonly name: string;
+  readonly project: string;
   readonly where: string;
   readonly checkoutKey: string;
   readonly checkout: string;
@@ -306,6 +307,7 @@ function toCard(
     // Spec §5.1: a departed agent is `idle` whatever the latch says.
     state: draft.departed ? "idle" : paneState(pane),
     name: single ? (customName as string) : displayAgent(draft.agent),
+    project: draft.cluster.project,
     where: boardWhere(draft.cluster.project, draft.group, single ? null : customName, input.home),
     checkoutKey: draft.group.key,
     checkout: draft.group.labelled

@@ -16,6 +16,7 @@ function card(over: Partial<BoardCard> = {}): BoardCard {
     hasRun: true,
     state: "asked",
     name: "Claude",
+    project: "deck",
     where: "deck · main",
     checkoutKey: "k",
     checkout: "main",

@@ -158,23 +158,20 @@
 }
 
 /* ── card (DL-34.2, DL-34.3, DL-34.4) ──────────────────────────────────────
-   Four GROUPS, not five rows (2026-09-09). The card carried five facts on one
-   even 4px rhythm, so nothing led and it read as a list: status+rank, glyph+
-   name, checkout, the agent's last line, footer. They are areas now, and the
-   gaps BETWEEN groups are what does the work — 8px binds the name to its
-   checkout, 11px separates the three groups, and inside the identity group the
-   checkout sits 1px under the name and indented to it. */
+   Four groups: status + checkout + rank, logo + repo, message, footer.
+   The identity stays on one line; spacing separates the groups. */
 .board-card {
+  --board-agent-glyph-size: 17px;
+  --board-working-cycle: 1.2s;
   position: relative; /* DL-27.1: a container with a full-bleed hit layer. */
   display: grid;
-  /* The rank is the only thing that shares a line with anything. */
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* The worktree yields space to the status and the ordinal. */
+  grid-template-columns: max-content minmax(0, 1fr) auto;
   grid-template-areas:
-    "status num"
-    "id     id"
-    "where  where"
-    "what   what"
-    "meta   meta";
+    "status checkout num"
+    "id     id       id"
+    "what   what     what"
+    "meta   meta     meta";
   column-gap: 8px;
   row-gap: 0; /* every group states its own top margin below */
   padding: 9px 12px 9px;
@@ -227,9 +224,9 @@
 /* Text rows above the hit layer, clicks falling through. Listed by class:
    `:not(.board-card__hit)` is (0,2,0) and would outrank the actions and menu. */
 .board-card > .board-card__status,
+.board-card > .board-card__checkout,
 .board-card > .board-card__num,
 .board-card > .board-card__id,
-.board-card > .board-card__where,
 .board-card > .board-card__what,
 .board-card > .board-card__meta {
   position: relative;
@@ -248,26 +245,28 @@
   grid-area: status;
 }
 
-/* The rank shares the status line and sits flush at the card's own right
-   edge. It could not before: the hover column was pinned to the top-right, so
-   this row reserved 74px for it and every unhovered card showed that reserve
-   as a hole between the word and the number. */
-.board-card__num {
-  grid-area: num;
+/* DL-34.2: worktree and rank share the status row; the rank stays visible. */
+.board-card__checkout {
+  grid-area: checkout;
+  min-width: 0;
+  text-align: right;
+  align-self: center;
 }
 
-/* The identity group: the name binds to its checkout, and the checkout is
-   indented to the name's own left edge (15px glyph + the 6px gap) so the two
-   read as one block instead of two entries in a list. */
+.board-card__num {
+  grid-area: num;
+  align-self: center;
+}
+
+/* DL-34.2: the logo identifies the agent beside its repo. */
 .board-card__id {
   grid-area: id;
   margin-top: 8px;
 }
 
 .board-card__where {
-  grid-area: where;
-  margin-top: 1px;
-  padding-left: 21px;
+  min-width: 0;
+  font-size: var(--type-title);
 }
 
 .board-card__what {
@@ -275,9 +274,7 @@
   margin-top: 11px;
 }
 
-/* The footer keeps the hover column's room instead of the head. It costs
-   nothing: the two figures are short and left-aligned, so the column stands
-   over air rather than over the rank the keyboard needs. */
+/* The last-update age leaves room for the actions at the footer's right edge. */
 .board-card__meta {
   grid-area: meta;
   margin-top: 11px;
@@ -286,6 +283,41 @@
 
 .board-card__state {
   flex: 1 1 auto;
+}
+
+/* DL-34.3: fixed-width dots signal work without shifting the label. */
+.board-card__working-dots {
+  display: inline-flex;
+  width: 3ch;
+}
+
+.board-card__working-dots > span {
+  flex: 0 0 1ch;
+  animation: board-working-dot var(--board-working-cycle) ease-in-out infinite;
+}
+
+.board-card__working-dots > span:nth-child(2) {
+  animation-delay: calc(var(--board-working-cycle) / 4);
+}
+
+.board-card__working-dots > span:nth-child(3) {
+  animation-delay: calc(var(--board-working-cycle) / 2);
+}
+
+@keyframes board-working-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-card__working-dots > span {
+    animation: none;
+  }
 }
 
 .board-card[data-state="asked"] .board-card__state {
@@ -321,9 +353,9 @@
 }
 
 .board-card__glyph {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
+  width: var(--board-agent-glyph-size);
+  height: var(--board-agent-glyph-size);
+  flex: 0 0 var(--board-agent-glyph-size);
   border-radius: 50%;
 }
 
@@ -335,23 +367,19 @@
   background: var(--state-hover-bg);
 }
 
-.board-card__name {
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
 .board-card__where,
+.board-card__checkout,
 .board-card__meta {
-  font-size: var(--type-meta);
   color: var(--text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.board-card__checkout,
+.board-card__meta {
+  font-size: var(--type-meta);
 }
 
 /* The one thing on the card that changes, so it is the one thing that leads:

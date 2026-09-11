@@ -189,6 +189,7 @@ describe("buildAgentBoard — cards", () => {
     );
     expect(view.all[0].name).toBe("api");
     expect(view.all[0].where).toBe("deck · main");
+    expect(view.all[0].project).toBe("deck");
     const multi = buildAgentBoard(input());
     const codex = multi.all.find((c) => c.paneId === 21)!;
     expect(codex.name).toBe("Codex");
@@ -197,6 +198,7 @@ describe("buildAgentBoard — cards", () => {
   it("prints a worktree as project · name · branch and a plain folder as its ~ path", () => {
     const view = buildAgentBoard(input());
     expect(view.all.find((c) => c.paneId === 31)!.where).toBe("deck · fix-rail · fix/rail");
+    expect(view.all.find((c) => c.paneId === 31)!.project).toBe("deck");
     expect(view.all.find((c) => c.paneId === 41)!.where).toBe("~/scratch");
   });
   it("prefers the task once the pane has reached working, else the tail, else nothing", () => {

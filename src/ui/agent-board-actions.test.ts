@@ -32,6 +32,7 @@ function card(paneId: number): BoardCard {
     hasRun: true,
     state: "idle",
     name: "Agent 01",
+    project: "deck",
     where: "deck · main",
     checkoutKey: "deck",
     checkout: "deck",
