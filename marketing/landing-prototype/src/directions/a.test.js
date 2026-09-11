@@ -84,14 +84,15 @@ describe("the hero's stage composition", () => {
     const stages = root.querySelectorAll(".a-appwin__stage");
 
     expect(rails).toHaveLength(1);
-    // Four scene regions since the switcher (2026-08-20): agents, restore,
-    // surfaces, usage. The rail stands OUTSIDE all four, and the agents
-    // region — the only one visible at rest — is its adjacent sibling, so
-    // `.a-appwin__sidebar + *` still lands the structural seam on a shown
-    // element.
-    expect(stages).toHaveLength(4);
+    // Five scene regions since the Board joined the cycle (2026-09-11):
+    // agents, board, restore, surfaces, usage. The rail stands OUTSIDE all
+    // of them, and the agents region — the only one visible at rest — is its
+    // adjacent sibling, so `.a-appwin__sidebar + *` still lands the
+    // structural seam on a shown element.
+    expect(stages).toHaveLength(5);
     expect([...stages].map((stage) => stage.dataset.scene)).toEqual([
       "agents",
+      "board",
       "restore",
       "surfaces",
       "usage",
