@@ -81,8 +81,8 @@ const PANEL_RAIL = deepFreeze([
         ],
       },
       {
-        name: "deck-detach",
-        badge: { kind: "branch", text: "feat/pane-detach" },
+        name: "detach",
+        badge: { kind: "branch", text: "feat/detach" },
         age: "4m",
         panes: [
           {

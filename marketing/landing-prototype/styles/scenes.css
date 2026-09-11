@@ -265,226 +265,164 @@
   text-align: center;
 }
 
-/* ---------- picker: ⌘T over the stage ---------- */
+/* ---------- menu: ⌘T's New Agent list, under the strip ---------- */
 
-/* The scrim covers the WHOLE window, rail included, which is what a modal
-   does in the app (DL-29). It gets there without a wrapper: `.scene-picker`
-   is deliberately NOT positioned, so its absolutely positioned children
-   resolve against `.a-appwin`, the one `position: relative` box above them.
-   Both are painted above the rail for free — a positioned box paints after
-   the in-flow content of the same stacking context. */
-.scene-picker {
+/* A popover, not a modal: no scrim, and the stage it hangs over stays in
+   view. `position: relative` on the scene is what the popover resolves
+   against, so it hangs off the stage's top-left — under the strip's leading
+   edge, where the app places the free-standing menu (`stripAnchor`). */
+.scene-menu {
+  position: relative;
   flex: 1;
   min-width: 0;
+  padding: 1.2cqw;
 }
 
-/* DL-1.3's one sanctioned exception, quoted from `.modal-scrim`
-   (10-modals.css:14-27): 42% of the window's own ground plus a blur, not the
-   65% flat wash it replaced. The blur is the app's 10px on this sheet's
-   scale — the backdrop is the window's opaque interior, never the plate
-   behind it, because `.a-appwin` clips and paints its own ground. */
-.scene-picker__scrim {
+.scene-menu__panes {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8cqw;
+}
+
+/* The same unfocused-transcript texture panel 1's panes carry: work present
+   behind the surface, nothing readable in it. */
+.scene-menu__pane {
+  border: 1px solid var(--sg-hairline-soft);
+  border-radius: 0.5cqw;
+  background:
+    linear-gradient(180deg, transparent 0 22%, var(--sg-bg) 78%),
+    repeating-linear-gradient(
+      180deg,
+      color-mix(in srgb, #ffffff 4%, transparent) 0 0.35cqw,
+      transparent 0.35cqw 1.5cqw
+    ),
+    var(--sg-bg);
+}
+
+/* `.asr-pop--actions` (04d-rail-card-menus.css): `--chrome-2` with one
+   `--seam-raised` inset hairline and the card's 6px radius — no drop shadow
+   (DL-1.3). 40cqw rather than the app's 232px: every string here sits on a
+   `max(…, 9px)` floor, so the type is drawn larger than the box around it
+   and a proportional surface ellipsized its own heading — the one line whose
+   whole job is to name the branch. */
+.scene-menu__pop {
   position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--sg-bg) 42%, transparent);
-  backdrop-filter: blur(1cqw);
-}
-
-/* `--sg-rail` and `--sg-seam-raised`, not the stage colour and the shared
-   hairline: DL-29.6 puts all three modal panels on the recessed plane the
-   rail and dock already stand on, because one step off `--bg` read as a
-   smudge of the blurred stage rather than as an object. */
-.scene-picker__panel {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  /* 50cqw, not the app's ~38% of its window: every string in this panel sits
-     on a `max(…, 9px)` floor, so the TYPE is drawn about a third larger than
-     the boxes around it and a proportionally faithful panel ellipsized its own
-     destination value at 1440 (measured: 163px of text in a 145px box). */
-  width: min(50cqw, 90%);
-  padding: 1.6cqw;
-  border: 1px solid var(--sg-seam-raised);
-  border-radius: 1.2cqw;
-  background: var(--sg-rail);
-  transform: translate(-50%, -50%);
-}
-
-/* Its own keyframes, not `scene-rise`: that one ends on `transform: none`,
-   which cancels the translate doing the centring — the panel snapped to the
-   scene's midpoint and hung off the right edge of the window. */
-:is(.panel, .a-appwin__stage).is-revealed .scene-picker__panel {
-  animation: scene-pop 460ms ease 160ms both;
-}
-
-@keyframes scene-pop {
-  from {
-    opacity: 0;
-    transform: translate(-50%, calc(-50% + 0.8cqw)) scale(0.985);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* The app's `<h1>Open a new tab</h1>` at `--type-title`. Drawn as a `<p>` so
-   the tour does not put a stray h1 in the page outline, which is why the
-   margin reset is this sheet's job. */
-.scene-picker__title {
-  margin: 0 0 1cqw;
-  color: var(--sg-fg);
-  font-size: max(1.4cqw, 10px);
-  font-weight: 600;
-}
-
-/* A §5 config row: layout and nothing else. `.cfg-row` paints no ground at
-   rest — the box in this row is the VALUE, one element down. */
-.scene-picker__dest {
-  display: flex;
-  align-items: center;
-  gap: 1cqw;
-  margin-bottom: 1cqw;
-  padding: 0.6cqw 0;
-}
-
-.scene-picker__destlabel {
-  flex-shrink: 0;
-  color: var(--sg-fg-dim);
-  font-size: max(1.25cqw, 9px);
-}
-
-/* `.cfg-btn`: the menu control that states the destination. A worktree and
-   its branch are ONE value here, so the box holds one string and a caret,
-   never a folder field beside a branch field. */
-.scene-picker__destvalue {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.6cqw;
-  margin-left: auto;
-  padding: 0.3cqw 0.8cqw;
-  border: 1px solid var(--sg-hairline);
-  border-radius: 1cqw;
-  background: var(--sg-chrome-1);
-  color: var(--sg-fg);
-  font-size: max(1.15cqw, 9px);
-}
-
-/* `.cfg-btn__text`: the app's UI font, not mono — a `cfg` value is prose the
-   surface is stating, and mono would also cost this row ~15% of its width for
-   nothing. */
-.scene-picker__desttext {
+  top: 0.6cqw;
+  left: 0.8cqw;
+  display: grid;
+  box-sizing: border-box;
+  width: min(40cqw, 86%);
+  gap: 1px;
+  padding: 0.3cqw 0;
   overflow: hidden;
+  border-radius: 0.6cqw;
+  background: var(--sg-chrome-2);
+  box-shadow: inset 0 0 0 1px var(--sg-seam-raised);
+}
+
+:is(.panel, .a-appwin__stage).is-revealed .scene-menu__pop {
+  animation: scene-rise 460ms ease 160ms both;
+}
+
+/* The one line that names where the agent will run (`.asr-act__where`):
+   title ink on the title's rung, starting on the column every title below
+   starts on — 10px padding + 18px glyph + 8px gap. */
+.scene-menu__where {
+  overflow: hidden;
+  margin: 0;
+  padding: 0.5cqw 1cqw 0.4cqw 3.6cqw;
+  color: var(--sg-fg);
+  font-size: max(1.1cqw, 9px);
+  font-weight: 600;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Sized on the `<svg>`, not with `font-size`: `renderChromeIcon` emits a bare
-   `viewBox="0 0 24 24"` box with no intrinsic size of its own. */
-.scene-picker__caret {
+/* Two lines, the glyph spanning both (`.asr-act`). */
+.scene-menu__row {
   display: grid;
-  flex: none;
-  place-items: center;
-  color: var(--sg-fg-faint);
-}
-
-.scene-picker__caret svg {
-  display: block;
-  width: max(1.3cqw, 9px);
-  height: max(1.3cqw, 9px);
-}
-
-.scene-picker__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6cqw;
-}
-
-/* `.achip`, stood in a column (DL-29.7): each row is read against the one
-   destination stated above it, so the open board's wrapped grid is overridden
-   in the app and never drawn here. */
-.scene-picker__row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  box-sizing: border-box;
+  grid-template-columns: 1.8cqw minmax(0, 1fr);
   align-items: center;
-  gap: 0.8cqw;
-  padding: 0.7cqw 1.2cqw 0.7cqw 0.9cqw;
-  border: 1px solid var(--sg-hairline);
-  border-radius: 1cqw;
-  background: var(--sg-chrome-1);
-  color: var(--sg-fg);
+  column-gap: 0.8cqw;
+  padding: 0.4cqw 1cqw;
 }
 
-/* Declared, but its binary is not on `$PATH`. Still selectable — the row
-   opens Settings rather than launching — so it dims rather than disables
-   (DL-3.2), and the dash is the app's own `border-style` for it. */
-.scene-picker__row.is-missing {
-  border-style: dashed;
-  color: var(--sg-fg-faint);
+/* Focus lands on the first row once the surface is placed, so the keys that
+   raised the list can act on it straight away (`CardActionsMenu`). */
+.scene-menu__row.is-focused {
+  background: color-mix(in srgb, var(--sg-fg) 8%, transparent);
 }
 
-.scene-picker__row.is-shell {
+.scene-menu__glyph {
+  display: grid;
+  grid-row: 1 / span 2;
+  place-items: center;
+  width: 1.8cqw;
+  height: 1.8cqw;
   color: var(--sg-fg-dim);
 }
 
-.scene-picker__mark {
-  width: 1.8cqw;
-  height: 1.8cqw;
-  min-width: 11px;
-  min-height: 11px;
-  flex: none;
+.scene-menu__glyph svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+.scene-menu__logo {
+  width: 1.5cqw;
+  height: 1.5cqw;
   object-fit: contain;
 }
 
-/* The `$`. `.shellmark` is a grid box in the app for the same reason the
-   monogram is one: a bare character in an inline span sits wherever the
-   baseline puts it, which is not the middle of an 18px slot. */
-.scene-picker__mark--shell {
-  display: grid;
-  place-items: center;
-  color: var(--sg-fg-faint);
-  font-family: var(--a-font-mono);
-  font-size: max(1.1cqw, 8px);
-  line-height: 1;
-  user-select: none;
-}
-
-.scene-picker__label {
+/* 11px over 10.5px, told apart by weight and ink rather than by size. */
+.scene-menu__title,
+.scene-menu__detail {
   overflow: hidden;
-  font-size: max(1.25cqw, 9px);
+  grid-column: 2;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The digit badge is the mock's own addition: the app took these off the
-   chips on 2026-08-16 and kept the keys working, and the tour is teaching the
-   keyboard, so the number goes back where the key line points. */
-.scene-picker__digit {
-  padding: 0.1cqw 0.5cqw;
-  border: 1px solid var(--sg-hairline);
-  border-radius: 0.4cqw;
-  color: var(--sg-fg-faint);
-  font-family: var(--a-font-mono);
-  font-size: max(1cqw, 8px);
-  line-height: 1.5;
+.scene-menu__title {
+  color: var(--sg-fg);
+  font-size: max(1.1cqw, 9px);
+  font-weight: 600;
 }
 
-/* THE TONE INVERTS, and it is the easy error to make: the LINE is the faint
-   step (DL-3.4 puts keyboard hints there) and the keys inside it are ONE STEP
-   BRIGHTER (10-modals.css:302-314). The `kbd`s are unclassed, matching the
-   app's own markup. */
-.scene-picker__keys {
-  margin: 1cqw 0 0;
+.scene-menu__detail {
   color: var(--sg-fg-faint);
   font-size: max(1.05cqw, 8px);
-  white-space: nowrap;
+  font-weight: 450;
 }
 
-.scene-picker__keys kbd {
-  color: var(--sg-fg-dim);
-  font: inherit;
+.scene-menu__sep {
+  height: 1px;
+  margin: 0.3cqw 0.2cqw;
+  background: var(--sg-hairline);
+}
+
+/* The scope, stated once (`.asr-act__foot`). */
+.scene-menu__foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  margin: 0;
+  padding: 0.4cqw 1cqw 0.2cqw;
+  color: var(--sg-fg-faint);
+  font-size: max(1.05cqw, 8px);
+  line-height: 1.35;
+}
+
+.scene-menu__foot svg {
+  display: block;
+  flex: none;
+  width: 1.3cqw;
+  height: 1.3cqw;
 }
 
 /* ---------- surfaces: the strip carries more than terminals ---------- */
@@ -589,8 +527,7 @@
 }
 
 /* The modifier, drawn as a key rather than written as prose: `⌘` sitting in
-   running text reads as a typo. Same shape as the picker's digit so the two
-   scenes teach one keyboard. */
+   running text reads as a typo. */
 .scene-surfaces__key {
   padding: 0.1cqw 0.5cqw;
   border: 1px solid var(--sg-hairline);
@@ -1013,8 +950,8 @@
 }
 
 /* `is-active`, not the app's `is-selected`: this sheet already says
-   `is-active` for "the chosen one of a set" in the picker, the tree and the
-   range selector, and one page should not carry two words for one idea. */
+   `is-active` for "the chosen one of a set" in the tree and the range
+   selector, and one page should not carry two words for one idea. */
 .scene-catalog__option.is-active {
   border-color: var(--sg-hair-strong);
   background: var(--sg-raised);
@@ -1141,49 +1078,28 @@
     font-size: 7px;
   }
 
-  /* Picker: the digit badges go. They are the mock's own addition, and the
-     key line below them names the same keys in words — so of the two, the
-     column that repeats is the one that can be spared (the row's third grid
-     track collapses to zero with it). */
-  /* 84% and a tighter rhythm, so the scrim still shows on all four sides: at
-     88% with the wide paddings the panel stood 156.1px tall inside a 158px
-     window and read as a full-bleed screen rather than as something opened
-     over one. */
-  .scene-picker__panel {
-    width: 84%;
-    padding: 0.8cqw;
+  /* Menu: the surface widens to most of the stage and the detail line goes.
+     At a 390 viewport the floored type needs the room, and the titles alone
+     still say what each row does — the command beside an agent is the half a
+     narrow panel can spare. */
+  .scene-menu__pop {
+    width: 88%;
   }
 
-  .scene-picker__title {
-    margin-bottom: 0.5cqw;
-  }
-
-  .scene-picker__dest {
-    margin-bottom: 0.5cqw;
-    padding: 0.3cqw 0;
-  }
-
-  .scene-picker__digit {
+  .scene-menu__detail {
     display: none;
   }
 
-  .scene-picker__title,
-  .scene-picker__destlabel,
-  .scene-picker__destvalue,
-  .scene-picker__label {
+  .scene-menu__where,
+  .scene-menu__title {
     font-size: 8px;
   }
 
-  .scene-picker__row {
-    padding: 0.3cqw 0.9cqw;
+  .scene-menu__row {
+    padding: 0.2cqw 1cqw;
   }
 
-  .scene-picker__rows {
-    gap: 0.3cqw;
-  }
-
-  .scene-picker__keys {
-    margin-top: 0.5cqw;
+  .scene-menu__foot {
     font-size: 7px;
   }
 
@@ -1319,7 +1235,7 @@
   :is(.panel, .a-appwin__stage).is-revealed .scene-restore__typed,
   :is(.panel, .a-appwin__stage).is-revealed .scene-restore__line,
   :is(.panel, .a-appwin__stage).is-revealed .scene-rail__pane,
-  :is(.panel, .a-appwin__stage).is-revealed .scene-picker__panel,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-menu__pop,
   :is(.panel, .a-appwin__stage).is-revealed .scene-catalog__head,
   :is(.panel, .a-appwin__stage).is-revealed .scene-catalog__agent {
     animation: none;

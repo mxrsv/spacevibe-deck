@@ -24,7 +24,7 @@ import { renderTour, updateTourLocale } from "./index.js";
 /** §3.6, in order. The table is the contract; this is it transcribed. */
 const PANEL_TABLE = [
   { key: "panelRail", scene: "rail", shape: "side", flip: true },
-  { key: "panelWorktree", scene: "picker", shape: "side", flip: false },
+  { key: "panelWorktree", scene: "menu", shape: "side", flip: false },
   { key: "panelRestore", scene: "restore", shape: "wide", flip: false },
   { key: "panelSurfaces", scene: "surfaces", shape: "wide", flip: false },
   { key: "panelUsage", scene: "usage", shape: "side", flip: false },

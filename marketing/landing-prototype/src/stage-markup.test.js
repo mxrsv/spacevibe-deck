@@ -548,7 +548,7 @@ describe("AGENT_MARKS mirrors the app's catalog", () => {
 /* ------------------------------------------------------------------ */
 
 describe("the scene registry", () => {
-  const SCENE_KEYS = ["rail", "picker", "restore", "surfaces", "usage", "catalog"];
+  const SCENE_KEYS = ["rail", "menu", "restore", "surfaces", "usage", "catalog"];
 
   it("holds exactly the six panel scenes, under the keys the panels name", () => {
     // `panel-scenes.js` is pure shorthand — `export const SCENES = { rail, … }`

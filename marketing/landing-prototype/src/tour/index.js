@@ -178,7 +178,7 @@ function mountProofTerm(section, reduceMotion) {
  */
 const PANELS = [
   { key: "panelRail", scene: "rail", shape: "side", flip: true },
-  { key: "panelWorktree", scene: "picker", shape: "side" },
+  { key: "panelWorktree", scene: "menu", shape: "side" },
   { key: "panelRestore", scene: "restore", shape: "wide" },
   { key: "panelSurfaces", scene: "surfaces", shape: "wide" },
   { key: "panelUsage", scene: "usage", shape: "side" },

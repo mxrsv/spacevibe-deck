@@ -21,8 +21,8 @@ import geminiMark from "../../../src/assets/agent-gemini.svg";
 import opencodeMark from "../../../src/assets/agent-opencode.svg";
 
 /**
- * Exported because the panel scenes draw the same marks — the quick-picker
- * scene lists all six, the rail scene leads each row with one. Two copies of
+ * Exported because the panel scenes draw the same marks — the catalog scene
+ * lists all six, the ⌘T menu scene leads each agent row with one. Two copies of
  * this table would let the strip and the scenes disagree about what `codex`
  * looks like.
  */
@@ -58,7 +58,7 @@ function monogramLetter(id) {
  * One mark for every call site, brand file or not.
  *
  * Three renderers wrote `<img src="${agent.mark}">` by hand — this strip, the
- * tour's `agentMark`, and the quick-picker scene's own row map — and every one
+ * tour's `agentMark`, and the retired quick-picker scene's row map — and every one
  * of them prints the literal string `src="null"` for an agent with no file.
  * This is the single branch they collapse onto.
  *

@@ -272,7 +272,7 @@
   background-position: 42% 46%;
 }
 
-.panel[data-scene="picker"] .panel__stage-art {
+.panel[data-scene="menu"] .panel__stage-art {
   background-image: var(--plate-valley);
   background-position: 56% 40%;
 }

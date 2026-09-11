@@ -50,10 +50,14 @@ const DEFAULT_COMMANDS = {
  * exactly as `LaunchProfileEditor` filters the catalog (`:162-168`). That is
  * what keeps BOTH groups in catalog order without either being re-sorted, and
  * it is why `cursor-agent` stays last: the order is the digit-key contract.
+ *
+ * Exported for panel 2, whose ⌘T list offers these same three agents with
+ * these same commands: two panels describing one imaginary machine must not
+ * disagree about what is installed on it.
  */
 const INSTALLED_IDS = new Set(["claude", "codex", "opencode"]);
 
-const INSTALLED = AGENT_MARKS.filter((agent) => INSTALLED_IDS.has(agent.id));
+export const INSTALLED = AGENT_MARKS.filter((agent) => INSTALLED_IDS.has(agent.id));
 const AVAILABLE = AGENT_MARKS.filter((agent) => !INSTALLED_IDS.has(agent.id));
 
 /**
@@ -83,7 +87,7 @@ const REVEAL_START = 160;
 const REVEAL_STEP = 80;
 
 /** The command a row prints: the catalog's, else the bare binary. */
-function launchCommand(agent) {
+export function launchCommand(agent) {
   return DEFAULT_COMMANDS[agent.id] ?? agent.id;
 }
 
