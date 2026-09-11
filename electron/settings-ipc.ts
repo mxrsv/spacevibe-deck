@@ -13,6 +13,7 @@ export interface SettingsIpcDeps {
   readonly windows: ReadonlyMap<string, BrowserWindow>;
   readonly emitTo: (label: string, event: string, payload: unknown) => boolean;
   readonly adoptMenuKeymap: (settings: unknown) => void;
+  readonly syncAgentSettings?: (settings: unknown) => Promise<void>;
 }
 
 export function registerSettingsIpc(deps: SettingsIpcDeps): void {
@@ -23,6 +24,7 @@ export function registerSettingsIpc(deps: SettingsIpcDeps): void {
     // any window sees the keydown — the rebind would look applied everywhere
     // except where it matters.
     deps.adoptMenuKeymap(merged);
+    await deps.syncAgentSettings?.(merged);
     // EVERY window, sender included. `settings-store.ts` states that the
     // broadcast is the one authoritative path and that the reply is used only to
     // detect failure — so excluding the sender left it rendering stale settings

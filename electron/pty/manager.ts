@@ -62,6 +62,7 @@ export interface PtyManagerDeps {
    * simply learns no port.
    */
   readonly hookPort?: () => number | null;
+  readonly hookScript?: () => string | null;
 }
 
 export class PtyManager {
@@ -82,6 +83,7 @@ export class PtyManager {
       paneId: id,
       hookToken,
       hookPort: this.deps.hookPort?.() ?? null,
+      hookScript: this.deps.hookScript?.() ?? null,
     });
     const decode = createStreamDecoder();
 

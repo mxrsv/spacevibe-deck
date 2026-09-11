@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   augmentLaunchCommand,
-  mintsClaudeSession,
   needsOpencodePort,
   shellQuote,
   type AugmentContext,
@@ -23,51 +22,19 @@ function context(over: Partial<AugmentContext> = {}): AugmentContext {
 }
 
 describe("augmentLaunchCommand — claude", () => {
-  it("appends the quoted settings file and a minted session id to a fresh launch", () => {
-    expect(augmentLaunchCommand("claude --dangerously-skip-permissions", context())).toEqual({
-      command: `claude --dangerously-skip-permissions --settings '${SETTINGS}' --session-id ${UUID}`,
-      sessionId: UUID,
-    });
-  });
-
-  it("keeps a resuming command's own id — every resume spelling", () => {
-    for (const resume of [
+  it("preserves fresh, resume and user-configured commands even with Signals on", () => {
+    for (const command of [
+      "claude",
+      "claude --dangerously-skip-permissions",
       "claude --resume abc",
-      "claude -r abc",
-      "claude --continue",
       "claude -c",
+      "claude --settings /me/x.json",
+      `claude --session-id ${UUID}`,
       "claude --resume abc --fork-session",
     ]) {
-      const out = augmentLaunchCommand(resume, context());
-      expect(out.command).toBe(`${resume} --settings '${SETTINGS}'`);
-      expect(out.sessionId).toBeNull();
+      expect(augmentLaunchCommand(command, context())).toEqual({ command, sessionId: null });
+      expect(augmentLaunchCommand(command, context({ platform: "windows" })).command).toBe(command);
     }
-  });
-
-  it("never doubles a flag the user typed (spec §6)", () => {
-    expect(augmentLaunchCommand("claude --settings /me/x.json", context())).toEqual({
-      command: `claude --settings /me/x.json --session-id ${UUID}`,
-      sessionId: UUID,
-    });
-    expect(augmentLaunchCommand(`claude --session-id ${UUID}`, context()).command).toBe(
-      `claude --session-id ${UUID} --settings '${SETTINGS}'`,
-    );
-    expect(augmentLaunchCommand("claude --settings=/me/x.json", context()).command).not.toContain(
-      "agent-hooks",
-    );
-  });
-
-  it("adds nothing on Windows, with the adapter off, or with no settings file", () => {
-    expect(augmentLaunchCommand("claude", context({ platform: "windows" })).command).toBe("claude");
-    expect(
-      augmentLaunchCommand("claude", context({ adapters: { ...ALL_ON, claude: false } })).command,
-    ).toBe("claude");
-    expect(augmentLaunchCommand("claude", context({ claudeSettingsPath: null })).command).toBe(
-      `claude --session-id ${UUID}`,
-    );
-    expect(augmentLaunchCommand("claude", context({ sessionId: null })).command).toBe(
-      `claude --settings '${SETTINGS}'`,
-    );
   });
 });
 
@@ -111,14 +78,6 @@ describe("the two questions a launch asks before arming", () => {
     expect(needsOpencodePort("opencode --port 1", ALL_ON)).toBe(false);
     expect(needsOpencodePort("opencode", { ...ALL_ON, opencode: false })).toBe(false);
     expect(needsOpencodePort("claude", ALL_ON)).toBe(false);
-  });
-
-  it("mintsClaudeSession only for a fresh claude launch, adapter on", () => {
-    expect(mintsClaudeSession("claude", ALL_ON)).toBe(true);
-    expect(mintsClaudeSession("claude --resume x", ALL_ON)).toBe(false);
-    expect(mintsClaudeSession("claude --session-id x", ALL_ON)).toBe(false);
-    expect(mintsClaudeSession("claude", { ...ALL_ON, claude: false })).toBe(false);
-    expect(mintsClaudeSession("codex", ALL_ON)).toBe(false);
   });
 });
 

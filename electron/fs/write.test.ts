@@ -1,5 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
+import fsPromises from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PathOutsideWorkspaceError } from "./path-guard";
@@ -24,6 +25,25 @@ afterAll(() => {
 });
 
 describe("writeFileAtomically", () => {
+  it.runIf(process.platform !== "win32")(
+    "keeps temporary contents private before applying final permissions",
+    async () => {
+      const open = fsPromises.open.bind(fsPromises);
+      const spy = vi.spyOn(fsPromises, "open").mockImplementationOnce(async (file, flags, mode) => {
+        const handle = await open(file, flags, mode);
+        expect((await handle.stat()).mode & 0o777).toBe(0o600);
+        return handle;
+      });
+      try {
+        const target = path.join(root, "private-settings.json");
+        await writeFileAtomically(target, '{"env":{"EXAMPLE":"private"}}', { mode: 0o600 });
+        expect(spy).toHaveBeenCalledOnce();
+        expect(fs.statSync(target).mode & 0o777).toBe(0o600);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
   it("writes through a temp file and leaves nothing behind", async () => {
     const target = path.join(root, "atomic.txt");
     await writeFileAtomically(target, "hello\n");

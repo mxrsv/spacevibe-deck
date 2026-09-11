@@ -200,20 +200,13 @@ to wear `asked`'s yellow as an inferred `completed`. `phaseConfidence` in
 [`agent-attention.ts`](../../src/terminal/agent-attention.ts) is the axis; each adapter is
 switchable under Settings → Agents through the `agentSignalAdapters` setting.
 
-**Every adapter ships off.** Each one works by putting a flag on the command line the user
-reads, and a pane that opens with flags the user did not choose reads as Deck editing the
-command rather than running it. The rule holds for all three rather than being argued per
-agent: "Deck types what you typed" is only true without exceptions. So an out-of-the-box rail
-is inferred, and a user who wants explicit marks switches the agent on and accepts the flags
-that come with it.
-
-Two losses are worth naming because neither is only a drawn mark. Claude's registry poll below
-is a **separate** adapter that still runs, so session id and `waiting` survive — but
-`StopFailure` does not, and it is the only producer of `failed` that is the CLI's own word, so
-a turn killed by an API error can read as completed. opencode loses more: no port means no
-server, and therefore no contract session id, which is what
-[`live-session-state.ts`](../../src/ui/sessions/live-session-state.ts) requires before it will
-focus an existing pane rather than offer Resume.
+**Every adapter ships off.** The per-agent Signals switch in
+[`settings-schema.ts`](../../src/settings/settings-schema.ts) preserves each user's choice.
+Claude Signals registers guarded hooks in Claude's user settings; Codex and opencode still
+add reporting flags to launcher commands. Claude's registry below runs independently of the
+switch. Without hooks, API failures cannot produce the explicit `failed` mark. Without an
+opencode reporting port, its server cannot provide a contract session identity for
+[`live-session-state.ts`](../../src/ui/sessions/live-session-state.ts).
 
 - **Claude answers a registry.** Main polls `claude agents --json`
   ([`claude-registry.ts`](../../electron/agent-registry/claude-registry.ts)) and the renderer
@@ -221,21 +214,32 @@ focus an existing pane rather than offer Resume.
   and its `waiting` is Claude's own word. The poll is demand-driven (an app with no Claude
   pane spawns nothing), answers the previous snapshot flagged `stale` rather than throwing,
   and runs the **discovered absolute path** — a packaged app's `PATH` is launchd's bare one.
-- **Hooks come back over loopback.** Every shell learns `DECK_PANE_ID`, `DECK_HOOK_TOKEN` and
-  `DECK_HOOK_PORT`; main runs a loopback endpoint
-  ([`hook-server.ts`](../../electron/agent-hooks/hook-server.ts)) behind a pure, tested
-  [validator](../../electron/agent-hooks/hook-request.ts), and writes its settings file to
-  `<userData>/agent-hooks/claude.json` — **never into `~/.claude`**. `claude --settings` is
-  additive, so the user's own hooks keep firing. `Stop`'s `last_assistant_message` goes
-  straight to the rail; `StopFailure` and `session.error` are the only producers of `failed`.
-- **The launch is augmented at arm time, not stored.**
-  [`launch-augment.ts`](../../src/lib/launch-augment.ts) composes `claude --settings <file>
-  --session-id <minted>`, `codex -c tui.notification_condition=always` and `opencode --port
-  <reserved>`. The journal keeps the **user's** command; restore re-applies the additions.
-  Deck's own flags are exempt from `commandProblem` (macOS `userData` holds a space, which a
-  user-typed command may not) and are composed here, shell-quoted, and nowhere else. A flag
-  the user already typed is never doubled — that half of the row simply stays inferred. A
-  minted `--session-id` is added only to a **fresh** launch; a resuming command keeps its own.
+- **Claude hooks cover manual launches.**
+  [`claude-integration.ts`](../../electron/agent-hooks/claude-integration.ts) installs the
+  script under this installation's `userData/agent-hooks/` and, when Signals is enabled,
+  registers guarded commands in `~/.claude/settings.json` (or `CLAUDE_CONFIG_DIR`).
+  [`claude-user-settings.ts`](../../electron/agent-hooks/claude-user-settings.ts) preserves
+  other settings and hooks, follows settings symlinks, preserves file permissions and
+  refuses invalid JSON or a concurrent registration lock. Disabling removes only this
+  installation's commands. The guard requires the matching `DECK_CLAUDE_HOOK_SCRIPT`
+  plus the pane ID, token and port; it does nothing in an outside terminal or when the
+  script is absent. Separate development and release installations do not remove each
+  other's hooks. A registration error is logged and leaves registry discovery available;
+  a later Signals change retries. A leftover `.deck-hooks.lock` is never stolen automatically.
+- **Endpoint and script precede the first window.**
+  [`main.ts`](../../electron/main.ts) waits for the hook listener and integration setup;
+  [`spawn.ts`](../../electron/pty/spawn.ts) stamps each shell with its installation's script
+  and authenticated pane environment. A shell created before this integration was added
+  needs reopening. Claude must load its user settings; an explicit exclusion or disabled
+  hooks leaves registry discovery as the fallback. Commands typed manually inherit the same
+  environment as launcher commands. The [endpoint](../../electron/agent-hooks/hook-server.ts)
+  validates tokens and session generations before routing events to the owning window.
+  Main suppresses delivery when Signals is off, including hooks already loaded by a session.
+- **Claude commands stay unchanged.**
+  [`launch-augment.ts`](../../src/lib/launch-augment.ts) adds no Claude flags. Session identity
+  comes from `SessionStart` or the registry, not a Deck-minted ID. Codex notification flags
+  and opencode's reserved port are still composed at arm time; the journal retains the
+  user's original command. Sessions outside Deck are not mapped to panes or controlled.
 - `cursor-agent` classifies as an agent on both hosts. Electron only otherwise: on Tauri no
   adapter exists and every mark stays inferred. Windows ships no hook script.
 

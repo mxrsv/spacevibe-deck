@@ -126,6 +126,8 @@ export interface PaneEnv {
   readonly hookToken: string;
   /** The hook endpoint's port, or null when it could not listen. */
   readonly hookPort: number | null;
+  /** Identifies this installation's guarded global hook, including for manual launches. */
+  readonly hookScript?: string | null;
 }
 
 export function buildEnv(
@@ -146,6 +148,11 @@ export function buildEnv(
   if (pane !== undefined) {
     env.DECK_PANE_ID = String(pane.paneId);
     env.DECK_HOOK_TOKEN = pane.hookToken;
+    if (pane.hookScript) {
+      env.DECK_CLAUDE_HOOK_SCRIPT = pane.hookScript;
+    } else {
+      delete env.DECK_CLAUDE_HOOK_SCRIPT;
+    }
     if (pane.hookPort !== null) {
       env.DECK_HOOK_PORT = String(pane.hookPort);
     } else {

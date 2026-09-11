@@ -120,7 +120,7 @@ const ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex", "opencod
 /**
  * The per-agent adapter switch (agent-signal contract layer, stage 2; spec
  * §10.4): whether a launch of this agent is augmented so the CLI reports to
- * Deck — Claude's hooks file and minted session id, Codex's always-ring
+ * Deck — Claude's guarded user-level hooks, Codex's always-ring
  * notification flag, opencode's pinned server port. Off, the agent is read
  * off the process table and output timing, and its marks are drawn hollow.
  * This setting stays inside the agent details, separate from availability.
@@ -202,7 +202,11 @@ function AgentRow({
           {signals !== null && (
             <ConfigRow
               label="Signals"
-              desc="Use agent-reported status for new sessions. When off, Deck estimates status."
+              desc={
+                agent.id === "claude"
+                  ? "Install Deck hooks in Claude settings for sessions opened here, including manual launches."
+                  : "Use agent-reported status for new sessions. When off, Deck estimates status."
+              }
             >
               <SignalsToggle agent={agent} on={signals} onChange={onSignals} />
             </ConfigRow>

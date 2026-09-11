@@ -47,6 +47,11 @@ spaces and `. , : @ + = _ - /`. Pipes, `&&`, `;`, quotes, redirects, variables a
 are refused with a message saying why. A pipeline belongs in a wrapper script declared as a
 custom agent.
 
+Claude Signals installs Deck hooks in your Claude settings and also covers Claude commands
+you type manually inside Deck. Turning it off removes this installation's hooks. Reopen
+terminals created before this integration was installed.
+[Signal integration](../internals/terminal.md#the-contract-layer).
+
 ## Custom agents
 
 Under **Declared**, add any CLI with a name and the command to type into each pane. Click

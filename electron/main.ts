@@ -50,7 +50,7 @@ import { registerTelemetry } from "./ipc/register-telemetry";
 import { registerAgentSignals } from "./ipc/register-agent-signals";
 import { createHookServer } from "./agent-hooks/hook-server";
 import { createOpencodeClients } from "./agent-hooks/opencode-client";
-import { writeClaudeHooksFiles, type ClaudeHooksFiles } from "./agent-hooks/claude-hooks-file";
+import { createClaudeIntegration } from "./agent-hooks/claude-integration";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
 const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
@@ -139,13 +139,14 @@ const browserPanels = new BrowserPanels({
 // manager because every shell learns the endpoint's port at spawn.
 const hookServer = createHookServer({
   tokenFor: (paneId) => pty.hookTokenOf(paneId),
-  emitToOwner: (paneId, payload) => coordinator.deliver(paneId, EVENTS.hookEvent, payload),
+  emitToOwner: (paneId, payload) => {
+    if (claudeIntegration.enabled()) coordinator.deliver(paneId, EVENTS.hookEvent, payload);
+  },
 });
 const opencodeClients = createOpencodeClients({
   emitToOwner: (paneId, payload) => coordinator.deliver(paneId, EVENTS.hookEvent, payload),
 });
-/** Where the Claude hooks file landed, once `whenReady` has written it. */
-let claudeHooksPaths: ClaudeHooksFiles | null = null;
+const claudeIntegration = createClaudeIntegration({ userData: app.getPath("userData") });
 
 const pty = new PtyManager({
   emitToOwner: (paneId, event, payload) => coordinator.deliver(paneId, event, payload),
@@ -158,6 +159,7 @@ const pty = new PtyManager({
   },
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
   hookPort: () => hookServer.port(),
+  hookScript: () => claudeIntegration.scriptPath(),
 });
 
 /** The label of the window that sent an IPC message. Every pane command needs
@@ -390,8 +392,7 @@ registerAgentSignals({
   config: () => ({
     // POSIX only: the hook script is `sh` + `curl`. Windows keeps the
     // fallback (spec §8) until a PowerShell script exists.
-    claudeSettingsPath:
-      process.platform === "win32" ? null : (claudeHooksPaths?.settingsPath ?? null),
+    claudeSettingsPath: null,
     hookPort: hookServer.port(),
   }),
   opencode: opencodeClients,
@@ -410,6 +411,7 @@ registerSettingsIpc({
   windows,
   emitTo,
   adoptMenuKeymap: menuState.adoptMenuKeymap,
+  syncAgentSettings: (settings) => claudeIntegration.sync(settings),
 });
 
 // ------------------------------------------------------- Usage analytics
@@ -572,25 +574,21 @@ app.on("second-instance", () => {
 });
 
 // ------------------------------------------------------------------ Boot
-app.whenReady().then(() => {
-  // The hook endpoint and the Claude hooks file (stage 2). Neither blocks the
-  // window: a pane spawned before the listener bound learns no port and stays
-  // on the fallback, and a hooks file that could not be written means no
-  // Claude launch is augmented. Both are Deck-owned paths under `userData` —
-  // never the user's own `~/.claude` (spec §3.1).
-  void hookServer.listen();
-  if (process.platform !== "win32") {
-    void writeClaudeHooksFiles(app.getPath("userData")).then((paths) => {
-      claudeHooksPaths = paths;
-    });
-  }
+app.whenReady().then(async () => {
+  // Every initial shell must inherit a bound endpoint and the installation's
+  // hook script. Registration failure keeps registry-based discovery available.
+  await hookServer.listen();
   // Read the stored rebinds BEFORE the first window exists. `createWindow`
   // rebuilds the menu itself, so resolving afterwards would install the
   // shipped accelerators first and correct them a moment later — a window in
   // which the OS still eats the chord the user reassigned.
   void stores
     .open("settings.json")
-    .then((store) => menuState.adoptMenuKeymap(store.get("settings")))
+    .then(async (store) => {
+      const settings = store.get("settings");
+      menuState.adoptMenuKeymap(settings);
+      await claudeIntegration.sync(settings);
+    })
     .catch((error: unknown) => {
       // Defaults are already installed; an unreadable settings file must not
       // stop the app from booting with a working menu.

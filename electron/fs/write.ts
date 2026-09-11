@@ -63,11 +63,11 @@ export async function writeFileAtomically(
   );
   let handle: Awaited<ReturnType<typeof fs.open>> | null = null;
   try {
-    handle = await fs.open(temp, "wx");
+    // A private config may contain credentials: restrict access before writing
+    // any bytes, then restore the target's requested mode through the handle.
+    handle = await fs.open(temp, "wx", 0o600);
     await handle.writeFile(contents, "utf8");
-    if (options.mode !== undefined) {
-      await handle.chmod(options.mode);
-    }
+    await handle.chmod(options.mode ?? 0o666 & ~process.umask());
     await handle.close();
     handle = null;
     await fs.rename(temp, filePath);

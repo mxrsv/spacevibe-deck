@@ -5,6 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PtyManager } from "./manager";
+import { spawnShell } from "./spawn";
 
 interface Emitted {
   readonly paneId: number;
@@ -25,7 +26,7 @@ const fakePty = {
 };
 
 vi.mock("./spawn", () => ({
-  spawnShell: () => ({ pty: fakePty, ttyName: "ttys999" }),
+  spawnShell: vi.fn(() => ({ pty: fakePty, ttyName: "ttys999" })),
 }));
 const terminateSpy = vi.hoisted(() => vi.fn());
 interface Foreground {
@@ -92,6 +93,34 @@ function fireExit(): void {
 }
 
 describe("PtyManager", () => {
+  it("reads the hook endpoint and installation script for every spawned pane", () => {
+    let script = "/Deck/agent-hooks/deck-hook.sh";
+    let port = 1234;
+    const hooked = new PtyManager({
+      emitToOwner: () => {},
+      register: () => {},
+      unregister: () => {},
+      assertOwner: () => {},
+      hookPort: () => port,
+      hookScript: () => script,
+    });
+    const first = hooked.spawn("main", { cols: 80, rows: 24, cwd: null });
+    expect(spawnShell).toHaveBeenLastCalledWith(expect.any(Object), {
+      paneId: first,
+      hookPort: 1234,
+      hookScript: script,
+      hookToken: expect.stringMatching(/^[a-f0-9]{32}$/),
+    });
+    script = "/Deck Dev/agent-hooks/deck-hook.sh";
+    port = 5678;
+    const second = hooked.spawn("main", { cols: 80, rows: 24, cwd: null });
+    expect(spawnShell).toHaveBeenLastCalledWith(expect.any(Object), {
+      paneId: second,
+      hookPort: 5678,
+      hookScript: script,
+      hookToken: expect.stringMatching(/^[a-f0-9]{32}$/),
+    });
+  });
   it("emits opt-in startup milestones without terminal content", () => {
     const previous = process.env.DECK_PTY_STARTUP_TRACE;
     process.env.DECK_PTY_STARTUP_TRACE = "1";

@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Claude Signals also covers manual launches in Deck.** Enabling Signals registers
+  Deck's guarded hooks in your Claude settings; turning it off removes those hooks.
+  Claude launch commands no longer receive extra settings or session-ID flags.
+  [Agent settings](docs/user/agents.md).
+
 - **Clearer agent settings.** Agents start collapsed with their command and availability
   visible. Expand an agent to choose its default model and effort, add model IDs, or
   configure Signals.

@@ -17,7 +17,8 @@ import { processInfo, setupControllable } from "./tab-manager.fixtures";
 
 const SETTINGS_PATH =
   "/Users/dev/Library/Application Support/SpaceVibe Deck/agent-hooks/claude.json";
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const SESSION_ID = "11111111-2222-4333-8444-555555555555";
+const UUID = /^[0-9a-f-]{36}$/;
 
 type HookHandler = (event: HookEvent) => void;
 
@@ -120,13 +121,24 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
-    const { tm, pty } = harness(infos);
+    const { tm, pty, emitHook } = harness(infos);
     try {
       await tm.init();
       await tm.materialize({ layout: null, cwds: ["/repo"], agent: "claude" });
       await vi.advanceTimersByTimeAsync(0);
       pty.emitOutput(1, "$ ");
       await vi.advanceTimersByTimeAsync(2000);
+      emitHook({
+        paneId: 1,
+        source: "hook",
+        agent: "claude",
+        event: "SessionStart",
+        sessionId: SESSION_ID,
+        cwd: "/repo",
+        message: null,
+        detail: null,
+        receivedAt: Date.now(),
+      });
       const confirmed = tabViews.value[0]?.panes?.[0]?.sessionId;
       expect(confirmed).toMatch(UUID);
       infos.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
@@ -134,7 +146,7 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
       await expect(tm.restartPane(1)).resolves.toBe(true);
       const command = pty.writes.at(-1)?.data ?? "";
       expect(command).toContain(`claude --resume ${confirmed}`);
-      expect(command).toContain(`--settings '${SETTINGS_PATH}'`);
+      expect(command).not.toContain("--settings");
       expect(command).not.toContain("--session-id");
     } finally {
       tm.dispose();
@@ -146,13 +158,24 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
-    const { tm, pty } = harness(infos);
+    const { tm, pty, emitHook } = harness(infos);
     try {
       await tm.init();
       await tm.materialize({ layout: null, cwds: ["/repo"], agent: "claude" });
       await vi.advanceTimersByTimeAsync(0);
       pty.emitOutput(1, "$ ");
       await vi.advanceTimersByTimeAsync(2000);
+      emitHook({
+        paneId: 1,
+        source: "hook",
+        agent: "claude",
+        event: "SessionStart",
+        sessionId: SESSION_ID,
+        cwd: "/repo",
+        message: null,
+        detail: null,
+        receivedAt: Date.now(),
+      });
       const previous = tabViews.value[0]?.panes?.[0]?.sessionId;
       expect(previous).toMatch(UUID);
       infos.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
@@ -225,41 +248,45 @@ describe("createTabManager — arm-time augmentation (stage 2)", () => {
     });
   }
 
-  it("types the settings file and a minted session id after the user's claude command, and journals the user's", async () => {
+  it("keeps Claude's command unchanged and learns its session from a hook", async () => {
     signalsOn("claude");
-    const infoByPane = new Map<number, PaneProcessInfo>([
+    const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
-    const { tm, pty } = harness(infoByPane);
-    await tm.init();
-    await tm.materialize({
-      layout: null,
-      cwds: ["/repo"],
-      workspacePath: "/repo",
-      agent: "claude",
-      launchCommand: "claude --dangerously-skip-permissions",
-    });
-    await vi.advanceTimersByTimeAsync(0);
-    pty.emitOutput(1, "$ ");
-    await vi.advanceTimersByTimeAsync(0);
-
-    const typed = pty.writes.find((write) => write.id === 1)?.data ?? "";
-    expect(
-      typed.startsWith(
-        `claude --dangerously-skip-permissions --settings '${SETTINGS_PATH}' --session-id `,
-      ),
-    ).toBe(true);
-    const minted = typed.trim().split(" ").at(-1) ?? "";
-    expect(minted).toMatch(UUID);
-    // The journal holds the USER's command, never the augmented one.
-    expect(tm.captureSession()[0]?.panes[0]?.launchCommand).toBe(
-      "claude --dangerously-skip-permissions",
-    );
-    // The minted id becomes the pane's session once the gate opens.
-    await vi.advanceTimersByTimeAsync(2000);
-    expect(tabViews.value[0]?.panes?.[0]?.sessionId).toBe(minted);
-    expect(tm.captureSession()[0]?.panes[0]?.sessionId).toBe(minted);
-    tm.dispose();
+    const { tm, pty, emitHook } = harness(infos);
+    try {
+      await tm.init();
+      await tm.materialize({
+        layout: null,
+        cwds: ["/repo"],
+        agent: "claude",
+        launchCommand: "claude --dangerously-skip-permissions",
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      pty.emitOutput(1, "$ ");
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(pty.writes.find((write) => write.id === 1)?.data).toBe(
+        "claude --dangerously-skip-permissions\r",
+      );
+      emitHook({
+        paneId: 1,
+        source: "hook",
+        agent: "claude",
+        event: "SessionStart",
+        sessionId: SESSION_ID,
+        cwd: "/repo",
+        message: null,
+        detail: null,
+        receivedAt: Date.now(),
+      });
+      expect(tabViews.value[0]?.panes?.[0]?.sessionId).toBe(SESSION_ID);
+      expect(tm.captureSession()[0]?.panes[0]?.launchCommand).toBe(
+        "claude --dangerously-skip-permissions",
+      );
+      expect(tm.captureSession()[0]?.panes[0]?.sessionId).toBe(SESSION_ID);
+    } finally {
+      tm.dispose();
+    }
   });
 
   it("asks main for a port before typing opencode, and appends it", async () => {

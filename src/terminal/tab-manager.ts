@@ -32,7 +32,7 @@ import { countAgentLaunch } from "../telemetry/usage-counters";
 import { createAgentRegistrySync } from "./agent-registry-sync";
 import { agentRegistry as fetchAgentRegistry } from "../host/agent-registry-host";
 import { UNAVAILABLE_REGISTRY } from "../lib/agent-registry";
-import { augmentLaunchCommand, mintsClaudeSession, needsOpencodePort } from "../lib/launch-augment";
+import { augmentLaunchCommand, needsOpencodePort } from "../lib/launch-augment";
 import {
   agentSignalConfig as fetchSignalConfig,
   available as signalsHostAvailable,
@@ -154,24 +154,6 @@ const WINDOWS_STARTUP_POLL_FALLBACK_MS = 4000;
  * opens before the agent's first turn rather than up to 2 s after it.
  */
 const LAUNCH_FOLLOW_UP_POLL_MS = 1000;
-
-/**
- * A v4 uuid for `claude --session-id` (stage 2, spec §10.2). `randomUUID`
- * where the runtime has it; otherwise built from `getRandomValues`, which
- * every renderer and test environment provides.
- */
-function mintSessionId(): string {
-  const cryptoApi = globalThis.crypto;
-  if (typeof cryptoApi?.randomUUID === "function") {
-    return cryptoApi.randomUUID();
-  }
-  const bytes = new Uint8Array(16);
-  cryptoApi.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 export function createTabManager(
   host: HTMLElement,
@@ -360,8 +342,8 @@ export function createTabManager(
    * its CLI report to Deck (spec §4 stage 2; `launch-augment.ts`). The user's
    * own command is what `launchCommandByPane` and the journal hold — the
    * augmented string exists only here and in the shell it is typed into.
-   * An opencode pane asks main for a port first; a fresh Claude launch mints
-   * its session id here, and the tracker holds it until the gate opens.
+   * An opencode pane asks main for a port first. Claude obtains its session
+   * identity from SessionStart or the registry, including manual launches.
    */
   async function prepareLaunch({ id, command }: AgentLaunchEntry): Promise<AgentLaunchEntry> {
     if (!signalsEnabled) return { id, command };
@@ -374,18 +356,13 @@ export function createTabManager(
     if (opencodeAttach !== null && needsOpencodePort(command, adapters)) {
       opencodePort = await opencodeAttach(id).catch(() => null);
     }
-    const sessionId =
-      platform !== "windows" && mintsClaudeSession(command, adapters) ? mintSessionId() : null;
     const augmented = augmentLaunchCommand(command, {
       adapters,
       platform,
       claudeSettingsPath: signalConfig.claudeSettingsPath,
-      sessionId,
+      sessionId: null,
       opencodePort,
     });
-    if (augmented.sessionId !== null) {
-      tracker.noteMintedSession(id, augmented.sessionId);
-    }
     return { id, command: augmented.command };
   }
 

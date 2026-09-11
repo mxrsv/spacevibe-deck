@@ -30,22 +30,29 @@ describe("buildEnv — the pane's identity for its hooks (stage 2, 2026-09-03)",
       paneId: 7,
       hookToken: "0123456789abcdef0123456789abcdef",
       hookPort: 45123,
+      hookScript: "/Deck/agent-hooks/deck-hook.sh",
     });
     expect(env.DECK_PANE_ID).toBe("7");
     expect(env.DECK_HOOK_TOKEN).toBe("0123456789abcdef0123456789abcdef");
     expect(env.DECK_HOOK_PORT).toBe("45123");
+    expect(env.DECK_CLAUDE_HOOK_SCRIPT).toBe("/Deck/agent-hooks/deck-hook.sh");
     expect(env.TERM_PROGRAM).toBe("SpaceVibeDeck");
     expect(env.PATH).toBe("/bin");
   });
 
   it("omits the port when the listener never bound, even if the base env carried one", () => {
-    const env = buildEnv({ DECK_HOOK_PORT: "1" }, "1.2.3", {
-      paneId: 7,
-      hookToken: "t",
-      hookPort: null,
-    });
+    const env = buildEnv(
+      { DECK_HOOK_PORT: "1", DECK_CLAUDE_HOOK_SCRIPT: "/other/deck.sh" },
+      "1.2.3",
+      {
+        paneId: 7,
+        hookToken: "t",
+        hookPort: null,
+      },
+    );
     expect(env.DECK_PANE_ID).toBe("7");
     expect(env).not.toHaveProperty("DECK_HOOK_PORT");
+    expect(env).not.toHaveProperty("DECK_CLAUDE_HOOK_SCRIPT");
   });
 
   it("adds nothing without a pane, so every other caller is unchanged", () => {
@@ -57,12 +64,13 @@ describe("buildEnv — the pane's identity for its hooks (stage 2, 2026-09-03)",
   it("passes the pane into the spawned shell's environment", () => {
     spawnShell(
       { cols: 80, rows: 24, cwd: TEST_ROOT },
-      { paneId: 3, hookToken: "tok", hookPort: 9 },
+      { paneId: 3, hookToken: "tok", hookPort: 9, hookScript: "/deck/hook.sh" },
     );
     const options = mocks.spawn.mock.calls[0]?.[2] as { env: Record<string, string> } | undefined;
     expect(options?.env.DECK_PANE_ID).toBe("3");
     expect(options?.env.DECK_HOOK_TOKEN).toBe("tok");
     expect(options?.env.DECK_HOOK_PORT).toBe("9");
+    expect(options?.env.DECK_CLAUDE_HOOK_SCRIPT).toBe("/deck/hook.sh");
   });
 });
 

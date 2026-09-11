@@ -13,12 +13,8 @@
  * nothing else.
  *
  * Per agent, v1:
- * - **claude** — `--settings '<deck file>'` (Claude loads it as additional
- *   settings for the session; the user's own hooks keep firing — verified
- *   2026-09-03) and, for a FRESH launch, `--session-id <uuid>` minted by Deck
- *   so the pane → session pairing exists before the first byte of output
- *   (spec §10.2's default). A command that resumes (`--resume`, `-r`,
- *   `--continue`, `-c`, `--fork-session`) keeps its own id.
+ * - **claude** — unchanged. User-level guarded hooks and the session registry
+ *   cover both launcher and manual invocations.
  * - **codex** — `-c tui.notification_condition=always`, so Codex's BEL rings
  *   for `approval-requested` and `agent-turn-complete` whether or not the
  *   pane is focused (spec §10.6's default: the mark is worth the beep).
@@ -54,8 +50,6 @@ export interface Augmented {
   readonly sessionId: string | null;
 }
 
-const CLAUDE_RESUME_FLAGS = ["--resume", "-r", "--continue", "-c", "--fork-session"];
-
 /** POSIX single-quoting — `'` is the only character that needs escaping inside `'…'`. */
 export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
@@ -82,18 +76,9 @@ function hasConfigKey(command: string, key: string): boolean {
 export function augmentLaunchCommand(command: string, context: AugmentContext): Augmented {
   const agent = commandAgentId(command);
   const extra: string[] = [];
-  let sessionId: string | null = null;
+  const sessionId: string | null = null;
 
-  if (agent === "claude" && context.adapters.claude && context.platform !== "windows") {
-    if (context.claudeSettingsPath !== null && !hasFlag(command, "--settings")) {
-      extra.push("--settings", shellQuote(context.claudeSettingsPath));
-    }
-    const resumes = CLAUDE_RESUME_FLAGS.some((flag) => hasFlag(command, flag));
-    if (context.sessionId !== null && !resumes && !hasFlag(command, "--session-id")) {
-      extra.push("--session-id", context.sessionId);
-      sessionId = context.sessionId;
-    }
-  } else if (agent === "codex" && context.adapters.codex) {
+  if (agent === "codex" && context.adapters.codex) {
     if (!hasConfigKey(command, "tui.notification_condition")) {
       extra.push("-c", "tui.notification_condition=always");
     }
@@ -112,13 +97,4 @@ export function augmentLaunchCommand(command: string, context: AugmentContext): 
 /** Which agents a launch would ASK main for something before arming. */
 export function needsOpencodePort(command: string, adapters: SignalAdapters): boolean {
   return commandAgentId(command) === "opencode" && adapters.opencode && !hasFlag(command, "--port");
-}
-
-export function mintsClaudeSession(command: string, adapters: SignalAdapters): boolean {
-  return (
-    commandAgentId(command) === "claude" &&
-    adapters.claude &&
-    !hasFlag(command, "--session-id") &&
-    !CLAUDE_RESUME_FLAGS.some((flag) => hasFlag(command, flag))
-  );
 }
