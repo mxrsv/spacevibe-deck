@@ -382,6 +382,12 @@
   font-size: var(--type-meta);
 }
 
+/* The repo name reads at full ink, the same tone as the message below it;
+   only the checkout and the age stay faint. */
+.board-card__where {
+  color: var(--text-primary);
+}
+
 /* The one thing on the card that changes, so it is the one thing that leads:
    `--text-primary` (was `--text-muted`, the same tone as the checkout under
    it) and TWO lines instead of one truncated one. The `min-height` is what
