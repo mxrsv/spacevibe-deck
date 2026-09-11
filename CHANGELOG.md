@@ -11,6 +11,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   instead of jumping whenever an agent changes state, so the card you are about to
   press no longer moves away. The state still shows on each card.
 
+- **Codex cards stop loading when a response finishes.** With Codex Signals enabled,
+  lifecycle hooks keep terminal repaints from marking a completed turn as working.
+  Resumed sessions also stay idle while restoring history, until a new prompt starts.
+  Existing hooks and notifications are preserved; reopen the shell and Codex session
+  after updating to load the integration. [Agent lifecycle](docs/internals/terminal.md#the-contract-layer).
+
 - **Open a shell from the checkout menu.** Open shell starts a new terminal tab in
   Deck at that checkout. Choose up to five quick agents in Settings → Agents;
   the menu no longer opens an external terminal app.

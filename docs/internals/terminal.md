@@ -235,6 +235,24 @@ opencode reporting port, its server cannot provide a contract session identity f
   environment as launcher commands. The [endpoint](../../electron/agent-hooks/hook-server.ts)
   validates tokens and session generations before routing events to the owning window.
   Main suppresses delivery when Signals is off, including hooks already loaded by a session.
+- **Codex lifecycle hooks own its turn state.** Enabling Codex Signals registers
+  `SessionStart`, `UserPromptSubmit`, `Stop`, and `Interrupt` in `CODEX_HOME/hooks.json` through
+  [`codex-hooks.ts`](../../electron/agent-hooks/codex-hooks.ts). Registration preserves
+  existing handlers and never edits `config.toml` or `notify`. The installation-specific
+  `DECK_CODEX_HOOK_SCRIPT` guard restricts delivery to this Deck's authenticated panes;
+  disabling Signals removes only this installation's handlers and stops event delivery.
+  The [bridge](../../electron/agent-hooks/codex-integration.ts) requires POSIX and a Codex
+  version with lifecycle hooks enabled. Existing shells need reopening to inherit the
+  script path, and Codex must load the newly registered hooks.
+  A `Stop` ends the current response; if another hook requests continuation, Codex emits
+  `UserPromptSubmit` for the continuation turn. The [turn reducer](../../src/terminal/codex-lifecycle.ts)
+  rejects late completion from a previous turn; `Interrupt` returns to idle without a
+  completion latch. [`SessionStart`](../../src/terminal/agent-attention.ts) establishes idle
+  before the first turn, including on resume; replayed history cannot start a run or report
+  an old answer as newly completed. A repeated start for the same session preserves an
+  established turn. Terminal repaints and silence cannot override lifecycle phase, even after the
+  confidence freshness window expires. Process exit still ends the pane; turning Signals
+  off returns to the output fallback. Transcript tails are not lifecycle evidence.
 - **Claude commands stay unchanged.**
   [`launch-augment.ts`](../../src/lib/launch-augment.ts) adds no Claude flags. Session identity
   comes from `SessionStart` or the registry, not a Deck-minted ID. Codex notification flags
