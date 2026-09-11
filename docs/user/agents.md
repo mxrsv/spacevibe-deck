@@ -6,7 +6,7 @@ and reads the tool's own session logs where it knows their format.
 
 ## Built-in agents
 
-Deck recognises six agents out of the box. Each ships with a launch command, and the command
+Deck recognises five agents out of the box. Each ships with a launch command, and the command
 is shown on screen in Settings → Agents rather than hidden behind a label.
 
 | Agent       | Launch command                                     |
@@ -16,7 +16,6 @@ is shown on screen in Settings → Agents rather than hidden behind a label.
 | OpenCode    | `opencode`                                         |
 | Antigravity | `agy --dangerously-skip-permissions`               |
 | Gemini CLI  | `gemini --yolo`                                    |
-| Cursor      | `cursor-agent --force`                             |
 
 Several of these skip the tool's own confirmation prompts. That is the point of Deck, which
 exists to run agents that keep working, and it is also why every command is spelled out and

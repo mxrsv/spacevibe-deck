@@ -70,16 +70,16 @@ exact id, `latest`, or nothing, and never rejects.
 | `opencode`     | `opencode.db` via `node:sqlite` first, then the legacy JSON tree, deduplicated by id; sub-agent sessions excluded | exact id, else nothing |
 | `gemini`       | none                                                        | always `latest`                          |
 | `agy`          | `~/.gemini/antigravity/conversations/*.pb` head bytes       | best-effort id, else `latest`            |
-| `cursor-agent` | none                                                        | nothing; relaunches bare                 |
 | custom         | none                                                        | the declared command, unchanged          |
 
 - Candidates within 30 days of `lastSeenAt` whose cwd matches are ranked by mtime proximity;
   a candidate is marked taken on selection, not on success, so two panes cannot resume the
   same conversation. Scans cap at 300 files and 64 KiB of head per file.
-- The command comes from `COMMAND_TABLE` in [`agent-resume.ts`](../../src/lib/agent-resume.ts):
-  `claude --resume <id>` / `--continue`, `codex resume <id>` / `--last`,
-  `opencode -s <id>` / `-c`, `gemini --resume latest`, `agy --conversation <id>` /
-  `--continue`, `cursor-agent --resume <id>`. An id is checked against
+- The command comes from `COMMAND_TABLE` in [`agent-resume.ts`](../../src/lib/agent-resume.ts),
+  built from each active agent's resume forms: `claude --resume <id>` / `--continue`,
+  `codex resume <id>` / `--last`, `opencode -s <id>` / `-c`, `gemini --resume latest`,
+  `agy --conversation <id>` / `--continue`. A withdrawn agent has no entry, so its journaled
+  pane restores as a plain shell. An id is checked against
   `SESSION_REF_SAFE` (`[A-Za-z0-9._-]{1,128}`) in the one place before it can reach a PTY
   write; a failing id degrades to the bare command.
 - Only `claude` is re-flagged on restore: the pane's own recorded `launchCommand` is the

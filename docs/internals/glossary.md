@@ -80,8 +80,13 @@ focused pane's cwd; missing paths fall back to `$HOME`. Not: directory, folder.
 a binary discovered on the login shell's `PATH` or a command the user declared.
 Not: process, bot.
 
-**Built-in agent** — One of the six Deck ships: `claude`, `codex`, `opencode`, `agy`,
-`gemini`, `cursor-agent`. Its id, binary name and bare command are the same string.
+**Built-in agent** — One Deck ships, defined in its own file and listed in
+[`agent-registry.ts`](../../src/lib/agents/agent-registry.ts). Active: `claude`, `codex`,
+`opencode`, `agy`, `gemini`; withdrawn: `cursor-agent`. Its id, binary name and bare command
+are the same string.
+
+**Withdrawn agent** — A built-in kept as data but switched off: not probed, listed,
+classified, resumed or counted. Not: disabled agent (a user setting).
 
 **Custom agent** — A user-declared name plus a full command line, id `custom:<slug>`, matched
 to processes by its label. Not: preset, launch profile.

@@ -101,7 +101,7 @@ read the [public privacy notice](https://deck.spacevibe.dev/privacy) for build-s
 
 ### Workflow-neutral agents
 
-Deck includes six agent definitions and accepts user-declared CLI commands. Each agent runs in
+Deck includes five agent definitions and accepts user-declared CLI commands. Each agent runs in
 its own terminal process; Deck coordinates the workspace and attention surface without
 replacing the CLI's own workflow
 ([agent catalog](src/lib/agent-catalog.ts)).
@@ -137,7 +137,6 @@ local agent storage.
 - **[OpenCode](https://opencode.ai):** `opencode`
 - **[Antigravity](https://antigravity.google):** `agy --dangerously-skip-permissions`
 - **[Gemini CLI](https://github.com/google-gemini/gemini-cli):** `gemini --yolo`
-- **[Cursor](https://cursor.com/cli):** `cursor-agent --force`
 
 These are the commands Deck ships, not hidden defaults. Settings lets you disable a built-in,
 replace its launch command, or add another CLI command.

@@ -163,6 +163,17 @@ and session restore. `TabManager.materialize` owns the implementation.
 - **The catalog** ([`agent-catalog.ts`](../../src/lib/agent-catalog.ts)): a built-in's id, its
   binary name and its bare command are the same string, which is what keeps every
   `lastAgent` on disk resolving. Order is the digit-key contract, so new agents append.
+- **One file per built-in agent.** Each lives under `src/lib/agents/` and holds its label,
+  shipped command, dot colour, resume forms, model/effort flags and launch flags;
+  [`agent-registry.ts`](../../src/lib/agents/agent-registry.ts) lists them in order. The
+  catalog, the discovery probe and process classification in main, `COMMAND_TABLE`, and the
+  runtime and launch-flag controls all derive from its active agents — never keep a second
+  list. Adding an agent is that file plus one entry; a logo in
+  [`agent-logos.ts`](../../src/lib/agent-logos.ts) is optional, and a telemetry key is a
+  separate privacy change (without one the agent counts as `custom`). `withdrawn: true` turns
+  an agent off everywhere while keeping its data, so its journaled panes restore as plain
+  shells; `cursor-agent` is withdrawn. Per-agent adapters (hooks, resume scanners, usage)
+  stay code, and Tauri's frozen `info.rs` keeps its own copy.
   Discovery probes `sh -ilc "command -v <name>"` on macOS (interactive and login, because
   CLIs register `PATH` in rc files) and walks `PATH` with `.cmd`/`.exe` suffixes on Windows.
   Probe names are restricted to `[A-Za-z0-9._~+/-]`, enforced again in main.
@@ -258,8 +269,7 @@ opencode reporting port, its server cannot provide a contract session identity f
   comes from `SessionStart` or the registry, not a Deck-minted ID. Codex notification flags
   and opencode's reserved port are still composed at arm time; the journal retains the
   user's original command. Sessions outside Deck are not mapped to panes or controlled.
-- `cursor-agent` classifies as an agent on both hosts. Electron only otherwise: on Tauri no
-  adapter exists and every mark stays inferred. Windows ships no hook script.
+- Signals are Electron only: on Tauri no adapter exists and every mark stays inferred. Windows ships no hook script.
 
 ## Actions, keymaps and the menu
 
