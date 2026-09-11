@@ -42,19 +42,23 @@ the Rust registry first.
 
 ## CI
 
-[`ci.yml`](../../.github/workflows/ci.yml) runs on every push to `main`, every pull request,
-and by hand — except a change that touches only `marketing/**`, which runs
-[`landing.yml`](../../.github/workflows/landing.yml) instead: the landing's Vitest files and
-`build:landing`, on ubuntu. A change touching both runs both.
+Each workflow runs on push to `main`, on pull requests and by hand, only for the paths it
+owns; a newer push cancels an older run of the same workflow on the same ref. A change that
+touches only `docs/**` or `*.md` runs nothing.
 
-- `check` (ubuntu): `generate:menu:check`, `lint`, `test`, `build`, `electron:build`,
-  `cargo fmt --check`, `cargo test`.
-- `windows-check` (windows): the same without lint, plus the Windows bundle validator's own
-  test and `tauri build --no-bundle`. `npm test` there spawns a real ConPTY through
-  `electron/pty/windows-pty.test.ts`.
-- Two `workflow_dispatch`-only packaging jobs: a Tauri Windows engineering bundle that
-  refuses to run in a public repository, and the unsigned Electron Windows preview, kept as
-  7-day artifacts.
+- [`ci.yml`](../../.github/workflows/ci.yml) `check` (ubuntu): `generate:menu:check`, `lint`,
+  `test`, `build`, `electron:build`; plus `backend-check` for the ingest Worker. Skipped when
+  only `marketing/**` changed.
+- [`landing.yml`](../../.github/workflows/landing.yml) (ubuntu): the landing's Vitest files
+  and `build:landing`, when `marketing/**` changes.
+- [`tauri.yml`](../../.github/workflows/tauri.yml) (ubuntu): `cargo fmt --check` and
+  `cargo test` for the feature-frozen Tauri host, when `src-tauri/**` changes.
+- By hand only, in `ci.yml`: `windows-check` — `npm test` on Windows, which spawns a real
+  ConPTY through `electron/pty/windows-pty.test.ts`, plus `tauri build --no-bundle`; run it
+  before a Windows release. It still carries the pre-existing failures in
+  [traps](../internals/traps.md). The two packaging jobs — a Tauri Windows engineering
+  bundle that refuses to run in a public repository, and the unsigned Electron Windows
+  preview — keep their artifacts for 7 days.
 
 Lint is oxlint with `correctness` as errors and `max-lines` at 300 as a warning, so the
 over-length files that predate the rule stay a visible backlog without failing the build.
