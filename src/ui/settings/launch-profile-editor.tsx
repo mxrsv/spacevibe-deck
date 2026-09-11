@@ -1,7 +1,10 @@
 import { ArrowClockwise, CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
+import { useLayoutEffect, useRef } from "preact/hooks";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { ConfigGroup, ConfigRow } from "../controls/config-row";
+import { CommitInput } from "../controls/commit-input";
+import { AgentChoiceValue, CLI_DEFAULT_CHOICE } from "./agent-choice-value";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { BUILTIN_AGENTS, type BuiltinAgent } from "../../lib/agent-catalog";
 import { AGENT_LOGOS } from "../../lib/agent-logos";
@@ -15,6 +18,7 @@ import {
   isRuntimeValue,
   type LaunchProfile,
 } from "../../lib/launch-profile";
+import { AgentLaunchFlags } from "./agent-launch-flags";
 import { agentLaunchCommand } from "../../lib/launch-command";
 import { modelsFor, runtimeFor, type AgentRuntimeDefault } from "../../launcher/runtime-catalog";
 
@@ -26,7 +30,8 @@ import { modelsFor, runtimeFor, type AgentRuntimeDefault } from "../../launcher/
  * catalog carries a recommended `defaultCommand` per agent, so a fresh install
  * shows `claude --dangerously-skip-permissions` immediately rather than a bare
  * binary waiting for someone to type a flag. A preset the user writes replaces
- * it for that agent; nothing merges.
+ * it for that agent; nothing merges. An agent's details show the flags its CLI
+ * offers as controls that rewrite that preset (`agent-launch-flags.tsx`).
  *
  * The list splits on what is actually on `$PATH`. **Installed** is what the
  * discovery probe found; **Available to install** is everything else Deck
@@ -106,10 +111,11 @@ function EnabledToggle({
       role="switch"
       aria-checked={enabled}
       aria-label={`${agent.label} availability`}
-      class="cfg-btn lp-enabled"
+      class={`cfg-btn lp-enabled ${enabled ? "cfg-btn--on" : "cfg-btn--off"}`}
+      title={enabled ? "Enabled in agent pickers" : "Disabled in agent pickers"}
       onClick={() => onChange(!enabled)}
     >
-      {enabled ? "Enabled" : "Disabled"}
+      {enabled ? "on" : "off"}
     </button>
   );
 }
@@ -138,12 +144,12 @@ function SignalsToggle({
     <button
       type="button"
       role="switch"
-      class="cfg-btn lp-signals"
+      class={`cfg-btn lp-signals ${on ? "cfg-btn--on" : "cfg-btn--off"}`}
       aria-label={`${agent.label} signals`}
       aria-checked={on}
       onClick={() => onChange(!on)}
     >
-      {on ? "On" : "Off"}
+      {on ? "on" : "off"}
     </button>
   );
 }
@@ -167,8 +173,14 @@ function AgentRow({
   installed: boolean;
 }) {
   const expanded = useSignal(false);
-  const hasDetails = installed || signals !== null;
+  const configureLaunch = useSignal(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
   const detailsId = `agent-settings-${agent.id}`;
+  useLayoutEffect(() => {
+    if (configureLaunch.value && !installed) {
+      detailsRef.current?.querySelector<HTMLInputElement>(".lp-agent-command input")?.focus();
+    }
+  }, [configureLaunch.value, installed]);
 
   return (
     <div class="lp-agent-item">
@@ -179,40 +191,63 @@ function AgentRow({
           <CommandLine command={command} />
         </div>
         <EnabledToggle agent={agent} enabled={enabled} onChange={onToggle} />
-        {hasDetails && (
-          <button
-            type="button"
-            class="cfg-btn lp-agent__disclosure"
-            aria-label={`Configure ${agent.label}`}
-            aria-expanded={expanded.value}
-            aria-controls={detailsId}
-            title={expanded.value ? "Hide settings" : "Configure agent"}
-            onClick={() => {
-              expanded.value = !expanded.value;
-            }}
-          >
-            <DeckIcon icon={expanded.value ? CaretDown : CaretRight} size={ROW_ICON} />
-          </button>
-        )}
+        <button
+          type="button"
+          class="cfg-btn lp-agent__disclosure"
+          aria-label={`Configure ${agent.label}`}
+          aria-expanded={expanded.value}
+          aria-controls={detailsId}
+          title={expanded.value ? "Hide settings" : "Configure agent"}
+          onClick={() => {
+            expanded.value = !expanded.value;
+          }}
+        >
+          <DeckIcon icon={expanded.value ? CaretDown : CaretRight} size={ROW_ICON} />
+        </button>
       </div>
-      {hasDetails && (
-        // Keep drafts mounted when collapsed; an invalid value must survive reopening.
-        <div id={detailsId} class="lp-agent-details" hidden={!expanded.value}>
+      {/* Keep drafts mounted when collapsed; an invalid value must survive reopening. */}
+      <div ref={detailsRef} id={detailsId} class="lp-agent-details" hidden={!expanded.value}>
+        {!installed && (
+          <>
+            <p class="lp-install-help">
+              Install {agent.label}, then refresh detection. Launch settings can be prepared in
+              advance.
+            </p>
+            {!configureLaunch.value && (
+              <ConfigRow label="Launch settings" desc="Optional before installation.">
+                <button
+                  type="button"
+                  class="cfg-btn"
+                  onClick={() => {
+                    configureLaunch.value = true;
+                  }}
+                >
+                  Configure launch
+                </button>
+              </ConfigRow>
+            )}
+          </>
+        )}
+        <div hidden={!installed && !configureLaunch.value}>
+          <AgentLaunchFlags agent={agent} command={command} />
           {installed && <RuntimeSettings agent={agent} />}
           {signals !== null && (
-            <ConfigRow
-              label="Signals"
-              desc={
-                agent.id === "claude"
-                  ? "Install Deck hooks in Claude settings for sessions opened here, including manual launches."
-                  : "Use agent-reported status for new sessions. When off, Deck estimates status."
-              }
-            >
-              <SignalsToggle agent={agent} on={signals} onChange={onSignals} />
-            </ConfigRow>
+            <section class="lp-agent-group">
+              <ConfigGroup label="Integrations" />
+              <ConfigRow
+                label="Signals"
+                desc={
+                  agent.id === "claude"
+                    ? "Install Deck hooks in Claude settings for sessions opened here, including manual launches."
+                    : "Use agent-reported status for new sessions. When off, Deck estimates status."
+                }
+              >
+                <SignalsToggle agent={agent} on={signals} onChange={onSignals} />
+              </ConfigRow>
+            </section>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -228,21 +263,20 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
     model: null,
     effort: null,
   };
-  const modelDraft = useSignal(declared.join(", "));
   const modelError = useSignal<string | null>(null);
 
   if (capability === null) return null;
 
   const models = modelsFor(agent.id, settings.value.agentModels);
 
-  const saveModels = (): void => {
-    const values = modelDraft.value
+  const saveModels = (draft: string): boolean => {
+    const values = draft
       .split(",")
       .map((value) => value.trim())
       .filter((value, index, all) => value !== "" && all.indexOf(value) === index);
     if (values.some((value) => !isRuntimeValue(value))) {
       modelError.value = "Model values must be one shell-safe argument";
-      return;
+      return false;
     }
     modelError.value = null;
     updateSettings({
@@ -251,6 +285,7 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
           ? withoutKey(settings.value.agentModels, agent.id)
           : { ...settings.value.agentModels, [agent.id]: values },
     });
+    return true;
   };
 
   const saveDefault = (next: AgentRuntimeDefault): void => {
@@ -263,71 +298,45 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
   };
 
   return (
-    <div class="lp-runtime" data-runtime-agent={agent.id}>
-      {capability.modelFlag !== null && models.length > 0 ? (
+    <section class="lp-runtime lp-agent-group" data-runtime-agent={agent.id}>
+      <ConfigGroup label="Model" />
+      {capability.modelFlag !== null && (models.length > 0 || stored.model !== null) ? (
         <ConfigRow label="Default model">
-          <select
-            class="cfg-btn"
-            aria-label={`Default model for ${agent.label}`}
+          <AgentChoiceValue
+            label={`Default model for ${agent.label}`}
             value={stored.model ?? ""}
-            onChange={(event) =>
-              saveDefault({ ...stored, model: event.currentTarget.value || null })
-            }
-          >
-            <option value="">CLI default</option>
-            {models.map((model) => (
-              <option key={model.value} value={model.value}>
-                {model.label}
-              </option>
-            ))}
-          </select>
+            choices={[CLI_DEFAULT_CHOICE, ...models]}
+            onChange={(value) => saveDefault({ ...stored, model: value || null })}
+          />
         </ConfigRow>
       ) : null}
       {capability.effortFlag === null ? null : (
         <ConfigRow label="Default effort">
-          <select
-            class="cfg-btn"
-            aria-label={`Default effort for ${agent.label}`}
+          <AgentChoiceValue
+            label={`Default effort for ${agent.label}`}
             value={stored.effort ?? ""}
-            onChange={(event) =>
-              saveDefault({ ...stored, effort: event.currentTarget.value || null })
-            }
-          >
-            <option value="">CLI default</option>
-            {capability.efforts.map((effort) => (
-              <option key={effort.value} value={effort.value}>
-                {effort.label}
-              </option>
-            ))}
-          </select>
+            choices={[CLI_DEFAULT_CHOICE, ...capability.efforts]}
+            onChange={(value) => saveDefault({ ...stored, effort: value || null })}
+          />
         </ConfigRow>
       )}
       {capability.modelFlag === null ? null : (
-        <ConfigRow
-          label="Additional models"
-          desc="Add model IDs separated by commas to make them available in the model picker."
-        >
+        <ConfigRow label="Additional models" desc="Model IDs, separated by commas.">
           <div class="lp-models">
-            <input
-              type="text"
-              class="text-input text-input--small"
-              aria-label={`Additional models for ${agent.label}`}
+            <CommitInput
+              ariaLabel={`Additional models for ${agent.label}`}
               placeholder="model-a, provider/model-b"
-              aria-describedby={`agent-models-help-${agent.id}`}
-              aria-invalid={modelError.value !== null}
-              value={modelDraft.value}
-              onInput={(event) => {
-                modelDraft.value = event.currentTarget.value;
+              describedBy={`agent-models-help-${agent.id}`}
+              invalid={modelError.value !== null}
+              value={declared.join(", ")}
+              allowEmpty
+              onDraftChange={() => {
                 modelError.value = null;
               }}
-              onBlur={saveModels}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-              }}
+              onCommit={saveModels}
             />
             <p id={`agent-models-help-${agent.id}`} class="lp-runtime-help">
-              Use model IDs without spaces, quotes or brackets. Leave empty to use CLI defaults or
-              built-in choices.
+              No spaces, quotes or brackets. Leave empty to clear added models.
             </p>
             {modelError.value !== null && (
               <p class="lp-runtime__error" role="alert">
@@ -337,7 +346,7 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
           </div>
         </ConfigRow>
       )}
-    </div>
+    </section>
   );
 }
 

@@ -3,60 +3,49 @@ import { settings } from "../../settings/settings-store";
 import { detectedAgents } from "../../terminal/agent-detection-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { LaunchProfileEditor } from "../../ui/settings/launch-profile-editor";
-import type { LaunchProfile } from "../../lib/launch-profile";
 import { SectionHead, Specimen } from "../specimen";
 
-/**
- * The agent list, mounted from the REAL component.
- *
- * Re-typing its markup here would make this page a second source of truth and
- * it would drift the first time a row changed — the same reasoning
- * `rows-section.tsx` gives for mounting `SETTINGS_CATEGORIES` directly.
- *
- * The only thing this file owns is the DATA: the gallery seeds the settings
- * signal with a few profiles so the page shows what a populated list looks
- * like beside an empty one. That write is to the in-memory signal only — the
- * gallery entry installs a memory settings sync, so nothing reaches the
- * owner's real `settings.json`.
- */
-
-const SEEDED: readonly LaunchProfile[] = [{ id: "lp:opencode-auto", command: "opencode --auto" }];
-
-const SEEDED_DEFAULTS: Readonly<Record<string, string>> = {
-  opencode: "lp:opencode-auto",
-};
-
+/** DECK-63: B was promoted into the shipping editor. Only the real component
+ * remains here; gallery settings sync is in-memory, never the owner's store. */
 export function LaunchProfilesSection() {
+  const compact = useSignal(false);
   const seeded = useSignal(true);
 
   useSignalEffect(() => {
-    // Half the catalog on $PATH, half not: the specimen has to show both
-    // lists, and a browser harness detects nothing on its own.
     detectedAgents.value = seeded.value
-      ? [
-          { name: "claude", path: "/usr/local/bin/claude" },
-          { name: "codex", path: "/usr/local/bin/codex" },
-          { name: "opencode", path: "/usr/local/bin/opencode" },
-          { name: "gemini", path: "/usr/local/bin/gemini" },
-        ]
+      ? ["claude", "codex", "opencode", "gemini"].map((name) => ({
+          name,
+          path: `/usr/local/bin/${name}`,
+        }))
       : [];
-    settings.value = seeded.value
-      ? {
-          ...DEFAULT_SETTINGS,
-          launchProfiles: SEEDED,
-          defaultLaunchProfiles: SEEDED_DEFAULTS,
-        }
-      : DEFAULT_SETTINGS;
+    settings.value = {
+      ...DEFAULT_SETTINGS,
+      launchProfiles: [
+        {
+          id: "lp:codex-search",
+          command: "codex --dangerously-bypass-approvals-and-sandbox --search",
+        },
+      ],
+      defaultLaunchProfiles: { codex: "lp:codex-search" },
+    };
   });
 
   return (
     <>
       <SectionHead
-        title="Agent catalog"
-        blurb="Every agent Deck knows, split by what is on $PATH. The command under each name ships with the app — a fresh install launches it without anyone typing a flag."
+        title="Agent settings · selected B"
+        blurb="Command first, with launch, model and integration groups. Real app component; changes stay in gallery memory."
       />
-
       <div class="lp-gallery-toggle">
+        <button
+          type="button"
+          class="cfg-btn"
+          onClick={() => {
+            compact.value = !compact.value;
+          }}
+        >
+          {compact.value ? "Review at 720px" : "Review at 480px"}
+        </button>
         <button
           type="button"
           class="cfg-btn"
@@ -64,31 +53,23 @@ export function LaunchProfilesSection() {
             seeded.value = !seeded.value;
           }}
         >
-          {seeded.value ? "show empty state" : "show with commands"}
+          {seeded.value ? "Show no installed agents" : "Show installed agents"}
         </button>
       </div>
-
-      <Specimen
-        name="Settings → Agents, real component"
-        note="brand mark · command (binary --text, flags --text-faint) · star = default · free-text add"
-        surface="chrome-2"
-      >
-        <div class="settings-screen__section">
-          <LaunchProfileEditor />
-        </div>
-      </Specimen>
-
-      <Specimen
-        name="compact (480px)"
-        note="Deck's supported minimum width (DL-11.7)"
-        surface="chrome-2"
-      >
-        <div class="lp-compact">
-          <div class="settings-screen__section">
+      <div class={compact.value ? "lp-gallery-review is-compact" : "lp-gallery-review"}>
+        <Specimen
+          name="B · Command first"
+          note="Selected by owner · shipping component · 720px / 480px"
+          surface="chrome-2"
+        >
+          <div class="lp-gallery-panel settings-screen__section">
+            <div class="lp-gallery-title">
+              Agents<span>Launch and configure your agent CLIs</span>
+            </div>
             <LaunchProfileEditor />
           </div>
-        </div>
-      </Specimen>
+        </Specimen>
+      </div>
     </>
   );
 }

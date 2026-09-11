@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentCommandProblem,
   commandAgentId,
   commandFlags,
   commandProblem,
   createLaunchProfileId,
+  effectiveLaunchProfile,
   findLaunchProfile,
   isLaunchCommand,
   profilesForAgent,
   validateDefaultLaunchProfiles,
   validateLaunchProfiles,
+  withAgentCommand,
   type LaunchProfile,
 } from "./launch-profile";
 
@@ -123,5 +126,70 @@ describe("validateDefaultLaunchProfiles", () => {
     expect(validateDefaultLaunchProfiles({ claude: "lp:gone" }, [plan])).toEqual({});
     expect(validateDefaultLaunchProfiles({ codex: "lp:plan" }, [plan])).toEqual({});
     expect(validateDefaultLaunchProfiles(null, [plan])).toEqual({});
+  });
+});
+
+const quick: LaunchProfile = { id: "lp:quick", command: "claude --model haiku" };
+
+describe("effectiveLaunchProfile", () => {
+  it("prefers the starred preset, then the first one the agent owns", () => {
+    expect(effectiveLaunchProfile("claude", [plan, quick], { claude: "lp:quick" })).toBe(quick);
+    expect(effectiveLaunchProfile("claude", [bypass, plan, quick], {})).toBe(plan);
+    // A star pointing at another agent's preset is ignored, as a launch ignores it.
+    expect(effectiveLaunchProfile("claude", [bypass, plan], { claude: "lp:bypass" })).toBe(plan);
+    expect(effectiveLaunchProfile("claude", [bypass], {})).toBeNull();
+  });
+});
+
+describe("agentCommandProblem", () => {
+  it("refuses another agent's binary on top of the shell rules", () => {
+    expect(agentCommandProblem("claude", "claude --plan")).toBeNull();
+    expect(agentCommandProblem("claude", "codex --plan")).toContain("must start with claude");
+    expect(agentCommandProblem("claude", "claude; ls")).toContain("letters, digits");
+    expect(agentCommandProblem("claude", "")).toBe("type a command");
+  });
+});
+
+describe("withAgentCommand", () => {
+  it("creates and stars a preset when the agent has none", () => {
+    expect(withAgentCommand("claude", " claude --plan ", [bypass], {})).toEqual({
+      launchProfiles: [bypass, { id: "lp:claude-plan", command: "claude --plan" }],
+      defaultLaunchProfiles: { claude: "lp:claude-plan" },
+    });
+  });
+
+  it("rewrites the effective preset in place and stars it", () => {
+    expect(withAgentCommand("claude", "claude --verbose", [plan, quick], {})).toEqual({
+      launchProfiles: [{ id: "lp:plan", command: "claude --verbose" }, quick],
+      defaultLaunchProfiles: { claude: "lp:plan" },
+    });
+  });
+
+  it("stars an existing preset instead of duplicating its command", () => {
+    const profiles = [plan, quick];
+    const next = withAgentCommand("claude", quick.command, profiles, { claude: "lp:plan" });
+    expect(next.launchProfiles).toBe(profiles);
+    expect(next.defaultLaunchProfiles).toEqual({ claude: "lp:quick" });
+  });
+
+  it("clearing removes the effective preset and its star, and nothing else", () => {
+    expect(
+      withAgentCommand("claude", "", [plan, quick, bypass], {
+        claude: "lp:quick",
+        codex: "lp:bypass",
+      }),
+    ).toEqual({
+      launchProfiles: [plan, bypass],
+      defaultLaunchProfiles: { codex: "lp:bypass" },
+    });
+  });
+
+  it("does not mutate what it was given", () => {
+    const profiles = [plan];
+    const defaults = { claude: "lp:plan" };
+    withAgentCommand("claude", "claude --verbose", profiles, defaults);
+    withAgentCommand("claude", "", profiles, defaults);
+    expect(profiles).toEqual([plan]);
+    expect(defaults).toEqual({ claude: "lp:plan" });
   });
 });

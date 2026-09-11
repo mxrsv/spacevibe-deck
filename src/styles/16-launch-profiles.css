@@ -192,7 +192,7 @@
 /* DL-6 toggle and DL-21 focus/hover, using the existing neutral pill. */
 .lp-enabled {
   flex: 0 0 auto;
-  min-width: 76px;
+  min-width: 32px;
   justify-content: center;
   box-sizing: border-box;
 }
@@ -202,43 +202,123 @@
   padding: 5px;
 }
 
+.lp-agent-item {
+  container-type: inline-size;
+}
+
 .lp-agent-details {
   margin: 0 4px 12px 29px;
 }
 
-.lp-agent-details[hidden] {
+.lp-agent-details[hidden],
+.lp-agent-details [hidden] {
   display: none;
 }
 
-/* DL-5: one setting per row; wrap the value below its label in a narrow pane. */
+/* DECK-63 B, DL-5: stable value columns with one control per setting. */
 .lp-agent-details .cfg-row {
-  flex-wrap: wrap;
-  align-items: flex-start;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+  align-items: center;
+  gap: 16px;
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 
-.lp-agent-details .cfg-row__key {
-  flex: 1 1 180px;
+.lp-agent-details .cfg-row__value {
+  min-width: 0;
+  width: 100%;
+  justify-content: flex-end;
 }
 
 .lp-agent-details .cfg-row__desc {
-  max-width: 42ch;
-  line-height: 1.45;
+  max-width: none;
+  line-height: 1.4;
 }
 
-.lp-runtime .cfg-row__value {
-  flex: 1 1 200px;
+/* User-supplied model IDs still obey DL-6.5 without escaping their value slot. */
+.lp-agent-details .segmented {
+  box-sizing: border-box;
+  max-width: 100%;
   min-width: 0;
 }
 
-.lp-models {
+.lp-agent-details .segmented__option {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lp-agent-details .cfg-btn--overlay {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.lp-agent-details .cfg-btn__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lp-agent-group {
+  border-top: 1px solid var(--seam-recessed);
+  margin-top: 12px;
+}
+
+.lp-agent-group .cfg-group {
+  padding: 12px 10px 6px;
+  margin: 0 4px;
+}
+
+.lp-agent-command .cfg-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 390px);
+}
+
+/* DL-6.1: reset is the permitted clear action beside an overridden value. */
+.lp-agent-command__value {
+  display: flex;
+  gap: 6px;
   width: 100%;
   min-width: 0;
 }
 
-.lp-agent-details > .cfg-row {
-  border-top: 1px solid var(--seam-recessed);
+.lp-agent-command__value > .cfg-btn {
+  flex-shrink: 0;
+}
+
+.lp-models,
+.lp-launch-flags__field {
+  width: 100%;
+  min-width: 0;
+}
+
+.lp-install-help {
+  margin: 8px 14px;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.45;
+}
+
+/* The same neutral toggle treatment inside Settings and its gallery mount. */
+.lp-agent-item .cfg-btn--on {
+  color: var(--text);
+}
+
+@container (max-width: 500px) {
+  .lp-agent-details {
+    margin-left: 4px;
+  }
+
+  .lp-agent-details .cfg-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 240px);
+    gap: 10px;
+  }
+
+  .lp-agent-command .cfg-row,
+  .lp-agent-details .cfg-row:has(.lp-models, .segmented) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
 }
 
 .lp-empty {
@@ -272,15 +352,12 @@
 
 /* DL-6 menu/input kinds retain native keyboard behavior. */
 .lp-runtime input,
-.lp-runtime select {
+.lp-runtime select,
+.lp-launch-flags input,
+.lp-launch-flags select {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-}
-
-.lp-runtime select {
-  height: 29px;
-  background: var(--input-bg);
 }
 
 .lp-runtime__error {

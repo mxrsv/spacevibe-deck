@@ -357,8 +357,6 @@ const EXPECTED_ROWS = [
   // coverage is `launch-profile-editor.test.tsx`.
   "Add agent",
   "Add command",
-  // Signals is now a setting row inside each supported agent's disclosure.
-  "Signals",
   "Token usage",
   "Checkout menu",
   // links & editor. One row, not two, since 2026-08-19: `editorId` +
@@ -397,6 +395,14 @@ const EXPECTED_ROWS = [
  */
 const isShortcutRow = (label: Element): boolean => label.closest(".cfg-row--shortcut") !== null;
 
+/**
+ * An agent's disclosure is OUT too, for the same reason: its rows are its
+ * CLI's launch flags (`LAUNCH_FLAGS`), Signals and runtime defaults, generated
+ * per agent. `launch-profile-editor.test.tsx` and `launch-flags.test.ts` cover
+ * them.
+ */
+const isAgentDetailRow = (label: Element): boolean => label.closest(".lp-agent-details") !== null;
+
 describe("SettingsScreen — every setting survived the move", () => {
   let host: HTMLDivElement;
 
@@ -423,7 +429,11 @@ describe("SettingsScreen — every setting survived the move", () => {
       for (const label of host.querySelectorAll(".cfg-row__label")) {
         // Quick-agent choices are catalog-driven; their interaction tests
         // assert selection and limits without duplicating the catalog here.
-        if (isShortcutRow(label) || label.closest("[data-quick-agent-choices]") !== null) {
+        if (
+          isShortcutRow(label) ||
+          isAgentDetailRow(label) ||
+          label.closest("[data-quick-agent-choices]") !== null
+        ) {
           continue;
         }
         const text = label.textContent?.trim();

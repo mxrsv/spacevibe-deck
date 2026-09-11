@@ -155,6 +155,93 @@ export function findLaunchProfile(
 }
 
 /**
+ * The preset an agent launches with: its starred one, else the first it owns.
+ * The same order `agentLaunchCommand` resolves, so the preset the Command
+ * field edits is the one a launch types.
+ */
+export function effectiveLaunchProfile(
+  agentId: string,
+  profiles: readonly LaunchProfile[],
+  defaults: Readonly<Record<string, string>>,
+): LaunchProfile | null {
+  const starred = findLaunchProfile(defaults[agentId] ?? null, profiles);
+  if (starred !== null && commandAgentId(starred.command) === agentId) {
+    return starred;
+  }
+  return profilesForAgent(agentId, profiles)[0] ?? null;
+}
+
+/**
+ * Why a command cannot replace this agent's own, or null. A command for
+ * another binary is refused here rather than saved: `resolveLaunchCommand`
+ * would skip it, and the row would go on printing something the user did not
+ * type.
+ */
+export function agentCommandProblem(agentId: string, command: string): string | null {
+  const problem = commandProblem(command);
+  if (problem !== null) {
+    return problem;
+  }
+  return commandAgentId(command) === agentId ? null : `the command must start with ${agentId}`;
+}
+
+/** The two settings a command edit writes, always together. */
+export interface AgentCommandSettings {
+  readonly launchProfiles: readonly LaunchProfile[];
+  readonly defaultLaunchProfiles: Readonly<Record<string, string>>;
+}
+
+/**
+ * Replace the command an agent launches with. The caller has already passed a
+ * non-empty `command` through `agentCommandProblem`.
+ *
+ * - Empty removes the effective preset and its star, so the launch falls to
+ *   the next preset the user wrote or to the catalog's command.
+ * - A command another preset already holds stars that preset rather than
+ *   minting a duplicate — `add()` refuses duplicates for the same reason.
+ * - Otherwise the effective preset is rewritten in place, keeping its id, or a
+ *   new one is created when the agent has none. Either way it ends up starred.
+ */
+export function withAgentCommand(
+  agentId: string,
+  command: string,
+  profiles: readonly LaunchProfile[],
+  defaults: Readonly<Record<string, string>>,
+): AgentCommandSettings {
+  const current = effectiveLaunchProfile(agentId, profiles, defaults);
+  const trimmed = command.trim();
+  if (trimmed === "") {
+    return {
+      launchProfiles:
+        current === null ? profiles : profiles.filter((profile) => profile.id !== current.id),
+      defaultLaunchProfiles: Object.fromEntries(
+        Object.entries(defaults).filter(([agent]) => agent !== agentId),
+      ),
+    };
+  }
+  const existing = profiles.find((profile) => profile.command === trimmed);
+  if (existing !== undefined) {
+    return {
+      launchProfiles: profiles,
+      defaultLaunchProfiles: { ...defaults, [agentId]: existing.id },
+    };
+  }
+  if (current !== null) {
+    return {
+      launchProfiles: profiles.map((profile) =>
+        profile.id === current.id ? { ...profile, command: trimmed } : profile,
+      ),
+      defaultLaunchProfiles: { ...defaults, [agentId]: current.id },
+    };
+  }
+  const id = createLaunchProfileId(trimmed, profiles);
+  return {
+    launchProfiles: [...profiles, { id, command: trimmed }],
+    defaultLaunchProfiles: { ...defaults, [agentId]: id },
+  };
+}
+
+/**
  * Drop-not-repair, the same discipline `validateCustomAgents` uses: a command
  * nobody vetted would otherwise be typed into a live shell.
  */

@@ -29,29 +29,42 @@ This order is also the digit-key order in the quick picker.
 
 The catalog splits on what Deck found on your login shell's `PATH`:
 
-- **Installed** — agents whose binary was found, with the path. **Refresh** re-runs the probe.
-- **Available to install** — the rest, each with a link to the tool's page.
+- **Installed** — agents whose binary was found. **Refresh** re-runs the probe.
+- **Available to install** — the rest.
 
-Per row:
+Each agent is one row showing its name and the command it launches with:
 
-- **Enable / Disable.** Turning an agent off removes it from launch choices;
+- **on / off.** Turning an agent off removes it from launch choices;
   a built-in cannot be deleted because the next probe would find it again
   ([agent choices](../../src/lib/agent-catalog.ts)).
-- **Default.** Offered on installed rows only. The starred agent is what a recent workspace
-  opens with when it has no remembered agent of its own.
-- **Add command.** Type a full command line, for example `claude --plan`. It replaces the
-  shipped command for that agent; nothing merges. The agent is derived from the command's
-  first word.
+- **Configure** (the arrow) opens the agent's settings under the row:
+  - **Command** — the full launch command appears first. Edit it directly or change the
+    controls under **Launch**; both edit the same command. Blur or Enter saves a valid edit;
+    invalid text stays in the field with an error. The reset arrow beside a custom command
+    removes that preset and falls back to the next saved command or Deck's built-in command
+    ([command editor](../../src/ui/settings/agent-launch-flags.tsx)).
+  - **Launch** — the switches and choices each CLI offers. Two or three choices appear side
+    by side, including **CLI default**; longer lists use a menu
+    ([agent choices](../../src/ui/settings/agent-choice-value.tsx)).
+  - **Model** — **Default model**, **Default effort** and **Additional models** appear on
+    installed agents whose CLI takes those flags
+    ([model settings](../../src/ui/settings/launch-profile-editor.tsx)).
+  - **Integrations → Signals** — on Claude Code, Codex and opencode: use the status the agent reports instead
+    of Deck's estimate, for new sessions. Claude Signals installs Deck hooks in your Claude
+    settings and also covers Claude commands you type manually inside Deck. Turning it off
+    removes this installation's hooks. Reopen terminals created before this integration was
+    installed. [Signal integration](../internals/terminal.md#the-contract-layer).
+- For an agent under **Available to install**, choose **Configure launch** to prepare its
+  command before installation. Model controls appear after Deck detects the CLI
+  ([agent settings](../../src/ui/settings/launch-profile-editor.tsx)).
+- **Add command.** Save another command line for an agent, to pick in the quick picker. The
+  first one saved for an agent also becomes its command. The agent is derived from the
+  command's first word.
 
 A command is typed verbatim into a live interactive shell, so it may use only letters, digits,
 spaces and `. , : @ + = _ - /`. Pipes, `&&`, `;`, quotes, redirects, variables and newlines
 are refused with a message saying why. A pipeline belongs in a wrapper script declared as a
 custom agent.
-
-Claude Signals installs Deck hooks in your Claude settings and also covers Claude commands
-you type manually inside Deck. Turning it off removes this installation's hooks. Reopen
-terminals created before this integration was installed.
-[Signal integration](../internals/terminal.md#the-contract-layer).
 
 ## Quick agents
 

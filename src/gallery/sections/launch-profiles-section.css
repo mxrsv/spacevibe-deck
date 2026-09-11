@@ -1,18 +1,42 @@
-/* Gallery-only framing for the agent command rows (plan Task 3).
-   Never imported by the shipping bundle (R7): `gallery/main.tsx` is the only
-   entry that pulls it in. Everything the SPECIMEN shows is styled by the
-   shipping `src/styles/16-launch-profiles.css` — this file owns the review
-   frame around it and nothing else. */
-
+/* DECK-63 selected B: gallery framing only. The shipping editor owns every
+   config row, group and value kind; the rejected candidates live in Linear. */
 .lp-gallery-toggle {
-  margin: 0 0 12px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-/* Deck's supported minimum (DL-11.7): the same rows at the width where a
-   command has the least room to wrap. */
-.lp-compact {
-  box-sizing: border-box;
-  width: 480px;
+.lp-gallery-review {
+  width: 720px;
   max-width: 100%;
-  border: 1px dashed var(--hair);
+}
+
+.lp-gallery-review.is-compact {
+  width: 480px;
+}
+
+.lp-gallery-review .gx-stage {
+  padding: 0;
+}
+
+.lp-gallery-panel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20px 16px;
+}
+
+.lp-gallery-title {
+  padding: 0 14px 16px;
+  font-size: var(--type-title);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lp-gallery-title > span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  font-weight: 400;
 }

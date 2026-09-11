@@ -88,4 +88,65 @@ describe("CommitInput", () => {
 
     expect(field().value).toBe("SF Mono");
   });
+
+  it("accepts clearing only when opted in, including input and blur in one turn", () => {
+    const onCommit = vi.fn();
+    act(() => {
+      render(
+        <CommitInput
+          value="model-a"
+          placeholder="p"
+          ariaLabel="a"
+          allowEmpty
+          onCommit={onCommit}
+        />,
+        host,
+      );
+    });
+    act(() => {
+      field().value = "";
+      field().dispatchEvent(new Event("input", { bubbles: true }));
+      field().dispatchEvent(new Event("blur"));
+    });
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    expect(onCommit).toHaveBeenCalledWith("");
+  });
+
+  it("keeps rejected text as a draft and Escape restores the last accepted value", () => {
+    const onCommit = vi.fn(() => false);
+    mount("claude", onCommit);
+    type(field(), "codex");
+    act(() => {
+      field().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(field().value).toBe("codex");
+    act(() => {
+      field().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(onCommit).toHaveBeenCalledTimes(2);
+    act(() => {
+      field().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(field().value).toBe("claude");
+  });
+
+  it("an explicit reset discards a draft even when the committed value is unchanged", () => {
+    const onCommit = vi.fn();
+    mount("claude", onCommit);
+    type(field(), "unfinished");
+    act(() => {
+      render(
+        <CommitInput
+          value="claude"
+          placeholder="p"
+          ariaLabel="a"
+          resetRevision={1}
+          onCommit={onCommit}
+        />,
+        host,
+      );
+    });
+    expect(field().value).toBe("claude");
+    expect(onCommit).not.toHaveBeenCalled();
+  });
 });

@@ -18,8 +18,9 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   [Agent settings](docs/user/agents.md).
 
 - **Clearer agent settings.** Agents start collapsed with their command and availability
-  visible. Expand an agent to choose its default model and effort, add model IDs, or
-  configure Signals.
+  visible. Expanded settings put Command and its reset arrow first, followed by Launch,
+  Model and Integrations. Short choices stay visible as segments; agents not yet installed
+  offer optional launch configuration ([agent settings](src/ui/settings/launch-profile-editor.tsx)).
 
 - **Deck types the command you chose, and nothing else.** Agent reporting is now
   off out of the box for every agent, so a pane opens with exactly the command
