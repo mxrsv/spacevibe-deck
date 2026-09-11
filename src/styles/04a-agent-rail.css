@@ -24,8 +24,8 @@
    (DL-4.5): the specimen's 12 → `--type-body`, its 11.5/11 → `--type-meta`,
    its 10.5 and the `+N` chip's 9.5 → `--type-micro`. NOTHING in this file
    reaches `--type-title` any more: the cluster header held it from 2026-08-16,
-   took `--type-meta` on 2026-08-17, then gained the scoped 13px
-   `--type-project` role on 2026-08-19 (DL-27.9). Motion is scoped inside
+   took `--type-meta` on 2026-08-17, then gained the scoped
+   `--type-project` role on 2026-08-19 (DL-27.9), 15px since 2026-09-11. Motion is scoped inside
    a `prefers-reduced-motion: no-preference` block rather than switched off by
    class name (DESIGN-LANGUAGE §9 checklist 3); the rail's transitions are
    turned off by the reduce-scope list further down this file. ── */
@@ -156,8 +156,8 @@
    `--type-title`. The size half of that is reversed below; the `--text-muted`
    tone it also introduced is NOT, and still keeps the label off the faint
    rung a caption would sit on. */
-/* DL-27.9, amended 2026-08-19 (owner): the project name is 13px, exactly 2px
-   above its former `--type-meta` size without climbing to the 14px title rung.
+/* DL-27.9, amended 2026-09-11 (owner): the project name is 15px, 1px above the
+   14px title rung, so the folder a card belongs to is found without reading.
    `--type-project` records that scoped exception once in the token file. The
    tone stays `--text-muted`, not `--text-faint`: it remains supporting context
    for the agents rather than the loudest word in the column. */

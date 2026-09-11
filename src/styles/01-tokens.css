@@ -82,9 +82,9 @@
   --type-body: 12.5px;
   --type-meta: 11px;
   --type-micro: 10.5px;
-  /* DL-27.9's one scoped chrome-text exception: the project header sits 2px
-     above metadata without climbing to the 14px title rung. */
-  --type-project: 13px;
+  /* DL-27.9's one scoped chrome-text exception: the project header sits 1px
+     above the 14px title rung (owner, 2026-09-11), the largest word in the rail. */
+  --type-project: 15px;
   /* DL-4.1, amended 2026-09-03: the Agent Board's face. A SECOND face for
      chrome, scoped to `.agent-board` by DL-34.5 and to nothing else. It is
      the §31 code stack, so it costs no file and no dependency (DL-1.1), and

@@ -469,7 +469,7 @@
 
 /* The block's own group label, at the METADATA rung (owner, 2026-08-26, second
    pass the same day: 14px → 13px → 11px). DL-4.4 puts a group label on the
-   14px title rung and the rail's cluster headers on the 13px `--type-project`
+   14px title rung and the rail's cluster headers on the 15px `--type-project`
    exception; this label heads a five-row re-entry list under BOTH of them, and
    a label the size of the clusters' own read as a seventh project. */
 .recent-session-activity__heading {

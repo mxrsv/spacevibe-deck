@@ -119,10 +119,12 @@ button.asr-bare:hover {
   background: color-mix(in srgb, var(--tone) 26%, transparent);
 }
 
+/* `--type-body`, the boxed card's own name size: this is a checkout name, not the project's,
+   so it left `--type-project` when that role rose to 15px (2026-09-11). */
 .asr-bare__name {
   overflow: hidden;
   color: var(--text-muted);
-  font: 500 var(--type-project) / 1.3 var(--ui-font);
+  font: 500 var(--type-body) / 1.3 var(--ui-font);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -307,8 +309,8 @@ button.asr-bare:hover {
   background: var(--asr-card-busy);
 }
 
-/* `--type-body` (12.5px), not `--type-project` (13px): the branch badge beside it costs roughly
-   half the head's 213px run, and the half-pixel per character is what keeps a name like
+/* `--type-body` (12.5px), not `--type-project` (15px): the branch badge beside it costs roughly
+   half the head's 213px run, and the smaller glyphs are what keep a name like
    `bench.ai-terminal` inside its track instead of one ellipsis short of it. */
 .asr-card__head .asr-card__name {
   overflow: hidden;

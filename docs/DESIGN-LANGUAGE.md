@@ -350,13 +350,14 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   and stays at 10.5/faint (DL-15.5): it names a cell, not a list. No new size
   exists; DL-4.5's closed exception list is untouched.
 
-  **One scoped exception, added 2026-08-17 and amended 2026-08-19 (owner): the
-  agent rail's cluster header takes `--type-project` at 13px.** It is exactly
-  2px above its former metadata size without climbing to the 14px title rung.
-  It keeps `--text-muted` — only the size is excepted, never the tone. The rail
-  prints a group label above EVERY cluster in a tall scrolling column; `Tools`
-  and `.cfg-group` head short groups on surfaces the eye is already on, and
-  keep `--type-title`. Reasoned in full at DL-27.9. Any further surface wanting
+  **One scoped exception, added 2026-08-17 and amended 2026-08-19 and
+  2026-09-11 (owner): the agent rail's cluster header takes `--type-project`
+  at 15px.** It is the one ladder-role label that stands above the 14px title
+  rung. It keeps `--text-muted` — only the size is excepted, never the tone.
+  The rail prints a group label above EVERY cluster in a tall scrolling
+  column, so each one has to be found at a glance above its bordered card;
+  `Tools` and `.cfg-group` head short groups on surfaces the eye is already
+  on, and keep `--type-title`. Reasoned in full at DL-27.9. Any further surface wanting
   this size amends DL-4.4 again rather than citing DL-27.9. Recent activity's
   heading passed through this rung for an hour on 2026-08-26 and left it the
   same day: it sits at `--type-meta` (DL-33.2) — a group label spending the
@@ -412,9 +413,9 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
      before this: the section title and the group labels inside it were both
      `--type-title`, so the screen's subject was printed at the size of the
      smallest thing on it;
-  6. the **Agent Rail project label** (`--type-project`, 13px, amended
-     2026-08-19) — a scoped navigation label exactly 2px above metadata and
-     1px below the title rung (DL-27.9).
+  6. the **Agent Rail project label** (`--type-project`, 15px, amended
+     2026-09-11) — a scoped navigation label 1px above the title rung
+     (DL-27.9).
 
   Anything else that wants its own size amends this list before it ships.
 
@@ -2364,10 +2365,12 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   is printed **only when a person typed that title**: a derived label repeating
   the name above it is not a turn. DL-27.11 narrows that fallback again: only
   an `asked` or `failed` row paints it.
-  **Amended 2026-08-19 (owner):** the header rises from 11px `--type-meta` to
-  the scoped 13px `--type-project` role, exactly the requested +2px. It stays
-  below the 14px title rung and keeps `--text-muted`; the project becomes
-  easier to locate without taking the agents' primary tone.
+  **Amended 2026-08-19 and 2026-09-11 (owner):** the header rises from 11px
+  `--type-meta` to the scoped `--type-project` role, first 13px and then 15px,
+  from a screenshot of the shipped rail — 1px past the 14px title rung, so each
+  project is found at a glance above its bordered card. It keeps
+  `--text-muted`; the project becomes easier to locate without taking the
+  agents' primary tone.
   **The header's vertical rhythm is re-tuned 2026-09-10 (owner, chosen from
   three drawn candidates): the BREAK is 16px and the HUG is 2px.** The figures
   above set both, and the pair had drifted apart in meaning: the break between
@@ -2570,8 +2573,8 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   affordance rather than punctuation before the name. Both glyphs are
   decorative; the button's accessible name carries the expand/collapse action.
   The same-day follow-up raises the folder from `CHROME_ICON` (13px) to
-  `FEATURE_ICON` (15px) and the name from 11px to `--type-project` (13px),
-  keeping the pair 2px larger without changing the caret.
+  `FEATURE_ICON` (15px) and the name from 11px to `--type-project` (13px then,
+  15px since 2026-09-11 — DL-27.9) without changing the caret.
 
 - **DL-27.18** **RETIRED 2026-09-02 (owner, `openspec/changes/rail-create-consolidation`):
   a project header carries no launcher.** Every checkout carries its own

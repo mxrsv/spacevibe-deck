@@ -657,7 +657,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect(
       head?.querySelector(".asr-cluster__folder > span")?.getAttribute("data-deck-icon-size"),
     ).toBe("15");
-    expect(readFileSync("src/styles/01-tokens.css", "utf8")).toContain("--type-project: 13px");
+    expect(readFileSync("src/styles/01-tokens.css", "utf8")).toContain("--type-project: 15px");
     expect(readFileSync("src/styles/04a-agent-rail.css", "utf8")).toContain(
       "font: 560 var(--type-project)",
     );
