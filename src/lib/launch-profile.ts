@@ -81,6 +81,24 @@ export function isLaunchCommand(value: unknown): value is string {
 }
 
 /**
+ * `COMMAND_SAFE` without the space: one runtime value — a model id, a
+ * reasoning effort — is appended to a command as a single flag argument, so a
+ * space in it would not be one argument but two.
+ */
+const RUNTIME_VALUE_SAFE = /^[A-Za-z0-9_.,:@+=/-]+$/;
+
+/**
+ * Whether a stored runtime value is one shell-safe argument. Lives here beside
+ * `COMMAND_SAFE` rather than in the settings form, because the form is not the
+ * only way a value arrives: `settings.json` is a file the user can edit, and
+ * what a launch types has to be decided where the value is read, not where it
+ * happened to be typed.
+ */
+export function isRuntimeValue(value: unknown): value is string {
+  return typeof value === "string" && RUNTIME_VALUE_SAFE.test(value);
+}
+
+/**
  * The agent a command launches — its first word. Derived, never stored: a
  * profile cannot then claim one agent while typing another's binary.
  */

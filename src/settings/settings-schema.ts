@@ -7,6 +7,7 @@ import {
   type CustomAgent,
 } from "../lib/agent-catalog";
 import {
+  isRuntimeValue,
   validateDefaultLaunchProfiles,
   validateLaunchProfiles,
   type LaunchProfile,
@@ -439,10 +440,12 @@ function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
  */
 /**
  * Drop-not-repair, like `validateLaunchProfiles`: a model value reaches a live
- * shell as a flag argument, so anything malformed is discarded rather than
- * coerced. Values are deduplicated and empties dropped; an agent left with no
- * values keeps no key at all, so the record never grows entries that mean
- * nothing.
+ * shell as a flag argument, so anything `isRuntimeValue` refuses is discarded
+ * rather than coerced. The settings form applies the same check, but the form
+ * is not the only writer — `settings.json` is a file — and the composer's own
+ * `commandProblem` gate only covers the launch it composes, not the value's
+ * other readers. Values are deduplicated; an agent left with none keeps no key
+ * at all, so the record never grows entries that mean nothing.
  *
  * The agent id is NOT checked against the catalog — a custom agent may take a
  * model flag this repo does not model, and the composer simply offers what is
@@ -459,7 +462,7 @@ function validateAgentModels(raw: unknown): Readonly<Record<string, readonly str
     }
     const seen = new Set<string>();
     const kept = values.filter((value): value is string => {
-      if (typeof value !== "string" || value.trim() === "" || seen.has(value)) {
+      if (!isRuntimeValue(value) || seen.has(value)) {
         return false;
       }
       seen.add(value);
@@ -495,9 +498,7 @@ function validateAgentRuntimeDefaults(raw: unknown): Readonly<Record<string, Age
     }
     const source = value as Record<string, unknown>;
     const model =
-      capability.modelFlag !== null && typeof source.model === "string" && source.model !== ""
-        ? source.model
-        : null;
+      capability.modelFlag !== null && isRuntimeValue(source.model) ? source.model : null;
     const effort =
       capability.effortFlag !== null &&
       typeof source.effort === "string" &&

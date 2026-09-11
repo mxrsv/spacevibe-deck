@@ -43,7 +43,10 @@ describe("LaunchProfileEditor", () => {
   beforeEach(() => {
     settings.value = DEFAULT_SETTINGS;
     detectedAgents.value = [];
-    vi.mocked(updateSettings).mockClear();
+    vi.mocked(updateSettings).mockReset();
+    vi.mocked(updateSettings).mockImplementation((patch) => {
+      settings.value = { ...settings.value, ...patch };
+    });
     host = document.createElement("div");
     document.body.appendChild(host);
   });
@@ -134,12 +137,101 @@ describe("LaunchProfileEditor", () => {
     install("claude", "codex");
     mount();
 
-    expect(byLabel("Models for Claude Code")).not.toBeNull();
+    click(byLabel("Configure Claude Code"));
+    click(byLabel("Configure Codex"));
+    expect(byLabel("Additional models for Claude Code")).not.toBeNull();
     expect(byLabel("Default model for Claude Code")).not.toBeNull();
     expect(byLabel("Default effort for Claude Code")).not.toBeNull();
-    expect(byLabel("Models for Codex")).not.toBeNull();
+    expect(byLabel("Additional models for Codex")).not.toBeNull();
     expect(byLabel("Default effort for Codex")).toBeNull();
     expect(host.querySelector('[data-runtime-agent="opencode"]')).toBeNull();
+  });
+
+  it("starts collapsed and opens each agent without changing saved settings", () => {
+    install("claude", "codex");
+    mount();
+    const disclosure = byLabel("Configure Claude Code")!;
+    const panel = document.getElementById(disclosure.getAttribute("aria-controls")!)!;
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(panel.hidden).toBe(true);
+
+    click(disclosure);
+    expect(disclosure.getAttribute("aria-expanded")).toBe("true");
+    expect(panel.hidden).toBe(false);
+    expect(byLabel("Configure Codex")?.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      Array.from(panel.querySelectorAll(".cfg-row__label"), (label) => label.textContent),
+    ).toEqual(["Default model", "Default effort", "Additional models", "Signals"]);
+    click(disclosure);
+    expect(panel.hidden).toBe(true);
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("changes availability while collapsed and keeps Signals independent", () => {
+    install("claude", "codex");
+    mount();
+    const originalAdapters = settings.value.agentSignalAdapters;
+    click(byLabel("Claude Code availability"));
+    expect(byLabel("Claude Code availability")?.getAttribute("aria-checked")).toBe("false");
+    expect(byLabel("Configure Claude Code")?.getAttribute("aria-expanded")).toBe("false");
+    expect(settings.value.agentSignalAdapters).toEqual(originalAdapters);
+    click(byLabel("Configure Claude Code"));
+    click(byLabel("Claude Code signals"));
+    expect(settings.value.agentSignalAdapters).toEqual({
+      ...originalAdapters,
+      claude: !originalAdapters.claude,
+    });
+    expect(settings.value.disabledAgents).toEqual(["claude"]);
+    click(byLabel("Claude Code availability"));
+    expect(settings.value.disabledAgents).toEqual([]);
+  });
+
+  it("preserves an invalid model draft and its error after collapse and reopen", () => {
+    install("claude");
+    mount();
+    click(byLabel("Configure Claude Code"));
+    const input = byLabel("Additional models for Claude Code") as HTMLInputElement;
+    act(() => {
+      input.focus();
+      input.value = "model with spaces";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.blur();
+    });
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    click(byLabel("Configure Claude Code"));
+    click(byLabel("Configure Claude Code"));
+    const reopenedInput = byLabel("Additional models for Claude Code") as HTMLInputElement;
+    expect(reopenedInput.isConnected).toBe(true);
+    expect(reopenedInput.closest<HTMLElement>(".lp-agent-details")?.hidden).toBe(false);
+    expect(reopenedInput.value).toBe("model with spaces");
+    expect(reopenedInput.getAttribute("aria-invalid")).toBe("true");
+    expect(host.querySelector('#agent-settings-claude [role="alert"]')?.textContent).toContain(
+      "shell-safe",
+    );
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("saves additional models and retains runtime defaults across disclosure", () => {
+    install("claude", "codex");
+    mount();
+    click(byLabel("Configure Codex"));
+    const input = byLabel("Additional models for Codex") as HTMLInputElement;
+    act(() => {
+      input.focus();
+      input.value = "provider/model-a, provider/model-a, model-b";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.blur();
+    });
+    expect(settings.value.agentModels.codex).toEqual(["provider/model-a", "model-b"]);
+    const model = byLabel("Default model for Codex") as HTMLSelectElement;
+    act(() => {
+      model.value = "model-b";
+      model.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    click(byLabel("Configure Codex"));
+    click(byLabel("Configure Codex"));
+    expect((byLabel("Default model for Codex") as HTMLSelectElement).value).toBe("model-b");
+    expect(settings.value.agentRuntimeDefaults.codex).toEqual({ model: "model-b", effort: null });
   });
 
   it("keeps Add command distinct from declaring an agent identity", () => {
@@ -171,7 +263,7 @@ describe("LaunchProfileEditor", () => {
     install("claude");
     mount();
 
-    click(byLabel("Disable Claude Code"));
+    click(byLabel("Claude Code availability"));
 
     // A built-in cannot be deleted — the probe would find it again — so the
     // switch is the only thing that takes it out of the pickers.

@@ -1,6 +1,5 @@
-import { ArrowClockwise } from "@phosphor-icons/react";
+import { ArrowClockwise, CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
-import { Fragment } from "preact";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { ConfigGroup, ConfigRow } from "../controls/config-row";
 import { settings, updateSettings } from "../../settings/settings-store";
@@ -13,6 +12,7 @@ import {
   commandFlags,
   commandProblem,
   createLaunchProfileId,
+  isRuntimeValue,
   type LaunchProfile,
 } from "../../lib/launch-profile";
 import { agentLaunchCommand } from "../../lib/launch-command";
@@ -101,22 +101,16 @@ function EnabledToggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <div class="segmented lp-enabled" role="radiogroup" aria-label={`${agent.label} availability`}>
-      {[true, false].map((value) => (
-        <button
-          key={String(value)}
-          type="button"
-          role="radio"
-          aria-checked={enabled === value}
-          aria-label={`${value ? "Enable" : "Disable"} ${agent.label}`}
-          tabIndex={enabled === value ? 0 : -1}
-          class={`segmented__option ${enabled === value ? "is-selected" : ""}`}
-          onClick={() => onChange(value)}
-        >
-          {value ? "Enabled" : "Disabled"}
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={`${agent.label} availability`}
+      class="cfg-btn lp-enabled"
+      onClick={() => onChange(!enabled)}
+    >
+      {enabled ? "Enabled" : "Disabled"}
+    </button>
   );
 }
 
@@ -129,8 +123,7 @@ const ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex", "opencod
  * Deck — Claude's hooks file and minted session id, Codex's always-ring
  * notification flag, opencode's pinned server port. Off, the agent is read
  * off the process table and output timing, and its marks are drawn hollow.
- * Same `segmented` control the availability toggle uses, so a row reads as
- * two questions in one vocabulary.
+ * This setting stays inside the agent details, separate from availability.
  */
 function SignalsToggle({
   agent,
@@ -142,27 +135,16 @@ function SignalsToggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <div
-      class="segmented lp-signals"
-      role="radiogroup"
+    <button
+      type="button"
+      role="switch"
+      class="cfg-btn lp-signals"
       aria-label={`${agent.label} signals`}
-      title="Ask the CLI for its state directly; off, Deck reads it off the process table and output timing"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
     >
-      {[true, false].map((value) => (
-        <button
-          key={String(value)}
-          type="button"
-          role="radio"
-          aria-checked={on === value}
-          aria-label={`${value ? "Ask" : "Do not ask"} ${agent.label} for its state`}
-          tabIndex={on === value ? 0 : -1}
-          class={`segmented__option ${on === value ? "is-selected" : ""}`}
-          onClick={() => onChange(value)}
-        >
-          {value ? "Signals on" : "Signals off"}
-        </button>
-      ))}
-    </div>
+      {on ? "On" : "Off"}
+    </button>
   );
 }
 
@@ -173,6 +155,7 @@ function AgentRow({
   onToggle,
   signals,
   onSignals,
+  installed,
 }: {
   agent: BuiltinAgent;
   command: string;
@@ -181,21 +164,54 @@ function AgentRow({
   /** Null for an agent no adapter exists for; the switch is then omitted. */
   signals: boolean | null;
   onSignals: (next: boolean) => void;
+  installed: boolean;
 }) {
+  const expanded = useSignal(false);
+  const hasDetails = installed || signals !== null;
+  const detailsId = `agent-settings-${agent.id}`;
+
   return (
-    <div class={`lp-agent ${enabled ? "" : "is-off"}`}>
-      <AgentMark id={agent.id} label={agent.label} />
-      <div class="lp-agent__text">
-        <span class="lp-agent__name">{agent.label}</span>
-        <CommandLine command={command} />
+    <div class="lp-agent-item">
+      <div class={`lp-agent ${enabled ? "" : "is-off"}`}>
+        <AgentMark id={agent.id} label={agent.label} />
+        <div class="lp-agent__text">
+          <span class="lp-agent__name">{agent.label}</span>
+          <CommandLine command={command} />
+        </div>
+        <EnabledToggle agent={agent} enabled={enabled} onChange={onToggle} />
+        {hasDetails && (
+          <button
+            type="button"
+            class="cfg-btn lp-agent__disclosure"
+            aria-label={`Configure ${agent.label}`}
+            aria-expanded={expanded.value}
+            aria-controls={detailsId}
+            title={expanded.value ? "Hide settings" : "Configure agent"}
+            onClick={() => {
+              expanded.value = !expanded.value;
+            }}
+          >
+            <DeckIcon icon={expanded.value ? CaretDown : CaretRight} size={ROW_ICON} />
+          </button>
+        )}
       </div>
-      {signals === null ? null : <SignalsToggle agent={agent} on={signals} onChange={onSignals} />}
-      <EnabledToggle agent={agent} enabled={enabled} onChange={onToggle} />
+      {hasDetails && (
+        // Keep drafts mounted when collapsed; an invalid value must survive reopening.
+        <div id={detailsId} class="lp-agent-details" hidden={!expanded.value}>
+          {installed && <RuntimeSettings agent={agent} />}
+          {signals !== null && (
+            <ConfigRow
+              label="Signals"
+              desc="Use agent-reported status for new sessions. When off, Deck estimates status."
+            >
+              <SignalsToggle agent={agent} on={signals} onChange={onSignals} />
+            </ConfigRow>
+          )}
+        </div>
+      )}
     </div>
   );
 }
-
-const RUNTIME_VALUE_SAFE = /^[A-Za-z0-9_.,:@+=/-]+$/;
 
 function withoutKey<T>(source: Readonly<Record<string, T>>, key: string): Record<string, T> {
   return Object.fromEntries(Object.entries(source).filter(([entry]) => entry !== key));
@@ -220,7 +236,7 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
       .split(",")
       .map((value) => value.trim())
       .filter((value, index, all) => value !== "" && all.indexOf(value) === index);
-    if (values.some((value) => !RUNTIME_VALUE_SAFE.test(value))) {
+    if (values.some((value) => !isRuntimeValue(value))) {
       modelError.value = "Model values must be one shell-safe argument";
       return;
     }
@@ -244,30 +260,10 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
 
   return (
     <div class="lp-runtime" data-runtime-agent={agent.id}>
-      {capability.modelFlag === null ? null : (
-        <label class="lp-runtime__field lp-runtime__field--models">
-          <span>Models</span>
-          <input
-            type="text"
-            class="text-input text-input--small"
-            aria-label={`Models for ${agent.label}`}
-            placeholder="model-a, provider/model-b"
-            value={modelDraft.value}
-            onInput={(event) => {
-              modelDraft.value = event.currentTarget.value;
-              modelError.value = null;
-            }}
-            onBlur={saveModels}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
-            }}
-          />
-        </label>
-      )}
       {capability.modelFlag !== null && models.length > 0 ? (
-        <label class="lp-runtime__field">
-          <span>Default model</span>
+        <ConfigRow label="Default model">
           <select
+            class="cfg-btn"
             aria-label={`Default model for ${agent.label}`}
             value={stored.model ?? ""}
             onChange={(event) =>
@@ -281,12 +277,12 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
               </option>
             ))}
           </select>
-        </label>
+        </ConfigRow>
       ) : null}
       {capability.effortFlag === null ? null : (
-        <label class="lp-runtime__field">
-          <span>Default effort</span>
+        <ConfigRow label="Default effort">
           <select
+            class="cfg-btn"
             aria-label={`Default effort for ${agent.label}`}
             value={stored.effort ?? ""}
             onChange={(event) =>
@@ -300,12 +296,42 @@ function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
               </option>
             ))}
           </select>
-        </label>
+        </ConfigRow>
       )}
-      {modelError.value === null ? null : (
-        <p class="lp-runtime__error" role="alert">
-          {modelError.value}
-        </p>
+      {capability.modelFlag === null ? null : (
+        <ConfigRow
+          label="Additional models"
+          desc="Add model IDs separated by commas to make them available in the model picker."
+        >
+          <div class="lp-models">
+            <input
+              type="text"
+              class="text-input text-input--small"
+              aria-label={`Additional models for ${agent.label}`}
+              placeholder="model-a, provider/model-b"
+              aria-describedby={`agent-models-help-${agent.id}`}
+              aria-invalid={modelError.value !== null}
+              value={modelDraft.value}
+              onInput={(event) => {
+                modelDraft.value = event.currentTarget.value;
+                modelError.value = null;
+              }}
+              onBlur={saveModels}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+            />
+            <p id={`agent-models-help-${agent.id}`} class="lp-runtime-help">
+              Use model IDs without spaces, quotes or brackets. Leave empty to use CLI defaults or
+              built-in choices.
+            </p>
+            {modelError.value !== null && (
+              <p class="lp-runtime__error" role="alert">
+                {modelError.value}
+              </p>
+            )}
+          </div>
+        </ConfigRow>
       )}
     </div>
   );
@@ -387,6 +413,7 @@ export function LaunchProfileEditor() {
       onToggle={(next) => setEnabled(agent.id, next)}
       signals={adapterOf(agent.id)}
       onSignals={(next) => setAdapter(agent.id, next)}
+      installed={installedIds.has(agent.id)}
     />
   );
 
@@ -411,12 +438,7 @@ export function LaunchProfileEditor() {
           No agent CLI found on your PATH. Install one below, then Refresh.
         </p>
       ) : (
-        installed.map((agent) => (
-          <Fragment key={agent.id}>
-            {renderRow(agent)}
-            <RuntimeSettings agent={agent} />
-          </Fragment>
-        ))
+        installed.map(renderRow)
       )}
 
       {available.length > 0 && (
@@ -428,11 +450,6 @@ export function LaunchProfileEditor() {
           {available.map((agent) => renderRow(agent))}
         </>
       )}
-
-      <p class="lp-runtime-help">
-        Model values must be one shell-safe argument. For values needing quotes or brackets, save a
-        command or declare a custom agent instead.
-      </p>
 
       <ConfigGroup label="Commands" />
       <ConfigRow label="Add command" desc="Save another way to launch an existing agent identity">

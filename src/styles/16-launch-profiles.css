@@ -94,9 +94,8 @@
 /* ── The agent catalog ─────────────────────────────────────────────────────
 
    Two lists — what is on $PATH and what is not — each headed by a count. A
-   row is a grid rather than a `cfg-row`: DL §5's one-value rule fits a
-   setting, and this row carries a state toggle, a default marker and a link,
-   none of which is a setting. */
+   header identifies the agent and carries availability plus disclosure.
+   Its expanded settings use DL §5's one-value config rows. */
 .lp-head {
   box-sizing: border-box;
   display: flex;
@@ -104,7 +103,7 @@
   gap: 8px;
   /* `.cfg-group`'s vertical metric, but the row's horizontal one: the heading
      lines up with every other group label, while Refresh at the far end lands
-     on the same right edge as each row's ↗ (margin 4 + padding 10). A heading
+     on the same right edge as each row's disclosure (margin 4 + padding 10). A heading
      inset 16 and a control inset 14 is a 2px stagger you see once and cannot
      unsee. */
   padding: 16px 14px 6px;
@@ -159,14 +158,14 @@
 /* Between rows, not above the first: the heading already separates the list
    from what precedes it, and a rule directly under a label reads as an
    underline. */
-.lp-agent + .lp-agent {
+.lp-agent-item + .lp-agent-item {
   border-top: 1px solid var(--seam-recessed);
 }
 
 /* A disabled agent stays fully legible — it is a choice the user made, not a
    failure — and says so by its toggle, not by being dimmed to unreadable. */
-.lp-agent.is-off .lp-agent__text {
-  opacity: 0.55;
+.lp-agent.is-off .lp-agent__name {
+  color: var(--text-muted);
 }
 
 .lp-agent__text {
@@ -190,8 +189,56 @@
   line-height: 1.3;
 }
 
+/* DL-6 toggle and DL-21 focus/hover, using the existing neutral pill. */
 .lp-enabled {
   flex: 0 0 auto;
+  min-width: 76px;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.lp-agent__disclosure {
+  flex: 0 0 auto;
+  padding: 5px;
+}
+
+.lp-agent-details {
+  margin: 0 4px 12px 29px;
+}
+
+.lp-agent-details[hidden] {
+  display: none;
+}
+
+/* DL-5: one setting per row; wrap the value below its label in a narrow pane. */
+.lp-agent-details .cfg-row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.lp-agent-details .cfg-row__key {
+  flex: 1 1 180px;
+}
+
+.lp-agent-details .cfg-row__desc {
+  max-width: 42ch;
+  line-height: 1.45;
+}
+
+.lp-runtime .cfg-row__value {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.lp-models {
+  width: 100%;
+  min-width: 0;
+}
+
+.lp-agent-details > .cfg-row {
+  border-top: 1px solid var(--seam-recessed);
 }
 
 .lp-empty {
@@ -223,58 +270,30 @@
   font-size: var(--type-body);
 }
 
-.lp-runtime {
-  display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(116px, 0.55fr) minmax(116px, 0.55fr);
-  gap: 8px;
-  margin: 0 14px 8px 39px;
-}
-
-.lp-runtime__field {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-}
-
-.lp-runtime__field > span {
-  color: var(--text-faint);
-  font-size: var(--type-micro);
-}
-
-.lp-runtime__field input,
-.lp-runtime__field select {
+/* DL-6 menu/input kinds retain native keyboard behavior. */
+.lp-runtime input,
+.lp-runtime select {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 
-.lp-runtime__field select {
+.lp-runtime select {
   height: 29px;
-  border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
   background: var(--input-bg);
-  color: var(--text-primary);
-  font: 450 var(--type-meta) / 1 var(--ui-font);
 }
 
 .lp-runtime__error {
-  grid-column: 1 / -1;
-  margin: 0;
+  margin: 5px 0 0;
   color: var(--red);
   font-size: var(--type-meta);
 }
 
 .lp-runtime-help {
-  margin: 12px 16px 0;
+  margin: 5px 0 0;
   color: var(--text-faint);
-  font-size: var(--type-meta);
+  font-size: var(--type-micro);
   line-height: 1.45;
-}
-
-@media (max-width: 720px) {
-  .lp-runtime {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* The star marks the command its agent actually launches with. Neutral, not

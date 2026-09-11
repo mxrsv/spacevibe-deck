@@ -7,6 +7,10 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Clearer agent settings.** Agents start collapsed with their command and availability
+  visible. Expand an agent to choose its default model and effort, add model IDs, or
+  configure Signals.
+
 - **Deck types the command you chose, and nothing else.** Agent reporting is now
   off out of the box for every agent, so a pane opens with exactly the command
   in your launch profile — no hook settings file, session id, notification

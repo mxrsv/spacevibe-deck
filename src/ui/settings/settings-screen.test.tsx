@@ -357,6 +357,8 @@ const EXPECTED_ROWS = [
   // coverage is `launch-profile-editor.test.tsx`.
   "Add agent",
   "Add command",
+  // Signals is now a setting row inside each supported agent's disclosure.
+  "Signals",
   "Token usage",
   // links & editor. One row, not two, since 2026-08-19: `editorId` +
   // `editorCommand` became the single `externalAppId`, so the custom-command
@@ -410,7 +412,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 18 rows by walking the rail", () => {
+  it("reaches every expected setting by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
