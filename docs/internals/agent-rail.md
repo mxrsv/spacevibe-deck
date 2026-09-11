@@ -217,14 +217,22 @@ rather than inheriting a surface whose git and session sources it lacks.
 ## One create control per checkout
 
 The rail once spent five controls on "create" that did three different things, four of them
-spawning a plain shell with no word about where. One rule replaces them: **pressing `+`
-prefers an agent, and the destination is stated by position, never re-chosen.**
+spawning a plain shell with no word about where. **Pressing `+` opens the checkout menu;
+the destination is stated by position, never re-chosen**
+([action menu](../../src/ui/worktree-card-menus.tsx)).
 
 - The project header's `+` and the tab strip's `+` are **gone in both layouts**. The open
   card's `New agent` row, the bare row of a checkout with nothing open, a folder's flat
   entries and the closed strip's `+` all raise the same actions menu
-  ([`useActionsMenu`](../../src/ui/worktree-card.tsx)); a press starts nothing — `Run <agent>`
-  does. A shell is `New split here`, nowhere else.
+  ([`useActionsMenu`](../../src/ui/worktree-card.tsx)); a press starts nothing.
+  The menu groups quick agents first and all other actions second, with a single
+  separator ([action groups](../../src/ui/worktree-card-menus.tsx)).
+  `Open shell` opens a new shell tab; selecting an agent launches it, and
+  `New split here` creates a shell pane. Up to five quick agents are selected in
+  [Settings](../../src/ui/settings/quick-agents-section.tsx). An unset selection uses
+  the first five available agents; an explicit empty selection stays empty.
+  Saved unavailable agents are omitted without substitution
+  ([selection model](../../src/settings/quick-agents.ts)).
 - **⌘T raises that same menu free-standing** under the stage strip, with a one-line
   destination heading and an `Open another project…` row, built from a `MenuSubject` the
   chord derives from the same scans the rail reads
@@ -235,8 +243,9 @@ prefers an agent, and the destination is stated by position, never re-chosen.**
 - A **remembered** project prints its checkouts as rowless groups
   ([`rememberedWorktrees`](../../src/ui/agent-rail-model.ts)) so their bare rows are its way
   back in. The sidebar's own `+ New` is untouched.
-- **No new IPC.** The rows ride `openQuickAgent`, `worktree_add` through Quick Launch's
-  create-worktree subview, and `open_in_app` with the catalog's Finder and terminal entries.
+- **No new IPC.** Agent and shell rows use `openQuickAgent`, with `null` selecting a shell.
+  The folder row uses `open_in_app`; the external terminal row is absent
+  ([callbacks](../../src/ui/app.tsx)).
   The one fork is [`splitInWorkspace`](../../src/terminal/tab-manager.ts): `split-row` acts on
   the **active** pane and the card that raised the menu may not own it, so doing it honestly
   is materialize-then-split, which is `TabManager`'s business. It takes a path and answers a

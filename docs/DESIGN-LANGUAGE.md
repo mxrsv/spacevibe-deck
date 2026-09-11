@@ -2835,10 +2835,16 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   never restates the scope the surface states once" still has its one
   statement, the footer. The menu's first group therefore carries no leading
   separator, or the hairline would draw across the surface's own top edge.
+  **The menu has two groups:** up to five quick agents, selected in Settings → Agents,
+  then all other actions, starting with **Open shell**, which opens a new terminal tab
+  at the checkout. One separator divides the groups; Worktree color and the footer
+  add no separators. The menu does
+  not offer an external terminal app. [Action rows](../src/ui/worktree-card-menus.tsx)
+  and [quick agent settings](../src/ui/settings/quick-agents-section.tsx).
   **Its agent group is never silently absent:** DL-19.7 omits a control the
   host CANNOT wire, and a discovery probe still in flight is not that, so the
   group states `Looking for installed agents…` while it runs and offers a route
-  to Settings when it answers with nothing. A stated absence is a fact, not a
+  to Settings when no selected agent is available. A stated absence is a fact, not a
   control, so it is not a menu item and the roving focus does not stop on it.
 
   **The closed strip stopped being a preview hours later, the same day** (`docs/internals/agent-rail.md`): a segment is one
@@ -2893,10 +2899,10 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   project prints its remembered checkouts as rowless groups
   ([`rememberedWorktrees`](../src/ui/agent-rail-model.ts) `current`) so their
   bare rows are its way back in, since the header's `+` (DL-27.18, retired) is
-  gone. A plain shell is `New split here`, nowhere else — the split row
-  materializes a tab when the checkout has none, so a shell PANE is one named
-  row away; a second shell TAB in a busy checkout is no longer reachable from
-  the rail, a cost the owner accepted in the change's proposal.
+  gone. `Open shell` opens a new shell tab even in a busy checkout;
+  `New split here` opens a pane beside the existing tab and materializes a tab
+  when the checkout has none. Both use the checkout named by the menu
+  ([menu callbacks](../src/ui/app.tsx), [tab creation](../src/terminal/tab-manager.ts)).
   **The menu's heading returns for ONE placement:** raised by `⌘T` with no card
   beside it, the same `CardActionsMenu` stands free under the stage strip
   (DL-13.7, amended) and prints the composed destination

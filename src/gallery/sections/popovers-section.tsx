@@ -106,9 +106,8 @@ const KEYBOARD_MENU_ACTIONS: CardActions = {
   onRunAgent: NOOP,
   onSplitHere: NOOP,
   onOpenFolder: NOOP,
-  onOpenTerminal: NOOP,
+  onOpenShell: NOOP,
   filesAppLabel: "Finder",
-  terminalAppLabel: "Ghostty",
   onOpenBoard: NOOP,
 };
 

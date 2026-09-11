@@ -16,6 +16,7 @@ import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-te
 import { runtimeFor, type AgentRuntimeDefault } from "../launcher/runtime-catalog";
 import type { SignalAdapters } from "../lib/launch-augment";
 import { validateWorktreeColors, type WorktreeColors } from "./worktree-colors";
+import { validateQuickAgentIds } from "./quick-agents";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -91,6 +92,8 @@ export interface Settings {
    * an agent out of the pickers.
    */
   disabledAgents: readonly string[];
+  /** Checkout menu picks. Null uses the first five available agents; [] selects none. */
+  quickAgentIds: readonly string[] | null;
   /**
    * Project order the user dragged in the agent rail, by
    * `RailStreamGroup.orderKey`, top first. An entry naming no currently-visible
@@ -254,6 +257,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customAgents: [],
   launchProfiles: [],
   disabledAgents: [],
+  quickAgentIds: null,
   railOrder: [],
   worktreeColors: {},
   defaultAgent: null,
@@ -619,6 +623,7 @@ export function validateSettings(raw: unknown): Settings {
     disabledAgents: Array.isArray(source.disabledAgents)
       ? source.disabledAgents.filter((id): id is string => typeof id === "string")
       : DEFAULT_SETTINGS.disabledAgents,
+    quickAgentIds: validateQuickAgentIds(source.quickAgentIds),
     railOrder: validateRailOrder(source.railOrder),
     worktreeColors: validateWorktreeColors(source.worktreeColors),
     agentModels: validateAgentModels(source.agentModels),

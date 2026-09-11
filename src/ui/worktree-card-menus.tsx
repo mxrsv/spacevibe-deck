@@ -413,10 +413,11 @@ export interface CardActions {
   /** `openQuickAgent(agentId, destination)` — the destination overrides both
    * cwd and workspace tag, which is what that argument was built for. */
   onRunAgent(agentId: string, workspacePath: string): void;
+  /** Open a plain shell in a new Deck tab at this checkout. */
+  onOpenShell?(workspacePath: string): void;
   /**
-   * Open Settings for a checkout with no agent to run — the quick picker's own
-   * escape hatch (`onManageAgents`), which lands on Settings' first category
-   * because Settings takes no initial one. Optional, so a caller that cannot
+   * Open Settings → Agents for a checkout with no quick agent available.
+   * Optional, so a caller that cannot
    * open Settings states the absence as a note instead of drawing a control
    * nothing wires (DL-19.7).
    */
@@ -427,11 +428,8 @@ export interface CardActions {
   onCreateBranch?(repoPath: string): void;
   /** `open_in_app` with the catalog's `finder` entry. */
   onOpenFolder?(path: string): void;
-  /** `open_in_app` with the catalog's terminal entry. */
-  onOpenTerminal?(path: string): void;
   /** The installed app each OS row will actually launch, for its detail line. */
   readonly filesAppLabel?: string;
-  readonly terminalAppLabel?: string;
   /**
    * Raise the Open board — the `Open another project…` row, rendered ONLY by
    * the free-standing placement (`rail-create-consolidation`, design D1): with
@@ -526,13 +524,13 @@ function agentRows(actions: CardActions, subject: MenuSubject): readonly MenuRow
   if (actions.agents.length === 0) {
     const manage = actions.onManageAgents;
     return manage === undefined
-      ? [{ kind: "note", id: "agents-none", text: "No agent is installed and enabled" }]
+      ? [{ kind: "note", id: "agents-none", text: "No quick agents available" }]
       : [
           {
             kind: "action",
             id: "agents-settings",
-            title: "No agent to run",
-            detail: "Open Settings to add one",
+            title: "Choose quick agents",
+            detail: "Open Settings to choose agents",
             glyph: "agents",
             run: manage,
           },
@@ -561,6 +559,20 @@ export function actionGroups(
   placement: MenuPlacement = "anchored",
 ): readonly (readonly MenuRow[])[] {
   const agents = agentRows(actions, subject);
+  const openShell = actions.onOpenShell;
+  const shell: ActionRow[] =
+    openShell === undefined
+      ? []
+      : [
+          {
+            kind: "action",
+            id: "shell",
+            title: "Open shell",
+            detail: "Open a new terminal tab",
+            glyph: "terminal",
+            run: () => openShell(subject.path),
+          },
+        ];
 
   const work: ActionRow[] = [
     {
@@ -612,19 +624,6 @@ export function actionGroups(
       },
     });
   }
-  const openTerminal = actions.onOpenTerminal;
-  if (openTerminal !== undefined) {
-    os.push({
-      kind: "action",
-      id: "terminal",
-      title: "Open terminal here",
-      detail: actions.terminalAppLabel ?? "Launch your terminal app",
-      glyph: "terminal",
-      run: () => {
-        openTerminal(subject.path);
-      },
-    });
-  }
 
   // The chord's list is COMPLETE on its own (`rail-create-consolidation`,
   // design D1 and D6): the tab strip's `+` is gone in both layouts, and
@@ -644,7 +643,7 @@ export function actionGroups(
     });
   }
 
-  return [agents, work, os, board].filter((rows) => rows.length > 0);
+  return [agents, [...shell, ...work, ...os, ...board]].filter((rows) => rows.length > 0);
 }
 
 export interface CardActionsMenuProps {
@@ -859,12 +858,8 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
           })}
         </Fragment>
       ))}
-      <div class="asr-pop__sep" />
       {props.subject.labelled && placement === "anchored" && (
-        <>
-          <WorktreeColorPicker path={props.subject.path} onClose={props.onClose} />
-          <div class="asr-pop__sep" />
-        </>
+        <WorktreeColorPicker path={props.subject.path} onClose={props.onClose} />
       )}
       <p class="asr-act__foot">
         <DeckIcon icon={Info} size={CHROME_ICON} />

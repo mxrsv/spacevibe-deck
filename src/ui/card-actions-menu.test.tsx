@@ -106,7 +106,11 @@ afterEach(() => {
 
 describe("CardActionsMenu placements", () => {
   it("prints no heading and no board row when anchored to a card", () => {
-    const menu = mount("anchored", CHECKOUT, actions());
+    const menu = mount(
+      "anchored",
+      CHECKOUT,
+      actions({ onOpenShell: vi.fn(), onOpenFolder: vi.fn() }),
+    );
 
     expect(menu?.dataset.placement).toBe("anchored");
     expect(menu?.querySelector(".asr-act__where")).toBeNull();
@@ -114,12 +118,21 @@ describe("CardActionsMenu placements", () => {
     // The first thing in the menu is an action row — the card 6px away states
     // the subject (DL-27.25, amended 2026-08-30).
     expect(menu?.firstElementChild?.getAttribute("role")).toBe("menuitem");
+    expect(menu?.querySelectorAll(".asr-pop__sep")).toHaveLength(1);
+    expect(menu?.querySelector(".asr-pop__sep")?.previousElementSibling?.textContent).toContain(
+      "Claude",
+    );
+    expect(menu?.querySelector(".asr-pop__sep")?.nextElementSibling?.textContent).toContain(
+      "Open shell",
+    );
+    expect(menu?.querySelector('[aria-label="Worktree color"]')).not.toBeNull();
   });
 
   it("states its destination in a heading and ends with the board row when free-standing", () => {
     const menu = mount("free-standing", CHECKOUT, actions());
 
     expect(menu?.dataset.placement).toBe("free-standing");
+    expect(menu?.querySelectorAll(".asr-pop__sep")).toHaveLength(1);
     const heading = menu?.querySelector(".asr-act__where");
     // ONE line, the composed destination — never the two-line `Actions for` /
     // `Runs in` head that came off on 2026-08-30.
@@ -161,6 +174,24 @@ describe("CardActionsMenu placements", () => {
     click(menu?.querySelector<HTMLElement>('[role="menuitem"]'));
     expect(acts.onRunAgent).toHaveBeenCalledWith("claude", "/r/bench");
   });
+
+  it.each(["anchored", "free-standing"] as const)(
+    "opens a shell at the checkout from %s",
+    (placement) => {
+      const openShell = vi.fn();
+      const onClose = vi.fn();
+      const acts = actions({ onOpenShell: openShell, agents: [], agentsResolved: false });
+      const menu = mount(placement, CHECKOUT, acts, onClose);
+      const first = menu?.querySelector<HTMLElement>('[role="menuitem"]');
+      expect(first?.textContent).toContain("Open shell");
+      expect(menu?.textContent).not.toContain("Open terminal here");
+      click(first);
+      expect(openShell).toHaveBeenCalledWith(CHECKOUT.path);
+      expect(acts.onRunAgent).not.toHaveBeenCalled();
+      expect(acts.onSplitHere).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("closes on Escape without starting anything", () => {
     const acts = actions();

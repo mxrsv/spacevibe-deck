@@ -17,6 +17,7 @@ import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
 import { CommitInput } from "../../controls/commit-input";
 import { LaunchProfileEditor } from "../launch-profile-editor";
+import { QuickAgentsSection } from "../quick-agents-section";
 
 /**
  * Why a declared command is rejected, or `null` when it is fine. The binary is
@@ -116,7 +117,10 @@ export function AgentsSection() {
   };
 
   const removeAgent = (id: string): void => {
-    replace(customAgents.filter((agent) => agent.id !== id));
+    updateSettings({
+      customAgents: customAgents.filter((agent) => agent.id !== id),
+      quickAgentIds: settings.value.quickAgentIds?.filter((agentId) => agentId !== id) ?? null,
+    });
     // The id is now free again, and re-adding the same label would mint it a
     // second time — so any workspace still remembering it has to let go now,
     // or it would silently open with whatever the next agent of that name is.
@@ -191,6 +195,7 @@ export function AgentsSection() {
           lists with `Installed` / `Available to install`, and a third heading
           stacked on top of them named the same thing twice. */}
       <LaunchProfileEditor />
+      <QuickAgentsSection />
 
       <ConfigGroup label="Agent identities" />
       {customAgents.map((agent) => (

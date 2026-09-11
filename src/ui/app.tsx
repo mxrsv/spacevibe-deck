@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
+import { quickAgentOptions } from "../settings/quick-agents";
+import { activeCategory } from "./settings/active-category-store";
 import { listen, type UnlistenFn } from "../host/bridge";
 import { getCurrentWindow, currentWindowLabel } from "../host/window-host";
 import { ask, message } from "../host/dialog-host";
@@ -1904,7 +1906,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // on the MOUNT, not the setting: during the slide-out the panel still holds
   // its own control, and the two must never be on screen together.
   const stripDockToggle = dockToggleOnStage(dockState) && !dockPresence.mounted;
-  const quickAgents = launcherAgents();
+  const quickAgents = quickAgentOptions(launcherAgents(), settings.value.quickAgentIds);
   /**
    * The worktree card's actions menu (spec
    * `docs/internals/agent-rail.md`) — every row
@@ -1928,51 +1930,38 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     const stored = settings.value.agentRuntimeDefaults[agentId]?.model;
     return stored === undefined || stored === null || stored === "" ? null : stored;
   };
-  // The external-app scan has the SAME third state the agent probe does
-  // (`agentsResolved` above): `installedExternalApps` is empty both before it
-  // answers and on a machine with nothing installed. Reading it unguarded made
-  // DL-19.7 silently delete both OS rows during the window's first seconds and
-  // then grow them back under the user — `externalAppControl` gates on
-  // `externalAppsScanned` for this reason and this call site did not (code
-  // review, 2026-08-31). Until it answers the rows are simply not offered,
-  // which is the same shape as "this host cannot"; what changes is that the
-  // menu no longer treats an unanswered scan as a finished one.
+  // DL-19.7: offer the folder action only after discovery confirms its app.
   const appsScanned = externalAppsScanned.value;
   const filesApp = appsScanned
     ? installedExternalApps.value.find((app) => app.group === "files")
     : undefined;
-  const terminalApp = appsScanned
-    ? installedExternalApps.value.find((app) => app.group === "terminal")
-    : undefined;
   const railCardActions: CardActions = {
-    agents: quickAgents
-      .filter((agent) => !agent.missing)
-      .map((agent) => ({
-        id: agent.id,
-        label: agent.label,
-        // Spec §8.1: the default MODEL where the settings carry one, and the
-        // command the row will actually run where they do not. A vendor name
-        // or a restatement of the scope is not a fact the row can promise.
-        // Two corrections here (code review, 2026-08-31). `?? ` only skips
-        // `null`/`undefined`, but `AgentRuntimeDefault.model` stores `""` as a
-        // real value — `runtime-catalog.ts` guards `stored.model !== ""` for
-        // exactly that reason — so a stored empty string short-circuited the
-        // whole chain and the row rendered a BLANK second line. And
-        // `agentModels[id]` is the list of models the USER declared they can
-        // reach, not a default; its first entry is an arbitrary element, so
-        // printing it as "the default model" was a promise this row cannot
-        // keep. It is gone: with no stored default, the honest fact is the
-        // command the row will actually run.
-        detail:
-          runtimeModel(agent.id) ??
-          agentLaunchCommand(
-            agent.id,
-            settings.value.launchProfiles,
-            settings.value.defaultLaunchProfiles,
-            settings.value.customAgents,
-          ) ??
-          agent.detail,
-      })),
+    agents: quickAgents.map((agent) => ({
+      id: agent.id,
+      label: agent.label,
+      // Spec §8.1: the default MODEL where the settings carry one, and the
+      // command the row will actually run where they do not. A vendor name
+      // or a restatement of the scope is not a fact the row can promise.
+      // Two corrections here (code review, 2026-08-31). `?? ` only skips
+      // `null`/`undefined`, but `AgentRuntimeDefault.model` stores `""` as a
+      // real value — `runtime-catalog.ts` guards `stored.model !== ""` for
+      // exactly that reason — so a stored empty string short-circuited the
+      // whole chain and the row rendered a BLANK second line. And
+      // `agentModels[id]` is the list of models the USER declared they can
+      // reach, not a default; its first entry is an arbitrary element, so
+      // printing it as "the default model" was a promise this row cannot
+      // keep. It is gone: with no stored default, the honest fact is the
+      // command the row will actually run.
+      detail:
+        runtimeModel(agent.id) ??
+        agentLaunchCommand(
+          agent.id,
+          settings.value.launchProfiles,
+          settings.value.defaultLaunchProfiles,
+          settings.value.customAgents,
+        ) ??
+        agent.detail,
+    })),
     // The third state, not a guess at one: `agentOptions` emits a built-in
     // only when the probe returned a path for it, so "still probing" and
     // "nothing installed" both arrive above as an empty list. The menu drew
@@ -1982,9 +1971,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     onRunAgent: (agentId, workspacePath) => {
       void tabsRef.current?.openQuickAgent(agentId, workspacePath);
     },
-    // The quick picker's own escape hatch: Settings takes no initial category,
-    // so this lands on its first one and the agent catalog is one click away.
+    onOpenShell: (workspacePath) => {
+      void tabsRef.current?.openQuickAgent(null, workspacePath);
+    },
     onManageAgents: () => {
+      activeCategory.value = "agents";
       settingsOpen.value = true;
     },
     onSplitHere: (workspacePath) => {
@@ -2003,14 +1994,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             void openInApp({ appId: filesApp.id, path, isDirectory: true, line: 0, column: 0 });
           },
           filesAppLabel: filesApp.label,
-        }
-      : {}),
-    ...(externalAppsAvailable && terminalApp !== undefined
-      ? {
-          onOpenTerminal: (path: string) => {
-            void openInApp({ appId: terminalApp.id, path, isDirectory: true, line: 0, column: 0 });
-          },
-          terminalAppLabel: terminalApp.label,
         }
       : {}),
   };

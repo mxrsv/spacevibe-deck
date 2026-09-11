@@ -34,8 +34,9 @@ The catalog splits on what Deck found on your login shell's `PATH`:
 
 Per row:
 
-- **Enable / Disable.** The switch is the only thing that takes a built-in out of the pickers;
-  a built-in cannot be deleted because the next probe would find it again.
+- **Enable / Disable.** Turning an agent off removes it from launch choices;
+  a built-in cannot be deleted because the next probe would find it again
+  ([agent choices](../../src/lib/agent-catalog.ts)).
 - **Default.** Offered on installed rows only. The starred agent is what a recent workspace
   opens with when it has no remembered agent of its own.
 - **Add command.** Type a full command line, for example `claude --plan`. It replaces the
@@ -51,6 +52,17 @@ Claude Signals installs Deck hooks in your Claude settings and also covers Claud
 you type manually inside Deck. Turning it off removes this installation's hooks. Reopen
 terminals created before this integration was installed.
 [Signal integration](../internals/terminal.md#the-contract-layer).
+
+## Quick agents
+
+In Settings → Agents → Quick agents, choose up to five agents for the checkout menu.
+Deselect one to make room for another. Your choices are saved; agents you disable or
+uninstall stop appearing in the menu without being replaced by another agent
+([quick agent settings](../../src/ui/settings/quick-agents-section.tsx)).
+
+The checkout menu's **Open shell** opens a new terminal tab inside Deck at that checkout.
+Use **New split here** for a pane beside the existing tab
+([checkout actions](../../src/ui/worktree-card-menus.tsx)).
 
 ## Custom agents
 

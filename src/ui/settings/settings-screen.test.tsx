@@ -360,6 +360,7 @@ const EXPECTED_ROWS = [
   // Signals is now a setting row inside each supported agent's disclosure.
   "Signals",
   "Token usage",
+  "Checkout menu",
   // links & editor. One row, not two, since 2026-08-19: `editorId` +
   // `editorCommand` became the single `externalAppId`, so the custom-command
   // field that used to appear under the picker is gone with the setting it
@@ -420,7 +421,9 @@ describe("SettingsScreen — every setting survived the move", () => {
     const seen = new Set<string>();
     const collect = (): void => {
       for (const label of host.querySelectorAll(".cfg-row__label")) {
-        if (isShortcutRow(label)) {
+        // Quick-agent choices are catalog-driven; their interaction tests
+        // assert selection and limits without duplicating the catalog here.
+        if (isShortcutRow(label) || label.closest("[data-quick-agent-choices]") !== null) {
           continue;
         }
         const text = label.textContent?.trim();

@@ -58,14 +58,11 @@ describe("actionGroups", () => {
     const full = actions({
       onCreateBranch: () => {},
       onOpenFolder: () => {},
-      onOpenTerminal: () => {},
+      onOpenShell: () => {},
     });
-    expect(ids(actionGroups(full, CHECKOUT))).toEqual([
-      "run:claude",
-      "split",
-      "branch",
-      "finder",
-      "terminal",
+    expect(actionGroups(full, CHECKOUT).map((group) => group.map((row) => row.id))).toEqual([
+      ["run:claude"],
+      ["shell", "split", "branch", "finder"],
     ]);
   });
 

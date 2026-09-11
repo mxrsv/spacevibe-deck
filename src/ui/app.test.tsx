@@ -269,8 +269,8 @@ describe("task launcher mount", () => {
   // composer this build ships. Since `rail-create-consolidation` (2026-09-02)
   // ⌘T raises the rail card's actions menu FREE-STANDING for the active
   // workspace (`openTaskLauncher` → `railKeyboardMenuFor`), the strip `+` and
-  // the rail project `+` are gone, and NOTHING opens a shell tab on a press:
-  // `openQuickAgent(null, …)` has no caller left in this file.
+  // the rail project `+` are gone. Only the explicit Open shell action opens
+  // a shell tab; opening the menu itself still starts no process.
   it("keeps both launcher popovers compiled but unmounted, and ⌘T raises the card menu", () => {
     expect(source).not.toContain("<QuickLaunch");
     expect(source).not.toContain("<AgentQuickPicker");
@@ -280,7 +280,7 @@ describe("task launcher mount", () => {
     // scan: without this the chord's heading would name a checkout by its
     // bare folder in exactly the layout that has no other create control.
     expect(source).toContain("ensureRepositoriesScanned([workspacePath])");
-    expect(source).not.toContain("openQuickAgent(null");
+    expect(source).toContain("openQuickAgent(null, workspacePath)");
     // No call path re-enters `TabManager.newTab` from the app: the old `null`
     // branch called it back and recursed when no tab was active.
     expect(source).not.toContain("tabsRef.current?.newTab()");

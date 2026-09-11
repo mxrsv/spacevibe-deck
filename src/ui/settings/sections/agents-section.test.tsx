@@ -236,6 +236,25 @@ describe("AgentsSection", () => {
     expect(settings.value.customAgents[0].command).toBe("aider");
   });
 
+  it.each([
+    { quickAgentIds: null },
+    { quickAgentIds: [] },
+    { quickAgentIds: ["custom:aider", "claude"] },
+  ])("forgets a removed identity in quick agents (%j)", ({ quickAgentIds }) => {
+    settings.value = {
+      ...DEFAULT_SETTINGS,
+      quickAgentIds,
+      customAgents: [{ id: "custom:aider", label: "Aider", command: "aider" }],
+    };
+    mount();
+    click(host.querySelector('[aria-label="Remove Aider"]')!);
+    expect(settings.value.quickAgentIds).toEqual(
+      quickAgentIds?.filter((id) => id !== "custom:aider") ?? null,
+    );
+    declare("Aider", "different-command");
+    expect(settings.value.quickAgentIds?.includes("custom:aider") ?? false).toBe(false);
+  });
+
   describe("the token usage link row", () => {
     afterEach(() => {
       settingsOpen.value = false;

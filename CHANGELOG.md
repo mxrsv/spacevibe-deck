@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Open a shell from the checkout menu.** Open shell starts a new terminal tab in
+  Deck at that checkout. Choose up to five quick agents in Settings → Agents;
+  the menu no longer opens an external terminal app.
+  [Quick agents](docs/user/agents.md#quick-agents).
+
 - **Claude Signals also covers manual launches in Deck.** Enabling Signals registers
   Deck's guarded hooks in your Claude settings; turning it off removes those hooks.
   Claude launch commands no longer receive extra settings or session-ID flags.
