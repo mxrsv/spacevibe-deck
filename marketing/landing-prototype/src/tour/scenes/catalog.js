@@ -1,5 +1,5 @@
 /**
- * Panel 6 — Settings → Agents, the agent catalog.
+ * Panel 7 — Settings → Agents, the agent catalog.
  *
  * Every agent Deck knows, split by whether the discovery probe found its
  * binary, each row stating the exact command that agent will launch with. The
@@ -51,7 +51,7 @@ const DEFAULT_COMMANDS = {
  * what keeps BOTH groups in catalog order without either being re-sorted, and
  * it is why `cursor-agent` stays last: the order is the digit-key contract.
  *
- * Exported for panel 2, whose ⌘T list offers these same three agents with
+ * Exported for panel 3, whose ⌘T list offers these same three agents with
  * these same commands: two panels describing one imaginary machine must not
  * disagree about what is installed on it.
  */

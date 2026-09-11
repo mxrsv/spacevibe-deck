@@ -1,5 +1,5 @@
 /**
- * Panel 3 — session restore.
+ * Panel 4 — session restore.
  *
  * Three panes, each typing the resume command its own CLI takes. The commands
  * are the real ones — `src/lib/agent-resume.ts`'s COMMAND_TABLE — because a

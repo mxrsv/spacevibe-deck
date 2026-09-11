@@ -1,5 +1,5 @@
 /**
- * Panel 5 — the token usage dashboard.
+ * Panel 6 — the token usage dashboard.
  *
  * Usage → OVERVIEW, not Daily. The spec asked for "range selector + a metric
  * table" and that composite exists on no single Usage view: the range selector

@@ -1,5 +1,5 @@
 /**
- * Panel 4 — the surfaces a tab can be.
+ * Panel 5 — the surfaces a tab can be.
  *
  * One strip carries a terminal, a document and a browser, and it is the hero's
  * own `renderStageStrip` rather than a shape drawn twice: a reader who has

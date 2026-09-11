@@ -1,5 +1,5 @@
 /**
- * Panel 2 — ⌘T's New Agent list.
+ * Panel 3 — ⌘T's New Agent list.
  *
  * Deck 1.1 retired the quick picker. ⌘T now raises the checkout card's own
  * actions menu FREE-STANDING (`worktree-card-menus.tsx`, placement
@@ -113,7 +113,7 @@ const MENU_ICONS = {
  * The groups in `actionGroups`' order — agents, work, the OS, the board —
  * each separated by a hairline. An agent row's detail is the command it will
  * run: no model is stored for any of the three, so that is the fact the app
- * prints. The agents are panel 6's installed three, commands and all.
+ * prints. The agents are panel 7's installed three, commands and all.
  */
 const MENU_GROUPS = [
   INSTALLED.map((agent) => ({ agent: agent.id, title: agent.label, detail: launchCommand(agent) })),
