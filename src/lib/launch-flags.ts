@@ -12,8 +12,8 @@
  *
  * **Every flag was read off that CLI's own `--help` on the owner's machine on
  * 2026-09-11**, the rule `runtime-catalog.ts` follows: claude 2.1.268, codex
- * 0.154.0, opencode 1.18.30, agy 1.1.13, gemini 0.55.1. Left out on purpose: model and effort (their own rows), print and
- * headless flags, session resume/continue/fork, prompts, directories and
+ * 0.154.0, opencode 1.18.30, agy 1.1.13, gemini 0.55.1. Left out on purpose:
+ * model and effort (their own rows), print and headless flags, session resume/continue/fork, prompts, directories and
  * worktrees (Deck owns the pane's cwd), debug and logging, and opencode's
  * port/hostname (the signal adapter pins the port).
  *
