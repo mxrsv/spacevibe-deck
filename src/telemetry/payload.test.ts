@@ -5,7 +5,6 @@
  * in the same release — that is what this red test is for.
  */
 import { describe, expect, it } from "vitest";
-import { BUILTIN_AGENTS } from "../lib/agent-catalog";
 import {
   AGENT_PAYLOAD_KEYS,
   SCHEMA_VERSION,
@@ -48,9 +47,18 @@ describe("usage payload contract", () => {
     );
   });
 
-  it("pins the closed agent key set to the six built-ins plus custom", () => {
-    const builtinIds = BUILTIN_AGENTS.map((agent) => agent.id);
-    expect([...AGENT_PAYLOAD_KEYS].sort()).toEqual([...builtinIds, "custom"].sort());
+  // `cursor-agent` was withdrawn on 2026-09-11 (DECK-71) but keeps its key:
+  // older clients still send it, and the backend validates the same set.
+  it("pins the closed agent key set", () => {
+    expect([...AGENT_PAYLOAD_KEYS]).toEqual([
+      "claude",
+      "codex",
+      "opencode",
+      "agy",
+      "gemini",
+      "cursor-agent",
+      "custom",
+    ]);
   });
 
   it("pins the surface key set", () => {
@@ -59,7 +67,8 @@ describe("usage payload contract", () => {
 
   it("folds every non-built-in agent id into the custom bucket", () => {
     expect(agentPayloadKey("claude")).toBe("claude");
-    expect(agentPayloadKey("cursor-agent")).toBe("cursor-agent");
+    // Withdrawn: the key still exists, but no current launch may send it.
+    expect(agentPayloadKey("cursor-agent")).toBe("custom");
     expect(agentPayloadKey("custom:acme-internal-tool")).toBe("custom");
     expect(agentPayloadKey("acme-internal-tool")).toBe("custom");
     expect(agentPayloadKey("")).toBe("custom");

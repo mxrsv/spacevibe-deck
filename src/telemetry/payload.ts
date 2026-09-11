@@ -81,7 +81,13 @@ export interface UsagePayload {
   readonly restoredSessions: boolean;
 }
 
-/** Folds any agent id to its payload key — a user-typed id becomes "custom". */
+/**
+ * Folds any agent id to its payload key. Only an active built-in that HAS a key
+ * keeps it: a user-typed id, a withdrawn built-in and a built-in added after
+ * the key set was fixed all become "custom" — a key outside the closed set is
+ * exactly what the backend refuses.
+ */
 export function agentPayloadKey(id: string): AgentPayloadKey {
-  return isBuiltinAgentId(id) ? (id as AgentPayloadKey) : "custom";
+  const key = AGENT_PAYLOAD_KEYS.find((candidate) => candidate === id);
+  return key !== undefined && isBuiltinAgentId(id) ? key : "custom";
 }
