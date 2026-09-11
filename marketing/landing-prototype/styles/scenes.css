@@ -646,6 +646,40 @@
   color: var(--sg-fg);
 }
 
+/* Row 0, the folder the tree is rooted at (DL-19.9): the expanded caret and
+   the name, then the four actions, which ride the row at rest. */
+.scene-surfaces__node[data-kind="root"] {
+  display: flex;
+  align-items: center;
+  gap: 0.4cqw;
+  color: var(--sg-fg);
+}
+
+.scene-surfaces__node[data-kind="root"]::before {
+  color: var(--sg-fg-faint);
+  content: "▾";
+}
+
+.scene-surfaces__rootname {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.scene-surfaces__rootactions {
+  display: flex;
+  flex: none;
+  gap: 0.3cqw;
+  color: var(--sg-fg-faint);
+}
+
+.scene-surfaces__rootactions svg {
+  display: block;
+  width: 1.2cqw;
+  height: 1.2cqw;
+}
+
 .scene-surfaces__pane {
   display: flex;
   min-width: 0;

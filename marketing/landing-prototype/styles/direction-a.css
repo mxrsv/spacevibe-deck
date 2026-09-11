@@ -687,6 +687,18 @@ html[lang="vi"] .a-hero h1 {
   text-wrap: pretty;
 }
 
+/* The hero's platform line: the finale note's voice, centred under the
+   install block, and wide enough to stay one line on a laptop. */
+.a-platform-note {
+  max-width: 60ch;
+  margin: 0.75rem auto 0;
+  color: var(--a-ink-faint);
+  font: 400 0.72rem/1.45 var(--a-font-mono);
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-wrap: balance;
+}
+
 .a-cta-tag {
   flex-shrink: 0;
   padding: 0.22rem 0.42rem;

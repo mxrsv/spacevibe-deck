@@ -327,7 +327,7 @@ describe("the English-only header", () => {
     expect(root.querySelector(".a-topbar__lang")).toBeNull();
   });
 
-  it("announces Deck V1 instead of exposing the package version", () => {
+  it("announces the 1.1 milestone instead of exposing the package version", () => {
     const root = renderHero();
 
     expect(root.querySelector(".a-hero__pill-text")?.textContent).toBe(

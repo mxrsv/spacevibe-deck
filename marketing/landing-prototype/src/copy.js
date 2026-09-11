@@ -4,7 +4,7 @@ export const messages = {
     navChangelog: "Changelog",
     navDiscord: "Discord",
     navGithub: "GitHub",
-    releaseLabel: "Deck V1",
+    releaseLabel: "Deck 1.1",
     agentStripTail: "or any binary on your $PATH",
     headlineLead: "Run the grid.",
     headlineTail: "Keep every agent in sight.",
@@ -13,6 +13,8 @@ export const messages = {
     seeFeatures: "See how it works",
     installMac: "Install for macOS",
     installWin: "Install for Windows",
+    platformNote:
+      "For Apple Silicon Macs and Windows x64 — Intel Macs and Windows on ARM are not supported.",
     secondaryCta: "View on GitHub",
     downloadCountUnit: "downloads",
     changelogBack: "Back to Deck",
@@ -32,29 +34,29 @@ export const messages = {
       "Deck brings back every tab and pane, then types each agent's own resume command — claude --resume, codex resume, opencode -s. The conversation carries on from where it stopped.",
     panelRailTitle: "Read the room without opening a single pane.",
     panelRailBody:
-      "Every rail row carries the last thing that agent actually said, read straight from its own session log. A dot says the rest — red failed, yellow waiting on you, a live ring while it works, quiet gray once it is done. Claude Code, Codex and OpenCode today.",
+      "Every checkout is a card. Open one and each agent's row carries the last thing it actually said, read straight from its own session log; close it and the agents fold into one strip. The marks say the rest — red failed, yellow waiting on you, three moving bars while it works, quiet gray once it is done, a square once it has ended. Claude Code, Codex and OpenCode today.",
     panelBoardTitle: "Every agent on one board.",
     panelBoardBody:
       "⌘⇧O opens the Agent Board: one card per running agent, across every project and worktree in the window — its state, the last thing it said, how long it has been up. The loudest cards come first, and pressing one takes you straight to that agent's pane.",
     panelWorktreeTitle: "Open an agent straight into a branch.",
     panelWorktreeBody:
-      "⌘T lists every worktree in the project beside the branch it is checked out on. Pick one, pick an agent, and the pane spawns in that directory — no cd, no wrong tree.",
+      "⌘T opens New Agent for the checkout you are working in. The worktree and its branch are named at the top, your agents are listed with the command each will type, and Open another project… closes the list. Every card in the rail keeps the same list behind its +.",
     panelSurfacesTitle: "The terminal is not the only thing on the stage.",
     panelSurfacesBody:
-      "A file tree, an editor, a browser and a token-usage dashboard share the same tab strip as your panes — ⌘⇧B opens the explorer, ⌘S saves, ⌘W closes whatever is in front.",
+      "A file tree, an editor, a browser and a token-usage dashboard share the tab strip with your panes. ⌘⇧B opens the explorer, its first row naming the folder it is rooted at; Markdown opens rendered and ⌘⇧V flips it to source; ⌘S saves, ⌘W closes whatever is in front.",
     panelUsageTitle: "What the agents cost, read off your own disk.",
     panelUsageBody:
       "⌘⇧U opens Token usage. It reads the session files Claude Code and Codex already write in ~/.claude and ~/.codex — today, 7 days, 30 days, or all of it, estimated at API prices. No account, no upload.",
     panelCatalogTitle: "Every agent Deck knows, and the command it will type.",
     panelCatalogBody:
-      "Settings → Agents splits the list in two: Installed, counted off your $PATH, and Available to install. Every row prints the command it ships with — claude --dangerously-skip-permissions, opencode bare — and Enabled/Disabled is what takes one out of the picker.",
+      "Settings → Agents splits the list in two: Installed, counted off your $PATH, and Available to install. Every row prints the command it ships with — claude --dangerously-skip-permissions, opencode bare — and Enabled/Disabled is what takes one out of the ⌘T list.",
     downloadMac: "Download for macOS",
     downloadWin: "Download for Windows",
     comingSoon: "coming soon",
     newBadge: "New",
     winPreviewTag: "preview",
     winUnsignedNote:
-      "Unsigned build \u2014 Windows will show a SmartScreen warning. Choose More info \u2192 Run anyway.",
+      "Unsigned build — Windows will show a SmartScreen warning. Choose More info → Run anyway.",
     finaleTitle: "Your shell, intact.",
     proofPtyTitle: "Real PTY, real shell",
     proofPtyBody:
@@ -66,7 +68,7 @@ export const messages = {
       "Your code, terminals and agent sessions stay local. Deck sends first-party usage analytics — always on, with no opt-out, never code, file paths or prompts — and Settings → Privacy states exactly what is sent.",
     scSplit: "split",
     scSplitH: "split down",
-    scTab: "new tab",
+    scTab: "new agent",
     scExpand: "focus expand",
     scFind: "find",
     scClear: "clear",
@@ -93,7 +95,7 @@ export const messages = {
     navChangelog: "Changelog",
     navDiscord: "Discord",
     navGithub: "GitHub",
-    releaseLabel: "Deck V1",
+    releaseLabel: "Deck 1.1",
     agentStripTail: "hoặc bất kỳ binary nào trong $PATH",
     headlineLead: "Vận hành cả đội hình.",
     headlineTail: "Không agent nào rời khỏi tầm mắt.",
@@ -102,6 +104,8 @@ export const messages = {
     seeFeatures: "Xem nó chạy thế nào",
     installMac: "Cài đặt cho macOS",
     installWin: "Cài đặt cho Windows",
+    platformNote:
+      "Dành cho Mac Apple Silicon và Windows x64 — không hỗ trợ Mac chip Intel và Windows ARM.",
     secondaryCta: "Xem trên GitHub",
     downloadCountUnit: "downloads",
     changelogBack: "Về trang Deck",
@@ -121,22 +125,22 @@ export const messages = {
       "Deck dựng lại mọi tab và pane, rồi tự gõ đúng lệnh resume của từng agent — claude --resume, codex resume, opencode -s. Cuộc hội thoại chạy tiếp từ chỗ nó dừng.",
     panelRailTitle: "Biết cả đội đang làm gì mà không cần mở pane nào.",
     panelRailBody:
-      "Mỗi dòng trong rail mang đúng câu agent đó vừa nói, đọc thẳng từ session log của nó. Phần còn lại gói trong một chấm — đỏ là lỗi, vàng là đang đợi bạn, vòng sáng là đang chạy, xám nhạt là đã xong. Hiện có cho Claude Code, Codex và OpenCode.",
+      "Mỗi checkout là một thẻ. Mở thẻ ra, mỗi dòng agent mang đúng câu nó vừa nói, đọc thẳng từ session log của nó; gập lại thì các agent gom vào một dải. Phần còn lại nằm ở dấu trạng thái — đỏ là lỗi, vàng là đang đợi bạn, ba vạch nhảy là đang chạy, xám nhạt là đã xong, ô vuông là đã dừng hẳn. Hiện có cho Claude Code, Codex và OpenCode.",
     panelBoardTitle: "Mọi agent trên cùng một bảng.",
     panelBoardBody:
       "⌘⇧O mở Agent Board: mỗi agent đang chạy là một thẻ, gom từ mọi dự án và worktree trong cửa sổ — trạng thái, câu nó vừa nói, đã chạy được bao lâu. Thẻ cần bạn nhất đứng đầu, bấm vào một thẻ là vào thẳng pane của agent đó.",
     panelWorktreeTitle: "Mở agent thẳng vào một branch.",
     panelWorktreeBody:
-      "⌘T liệt kê mọi worktree trong dự án kèm branch nó đang đứng. Chọn một cái, chọn agent, pane mọc lên ngay trong thư mục đó — không cd, không nhầm cây.",
+      "⌘T mở danh sách New Agent cho đúng checkout bạn đang làm. Worktree và branch của nó nằm ngay trên cùng, các agent của bạn xếp bên dưới kèm lệnh mà mỗi agent sẽ gõ, cuối danh sách là Open another project…. Mỗi thẻ trong rail cũng giữ đúng danh sách này sau nút +.",
     panelSurfacesTitle: "Trên sân khấu không chỉ có terminal.",
     panelSurfacesBody:
-      "Cây file, editor, browser và bảng token usage dùng chung dải tab với các pane — ⌘⇧B mở explorer, ⌘S lưu, ⌘W đóng thứ đang ở trước mặt.",
+      "Cây file, editor, browser và bảng token usage dùng chung dải tab với các pane. ⌘⇧B mở explorer, dòng đầu tiên ghi tên thư mục gốc; Markdown mở ra ở dạng đã render, ⌘⇧V chuyển qua lại với mã nguồn; ⌘S lưu, ⌘W đóng thứ đang ở trước mặt.",
     panelUsageTitle: "Các agent tốn bao nhiêu, đọc thẳng từ máy bạn.",
     panelUsageBody:
       "⌘⇧U mở Token usage. Nó đọc chính những file session mà Claude Code và Codex đã ghi sẵn trong ~/.claude và ~/.codex — hôm nay, 7 ngày, 30 ngày hay toàn bộ, ước tính theo giá API. Không tài khoản, không gửi gì lên mạng.",
     panelCatalogTitle: "Mọi agent Deck biết, kèm đúng lệnh nó sẽ gõ.",
     panelCatalogBody:
-      "Settings → Agents chia danh sách làm hai: Installed đếm theo $PATH của máy bạn, và Available to install. Mỗi dòng in đúng lệnh nó mang sẵn — claude --dangerously-skip-permissions, riêng opencode không kèm cờ nào — và Enabled/Disabled mới là thứ đưa một agent ra khỏi picker.",
+      "Settings → Agents chia danh sách làm hai: Installed đếm theo $PATH của máy bạn, và Available to install. Mỗi dòng in đúng lệnh nó mang sẵn — claude --dangerously-skip-permissions, riêng opencode không kèm cờ nào — và Enabled/Disabled mới là thứ đưa một agent ra khỏi danh sách ⌘T.",
     downloadMac: "Tải cho macOS",
     downloadWin: "Tải cho Windows",
     comingSoon: "sắp có",
@@ -146,7 +150,7 @@ export const messages = {
     newBadge: "New",
     winPreviewTag: "thử nghiệm",
     winUnsignedNote:
-      "Bản chưa ký \u2014 Windows sẽ hiện cảnh báo SmartScreen. Chọn More info \u2192 Run anyway.",
+      "Bản chưa ký — Windows sẽ hiện cảnh báo SmartScreen. Chọn More info → Run anyway.",
     finaleTitle: "Shell của bạn, nguyên vẹn.",
     proofPtyTitle: "PTY thật, shell thật",
     proofPtyBody:
@@ -158,7 +162,7 @@ export const messages = {
       "Code, terminal và phiên agent đều nằm local. Deck gửi usage analytics first-party — luôn bật, không tắt được, và không bao giờ kèm code, đường dẫn file hay prompt — Settings → Privacy ghi rõ những gì được gửi.",
     scSplit: "chia dọc",
     scSplitH: "chia ngang",
-    scTab: "tab mới",
+    scTab: "agent mới",
     scExpand: "focus expand",
     scFind: "tìm kiếm",
     scClear: "xoá buffer",

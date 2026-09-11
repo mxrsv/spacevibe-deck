@@ -18,6 +18,7 @@
  * there is one path and one number in this file, not four.
  */
 
+import { STAGE_ICONS, renderChromeIcon } from "../../appwin.js";
 import { frame } from "./chrome.js";
 
 /** The path the agent prints, and the row the editor opens at. */
@@ -100,18 +101,48 @@ const EDITOR_LINES = [
   { n: 219, text: "}", cls: "" },
 ];
 
+/*
+ * Row 0 is the folder the tree is rooted at (1.1, `file-tree-view.tsx`): a
+ * caret, the folder's name and no type glyph, carrying the four actions
+ * `TreeRootActions` hangs off it — visible at rest, not on hover.
+ */
 const FILE_TREE = [
-  { name: "src", kind: "dir", depth: 0 },
-  { name: "terminal", kind: "dir", depth: 1 },
-  { name: "layout-engine.ts", kind: "file", depth: 2, active: true },
-  { name: "pane-lifecycle.ts", kind: "file", depth: 2 },
-  { name: "tabs-store.ts", kind: "file", depth: 2 },
-  { name: "session-journal.ts", kind: "file", depth: 2 },
-  { name: "lib", kind: "dir", depth: 1 },
-  { name: "agent-catalog.ts", kind: "file", depth: 2 },
-  { name: "agent-resume.ts", kind: "file", depth: 2 },
-  { name: "ui", kind: "dir", depth: 1 },
+  { name: "spacevibe-deck", kind: "root", depth: 0 },
+  { name: "src", kind: "dir", depth: 1 },
+  { name: "terminal", kind: "dir", depth: 2 },
+  { name: "layout-engine.ts", kind: "file", depth: 3, active: true },
+  { name: "pane-lifecycle.ts", kind: "file", depth: 3 },
+  { name: "tabs-store.ts", kind: "file", depth: 3 },
+  { name: "session-journal.ts", kind: "file", depth: 3 },
+  { name: "lib", kind: "dir", depth: 2 },
+  { name: "agent-catalog.ts", kind: "file", depth: 3 },
+  { name: "agent-resume.ts", kind: "file", depth: 3 },
+  { name: "ui", kind: "dir", depth: 2 },
 ];
+
+/* New File, New Folder, Refresh, Collapse All — Phosphor's FilePlus,
+   FolderPlus, ArrowClockwise and ArrowsInLineVertical, in that order. */
+const ROOT_ACTIONS = [
+  `${STAGE_ICONS.file}<path d="M12 11.5v5M9.5 14h5"/>`,
+  `${STAGE_ICONS.folder}<path d="M12 10.5v6M9 13.5h6"/>`,
+  STAGE_ICONS.refresh,
+  '<path d="M4 12h16"/><path d="M12 3.5v5.5m-3-3 3 3 3-3"/><path d="M12 20.5V15m-3 3 3-3 3 3"/>',
+];
+
+function renderTreeNode(node) {
+  const content =
+    node.kind === "root"
+      ? `<span class="scene-surfaces__rootname">${node.name}</span><span class="scene-surfaces__rootactions">${ROOT_ACTIONS.map(renderChromeIcon).join("")}</span>`
+      : node.name;
+
+  return `
+      <div
+        class="scene-surfaces__node${node.active ? " is-active" : ""}"
+        data-kind="${node.kind}"
+        style="--depth: ${node.depth}"
+      >${content}</div>
+    `;
+}
 
 /**
  * The scene's body alone — exported so the hero's scene switcher can stand it
@@ -120,15 +151,7 @@ const FILE_TREE = [
  * app with the explorer open beside the rail.
  */
 export function surfacesBody() {
-  const tree = FILE_TREE.map(
-    (node) => `
-      <div
-        class="scene-surfaces__node${node.active ? " is-active" : ""}"
-        data-kind="${node.kind}"
-        style="--depth: ${node.depth}"
-      >${node.name}</div>
-    `,
-  ).join("");
+  const tree = FILE_TREE.map(renderTreeNode).join("");
 
   const code = EDITOR_LINES.map((line) => {
     const classes = ["scene-surfaces__line", line.cls]
