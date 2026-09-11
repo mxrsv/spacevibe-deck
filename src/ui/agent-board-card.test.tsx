@@ -170,11 +170,10 @@ describe("AgentBoardCard", () => {
   });
   it("carries the tier in the accessible name", () => {
     const { host } = mount(card({ confidence: "inferred", state: "working" }));
-    expect(host.querySelector(".board-card__state")!.textContent).toBe("working...");
-    expect(host.querySelector(".board-card__working-dots")!.getAttribute("aria-hidden")).toBe(
-      "true",
-    );
-    expect(host.querySelector(".board-card__status .asr-row__mark")).toBeNull();
+    expect(host.querySelector(".board-card__state")!.textContent).toBe("working");
+    expect(
+      host.querySelector(".board-card__status .asr-row__mark--spinner .wsitem__spinner"),
+    ).not.toBeNull();
     expect(host.querySelector(".board-card__hit")!.getAttribute("aria-label")).toBe(
       "Claude, working, inferred, deck · main",
     );

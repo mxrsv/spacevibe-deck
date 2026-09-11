@@ -162,7 +162,6 @@
    The identity stays on one line; spacing separates the groups. */
 .board-card {
   --board-agent-glyph-size: 17px;
-  --board-working-cycle: 1.2s;
   position: relative; /* DL-27.1: a container with a full-bleed hit layer. */
   display: grid;
   /* The worktree yields space to the status and the ordinal. */
@@ -297,41 +296,6 @@
 
 .board-card__state {
   flex: 1 1 auto;
-}
-
-/* DL-34.3: fixed-width dots signal work without shifting the label. */
-.board-card__working-dots {
-  display: inline-flex;
-  width: 3ch;
-}
-
-.board-card__working-dots > span {
-  flex: 0 0 1ch;
-  animation: board-working-dot var(--board-working-cycle) ease-in-out infinite;
-}
-
-.board-card__working-dots > span:nth-child(2) {
-  animation-delay: calc(var(--board-working-cycle) / 4);
-}
-
-.board-card__working-dots > span:nth-child(3) {
-  animation-delay: calc(var(--board-working-cycle) / 2);
-}
-
-@keyframes board-working-dot {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .board-card__working-dots > span {
-    animation: none;
-  }
 }
 
 .board-card[data-state="asked"] .board-card__state {

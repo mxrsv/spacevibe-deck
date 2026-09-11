@@ -59,13 +59,10 @@ constraint: **consume as few machine resources as possible.**
   agent is working (DECK-30, amended 2026-09-09). The 6/10/8px bars share a
   900ms alternate cycle with a 150ms stagger; there is no beam. Leaving working
   removes all three bars. Reduced motion keeps their static heights. No other
-  surface inherits these exceptions.
-  **The fourth scoped exception, DL-34.3:** the Agent Board's `WORKING...`
-  label uses three staggered opacity loops with a 1.2s cycle, replacing its
-  spinner. The dots exist only while the card displays `working`; reduced
-  motion keeps all three static. The rail's `asked` ripple does not cross
-  to the Board, where the yellow frame carries attention. See the
-  [Board motion rules](../src/styles/19-agent-board.css).
+  surface inherits these exceptions. The Agent Board adds no motion of its
+  own: a `working` card wears the rail's ring (DL-27.3), and the rail's
+  `asked` ripple does not cross to the Board, where the yellow frame carries
+  attention (DL-34.3).
 - **DL-1.3** Banned: **blurred/offset** `box-shadow` (the app is a flat system —
   depth comes from background steps and 1px hairlines), `backdrop-filter`,
   `filter`, JS animation loops (`requestAnimationFrame`) for chrome, timers that
@@ -3401,11 +3398,12 @@ Numbered 34 because §33 was the previous highest rule.
   is what pressing the card does now.
 - **DL-34.3** **`asked` and `failed` colour the card's frame, and nothing else
   does.** The inset hairline takes `--status-unread` or `--red`; `working`,
-  `done` and `idle` keep `--hair`. `working` displays `WORKING...` with three
-  staggered opacity pulses in a fixed-width slot, replacing the spinner
-  (DL-1.2's fourth exception). Reduced motion keeps the dots static. See the
-  [status markup](../src/ui/agent-board-card.tsx) and
-  [animation](../src/styles/19-agent-board.css). The rail's `asked` ripple is
+  `done` and `idle` keep `--hair`. Every state leads its word with its rail
+  mark (DL-27.3); `working` gets the pending ring beside a plain `WORKING`.
+  **Amended 2026-09-11 (owner):** the three pulsing dots after `WORKING`,
+  which had replaced the ring, are gone — the ring is the one working signal
+  Deck already teaches on the rail. See the
+  [status markup](../src/ui/agent-board-card.tsx). The rail's `asked` ripple is
   switched off inside `.agent-board` — the frame is the whole signal at the
   size of the whole card. Green appears nowhere: DL-3.2 and the worktree
   card's colour rule already own it.

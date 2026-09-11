@@ -144,22 +144,13 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
         onFocus={() => onFocusRequest(card)}
       />
       <div class="board-card__status">
-        {word !== "working" && (
-          <RailStatusMark
-            state={card.departed ? "ended" : card.state}
-            confidence={card.confidence ?? "unknown"}
-          />
-        )}
-        <span class="board-label board-card__state">
-          {word}
-          {word === "working" && (
-            <span class="board-card__working-dots" aria-hidden="true">
-              <span>.</span>
-              <span>.</span>
-              <span>.</span>
-            </span>
-          )}
-        </span>
+        {/* DL-34.3: `working` wears the rail's pending ring, like every
+            other state wears its rail mark. */}
+        <RailStatusMark
+          state={card.departed ? "ended" : card.state}
+          confidence={card.confidence ?? "unknown"}
+        />
+        <span class="board-label board-card__state">{word}</span>
       </div>
       <span class="board-card__checkout" title={card.checkout}>
         {card.checkout}
