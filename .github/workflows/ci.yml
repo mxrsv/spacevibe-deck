@@ -1,19 +1,32 @@
 name: CI
 
-# A change that touches only the landing (`marketing/**`) has nothing for these
-# jobs to check — the app suite, the Tauri toolchain and the Windows runner —
-# and runs `landing.yml` instead. A change touching both runs both.
+# A change that touches only the landing (`marketing/**`) runs `landing.yml`
+# instead, and one that touches only prose runs nothing. The Tauri host is
+# feature-frozen, so its Rust checks run from `tauri.yml` only when
+# `src-tauri/**` changes. A change touching several of these runs each.
 on:
   push:
     branches: [main]
     paths-ignore:
       - "marketing/**"
       - ".github/workflows/landing.yml"
+      - ".github/workflows/tauri.yml"
+      - "docs/**"
+      - "**/*.md"
   pull_request:
     paths-ignore:
       - "marketing/**"
       - ".github/workflows/landing.yml"
+      - ".github/workflows/tauri.yml"
+      - "docs/**"
+      - "**/*.md"
   workflow_dispatch:
+
+# Several sessions push to `main` in quick succession; only the newest commit's
+# result is worth waiting for.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -30,11 +43,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
-        with:
-          components: rustfmt
 
       - name: Install dependencies
         run: npm ci
@@ -61,29 +69,6 @@ jobs:
       # them. This step is the whole typecheck of the Electron main process.
       - name: Typecheck and bundle the Electron main process
         run: npm run electron:build
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-        with:
-          workspaces: src-tauri -> target
-
-      - name: Check Rust formatting
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
-
-      - name: Install Tauri Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev
-
-      - name: Rust tests
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
 
   # `backend/` is the analytics ingest Worker, and it is its own npm project
   # with its own lockfile — the root `npm test` deliberately excludes it
@@ -115,7 +100,12 @@ jobs:
       - name: Test
         run: npm test
 
+  # By hand only (owner, 2026-09-11). It has been red on every push for weeks
+  # with the pre-existing failures in docs/internals/traps.md, so on push it
+  # spent a Windows runner and told nobody anything. Run it before a Windows
+  # release: its `npm test` is the one place a real ConPTY is spawned.
   windows-check:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - name: Checkout

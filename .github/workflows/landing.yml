@@ -17,6 +17,10 @@ on:
       - ".github/workflows/landing.yml"
   workflow_dispatch:
 
+concurrency:
+  group: landing-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
