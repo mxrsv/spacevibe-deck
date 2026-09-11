@@ -47,7 +47,7 @@ async function setup(manual = false) {
       source: "hook",
       agent: "codex",
       event,
-      turnId,
+      ...(event === "SessionStart" ? {} : { turnId }),
       sessionId: "session-1",
       cwd: "/repo",
       message: "Finished.",
@@ -58,6 +58,29 @@ async function setup(manual = false) {
 }
 
 describe("Codex card lifecycle", () => {
+  it("keeps a resumed card idle when SessionStart arrives before process discovery", async () => {
+    const { tm, pty, infos, emit } = await setup(true);
+    try {
+      infos.set(1, processInfo(1, "/repo", "codex", "agent", "codex"));
+      emit("SessionStart");
+      await vi.advanceTimersByTimeAsync(0);
+      for (let i = 0; i < 60; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+        pty.emitOutput(1, "\x1b[?2026h\x1b[?2026l");
+      }
+      const pane = tabViews.value[0].panes![0];
+      expect(pane).toMatchObject({ phase: "idle", sessionId: "session-1", hasRun: false });
+      expect(paneSignal(pane).state).toBe("idle");
+      expect(tabViews.value[0].agentBusy).toBe(false);
+      emit("UserPromptSubmit");
+      expect(tabViews.value[0].panes?.[0]?.phase).toBe("working");
+      emit("Stop");
+      expect(tabViews.value[0].agentBusy).toBe(false);
+    } finally {
+      tm.dispose();
+    }
+  });
+
   it("keeps the newest hook while process discovery is waiting for git branch resolution", async () => {
     const { tm, pty, infos, emit } = await setup(true);
     let finishBranch!: (value: string | null) => void;

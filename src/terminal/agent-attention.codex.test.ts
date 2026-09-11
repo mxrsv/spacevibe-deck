@@ -12,7 +12,7 @@ function setup() {
       source: "hook",
       agent: "codex",
       event,
-      turnId,
+      ...(event === "SessionStart" ? {} : { turnId }),
       sessionId,
       cwd: "/repo",
       message: "Finished.",
@@ -42,6 +42,82 @@ function setup() {
 }
 
 describe("Codex lifecycle", () => {
+  it("keeps a resumed session idle before its first prompt, including late startup repaint", () => {
+    const { tracker, send, redraw, advance } = setup();
+    redraw();
+    expect(tracker.snapshot(1)?.phase).toBe("working");
+    send("SessionStart");
+    expect(tracker.snapshot(1)).toMatchObject({
+      phase: "idle",
+      phaseConfidence: "explicit",
+      attention: "none",
+      hasRun: false,
+    });
+    advance(180_000);
+    for (let i = 0; i < 60; i++) redraw();
+    expect(tracker.snapshot(1)).toMatchObject({ phase: "idle", attention: "none", hasRun: false });
+    send("UserPromptSubmit");
+    expect(tracker.snapshot(1)?.phase).toBe("working");
+    send("Stop");
+    expect(tracker.snapshot(1)).toMatchObject({ phase: "idle", attention: "completed" });
+  });
+
+  it("does not rewind an active or completed turn when SessionStart is repeated", () => {
+    const { tracker, send, redraw } = setup();
+    send("UserPromptSubmit");
+    send("SessionStart");
+    expect(tracker.snapshot(1)?.phase).toBe("working");
+    send("Stop");
+    tracker.acknowledge(1);
+    send("SessionStart");
+    redraw();
+    expect(tracker.snapshot(1)).toMatchObject({ phase: "idle", attention: "none", hasRun: true });
+  });
+
+  it("withdraws inferred startup completion without acknowledging unseen output", () => {
+    const { tracker, send, redraw } = setup();
+    tracker.noteOutputVisibility(1, false);
+    redraw();
+    tracker.noteActivity(1, {
+      phase: "idle",
+      source: "output-heuristic",
+      severity: null,
+      oscState: null,
+      observedAt: 100_002,
+    });
+    expect(tracker.snapshot(1)?.attention).toBe("completed");
+    send("SessionStart");
+    expect(tracker.snapshot(1)).toMatchObject({
+      phase: "idle",
+      attention: "none",
+      source: null,
+      hasRun: false,
+      unread: true,
+    });
+  });
+
+  it("releases startup lifecycle when Signals is disabled or the agent exits", () => {
+    const { tracker, send, redraw } = setup();
+    send("SessionStart");
+    tracker.releaseCodexLifecycle();
+    redraw();
+    expect(tracker.snapshot(1)?.phase).toBe("working");
+    send("SessionStart");
+    tracker.noteExit(1, 0);
+    send("SessionStart");
+    expect(tracker.snapshot(1)?.phase).toBe("exited");
+    tracker.noteProcess(1, "codex", true);
+    redraw();
+    expect(tracker.snapshot(1)?.phase).toBe("working");
+  });
+
+  it("accepts the first completion after resume even when its prompt hook was missed", () => {
+    const { tracker, send } = setup();
+    send("SessionStart");
+    send("Stop");
+    expect(tracker.snapshot(1)).toMatchObject({ phase: "idle", attention: "completed" });
+  });
+
   it("clears working on interruption without reporting completion", () => {
     const { tracker, send, redraw } = setup();
     send("UserPromptSubmit");

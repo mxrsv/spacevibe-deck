@@ -591,7 +591,24 @@ export function createAgentAttentionTracker(
     };
     switch (signal.kind) {
       case "session":
-        return stamped;
+        if (
+          signal.agent !== "codex" ||
+          (prev.sessionId === signal.sessionId && prev.codexLifecycle !== null)
+        )
+          return stamped;
+        // Resume replays history before any prompt. Claim lifecycle authority now,
+        // without reporting an old answer as a newly completed turn.
+        return {
+          ...stamped,
+          codexLifecycle: { turnId: null, completed: false, retiredTurns: [] },
+          phase: "idle",
+          phaseConfidence: "explicit",
+          phaseFromContract: true,
+          hasRun: false,
+          ...(prev.source === "output-heuristic"
+            ? { attention: "none", source: null, confidence: "explicit", detail: null }
+            : {}),
+        };
       case "working": {
         let next: PaneState = {
           ...stamped,
@@ -875,17 +892,7 @@ export function createAgentAttentionTracker(
       if (signal.agent === "codex") {
         if (prev.agentLabel !== "codex") return null;
         if (signal.kind === "session") {
-          return commit(
-            id,
-            prev,
-            reduceContract(
-              {
-                ...prev,
-                codexLifecycle: prev.sessionId === signal.sessionId ? prev.codexLifecycle : null,
-              },
-              signal,
-            ),
-          );
+          return commit(id, prev, reduceContract(prev, signal));
         }
         const lifecycle = advanceCodexTurn(prev.codexLifecycle, signal);
         if (lifecycle === null) return null;
