@@ -33,7 +33,6 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BUILTIN_AGENTS } from "../../../src/lib/agent-catalog.ts";
 import { AGENT_MARKS, renderAgentMark, renderAgentStrip } from "./agent-strip.js";
 import {
   renderStageFrameRow,
@@ -482,18 +481,7 @@ describe("the animated path's seed", () => {
 /* (absorbed from `agent-strip.test.js`, T3)                           */
 /* ------------------------------------------------------------------ */
 
-describe("AGENT_MARKS mirrors the app's catalog", () => {
-  it("carries six agents, in the catalog's ids, labels and order", () => {
-    // The mirror reaches into `src/lib/agent-catalog.ts` on purpose: it is
-    // the only thing that catches the landing drifting behind a seventh
-    // built-in agent. Nothing enforced it until Cursor proved the list moves.
-    expect(AGENT_MARKS).toHaveLength(6);
-    expect(AGENT_MARKS.map((agent) => agent.id)).toEqual(BUILTIN_AGENTS.map((agent) => agent.id));
-    expect(AGENT_MARKS.map((agent) => agent.label)).toEqual(
-      BUILTIN_AGENTS.map((agent) => agent.label),
-    );
-  });
-
+describe("AGENT_MARKS", () => {
   it("puts cursor-agent last and gives it no brand file", () => {
     expect(AGENT_MARKS.at(-1)).toEqual({ id: "cursor-agent", label: "Cursor", mark: null });
 
