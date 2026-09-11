@@ -96,16 +96,6 @@ export interface AgentBoardView {
   readonly selected: BoardCard | null;
 }
 
-/** DL-27.3's loudest-wins fold, as a sort rank (spec §5.2). */
-export const STATE_RANK: Readonly<Record<RailState, number>> = {
-  failed: 0,
-  asked: 1,
-  working: 2,
-  done: 3,
-  idle: 4,
-  ended: 4,
-};
-
 /**
  * The word a card whose agent has LEFT prints in place of its state word
  * (DL-34.2, amended 2026-09-04 from the eye pass). A departed pane's state is
@@ -332,14 +322,15 @@ function visible(card: BoardCard, input: AgentBoardInput): boolean {
 }
 
 function sortCards(cards: readonly BoardCard[], heldOrder: readonly number[] | null): BoardCard[] {
-  const loud = [...cards].sort(
-    (a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || a.rank - b.rank,
-  );
-  if (heldOrder === null) return loud;
+  // Rank order, never state: a card that moved whenever its agent changed
+  // state lost the user's place and shifted under the pointer mid-press.
+  // State shows on the card itself; its position is its number.
+  const ranked = [...cards].sort((a, b) => a.rank - b.rank);
+  if (heldOrder === null) return ranked;
   // Spec §5.2: while a panel is open the order is held; cards that arrived
-  // since take their loud position after every held one.
+  // since take their rank position after every held one.
   const held = new Map(heldOrder.map((paneId, index) => [paneId, index]));
-  return loud
+  return ranked
     .map((card, index) => ({ card, key: held.get(card.paneId) ?? heldOrder.length + index }))
     .sort((a, b) => a.key - b.key)
     .map((entry) => entry.card);

@@ -146,16 +146,17 @@ describe("buildAgentBoard — cards", () => {
     ]);
     expect(view.total).toBe(6);
   });
-  it("sorts loudest first, then by ordinal, and forces a departed card to idle", () => {
+  it("keeps cards in rank order whatever their state, and forces a departed card to idle", () => {
     const view = buildAgentBoard(input());
     expect(view.cards.map((c) => `${c.paneId}:${c.state}`)).toEqual([
-      "41:failed",
       "21:asked",
-      "11:working",
       "22:done",
+      "11:working",
+      "41:failed",
       "31:idle",
       "51:idle",
     ]);
+    expect(view.cards.map((c) => c.rank)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(view.cards[5].departed).toBe(true);
     expect(view.cards[5].agent).toBe("claude");
   });
