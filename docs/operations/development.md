@@ -43,7 +43,9 @@ the Rust registry first.
 ## CI
 
 [`ci.yml`](../../.github/workflows/ci.yml) runs on every push to `main`, every pull request,
-and by hand.
+and by hand — except a change that touches only `marketing/**`, which runs
+[`landing.yml`](../../.github/workflows/landing.yml) instead: the landing's Vitest files and
+`build:landing`, on ubuntu. A change touching both runs both.
 
 - `check` (ubuntu): `generate:menu:check`, `lint`, `test`, `build`, `electron:build`,
   `cargo fmt --check`, `cargo test`.
