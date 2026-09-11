@@ -57,11 +57,12 @@ export const PANES: readonly RailCardPane[] = [
   pane({ paneId: 3, agent: "claude", label: "Claude 2", state: "working", model: "Opus 4.1" }),
   pane({ paneId: 4, agent: "gemini", label: "Gemini", state: "working", model: "" }),
   pane({ paneId: 5, agent: "opencode", label: "opencode", state: "done", model: "" }),
-  pane({ paneId: 6, agent: "cursor-agent", label: "Cursor", state: "idle", model: "" }),
+  pane({ paneId: 6, agent: "Aider", label: "Aider", state: "idle", model: "" }),
 ];
 
 /**
- * Six agent KINDS in one checkout — every built-in Deck ships. Only the cap
+ * Six agent KINDS in one checkout — every built-in Deck ships plus one
+ * declared agent, which classifies under its label (`Aider`). Only the cap
  * row uses it: with the `+` now occupying a segment of its own, six kinds is
  * where an uncapped strip stops fitting, and a fixture that never reaches
  * that point would let the uncapped column look correct.
@@ -84,7 +85,7 @@ export const SPREAD: readonly RailCardPane[] = [
   pane({ paneId: 13, agent: "gemini", label: "Gemini", state: "working", model: "" }),
   pane({ paneId: 14, agent: "opencode", label: "opencode", state: "done", model: "" }),
   pane({ paneId: 15, agent: "agy", label: "Agy", state: "idle", model: "" }),
-  pane({ paneId: 16, agent: "cursor-agent", label: "Cursor", state: "idle", model: "" }),
+  pane({ paneId: 16, agent: "Aider", label: "Aider", state: "idle", model: "" }),
 ];
 
 /**
@@ -262,10 +263,10 @@ export const ACTION_AGENTS: readonly ActionRow[] = [
   { id: "claude", title: "Run Claude", detail: "Sonnet 4.5", agent: "claude", bothHosts: true },
   { id: "codex", title: "Run Codex", detail: "GPT-5", agent: "codex", bothHosts: true },
   {
-    id: "cursor",
-    title: "Run Cursor CLI",
-    detail: "cursor-agent",
-    agent: "cursor-agent",
+    id: "gemini",
+    title: "Run Gemini CLI",
+    detail: "gemini --yolo",
+    agent: "gemini",
     bothHosts: true,
   },
   {

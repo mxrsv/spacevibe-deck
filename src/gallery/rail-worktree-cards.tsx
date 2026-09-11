@@ -41,7 +41,7 @@ import { NOOP } from "./chrome-fixtures";
  *    override has to target those same classes to win.
  *
  * `ai-terminal`'s five panes are deliberately spread across THREE tabs (a
- * split holding claude+codex, a lone cursor-agent, a split holding
+ * split holding claude+codex, a lone agy, a split holding
  * opencode+gemini) rather than one — the card's load-bearing claim is that it
  * flattens every pane of a checkout regardless of which tab holds it (design
  * §3), and that is invisible in a fixture where a card's panes all come from
@@ -149,10 +149,10 @@ const WORKTREES: readonly RailWorktreeGroup[] = [
       }),
       cardPane({
         paneId: 903,
-        agent: "cursor-agent",
-        label: "Cursor CLI",
+        agent: "agy",
+        label: "Antigravity",
         state: "done",
-        model: "Composer",
+        model: "Gemini 3 Pro",
         tabIndex: 1,
       }),
       cardPane({
