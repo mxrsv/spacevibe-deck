@@ -415,9 +415,9 @@ function WorktreeCardRail(props: AgentRailProps) {
             );
           })}
         </section>
-        {props.recentActivity}
       </div>
 
+      {props.recentActivity}
       {props.footer}
     </nav>
   );

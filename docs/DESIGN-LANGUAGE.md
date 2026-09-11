@@ -3251,9 +3251,11 @@ treatment by [13-sessions.css](../src/styles/13-sessions.css) `current`.
 Numbered 33 because §22 stays reserved and §32 was the previous highest rule.
 
 - **DL-33.1** **Recent activity is a separate block, not a fourth rail tier.**
-  It follows the live and remembered project stream in the rail's one vertical
-  scrollport, with one `--seam-recessed` separator and no card or independent
-  background. It aggregates **at most five** supported sessions across every
+  It is pinned below the live and remembered project
+  [scrollport](../src/ui/agent-rail.tsx), above the footer, with one
+  `--seam-recessed` separator and no card or independent background. Only the
+  project list scrolls; the activity block retains its height. It aggregates
+  **at most five** supported sessions across every
   project, globally newest first. The sidebar applies an **Unread** filter
   to that snapshot (owner, 2026-09-09), using the existing `asked` signal:
   questions, warnings and completed results not yet acknowledged. The heading

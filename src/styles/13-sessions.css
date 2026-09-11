@@ -445,11 +445,11 @@
 
 /* ── Recent activity: compact Agent Rail re-entry block ────────────────── */
 
-/* Flat continuation of the rail, not a card. It is injected after
-   `.asr-stream` inside `.asr-rail__list`, so both surfaces share the rail's
-   one vertical scrollport while the footer remains pinned below it. */
+/* DL-33.1: a flat block pinned between the project scrollport and footer.
+   Keep its height while the project list shrinks to fit the rail. */
 .recent-session-activity {
   box-sizing: border-box;
+  flex-shrink: 0;
   min-width: 0;
   max-width: 100%;
   margin-top: 8px;

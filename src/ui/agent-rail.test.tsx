@@ -1404,7 +1404,7 @@ describe("AgentRail carried-over jobs", () => {
     expect(host.querySelector(".asr-stream")?.firstElementChild).not.toBeNull();
   });
 
-  it("places optional recent activity after the project stream in the one scrollport", async () => {
+  it("places optional recent activity outside the project scrollport and before the footer", async () => {
     mount({
       recentActivity: <section data-testid="recent-activity" />,
       footer: <div data-testid="rail-footer" />,
@@ -1416,10 +1416,12 @@ describe("AgentRail carried-over jobs", () => {
     const activity = host.querySelector('[data-testid="recent-activity"]');
     const footer = host.querySelector('[data-testid="rail-footer"]');
 
-    expect(activity?.parentElement).toBe(list);
-    expect(stream?.nextElementSibling).toBe(activity);
+    expect(stream?.parentElement).toBe(list);
+    expect(list?.contains(activity)).toBe(false);
+    expect(activity?.parentElement).toBe(list?.parentElement);
+    expect(list?.nextElementSibling).toBe(activity);
     expect(list?.contains(footer)).toBe(false);
-    expect(list?.nextElementSibling).toBe(footer);
+    expect(activity?.nextElementSibling).toBe(footer);
   });
 
   it("adds no rail wrapper when recent activity is omitted", async () => {
