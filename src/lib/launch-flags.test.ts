@@ -45,9 +45,6 @@ describe("parseLaunchFlags / composeLaunchFlags", () => {
   it("reads aliases and writes the canonical spelling", () => {
     expect(roundTrip("gemini", "gemini -y")).toBe("gemini --yolo");
     expect(roundTrip("gemini", "gemini --approval-mode yolo")).toBe("gemini --yolo");
-    expect(roundTrip("cursor-agent", "cursor-agent -f --plan")).toBe(
-      "cursor-agent --force --mode plan",
-    );
   });
 
   it("reads --flag=value but only claims the whole token", () => {

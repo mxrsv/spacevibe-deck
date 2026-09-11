@@ -130,7 +130,7 @@ describe("LaunchProfileEditor", () => {
     expect(host.textContent).toContain("1 detected");
     expect(host.textContent).toContain("Available to install");
     // Both lists carry the same row; only the heading above them differs.
-    expect(host.querySelectorAll(".lp-agent")).toHaveLength(6);
+    expect(host.querySelectorAll(".lp-agent")).toHaveLength(5);
   });
 
   it("shows runtime defaults only for installed agents and supported flags", () => {
@@ -431,29 +431,29 @@ describe("LaunchProfileEditor", () => {
 
   it("defers an uninstalled agent's form without losing edits across disclosure", () => {
     mount();
-    click(byLabel("Configure Cursor"));
-    const form = panel("cursor-agent").querySelector(".lp-launch-flags")?.parentElement;
+    click(byLabel("Configure Gemini CLI"));
+    const form = panel("gemini").querySelector(".lp-launch-flags")?.parentElement;
     expect(form?.hidden).toBe(true);
-    const configure = Array.from(panel("cursor-agent").querySelectorAll("button")).find(
+    const configure = Array.from(panel("gemini").querySelectorAll("button")).find(
       (button) => button.textContent === "Configure launch",
     )!;
     act(() => {
       configure.focus();
     });
     click(
-      Array.from(panel("cursor-agent").querySelectorAll("button")).find(
+      Array.from(panel("gemini").querySelectorAll("button")).find(
         (button) => button.textContent === "Configure launch",
       )!,
     );
     expect(form?.hidden).toBe(false);
-    expect(document.activeElement).toBe(byLabel("Command for Cursor"));
-    expect(byLabel("Additional models for Cursor")).toBeNull();
-    editCommand("Cursor", "cursor-agent --mode ask");
-    click(byLabel("Configure Cursor"));
-    click(byLabel("Configure Cursor"));
+    expect(document.activeElement).toBe(byLabel("Command for Gemini CLI"));
+    expect(byLabel("Additional models for Gemini CLI")).toBeNull();
+    editCommand("Gemini CLI", "gemini --approval-mode plan");
+    click(byLabel("Configure Gemini CLI"));
+    click(byLabel("Configure Gemini CLI"));
     expect(form?.hidden).toBe(false);
-    expect((byLabel("Command for Cursor") as HTMLInputElement).value).toBe(
-      "cursor-agent --mode ask",
+    expect((byLabel("Command for Gemini CLI") as HTMLInputElement).value).toBe(
+      "gemini --approval-mode plan",
     );
   });
 

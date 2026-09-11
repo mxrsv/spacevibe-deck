@@ -12,8 +12,7 @@
  *
  * **Every flag was read off that CLI's own `--help` on the owner's machine on
  * 2026-09-11**, the rule `runtime-catalog.ts` follows: claude 2.1.268, codex
- * 0.154.0, opencode 1.18.30, agy 1.1.13, gemini 0.55.1, cursor-agent
- * 2026.07.01. Left out on purpose: model and effort (their own rows), print and
+ * 0.154.0, opencode 1.18.30, agy 1.1.13, gemini 0.55.1. Left out on purpose: model and effort (their own rows), print and
  * headless flags, session resume/continue/fork, prompts, directories and
  * worktrees (Deck owns the pane's cwd), debug and logging, and opencode's
  * port/hostname (the signal adapter pins the port).
@@ -70,8 +69,6 @@ const CODEX_SANDBOX = ["--sandbox", "-s"];
 const CODEX_APPROVAL = ["--ask-for-approval", "-a"];
 const AGY_MODE = ["--mode"];
 const GEMINI_APPROVAL = ["--approval-mode"];
-const CURSOR_MODE = ["--mode"];
-const CURSOR_SANDBOX = ["--sandbox"];
 
 export const LAUNCH_FLAGS: Readonly<Record<string, readonly LaunchFlag[]>> = {
   claude: [
@@ -165,42 +162,6 @@ export const LAUNCH_FLAGS: Readonly<Record<string, readonly LaunchFlag[]>> = {
     },
     toggle("sandbox", "Sandbox", "Run tools inside a sandbox.", ["--sandbox"], ["-s"]),
     toggle("trust", "Trust folder", "Trust the current folder for this session.", ["--skip-trust"]),
-  ],
-  "cursor-agent": [
-    toggle(
-      "force",
-      "Run everything",
-      "Allow commands unless explicitly denied.",
-      ["--force"],
-      ["-f"],
-      ["--yolo"],
-    ),
-    toggle("autoReview", "Auto review", "Run safe tool calls automatically and ask for the rest.", [
-      "--auto-review",
-    ]),
-    {
-      id: "mode",
-      label: "Mode",
-      desc: "Start read-only, to plan or to answer questions.",
-      kind: "menu",
-      options: [
-        option("plan", "Plan", ["--mode", "plan"], ["--plan"]),
-        valued(CURSOR_MODE, "ask", "Ask"),
-      ],
-    },
-    {
-      id: "sandbox",
-      label: "Sandbox",
-      desc: "Override the sandbox setting from config.",
-      kind: "menu",
-      options: [
-        valued(CURSOR_SANDBOX, "enabled", "Enabled"),
-        valued(CURSOR_SANDBOX, "disabled", "Disabled"),
-      ],
-    },
-    toggle("approveMcps", "Approve MCP servers", "Approve every MCP server automatically.", [
-      "--approve-mcps",
-    ]),
   ],
 };
 
