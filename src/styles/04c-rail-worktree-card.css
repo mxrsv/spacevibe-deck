@@ -33,6 +33,9 @@
 .asr-card,
 .asr-bare,
 .asr-card__row {
+  /* DL-27.23: dot left edge = project text at 30px. A 9px dot is centered
+     in a 14px slot, so the content inset is 30px - (14px - 9px) / 2. */
+  --asr-worktree-inset: 27.5px;
   /* Radius (spec §9.8, Task 10 gate row 3). 6px sits between DL-20.1's `--radius-flat` (2px)
      and `--radius-tight` (8px) and matches no existing rung — the owner's own pick (2026-08-25:
      every corner in this sheet collapses to one 6px radius), reversing a round-everything
@@ -70,7 +73,7 @@
 
 /* A checkout with nothing running (design §6): the head row's own shape and nothing else — no
    box, no meta line, no strip. Column alignment under the project cluster is what places it:
-   the 14px mark track and 8px gap are the boxed card's own head rhythm, so `main` and every
+   the 14px mark track and 6px gap are the boxed card's own head rhythm, so `main` and every
    branch under it start on one left edge whether or not it has a card around it. */
 .asr-bare {
   box-sizing: border-box;
@@ -81,7 +84,7 @@
   column-gap: 6px;
   width: 100%;
   min-height: 26px;
-  padding: 0 9px;
+  padding: 0 9px 0 var(--asr-worktree-inset);
   border: 0;
   background: none;
   color: inherit;
@@ -204,7 +207,7 @@ button.asr-bare:hover {
      carry a second gap, since the count line, every row and the closed strip are all direct
      children of this one grid alongside the head and the meta line. */
   gap: 1px;
-  padding: 6px 9px 7px;
+  padding: 6px 9px 7px var(--asr-worktree-inset);
   border-radius: var(--asr-card-radius);
   background: var(--tab-rest-bg);
   box-shadow: inset 0 0 0 1px var(--hair);

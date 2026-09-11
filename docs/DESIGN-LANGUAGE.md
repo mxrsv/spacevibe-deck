@@ -350,9 +350,9 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   exists; DL-4.5's closed exception list is untouched.
 
   **One scoped exception, added 2026-08-17 and amended 2026-08-19 and
-  2026-09-11 (owner): the agent rail's cluster header takes `--type-project`
-  at 15px.** It is the one ladder-role label that stands above the 14px title
-  rung. It keeps `--text-muted` — only the size is excepted, never the tone.
+  2026-09-11 (owner): the agent rail's cluster header locally maps `--type-project`
+  to the 14px `--type-title` rung.** It keeps `--text-muted`.
+  The mapping is scoped in [the rail stylesheet](../src/styles/04a-agent-rail.css).
   The rail prints a group label above EVERY cluster in a tall scrolling
   column, so each one has to be found at a glance above its bordered card;
   `Tools` and `.cfg-group` head short groups on surfaces the eye is already
@@ -412,9 +412,9 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
      before this: the section title and the group labels inside it were both
      `--type-title`, so the screen's subject was printed at the size of the
      smallest thing on it;
-  6. the **Agent Rail project label** (`--type-project`, 15px, amended
-     2026-09-11) — a scoped navigation label 1px above the title rung
-     (DL-27.9).
+  6. the **Agent Rail project label** now uses the standard 14px title rung
+     through a header-local `--type-project` alias (DL-27.9), as defined in
+     [the rail stylesheet](../src/styles/04a-agent-rail.css).
 
   Anything else that wants its own size amends this list before it ships.
 
@@ -936,6 +936,8 @@ answered here rather than re-argued per button.
   presentation is set: `color="currentColor"`, the weight, `aria-hidden`,
   `focusable="false"`, plus the unconditional `deck-icon`
   class the stylesheet's one icon rule hangs off. Icons are imported by name.
+  The rail's project `Folder` uses the surface-scoped `filled` prop in
+  [both live and remembered headers](../src/ui/agent-rail.tsx) (DL-27.17).
   Nothing else authors an `<svg>`, and no glyph character stands in for an
   action — `scripts/icon-system.test.ts` enforces both.
   **Amended 2026-08-19: `regular` for every icon, `fill` for named exceptions.**
@@ -2364,12 +2366,10 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   is printed **only when a person typed that title**: a derived label repeating
   the name above it is not a turn. DL-27.11 narrows that fallback again: only
   an `asked` or `failed` row paints it.
-  **Amended 2026-08-19 and 2026-09-11 (owner):** the header rises from 11px
-  `--type-meta` to the scoped `--type-project` role, first 13px and then 15px,
-  from a screenshot of the shipped rail — 1px past the 14px title rung, so each
-  project is found at a glance above its bordered card. It keeps
-  `--text-muted`; the project becomes easier to locate without taking the
-  agents' primary tone.
+  **Amended 2026-09-11 (owner):** the header uses a locally scoped
+  `--type-project: var(--type-title)` at 14px, reducing the previous 15px by
+  1px without changing other consumers of the global token. It keeps
+  `--text-muted` in [the rail stylesheet](../src/styles/04a-agent-rail.css).
   **The header's vertical rhythm is re-tuned 2026-09-10 (owner, chosen from
   three drawn candidates): the BREAK is 16px and the HUG is 2px.** The figures
   above set both, and the pair had drifted apart in meaning: the break between
@@ -2571,9 +2571,10 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   the caret sits at the far edge so expansion is a predictable trailing
   affordance rather than punctuation before the name. Both glyphs are
   decorative; the button's accessible name carries the expand/collapse action.
-  The same-day follow-up raises the folder from `CHROME_ICON` (13px) to
-  `FEATURE_ICON` (15px) and the name from 11px to `--type-project` (13px then,
-  15px since 2026-09-11 — DL-27.9) without changing the caret.
+  The folder uses `FEATURE_ICON` (15px) with `filled` in
+  [the header component](../src/ui/agent-rail.tsx). Its 17px column remains
+  separate from checkout content; the icon-to-name gap is 6px and the name
+  is 14px (DL-27.9), set in [the stylesheet](../src/styles/04a-agent-rail.css).
 
 - **DL-27.18** **RETIRED 2026-09-02 (owner, `openspec/changes/rail-create-consolidation`):
   a project header carries no launcher.** Every checkout carries its own
@@ -2749,12 +2750,12 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   checkout, and the rail flattened that away. With several agents in several
   worktrees of one project the flat list interleaved two checkouts' runs with
   nothing on screen saying which rows shared one, and the branch word — a row
-  suffix under DL-27.9 — was printed once per agent. **The tiers are separated
-  by TYPE, not by indentation:** all three stand on the same 31px left edge
-  (the owner's 2026-08-19 ruling that the project name shares the rows' edge),
-  because the indent would be paid for out of `.asr-row--tab`'s
-  `minmax(0, 1fr)` track, which holds the agent's newest turn — DL-27.15's
-  whole content of the row. The branch takes the row suffix's own treatment
+  suffix under DL-27.9 — was printed once per agent. **The folder owns the
+  outer column (owner, 2026-09-11):** boxed and bare checkout content is inset
+  so each 9px checkout dot starts at the project name's 30px left edge.
+  The 14px mark slot therefore starts at 27.5px in
+  [the card stylesheet](../src/styles/04c-rail-worktree-card.css).
+  The branch takes the row suffix's own treatment
   (`--text-faint`, `--type-meta`, 450), one step quieter than the project and
   one quieter again than a turn. **A group with no open tab still prints** when
   the user has worked in that checkout before (Deck's workspace history) — the

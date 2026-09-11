@@ -308,7 +308,7 @@ function WorktreeCardRail(props: AgentRailProps) {
                         }}
                       >
                         <span class="asr-cluster__folder" aria-hidden="true">
-                          <DeckIcon icon={Folder} size={FEATURE_ICON} />
+                          <DeckIcon icon={Folder} size={FEATURE_ICON} filled />
                         </span>
                         <span class="asr-cluster__name">{group.project}</span>
                         <span class="asr-cluster__caret" aria-hidden="true">
@@ -324,7 +324,7 @@ function WorktreeCardRail(props: AgentRailProps) {
                          — the checkouts under it carry the create control. */
                       <span class="asr-cluster__still">
                         <span class="asr-cluster__folder" aria-hidden="true">
-                          <DeckIcon icon={Folder} size={FEATURE_ICON} />
+                          <DeckIcon icon={Folder} size={FEATURE_ICON} filled />
                         </span>
                         <span class="asr-cluster__name">{group.project}</span>
                       </span>

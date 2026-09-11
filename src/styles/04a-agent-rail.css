@@ -22,10 +22,8 @@
 
    Sizes come from the DL-4.4 ladder rather than the specimen's px literals
    (DL-4.5): the specimen's 12 → `--type-body`, its 11.5/11 → `--type-meta`,
-   its 10.5 and the `+N` chip's 9.5 → `--type-micro`. NOTHING in this file
-   reaches `--type-title` any more: the cluster header held it from 2026-08-16,
-   took `--type-meta` on 2026-08-17, then gained the scoped
-   `--type-project` role on 2026-08-19 (DL-27.9), 15px since 2026-09-11. Motion is scoped inside
+   its 10.5 and the `+N` chip's 9.5 → `--type-micro`. The cluster header scopes
+   `--type-project` to the 14px `--type-title` rung (DL-27.9). Motion is scoped inside
    a `prefers-reduced-motion: no-preference` block rather than switched off by
    class name (DESIGN-LANGUAGE §9 checklist 3); the rail's transitions are
    turned off by the reduce-scope list further down this file. ── */
@@ -156,11 +154,8 @@
    `--type-title`. The size half of that is reversed below; the `--text-muted`
    tone it also introduced is NOT, and still keeps the label off the faint
    rung a caption would sit on. */
-/* DL-27.9, amended 2026-09-11 (owner): the project name is 15px, 1px above the
-   14px title rung, so the folder a card belongs to is found without reading.
-   `--type-project` records that scoped exception once in the token file. The
-   tone stays `--text-muted`, not `--text-faint`: it remains supporting context
-   for the agents rather than the loudest word in the column. */
+/* DL-27.9: the project name uses the 14px title rung within this header.
+   Its muted tone keeps it supporting context for the agents. */
 /* The header row itself since 2026-08-19: a line holding the collapse control
    and its close, not a button. The padding stays here so the controls share one
    inset and the first-project rule below still lands.
@@ -173,6 +168,7 @@
    control (`rail-create-consolidation`, 2026-09-02): two tracks, not three, so
    the caret no longer stands 24px in from a slot nothing occupies. */
 .asr-cluster__head {
+  --type-project: var(--type-title);
   display: grid;
   /* `width: 100%` PLUS padding with no global `border-box` reset made this
      header 11px wider than the rows under it, so the trailing controls hung
@@ -182,14 +178,8 @@
      declared anyway so a later `width` cannot reopen it. */
   box-sizing: border-box;
   align-items: center;
-  /* The project name stands on the SAME left edge as the tab names under it
-     (owner, 2026-08-19). Those rows are a grid — `padding-left: 7px`, a 17px
-     leading slot, a 7px gap — so their text starts at 31px, while this header
-     started at 22px and the column read as two ragged left edges rather than
-     one list. The three figures below are that grid restated, not new numbers:
-     7 + 17 + 7. The trailing side matches the same way: the last track is the
-     rows' own 17px glyph slot over a 4px inset, so the caret sits on the agent
-     glyph's centre line. */
+  /* DL-27.17: folder owns the outer column. The name starts at 30px
+     (7px inset + 17px icon slot + 6px gap), aligned with checkout dots. */
   grid-template-columns: minmax(0, 1fr) 17px;
   gap: 7px;
   padding: 6px 4px 2px 7px;
@@ -212,7 +202,7 @@
   grid-row: 1;
   grid-column: 1 / -1;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -248,7 +238,7 @@
   grid-row: 1;
   grid-column: 1;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   color: var(--text-muted);
   font: 560 var(--type-project) / 1.2 var(--ui-font);
   white-space: nowrap;
@@ -333,10 +323,8 @@
   text-overflow: ellipsis;
 }
 
-/* Fixed 17px boxes, centred, because that is what the rows' first and last
-   grid columns are: the folder mark sits over the status dot's centre line and
-   the caret over the agent glyph's, so the header reads as the same row shape
-   one rung up rather than as a differently-built line. */
+/* DL-27.17: the folder keeps its own outer column; checkout dots start under
+   the project name. The trailing caret retains its fixed slot. */
 .asr-cluster__folder,
 .asr-cluster__caret {
   display: flex;
