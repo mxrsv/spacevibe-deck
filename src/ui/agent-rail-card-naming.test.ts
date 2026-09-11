@@ -65,7 +65,7 @@ describe("checkoutBadge", () => {
   });
 
   it("gives a worktree named after its branch the role instead of repeating it", () => {
-    expect(checkoutBadge(SELF_NAMED)).toEqual({ kind: "role", text: "Worktree" });
+    expect(checkoutBadge(SELF_NAMED)).toEqual({ kind: "worktree", text: "Worktree" });
   });
 
   it("never restates the label it sits beside", () => {

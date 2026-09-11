@@ -197,8 +197,11 @@ export function sortWorktrees(groups: readonly RailWorktreeGroup[]): readonly Ra
 
 /** The trailing badge on a checkout head: its branch, or what kind it is. */
 export interface CheckoutBadge {
-  /** `branch` draws DL-14.1's `GitBranch` glyph; `role` is the word alone. */
-  readonly kind: "branch" | "role";
+  /**
+   * `branch` draws DL-14.1's `GitBranch` glyph, `worktree` its `GitFork`
+   * (Phosphor has no worktree icon); `role` is the word alone.
+   */
+  readonly kind: "branch" | "worktree" | "role";
   readonly text: string;
 }
 
@@ -231,7 +234,7 @@ export function checkoutBadge(group: RailWorktreeGroup): CheckoutBadge {
   // repository's own sibling checkout has. The branch is already the label,
   // so the badge spends itself on the fact that is left.
   return group.branch === group.name
-    ? { kind: "role", text: "Worktree" }
+    ? { kind: "worktree", text: "Worktree" }
     : { kind: "branch", text: group.branch };
 }
 

@@ -162,9 +162,9 @@ button.asr-bare:hover {
   white-space: nowrap;
 }
 
-/* The role badge — `Primary`, or `Worktree` on a checkout whose folder is named after its
-   branch (`checkoutBadge`). It carries no glyph, so the leading `auto` track above would sit
-   empty and pull the word off the pill's centre, and the 4px/5px asymmetry that made room for
+/* The role badge — `Primary` (`checkoutBadge`); `Worktree` is its own kind with a `GitFork`
+   glyph and keeps the branch badge's two-track layout above. It carries no glyph, so the
+   leading `auto` track above would sit empty and pull the word off the pill's centre, and the 4px/5px asymmetry that made room for
    that glyph becomes a 1px lean.
 
    It takes the SURFACE this badge already has rather than the accent mix the actions menu's own

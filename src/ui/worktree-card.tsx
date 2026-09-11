@@ -1,6 +1,6 @@
 import { Fragment } from "preact";
 import { useRef, useState } from "preact/hooks";
-import { CaretRight, GitBranch, Plus, TerminalWindow, X } from "@phosphor-icons/react";
+import { CaretRight, GitBranch, GitFork, Plus, TerminalWindow, X } from "@phosphor-icons/react";
 import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
 import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
 import { CardStrip } from "./worktree-card-strip";
@@ -107,6 +107,7 @@ function Badge({
   return (
     <span class={className} data-kind={badge.kind} title={badge.text}>
       {badge.kind === "branch" && <DeckIcon icon={GitBranch} size={CHROME_ICON} />}
+      {badge.kind === "worktree" && <DeckIcon icon={GitFork} size={CHROME_ICON} />}
       <span>{badge.text}</span>
     </span>
   );
