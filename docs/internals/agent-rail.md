@@ -204,6 +204,15 @@ rather than inheriting a surface whose git and session sources it lacks.
   `max-width` back as the budget and the real segment boxes as their widths, so the room a
   strip has has one source of truth. The `+` is never what folds: a launcher that vanishes
   when a checkout gets busy is missing exactly when it is wanted.
+- **A segment shape's width is learned once per session, never re-learned.** Two cards read
+  the same shape one pixel apart — 47px behind a `×5` segment, 46px when it sits first — and a
+  cache that let the second card overwrite the first re-rendered both cards forever inside one
+  Preact `process()` call, which has no update-depth guard; the 1.1.0 build froze on exactly
+  this. The shared cache in
+  [`worktree-card-strip.tsx`](../../src/ui/worktree-card-strip.tsx) therefore keeps the first
+  reading, keys a merged segment by its count's digits, drops everything on a
+  `devicePixelRatio` change, and stops learning for the session past a bump ceiling. A fix
+  that lets a strip re-learn a width has to explain why it terminates.
 
 ## One create control per checkout
 
