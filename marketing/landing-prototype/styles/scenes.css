@@ -1276,6 +1276,18 @@
     font-size: 7px;
   }
 
+  /* Board and menu: the rail goes, the way panel 3's does. Both scenes are
+     ABOUT the stage — the grid of cards, the list under the strip — and at
+     298px a rail beside them left the menu's heading one word short of its
+     branch and the Board's second card cut off at the window's foot. */
+  .panel:is([data-scene="board"], [data-scene="menu"]) .a-appwin__rail {
+    display: none;
+  }
+
+  .panel:is([data-scene="board"], [data-scene="menu"]) .a-appwin__rail + * {
+    border-left: none;
+  }
+
   /* Menu: the surface widens to most of the stage and the detail line goes.
      At a 390 viewport the floored type needs the room, and the titles alone
      still say what each row does — the command beside an agent is the half a
@@ -1301,11 +1313,11 @@
     font-size: 7px;
   }
 
-  /* Board: one column, and the two loudest cards — the failed one and the
-     one waiting on the reader. Six cards in one 170px column would be a list,
-     and the two frames that demand attention are the Board's whole argument. */
+  /* Board: the two loudest cards, side by side — the failed one and the one
+     waiting on the reader. Six cards at 298px would be a list, and the two
+     frames that demand attention are the Board's whole argument. */
   .scene-board__grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .scene-board__card:nth-child(n + 3) {
