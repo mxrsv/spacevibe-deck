@@ -63,6 +63,14 @@ try {
     waitUntil: "networkidle",
   });
   await page.waitForSelector(".direction-a .a-appwin");
+  // The release notice opens over the hero whenever the published-release
+  // fetch succeeds, and a cover shot through its scrim is a picture of the
+  // notice. Dismissed the way a visitor would, so the capture does not depend
+  // on the notice's storage key.
+  const dismiss = await page.$("[data-release-dismiss]");
+  if (dismiss !== null && (await dismiss.isVisible())) {
+    await dismiss.click();
+  }
   // Zoom out so the headline AND the app window share the 1.91:1 frame. At 1x
   // the hero alone fills it and the product is a sliver at the bottom edge.
   await page.evaluate((zoom) => {
