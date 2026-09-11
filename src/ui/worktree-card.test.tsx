@@ -648,7 +648,7 @@ describe("WorktreeCard actions menu", () => {
     const menu = openMenu({ agents: [], agentsResolved: true, onManageAgents });
 
     const first = menu?.querySelector(".asr-act");
-    expect(first?.querySelector(".asr-act__title")?.textContent).toBe("No agent to run");
+    expect(first?.querySelector(".asr-act__title")?.textContent).toBe("Choose quick agents");
     click(first);
     expect(onManageAgents).toHaveBeenCalledTimes(1);
   });
