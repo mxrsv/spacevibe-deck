@@ -11,6 +11,9 @@ import {
   stageRail,
   stageStrip,
 } from "../product-stage.js";
+import { CURSOR_LEAD_MS, mountHeroCursor } from "../hero-cursor.js";
+import { mountHeroRecolor } from "../hero-recolor.js";
+import { BOARD_STRIP, boardBody } from "../tour/scenes/agent-board.js";
 import { stageRegion } from "../tour/scenes/chrome.js";
 import { RESTORE_STRIP, restoreBody } from "../tour/scenes/restore.js";
 import { SURFACE_STRIP, surfacesBody } from "../tour/scenes/surfaces.js";
@@ -35,13 +38,55 @@ import { usageBody } from "../tour/scenes/usage.js";
  * cycle and in the DOM in one edit — `showScene` joins the two by `id`, and a
  * hand-synced pair would blank the stage for a dwell when they drift. Agents
  * has no `body` because its region is the live composition written inline.
+ *
+ * `via` (2026-09-11) is the control the drawn pointer presses to ENTER that
+ * scene, looked up inside the region on screen before it: the Board is opened
+ * from its `Agents` chip, and left by pressing a card, which in the app opens
+ * that agent's pane — so agents appears twice, the second time as the pane
+ * the card led back to. An id may repeat; markup still renders each `body`
+ * once. A scene without `via` is entered on the timer alone.
+ *
+ * `recolorAt` is when, into the dwell, the pointer recolours the active
+ * checkout card (src/hero-recolor.js); the beat ends well before the walk to
+ * the Board chip starts.
  */
 export const HERO_SCENES = [
-  { id: "agents", dwell: 14000 },
+  { id: "agents", dwell: 14000, recolorAt: 4200 },
+  {
+    id: "board",
+    dwell: 8000,
+    body: boardBody,
+    strip: BOARD_STRIP,
+    via: '.a-appwin__chip[data-kind="board"]',
+  },
+  { id: "agents", dwell: 6000, via: '.scene-board__card[data-rank="1"]' },
   { id: "restore", dwell: 9000, body: restoreBody, strip: RESTORE_STRIP },
   { id: "surfaces", dwell: 9000, body: surfacesBody, strip: SURFACE_STRIP },
   { id: "usage", dwell: 9000, body: usageBody, strip: null },
 ];
+
+/*
+ * The hero's rail wears worktree colours (owner, 2026-09-11) so the recolour
+ * beat lands in a rail where colour already means something. Keyed by
+ * `project/checkout`; the active `main` card is left on Default because the
+ * beat is what colours it. A copy, never the shared fixture: the video
+ * renders `stageRail` as it is.
+ */
+const HERO_RAIL_COLORS = {
+  "spacevibe-deck/detach": "var(--sg-cyan)",
+  "spacevibe-api/main": "var(--sg-yellow)",
+  "spacevibe-api/billing": "var(--sg-red)",
+  "spacevibe-hub/main": "var(--sg-fg-dim)",
+};
+
+const heroRail = stageRail.map((cluster) => ({
+  ...cluster,
+  checkouts: cluster.checkouts.map((checkout) => {
+    const color = HERO_RAIL_COLORS[`${cluster.project}/${checkout.name}`];
+
+    return color ? { ...checkout, color } : checkout;
+  }),
+}));
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 const DISCORD_URL = "https://discord.gg/eWWuzaweU";
@@ -228,7 +273,7 @@ export function renderDirectionA(copy) {
                    here. It stays exported for the marketing video. -->
               <figure class="a-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
                 <div class="a-appwin__body" aria-hidden="true">
-                  ${renderStageRail(stageRail)}
+                  ${renderStageRail(heroRail)}
                   <!-- The stage wrapper, not the grid, is the rail's sibling
                        now: the .a-appwin__sidebar + * adjacency resolves to
                        THIS element, so it is what carries the window's one
@@ -295,7 +340,11 @@ export function renderDirectionA(copy) {
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
       let sceneIndex = 0;
       let sceneTimer = null;
+      let cursorTimer = null;
+      let recolorTimer = null;
       let cycling = false;
+      let cursor = null;
+      let recolor = null;
 
       function showScene(index) {
         const scene = HERO_SCENES[index].id;
@@ -307,13 +356,62 @@ export function renderDirectionA(copy) {
         }
       }
 
+      function nextIndex(index) {
+        return (index + 1) % HERO_SCENES.length;
+      }
+
+      // The pointer walks INSIDE the current dwell, ending on the swap, so
+      // the scene timings are the same with or without it.
+      function armCursor() {
+        const via = HERO_SCENES[nextIndex(sceneIndex)].via;
+
+        if (!via || !cursor) {
+          return;
+        }
+
+        cursorTimer = setTimeout(() => {
+          const target = regions.find((region) => !region.hidden)?.querySelector(via);
+
+          if (target) {
+            cursor.walk(target);
+          }
+        }, HERO_SCENES[sceneIndex].dwell - CURSOR_LEAD_MS);
+      }
+
+      function armRecolor() {
+        const at = HERO_SCENES[sceneIndex].recolorAt;
+
+        if (at === undefined || !cursor || !recolor) {
+          return;
+        }
+
+        recolorTimer = setTimeout(() => cursor.sequence(recolor.steps()), at);
+      }
+
       function armSceneTimer() {
         cycling = true;
+        armRecolor();
+        armCursor();
         sceneTimer = setTimeout(() => {
-          sceneIndex = (sceneIndex + 1) % HERO_SCENES.length;
+          sceneIndex = nextIndex(sceneIndex);
           showScene(sceneIndex);
+
+          // Stay on screen only if this scene is also left by a press.
+          if (!HERO_SCENES[nextIndex(sceneIndex)].via) {
+            cursor?.leave();
+          }
+
           armSceneTimer();
         }, HERO_SCENES[sceneIndex].dwell);
+      }
+
+      function pauseCycle() {
+        cycling = false;
+        clearTimeout(sceneTimer);
+        clearTimeout(cursorTimer);
+        clearTimeout(recolorTimer);
+        cursor?.cancel();
+        recolor?.close();
       }
 
       // The cycle pauses while the hero is off screen: swapping regions and
@@ -324,6 +422,8 @@ export function renderDirectionA(copy) {
       let sceneObserver = null;
 
       if (!reduceMotion.matches) {
+        cursor = mountHeroCursor(section.querySelector(".a-appwin"));
+        recolor = mountHeroRecolor(section.querySelector(".a-appwin"));
         armSceneTimer();
 
         if (typeof IntersectionObserver !== "undefined") {
@@ -331,8 +431,7 @@ export function renderDirectionA(copy) {
             const visible = entries.some((entry) => entry.isIntersecting);
 
             if (!visible && cycling) {
-              cycling = false;
-              clearTimeout(sceneTimer);
+              pauseCycle();
             } else if (visible && !cycling) {
               armSceneTimer();
             }
@@ -343,7 +442,9 @@ export function renderDirectionA(copy) {
 
       return () => {
         sceneObserver?.disconnect();
-        clearTimeout(sceneTimer);
+        pauseCycle();
+        cursor?.dispose();
+        recolor?.dispose();
         disposeStream();
 
         if (document.documentElement.dataset.directionTreatment === "a") {

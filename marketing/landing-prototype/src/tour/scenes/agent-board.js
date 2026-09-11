@@ -121,7 +121,7 @@ const BOARD_PROJECTS = deepFreeze([
 ]);
 
 /* The strip with the Board on the stage: its `Agents` chip is the active one. */
-const BOARD_STRIP = deepFreeze([
+export const BOARD_STRIP = deepFreeze([
   {
     kind: "terminal",
     agent: "claude",
@@ -177,7 +177,7 @@ function renderCard(card, index) {
       : `<span class="scene-board__prefix">Task</span> ${card.task}`;
 
   return `
-        <article class="scene-board__card" data-state="${card.state}" style="--scene-delay: ${160 + index * 70}ms">
+        <article class="scene-board__card" data-state="${card.state}" data-rank="${card.rank}" style="--scene-delay: ${160 + index * 70}ms">
           <div class="scene-board__status">
             ${renderStageStatusMark(card.state, "scene-board__mark")}
             <span class="scene-board__state">${card.state}</span>
@@ -194,7 +194,7 @@ function renderCard(card, index) {
       `;
 }
 
-function boardBody() {
+export function boardBody() {
   const cards = boardCards();
 
   return `

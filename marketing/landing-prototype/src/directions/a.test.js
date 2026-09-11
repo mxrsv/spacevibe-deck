@@ -271,7 +271,7 @@ describe("the scene cycle", () => {
       vi.advanceTimersByTime(HERO_SCENES[0].dwell);
 
       for (const region of root.querySelectorAll(".a-appwin__stage[data-scene]")) {
-        expect(region.classList.contains("is-revealed")).toBe(region.dataset.scene === "restore");
+        expect(region.classList.contains("is-revealed")).toBe(region.dataset.scene === "board");
       }
     } finally {
       vi.useRealTimers();

@@ -5,6 +5,8 @@ import "../styles/direction-a.css";
 import "../styles/install-command.css";
 import "../styles/tour.css";
 import "../styles/scenes.css";
+import "../styles/hero-cursor.css";
+import "../styles/hero-recolor.css";
 import "../styles/release-modal.css";
 
 import { messages } from "./copy.js";

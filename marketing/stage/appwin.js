@@ -497,6 +497,17 @@ function renderNewAgentRow() {
 }
 
 /**
+ * A checkout's chosen worktree colour (`worktreeColorStyle`, DL-27.25), as the
+ * `--worktree-color` the card's mark, frame and badge read. `color` is a CSS
+ * colour; absent means Default, which emits nothing.
+ *
+ * @param {{ color?: string }} checkout
+ */
+function worktreeColorAttr(checkout) {
+  return checkout.color ? ` style="--worktree-color: ${checkout.color}"` : "";
+}
+
+/**
  * A checkout with agents: head (mark, name, badge, chevron), the age, then
  * either the rows (open) or the strip (closed).
  *
@@ -516,7 +527,7 @@ function renderCheckoutCard(checkout) {
     : renderCardStrip(checkout.panes);
 
   return `
-      <article class="a-appwin__card" data-open="${open}" data-active="${checkout.active === true}">
+      <article class="a-appwin__card" data-open="${open}" data-active="${checkout.active === true}"${worktreeColorAttr(checkout)}>
         <div class="a-appwin__cardhead">
           <span class="a-appwin__cardmark"></span>
           <span class="a-appwin__cardname">${checkout.name}</span>
@@ -535,7 +546,7 @@ function renderCheckoutCard(checkout) {
  */
 function renderBareCheckout(checkout) {
   return `
-      <div class="a-appwin__bare">
+      <div class="a-appwin__bare"${worktreeColorAttr(checkout)}>
         <span class="a-appwin__baremark"></span>
         <span class="a-appwin__barename">${checkout.name}</span>
         ${renderCheckoutBadge(checkout.badge, "a-appwin__barebadge")}

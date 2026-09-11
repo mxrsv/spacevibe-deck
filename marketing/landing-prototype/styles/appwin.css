@@ -839,7 +839,8 @@
    only: the background already says open or closed. */
 .a-appwin__card[data-active="true"],
 .a-appwin__card[data-active="true"]:hover {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sg-green) 72%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--worktree-color, var(--sg-green)) 72%, transparent);
 }
 
 /* The head: mark, name, badge and an always-visible chevron (DL-27.25). */
@@ -870,14 +871,15 @@
   height: 0.9cqw;
   margin: auto;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--sg-fg) 26%, transparent);
+  background: var(--worktree-color, color-mix(in srgb, var(--sg-fg) 26%, transparent));
 }
 
 /* Live: work is moving somewhere in this checkout. Read off the card's own
    state marks with `:has()` rather than a flag written at render, so the
-   hero's streamed card goes quiet the moment its last pane does. */
+   hero's streamed card goes quiet the moment its last pane does. A worktree
+   colour, once chosen, wins over both (04d:66-73). */
 .a-appwin__card:has([data-state="working"]) .a-appwin__cardmark::before {
-  background: var(--card-busy);
+  background: var(--worktree-color, var(--card-busy));
 }
 
 .a-appwin__cardname {
@@ -949,8 +951,8 @@
 }
 
 .a-appwin__card[data-active="true"] .a-appwin__cardbadge {
-  background: color-mix(in srgb, var(--sg-green) 15%, transparent);
-  color: color-mix(in srgb, var(--sg-green) 78%, var(--sg-fg));
+  background: color-mix(in srgb, var(--worktree-color, var(--sg-green)) 15%, transparent);
+  color: color-mix(in srgb, var(--worktree-color, var(--sg-green)) 78%, var(--sg-fg));
 }
 
 /* The age alone, aligned to the checkout name: 14px mark + 8px gap. */

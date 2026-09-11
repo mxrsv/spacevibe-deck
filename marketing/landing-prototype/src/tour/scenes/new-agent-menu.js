@@ -100,7 +100,7 @@ const MENU_STRIP = deepFreeze([
  * FolderOpen for Finder, FolderPlus for another project, and the footer's
  * Info ring.
  */
-const MENU_ICONS = {
+export const MENU_ICONS = {
   split:
     '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M12 4.5v15"/><path d="M12 4.5h6.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H12Z" fill="currentColor" fill-opacity="0.35" stroke="none"/>',
   finder:
@@ -115,14 +115,14 @@ const MENU_ICONS = {
  * run: no model is stored for any of the three, so that is the fact the app
  * prints. The agents are panel 7's installed three, commands and all.
  */
-const MENU_GROUPS = [
+export const MENU_GROUPS = [
   INSTALLED.map((agent) => ({ agent: agent.id, title: agent.label, detail: launchCommand(agent) })),
   [{ glyph: "split", title: "New split here", detail: "Open a pane beside this tab" }],
   [{ glyph: "finder", title: "Open in Finder", detail: "Reveal this folder" }],
   [{ glyph: "board", title: "Open another project…", detail: "Add a folder or worktree" }],
 ];
 
-function renderMenuRow(row, focused) {
+export function renderMenuRow(row, focused) {
   const glyph =
     row.agent === undefined
       ? renderChromeIcon(MENU_ICONS[row.glyph])

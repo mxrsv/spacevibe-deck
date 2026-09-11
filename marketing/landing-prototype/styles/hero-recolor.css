@@ -1,0 +1,90 @@
+/* The hero's recolour beat (src/hero-recolor.js): the anchored card menu
+   with its `Worktree color` row, drawn over the window. It borrows panel 3's
+   `.scene-menu__*` rows; this sheet only places the surface and draws the
+   palette (`.asr-color-menu`, 04d-rail-card-menus.css:80-125). */
+
+.hero-recolor {
+  z-index: 4;
+  width: 32cqw;
+  animation: hero-recolor-open 180ms ease both;
+}
+
+.hero-recolor[hidden] {
+  display: none;
+}
+
+@keyframes hero-recolor-open {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4cqw);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-recolor .scene-menu__row.is-cursor-over {
+  background: color-mix(in srgb, var(--sg-fg) 8%, transparent);
+}
+
+.hero-recolor__dot {
+  width: 0.9cqw;
+  height: 0.9cqw;
+  border-radius: 50%;
+  background: var(--worktree-color, var(--sg-green));
+}
+
+.hero-recolor__palette {
+  display: none;
+  gap: 0.7cqw;
+  padding: 0.4cqw 0.8cqw 0.8cqw;
+}
+
+.hero-recolor.is-expanded .hero-recolor__palette {
+  display: grid;
+  animation: hero-recolor-open 200ms ease both;
+}
+
+.hero-recolor__swatches {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.3cqw;
+}
+
+.hero-recolor__swatch,
+.hero-recolor__default {
+  display: grid;
+  min-height: 2.8cqw;
+  place-items: center;
+  border-radius: 0.6cqw;
+  color: var(--sg-fg);
+  font-size: max(1.05cqw, 8px);
+  font-weight: 500;
+}
+
+.hero-recolor__swatch span {
+  width: 1.4cqw;
+  height: 1.4cqw;
+  border-radius: 50%;
+  background: var(--swatch-color);
+}
+
+.hero-recolor__swatch.is-cursor-over {
+  background: color-mix(in srgb, var(--sg-fg) 8%, transparent);
+  outline: 1px solid var(--sg-fg-dim);
+  outline-offset: -1px;
+}
+
+/* The card takes its new colour as a change, not a cut. */
+.direction-a .a-appwin__card {
+  transition: box-shadow 360ms ease;
+}
+
+.direction-a .a-appwin__cardmark::before,
+.direction-a .a-appwin__cardbadge {
+  transition:
+    background 360ms ease,
+    color 360ms ease;
+}

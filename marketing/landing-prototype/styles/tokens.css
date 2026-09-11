@@ -130,6 +130,7 @@
   --sg-green: #8ccf7e;
   --sg-yellow: #e5c07b; /* --status-unread — the `asked` dot */
   --sg-purple: #c792ea; /* the theme magenta */
+  --sg-cyan: #63c5da; /* the theme cyan — a worktree colour only */
   --sg-red: #ef6b73; /* --red — the `failed` dot */
   --sg-quiet-dot: rgba(
     255,
