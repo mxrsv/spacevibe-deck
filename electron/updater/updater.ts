@@ -11,12 +11,14 @@
  * Four decisions this module encodes, each of which is a correctness rule
  * rather than a preference:
  *
- *  - **`allowPrerelease` is on.** The Electron releases are pre-releases on
- *    `X.Y.Z-electron.N`, so they cannot be mistaken for the Tauri releases in
- *    the same repository. With this flag off — its default — `GitHubProvider`
- *    resolves `releases/latest`, finds a Tauri release with no
- *    `electron-mac.yml` in it, and every check answers "up to date" while the
- *    release pipeline looks perfectly healthy.
+ *  - **`allowPrerelease` follows the running version.** A stable build must
+ *    read `releases/latest`: with the flag on and no prerelease channel,
+ *    `GitHubProvider` 6.x takes the FIRST `releases.atom` entry with no semver
+ *    check, and that feed carries every pushed tag — so a `build/vX.Y.Z`
+ *    trigger tag (or any future `-electron.N` prerelease) became the "latest"
+ *    version, its manifest 404ed, and every stable check failed for as long as
+ *    the tag stayed on top. An `X.Y.Z-electron.N` build keeps the flag on so it
+ *    walks the feed for its own channel, where the semver filter does apply.
  *  - **`autoInstallOnAppQuit` is off.** It defaults ON, which would install a
  *    downloaded-but-unconfirmed update on any ordinary quit — behind the
  *    renderer's busy-pane confirmation AND behind `recordAttempt`, whose whole
@@ -38,9 +40,8 @@ export interface AutoUpdaterLike {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
   /**
-   * Off by default, which makes `GitHubProvider` read `releases/latest` — a
-   * Tauri release on this repository, carrying no `electron-mac.yml`. On, it
-   * walks the release feed for the channel this build's own version names.
+   * Off, `GitHubProvider` reads `releases/latest`. On, it walks the release
+   * feed — filtered by semver only when the running version names a channel.
    */
   allowPrerelease: boolean;
   checkForUpdates(): Promise<UpdateCheckLike | null>;
@@ -129,6 +130,15 @@ function releaseNotesText(notes: unknown): string | null {
   return null;
 }
 
+/**
+ * True for `X.Y.Z-<prerelease>`, the same test `AppUpdater` itself uses for
+ * its default. Matched rather than parsed: `semver` is only a transitive
+ * dependency here.
+ */
+export function isPrereleaseVersion(version: string): boolean {
+  return /^\d+\.\d+\.\d+-/.test(version);
+}
+
 function asError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
 }
@@ -168,7 +178,7 @@ export function createUpdateLifecycle(deps: UpdateLifecycleDependencies): Update
     // All three flags are load-bearing; see the docblock.
     loaded.autoDownload = false;
     loaded.autoInstallOnAppQuit = false;
-    loaded.allowPrerelease = true;
+    loaded.allowPrerelease = isPrereleaseVersion(deps.currentVersion);
     loaded.on("update-downloaded", () => settleDownload());
     loaded.on("error", (error) => {
       // `electron-updater` has ONE error channel for every operation, so an

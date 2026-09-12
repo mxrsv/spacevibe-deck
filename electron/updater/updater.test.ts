@@ -135,22 +135,34 @@ describe("check", () => {
     expect(updater.autoInstallOnAppQuit).toBe(false);
   });
 
-  it("allows pre-releases, because the channel lives in the version", async () => {
-    const { lifecycle, updater } = setup();
+  it("keeps a stable build on releases/latest, away from pushed tags", async () => {
+    const { lifecycle, updater } = setup({ currentVersion: "1.2.0" });
+    updater.allowPrerelease = true;
     updater.checkResult = {
       isUpdateAvailable: false,
-      updateInfo: { version: "0.12.3" },
+      updateInfo: { version: "1.2.0" },
     };
 
     await lifecycle.check();
 
-    // The Electron releases are published as pre-releases on `X.Y.Z-electron.N`
-    // so that they cannot be confused with the Tauri releases in the same
-    // repository. `allowPrerelease` defaults OFF, and with it off
-    // `GitHubProvider` resolves `releases/latest` — a Tauri release, which
-    // carries no `electron-mac.yml` — instead of walking the feed for the
-    // channel this build's own version names. The whole pipeline would build,
-    // publish and verify clean, and every check would answer "up to date".
+    // With the flag on and no channel in the version, `GitHubProvider` 6.x
+    // takes the first `releases.atom` entry unfiltered. The feed lists every
+    // pushed tag, so `build/v1.3.0` became "latest" while its release was
+    // still a draft, and every stable check 404ed on its manifest.
+    expect(updater.allowPrerelease).toBe(false);
+  });
+
+  it("lets a prerelease build walk the feed for its own channel", async () => {
+    const { lifecycle, updater } = setup({ currentVersion: "0.12.5-electron.2" });
+    updater.checkResult = {
+      isUpdateAvailable: false,
+      updateInfo: { version: "0.12.5-electron.2" },
+    };
+
+    await lifecycle.check();
+
+    // Off, an `-electron.N` build would read `releases/latest` — a stable
+    // release on another channel — instead of the next build on its own.
     expect(updater.allowPrerelease).toBe(true);
   });
 
