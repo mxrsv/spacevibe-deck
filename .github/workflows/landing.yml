@@ -5,6 +5,13 @@ name: Landing
 # the app, which is why `ci.yml` ignores these paths. `npm run lint` is not
 # repeated here: `.prettierignore` and `.oxlintrc.json` both exclude
 # `marketing/**`, so it checks nothing of the landing.
+#
+# The landing is UI, and Vercel builds and deploys it on push whatever this
+# workflow says. So the build runs, and the only tests kept guard what a user
+# downloads and runs: release asset selection, download links, the install
+# scripts' security contract, and inert release-note rendering. Tests pinning
+# layout or mirroring app data were removed (DECK-85) — they went red on every
+# UI or app catalog change without catching a real defect.
 on:
   push:
     branches: [main]
