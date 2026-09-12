@@ -34,6 +34,7 @@
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",
     "electron:dev:watch": "node scripts/electron-dev-watch.mjs",
     "electron:smoke": "npm run build && npm run electron:build && electron dist-electron/electron/smoke.cjs",
+    "electron:smoke:updater": "node scripts/updater-smoke.mjs",
     "shoot": "npm run build && npm run electron:build && electron dist-electron/electron/shoot.cjs"
   },
   "dependencies": {
