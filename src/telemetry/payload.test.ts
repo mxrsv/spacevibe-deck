@@ -9,6 +9,7 @@ import {
   AGENT_PAYLOAD_KEYS,
   SCHEMA_VERSION,
   SURFACE_KEYS,
+  UPDATE_KEYS,
   agentPayloadKey,
   type UsagePayload,
 } from "./payload";
@@ -26,6 +27,14 @@ const SPECIMEN: UsagePayload = {
   maxTabs: 4,
   maxPanes: 6,
   restoredSessions: true,
+  updates: {
+    checked: 4,
+    checkFailed: 1,
+    available: 1,
+    downloaded: 1,
+    downloadFailed: 0,
+    installAttempted: 1,
+  },
 };
 
 describe("usage payload contract", () => {
@@ -43,8 +52,20 @@ describe("usage payload contract", () => {
         "maxTabs",
         "maxPanes",
         "restoredSessions",
+        "updates",
       ].sort(),
     );
+  });
+
+  it("pins the update outcome key set", () => {
+    expect([...UPDATE_KEYS]).toEqual([
+      "checked",
+      "checkFailed",
+      "available",
+      "downloaded",
+      "downloadFailed",
+      "installAttempted",
+    ]);
   });
 
   // `cursor-agent` was withdrawn on 2026-09-11 (DECK-71) but keeps its key:

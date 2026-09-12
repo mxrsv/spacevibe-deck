@@ -53,6 +53,29 @@ export const SURFACE_KEYS = ["browser", "explorer", "usage"] as const;
 export type SurfaceKey = (typeof SURFACE_KEYS)[number];
 
 /**
+ * What happened to Deck's own update checks that day, as plain counts. No
+ * error message, no version number, no timing — only how many times each
+ * step happened. It exists because a broken update feed is otherwise
+ * invisible: a failed check leaves no trace outside the user's machine.
+ *
+ *  - `checked`: checks that got an answer (an update or none).
+ *  - `checkFailed`: checks that got no answer at all.
+ *  - `available`: answers that offered an update — checks, not distinct updates.
+ *  - `downloaded` / `downloadFailed`: update downloads that finished or failed.
+ *  - `installAttempted`: times Deck handed a downloaded update to the installer.
+ */
+export const UPDATE_KEYS = [
+  "checked",
+  "checkFailed",
+  "available",
+  "downloaded",
+  "downloadFailed",
+  "installAttempted",
+] as const;
+
+export type UpdateKey = (typeof UPDATE_KEYS)[number];
+
+/**
  * One install-day, cumulative. Every send replaces the whole
  * row server-side, so a retry can never double-count.
  */
@@ -79,6 +102,12 @@ export interface UsagePayload {
   readonly maxPanes: number;
   /** True when boot restore materialized at least one pane that day. */
   readonly restoredSessions: boolean;
+  /**
+   * Update-check outcomes that day, every key present (see `UPDATE_KEYS`).
+   * Added to schema 1 without a bump: releases up to 1.2.0 do not send it, and
+   * the service accepts both shapes.
+   */
+  readonly updates: Readonly<Record<UpdateKey, number>>;
 }
 
 /**

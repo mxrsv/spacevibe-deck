@@ -70,7 +70,23 @@ export const AGENT_PAYLOAD_KEYS = [
 
 export const SURFACE_KEYS = ["browser", "explorer", "usage"] as const;
 
-export type CountKind = "agent" | "surface" | "tabs" | "panes" | "restored";
+/**
+ * Update-check outcomes, mirrored from `src/telemetry/payload.ts` like the
+ * agent keys. Counted by main itself — the updater lives here — so these never
+ * cross IPC.
+ */
+export const UPDATE_KEYS = [
+  "checked",
+  "checkFailed",
+  "available",
+  "downloaded",
+  "downloadFailed",
+  "installAttempted",
+] as const;
+
+export type UpdateCounterKey = (typeof UPDATE_KEYS)[number];
+
+export type CountKind = "agent" | "surface" | "tabs" | "panes" | "restored" | "update";
 
 export type ConsentAnswer = "unanswered" | "enabled" | "declined";
 
@@ -89,6 +105,8 @@ export interface DayBuffer {
   readonly maxTabs: number;
   readonly maxPanes: number;
   readonly restoredSessions: boolean;
+  /** Update outcomes; absent from buffers written by 1.2.0 and older. */
+  readonly updates: Readonly<Record<string, number>>;
   /** Counters changed since the last accepted send. */
   readonly dirty: boolean;
   /** Epoch ms of the last 204, or null before the first. */
@@ -133,4 +151,5 @@ export interface UsagePayloadLike {
   readonly maxTabs: number;
   readonly maxPanes: number;
   readonly restoredSessions: boolean;
+  readonly updates: Readonly<Record<string, number>>;
 }

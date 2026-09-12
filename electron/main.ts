@@ -539,6 +539,7 @@ const updater = registerUpdater({
     await telemetry.flushOnQuit();
     await stores.saveAll();
   },
+  countOutcome: (outcome) => telemetry.countUpdate(outcome),
 });
 
 registerStore({ stores, windows, emitTo });

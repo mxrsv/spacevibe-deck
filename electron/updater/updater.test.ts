@@ -77,6 +77,7 @@ function setup(overrides: Partial<UpdateLifecycleDependencies> = {}): {
   updater: FakeUpdater;
   prepareForInstall: ReturnType<typeof vi.fn>;
   report: ReturnType<typeof vi.fn>;
+  countOutcome: ReturnType<typeof vi.fn>;
 } {
   const updater = new FakeUpdater();
   const prepareForInstall = vi.fn(() => {
@@ -84,15 +85,17 @@ function setup(overrides: Partial<UpdateLifecycleDependencies> = {}): {
     return Promise.resolve();
   });
   const report = vi.fn();
+  const countOutcome = vi.fn();
   const lifecycle = createUpdateLifecycle({
     loadUpdater: () => updater,
     supported: true,
     currentVersion: "0.12.3",
     prepareForInstall,
     report,
+    countOutcome,
     ...overrides,
   });
-  return { lifecycle, updater, prepareForInstall, report };
+  return { lifecycle, updater, prepareForInstall, report, countOutcome };
 }
 
 const AVAILABLE: UpdateCheckLike = {
@@ -350,6 +353,70 @@ describe("download", () => {
     await second;
 
     expect(updater.downloadCalls).toBe(2);
+  });
+});
+
+describe("outcome counts", () => {
+  const counted = (countOutcome: ReturnType<typeof vi.fn>): string[] =>
+    countOutcome.mock.calls.map(([outcome]) => String(outcome));
+
+  it("counts an answered check, and an offered update on top of it", async () => {
+    const { lifecycle, updater, countOutcome } = setup();
+    updater.checkResult = { isUpdateAvailable: false, updateInfo: { version: "0.12.3" } };
+    await lifecycle.check();
+    updater.checkResult = AVAILABLE;
+    await lifecycle.check();
+
+    expect(counted(countOutcome)).toEqual(["checked", "checked", "available"]);
+  });
+
+  it("counts a failed check, and nothing for a build that cannot update", async () => {
+    const { lifecycle, updater, countOutcome } = setup();
+    updater.checkError = new Error("offline");
+    await expect(lifecycle.check()).rejects.toThrow("offline");
+    updater.checkError = null;
+    updater.checkResult = null;
+    await lifecycle.check();
+
+    expect(counted(countOutcome)).toEqual(["checkFailed"]);
+  });
+
+  it("counts one download for two windows, and a failed one apart", async () => {
+    const { lifecycle, updater, countOutcome } = setup();
+    updater.checkResult = AVAILABLE;
+    await lifecycle.check();
+    const failing = lifecycle.download();
+    updater.failDownload(new Error("disk full"));
+    await expect(failing).rejects.toThrow("disk full");
+    const first = lifecycle.download();
+    const second = lifecycle.download();
+    updater.emit("update-downloaded");
+    await Promise.all([first, second]);
+
+    expect(counted(countOutcome)).toEqual(["checked", "available", "downloadFailed", "downloaded"]);
+  });
+
+  it("counts the install attempt before the final telemetry flush", async () => {
+    // `prepareForInstall` sends the last snapshot this process will make; a
+    // count that lands after it dies with the process.
+    const order: string[] = [];
+    const { lifecycle, updater } = setup({
+      countOutcome: (outcome) => order.push(outcome),
+      prepareForInstall: () => {
+        order.push("prepareForInstall");
+        return Promise.resolve();
+      },
+    });
+    updater.checkResult = AVAILABLE;
+    await lifecycle.check();
+    const downloading = lifecycle.download();
+    updater.emit("update-downloaded");
+    await downloading;
+
+    void lifecycle.install();
+    await vi.waitFor(() => expect(updater.quitAndInstallCalls.length).toBe(1));
+
+    expect(order.slice(-2)).toEqual(["installAttempted", "prepareForInstall"]);
   });
 });
 

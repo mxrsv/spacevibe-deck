@@ -19,6 +19,7 @@ import {
   TELEMETRY_ENDPOINT,
   TELEMETRY_FILE,
   type TelemetryStateReply,
+  type UpdateCounterKey,
   type UsagePayloadLike,
 } from "../telemetry/model";
 import { createTelemetryService, type TelemetryService } from "../telemetry/service";
@@ -32,6 +33,8 @@ export interface TelemetryRegisterDeps {
 export interface TelemetryHandle {
   /** Best-effort final snapshot on orderly quit. Never throws. */
   flushOnQuit(): Promise<void>;
+  /** Count one update-lifecycle outcome. Main-side; fire and forget. */
+  countUpdate(key: UpdateCounterKey): void;
 }
 
 /** The one key the state lives under inside `telemetry.json`. */
@@ -133,6 +136,11 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
       } catch {
         // Quit is never held hostage by analytics.
       }
+    },
+    countUpdate: (key) => {
+      servicePromise
+        .then((service) => service.count("update", key, 1))
+        .catch((error: unknown) => console.error("Deck: telemetry count failed", error));
     },
   };
 }

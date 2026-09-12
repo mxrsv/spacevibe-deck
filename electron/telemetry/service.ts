@@ -19,6 +19,7 @@ import {
   SCHEMA_VERSION,
   SEND_CHECK_INTERVAL_MS,
   SURFACE_KEYS,
+  UPDATE_KEYS,
   type ConsentState,
   type CountKind,
   type DayBuffer,
@@ -113,6 +114,8 @@ function parseBuffer(raw: unknown): DayBuffer | null {
     maxTabs: isCount(source.maxTabs) ? Math.min(source.maxTabs, COUNTER_CAP) : 0,
     maxPanes: isCount(source.maxPanes) ? Math.min(source.maxPanes, COUNTER_CAP) : 0,
     restoredSessions: source.restoredSessions === true,
+    // A 1.2.0 buffer has no `updates`; it reads as nothing counted yet.
+    updates: parseCounters(source.updates, UPDATE_KEYS),
     dirty: source.dirty === true,
     lastSentAt: isCount(source.lastSentAt) ? source.lastSentAt : null,
     terminal: source.terminal === true,
@@ -280,6 +283,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
           maxTabs: 0,
           maxPanes: 0,
           restoredSessions: false,
+          updates: {},
           dirty: true,
           lastSentAt: null,
           terminal: false,
@@ -311,6 +315,12 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     for (const key of SURFACE_KEYS) {
       surfaces[key] = buffer.surfaces[key] ?? 0;
     }
+    // Every key, zeros included: the service requires the full set when the
+    // field is present.
+    const updates: Record<string, number> = {};
+    for (const key of UPDATE_KEYS) {
+      updates[key] = buffer.updates[key] ?? 0;
+    }
     return {
       schemaVersion: SCHEMA_VERSION,
       dailyId: buffer.dailyId,
@@ -323,6 +333,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
       maxTabs: buffer.maxTabs,
       maxPanes: buffer.maxPanes,
       restoredSessions: buffer.restoredSessions,
+      updates,
     };
   }
 
@@ -465,6 +476,12 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
             return;
           }
           updateDay(today, { ...buffer, restoredSessions: true, dirty: true });
+          break;
+        case "update":
+          if (!UPDATE_KEYS.includes(key as (typeof UPDATE_KEYS)[number])) {
+            return;
+          }
+          updateDay(today, { ...buffer, updates: fold(buffer.updates, key), dirty: true });
           break;
         default:
           return;

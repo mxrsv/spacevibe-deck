@@ -35,6 +35,8 @@
  *    renderer already answered through `confirmInstall`.
  */
 
+import type { UpdateCounterKey } from "../telemetry/model";
+
 /** The `electron-updater` surface this module uses, and nothing wider. */
 export interface AutoUpdaterLike {
   autoDownload: boolean;
@@ -94,6 +96,11 @@ export interface UpdateLifecycleDependencies {
    */
   prepareForInstall(): Promise<void>;
   report(message: string, error: unknown): void;
+  /**
+   * Usage analytics' count of each outcome. A failed check otherwise leaves no
+   * trace outside the user's machine, which is how a broken feed goes unseen.
+   */
+  countOutcome(outcome: UpdateCounterKey): void;
 }
 
 export interface UpdateLifecycle {
@@ -203,16 +210,24 @@ export function createUpdateLifecycle(deps: UpdateLifecycleDependencies): Update
     if (!deps.supported) {
       return { status: "unsupported" };
     }
-    const result = await load().checkForUpdates();
+    let result: UpdateCheckLike | null;
+    try {
+      result = await load().checkForUpdates();
+    } catch (error: unknown) {
+      deps.countOutcome("checkFailed");
+      throw error;
+    }
     if (result === null) {
       // `electron-updater` answers null when it refuses to run at all — an
       // unpackaged app, or no update configuration. Honest "unsupported", not
       // "up to date".
       return { status: "unsupported" };
     }
+    deps.countOutcome("checked");
     if (!result.isUpdateAvailable) {
       return { status: "current", currentVersion: deps.currentVersion };
     }
+    deps.countOutcome("available");
     const version = result.updateInfo.version;
     if (version !== availableVersion) {
       // A different update than the one already fetched: the downloaded file
@@ -251,11 +266,21 @@ export function createUpdateLifecycle(deps: UpdateLifecycleDependencies): Update
     downloadTarget = target;
     downloadInFlight = new Promise<void>((resolve, reject) => {
       downloadSettle = { resolve, reject };
-    }).finally(() => {
-      downloadInFlight = null;
-      downloadSettle = null;
-      downloadTarget = null;
-    });
+    })
+      // Counted on the shared promise, so a download two windows asked for is
+      // one download.
+      .then(
+        () => deps.countOutcome("downloaded"),
+        (error: unknown) => {
+          deps.countOutcome("downloadFailed");
+          throw error;
+        },
+      )
+      .finally(() => {
+        downloadInFlight = null;
+        downloadSettle = null;
+        downloadTarget = null;
+      });
     // Resolved by whichever finishes first: `update-downloaded` fires before
     // `downloadUpdate` resolves on both MacUpdater and NsisUpdater, but the
     // pair costs nothing and neither one alone is guaranteed by contract.
@@ -301,6 +326,9 @@ export function createUpdateLifecycle(deps: UpdateLifecycleDependencies): Update
       };
     });
     void (async () => {
+      // Before `prepareForInstall`, whose telemetry flush is the last POST
+      // this process makes; a count after it would die with the process.
+      deps.countOutcome("installAttempted");
       try {
         await deps.prepareForInstall();
       } catch (error: unknown) {

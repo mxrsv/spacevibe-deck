@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { build } from "esbuild";
-import { AGENT_KEYS, SURFACE_KEYS, COUNTER_CAP, validPayload } from "./payload.mjs";
+import { AGENT_KEYS, SURFACE_KEYS, UPDATE_KEYS, COUNTER_CAP, validPayload } from "./payload.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -26,6 +26,8 @@ test("Worker schema accepts snapshots emitted by the actual Deck telemetry servi
   assert.deepEqual(AGENT_KEYS, client.model.AGENT_PAYLOAD_KEYS);
   assert.deepEqual(AGENT_KEYS, client.payload.AGENT_PAYLOAD_KEYS);
   assert.deepEqual(SURFACE_KEYS, client.payload.SURFACE_KEYS);
+  assert.deepEqual(UPDATE_KEYS, client.model.UPDATE_KEYS);
+  assert.deepEqual(UPDATE_KEYS, client.payload.UPDATE_KEYS);
   assert.equal(COUNTER_CAP, client.model.COUNTER_CAP);
   assert.equal(client.model.TELEMETRY_ENDPOINT, "https://api.deck.spacevibe.dev/v1/ping");
   const snapshots = [];
@@ -52,9 +54,11 @@ test("Worker schema accepts snapshots emitted by the actual Deck telemetry servi
   try {
     service.count("agent", "claude", 1);
     service.count("surface", "browser", 1);
+    service.count("update", "checkFailed", 1);
     await service.flushOnQuit();
     assert.ok(snapshots.length > 0);
     for (const snapshot of snapshots) assert.equal(validPayload(snapshot), true);
+    assert.equal(snapshots.at(-1).updates.checkFailed, 1);
   } finally {
     service.dispose();
   }

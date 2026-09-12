@@ -18,6 +18,7 @@ import { autoUpdater } from "electron-updater";
 import { CHANNELS } from "./channels";
 import { createUpdateLifecycle, type AutoUpdaterLike } from "../updater/updater";
 import { UpdateFlight } from "../updater/update-flight";
+import type { UpdateCounterKey } from "../telemetry/model";
 
 export interface UpdaterDependencies {
   /** The window a request came from, as every other register module names it. */
@@ -28,6 +29,8 @@ export interface UpdaterDependencies {
    * `isInstalling`), so nothing else on that path does this work.
    */
   prepareForInstall(): Promise<void>;
+  /** Usage analytics' count of each lifecycle outcome. */
+  countOutcome(outcome: UpdateCounterKey): void;
 }
 
 export interface UpdaterHandle {
@@ -82,6 +85,7 @@ export function registerUpdater(deps: UpdaterDependencies): UpdaterHandle {
     supported: app.isPackaged,
     currentVersion: app.getVersion(),
     prepareForInstall: () => deps.prepareForInstall(),
+    countOutcome: (outcome) => deps.countOutcome(outcome),
     report: (message, error) => console.error(`Deck: ${message}`, error),
   });
 

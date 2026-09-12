@@ -10,6 +10,7 @@ import {
   HEARTBEAT_INTERVAL_MS,
   MAX_PENDING_DAYS,
   SEND_CHECK_INTERVAL_MS,
+  UPDATE_KEYS,
   type PersistedTelemetry,
   type UsagePayloadLike,
 } from "./model";
@@ -20,7 +21,10 @@ import {
   type TelemetryDeps,
   type TelemetryService,
 } from "./service";
-import { AGENT_PAYLOAD_KEYS as RENDERER_AGENT_KEYS } from "../../src/telemetry/payload";
+import {
+  AGENT_PAYLOAD_KEYS as RENDERER_AGENT_KEYS,
+  UPDATE_KEYS as RENDERER_UPDATE_KEYS,
+} from "../../src/telemetry/payload";
 
 interface Harness {
   readonly service: TelemetryService;
@@ -323,6 +327,24 @@ describe("counting and the cumulative merge", () => {
     expect(payload.restoredSessions).toBe(true);
   });
 
+  it("folds update outcomes and sends every key, zeros included", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.count("update", "checked", 1);
+    h.service.count("update", "checked", 1);
+    h.service.count("update", "checkFailed", 1);
+    h.service.count("update", "errorMessage", 1); // unknown key: rejected by main
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    expect(h.posts[h.posts.length - 1].updates).toEqual({
+      checked: 2,
+      checkFailed: 1,
+      available: 0,
+      downloaded: 0,
+      downloadFailed: 0,
+      installAttempted: 0,
+    });
+  });
+
   it("one run is enough to reach participating DAU", async () => {
     const h = harness(ENABLED_STATE);
     h.service.noteWindowReady();
@@ -396,6 +418,7 @@ describe("days and ids", () => {
           "maxTabs",
           "maxPanes",
           "restoredSessions",
+          "updates",
         ].sort(),
       );
     }
@@ -476,6 +499,7 @@ describe("shouldSend cadence", () => {
     maxTabs: 0,
     maxPanes: 0,
     restoredSessions: false,
+    updates: {},
     dirty: false,
     lastSentAt: 0,
     terminal: false,
@@ -548,10 +572,24 @@ describe("persisted-state parsing", () => {
     expect(parsed.days["2026-08-22"].agents).toEqual({ claude: 2 });
     expect(parsed.days["2026-08-22"].surfaces).toEqual({ browser: 1 });
   });
+
+  it("reads a 1.2.0 buffer, which has no update counters, as none counted", () => {
+    const parsed = parsePersisted({
+      consent: "enabled",
+      consentVersion: 1,
+      days: { "2026-08-22": { dailyId: "id", agents: { claude: 2 } } },
+    });
+    expect(parsed.days["2026-08-22"].agents).toEqual({ claude: 2 });
+    expect(parsed.days["2026-08-22"].updates).toEqual({});
+  });
 });
 
 describe("renderer mirror parity", () => {
   it("main's closed agent key set equals the renderer contract's", () => {
     expect([...AGENT_PAYLOAD_KEYS].sort()).toEqual([...RENDERER_AGENT_KEYS].sort());
+  });
+
+  it("main's update outcome keys equal the renderer contract's", () => {
+    expect([...UPDATE_KEYS]).toEqual([...RENDERER_UPDATE_KEYS]);
   });
 });
