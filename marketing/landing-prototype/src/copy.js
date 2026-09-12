@@ -13,8 +13,6 @@ export const messages = {
     seeFeatures: "See how it works",
     installMac: "Install for macOS",
     installWin: "Install for Windows",
-    platformNote:
-      "For Apple Silicon Macs and Windows x64 — Intel Macs and Windows on ARM are not supported.",
     secondaryCta: "View on GitHub",
     downloadCountUnit: "downloads",
     changelogBack: "Back to Deck",
@@ -104,8 +102,6 @@ export const messages = {
     seeFeatures: "Xem nó chạy thế nào",
     installMac: "Cài đặt cho macOS",
     installWin: "Cài đặt cho Windows",
-    platformNote:
-      "Dành cho Mac Apple Silicon và Windows x64 — không hỗ trợ Mac chip Intel và Windows ARM.",
     secondaryCta: "Xem trên GitHub",
     downloadCountUnit: "downloads",
     changelogBack: "Về trang Deck",

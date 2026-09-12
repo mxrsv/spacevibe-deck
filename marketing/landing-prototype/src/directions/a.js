@@ -232,11 +232,6 @@ export function renderDirectionA(copy) {
 
             ${renderQuickInstall()}
 
-            <!-- Where the builds run, said before anyone downloads one: the
-                 release ships arm64 macOS and x64 Windows only
-                 (docs/user/getting-started.md). -->
-            <p class="a-platform-note" data-copy="platformNote">${copy.platformNote}</p>
-
             <div class="a-hero__support">
               <!-- Pointed at the feature panels since 2026-08-19. It used to
                    open the 16-second demo reel, which was cut that day for
