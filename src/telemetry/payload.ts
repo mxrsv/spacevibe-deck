@@ -62,7 +62,7 @@ export type SurfaceKey = (typeof SURFACE_KEYS)[number];
  *  - `checkFailed`: checks that got no answer at all.
  *  - `available`: answers that offered an update — checks, not distinct updates.
  *  - `downloaded` / `downloadFailed`: update downloads that finished or failed.
- *  - `installAttempted`: times Deck handed a downloaded update to the installer.
+ *  - `installAttempted`: times Deck started installing a downloaded update.
  */
 export const UPDATE_KEYS = [
   "checked",
