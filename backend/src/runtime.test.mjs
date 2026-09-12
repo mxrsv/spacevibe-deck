@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -29,12 +29,12 @@ test(
     });
     t.after(() => mf.dispose());
     const db = await mf.getD1Database("DB");
-    const migration = await readFile(
-      new URL("../migrations/0001-usage.sql", import.meta.url),
-      "utf8",
-    );
-    for (const statement of migration.split(";").filter((sql) => sql.trim())) {
-      await db.prepare(statement).run();
+    const migrations = new URL("../migrations/", import.meta.url);
+    for (const file of (await readdir(migrations)).filter((name) => name.endsWith(".sql")).sort()) {
+      const migration = await readFile(new URL(file, migrations), "utf8");
+      for (const statement of migration.split(";").filter((sql) => sql.trim())) {
+        await db.prepare(statement).run();
+      }
     }
     const snapshot = {
       schemaVersion: 1,

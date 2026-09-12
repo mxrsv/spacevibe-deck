@@ -34,6 +34,35 @@ test("unknown fields are terminal and never reach D1", async () => {
   }
 });
 
+const updates = {
+  checked: 2,
+  checkFailed: 1,
+  available: 0,
+  downloaded: 0,
+  downloadFailed: 0,
+  installAttempted: 0,
+};
+
+test("update counters are optional, but complete and closed when present", async () => {
+  const env = { INGEST_LIMITER: { limit: async () => ({ success: false }) } };
+  // Both shapes pass validation (429 comes after it): 1.1.x–1.2.0 never send
+  // `updates`, and a 400 would drop their whole day.
+  assert.equal((await worker.fetch(request(snapshot), env)).status, 429);
+  assert.equal((await worker.fetch(request({ ...snapshot, updates }), env)).status, 429);
+  const { checked: _checked, ...incomplete } = updates;
+  for (const changes of [
+    { updates: incomplete },
+    { updates: { ...updates, errorMessage: 1 } },
+    { updates: { ...updates, checked: -1 } },
+    { updates: null },
+  ]) {
+    assert.equal((await worker.fetch(request({ ...snapshot, ...changes }), {})).status, 400);
+  }
+  // `updates` cannot stand in for a required field.
+  const { restoredSessions: _restored, ...swapped } = snapshot;
+  assert.equal((await worker.fetch(request({ ...swapped, updates }), {})).status, 400);
+});
+
 test("invalid dates, UUIDs, counters and dimensions are rejected", async () => {
   for (const changes of [
     { day: "2026-02-30" },

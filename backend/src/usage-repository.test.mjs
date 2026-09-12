@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { createUsageRepository, RAW_RETENTION_MS, PURGE_AFTER_MS } from "./usage-repository.mjs";
@@ -22,7 +22,13 @@ const snapshot = {
 /** Run the production SQL against SQLite; mirror D1 batch transaction semantics. */
 function database() {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(readFileSync(new URL("../migrations/0001-usage.sql", import.meta.url), "utf8"));
+  // Every migration, in order — the schema production reaches after `migrate`.
+  const migrations = new URL("../migrations/", import.meta.url);
+  for (const file of readdirSync(migrations)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
+    sqlite.exec(readFileSync(new URL(file, migrations), "utf8"));
+  }
   const prepare = (sql) => ({
     bind: (...args) => ({ run: async () => sqlite.prepare(sql).run(...args) }),
   });
@@ -70,6 +76,28 @@ test("upsert replaces the entire payload without extending first-receipt retenti
   assert.deepEqual(JSON.parse(row.agents), { custom: 4 });
   assert.equal(row.received_at, 1000);
   assert.equal(row.version, "1.2.0");
+});
+
+test("update counters are stored and summed; a legacy snapshot stores an empty object", async (t) => {
+  const { sqlite, binding } = database();
+  t.after(() => sqlite.close());
+  const repository = createUsageRepository(binding);
+  const updates = {
+    checked: 3,
+    checkFailed: 1,
+    available: 1,
+    downloaded: 1,
+    downloadFailed: 0,
+    installAttempted: 1,
+  };
+  await repository.upsert({ ...snapshot, updates }, 1000);
+  await repository.upsert({ ...snapshot, dailyId: "0f2ce125-9b07-41a5-8476-94cff98463c5" }, 1000);
+  const rows = sqlite.prepare("SELECT daily_id, updates FROM usage_days ORDER BY daily_id").all();
+  assert.deepEqual(JSON.parse(rows[0].updates), {});
+  assert.deepEqual(JSON.parse(rows[1].updates), updates);
+  await repository.expire(1000 + PURGE_AFTER_MS);
+  const aggregate = sqlite.prepare("SELECT updates FROM usage_aggregates").get();
+  assert.deepEqual(JSON.parse(aggregate.updates), updates);
 });
 
 test("35-day cron aggregates then deletes, preserves younger rows, and repeats harmlessly", async (t) => {
@@ -145,7 +173,12 @@ test("aggregation preserves every metric and separates cohort dimensions", async
   assert.equal(rows.length, 5);
   for (const row of rows) {
     assert.deepEqual(
-      { ...row, agents: JSON.parse(row.agents), surfaces: JSON.parse(row.surfaces) },
+      {
+        ...row,
+        agents: JSON.parse(row.agents),
+        surfaces: JSON.parse(row.surfaces),
+        updates: JSON.parse(row.updates),
+      },
       {
         schema_version: 1,
         day: row.day,
@@ -166,6 +199,14 @@ test("aggregation preserves every metric and separates cohort dimensions", async
         tabs_total: 5,
         panes_total: 7,
         restored_total: 1,
+        updates: {
+          checked: 0,
+          checkFailed: 0,
+          available: 0,
+          downloaded: 0,
+          downloadFailed: 0,
+          installAttempted: 0,
+        },
       },
     );
   }

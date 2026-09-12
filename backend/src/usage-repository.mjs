@@ -1,4 +1,4 @@
-import { AGENT_KEYS, SURFACE_KEYS } from "./payload.mjs";
+import { AGENT_KEYS, SURFACE_KEYS, UPDATE_KEYS } from "./payload.mjs";
 
 export const RAW_RETENTION_MS = 35 * 24 * 60 * 60 * 1000;
 const CRON_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -20,23 +20,25 @@ function jsonTotals(column, keys, conflict = false) {
 }
 
 const UPSERT = `INSERT INTO usage_days
-  (schema_version, daily_id, day, version, platform, arch, agents, surfaces, max_tabs, max_panes, restored_sessions, received_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  (schema_version, daily_id, day, version, platform, arch, agents, surfaces, max_tabs, max_panes, restored_sessions, updates, received_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (schema_version, daily_id, day) DO UPDATE SET
     version = excluded.version, platform = excluded.platform, arch = excluded.arch,
     agents = excluded.agents, surfaces = excluded.surfaces,
     max_tabs = excluded.max_tabs, max_panes = excluded.max_panes,
-    restored_sessions = excluded.restored_sessions`;
+    restored_sessions = excluded.restored_sessions, updates = excluded.updates`;
 
 const AGGREGATE = `INSERT INTO usage_aggregates
-  (${DIMENSIONS}, participating_installs, agents, surfaces, tabs_total, panes_total, restored_total)
+  (${DIMENSIONS}, participating_installs, agents, surfaces, tabs_total, panes_total, restored_total, updates)
   SELECT ${DIMENSIONS}, count(*), ${jsonTotals("agents", AGENT_KEYS)},
-    ${jsonTotals("surfaces", SURFACE_KEYS)}, sum(max_tabs), sum(max_panes), sum(restored_sessions)
+    ${jsonTotals("surfaces", SURFACE_KEYS)}, sum(max_tabs), sum(max_panes), sum(restored_sessions),
+    ${jsonTotals("updates", UPDATE_KEYS)}
   FROM usage_days WHERE received_at <= ? GROUP BY ${DIMENSIONS}
   ON CONFLICT (${DIMENSIONS}) DO UPDATE SET
     participating_installs = usage_aggregates.participating_installs + excluded.participating_installs,
     agents = ${jsonTotals("agents", AGENT_KEYS, true)},
     surfaces = ${jsonTotals("surfaces", SURFACE_KEYS, true)},
+    updates = ${jsonTotals("updates", UPDATE_KEYS, true)},
     tabs_total = usage_aggregates.tabs_total + excluded.tabs_total,
     panes_total = usage_aggregates.panes_total + excluded.panes_total,
     restored_total = usage_aggregates.restored_total + excluded.restored_total`;
@@ -59,6 +61,8 @@ export function createUsageRepository(db) {
           payload.maxTabs,
           payload.maxPanes,
           Number(payload.restoredSessions),
+          // Absent from clients up to 1.2.0; the column's own default.
+          JSON.stringify(payload.updates ?? {}),
           receivedAt,
         )
         .run();

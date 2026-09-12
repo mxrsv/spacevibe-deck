@@ -9,9 +9,17 @@ export const AGENT_KEYS = [
   "custom",
 ];
 export const SURFACE_KEYS = ["browser", "explorer", "usage"];
+export const UPDATE_KEYS = [
+  "checked",
+  "checkFailed",
+  "available",
+  "downloaded",
+  "downloadFailed",
+  "installAttempted",
+];
 export const BODY_LIMIT = 4096;
 export const COUNTER_CAP = 1_000_000;
-const FIELDS = [
+const REQUIRED_FIELDS = [
   "schemaVersion",
   "dailyId",
   "day",
@@ -24,6 +32,12 @@ const FIELDS = [
   "maxPanes",
   "restoredSessions",
 ];
+/**
+ * Added to schema 1 without a bump (DECK-74): clients up to 1.2.0 omit it and
+ * must keep landing, because a 400 is terminal and would drop their whole day.
+ * When present it must carry every key.
+ */
+const OPTIONAL_FIELDS = ["updates"];
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const VERSION =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -53,8 +67,10 @@ function day(value) {
 export function validPayload(value) {
   return (
     record(value) &&
-    Object.keys(value).length === FIELDS.length &&
-    FIELDS.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every(
+      (key) => REQUIRED_FIELDS.includes(key) || OPTIONAL_FIELDS.includes(key),
+    ) &&
+    REQUIRED_FIELDS.every((key) => Object.hasOwn(value, key)) &&
     value.schemaVersion === 1 &&
     typeof value.dailyId === "string" &&
     UUID_V4.test(value.dailyId) &&
@@ -68,7 +84,8 @@ export function validPayload(value) {
     counters(value.surfaces, SURFACE_KEYS, true) &&
     count(value.maxTabs) &&
     count(value.maxPanes) &&
-    typeof value.restoredSessions === "boolean"
+    typeof value.restoredSessions === "boolean" &&
+    (!Object.hasOwn(value, "updates") || counters(value.updates, UPDATE_KEYS, true))
   );
 }
 
