@@ -179,6 +179,13 @@ async function main() {
     for (const cleanup of [
       () => feed?.close(),
       () => processesStopped && rm(root, { recursive: true, force: true }),
+      // macOS also caches the app itself outside the temporary profile.
+      () =>
+        processesStopped &&
+        rm(join(homedir(), "Library", "Caches", appId), {
+          recursive: true,
+          force: true,
+        }),
       // Squirrel owns a separate cache, isolated by this run's bundle ID.
       () =>
         processesStopped &&
