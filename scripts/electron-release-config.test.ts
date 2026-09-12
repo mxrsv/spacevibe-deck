@@ -139,6 +139,19 @@ describe("the shipping Electron release config", () => {
     expect(declares(releaseConfig, "allowToChangeInstallationDirectory: true")).toBe(true);
   });
 
+  it("names the macOS artifacts without spaces, so their blockmaps resolve", () => {
+    // GitHub turns a space in an asset name into a dot; GitHubProvider asks
+    // for it with a dash. The default `productName`-led zip name shipped its
+    // blockmap under a name no client requests (v1.1.1, v1.2.0).
+    expect(
+      declares(releaseConfig, "artifactName: SpaceVibe-Deck-${version}-${arch}-mac.${ext}"),
+    ).toBe(true);
+    // The dmg keeps the name the landing matches on (`-arm64.dmg`).
+    expect(declares(releaseConfig, "artifactName: SpaceVibe-Deck-${version}-${arch}.${ext}")).toBe(
+      true,
+    );
+  });
+
   it("publishes to the GitHub repository the updater feed names", () => {
     expect(declares(releaseConfig, "- provider: github")).toBe(true);
     expect(declares(releaseConfig, "owner: mxrsv")).toBe(true);
@@ -298,7 +311,15 @@ describe("the Electron release workflow", () => {
     expect(workflow).toContain("grep -qx 'latest-mac.yml' published.txt");
     expect(workflow).toContain("grep -q -- '-setup\\.exe$' published.txt");
     expect(workflow).toContain("grep -qx 'latest.yml' published.txt");
-    expect(workflow).toContain("grep -q '\\.blockmap$' published.txt");
+  });
+
+  it("requires the exact blockmap each manifest's payload resolves to", () => {
+    // A bare `\.blockmap$` match passed on the dmg and exe blockmaps while the
+    // zip's was published under a name no client asks for.
+    expect(workflow).toContain("--pattern latest-mac.yml --pattern latest.yml");
+    expect(workflow).toContain('grep -qxF "$payload" published.txt');
+    expect(workflow).toContain('grep -qxF "$payload.blockmap" published.txt');
+    expect(workflow).not.toContain("grep -q '\\.blockmap$' published.txt");
   });
 
   it("refuses a tag whose commit is not on main", () => {

@@ -56,6 +56,12 @@ mac:
     - target: zip
       arch:
         - arm64
+  # Named without the space in `productName`. GitHub stores an uploaded asset
+  # name with its space turned into a dot, while GitHubProvider asks for it
+  # with a dash — so the default name shipped the zip's blockmap as
+  # `SpaceVibe.Deck-…zip.blockmap` and every differential download 404ed.
+  # This covers the zip; the dmg keeps its own name below.
+  artifactName: SpaceVibe-Deck-${version}-${arch}-mac.${ext}
   category: public.app-category.developer-tools
   # `build/` holds only the entitlements plist; both hosts share the Tauri icon
   # set rather than duplicating it.
@@ -71,6 +77,11 @@ mac:
   # the finished artifact, which the release workflow runs and reports.
   gatekeeperAssess: false
   notarize: true
+dmg:
+  # The name every release has served so far. The landing picks the download by
+  # its `-arm64.dmg` suffix (marketing/landing-prototype/src/release-data.js),
+  # so `mac.artifactName` above must not rename it to `…-mac.dmg`.
+  artifactName: SpaceVibe-Deck-${version}-${arch}.${ext}
 # Windows ships from this same config and the same tag (runbook:
 # docs/operations/release.md). It is deliberately
 # NOT copied from `electron-builder.yml` — that file's win block is a preview

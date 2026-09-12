@@ -28,9 +28,11 @@ name: Electron Release
 # for updates. Check your connection and try again." Measured twice on
 # 2026-08-19 against v0.12.5-electron.2.
 #
-# `build/v…` is not valid semver, so `GitHubProvider` skips that feed entry
-# (GitHubProvider.js:71) and a running app sees nothing until the release is
-# real. The release tag is created by GitHub itself when the draft is promoted,
+# `build/v…` is not valid semver, so a prerelease build's `GitHubProvider`
+# skips that feed entry (GitHubProvider.js:71), and a stable build never reads
+# the feed's tag list at all — it resolves `releases/latest`
+# (electron/updater/updater.ts). Either way a running app sees nothing until
+# the release is real. The release tag is created by GitHub itself when the draft is promoted,
 # which happens only after every artifact is uploaded AND verified — a draft
 # holds a `tag_name` without creating the git ref, measured with a probe
 # release that produced an `untagged-…` URL and no remote tag.
@@ -352,8 +354,29 @@ jobs:
           grep -q -- '-setup\.exe$' published.txt
           # The Windows update feed.
           grep -qx 'latest.yml' published.txt
-          # Differential download.
-          grep -q '\.blockmap$' published.txt
+          # Differential download: the blockmap each manifest's payload
+          # actually resolves to, by exact name. A bare `\.blockmap$` match was
+          # satisfied by the dmg and exe blockmaps while the zip's shipped as
+          # `SpaceVibe.Deck-…` (GitHub turns a space into a dot) and 404ed for
+          # every client in v1.1.1 and v1.2.0.
+          mkdir -p manifests
+          gh release download "$TAG" --dir manifests \
+            --pattern latest-mac.yml --pattern latest.yml
+          for manifest in manifests/latest-mac.yml manifests/latest.yml; do
+            payload="$(sed -n "s/^path: *['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\} *$/\1/p" "$manifest")"
+            if [[ -z "$payload" ]]; then
+              echo "$manifest names no payload path"
+              exit 1
+            fi
+            if ! grep -qxF "$payload" published.txt; then
+              echo "$manifest points at $payload, which the release does not serve"
+              exit 1
+            fi
+            if ! grep -qxF "$payload.blockmap" published.txt; then
+              echo "$manifest's payload has no $payload.blockmap on the release"
+              exit 1
+            fi
+          done
 
       - name: Write the final release notes
         run: |
