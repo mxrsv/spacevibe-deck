@@ -3,7 +3,7 @@
 Specification and decisions: [DECK-1](https://linear.app/mxrsv/issue/DECK-1) `decided`.
 This directory is deployed independently from the desktop and landing. It shares no database
 with sibling SpaceVibe products. Entry point: [Worker](src/worker.mjs) `current`;
-[deployment configuration](wrangler.jsonc) `current`; [privacy notice](../marketing/public/privacy/2026-09-07/index.html) `current`.
+[deployment configuration](wrangler.jsonc) `current`; [privacy notice](../marketing/public/privacy/2026-09-12/index.html) `current`.
 
 ## Run and deploy
 
@@ -27,7 +27,10 @@ serves a dated static document; retain prior dates when publishing a new notice.
 
 [Validation](src/payload.mjs) `current` accepts only schema 1, JSON UTF-8 bodies up to
 4096 bytes, UUID v4 daily IDs, valid calendar days, closed dimensions/counter keys, and
-integer counters in 0–1,000,000. Unknown fields are rejected. The
+integer counters in 0–1,000,000. Unknown fields are rejected. `updates` is the one optional
+field: clients up to 1.2.0 omit it, and when present it must carry all six update keys.
+Deploy and migrate before any client release that changes the payload — a 400 is terminal on
+the client and drops that install's whole day. The
 [handler](src/worker.mjs) `current` accepts the preceding 30 UTC calendar days through
 tomorrow (local-date skew). Closed days receive terminal 400 before any D1 write; this
 prevents stale retries from reinserting identifiers already removed by retention.
@@ -46,7 +49,8 @@ The 03:00 UTC daily cron starts expiring rows at 34 days after first receipt, le
 day of margin inside the 35-day live-data target. D1 `batch` atomically groups coarse totals
 by schema/day/version/platform/architecture and deletes the raw rows. An error rejects the
 invocation and rolls back both operations. Aggregates contain no daily ID and remain internal;
-there is no public small-cell or dashboard surface. See [migration](migrations/0001-usage.sql) `current`.
+there is no public small-cell or dashboard surface. See [migration](migrations/0001-usage.sql) `current`
+and [the update-counter column](migrations/0002-update-counters.sql).
 
 ## Operations and privacy
 

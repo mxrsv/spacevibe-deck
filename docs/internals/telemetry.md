@@ -8,13 +8,15 @@ switch, no consent question, and an "off" recorded by a development build is ove
 than honoured. The one state that still stops a send is a `telemetry.json` Deck cannot read.
 This page is the contract: what leaves the machine, who owns the state, and when a POST
 fires. Settings → Privacy states exactly what is sent. Electron only: 1.0.0 and the Tauri
-host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-09-07/index.html).
+host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-09-12/index.html).
 
 ## The payload
 
 [`src/telemetry/payload.ts`](../../src/telemetry/payload.ts) is the one readable statement of
 what a Deck install sends, and its snapshot test is the privacy contract in
-executable form: adding a field turns it red. `schemaVersion` is 1.
+executable form: adding a field turns it red. `schemaVersion` is 1. `updates` was added to schema
+1 without a bump, so the service accepts a payload with or without it — releases up to 1.2.0
+never send it.
 
 | Field              | Meaning                                                                 |
 | ------------------ | ----------------------------------------------------------------------- |
@@ -26,6 +28,7 @@ executable form: adding a field turns it red. `schemaVersion` is 1.
 | `surfaces`         | Times the `browser`, `explorer` and `usage` surfaces went from hidden to visible |
 | `maxTabs`, `maxPanes` | The busiest single window's high-water marks that day                |
 | `restoredSessions` | Whether boot restore materialized at least one pane                     |
+| `updates`          | Update-check outcomes that day, every key present: `checked`, `checkFailed`, `available`, `downloaded`, `downloadFailed`, `installAttempted` |
 
 Deliberately absent: a permanent install identifier, file paths, repository names, branch
 names, file names, terminal output, prompts, agent replies, hostname, username, locale,
@@ -47,6 +50,10 @@ out.
   treats surface visibility as a transition with a seeded first tick, so a dock that was
   persisted open reads as state, not as an open; tabs and panes are gauges folded into a
   per-day maximum.
+- **Update outcomes are counted in main**, by the lifecycle in
+  [`updater.ts`](../../electron/updater/updater.ts) through `TelemetryHandle.countUpdate`, so
+  they never cross IPC. `installAttempted` is counted before `prepareForInstall`, because that
+  step's `flushOnQuit` is the last POST the process makes.
 - Three flat channels: `telemetry_count` (fire and forget), `telemetry_state` (also the
   "a window is ready" signal) and `telemetry_set_enabled`; one broadcast event,
   `telemetry:state-changed`. The event outlived the switch it synchronized: nothing in
@@ -132,5 +139,12 @@ in this repository. [DECK-1](https://linear.app/mxrsv/issue/DECK-1) `decided` re
 older separate-repository/session decision. Strict schema validation, cumulative upsert,
 closed historical dates, and atomic aggregate/delete retention are implemented in
 [backend/src](../../backend/src/worker.mjs) `current`. The dated
-[public privacy notice](../../marketing/public/privacy/2026-09-07/index.html) `current`
-is served at `/privacy` by the landing.
+[public privacy notice](../../marketing/public/privacy/2026-09-12/index.html) `current`
+is served at `/privacy` by the landing; earlier dated notices stay at their own paths.
+
+**A payload change ships Worker-first.** A 400 marks the client's buffer terminal, so a
+release that sends a field the live Worker does not accept loses each install's whole day,
+not only the new field — every day, until the Worker catches up. Before tagging a release
+whose [`payload.ts`](../../src/telemetry/payload.ts) changed, run `npm run migrate` and
+`npm run deploy` in `backend/`. The contract test proves the code in this tree agrees, not
+what is deployed.

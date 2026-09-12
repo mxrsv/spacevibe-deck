@@ -59,8 +59,10 @@ export function PrivacySection() {
         Deck sends one small daily snapshot: a fresh random id for that day, the date, Deck's
         version, platform and architecture, launch counts per built-in agent (custom agents count as
         one bucket), how often the browser, explorer and usage surfaces were opened, the day's
-        highest tab and pane counts, and whether sessions were restored at launch. The daily id is
-        random every day and is never derived from your machine, so days cannot be linked.
+        highest tab and pane counts, whether sessions were restored at launch, how many of Deck's
+        own update checks and downloads ran or failed, and how many update installs it started. The
+        daily id is random every day and is never derived from your machine, so days cannot be
+        linked.
       </p>
       <p class="settings-screen__note">
         Deck never sends code, file paths, repository or branch names, prompts, terminal output,

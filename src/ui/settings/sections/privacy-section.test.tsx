@@ -50,6 +50,8 @@ describe("PrivacySection", () => {
     expect(text).toContain("35 days");
     expect(text).toContain("Cloudflare");
     expect(text).toContain("random id for that day");
+    expect(text).toContain("update checks and downloads ran or failed");
+    expect(text).toContain("update installs it started");
     expect(text.toLowerCase()).not.toContain("anonymous");
   });
 

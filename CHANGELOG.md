@@ -7,6 +7,15 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+### Privacy
+
+- **Usage stats now count Deck's own update checks.** The daily snapshot adds how
+  many update checks and downloads ran or failed and how many installs Deck
+  started — counts only, with no error text or version numbers — so a broken
+  update feed no longer goes unseen.
+  Settings → Privacy and the [privacy notice](https://deck.spacevibe.dev/privacy)
+  list the new field.
+
 ## 1.2.0
 
 This update opens shells and quick agents from each checkout, tidies agent

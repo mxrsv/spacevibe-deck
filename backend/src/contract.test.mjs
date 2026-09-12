@@ -83,18 +83,23 @@ test("deployment disables logs, traces, public preview URLs and exposes only the
 
 test("privacy routes publish the dated notice and include its source in the deployment", async () => {
   const config = JSON.parse(await readFile(new URL("../../vercel.json", import.meta.url), "utf8"));
-  for (const source of ["/privacy", "/privacy/2026-09-07"]) {
+  // `/privacy` serves the newest notice; every earlier dated copy stays reachable.
+  for (const [source, notice] of [
+    ["/privacy", "2026-09-12"],
+    ["/privacy/2026-09-12", "2026-09-12"],
+    ["/privacy/2026-09-07", "2026-09-07"],
+  ]) {
     assert.ok(
       config.rewrites.some(
-        (route) =>
-          route.source === source && route.destination === "/privacy/2026-09-07/index.html",
+        (route) => route.source === source && route.destination === `/privacy/${notice}/index.html`,
       ),
+      source,
     );
   }
   const ignore = await readFile(new URL("../../.vercelignore", import.meta.url), "utf8");
   assert.ok(ignore.includes("!/marketing/public"));
   const html = await readFile(
-    new URL("../../marketing/public/privacy/2026-09-07/index.html", import.meta.url),
+    new URL("../../marketing/public/privacy/2026-09-12/index.html", import.meta.url),
     "utf8",
   );
   assert.doesNotMatch(html, /anonymous/i);
@@ -103,6 +108,7 @@ test("privacy routes publish the dated notice and include its source in the depl
     "schemaVersion",
     "surfaces",
     "restoredSessions",
+    "updates",
     "35 days",
     "Time Travel",
     "no in-app opt-out",

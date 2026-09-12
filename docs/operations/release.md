@@ -120,6 +120,12 @@ Require an ordinary [CI run](../../.github/workflows/ci.yml) on the exact integr
 that the source works on Ubuntu. A local macOS pass is not that evidence. If CI is still
 red, stop for an explicit owner decision rather than treating a tag as a test run.
 
+If [`src/telemetry/payload.ts`](../../src/telemetry/payload.ts) changed since the last
+release, the analytics Worker must already accept the new shape: run `npm run migrate` and
+`npm run deploy` in `backend/` first. A client whose snapshot the live Worker rejects gets a
+terminal 400 and loses that day's whole snapshot, not just the new field — see
+[telemetry](../internals/telemetry.md#receiving-service).
+
 A retry depends on both the failed step and whether the source must change:
 
 - **Same commit, failure before draft creation:** fix the runner/service problem and rerun
