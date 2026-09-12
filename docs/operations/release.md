@@ -16,7 +16,8 @@ hand-run hotfix path for a build that already shipped. This page is the runbook 
   until the run has finished. GitHub creates it when the draft is promoted. Pushing a bare
   `vX.Y.Z` tag would advertise the version through `releases.atom` ten minutes before its
   manifests existed, and every running app that checked in that window would report a
-  failed update check. `build/v…` is not valid semver, so the updater client skips it.
+  failed update check. `build/v…` is not valid semver, so a prerelease client skips it,
+  and a stable client never reads the feed's tag list — it resolves `releases/latest`.
 - **The tagged commit must be reachable from `origin/main`**, and the tag must equal
   `v<version>` for the `version` in [`package.json`](../../package.json). Either mismatch
   fails the run before anything is built.
@@ -85,7 +86,7 @@ with the latest release, so every assertion would run against whatever shipped l
    | `latest-mac.yml` | macOS update feed                                                |
    | `*-setup.exe`    | Windows first install and update payload (NSIS reruns the installer) |
    | `latest.yml`     | Windows update feed                                              |
-   | `*.blockmap`     | Differential download                                            |
+   | `<payload>.blockmap` | Differential download, by the exact `path` each manifest names |
 
    The manifests are `latest-mac.yml` / `latest.yml`, not `electron-mac.yml`: for the GitHub
    provider app-builder-lib always writes the default name. The client asks for its channel
@@ -219,15 +220,18 @@ removed by hand.
 - macOS: Apple Silicon (`arm64`) only. Intel Macs are not served.
 - Windows: `x64` only, unsigned, SmartScreen warns on first install, and no real-hardware
   runtime verification pass has been run. Windows ARM is not served.
-- Both platforms update from the moving `releases/latest`, never from a pinned asset.
+- Stable builds on both platforms update from the moving `releases/latest`, never from a
+  pinned asset; `-electron.N` builds walk the release feed for their own channel.
 
 ## The updater client
 
 [`electron/updater/updater.ts`](../../electron/updater/updater.ts) wraps electron-updater with
 four rules that are correctness, not preference:
 
-- `allowPrerelease` is on, so a prerelease build walks the release feed for its own channel
-  instead of resolving `releases/latest`.
+- `allowPrerelease` is on only for an `X.Y.Z-<prerelease>` build, which walks the release feed
+  for its own channel. A stable build must resolve `releases/latest`: with the flag on,
+  electron-updater 6.x takes the first `releases.atom` entry unfiltered, and that feed lists
+  every pushed `build/v…` tag.
 - `autoDownload` and `autoInstallOnAppQuit` are off. The user chooses when to download and
   when to install; nothing installs behind an ordinary quit.
 - `install()` never resolves on success: `quitAndInstall` hands the app to Squirrel or NSIS,
