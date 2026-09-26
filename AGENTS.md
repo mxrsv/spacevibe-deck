@@ -92,6 +92,23 @@ closure. Report checks actually performed without treating omitted checks as suc
 Both hosts are installed in this checkout, so Electron and its native dependencies belong
 here. Adding a feature to one host without the other leaves a parity gap.
 
+## Sessions and checkouts
+
+Several agent sessions run against this repo at once. The owner's standing rule (2026-09-26):
+
+- **One writer per checkout.** At most one session edits this primary checkout at a time. A
+  short fix that finishes in one pass works here, on `main`.
+- **A parallel coding session works in its own worktree** — this is standing authorization to
+  branch: `git worktree add ../spacevibe-deck-worktrees/<slug> -b <type>/<slug> main`, then
+  `npm install` inside it. If `git status` shows fresh changes you did not make, stop and ask
+  whether to move to a worktree instead of editing around them.
+- **One `electron:dev` at a time.** Dev runs share the owner's real userData and the Vite port
+  across checkouts.
+- **Merge the same day.** Rebase on `main`, fast-forward `main` to the branch, then
+  `git worktree remove` and delete the branch. Write the `CHANGELOG.md` entry on `main` at merge
+  time, not on the branch. Keep at most three worktrees alive; work that stays open overnight
+  records why in its plan.
+
 ## Repo rules
 
 - **R1. English only** for strings, comments, docs and commit messages.
