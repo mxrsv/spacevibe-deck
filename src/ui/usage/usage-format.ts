@@ -10,7 +10,6 @@
  */
 
 import type { UsageAgent } from "../../lib/usage-snapshot";
-import { formatUsd } from "../../lib/usage-pricing";
 import { PRICING_SNAPSHOT_DATE } from "../../lib/usage-pricing-snapshot";
 
 /**
@@ -111,13 +110,4 @@ export function formatTokensCompact(value: number): string {
     return `${rounded}${tier.suffix}`;
   }
   return `${Math.round(value)}`;
-}
-
-/**
- * A money cell's content, or `null` when the row has no price. Returning
- * `null` rather than a dash keeps DL-15.6 in exactly one place — the table —
- * so a future caller cannot invent a second placeholder.
- */
-export function usdCell(costUsd: number | null): string | null {
-  return costUsd === null ? null : formatUsd(costUsd);
 }

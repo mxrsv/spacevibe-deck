@@ -9,8 +9,8 @@ import { sessionAgentFilter, sessionEntries } from "../../sessions/sessions-stor
 /**
  * Id of the one panel every rail item controls. This rail filters a single
  * list in place rather than switching between separate view components, so
- * — unlike `usage-nav.tsx`'s per-view `viewTabId` — there is exactly one
- * panel id, defined once here and consumed by `sessions-screen.tsx`.
+ * there is exactly one panel id, defined once here and consumed by
+ * `sessions-screen.tsx`.
  */
 export const SESSIONS_PANEL_ID = "sessions-view-panel";
 
@@ -51,13 +51,13 @@ function NavGlyph({ agent }: { readonly agent: AgentFilter }) {
 /**
  * The sessions rail: filters the list by agent instead of switching between
  * separate views, because this screen's one section has no natural
- * multi-view split (plan's "Open decision" for §25). Copied from
- * `usage-nav.tsx`: same `role="tablist"` semantics, the same `↑`/`↓`
- * wraparound formula `(index + step + length) % length`, the same
- * "there is no foot" rule (DL-11.5) — this screen has no destructive action.
+ * multi-view split (plan's "Open decision" for §25). Same pattern as
+ * `settings-nav.tsx`: `role="tablist"` semantics and the `↑`/`↓`
+ * wraparound formula `(index + step + length) % length`, but no foot
+ * (DL-11.5) — this screen has no destructive action.
  *
  * Click sets `sessionAgentFilter.value` directly — a module signal, no prop
- * callback, the same idiom `usage-nav.tsx` and `settings-nav.tsx` use (R5).
+ * callback, the same idiom `settings-nav.tsx` uses (R5).
  *
  * `variant="compact"` (DL-19.8, 2026-08-16) lays the same tablist out as a
  * short chip row instead of a column. It exists because this surface no

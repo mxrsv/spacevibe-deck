@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_AGENTS } from "../../lib/agent-catalog";
-import { formatUsd } from "../../lib/usage-pricing";
 import { PRICING_SNAPSHOT_DATE } from "../../lib/usage-pricing-snapshot";
 import {
-  EM_DASH,
   ESTIMATE_NOTE,
   formatTokens,
   formatTokensCompact,
-  usdCell,
   USAGE_AGENT_LABEL,
   USAGE_AGENT_ORDER,
 } from "./usage-format";
@@ -69,21 +66,6 @@ describe("formatTokensCompact", () => {
     // `NaN` is worse than a wrong zero, same rule as `formatUsd`.
     expect(formatTokensCompact(Number.NaN)).toBe("0");
     expect(formatTokensCompact(Number.POSITIVE_INFINITY)).toBe("0");
-  });
-});
-
-describe("usdCell", () => {
-  it("returns null for an unpriced value so the table paints the dash", () => {
-    // The dash itself is the table's job (DL-15.6) — this must not
-    // pre-render a placeholder of its own.
-    expect(usdCell(null)).toBeNull();
-    expect(usdCell(null)).not.toBe(EM_DASH);
-  });
-
-  it("delegates a real number to the shared money formatter", () => {
-    expect(usdCell(12.5)).toBe(formatUsd(12.5));
-    // Zero is a measurement, not an absence (DL-15.6).
-    expect(usdCell(0)).toBe(formatUsd(0));
   });
 });
 

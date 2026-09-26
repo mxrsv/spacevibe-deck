@@ -8,7 +8,7 @@ vi.mock("../../host/agent-limits-host", () => ({ available: true, readAgentLimit
 vi.mock("../../usage/usage-client", () => ({ defaultUsageClient: { snapshot: mocks.tokens } }));
 const { UsageDockTab } = await import("./usage-dock-tab");
 const { RailAgentLimits } = await import("./agent-usage-summary");
-const { activeUsageView, activeUsageRange } = await import("./active-usage-view-store");
+const { activeUsageRange } = await import("./active-usage-view-store");
 const { usageSnapshot, usageLoading, usageStale } = await import("../../usage/usage-store");
 const now = new Date(2026, 8, 14, 14).getTime();
 const snapshot: UsageSnapshot = {
@@ -33,7 +33,6 @@ beforeEach(() => {
   mocks.limits.mockReset();
   host = document.createElement("div");
   document.body.append(host);
-  activeUsageView.value = "overview";
   activeUsageRange.value = "all";
   usageSnapshot.value = null;
   usageLoading.value = false;
@@ -76,22 +75,10 @@ it.each([false, true])(
     );
     expect(order.slice(0, 3)).toEqual(["usage-allowance", "usage-range", "usage-timeline"]);
     await act(async () => {
-      activeUsageView.value = "daily";
-    });
-    expect(host.querySelector(".metric-table")).not.toBeNull();
-    await act(async () => {
       await vi.advanceTimersByTimeAsync(15_000);
     });
-    expect(mocks.limits).toHaveBeenCalledTimes(sidebar ? 2 : 1);
-    expect(mocks.tokens).toHaveBeenCalledTimes(4);
-    await act(async () => {
-      activeUsageView.value = "breakdown";
-    });
-    expect(host.querySelectorAll('[role="tabpanel"] thead th')).toHaveLength(9);
-    await act(async () => {
-      activeUsageView.value = "overview";
-    });
     expect(mocks.limits).toHaveBeenCalledTimes(2);
+    expect(mocks.tokens).toHaveBeenCalledTimes(4);
     act(() => render(null, host));
     expect(vi.getTimerCount()).toBe(0);
     await vi.advanceTimersByTimeAsync(30_000);

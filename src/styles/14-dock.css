@@ -356,27 +356,18 @@
 }
 
 /* ── Usage in the dock: the narrow-column layout ─────────────── */
-/* ── Usage body: dock variant (usage-body.tsx, additive to §11/§15/§19) ──
+/* ── Usage body: dock variant (usage-body.tsx, additive to §11/§19) ──
    `UsageBody`'s "screen" variant reuses `.usage-screen__grid` /
-   `.usage-screen__section` verbatim — every rule already in this file above
-   under those two class names keeps applying unchanged, so nothing here
-   touches them. This block is ONLY the new "dock" path: the same status
-   strip / rail / view panel content, sized for a narrow docked column
-   (target 360-560px, default 420px).
+   `.usage-screen__section` verbatim, so nothing here touches them. This block
+   is ONLY the "dock" path: the same status strip and overview, sized for a
+   narrow docked column (target 360-560px, default 420px). There is no view
+   rail — the overview is the only view (2026-09-26).
 
    The consumer that docks `<UsageBody variant="dock" />` must itself be a
    `display: flex; flex-direction: column; min-height: 0;` box — the same
    role `.usage-screen` plays for the screen variant — so `.usage-dock__grid`
-   below can size within it. Insert this block after the existing
-   `.usage-agent__sub` / "no hover" comment (around the current line 5736 in
-   `src/styles.css`, i.e. right before the "Usage screen: reduced motion"
-   section), so it reads as the dock counterpart sitting next to the screen
-   rules it reuses. */
+   below can size within it. */
 
-/* Stacked instead of side-by-side: at 360px width a 220px fixed rail
-   (`.usage-screen__grid`'s own `220px minmax(0, 1fr)` columns) would leave
-   ~140px for data, which is too narrow for even the daily table. The rail
-   becomes a horizontal strip above the content instead (below). */
 .usage-dock__grid {
   display: flex;
   flex-direction: column;
@@ -384,43 +375,10 @@
   flex: 1;
 }
 
-/* `.usage-nav` itself is untouched (usage-nav.tsx) — these are descendant
-   overrides scoped to the dock grid, same idiom `.usage-screen__grid`'s
-   sibling rules already use for the rail's OWN look. Row axis, scrolls
-   horizontally if a future 4th view ever overflows the strip, bottom accent
-   in place of the rail's left accent (DL-11.2's wash is unchanged either
-   way). */
-.usage-dock__grid .usage-nav {
-  flex-direction: row;
-  border-right: none;
-  border-bottom: 1px solid var(--hair);
-  flex-shrink: 0;
-  overflow-x: auto;
-}
-
-.usage-dock__grid .usage-nav__list {
-  flex-direction: row;
-  padding: 4px 6px;
-  gap: 2px;
-}
-
-.usage-dock__grid .usage-nav__item {
-  border-left: none;
-  border-bottom: 2px solid transparent;
-  padding: 6px 10px;
-  white-space: nowrap;
-}
-
-.usage-dock__grid .usage-nav__item:hover,
-.usage-dock__grid .usage-nav__item.is-active {
-  border-left-color: transparent;
-  border-bottom-color: var(--accent);
-}
-
 /* Section: same scrolling contract as `.usage-screen__section`
   (min-height: 0, owns its own overflow-y), tighter horizontal padding so a
-  360px column keeps more of its width for the table/hero inside — 16px a
-  side there is 32px of a 420px column's own padding alone. */
+  360px column keeps more of its width for the content inside — 16px a side
+  there is 32px of a 420px column's own padding alone. */
 .usage-dock__section {
   min-height: 0;
   min-width: 0;
@@ -430,16 +388,6 @@
 }
 
 /* The section's scrollbar is the app-wide one (`01-tokens.css`, 2026-08-17). */
-
-/* A wide table (breakdown's 9 columns) still gets its OWN
-   `overflow-x: auto` container per DL-15.3 — `.metric-table__scroll` is
-   unchanged and unscoped, so this is true in dock mode with no new rule.
-   Cell padding is trimmed here only, so more columns stay visible before the
-   scroller kicks in; type size is untouched (DL-20.3 reserves that to
-   DL-4.4). */
-.usage-dock__section .metric-table__cell {
-  padding: 5px 8px;
-}
 
 /* DL-16: the Overview owns its internal spacing; the dock owns scrolling. */
 .usage-dock__section > .usage-overview {

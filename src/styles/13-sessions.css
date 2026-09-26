@@ -131,13 +131,9 @@
 
 /* DL-21.1/21.2, via DL-11.2: selection is the full `--tab-active-bg` wash,
    hover a quieter `--state-hover-bg` — two different values, never one
-   shared between the states. Deliberately NOT `.usage-nav__item`'s pattern a
-   few hundred lines up, which still shares one declaration between `:hover`
-   and `.is-active` and paints a `border-left-color: var(--accent)` accent
-   bar — exactly what DL-11.2 says the wash retired on 2026-08-14 (DL-21.6).
-   Fixing that rule is out of this task's scope (W3); reported here rather
-   than touched, the same way this file already reports `.settings-screen`'s
-   reduced-motion defect a few dozen lines up instead of fixing it. */
+   shared between the states, and no `border-left-color: var(--accent)`
+   accent bar — exactly what DL-11.2 says the wash retired on 2026-08-14
+   (DL-21.6). */
 .sessions-nav__item:hover {
   background: var(--state-hover-bg);
   color: var(--text-primary);

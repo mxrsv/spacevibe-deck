@@ -5,7 +5,7 @@
    owner: Settings must stay free to re-tune its 620px measure or its rail
    without silently re-laying-out a screen it knows nothing about, and this
    one needs a section area with horizontal padding and no measure clamp,
-   because a nine-column table has to be allowed to be wide (DL-15.3). */
+   because a table has to be allowed to be wide (DL-15.3). */
 
 .usage-screen {
   position: absolute;
@@ -80,15 +80,15 @@
   margin-left: auto;
 }
 
-/* Two columns: the rail is fixed, the view area owns all scrolling
-   (DL-11.1). min-height:0 on both so the grid can actually shrink, and
-   minmax(0, 1fr) so an over-wide table scrolls itself instead of stretching
-   the column (DL-15.3). */
+/* One column: there is a single view, so no rail (2026-09-26). The view
+   area owns all scrolling (DL-11.1); min-height:0 so the grid can actually
+   shrink, and minmax(0, 1fr) so an over-wide table scrolls itself instead of
+   stretching the column (DL-15.3). */
 .usage-screen__grid {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .usage-screen__section {
@@ -96,63 +96,11 @@
   min-width: 0;
   overflow-y: auto;
   /* Horizontal padding here, unlike the settings section: a config row brings
-     its own 14px, a table does not. No max-width clamp either — the 620px
-     measure that keeps a key beside its value would strand the breakdown
-     table's later columns behind a scrollbar for no reason. */
+     its own 14px, a table does not. */
   padding: 6px 16px 16px;
 }
 
 /* The section's scrollbar is the app-wide one (`01-tokens.css`, 2026-08-17). */
-
-/* ── Usage rail: view tabs, no foot (usage-nav.tsx, DL-11.2/11.5) ─────── */
-
-.usage-nav {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-right: 1px solid var(--hair);
-}
-
-.usage-nav__list {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 0;
-  overflow-y: auto;
-}
-
-.usage-nav__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 14px;
-  border: none;
-  border-left: 2px solid transparent;
-  background: transparent;
-  color: var(--text-faint);
-  /* Navigation, not data — prose font (DL-4.1 / DL-11.4). */
-  font-family: var(--ui-font);
-  font-size: var(--type-body);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 0.13s ease,
-    border-left-color 0.13s ease,
-    color 0.13s ease;
-}
-
-/* Hover and active share the 2px accent bar + 4% --fg wash `.cfg-row:hover`
-   uses (DL-11.2) — no shadow, no fill (DL-1.3). */
-.usage-nav__item:hover,
-.usage-nav__item.is-active {
-  background: color-mix(in srgb, var(--fg) 4%, transparent);
-  border-left-color: var(--accent);
-  color: var(--text-primary);
-}
-
-.usage-nav__item:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
 
 /* ── Usage status strip (usage-status.tsx) ─────────────────────────────── */
 
@@ -197,159 +145,10 @@
   color: var(--red);
 }
 
-/* ── Read-only metric table (metric-table.tsx, DL §15) ─────────────────── */
-
-.metric-table {
-  margin: 14px 0 22px;
-  min-width: 0;
-}
-
-/* The heading names the table for assistive tech via aria-labelledby, and it
-   sits OUTSIDE the scroller so it stays put while wide columns move under it
-   (DL-15.7). Panel-title size, normal weight — it labels data, it does not
-   compete with it (DL-4.4). */
-.metric-table__title {
-  margin: 0 0 6px;
-  font-family: var(--ui-font);
-  font-size: var(--type-body);
-  font-weight: 400;
-  color: var(--text-primary);
-}
-
-/* DL-15.3: horizontal overflow scrolls HERE, inside the table's own
-   container — never on the page body, never by shrinking the type. */
-.metric-table__scroll {
-  overflow-x: auto;
-  max-width: 100%;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tight);
-}
-
-/* Only the THUMB is overridden: an always-visible bar on a table that scrolls
-   horizontally, where the base layer reveals one on hover. Size and track come
-   from `01-tokens.css`, which asks not to be re-declared. */
-.metric-table__scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--fg) 25%, transparent);
-  border-radius: var(--radius-tight);
-}
-
-/* DL-15.1: on the screen's own --chrome-2 surface, structured by hairlines.
-   No zebra striping, no fill, no shadow — depth is a background step here. */
-.metric-table__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--ui-font);
-  font-size: var(--type-meta);
-  color: var(--text-primary);
-}
-
-.metric-table__cell {
-  padding: 6px 12px;
-  text-align: left;
-  /* A wrapped number is unreadable in a column; the container scrolls
-     instead (DL-15.3). */
-  white-space: nowrap;
-  border-bottom: 1px solid var(--hair);
-}
-
-/* DL-15.5: a column header is the name of the thing below it, treated like a
-   cfg-group label — lowercase --ui-font, faint, normal weight, no caret. */
-.metric-table__table thead .metric-table__cell {
-  font-weight: 400;
-  font-size: var(--type-micro);
-  color: var(--text-faint);
-  background: color-mix(in srgb, var(--fg) 3%, transparent);
-}
-
-/* The row-identifying cell is a <th scope="row"> (DL-15.7) but reads as data,
-   not as a heading. */
-.metric-table__table tbody th.metric-table__cell {
-  font-weight: 400;
-  color: var(--text-primary);
-}
-
-.metric-table__table tbody tr:last-child .metric-table__cell {
-  border-bottom: none;
-}
-
-/* DL-15.4: numerals right-aligned and tabular. There is no --mono token in
-   this file, by decision (see the :root comment) — the monospace face belongs
-   to the terminal (DL-4.1) — so digits are held in column by
-   font-variant-numeric, which is exactly what DL-4.2 exists for. */
-.metric-table__cell--num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-/* DL-15.8: an empty table still says what is absent, so "nothing yet" cannot
-   be confused with "something broke". */
-.metric-table__empty {
-  color: var(--text-faint);
-  font-size: var(--type-micro);
-}
-
-.metric-table__note {
-  margin: 6px 0 0;
-  font-family: var(--ui-font);
-  font-size: var(--type-micro);
-  color: var(--text-faint);
-}
-
-/* There is deliberately NO `.metric-table__table tbody tr:hover` rule. A row
-   that lights up under the pointer promises a click, and there is nothing
-   behind it (DL-15.2). This comment exists so the next person does not
-   "improve" the table by adding one. */
-
-/* ── A day's agents inside one cell (daily-section.tsx, DL-15.9) ───────── */
-
-/* The stack is ONE grid, with each line contributing its four cells to it
-   (`display: contents`), so the marks, names and figures of a day's agents
-   line up with each other instead of every line measuring itself. The column
-   widths are fixed rather than intrinsic for the same reason one row up: an
-   `auto` track resolves per cell, so identical figures would sit at different
-   offsets on consecutive days. */
-.usage-day-agents {
-  display: grid;
-  grid-template-columns: 15px minmax(0, 1fr) minmax(6ch, auto) minmax(8ch, auto);
-  align-items: center;
-  column-gap: 8px;
-  row-gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.usage-day-agent {
-  display: contents;
-}
-
-.usage-day-agent__logo {
-  width: 15px;
-  height: 15px;
-  display: block;
-}
-
-.usage-day-agent__label {
-  font-family: var(--ui-font);
-  color: var(--text-primary);
-}
-
-/* The per-agent figures are secondary to the day's own totals in the numeric
-   columns, so they are faint and right-aligned — a subordinate column pair
-   inside the cell, holding the same DL-15.4 alignment and tabular figures the
-   real columns do. */
-.usage-day-agent__tokens,
-.usage-day-agent__usd {
-  font-family: var(--ui-font);
-  color: var(--text-faint);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* ── Usage overview: the display figure (overview-section.tsx, DL §16) ─── */
 
 /* A reading column, not a table. The section deliberately drops its measure
-   clamp so a nine-column table can be wide (DL-15.3); the hero wants the
+   clamp so a table can be wide (DL-15.3); the hero wants the
    opposite, because a share bar stretched across 1400px stops reading as a
    proportion and starts reading as a rule across the page. */
 .usage-hero {

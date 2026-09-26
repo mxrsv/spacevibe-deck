@@ -675,12 +675,15 @@ above is kept for the trail, not as current behaviour.
 Still open on the same rule, and deliberately not fixed in that pass
 (scope: the owner pointed at the frame's icon buttons):
 
-| where                              | violates         | note                                                                                                                               |
-| ---------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `.usage-nav__item.is-active`       | DL-21.6, DL-21.1 | keeps a `border-left-color: var(--accent)` bar — the retired accent marker — beside a 4% `--fg` wash that is not `--tab-active-bg` |
-| `.usage-range__option.is-active`   | DL-21.1          | 4% `--fg` wash instead of `--tab-active-bg`; also mixes from `--fg` rather than `--tone` (DL-2.3's correction)                     |
-| `.toolbar-menu__row.is-active`     | DL-21.1          | marks active with `--accent` ink and no wash                                                                                       |
-| `.worktree-agents__item.is-active` | DL-21.1          | correct wash, but adds an `--accent` border as a second signifier                                                                  |
+| where                              | violates | note                                                                                                           |
+| ---------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `.usage-range__option.is-active`   | DL-21.1  | 4% `--fg` wash instead of `--tab-active-bg`; also mixes from `--fg` rather than `--tone` (DL-2.3's correction) |
+| `.toolbar-menu__row.is-active`     | DL-21.1  | marks active with `--accent` ink and no wash                                                                   |
+| `.worktree-agents__item.is-active` | DL-21.1  | correct wash, but adds an `--accent` border as a second signifier                                              |
+
+The `.usage-nav__item.is-active` row left this table on 2026-09-26: the usage
+view rail was removed along with the Daily and Breakdown views, so the selector
+no longer exists.
 
 **Opened 2026-08-16** by the modal shell (§29), and recorded here rather than
 fixed. Amending DL-1.3's `backdrop-filter` clause for `.modal-scrim` meant
@@ -1687,7 +1690,7 @@ covering it, and it can hold something that is not Deck's own pixels.
   in a tab row, and shows exactly one at a time (2026-08-16).** The row IS
   the panel's header (DL-19.3): a `role="tablist"` of `role="tab"` chips,
   the active chip carrying DL-21.1's full wash and idle chips carrying none —
-  the same selection language the settings and usage rails already use, laid
+  the same selection language the settings rail already uses, laid
   out as a row. **Amended 2026-08-19 (owner): the chips are icon-only and the
   whole group sits immediately before the right-panel toggle at the window's
   outer edge.** Each chip keeps its sentence-case name in both `aria-label`

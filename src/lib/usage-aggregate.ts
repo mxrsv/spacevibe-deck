@@ -1,5 +1,6 @@
 /**
- * Re-bucketing the Rust payload into the three views the usage screen shows.
+ * Re-bucketing the Rust payload into the per-agent totals the usage overview
+ * shows.
  * Pure — no signals, no Tauri, no DOM.
  *
  * Rust hands back 15-minute UTC buckets and does no timezone work at all
@@ -45,65 +46,6 @@ export interface AgentTotal {
   readonly unpricedTokens: number;
 }
 
-export interface DailyRow {
-  /** Local calendar day, "YYYY-MM-DD". */
-  readonly day: string;
-  readonly agent: UsageAgent;
-  readonly counters: UsageCounters;
-  /** Sum over priced models; null only when NO model here has a price. */
-  readonly costUsd: number | null;
-  readonly unpricedModels: readonly string[];
-  /** Tokens belonging to `unpricedModels` — the part `costUsd` excludes. */
-  readonly unpricedTokens: number;
-}
-
-/**
- * One local day, with the agents that ran on it kept as their own entries.
- *
- * The daily table shows a day per row (2026-08-15), so the row carries both
- * levels: the per-agent figures the reader compares inside the day, and the
- * day's own totals in the numeric columns. The split is not cosmetic — costs
- * are rolled up per (day, agent) and then summed, never by flattening the two
- * agents' models into one map first, because two agents can report the same
- * model string (`unknown` does, on the real corpus) and flattening would fuse
- * two different agents' counters into a single priced entry.
- */
-export interface DailyTotal {
-  /** Local calendar day, "YYYY-MM-DD". */
-  readonly day: string;
-  /** Agents with data that day, in `dailyRows` order (agent ascending). */
-  readonly agents: readonly DailyRow[];
-  /** The day's counters, summed across its agents. */
-  readonly counters: UsageCounters;
-  /** Sum over the agents that have a price; null only when none does. */
-  readonly costUsd: number | null;
-  readonly unpricedModels: readonly string[];
-  /** Tokens belonging to `unpricedModels` — the part `costUsd` excludes. */
-  readonly unpricedTokens: number;
-}
-
-export interface BreakdownRow {
-  readonly agent: UsageAgent;
-  /** The raw model string, verbatim. */
-  readonly model: string;
-  readonly counters: UsageCounters;
-  readonly costUsd: number | null;
-}
-
-/**
- * Joins a day key to an agent inside a Map key. A space cannot appear in either
- * half — the agent is a closed union and the day is digits and dashes — so
- * the split back apart is unambiguous.
- */
-const KEY_SEPARATOR = " ";
-
-/**
- * Local noon, not local midnight, as the anchor for day arithmetic. A DST
- * transition that lands on the anchor instant makes midnight either
- * non-existent or ambiguous; noon is never within a transition anywhere.
- */
-const DAY_ANCHOR_HOUR = 12;
-
 function pad2(value: number): string {
   return `${value}`.padStart(2, "0");
 }
@@ -118,22 +60,6 @@ export function localDayKey(utcMs: number): string {
   return [`${at.getFullYear()}`.padStart(4, "0"), pad2(at.getMonth() + 1), pad2(at.getDate())].join(
     "-",
   );
-}
-
-/** The last `days` local calendar days ending on the day containing `nowMs`. */
-function recentDayKeys(days: number, nowMs: number): readonly string[] {
-  const now = new Date(nowMs);
-  const keys: string[] = [];
-  for (let back = 0; back < days; back += 1) {
-    const anchor = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() - back,
-      DAY_ANCHOR_HOUR,
-    );
-    keys.push(localDayKey(anchor.getTime()));
-  }
-  return keys;
 }
 
 /**
@@ -234,111 +160,4 @@ export function agentTotals(
       ...rollupCost(byModel),
     }))
     .sort((left, right) => compareStrings(left.agent, right.agent));
-}
-
-/**
- * One row per (local day, agent) with data, across the last `days` local days
- * ending on the day containing `nowMs`. Newest day first, then agent. Days
- * with no usage are absent rather than zero-filled — the table shows what
- * happened, not a calendar.
- */
-export function dailyRows(
-  buckets: readonly UsageBucket[],
-  days: number,
-  nowMs: number,
-): readonly DailyRow[] {
-  if (days <= 0 || !Number.isFinite(nowMs)) {
-    return [];
-  }
-  const window = new Set(recentDayKeys(days, nowMs));
-  const groups = groupByModel<string>(buckets, (bucket) => {
-    const day = localDayKey(bucket.bucketStartMs);
-    return window.has(day) ? `${day}${KEY_SEPARATOR}${bucket.agent}` : null;
-  });
-  return [...groups.entries()]
-    .map(([key, byModel]) => {
-      const [day, agent] = key.split(KEY_SEPARATOR) as [string, UsageAgent];
-      return {
-        day,
-        agent,
-        counters: sumCounters(byModel),
-        ...rollupCost(byModel),
-      };
-    })
-    .sort(
-      (left, right) =>
-        compareStrings(right.day, left.day) || compareStrings(left.agent, right.agent),
-    );
-}
-
-/**
- * One row per local day, each carrying its agents' rows and the day's own
- * totals. Same window, same ordering and same absence rule as `dailyRows`:
- * newest day first, days without usage absent rather than zero-filled.
- *
- * The money follows the 2026-08-10 rule one level up: the day's `costUsd` is
- * the sum over the agents that HAVE a price and is null only when not one of
- * them does, with `unpricedModels` beside it so the omission is stated rather
- * than silent. Summing already-rolled-up agent costs is what keeps a model
- * string shared by both agents from collapsing into one entry.
- */
-export function dailyTotals(
-  buckets: readonly UsageBucket[],
-  days: number,
-  nowMs: number,
-): readonly DailyTotal[] {
-  const byDay = new Map<string, readonly DailyRow[]>();
-  for (const row of dailyRows(buckets, days, nowMs)) {
-    byDay.set(row.day, [...(byDay.get(row.day) ?? []), row]);
-  }
-  // Insertion order is already newest day first: `dailyRows` sorted it.
-  return [...byDay.entries()].map(([day, agents]) => {
-    let counters = EMPTY_COUNTERS;
-    let priced = 0;
-    let costUsd = 0;
-    let unpricedTokens = 0;
-    const unpriced: string[] = [];
-    for (const agent of agents) {
-      counters = addCounters(counters, agent.counters);
-      unpricedTokens += agent.unpricedTokens;
-      unpriced.push(...agent.unpricedModels);
-      if (agent.costUsd === null) {
-        continue;
-      }
-      costUsd += agent.costUsd;
-      priced += 1;
-    }
-    return {
-      day,
-      agents,
-      counters,
-      costUsd: priced === 0 ? null : costUsd,
-      unpricedModels: [...new Set(unpriced)].sort(compareStrings),
-      unpricedTokens,
-    };
-  });
-}
-
-/**
- * One row per (agent, raw model) over the whole recorded history. This is the
- * view where an unpriced model is diagnosable: the string is shown verbatim
- * and its own `costUsd` is `null`, so a missing snapshot entry names itself.
- */
-export function breakdownRows(buckets: readonly UsageBucket[]): readonly BreakdownRow[] {
-  const groups = groupByModel<UsageAgent>(buckets, (bucket) => bucket.agent);
-  const rows: BreakdownRow[] = [];
-  for (const [agent, byModel] of groups) {
-    for (const [model, counters] of byModel) {
-      rows.push({
-        agent,
-        model,
-        counters,
-        costUsd: estimateCostUsd(model, counters),
-      });
-    }
-  }
-  return rows.sort(
-    (left, right) =>
-      compareStrings(left.agent, right.agent) || compareStrings(left.model, right.model),
-  );
 }

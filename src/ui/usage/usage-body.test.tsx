@@ -19,13 +19,10 @@ vi.mock("../../usage/usage-store", async () => {
 
 import type { UsageSnapshot } from "../../lib/usage-snapshot";
 import { UsageBody } from "./usage-body";
-import { activeUsageView, type UsageViewId } from "./active-usage-view-store";
 import { usageSnapshot } from "../../usage/usage-store";
 
-// Two agents, two models each, so the breakdown table has more than one row
-// and the daily table stacks more than one agent inside its cell (DL-15.9) —
-// a variant that dropped a row or a stacked line would go undetected on a
-// single-row fixture.
+// Two agents, so a variant that dropped one agent's figures would go
+// undetected on a single-agent fixture.
 const SEEDED_SNAPSHOT: UsageSnapshot = {
   scannedAtMs: 1_754_800_000_000,
   buckets: [
@@ -70,7 +67,6 @@ describe("UsageBody", () => {
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
-    activeUsageView.value = "overview";
     usageSnapshot.value = null;
   });
 
@@ -78,7 +74,6 @@ describe("UsageBody", () => {
     act(() => {
       render(null, host);
     });
-    activeUsageView.value = "overview";
     usageSnapshot.value = null;
   });
 
@@ -114,11 +109,13 @@ describe("UsageBody", () => {
     expect(host.children[1]?.classList.contains("usage-screen__grid")).toBe(true);
   });
 
-  it("renders the rail and a tabpanel in both variants", () => {
+  it("renders the overview directly, with no view rail", () => {
     for (const variant of ["screen", "dock"] as const) {
       mount(variant);
-      expect(host.querySelectorAll('.usage-nav [role="tab"]')).toHaveLength(3);
-      expect(host.querySelector('[role="tabpanel"]')).not.toBeNull();
+      // The overview's own cost-range selector is the only tablist left.
+      const tablists = [...host.querySelectorAll('[role="tablist"]')];
+      expect(tablists.map((list) => list.getAttribute("aria-label"))).toEqual(["Cost range"]);
+      expect(host.querySelector(".usage-overview")).not.toBeNull();
     }
   });
 
@@ -137,64 +134,19 @@ describe("UsageBody", () => {
     expect(dockText).toBe(screenText);
   });
 
-  // The actual claim under test: switching `variant` never drops a row, a
-  // column or a figure — only the surrounding class names change. Each view
-  // is seeded with two agents so a variant that silently dropped one would
-  // be caught.
-  const VIEWS: readonly UsageViewId[] = ["overview", "daily", "breakdown"];
-
-  it.each(VIEWS)("dock loses no data relative to screen for the %s view", (viewId) => {
-    activeUsageView.value = viewId;
+  // The actual claim under test: switching `variant` never drops a figure —
+  // only the surrounding class names change. The fixture carries two agents
+  // so a variant that silently dropped one would be caught.
+  it("dock loses no data relative to screen", () => {
     usageSnapshot.value = SEEDED_SNAPSHOT;
 
     mount("screen");
-    const screenPanel = host.querySelector('[role="tabpanel"]');
-    const screenText = screenPanel?.textContent;
-    const screenCells = [...(screenPanel?.querySelectorAll("th, td") ?? [])].map(
-      (cell) => cell.textContent,
-    );
+    const screenText = host.querySelector(".usage-screen__section")?.textContent;
 
     mount("dock");
-    const dockPanel = host.querySelector('[role="tabpanel"]');
-    const dockText = dockPanel?.textContent;
-    const dockCells = [...(dockPanel?.querySelectorAll("th, td") ?? [])].map(
-      (cell) => cell.textContent,
-    );
+    const dockText = host.querySelector(".usage-dock__section")?.textContent;
 
     expect(screenText).not.toBeUndefined();
     expect(dockText).toBe(screenText);
-    expect(dockCells).toEqual(screenCells);
-  });
-
-  it("breakdown keeps all nine columns' cell text in dock mode (no column dropped)", () => {
-    activeUsageView.value = "breakdown";
-    usageSnapshot.value = SEEDED_SNAPSHOT;
-    mount("dock");
-
-    const headerTexts = [...host.querySelectorAll('[role="tabpanel"] thead th')].map(
-      (cell) => cell.textContent,
-    );
-    expect(headerTexts).toEqual([
-      "Agent",
-      "Model",
-      "Input uncached",
-      "Cache read",
-      "Cache create 5m",
-      "Cache create 1h",
-      "Cache write",
-      "Output",
-      "Est. USD",
-    ]);
-    expect(host.querySelectorAll('[role="tabpanel"] tbody tr')).toHaveLength(2);
-  });
-
-  it("a wide table still scrolls inside its own container in dock mode (DL-15.3)", () => {
-    activeUsageView.value = "breakdown";
-    usageSnapshot.value = SEEDED_SNAPSHOT;
-    mount("dock");
-
-    const scroller = host.querySelector(".metric-table__scroll");
-    expect(scroller).not.toBeNull();
-    expect(scroller?.querySelector("table")).not.toBeNull();
   });
 });

@@ -59,6 +59,9 @@ card, and fixes agents that stopped drawing in narrow panes.
   and pricing details. API-equivalent estimates distinguish missing history,
   measured zero and unpriced tokens.
 
+- **Usage shows the overview only.** The Daily and Breakdown tabs are gone, and
+  the [Usage panel](src/ui/usage/usage-body.tsx) opens straight onto the overview.
+
 ### Sidebar
 
 - **Workspace favicons in the sidebar.** [Project headers](src/ui/agent-rail.tsx)
