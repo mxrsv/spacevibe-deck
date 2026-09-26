@@ -33,6 +33,9 @@ dist-electron-release
 .playwright-mcp/
 .planning/
 
+# Task plans stay on this machine; see AGENTS.md "Documentation".
+docs/plans/
+
 # Marketing film: intermediate frames are disposable, renders are published
 # by hand once a cut is approved.
 marketing/video/.frames/

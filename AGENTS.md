@@ -162,6 +162,8 @@ index is [docs/README.md](docs/README.md).
   append a second account. Keep a local explanation in a code comment; use an internal page
   only when the reasoning crosses boundaries.
 - **Plans, specs, research notes and review reports are not committed.** A merged PR is the
-  implementation record, and active work lives in the issue that owns it.
+  implementation record. Active work lives in a local plan under `docs/plans/`, which is
+  gitignored, so it exists only in the primary checkout: a session in a worktree reads and
+  updates it there by absolute path.
 - `docs/DESIGN-LANGUAGE.md` stays at its path and keeps its numbering: a test reads it, and
   code comments cite its rules. `CHANGELOG.md` is read by the release workflow.
