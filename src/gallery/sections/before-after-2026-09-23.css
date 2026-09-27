@@ -1,0 +1,70 @@
+/*
+ * Frame for the 2026-09-23 before / after pairs. Gallery-only: `gx-ba23*`
+ * draws the comparison and never styles the specimen inside it. Each group
+ * file keeps its own candidate styles in its own stylesheet, scoped under a
+ * class of its own, so a `before` column always renders the shipped CSS.
+ */
+
+.gx-ba23 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  align-items: start;
+}
+
+.gx-ba23__col {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 360px;
+  max-width: 560px;
+  min-width: 0;
+}
+
+.gx-ba23__col--wide {
+  flex-basis: 100%;
+  max-width: none;
+}
+
+.gx-ba23__title {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  color: var(--gx-bright);
+}
+
+.gx-ba23__side {
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gx-ba23__col[data-side="before"] .gx-ba23__side {
+  color: var(--gx-dim);
+}
+
+.gx-ba23__col[data-side="after"] .gx-ba23__side {
+  color: var(--accent, #5b9cff);
+}
+
+.gx-ba23__note {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--gx-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.gx-ba23__stage {
+  min-width: 0;
+}
+
+/* A pinned theme paints its own bg so a light cell does not sit on the
+   gallery's dark chrome. */
+.gx-ba23__theme {
+  background: var(--bg);
+  color: var(--fg);
+}

@@ -1,6 +1,8 @@
 import type { ComponentType } from "preact";
 import { QuickAgentBoardSection } from "./sections/quick-agent-board";
 import { AgentBoardSection } from "./sections/agent-board-section";
+import { BeforeAfter20260923Section } from "./sections/before-after-2026-09-23";
+import { SettingsNativeMockSection } from "./sections/settings-native-mock";
 import { AttentionDirectionSection } from "./sections/attention-direction";
 import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
@@ -51,6 +53,13 @@ export interface GallerySection {
  * `window chrome`, next to the shell it cross-checks.
  */
 export const GALLERY_SECTIONS: readonly GallerySection[] = [
+  /* Registered 2026-09-23 for the owner to pick from; park it the
+     `unread-mark-variants` way once the choices are made. */
+  {
+    id: "before-after-2026-09-23",
+    label: "before / after 2026-09-23",
+    Section: BeforeAfter20260923Section,
+  },
   { id: "quick-agent-board", label: "quick agent board", Section: QuickAgentBoardSection },
   { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
@@ -58,6 +67,11 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     id: "settings-direction",
     label: "light/dark settings",
     Section: SettingsDirectionSection,
+  },
+  {
+    id: "settings-native-mock",
+    label: "settings · native form proposal",
+    Section: SettingsNativeMockSection,
   },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
