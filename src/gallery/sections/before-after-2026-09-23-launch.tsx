@@ -91,7 +91,7 @@ function firstRunPair() {
       <Column
         side="before"
         title="ships · AgentLaunchPage"
-        note="The slogan is the largest type; where the pane lands (spacevibe-deck, Split · same tab) is 11px at the far edges. Antigravity is declared but not installed and still offers Run. Claude and Codex launch with --dangerously-* by default, shown only as muted command text in Settings › Agents. The gear has no label."
+        note="The slogan is the largest type; where the pane lands (spacevibe-deck, Split · same tab) is 11px at the far edges. Antigravity is declared but not installed and still offers Run. Claude and Codex launch with --dangerously-* by default, shown only as muted command text in Settings / Agents. The gear has no label."
       >
         <ShippedLauncher />
       </Column>

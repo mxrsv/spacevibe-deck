@@ -16,7 +16,13 @@ import { Column, Pair } from "./before-after-2026-09-23-frame";
  */
 
 /** A labelled slot inside a column: what surface the drawing stands for. */
-function Slot({ label, children }: { readonly label?: string; readonly children: ComponentChildren }) {
+function Slot({
+  label,
+  children,
+}: {
+  readonly label?: string;
+  readonly children: ComponentChildren;
+}) {
   return (
     <div class="ba23-att-slot">
       {label !== undefined && <p class="ba23-att-slot__label">{label}</p>}
@@ -77,9 +83,11 @@ function Dock({ badge, caption = true }: { readonly badge?: number; readonly cap
         <span class="ba23-att-dock__running" aria-hidden="true" />
       </div>
       {caption && (
-      <p class="ba23-att-dock__caption">
-        {badge === undefined ? "No count. The dock looks the same whether 0 or 5 agents wait." : `${badge} agents need you. Clears as you answer them.`}
-      </p>
+        <p class="ba23-att-dock__caption">
+          {badge === undefined
+            ? "No count. The dock looks the same whether 0 or 5 agents wait."
+            : `${badge} agents need you. Clears as you answer them.`}
+        </p>
       )}
     </div>
   );
@@ -93,7 +101,7 @@ export function NotificationPair() {
         title="off by default, and a click goes nowhere"
         note="`agentNotifications` ships false (settings-schema.ts:258), so a new user never sees one. Turned on, the body is `<agent> needs attention` under the workspace name, and `notification_send` builds a bare Notification with no click handler (electron/ipc/register-shell.ts:57-61): pressing it only brings the app forward. There is no dock count."
       >
-        <Slot label="Settings › Notifications (real section)">
+        <Slot label="Settings / Notifications (real section)">
           <div class="settings-screen__section ba23-att-settings">
             <NotificationsSection />
           </div>
@@ -118,7 +126,7 @@ export function NotificationPair() {
           <Banner
             agent="codex"
             title="Codex needs you"
-            subtitle="spacevibe-deck › main"
+            subtitle="spacevibe-deck · main"
             body="Overwrite the migration or add a new one?"
             when=""
             hint="Click to open this pane"

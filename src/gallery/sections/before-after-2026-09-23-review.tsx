@@ -98,10 +98,12 @@ function RailCard({
   readonly decorate?: (card: HTMLElement) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  /* oxlint-disable react-hooks/exhaustive-deps -- mount-once: callers pass inline `decorate`, and re-running it would decorate the card twice */
   useLayoutEffect(() => {
     const card = ref.current?.querySelector<HTMLElement>(".asr-card");
     if (card && decorate) decorate(card);
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
   return (
     <div ref={ref} class="asr-study ba23-review__rail">
       <div class="asr-study__stage">
@@ -168,7 +170,14 @@ function MiniPane({
 /* ------------------------------------------------------ 1 · Changes panel */
 
 const CHANGES_PANES = [
-  railPane({ paneId: 21, agent: "claude", label: "Claude", state: "done", tabIndex: 0, focused: true }),
+  railPane({
+    paneId: 21,
+    agent: "claude",
+    label: "Claude",
+    state: "done",
+    tabIndex: 0,
+    focused: true,
+  }),
   railPane({ paneId: 22, agent: "codex", label: "Codex", state: "working", tabIndex: 1 }),
 ];
 const CLAUDE_DONE_MESSAGE = "Refactored the API client; retries now live in fetch-retry.ts.";
@@ -188,12 +197,18 @@ function ChangesWindow({ after }: { readonly after: boolean }) {
     <div class="ba23-review__window">
       <RailCard
         group={apiCheckout(CHANGES_PANES)}
-        decorate={after ? (card) => mountInto(card, ".asr-card__meta", <DiffStat interactive />) : undefined}
+        decorate={
+          after ? (card) => mountInto(card, ".asr-card__meta", <DiffStat interactive />) : undefined
+        }
       />
       <div class="ba23-review__stage">
         <MiniPane
           header={
-            <PaneAgentHeader pane={paneView(21, "claude")} message={CLAUDE_DONE_MESSAGE} input={HEADER_INPUT} />
+            <PaneAgentHeader
+              pane={paneView(21, "claude")}
+              message={CLAUDE_DONE_MESSAGE}
+              input={HEADER_INPUT}
+            />
           }
           lines={CLAUDE_DONE_LINES}
         />
@@ -231,12 +246,32 @@ function changesPair() {
 const RENAME_PANE_ID = 32;
 const RENAME_BEFORE = [
   railPane({ paneId: 31, agent: "claude", label: "Claude", state: "working", tabIndex: 0 }),
-  railPane({ paneId: RENAME_PANE_ID, agent: "claude", label: "Claude 2", state: "done", tabIndex: 1, focused: true }),
+  railPane({
+    paneId: RENAME_PANE_ID,
+    agent: "claude",
+    label: "Claude 2",
+    state: "done",
+    tabIndex: 1,
+    focused: true,
+  }),
   railPane({ paneId: 33, agent: "codex", label: "Codex", state: "working", tabIndex: 2 }),
 ];
 const RENAME_AFTER = [
-  railPane({ paneId: 31, agent: "claude", label: "Flaky test hunt", state: "working", tabIndex: 0 }),
-  railPane({ paneId: RENAME_PANE_ID, agent: "claude", label: "API client refactor", state: "done", tabIndex: 1, focused: true }),
+  railPane({
+    paneId: 31,
+    agent: "claude",
+    label: "Flaky test hunt",
+    state: "working",
+    tabIndex: 0,
+  }),
+  railPane({
+    paneId: RENAME_PANE_ID,
+    agent: "claude",
+    label: "API client refactor",
+    state: "done",
+    tabIndex: 1,
+    focused: true,
+  }),
   railPane({ paneId: 33, agent: "codex", label: "Codex", state: "working", tabIndex: 2 }),
 ];
 const RENAME_MESSAGE = "Refactored the API client; retries now live in fetch-retry.ts.";

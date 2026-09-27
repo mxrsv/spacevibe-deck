@@ -69,7 +69,12 @@ export function LauncherCandidate(props: LauncherCandidateProps) {
               <DeckIcon icon={Pulse} size={15} />
             </button>
           )}
-          <button type="button" class="ba23l__icon" title="Agent settings" aria-label="Agent settings">
+          <button
+            type="button"
+            class="ba23l__icon"
+            title="Agent settings"
+            aria-label="Agent settings"
+          >
             <DeckIcon icon={Gear} size={15} />
           </button>
         </span>

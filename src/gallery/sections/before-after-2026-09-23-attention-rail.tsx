@@ -78,8 +78,21 @@ const GROUPS: readonly RailWorktreeGroup[] = [
     age: "now",
     primary: true,
     panes: [
-      pane({ paneId: 201, agent: "claude", label: "Reading the rail model for the turn line", state: "working", tabIndex: 0, focused: true }),
-      pane({ paneId: 202, agent: "codex", label: "Overwrite the migration or add a new one?", state: "asked", tabIndex: 1 }),
+      pane({
+        paneId: 201,
+        agent: "claude",
+        label: "Reading the rail model for the turn line",
+        state: "working",
+        tabIndex: 0,
+        focused: true,
+      }),
+      pane({
+        paneId: 202,
+        agent: "codex",
+        label: "Overwrite the migration or add a new one?",
+        state: "asked",
+        tabIndex: 1,
+      }),
     ],
   }),
   checkout({
@@ -88,8 +101,20 @@ const GROUPS: readonly RailWorktreeGroup[] = [
     name: "fix-rail",
     age: "5m",
     panes: [
-      pane({ paneId: 203, agent: "claude", label: "Build failed: tsc exit 2", state: "failed", tabIndex: 2 }),
-      pane({ paneId: 204, agent: "opencode", label: "Both hosts read the same journal now", state: "done", tabIndex: 3 }),
+      pane({
+        paneId: 203,
+        agent: "claude",
+        label: "Build failed: tsc exit 2",
+        state: "failed",
+        tabIndex: 2,
+      }),
+      pane({
+        paneId: 204,
+        agent: "opencode",
+        label: "Both hosts read the same journal now",
+        state: "done",
+        tabIndex: 3,
+      }),
     ],
   }),
 ];
@@ -126,7 +151,12 @@ function OpenProject({ name }: { readonly name: string }) {
   return (
     <div class="asr-cluster" data-labelled="true" data-collapsed="false">
       <div class="asr-cluster__head">
-        <button type="button" class="asr-cluster__toggle" aria-expanded="true" aria-label={`Collapse project ${name}`}>
+        <button
+          type="button"
+          class="asr-cluster__toggle"
+          aria-expanded="true"
+          aria-label={`Collapse project ${name}`}
+        >
           <span class="asr-cluster__folder" aria-hidden="true">
             <DeckIcon icon={Folder} size={FEATURE_ICON} filled />
           </span>

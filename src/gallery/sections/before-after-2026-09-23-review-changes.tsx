@@ -47,7 +47,12 @@ export function DiffStat({ interactive = false }: { readonly interactive?: boole
     </>
   );
   return interactive ? (
-    <button type="button" class="ba23-stat" title={`${files} — open Changes`} aria-label={`${files}, +${TOTAL_ADDED} −${TOTAL_REMOVED}. Open Changes`}>
+    <button
+      type="button"
+      class="ba23-stat"
+      title={`${files} — open Changes`}
+      aria-label={`${files}, +${TOTAL_ADDED} −${TOTAL_REMOVED}. Open Changes`}
+    >
       {body}
     </button>
   ) : (
@@ -95,7 +100,11 @@ const DIFF: readonly DiffLine[] = [
   { kind: "ctx", old: 19, next: 22, text: "  }" },
 ];
 
-const STATUS_WORD: Readonly<Record<FileStatus, string>> = { M: "Modified", A: "Added", D: "Deleted" };
+const STATUS_WORD: Readonly<Record<FileStatus, string>> = {
+  M: "Modified",
+  A: "Added",
+  D: "Deleted",
+};
 
 function FileRow({ file, selected }: { readonly file: ChangedFile; readonly selected: boolean }) {
   const slash = file.path.lastIndexOf("/");
@@ -107,7 +116,11 @@ function FileRow({ file, selected }: { readonly file: ChangedFile; readonly sele
       data-status={file.status}
       title={`${STATUS_WORD[file.status]} · ${file.path}`}
     >
-      <span class="ba23-changes__status" data-status={file.status} aria-label={STATUS_WORD[file.status]} />
+      <span
+        class="ba23-changes__status"
+        data-status={file.status}
+        aria-label={STATUS_WORD[file.status]}
+      />
       <span class="ba23-changes__path">
         <span class="ba23-changes__name">{file.path.slice(slash + 1)}</span>
         <span class="ba23-changes__dir">{file.path.slice(0, slash)}</span>
@@ -128,7 +141,12 @@ function CommentBox() {
         <code>settings.network.retries</code>.
       </div>
       <div class="ba23-comment__bar">
-        <button type="button" class="btn ba23-comment__cancel" aria-label="Discard comment" title="Discard (Esc)">
+        <button
+          type="button"
+          class="btn ba23-comment__cancel"
+          aria-label="Discard comment"
+          title="Discard (Esc)"
+        >
           <DeckIcon icon={X} size={CHROME_ICON} />
         </button>
         <button
