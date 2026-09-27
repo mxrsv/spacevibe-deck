@@ -13,7 +13,7 @@
  *   visible; repeated hide/show transitions count again;
  * - `maxTabs`/`maxPanes` are high-water marks main folds from gauge reports
  *   read off `tabViews`;
- * - `restoredSessions` is boot restore materializing at least one pane.
+ * - `restoredSessions` is reopening the last session materializing at least one pane.
  */
 import { effect } from "@preact/signals";
 import { available, telemetryCount } from "../host/telemetry-host";
@@ -36,7 +36,7 @@ export function countSurfaceOpen(surface: SurfaceKey): void {
   telemetryCount({ kind: "surface", key: surface, value: 1 });
 }
 
-/** Boot restore materialized at least one pane this run. */
+/** Reopening the last session materialized at least one pane this run. */
 export function countRestoredSessions(): void {
   if (!available) {
     return;

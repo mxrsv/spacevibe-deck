@@ -52,6 +52,27 @@ export interface BoardComposerProps extends Omit<
   onSelectWorkspace(path: string): void;
   onBrowseSessions(): void;
   onRemove(paths: readonly string[]): void;
+  /** The previous launch's session; null or absent offers nothing. */
+  readonly lastSession?: LastSessionOffer | null;
+  onReopenLastSession?(): void;
+  onDismissLastSession?(): void;
+}
+
+/** What the last-session line prints — `LastSession` without its records. */
+export interface LastSessionOffer {
+  readonly tabCount: number;
+  readonly workspaces: readonly string[];
+}
+
+/** Workspace names printed before the rest fold into `+N`. */
+const LAST_SESSION_NAMES = 3;
+
+function lastSessionMeta(offer: LastSessionOffer): string {
+  const tabs = offer.tabCount === 1 ? "1 tab" : `${offer.tabCount} tabs`;
+  const shown = offer.workspaces.slice(0, LAST_SESSION_NAMES);
+  const rest = offer.workspaces.length - shown.length;
+  const names = rest > 0 ? [...shown, `+${rest}`] : shown;
+  return names.length === 0 ? tabs : `${tabs} · ${names.join(", ")}`;
 }
 
 export function BoardComposer(props: BoardComposerProps) {
@@ -154,6 +175,37 @@ export function BoardComposer(props: BoardComposerProps) {
   return (
     <main class="nt-board" aria-label="Start a task" aria-busy={busy}>
       <div class="nt-board__content" ref={rootRef} onKeyDown={handleKeyDown}>
+        {/* Launch reopens nothing on its own (2026-09-27); the previous
+            session waits here instead, above the composer and quieter than
+            it (DL-32.1), until it is reopened, dismissed or anything else
+            opens. */}
+        {props.lastSession ? (
+          <div class="nt-last-session" role="group" aria-label="Last session">
+            <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} />
+            <span class="nt-last-session__text">
+              <span class="nt-last-session__title">Last session</span>
+              <span class="nt-last-session__meta">{lastSessionMeta(props.lastSession)}</span>
+            </span>
+            <button
+              type="button"
+              class="nt-secondary-action nt-last-session__reopen"
+              disabled={busy}
+              onClick={props.onReopenLastSession}
+            >
+              Reopen
+            </button>
+            <button
+              type="button"
+              class="nt-icon-action"
+              aria-label="Dismiss last session"
+              title="Dismiss"
+              onClick={props.onDismissLastSession}
+            >
+              <DeckIcon icon={X} size={ROW_ICON} />
+            </button>
+          </div>
+        ) : null}
+
         <header class="nt-board__head">
           <span>New task</span>
           <h2>Start something new</h2>

@@ -2,9 +2,12 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
-On launch Deck reopens the tabs that were open at quit and resumes each built-in agent's
-conversation. Electron only: the lookup channel has no Tauri counterpart.
-`Settings.restoreSessions` (default on) is the kill switch.
+Deck can reopen the tabs that were open at quit and resume each built-in agent's
+conversation, but launch never does it unasked: the board offers the previous session as one
+**Last session** line, and only its **Reopen** runs the restore. Reopening everything by
+default buried the start of a new day under yesterday's agents, so the setting that switched
+it off (`restoreSessions`) went with it and validation drops the stale field. Resume lookup is
+Electron only: the lookup channel has no Tauri counterpart.
 
 ## The journal
 
@@ -23,17 +26,33 @@ power-off rather than only at a clean quit.
   2-second poll cache with no IPC and no awaits: that is the deliberate accuracy bound.
 - Restore suspends the journal so it cannot clobber what it is reading; quit flushes it with
   `force`, because the quit flow suspends first and an unforced flush was a no-op.
+- While the offer stands, `holdEmpty` keeps the fresh, tabless window from overwriting the
+  main record. Without it the journal's first write would erase the offer, and a launch that
+  was closed without choosing would offer nothing next time.
 - A deliberate window close clears that window's record, so a closing window's tabs cannot
   resurrect as ghost tabs on the next boot.
 
-## Boot restore
+## The last-session offer
+
+Boot calls `readLastSession` before the journal starts and holds the records in
+[`last-session-store.ts`](../../src/terminal/last-session-store.ts); the board prints their
+tab count and workspace names. The offer ends one of three ways, all in
+[`last-session-actions.ts`](../../src/ui/last-session-actions.ts):
+
+- **Reopen** runs `restoreSession` over the held records, not the file, which the journal is
+  by then writing again.
+- **Dismiss**, or any tab opening by other means, drops it: secondary window records are
+  cleared at that moment, or they would fold into the next launch's offer as ghost tabs.
+- A crash-loop marker left set means the last reopen crashed Deck; boot clears it and offers
+  nothing, so the session that crashed is not offered back.
+
+## Restoring
 
 [`session-restore.ts`](../../src/terminal/session-restore.ts) runs from `App`, not from
 `TabManager`.
 
-1. **Crash-loop marker.** If `restoreAttempt` is already set, a previous attempt never
-   finished: clear it and skip restoring this boot. Otherwise set it, and clear it in
-   `finally`.
+1. **Crash-loop marker.** Set before materializing and cleared in `finally`; one still set at
+   the next boot withholds the offer, as above.
 2. **Order.** The main window's tabs in order, then every other window's record newest
    first; a detached window's tabs fold into the main window.
 3. **Liveness.** One `dirs_exist` call over every workspace path and pane cwd. A tab whose
@@ -56,7 +75,7 @@ at least one terminal tab survives. The decision is recorded in
 
 Scrollback, unsaved edits and window placement never restore. The rail's remembered rows use
 the same core for one workspace, without the marker; they also restore each pane's saved task
-prompt, since the archive carries the same session tabs as boot restore.
+prompt, since the archive carries the same session tabs as the last-session offer.
 
 ## Resolving a conversation
 

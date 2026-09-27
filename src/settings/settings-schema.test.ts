@@ -16,6 +16,11 @@ describe("validateSettings", () => {
     expect("restoreTabs" in validated).toBe(false);
   });
 
+  it("silently drops the legacy restoreSessions field", () => {
+    const validated = validateSettings({ restoreSessions: false });
+    expect("restoreSessions" in validated).toBe(false);
+  });
+
   it("silently drops the legacy sidebarPosition field", () => {
     const validated = validateSettings({ sidebarPosition: "top" });
     expect("sidebarPosition" in validated).toBe(false);
@@ -82,26 +87,6 @@ describe("agentNotifications", () => {
   it("falls back to false on invalid types (string, number)", () => {
     expect(validateSettings({ agentNotifications: "yes" }).agentNotifications).toBe(false);
     expect(validateSettings({ agentNotifications: 1 }).agentNotifications).toBe(false);
-  });
-});
-
-describe("restoreSessions", () => {
-  it("defaults to true", () => {
-    expect(DEFAULT_SETTINGS.restoreSessions).toBe(true);
-    expect(validateSettings({}).restoreSessions).toBe(true);
-  });
-
-  it("accepts true", () => {
-    expect(validateSettings({ restoreSessions: true }).restoreSessions).toBe(true);
-  });
-
-  it("accepts false", () => {
-    expect(validateSettings({ restoreSessions: false }).restoreSessions).toBe(false);
-  });
-
-  it("falls back to true on invalid types (string, number)", () => {
-    expect(validateSettings({ restoreSessions: "yes" }).restoreSessions).toBe(true);
-    expect(validateSettings({ restoreSessions: 0 }).restoreSessions).toBe(true);
   });
 });
 

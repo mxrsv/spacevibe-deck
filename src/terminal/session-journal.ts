@@ -58,6 +58,12 @@ export interface SessionJournalDeps {
   windowLabel: string;
   /** True only for the normal-boot (main) window; adopt windows pass false. */
   isMain: boolean;
+  /**
+   * True while an EMPTY capture must not overwrite this window's record: the
+   * Board is still offering the last session read from it, and a write of the
+   * fresh, tabless window would erase that offer for the next launch.
+   */
+  holdEmpty?(): boolean;
   store?: StoreSeam; // test seam
   debounceMs?: number; // default 1000
 }
@@ -130,7 +136,7 @@ export async function clearWindowRecord(label: string): Promise<void> {
 }
 
 /**
- * Crash-loop guard for boot restore, the `update-attempt.json` pattern
+ * Crash-loop guard for session restore, the `update-attempt.json` pattern
  * applied to `session.json` under key `restoreAttempt`. `take()` deliberately
  * does NOT clear the marker — restore decides whether/when to clear it, so a
  * restore that never finishes leaves it set for next launch to see.
@@ -229,6 +235,9 @@ async function writeNow(deps: SessionJournalDeps): Promise<void> {
     timer = null;
   }
   const record = buildRecord(deps);
+  if (record.tabs.length === 0 && deps.holdEmpty?.() === true) {
+    return;
+  }
   const fingerprint = fingerprintOf(record);
   if (fingerprint === lastWritten) {
     return;

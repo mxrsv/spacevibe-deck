@@ -26,7 +26,7 @@ tense; anything about the frozen Tauri host says so.
   and what Restart resumes.
 - [File surface, browser tab and path opening](internals/file-surface.md) — the explorer,
   editor, markdown policy, browser view and link routing.
-- [Session restore](internals/session-restore.md) — the journal, boot restore, resume
+- [Session restore](internals/session-restore.md) — the journal, the last-session offer, resume
   resolution and session history.
 - [Analytics service](../backend/README.md) — independent Worker/D1 deployment and retention operations.
 - [Usage analytics](internals/telemetry.md) — the payload, consent state and when a POST

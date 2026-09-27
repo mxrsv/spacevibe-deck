@@ -219,8 +219,6 @@ export interface Settings {
    * would make one machine's rebind silently rewrite the other's.
    */
   keybindings: KeybindingOverrides;
-  /** Reopen last session's tabs and resume agent conversations at launch. */
-  restoreSessions: boolean;
   /**
    * True once Deck has stopped asking for a GitHub star — either the star was
    * made through `gh`, or the user was sent to the repository page and the ask
@@ -281,7 +279,6 @@ export const DEFAULT_SETTINGS: Settings = {
   dockWidth: 420,
   dockTab: "explorer",
   keybindings: NO_KEYBINDING_OVERRIDES,
-  restoreSessions: true,
   githubStarred: false,
 };
 
@@ -681,10 +678,6 @@ export function validateSettings(raw: unknown): Settings {
       ? (source.dockTab as DockTab)
       : DEFAULT_SETTINGS.dockTab,
     keybindings: validateKeybindings(source.keybindings),
-    restoreSessions:
-      typeof source.restoreSessions === "boolean"
-        ? source.restoreSessions
-        : DEFAULT_SETTINGS.restoreSessions,
     githubStarred:
       typeof source.githubStarred === "boolean"
         ? source.githubStarred

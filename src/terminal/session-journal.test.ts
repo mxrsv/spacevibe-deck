@@ -100,6 +100,31 @@ describe("session journal", () => {
     vi.useRealTimers();
   });
 
+  it("holdEmpty keeps a tabless capture from overwriting the record on disk", async () => {
+    const { store, data } = createFakeStore();
+    data.set("window:main", { kept: true });
+    let hold = true;
+
+    await initSessionJournal(deps({ store, holdEmpty: () => hold }));
+    pokeTabViews();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    await flushSessionJournal({ force: true });
+    expect(data.get("window:main")).toEqual({ kept: true });
+
+    hold = false;
+    await flushSessionJournal();
+    expect(data.get("window:main")).toMatchObject({ tabs: [] });
+  });
+
+  it("holdEmpty never holds back a capture that has tabs", async () => {
+    const { store, data } = createFakeStore();
+
+    await initSessionJournal(deps({ store, capture: () => [tab("/w")], holdEmpty: () => true }));
+    pokeTabViews();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/w")] });
+  });
+
   it("1. schedules one debounced write of window:<label> from capture() + activeTabIndex + main-only files", async () => {
     const { store, data } = createFakeStore();
     const surfaces = new Map<string, FileSurfaceState>([

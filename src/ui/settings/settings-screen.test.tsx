@@ -366,7 +366,6 @@ const EXPECTED_ROWS = [
   "Open with",
   // notifications
   "Agent notifications",
-  "Restore sessions on launch",
   // about
   "Check for updates",
   "Release notes",

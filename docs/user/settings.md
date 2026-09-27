@@ -45,8 +45,6 @@ a chord temporarily suspends the menu accelerators so the key reaches the record
 
 - **Agent notifications** — a native alert when a background agent finishes or needs you
   (off by default).
-- **Restore sessions on launch** — reopen the last session's tabs and resume agent
-  conversations (on by default). Turning it off is the kill switch for session restore.
 
 ## About
 

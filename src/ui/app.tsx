@@ -74,7 +74,7 @@ import { MigrationBanner } from "./migration-banner";
 import { isTauriHost, shouldShowNotice } from "../updater/migration-notice";
 import { UsageConsentModal } from "./usage-consent-modal";
 import { ensureTelemetryStateLoaded, usageConsentOpen } from "../telemetry/consent-store";
-import { countRestoredSessions, installUsageCounterEffects } from "../telemetry/usage-counters";
+import { installUsageCounterEffects } from "../telemetry/usage-counters";
 import { OpenBoard } from "../open-board/open-board";
 import {
   clearDraft,
@@ -206,7 +206,10 @@ import {
   sessionArchive,
   suspendSessionJournal,
 } from "../terminal/session-journal";
-import { restoreSession, resumeWorkspace } from "../terminal/session-restore";
+import { readLastSession, resumeWorkspace } from "../terminal/session-restore";
+import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
+import type { WindowRecord } from "../lib/session-schema";
+import { discardLastSession, reopenLastSession } from "./last-session-actions";
 import { activeRepositoryTabIndexes, worktreeForPath } from "../repositories/repository-model";
 import { DesktopChrome } from "./desktop-chrome";
 import {
@@ -639,8 +642,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       });
       void updater.start();
     }
-    // A normal window tries session restore before falling back to the board
-    // (settings kill-switch permitting); an adopt window opens on the pane it
+    // A normal window opens the board, offering the last session rather than
+    // reopening it (2026-09-27); an adopt window opens on the pane it
     // was created for and never shows the board at all (spec §9.2). Both
     // arms journal their own tabs afterward — the adopt window's `isMain:
     // false` so a later-detached pane folds into the main window's record on
@@ -667,31 +670,23 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           });
           return;
         }
-        // Restore BEFORE the journal starts writing: the journal's first
-        // capture of an empty window must not clobber the record restore is
-        // about to read.
-        let restored = false;
-        if (settings.value.restoreSessions) {
-          restored = await restoreSession(
-            restoreDeps({ manager, files: fileController }),
-            label,
-          ).catch((err: unknown) => {
-            console.error("session restore failed:", err);
-            return false;
-          });
-        }
-        if (restored) {
-          // Spec §4: true when boot restore materialized at least one pane.
-          countRestoredSessions();
-        }
+        // Read the last session BEFORE the journal starts writing, and hold
+        // its record while the offer stands: the journal's first capture of
+        // this empty window would otherwise erase what the board offers.
+        const records = await readLastSession(
+          restoreDeps({ manager, files: fileController }),
+        ).catch((err: unknown) => {
+          console.error("reading the last session failed:", err);
+          return new Map<string, WindowRecord>();
+        });
+        lastSession.value = summarizeLastSession(records, label);
         await initSessionJournal({
           capture: () => manager.captureSession(),
           windowLabel: label,
           isMain: true,
+          holdEmpty: () => lastSession.value !== null,
         });
-        if (!restored) {
-          boardOpen.value = true;
-        }
+        boardOpen.value = true;
       })
       .catch((err: unknown) => {
         // Without this an init failure is an unhandled rejection AND the
@@ -739,6 +734,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // just activated. `setActiveWorkspace`'s own doc comment already says this
   // setter is "deliberately NOT called when the window runs out of terminal
   // tabs" — this is that rule enforced at its one call site.
+  // Opening anything else answers the last-session offer: once a tab exists
+  // the offer is gone for good, and the journal stops holding its record.
+  useSignalEffect(() => {
+    if (tabViews.value.length > 0 && lastSession.value !== null) {
+      discardLastSession();
+    }
+  });
+
   useSignalEffect(() => {
     const active = tabViews.value[activeTabIndex.value];
     if (active === undefined) {
@@ -820,12 +823,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         // resurrect them as ghost tabs. Suspend FIRST: a pending debounced
         // write firing AFTER clearWindowRecord would re-write the record it
         // just cleared, resurrecting the same ghost tabs (M1b). No resume
-        // needed — the window is going away.
+        // needed — the window is going away. A window still offering the last
+        // session holds no tabs of its own; its record IS the offer, so it
+        // stays for the next launch rather than being cleared unanswered.
         flush: async () => {
           suspendSessionJournal();
           await Promise.all([
             flushSettingsSave(),
-            currentWindowLabel().then((label) => clearWindowRecord(label)),
+            lastSession.value === null
+              ? currentWindowLabel().then((label) => clearWindowRecord(label))
+              : Promise.resolve(),
           ]);
         },
         confirm: (requestId: number) => defaultPtyClient.confirmCloseWindow(requestId),
@@ -2382,6 +2389,17 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           {boardOpen.value ? (
             <OpenBoard
               canBrowseSessions={sessionsSupported.value}
+              lastSession={lastSession.value}
+              onReopenLastSession={async () => {
+                const manager = tabsRef.current;
+                if (manager === null) {
+                  return;
+                }
+                if (await reopenLastSession({ manager, files: fileController })) {
+                  boardOpen.value = false;
+                }
+              }}
+              onDismissLastSession={discardLastSession}
               // Spec §5: the board opens on the active tab's workspace, and
               // falls back to the newest live recent when there is no tab.
               contextWorkspacePath={activeWorkspace.value}

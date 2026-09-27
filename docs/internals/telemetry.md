@@ -27,7 +27,7 @@ never send it.
 | `agents`           | Launches that day keyed by the closed set `claude`, `codex`, `opencode`, `agy`, `gemini`, `cursor-agent`, `custom` |
 | `surfaces`         | Times the `browser`, `explorer` and `usage` surfaces went from hidden to visible |
 | `maxTabs`, `maxPanes` | The busiest single window's high-water marks that day                |
-| `restoredSessions` | Whether boot restore materialized at least one pane                     |
+| `restoredSessions` | Whether reopening the last session materialized at least one pane       |
 | `updates`          | Update-check outcomes that day, every key present: `checked`, `checkFailed`, `available`, `downloaded`, `downloadFailed`, `installAttempted` |
 
 Deliberately absent: a permanent install identifier, file paths, repository names, branch

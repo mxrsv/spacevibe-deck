@@ -161,9 +161,9 @@ the paste path never submits. Not: paste, prompt.
 **Session journal** — `session.json`, continuously written from every window's live tabs,
 debounced one second, plus a per-workspace archive. Not: closed tab snapshot.
 
-**Session restore** — At launch, reopening the journaled tabs and typing each built-in
-pane's exact resume command, behind a crash-loop marker and a liveness pass.
-`Settings.restoreSessions` is the kill switch. Not: closed tab snapshot, history.
+**Session restore** — Reopening the journaled tabs and typing each built-in pane's exact
+resume command, behind a crash-loop marker and a liveness pass. Launch only offers it, as the
+board's **Last session** line. Not: closed tab snapshot, history.
 
 **Session history** — The dock's third tab and the board's "Resume a previous session…":
 Claude Code and Codex conversations found on disk, each resumable into a new tab.

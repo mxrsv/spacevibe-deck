@@ -49,12 +49,6 @@ export function NotificationsSection() {
         disabled={requesting.value}
         onToggle={handleAgentNotificationsToggle}
       />
-      <ToggleRow
-        label="Restore sessions on launch"
-        desc="Reopen last session's tabs and resume agent conversations"
-        checked={current.restoreSessions}
-        onToggle={() => updateSettings({ restoreSessions: !current.restoreSessions })}
-      />
     </>
   );
 }

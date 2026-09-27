@@ -100,7 +100,7 @@ export interface UsagePayload {
   readonly maxTabs: number;
   /** The busiest single window's open-pane high-water mark that day. */
   readonly maxPanes: number;
-  /** True when boot restore materialized at least one pane that day. */
+  /** True when reopening the last session materialized at least one pane that day. */
   readonly restoredSessions: boolean;
   /**
    * Update-check outcomes that day, every key present (see `UPDATE_KEYS`).

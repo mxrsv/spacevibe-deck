@@ -20,7 +20,7 @@ import { settings } from "../settings/settings-store";
 import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
 import type { SessionEntry } from "../lib/session-history";
 import { formatShortcutBinding } from "../lib/shortcut-label";
-import { BoardComposer } from "./board-composer";
+import { BoardComposer, type LastSessionOffer } from "./board-composer";
 import { CreateWorkspaceForm } from "./create-workspace-form";
 import { OpenBoardWorktreeForm } from "./open-board-worktree-form";
 import { available as worktreeHostAvailable } from "../host/worktree-host";
@@ -83,6 +83,10 @@ export interface OpenBoardProps {
   onResumeSession(entry: SessionEntry): Promise<boolean>;
   /** Open Settings, for a draft whose agent cannot run (design §7). */
   onManageAgents(): void;
+  /** The previous launch's session, offered until reopened or declined. */
+  readonly lastSession?: LastSessionOffer | null;
+  onReopenLastSession?(): void;
+  onDismissLastSession?(): void;
 }
 
 /**
@@ -142,6 +146,9 @@ export function OpenBoard({
   onClearDraft,
   onResumeSession,
   onManageAgents,
+  lastSession = null,
+  onReopenLastSession,
+  onDismissLastSession,
 }: OpenBoardProps) {
   const platform = getDesktopEnvironment().platform;
   const openFolderShortcut = formatShortcutBinding(
@@ -662,6 +669,9 @@ export function OpenBoard({
           onFocusOpenedAgent={onFocusOpenedAgent}
           onClearDraft={clearTaskDraft}
           onRemove={removeRecentRows}
+          lastSession={lastSession}
+          onReopenLastSession={onReopenLastSession}
+          onDismissLastSession={onDismissLastSession}
         />
       )}
     </div>

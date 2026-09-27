@@ -155,4 +155,32 @@ describe("BoardComposer", () => {
     mount({ alive: [] });
     expect(host.querySelector(".board-home__recents")).toBeNull();
   });
+
+  it("offers no last session unless one is held", () => {
+    mount();
+    expect(host.querySelector(".nt-last-session")).toBeNull();
+  });
+
+  it("prints the last session's size and folds names past three", () => {
+    mount({
+      lastSession: { tabCount: 5, workspaces: ["deck", "api", "bench", "hub", "academy"] },
+    });
+    expect(host.querySelector(".nt-last-session__meta")?.textContent).toBe(
+      "5 tabs · deck, api, bench, +2",
+    );
+  });
+
+  it("reopens or dismisses the last session from its own buttons", () => {
+    const onReopenLastSession = vi.fn();
+    const onDismissLastSession = vi.fn();
+    mount({
+      lastSession: { tabCount: 1, workspaces: ["deck"] },
+      onReopenLastSession,
+      onDismissLastSession,
+    });
+    host.querySelector<HTMLButtonElement>(".nt-last-session__reopen")?.click();
+    expect(onReopenLastSession).toHaveBeenCalledTimes(1);
+    host.querySelector<HTMLButtonElement>('[aria-label="Dismiss last session"]')?.click();
+    expect(onDismissLastSession).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { restoreSession, resumeWorkspace, type RestoreDeps } from "./session-restore";
+import {
+  readLastSession,
+  restoreSession,
+  resumeWorkspace,
+  type RestoreDeps,
+} from "./session-restore";
 import type { ArchiveEntry, SessionTab, WindowRecord } from "../lib/session-schema";
 import type { CustomAgent } from "../lib/agent-catalog";
 import type { ResumeRef, ResumeRequest } from "../lib/agent-resume";
@@ -849,5 +854,26 @@ describe("resumeWorkspace", () => {
     const { deps, mocks } = createFakeDeps({});
     await resumeWorkspace(deps, entry, "/w");
     expect(mocks.lookup).toHaveBeenCalledWith([{ agent: "claude", cwd: "/w", lastSeenAt: 42 }]);
+  });
+});
+
+describe("readLastSession", () => {
+  it("reads the records and reopens nothing", async () => {
+    const records = new Map([["main", record()]]);
+    const { deps, mocks } = createFakeDeps({ records });
+    expect(await readLastSession(deps)).toBe(records);
+    expect(mocks.materialize).not.toHaveBeenCalled();
+    expect(mocks.set).not.toHaveBeenCalled();
+    expect(mocks.clearWindowRecord).not.toHaveBeenCalled();
+  });
+
+  it("offers nothing after a reopen that never finished, and clears the marker", async () => {
+    const { deps, mocks } = createFakeDeps({
+      markerTaken: true,
+      records: new Map([["main", record()]]),
+    });
+    expect((await readLastSession(deps)).size).toBe(0);
+    expect(mocks.clear).toHaveBeenCalledTimes(1);
+    expect(mocks.readWindowRecords).not.toHaveBeenCalled();
   });
 });

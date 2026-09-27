@@ -41,9 +41,10 @@ Deck opens on the **Open board**, the start surface. It offers:
   conversations Deck found in those tools' own local logs; a row opens a tab in that
   session's directory and types the CLI's exact resume command.
 
-If "Restore sessions on launch" is on (the default), Deck instead reopens the tabs that were
-open when it quit and resumes each agent conversation it can resolve. Scrollback, unsaved
-file edits and window placement are not restored.
+When Deck quit with tabs open, the board shows **Last session** at the top. **Reopen** brings
+back those tabs and resumes each agent conversation it can resolve; dismiss it, or open
+anything else, and Deck starts clean. Scrollback, unsaved file edits and window placement are
+not restored.
 
 ## Launch an agent
 

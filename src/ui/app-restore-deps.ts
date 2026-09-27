@@ -8,6 +8,7 @@ import {
 } from "../terminal/session-journal";
 import { settings } from "../settings/settings-store";
 import type { RestoreDeps } from "../terminal/session-restore";
+import type { WindowRecord } from "../lib/session-schema";
 
 /**
  * Bundles `restoreSession`'s dependencies from the app's real hosts —
@@ -18,7 +19,10 @@ import type { RestoreDeps } from "../terminal/session-restore";
 export function restoreDeps(deps: {
   readonly manager: RestoreDeps["manager"];
   readonly files: RestoreDeps["files"];
+  /** Records already read at boot; the journal on disk is read otherwise. */
+  readonly records?: ReadonlyMap<string, WindowRecord>;
 }): RestoreDeps {
+  const records = deps.records;
   return {
     manager: deps.manager,
     files: deps.files,
@@ -27,7 +31,7 @@ export function restoreDeps(deps: {
     lookup: resumeLookup,
     customAgents: () => settings.value.customAgents,
     journal: {
-      readWindowRecords,
+      readWindowRecords: records === undefined ? readWindowRecords : async () => records,
       clearWindowRecord,
     },
     marker: sessionRestoreMarker,

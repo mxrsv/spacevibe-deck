@@ -34,7 +34,7 @@
 | **Launch** | Press the quick picker, choose an agent and a worktree, and start it in a real terminal pane.                           |
 | **Watch**  | Read working, asked, and failed states in the Agent Rail. Claude Code, Codex, and OpenCode also expose their latest words. |
 | **Jump**   | Select the project or pane that needs intervention instead of hunting through terminal tabs.                           |
-| **Resume** | Reopen Deck and restore its tabs, workspaces, and the agent conversations each CLI can resolve.                        |
+| **Resume** | Reopen the last session's tabs, workspaces, and the agent conversations each CLI can resolve — one click, never forced. |
 
 Resume is exact for Claude Code, Codex, and OpenCode; Gemini CLI and Antigravity are
 best-effort, while custom agents relaunch their declared command. The implementation is

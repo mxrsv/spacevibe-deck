@@ -8,8 +8,10 @@
  * conversation, and `TabManager.materialize` (Task 3's `paneCommands`) types
  * each pane's exact resume command into its shell.
  *
- * `restoreSession` is the boot-time arm (main window only, wrapped in the
- * crash-loop marker). `resumeWorkspace` is the rail's "resume" click — the
+ * `restoreSession` is the Open Board's "reopen last session" click (main
+ * window only, wrapped in the crash-loop marker); boot itself only reads the
+ * records through `readLastSession` and reopens nothing (2026-09-27).
+ * `resumeWorkspace` is the rail's "resume" click — the
  * same liveness/lookup/materialize core, scoped to one archived workspace,
  * with no marker, no file tabs and no active-tab selection (materialize
  * already selects the tab it just added).
@@ -315,7 +317,7 @@ async function restoreTabs(
  *  clear for one label must not skip the others — otherwise the next boot
  *  re-reads that stale record and folds it in again, duplicating tabs and
  *  `--resume`ing the same conversation twice. */
-async function clearSecondaryRecords(
+export async function clearSecondaryRecords(
   journal: RestoreDeps["journal"],
   labels: Iterable<string>,
   mainLabel: string,
@@ -373,7 +375,22 @@ async function restoreFiles(
   return activeTarget;
 }
 
-/** Auto-restore at boot. True = at least one tab was materialized. */
+/**
+ * Boot: the previous launch's window records, read but not reopened. Empty
+ * when a previous reopen never finished — the crash-loop marker is cleared
+ * and nothing is offered, so a session that crashed Deck is not offered back.
+ */
+export async function readLastSession(
+  deps: Pick<RestoreDeps, "journal" | "marker">,
+): Promise<ReadonlyMap<string, WindowRecord>> {
+  if (await deps.marker.take()) {
+    await deps.marker.clear();
+    return new Map();
+  }
+  return deps.journal.readWindowRecords();
+}
+
+/** Reopen the journaled session. True = at least one tab was materialized. */
 export async function restoreSession(deps: RestoreDeps, mainLabel: string): Promise<boolean> {
   if (await deps.marker.take()) {
     await deps.marker.clear();
