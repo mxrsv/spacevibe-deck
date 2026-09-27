@@ -44,6 +44,13 @@ function run(command: string, env: NodeJS.ProcessEnv, payload: unknown) {
     });
     child.on("error", reject);
     child.on("close", (code) => resolve({ code, stdout, stderr }));
+    // A command whose guard fails (another install's script) exits without
+    // reading stdin, so the write can hit a closed pipe. That EPIPE is part of
+    // the case under test, not a failure; unhandled, it surfaced as an
+    // uncaught exception that turned a green CI run red.
+    child.stdin.on("error", (error: NodeJS.ErrnoException) => {
+      if (error.code !== "EPIPE") reject(error);
+    });
     child.stdin.end(JSON.stringify(payload));
   });
 }
