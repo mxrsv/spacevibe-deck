@@ -5,6 +5,16 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+### Sessions
+
+- **Deck no longer reopens yesterday's session on its own.** At launch the
+  [board](src/open-board/board-composer.tsx) shows a **Last session** line with
+  the tab count and workspaces. **Reopen** brings the tabs and agent
+  conversations back; dismiss it, or open anything else, and Deck starts clean.
+  The *Restore sessions on launch* setting is gone.
+
 ## 2.1.0
 
 This update tiles quick-launched agents evenly, gives plain folders a sidebar
