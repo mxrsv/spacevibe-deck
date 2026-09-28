@@ -7,6 +7,22 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+### Spaces and Mission Control
+
+- **Terminal tabs are now spaces.** The strip shows the current space's folder
+  and one mark per space, ahead of your document and browser tabs. A mark
+  turns yellow when an agent asks for you and red when one fails; hover it to
+  see the space's folder, path, branch and agents. Right-click a mark to close
+  it. ⌘1–9 and ⌘⇧[ / ⌘⇧] count the spaces first, then the documents.
+- **Switching spaces slides**, by mark, shortcut or a horizontal two-finger
+  swipe on the terminal.
+- **Mission Control replaces the Agent Board.** ⌘⇧O (Ctrl+Shift+O), View ▸
+  Mission Control or the toolbar's **Overview** button zooms your panes out
+  into a view of every space. Hover a space to preview its panes, click a pane
+  to jump straight to it, or press Esc to go back where you were.
+- If you had rebound or unbound the Agent Board's shortcut, that setting is
+  dropped: ⌘⇧O now opens Mission Control.
+
 ### Start screen
 
 - **Choose a folder, then press Run.** The
