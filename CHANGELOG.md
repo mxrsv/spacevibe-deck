@@ -7,6 +7,19 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+### Start screen
+
+- **Choose a folder, then press Run.** The
+  [start screen](src/open-board/board-composer.tsx) opens a
+  [folder menu](src/open-board/workspace-picker.tsx) with **Open folder…** and
+  your recent workspaces, then shows each agent as a card with its own **Run**
+  button. Choosing a folder never starts an agent; only Run does.
+- **Drop a folder from Finder or Explorer** onto the start screen to use it as
+  the workspace. Files, several items at once, or a missing folder are refused
+  with a message.
+- Create workspace, Create worktree, Resume a session and Manage agents now
+  live under **More…**.
+
 ### Sessions
 
 - **Deck no longer reopens yesterday's session on its own.** At launch the
