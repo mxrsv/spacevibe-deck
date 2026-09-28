@@ -22,9 +22,10 @@ import {
   sidebarFrameActionsSpecimen,
 } from "../chrome-fixtures";
 import { SectionHead, Specimen } from "../specimen";
+import { useWorkspaceDrop } from "../../open-board/use-workspace-drop";
 import { BoardComposer } from "../../open-board/board-composer";
 import { EMPTY_DRAFT, startTaskProblem, type NewTaskDraft } from "../../launcher/new-task-draft";
-import type { AgentOption } from "../../lib/agent-catalog";
+import { BUILTIN_AGENTS, type AgentOption } from "../../lib/agent-catalog";
 import type { RecentWorkspace } from "../../lib/workspace-recents";
 
 /**
@@ -653,7 +654,17 @@ function LiveComposerSpecimen() {
     workspacePath: WORKSPACES[0].path,
     agentId: "claude",
   });
-  const agents: readonly AgentOption[] = AGENTS.map((entry) => ({
+  const notice = useSignal<string | null>(null);
+  const drop = useWorkspaceDrop({
+    enabled: true,
+    onSelect: (path) => {
+      draft.value = { ...draft.value, workspacePath: path };
+    },
+    onError: (message) => {
+      notice.value = message;
+    },
+  });
+  const agents: readonly AgentOption[] = BUILTIN_AGENTS.map((entry) => ({
     id: entry.id,
     label: entry.label,
     detail: `/usr/local/bin/${entry.id}`,
@@ -661,7 +672,7 @@ function LiveComposerSpecimen() {
   }));
   const recents: readonly RecentWorkspace[] = WORKSPACES.map((entry, index) => ({
     path: entry.path,
-    lastOpenedAt: WORKSPACES.length - index,
+    lastOpenedAt: Date.now() - index * 3 * 60 * 60 * 1000,
   }));
   const problem = startTaskProblem(draft.value, {
     runnableAgentIds: agents.map((agent) => agent.id),
@@ -670,56 +681,68 @@ function LiveComposerSpecimen() {
   return (
     <Specimen
       name="Open Board · the real component"
-      note="src/open-board/board-composer.tsx with real agents, real recents and the real runtime catalog"
+      note="src/open-board/board-composer.tsx · folder dialog, launches and dropped paths are simulated"
       surface="none"
-      tall
     >
-      <DeckShell board>
-        <div class="stage nt-stage nt-stage--board">
-          <BoardComposer
-            draft={draft.value}
-            agents={agents}
-            homeDir="/Users/kyantran"
-            alive={recents}
-            missingGroup={[]}
-            openWorkspacePaths={new Set([WORKSPACES[1].path])}
-            canBrowseSessions
-            openFolderShortcut="⌘O"
-            declaredModels={{ claude: ["opus", "sonnet"] }}
-            agentRuntimeDefaults={{}}
-            canCreateWorkspace
-            canCreateWorktree
-            pending={null}
-            problem={problem}
-            openProblem={null}
-            agentsResolved={true}
-            notice={null}
-            canRetryDelivery={false}
-            canFocusOpenedAgent={false}
-            hasUserDraftContent={true}
-            describeCombo={(recent) =>
-              WORKSPACES.find((entry) => entry.path === recent.path)?.detail ?? ""
-            }
-            onBrowseSessions={NOOP}
-            onRemove={NOOP}
-            onDraftChange={(next) => {
-              draft.value = next;
-            }}
-            onSelectWorkspace={(path) => {
-              draft.value = { ...draft.value, workspacePath: path };
-            }}
-            onPickFolder={NOOP}
-            onCreateWorkspace={NOOP}
-            onCreateWorktree={NOOP}
-            onManageAgents={NOOP}
-            onStartTask={NOOP}
-            onOpenAgent={NOOP}
-            onRetryDelivery={NOOP}
-            onFocusOpenedAgent={NOOP}
-            onClearDraft={NOOP}
-          />
-        </div>
-      </DeckShell>
+      <div class="nt-board-preview">
+        <DeckShell board>
+          <div class="stage nt-stage nt-stage--board">
+            <div class="open-board" {...drop.handlers}>
+              <BoardComposer
+                draft={draft.value}
+                agents={agents}
+                homeDir="/Users/kyantran"
+                alive={recents}
+                missingGroup={[]}
+                openWorkspacePaths={new Set([WORKSPACES[1].path])}
+                canBrowseSessions
+                openFolderShortcut="⌘O"
+                declaredModels={{ claude: ["opus", "sonnet"] }}
+                agentRuntimeDefaults={{}}
+                canCreateWorkspace
+                canCreateWorktree
+                pending={drop.checking ? "selecting-workspace" : null}
+                // The browser has no host paths; the hint is shown as Electron prints it.
+                canDropFolder
+                draggingFolder={drop.dragging}
+                problem={problem}
+                openProblem={null}
+                agentsResolved={true}
+                notice={notice.value}
+                canRetryDelivery={false}
+                canFocusOpenedAgent={false}
+                hasUserDraftContent={true}
+                describeCombo={(recent) =>
+                  WORKSPACES.find((entry) => entry.path === recent.path)?.detail ?? ""
+                }
+                onBrowseSessions={NOOP}
+                onRemove={NOOP}
+                onDraftChange={(next) => {
+                  draft.value = next;
+                }}
+                onSelectWorkspace={(path) => {
+                  draft.value = { ...draft.value, workspacePath: path };
+                }}
+                onPickFolder={() => {
+                  notice.value = "Preview: Open folder opens the system folder dialog in Deck.";
+                }}
+                onCreateWorkspace={NOOP}
+                onCreateWorktree={NOOP}
+                onManageAgents={NOOP}
+                onStartTask={NOOP}
+                onOpenAgent={NOOP}
+                onRunAgent={(agentId) => {
+                  draft.value = { ...draft.value, agentId };
+                  notice.value = `Preview: Run ${agents.find((agent) => agent.id === agentId)?.label} in ${draft.value.workspacePath}`;
+                }}
+                onRetryDelivery={NOOP}
+                onFocusOpenedAgent={NOOP}
+                onClearDraft={NOOP}
+              />
+            </div>
+          </div>
+        </DeckShell>
+      </div>
     </Specimen>
   );
 }

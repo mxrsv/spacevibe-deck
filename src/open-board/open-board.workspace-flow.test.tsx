@@ -92,7 +92,7 @@ describe("OpenBoard create-workspace flow", () => {
     await mount();
 
     const trigger = [
-      ...host.querySelectorAll<HTMLButtonElement>(".nt-board__shortcuts button"),
+      ...host.querySelectorAll<HTMLButtonElement>(".nt-board__more-actions button"),
     ].find((button) => button.textContent?.includes("Create workspace"));
     await act(async () => trigger?.click());
 
@@ -104,7 +104,7 @@ describe("OpenBoard create-workspace flow", () => {
     createWorkspaceMock.mockResolvedValue({ path: "/Users/dev/sandbox" });
     await mount();
     const trigger = [
-      ...host.querySelectorAll<HTMLButtonElement>(".nt-board__shortcuts button"),
+      ...host.querySelectorAll<HTMLButtonElement>(".nt-board__more-actions button"),
     ].find((button) => button.textContent?.includes("Create workspace"));
     await act(async () => trigger?.click());
 

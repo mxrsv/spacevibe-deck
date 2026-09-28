@@ -1,0 +1,247 @@
+/* DL-32.1: the Open Board shares the compact Quick Launch agent cards. */
+.nt-board--agents {
+  container-type: inline-size;
+}
+.nt-board--agents .nt-board__content {
+  width: min(800px, calc(100% - 48px));
+}
+.nt-agent-launcher {
+  margin-top: 28px;
+}
+.nt-agent-launcher__destination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border-radius: var(--radius-surface);
+  background: color-mix(in srgb, var(--chrome-1) 65%, var(--bg));
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+/* DL-13.1 / DL-13.3: the folder choice is a popover of single-line rows. */
+.nt-workspace-picker {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+.nt-workspace-picker__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 6px 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: transparent;
+  font: 550 var(--type-body)/1.4 var(--ui-font);
+  cursor: pointer;
+}
+.nt-workspace-picker__trigger > span,
+.nt-workspace-picker__name,
+.nt-workspace-picker__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-workspace-picker__trigger[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+.nt-workspace-picker__menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 3;
+  /* No global reset (traps.md): the padding must stay inside the width. */
+  box-sizing: border-box;
+  width: min(300px, calc(100cqw - 80px));
+  max-height: min(360px, 60vh);
+  overflow-y: auto;
+  padding: 5px;
+  border-radius: var(--radius-surface);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  color: var(--text-primary);
+}
+.nt-workspace-picker__menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: inherit;
+  background: transparent;
+  font: 450 var(--type-body)/1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+}
+.nt-workspace-picker__menu button > svg {
+  flex-shrink: 0;
+}
+.nt-workspace-picker__name {
+  flex: 1 1 auto;
+}
+.nt-workspace-picker__detail {
+  flex: 0 1 auto;
+  max-width: 50%;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+.nt-workspace-picker__menu button:hover,
+.nt-workspace-picker__menu button:focus-visible {
+  background: var(--state-hover-bg);
+}
+.nt-workspace-picker__trigger:focus-visible,
+.nt-workspace-picker__menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.nt-workspace-picker__separator {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--hair);
+}
+.nt-agent-launcher__hint {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+.nt-agent-launcher > p {
+  font-size: var(--type-body);
+  color: var(--text-muted);
+}
+/* DL-13.1 / DL-32.1: secondary actions stay behind one quiet disclosure. */
+.nt-board__more {
+  position: relative;
+  width: fit-content;
+  margin: 14px 0 0 auto;
+  font: 450 var(--type-meta)/1.4 var(--ui-font);
+}
+.nt-board__more summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 6px 8px;
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+.nt-board__more summary::-webkit-details-marker {
+  display: none;
+}
+.nt-board__more summary:hover,
+.nt-board__more[open] summary {
+  color: var(--text-primary);
+}
+.nt-board__more summary[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+.nt-board__more-actions {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  width: min(240px, calc(100cqw - 48px));
+  padding: 5px;
+  border-radius: var(--radius-surface);
+  color: var(--text-primary);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+}
+.nt-board__more-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nt-board__more-actions button:hover:not(:disabled) {
+  background: var(--state-hover-bg);
+}
+.nt-board__more summary:focus-visible,
+.nt-board__more-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Recents and the GitHub ask recede below the primary folder/agent choice. */
+.nt-board--agents .board-home__recents {
+  width: 100%;
+  margin-top: 26px;
+}
+.nt-board--agents .board-home__recents-head {
+  padding: 0 8px 8px;
+  color: var(--text-muted);
+}
+.nt-board--agents .board-home__star {
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+  font-weight: 400;
+}
+.nt-board--agents .board-home__star-mark {
+  color: inherit;
+}
+.nt-board--agents .board-home__star:hover:not(:disabled) {
+  background: transparent;
+  color: var(--text-muted);
+}
+.nt-board--agents .board-home__star:hover .board-home__star-text {
+  text-decoration: underline;
+}
+.nt-board--folder-over .nt-agent-launcher__destination {
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.nt-board--folder-over {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.nt-board__drop-hint {
+  position: sticky;
+  top: 12px;
+  z-index: 1;
+  padding: 12px 16px;
+  margin-top: 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  background: var(--chrome-2);
+  pointer-events: none;
+}
+@container (max-width: 440px) {
+  .nt-agent-launcher__destination {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nt-board--agents .board-home__recents .row__meta {
+    flex-wrap: wrap;
+    gap: 3px 8px;
+  }
+  .nt-board--agents .board-home__recents .row__path {
+    flex-basis: 100%;
+  }
+  .nt-board--agents .board-home__recents .row__combo {
+    flex: 1;
+    min-width: 0;
+  }
+}

@@ -3244,10 +3244,15 @@ treatment lives in
 [18-new-task-launcher.css](../src/styles/18-new-task-launcher.css) `current`.
 Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
 
-- **DL-32.1** **The prompt composer is the Open Board's focal artifact.** It
-  takes the strongest scale and central position, and its prompt is always
-  visible. Recent workspaces form a quieter second rhythm below it; choosing
-  one establishes context and never starts a process.
+- **DL-32.1** **Agent cards are the Open Board's focal artifact.** The
+  [board](../src/open-board/board-composer.tsx) shares the compact logo, name
+  and explicit Run button of [Quick Launch cards](../src/launcher/agent-launch-cards.tsx).
+  The [workspace popover](../src/open-board/workspace-picker.tsx) (DL-13.1)
+  sits above the cards; recent workspaces form a quieter
+  second rhythm below. Choosing or [dropping one folder](../src/open-board/use-workspace-drop.ts)
+  establishes context and never starts a process. Run opens the chosen agent
+  in that folder. With staged prompts explicitly enabled, the existing
+  [composer](../src/launcher/launcher-fields.tsx) remains visible instead.
 - **DL-32.2** **The context toolbar prints identity, never field labels.** A
   workspace is folder glyph + name and an agent is logo + name. `Workspace`,
   `Agent`, `Model`, and `Effort` remain accessible names, not repeated visual

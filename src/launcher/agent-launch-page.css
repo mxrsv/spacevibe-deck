@@ -24,16 +24,19 @@
   max-width: 800px;
   margin: 0 auto;
 }
-.agent-launch-page button {
+.agent-launch-page button,
+.nt-agent-launcher button {
   cursor: pointer;
   font: inherit;
   color: inherit;
 }
-.agent-launch-page button:focus-visible {
+.agent-launch-page button:focus-visible,
+.nt-agent-launcher button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
-.agent-launch-page button:disabled {
+.agent-launch-page button:disabled,
+.nt-agent-launcher button:disabled {
   cursor: wait;
   opacity: 0.5;
 }

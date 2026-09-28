@@ -44,6 +44,22 @@ export interface DragDropEvent {
   readonly payload: DragDropPayload;
 }
 
+/** Paths of OS-backed dropped files; synthetic browser Files have no host path. */
+export function droppedFilePaths(files: readonly File[]): string[] {
+  return files
+    .map((file) => hostBridge()?.getPathForFile?.(file) ?? "")
+    .filter((path): path is string => typeof path === "string" && path.length > 0);
+}
+
+/**
+ * Whether a DOM drop can yield a path at all. Only Electron's preload answers;
+ * Tauri delivers drops natively and the browser preview has no paths. Read at
+ * call time, not import time — the bridge is installed per window.
+ */
+export function canResolveDroppedPaths(): boolean {
+  return typeof hostBridge()?.getPathForFile === "function";
+}
+
 /** The preload bridge, for the one thing that is not invoke/listen. */
 function hostBridge(): { getPathForFile?: (file: File) => string } | undefined {
   return (globalThis as { __deckHost?: { getPathForFile?: (file: File) => string } }).__deckHost;
@@ -127,10 +143,7 @@ class DeckWindow {
     };
     const onDrop = (event: DragEvent) => {
       event.preventDefault();
-      const files = [...(event.dataTransfer?.files ?? [])];
-      const paths = files
-        .map((file) => hostBridge()?.getPathForFile?.(file) ?? "")
-        .filter((path) => path.length > 0);
+      const paths = droppedFilePaths(Array.from(event.dataTransfer?.files ?? []));
       handler({ payload: { type: "drop", paths, position: at(event) } });
     };
 

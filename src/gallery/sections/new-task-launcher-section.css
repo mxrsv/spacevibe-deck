@@ -775,3 +775,12 @@ img.nt-agent-mark {
     animation: none;
   }
 }
+
+/* Render the shipping board in its real box-sizing and scrolling container. */
+.nt-board-preview .window {
+  height: 940px;
+}
+.nt-board-preview .nt-board {
+  position: relative;
+  inset: auto;
+}

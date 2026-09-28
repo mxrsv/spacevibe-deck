@@ -1,6 +1,14 @@
-import { ClockCounterClockwise, FolderOpen, FolderPlus, GitBranch, X } from "@phosphor-icons/react";
+import {
+  CaretDown,
+  ClockCounterClockwise,
+  FolderOpen,
+  FolderPlus,
+  Gear,
+  GitBranch,
+  X,
+} from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
-import { useRef } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { hasPrimaryModifier } from "../lib/platform";
 import { tildify } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
@@ -8,27 +16,12 @@ import { formatRelativeTime, type RecentWorkspace } from "../lib/workspace-recen
 import { GithubStarButton } from "../ui/controls/github-star-button";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { LauncherFields, type LauncherFieldsProps } from "../launcher/launcher-fields";
+import { BoardAgentLauncher } from "./board-agent-launcher";
 import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
 
-/**
- * The Open Board's focal artifact (design §4.1): a generous prompt composer,
- * one context toolbar, then Recent Workspaces as a quieter second rhythm.
- *
- * Two rules this component exists to hold:
- *
- * - **The prompt is always visible here.** Collapsing it is Quick Launch's
- *   affordance alone, so `compact` is hard-wired false rather than passed.
- * - **A recents row SELECTS.** It fills the Workspace field and returns focus
- *   to the composer; it does not launch. That reverses the 2026-08-16
- *   one-click-opens contract deliberately — a workspace choice carrying the
- *   side effect of starting a process is the thing this design set out to fix.
- *
- * It replaces `OpenBoardHome`, so it carries that view's other duties rather
- * than dropping them: the session-history entry, the GitHub star ask, removing
- * a recents row, and the collapsed Missing workspaces group. The design
- * changed how a row BEHAVES; it did not ask for any of those to go. The row
- * markup keeps `OpenBoardHome`'s `.row` classes so the existing stylesheet
- * still dresses it.
+/** DL-32.1: workspace selection, shared agent cards, then recent workspaces.
+ * The staged-prompt feature retains its composer when explicitly enabled.
+ * Selecting a workspace never starts a process.
  */
 
 export interface BoardComposerProps extends Omit<
@@ -49,7 +42,11 @@ export interface BoardComposerProps extends Omit<
   /** A one-line description of the combo a row was last opened with. */
   describeCombo?: (recent: RecentWorkspace) => string;
   /** Fills the Workspace field. NEVER launches. */
-  onSelectWorkspace(path: string): void;
+  onSelectWorkspace(path: string): void | Promise<void>;
+  onRunAgent(agentId: string): void;
+  /** The host can resolve a dropped folder's path; false hides the drop hint. */
+  readonly canDropFolder?: boolean;
+  readonly draggingFolder?: boolean;
   onBrowseSessions(): void;
   onRemove(paths: readonly string[]): void;
   /** The previous launch's session; null or absent offers nothing. */
@@ -77,9 +74,30 @@ function lastSessionMeta(offer: LastSessionOffer): string {
 
 export function BoardComposer(props: BoardComposerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDetailsElement>(null);
   const missingExpanded = useSignal(false);
   const busy = props.pending !== null;
   const staging = props.promptStaging ?? TASK_PROMPT_STAGING_ENABLED;
+
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      const menu = moreRef.current;
+      if (menu !== null && event.target instanceof Node && !menu.contains(event.target)) {
+        menu.open = false;
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, []);
+  useEffect(() => {
+    if (busy && moreRef.current !== null) moreRef.current.open = false;
+  }, [busy]);
+
+  function moreAction(action: () => void): void {
+    if (busy) return;
+    if (moreRef.current !== null) moreRef.current.open = false;
+    action();
+  }
 
   function focusPrompt(): void {
     // The row's whole job is to answer the Workspace field and hand the user
@@ -92,34 +110,15 @@ export function BoardComposer(props: BoardComposerProps) {
   }
 
   function selectWorkspace(path: string): void {
-    props.onSelectWorkspace(path);
+    void props.onSelectWorkspace(path);
     focusPrompt();
   }
 
-  /**
-   * ⌘Enter starts a task. Composer-local by design: it fires only while focus
-   * is inside this subtree, so it needs no registry action, no keymap entry
-   * and no menu regeneration — and it cannot reach a terminal.
-   *
-   * It takes the same action and the same gate as the primary button, which is
-   * what makes `TASK_PROMPT_STAGING_ENABLED` false safe here: reading `problem`
-   * would leave the chord permanently dead on `empty-prompt` — a draft with no
-   * prompt box can never answer — so the chord follows the button onto
-   * `openProblem` and opens the agent instead of silently doing nothing.
-   */
+  /** The staged composer owns ⌘Enter; agent cards keep native button keys. */
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key !== "Enter" || !hasPrimaryModifier(event)) {
-      return;
-    }
-    const blocked = staging ? props.problem : props.openProblem;
-    if (blocked !== null || busy) {
-      return;
-    }
-    if (staging) {
-      props.onStartTask();
-    } else {
-      props.onOpenAgent();
-    }
+    if (!staging || event.key !== "Enter" || !hasPrimaryModifier(event)) return;
+    if (props.problem !== null || busy) return;
+    props.onStartTask();
     event.preventDefault();
     event.stopPropagation();
   }
@@ -173,7 +172,11 @@ export function BoardComposer(props: BoardComposerProps) {
   const hasRecents = props.alive.length > 0 || props.missingGroup.length > 0;
 
   return (
-    <main class="nt-board" aria-label="Start a task" aria-busy={busy}>
+    <main
+      class={`nt-board ${!staging ? "nt-board--agents" : ""} ${props.draggingFolder ? "nt-board--folder-over" : ""}`}
+      aria-label="Start a task"
+      aria-busy={busy}
+    >
       <div class="nt-board__content" ref={rootRef} onKeyDown={handleKeyDown}>
         {/* Launch reopens nothing on its own (2026-09-27); the previous
             session waits here instead, above the composer and quieter than
@@ -220,33 +223,107 @@ export function BoardComposer(props: BoardComposerProps) {
           <p>
             {staging
               ? "Describe the outcome. Deck opens the agent and types your task — press Enter there to send it."
-              : "Pick a workspace and an agent. Deck opens it there — type your task in its terminal."}
+              : "Choose a folder, then run an agent. Your work starts there."}
           </p>
         </header>
 
-        <LauncherFields {...props} recents={props.alive} idPrefix="board" compact={false} />
+        {props.draggingFolder ? (
+          <div class="nt-board__drop-hint" role="status">
+            Drop a folder to use as your workspace
+          </div>
+        ) : null}
+        {staging ? (
+          <LauncherFields {...props} recents={props.alive} idPrefix="board" compact={false} />
+        ) : (
+          <BoardAgentLauncher {...props} />
+        )}
 
-        <div class="nt-board__shortcuts">
-          <button type="button" disabled={busy} onClick={props.onPickFolder}>
-            <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Open folder…
-            <kbd>{props.openFolderShortcut}</kbd>
-          </button>
-          {props.canCreateWorkspace ? (
-            <button type="button" disabled={busy} onClick={props.onCreateWorkspace}>
-              <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Create workspace…
+        {staging ? (
+          <div class="nt-board__shortcuts" role="group" aria-label="Workspace actions">
+            <button type="button" disabled={busy} onClick={props.onPickFolder}>
+              <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Open folder…
+              <kbd>{props.openFolderShortcut}</kbd>
             </button>
-          ) : null}
-          {props.canCreateWorktree ? (
-            <button type="button" disabled={busy} onClick={props.onCreateWorktree}>
-              <DeckIcon icon={GitBranch} size={ROW_ICON} /> Create worktree…
-            </button>
-          ) : null}
-          {props.canBrowseSessions ? (
-            <button type="button" disabled={busy} onClick={props.onBrowseSessions}>
-              <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} /> Resume a session…
-            </button>
-          ) : null}
-        </div>
+            {props.canCreateWorkspace ? (
+              <button type="button" disabled={busy} onClick={props.onCreateWorkspace}>
+                <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Create workspace…
+              </button>
+            ) : null}
+            {props.canCreateWorktree ? (
+              <button type="button" disabled={busy} onClick={props.onCreateWorktree}>
+                <DeckIcon icon={GitBranch} size={ROW_ICON} /> Create worktree…
+              </button>
+            ) : null}
+            {props.canBrowseSessions ? (
+              <button type="button" disabled={busy} onClick={props.onBrowseSessions}>
+                <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} /> Resume a session…
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <details
+            class="nt-board__more"
+            ref={moreRef}
+            onKeyDownCapture={(event) => {
+              if (event.key !== "Escape" || !moreRef.current?.open) return;
+              event.preventDefault();
+              event.stopPropagation();
+              moreRef.current.open = false;
+              moreRef.current.querySelector("summary")?.focus();
+            }}
+            onFocusOut={(event) => {
+              const next = event.relatedTarget;
+              if (next instanceof Node && !event.currentTarget.contains(next)) {
+                event.currentTarget.open = false;
+              }
+            }}
+          >
+            <summary
+              aria-disabled={busy}
+              onClick={(event) => {
+                if (busy) event.preventDefault();
+              }}
+            >
+              More… <DeckIcon icon={CaretDown} size={ROW_ICON} />
+            </summary>
+            <div class="nt-board__more-actions" role="group" aria-label="More workspace actions">
+              {props.canCreateWorkspace ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => moreAction(props.onCreateWorkspace)}
+                >
+                  <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Create workspace…
+                </button>
+              ) : null}
+              {props.canCreateWorktree ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => moreAction(props.onCreateWorktree)}
+                >
+                  <DeckIcon icon={GitBranch} size={ROW_ICON} /> Create worktree…
+                </button>
+              ) : null}
+              {props.canBrowseSessions ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => moreAction(props.onBrowseSessions)}
+                >
+                  <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} /> Resume a session…
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => moreAction(props.onManageAgents)}
+              >
+                <DeckIcon icon={Gear} size={ROW_ICON} /> Manage agents
+              </button>
+            </div>
+          </details>
+        )}
 
         {hasRecents ? (
           <div class="board-home__recents">

@@ -120,11 +120,14 @@ describe("OpenBoard home view", () => {
     workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
     presetsData.value = { version: PRESETS_VERSION, presets: [] };
     resetDesktopEnvironmentForTests();
+    vi.unstubAllGlobals();
   });
 
   const mount = async (
     onStartTask: (draft: NewTaskDraft) => Promise<LaunchTaskOutcome> = async () => "sent",
     props: {
+      promptStaging?: boolean;
+      onOpenAgent?: (draft: NewTaskDraft) => Promise<LaunchTaskOutcome>;
       canCancel?: boolean;
       canBrowseSessions?: boolean;
       openWorkspacePaths?: ReadonlySet<string>;
@@ -143,14 +146,14 @@ describe("OpenBoard home view", () => {
         <OpenBoard
           // Production hides the prompt behind `TASK_PROMPT_STAGING_ENABLED`;
           // these views keep it wired so the staged path stays covered.
-          promptStaging
+          promptStaging={props.promptStaging ?? true}
           contextWorkspacePath={props.contextWorkspacePath ?? null}
           canCancel={props.canCancel ?? false}
           canBrowseSessions={props.canBrowseSessions ?? false}
           openWorkspacePaths={props.openWorkspacePaths ?? new Set()}
           onCancel={() => {}}
           onStartTask={onStartTask}
-          onOpenAgent={onStartTask}
+          onOpenAgent={props.onOpenAgent ?? onStartTask}
           canRetryDelivery={props.canRetryDelivery ?? false}
           canFocusOpenedAgent={props.canFocusOpenedAgent ?? false}
           hasUserDraftContent={props.hasUserDraftContent ?? false}
@@ -629,5 +632,130 @@ describe("OpenBoard home view", () => {
 
     await keydown({ key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+  it("runs the clicked card in the selected folder using that agent's defaults", async () => {
+    seed(["/w/alpha"]);
+    detected = [
+      { name: "claude", path: "/usr/bin/claude" },
+      { name: "codex", path: "/usr/bin/codex" },
+    ];
+    settings.value = {
+      ...DEFAULT_SETTINGS,
+      agentRuntimeDefaults: { codex: { model: "chosen-model", effort: "high" } },
+    };
+    newTaskDraft.value = {
+      ...EMPTY_DRAFT,
+      workspacePath: "/w/alpha",
+      agentId: "claude",
+      modelId: "opus",
+      reasoningEffort: "low",
+    };
+    const launch = vi.fn(async (): Promise<LaunchTaskOutcome> => "started");
+    const start = vi.fn(async (): Promise<LaunchTaskOutcome> => "sent");
+    await mount(start, { promptStaging: false, onOpenAgent: launch });
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[aria-label="Run Codex"]')!.click();
+    });
+    expect(launch).toHaveBeenCalledTimes(1);
+    expect(start).not.toHaveBeenCalled();
+    expect(launch.mock.calls[0]).toEqual([
+      expect.objectContaining({
+        workspacePath: "/w/alpha",
+        agentId: "codex",
+        modelId: "chosen-model",
+        reasoningEffort: null,
+      }),
+    ]);
+  });
+
+  it("selects a dropped folder without launching, then runs in that folder", async () => {
+    seed([]);
+    detected = [{ name: "claude", path: "/usr/bin/claude" }];
+    vi.stubGlobal("__deckHost", { getPathForFile: () => "/w/dropped folder" });
+    const launch = vi.fn(async (): Promise<LaunchTaskOutcome> => "started");
+    await mount(launch, { promptStaging: false });
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: { types: ["Files"], files: [new File([], "folder")] },
+    });
+    await act(async () => {
+      host.querySelector(".open-board")!.dispatchEvent(event);
+    });
+    await settle();
+    expect(newTaskDraft.value.workspacePath).toBe("/w/dropped folder");
+    expect(launch).not.toHaveBeenCalled();
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[aria-label="Run Claude Code"]')!.click();
+    });
+    expect(launch.mock.calls[0]).toEqual([
+      expect.objectContaining({ workspacePath: "/w/dropped folder", agentId: "claude" }),
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps a rejected launch retryable and prevents duplicate activation", async () => {
+    seed(["/w/alpha"]);
+    detected = [{ name: "claude", path: "/usr/bin/claude" }];
+    let reject!: (reason: Error) => void;
+    const launch = vi.fn(
+      () =>
+        new Promise<LaunchTaskOutcome>((_, fail) => {
+          reject = fail;
+        }),
+    );
+    await mount(launch, { promptStaging: false });
+    await settle();
+    const run = host.querySelector<HTMLButtonElement>('[aria-label="Run Claude Code"]')!;
+    act(() => {
+      run.click();
+      run.click();
+    });
+    expect(launch).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      reject(new Error("launch failed"));
+    });
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Couldn't start the agent");
+    expect(run.disabled).toBe(false);
+  });
+  it("blocks launching the previous folder until a dropped folder finishes validation", async () => {
+    seed(["/w/previous"]);
+    detected = [{ name: "claude", path: "/usr/bin/claude" }];
+    newTaskDraft.value = {
+      ...EMPTY_DRAFT,
+      workspacePath: "/w/previous",
+      agentId: "claude",
+      prompt: "Do not send this old draft",
+    };
+    const start = vi.fn(async (): Promise<LaunchTaskOutcome> => "sent");
+    const launch = vi.fn(async (): Promise<LaunchTaskOutcome> => "started");
+    await mount(start, { promptStaging: false, onOpenAgent: launch });
+    await settle();
+    let finish!: () => void;
+    dirsGate = new Promise((resolve) => {
+      finish = resolve;
+    });
+    vi.stubGlobal("__deckHost", { getPathForFile: () => "/w/new folder" });
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: { types: ["Files"], files: [new File([], "folder")] },
+    });
+    act(() => {
+      host.querySelector(".open-board")!.dispatchEvent(event);
+    });
+    const run = host.querySelector<HTMLButtonElement>('[aria-label="Run Claude Code"]')!;
+    expect(run.disabled).toBe(true);
+    act(() => run.click());
+    expect(launch).not.toHaveBeenCalled();
+    expect(newTaskDraft.value.workspacePath).toBe("/w/previous");
+    await act(async () => {
+      finish();
+    });
+    await settle();
+    expect(run.disabled).toBe(false);
+    await act(async () => run.click());
+    expect(launch.mock.calls).toEqual([
+      [expect.objectContaining({ workspacePath: "/w/new folder", agentId: "claude" })],
+    ]);
+    expect(start).not.toHaveBeenCalled();
   });
 });

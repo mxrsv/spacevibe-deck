@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render } from "preact";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "preact/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentOption } from "../lib/agent-catalog";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import type { RecentWorkspace } from "../lib/workspace-recents";
@@ -61,6 +62,7 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
     onRemove: vi.fn(),
     onStartTask,
     onOpenAgent,
+    onRunAgent: vi.fn(),
     onRetryDelivery: vi.fn(),
     onFocusOpenedAgent: vi.fn(),
     onClearDraft: vi.fn(),
@@ -80,6 +82,11 @@ beforeEach(() => {
   document.body.innerHTML = "";
   host = document.createElement("div");
   document.body.appendChild(host);
+});
+
+afterEach(() => {
+  act(() => render(null, host));
+  host.remove();
 });
 
 describe("BoardComposer", () => {
@@ -182,5 +189,125 @@ describe("BoardComposer", () => {
     expect(onReopenLastSession).toHaveBeenCalledTimes(1);
     host.querySelector<HTMLButtonElement>('[aria-label="Dismiss last session"]')?.click();
     expect(onDismissLastSession).toHaveBeenCalledTimes(1);
+  });
+  it("offers Run on each agent instead of the dropdown in production", () => {
+    const onRunAgent = vi.fn();
+    mount({
+      promptStaging: false,
+      onRunAgent,
+      agents: [
+        ...AGENTS,
+        { id: "codex", label: "Codex", detail: "/usr/bin/codex", missing: false },
+      ],
+    });
+    expect(host.querySelector('[aria-label="Agent"]')).toBeNull();
+    host.querySelector<HTMLButtonElement>('[aria-label="Run Codex"]')!.click();
+    expect(onRunAgent).toHaveBeenCalledExactlyOnceWith("codex");
+  });
+
+  it.each([
+    { draft: EMPTY_DRAFT },
+    { pending: "selecting-workspace" as const },
+    { agentsResolved: false },
+    { agents: [{ ...AGENTS[0], missing: true }] },
+  ])("blocks Run without a ready folder and agent: %j", (props) => {
+    const onRunAgent = vi.fn();
+    mount({ promptStaging: false, onRunAgent, ...props });
+    const run = host.querySelector<HTMLButtonElement>('[aria-label="Run Claude Code"]')!;
+    expect(run.disabled).toBe(true);
+    run.click();
+    expect(onRunAgent).not.toHaveBeenCalled();
+  });
+
+  it("offers the folder picker even with no recents or selected folder", () => {
+    const onPickFolder = vi.fn();
+    mount({ promptStaging: false, draft: EMPTY_DRAFT, alive: [], onPickFolder });
+    const field = host.querySelector<HTMLButtonElement>(".nt-workspace-picker__trigger")!;
+    expect(field.textContent).toContain("Choose a folder");
+    act(() => field.click());
+    const items = host.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]');
+    expect(items).toHaveLength(1);
+    expect(host.querySelector('[role="separator"]')).toBeNull();
+    act(() => items[0].click());
+    expect(onPickFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it("the workspace menu selects a recent and never launches", () => {
+    const onRunAgent = vi.fn();
+    const { onSelectWorkspace, onOpenAgent } = mount({ promptStaging: false, onRunAgent });
+    act(() => host.querySelector<HTMLButtonElement>(".nt-workspace-picker__trigger")!.click());
+    const api = host.querySelector<HTMLButtonElement>('[role="menuitemradio"][title="/repo/api"]')!;
+    act(() => api.click());
+    expect(onSelectWorkspace).toHaveBeenCalledExactlyOnceWith("/repo/api");
+    expect(onRunAgent).not.toHaveBeenCalled();
+    expect(onOpenAgent).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("promises a folder drop only when the host can resolve it", () => {
+    mount({ promptStaging: false });
+    expect(host.textContent).not.toContain("or drop a folder here");
+    act(() => render(null, host));
+    mount({ promptStaging: false, canDropFolder: true });
+    expect(host.textContent).toContain("or drop a folder here");
+  });
+  it("does not launch the hidden draft agent from the old composer shortcut", () => {
+    const onOpenAgent = vi.fn();
+    mount({ promptStaging: false, onOpenAgent });
+    const run = host.querySelector<HTMLButtonElement>('[aria-label="Run Claude Code"]')!;
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    run.dispatchEvent(event);
+    expect(onOpenAgent).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+  it.each([
+    ["Create workspace…", "onCreateWorkspace"],
+    ["Create worktree…", "onCreateWorktree"],
+    ["Resume a session…", "onBrowseSessions"],
+    ["Manage agents", "onManageAgents"],
+  ] as const)("keeps %s available through More and closes after activation", (label, callback) => {
+    const action = vi.fn();
+    mount({ promptStaging: false, [callback]: action });
+    const menu = host.querySelector<HTMLDetailsElement>(".nt-board__more")!;
+    expect(menu.open).toBe(false);
+    menu.querySelector("summary")!.click();
+    expect(menu.open).toBe(true);
+    const button = Array.from(menu.querySelectorAll("button")).find(
+      (entry) => entry.textContent?.trim() === label,
+    )!;
+    button.click();
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(menu.open).toBe(false);
+    expect(host.querySelector(".nt-board__shortcuts")).toBeNull();
+  });
+
+  it("dismisses More on Escape without forwarding it to the board", () => {
+    mount({ promptStaging: false });
+    const menu = host.querySelector<HTMLDetailsElement>(".nt-board__more")!;
+    const trigger = menu.querySelector("summary")!;
+    trigger.click();
+    const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    const outside = vi.fn();
+    host.addEventListener("keydown", outside);
+    menu.querySelector("button")!.dispatchEvent(event);
+    expect(menu.open).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    expect(event.defaultPrevented).toBe(true);
+    expect(outside).not.toHaveBeenCalled();
+  });
+
+  it("does not open More while a launch is pending", () => {
+    mount({ promptStaging: false, pending: "opening-agent" });
+    const menu = host.querySelector<HTMLDetailsElement>(".nt-board__more")!;
+    menu.querySelector("summary")!.click();
+    expect(menu.open).toBe(false);
+    expect(Array.from(menu.querySelectorAll("button")).every((button) => button.disabled)).toBe(
+      true,
+    );
   });
 });

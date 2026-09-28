@@ -139,7 +139,7 @@ describe("OpenBoard removal flow", () => {
     await mount();
 
     expect(host.querySelector(".row__ico.deck-icon--folder-open")).not.toBeNull();
-    expect(host.querySelector(".nt-board__shortcuts .deck-icon--folder-plus")).not.toBeNull();
+    expect(host.querySelector(".nt-workspace-picker__trigger .deck-icon--folder")).not.toBeNull();
 
     const x = removeButton("alpha");
     // Removing a recent forgets a pointer; it deletes nothing on disk, so it
@@ -219,9 +219,8 @@ describe("OpenBoard removal flow", () => {
     pickedFolder = "C:/work";
     await mount();
 
-    const openAction = host.querySelector<HTMLButtonElement>(".nt-board__shortcuts button");
-    expect(openAction?.querySelector("kbd")?.textContent).toBe("Ctrl+Shift+O");
-
+    // Normal mode prints no Open folder shortcut row (it lives in the
+    // workspace menu); the chord itself still answers.
     const board = host.querySelector<HTMLDivElement>(".open-board");
     await act(async () => {
       board?.dispatchEvent(

@@ -34,9 +34,16 @@ import {
   selectDraftWorkspace,
   updateDraft,
 } from "../launcher/launcher-store";
-import { openAgentProblem, startTaskProblem, type NewTaskDraft } from "../launcher/new-task-draft";
+import {
+  openAgentProblem,
+  startTaskProblem,
+  withAgent,
+  type NewTaskDraft,
+} from "../launcher/new-task-draft";
 import type { LaunchTaskOutcome } from "../terminal/task-prompt-send";
 import type { LauncherPending } from "../launcher/launcher-fields";
+import { useWorkspaceDrop } from "./use-workspace-drop";
+import { mergeRuntimeDefaults, runtimeFor } from "../launcher/runtime-catalog";
 import { useWorktreeForm } from "./use-worktree-form";
 import { SessionsBody } from "../ui/sessions/sessions-body";
 
@@ -347,9 +354,18 @@ export function OpenBoard({
   const groups = partitionRecents(recents, missing.value);
 
   const recoveryAvailable = canRetryDelivery || canFocusOpenedAgent;
-  const effectivePending: LauncherPending | null = opening.value
-    ? "selecting-workspace"
-    : (pending.value ?? externalPending);
+  const folderDrop = useWorkspaceDrop({
+    enabled:
+      view.value === "home" && !opening.value && pending.value === null && externalPending === null,
+    onSelect: selectWorkspace,
+    onError: (message) => {
+      notice.value = message;
+    },
+  });
+  const effectivePending: LauncherPending | null =
+    opening.value || folderDrop.checking
+      ? "selecting-workspace"
+      : (pending.value ?? externalPending);
   /* oxlint-disable react-hooks/exhaustive-deps -- `notice` is the output being cleared; only the recovery transition drives this effect */
   useEffect(() => {
     if (recoveryWasAvailable.current && !recoveryAvailable) {
@@ -525,15 +541,38 @@ export function OpenBoard({
    * dismisses the board, so a board that stays up always means something is
    * still to be done.
    */
-  async function runLaunch(kind: "start" | "open"): Promise<void> {
-    if (effectivePending !== null) {
+  async function runLaunch(kind: "start" | "open", agentId?: string): Promise<void> {
+    if (
+      opening.value ||
+      pending.value !== null ||
+      externalPending !== null ||
+      folderDrop.isChecking()
+    ) {
       return;
+    }
+    const next =
+      agentId === undefined
+        ? newTaskDraft.value
+        : withAgent(
+            newTaskDraft.value,
+            agentId,
+            mergeRuntimeDefaults(runtimeFor(agentId), settings.value.agentRuntimeDefaults[agentId]),
+          );
+    if (agentId !== undefined) {
+      if (!agentsProbed.value || openAgentProblem(next, draftContext) !== null) return;
+      updateDraft(next);
     }
     notice.value = null;
     pending.value = kind === "start" ? "sending-prompt" : "opening-agent";
-    const outcome = await (kind === "start" ? onStartTask(draft) : onOpenAgent(draft));
-    pending.value = null;
-    notice.value = launchNotice(outcome);
+    try {
+      const outcome = await (kind === "start" ? onStartTask(next) : onOpenAgent(next));
+      notice.value = launchNotice(outcome);
+    } catch (error) {
+      console.warn("Board agent launch failed:", error);
+      notice.value = "Couldn't start the agent — try again.";
+    } finally {
+      pending.value = null;
+    }
   }
 
   async function retryDelivery(): Promise<void> {
@@ -586,7 +625,13 @@ export function OpenBoard({
   }
 
   return (
-    <div class="open-board" tabIndex={0} onKeyDown={handleKeyDown} ref={containerRef}>
+    <div
+      class="open-board"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      ref={containerRef}
+      {...folderDrop.handlers}
+    >
       {view.value === "workspace" ? (
         <main class="nt-board">
           <div class="nt-board__content nt-board__content--subview">
@@ -657,7 +702,10 @@ export function OpenBoard({
           hasUserDraftContent={hasUserDraftContent}
           describeCombo={describeCombo}
           onDraftChange={updateDraft}
-          onSelectWorkspace={(path) => void selectWorkspace(path)}
+          onSelectWorkspace={selectWorkspace}
+          onRunAgent={(id) => void runLaunch("open", id)}
+          canDropFolder={folderDrop.available}
+          draggingFolder={folderDrop.dragging}
           onPickFolder={() => void pickFolder()}
           onCreateWorkspace={openWorkspaceForm}
           onCreateWorktree={openWorktreeForm}

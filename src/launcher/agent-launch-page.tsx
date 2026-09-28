@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
-import { ArrowLeft, ArrowRight, Columns, Gear } from "@phosphor-icons/react";
+import { ArrowLeft, Columns, Gear } from "@phosphor-icons/react";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
-import { AgentGlyph } from "../ui/controls/agent-glyph";
+import { AgentLaunchCards } from "./agent-launch-cards";
 import { DeckIcon } from "../ui/controls/deck-icon";
 import "./agent-launch-page.css";
 
@@ -79,25 +79,7 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
             </button>
           </div>
         ) : null}
-        <div class="agent-launch-page__grid" aria-busy={props.pending}>
-          {props.agents.map((agent) => (
-            <article class="agent-launch-page__card" key={agent.id}>
-              <AgentGlyph
-                agent={agent.id.startsWith("custom:") ? agent.label : agent.id}
-                className="agent-launch-page__logo"
-              />
-              <strong>{agent.label}</strong>
-              <button
-                data-launch-primary
-                disabled={props.pending}
-                aria-label={`Run ${agent.label}`}
-                onClick={() => props.onRun(agent.id)}
-              >
-                Run <DeckIcon icon={ArrowRight} size={14} />
-              </button>
-            </article>
-          ))}
-        </div>
+        <AgentLaunchCards agents={props.agents} pending={props.pending} onRun={props.onRun} />
         {props.pending ? <p role="status">Opening agent…</p> : null}
         {props.error ? (
           <p class="agent-launch-page__error" role="alert">
