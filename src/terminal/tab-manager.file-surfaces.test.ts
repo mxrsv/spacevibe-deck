@@ -5,18 +5,11 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../files/file-surface-controller";
-import { activeFileTab, resetFileSurfaces } from "../files/file-surface-store";
+import { resetFileSurfaces } from "../files/file-surface-store";
 import type { FileClient } from "../files/file-client";
 import { agentQuickPickerOpen, boardOpen, persistError, settingsOpen } from "../chrome/events";
-import {
-  agentBoardOpen,
-  agentBoardSurfaceActive,
-  openAgentBoard,
-  resetAgentBoardStore,
-} from "../ui/agent-board-store";
-import { browserSurfaceActive } from "../browser/browser-store";
-import type { BrowserClient } from "../browser/browser-client";
-import { composeSurfaceStrip } from "../ui/stage-surface-strip";
+import { resetAgentBoardStore } from "../ui/agent-board-store";
+import { missionControlOpen } from "../ui/mission-control/mission-control-store";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { stripPreferences, EMPTY_STRIP_PREFERENCES } from "../lib/strip-order";
@@ -685,95 +678,6 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  /**
-   * ⌘⇧O over an open document, against the REAL file controller.
-   *
-   * `openAgentBoard()` raises `agentBoardSurfaceActive` immediately, and
-   * `App` runs a "the Board yields" backstop effect that steps the Board
-   * straight back off the stage if the browser or a file surface is STILL
-   * active when it next runs (`app.tsx`, beside the file/browser one). So the
-   * order in the handler is not a stylistic choice: open first and the chord
-   * looks broken exactly when a document is up.
-   *
-   * What this pins is the effect's own guard, evaluated here after the chord:
-   * `activeFileTab` is null because `surfaces.deactivate()` reaches the real
-   * `activateTerminalSurface()` SYNCHRONOUSLY, so the effect's condition is
-   * already false by the time it runs. The effect itself is inline in `App`,
-   * which has no render harness in this repo — asserting its INPUTS at this
-   * layer is as close as a tab-manager test can get, and the effect actually
-   * firing is owed to the native pass.
-   */
-  it("takes the stage from a real document, leaving nothing for App's yield effect to undo", async () => {
-    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    await surfaces.openFile("/a", "/a/one.ts", true);
-    expect(surfaces.activeIndex()).toBe(0); // the document holds the stage
-
-    tm.runAction("toggle-agent-board");
-
-    // The Board is up...
-    expect(agentBoardSurfaceActive.value).toBe(true);
-    // ...and BOTH halves of "the Board yields" read false, so the backstop
-    // has nothing to step back. Either one left true is the bug.
-    expect(activeFileTab.value).toBeNull();
-    expect(browserSurfaceActive.value).toBe(false);
-    expect(surfaces.activeIndex()).toBe(-1);
-
-    tm.dispose();
-  });
-
-  /**
-   * The same press through the strip `App` actually injects.
-   *
-   * The test above uses the bare controller, so it cannot see the ordering
-   * hazard `composeSurfaceStrip` creates: ITS `deactivate()` calls
-   * `stepBoardBack()` first, so `openAgentBoard()` followed by
-   * `surfaces.deactivate()` raises the Board and takes it down again in the
-   * same synchronous block. Deactivate-then-open is the only order that
-   * survives both this and App's yield effect.
-   *
-   * The browser client is never reached — `stepBrowserBack()` early-returns
-   * while the browser is not on the stage — but it is a real-shaped stub
-   * rather than a cast so a future path that DOES call it fails loudly here.
-   */
-  it("keeps the board on the stage through the composed strip App injects", async () => {
-    const browser = {
-      open: vi.fn(),
-      close: vi.fn(),
-      navigate: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      reload: vi.fn(),
-      setBounds: vi.fn(),
-      setVisible: vi.fn(),
-      setInspect: vi.fn(),
-      onState: vi.fn(),
-      onGrab: vi.fn(),
-      onNavigated: vi.fn(),
-    } as unknown as BrowserClient;
-    const composed = composeSurfaceStrip({
-      files: surfaces,
-      client: browser,
-      onChanged: () => {},
-    });
-    const { tm } = setup({ deps: { surfaces: composed }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    await surfaces.openFile("/a", "/a/one.ts", true);
-    expect(composed.activeIndex()).toBe(0);
-
-    tm.runAction("toggle-agent-board");
-
-    expect(agentBoardSurfaceActive.value).toBe(true);
-    expect(agentBoardOpen.value).toBe(true);
-    expect(activeFileTab.value).toBeNull();
-    expect(browserSurfaceActive.value).toBe(false);
-    expect(browser.close).not.toHaveBeenCalled();
-    // The strip now reports the BOARD's own slot, not the document's.
-    expect(composed.activeIndex()).toBe(surfaces.count());
-
-    tm.dispose();
-  });
-
   it('"last surface, not last tab": closing the only terminal tab keeps the window open on a file surface', async () => {
     const before = windowCloseCalls.length;
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
@@ -833,7 +737,10 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  it("digits and cycling use manual order with pinned surfaces and hidden terminals", async () => {
+  it("digits and cycling count the space marks first, each half in manual order", async () => {
+    // DL-35.3: the strip draws every terminal tab as a mark, then the surface
+    // chips. A pin still orders surfaces among themselves; it no longer lifts
+    // a document ahead of the spaces.
     const { tm } = setup({
       deps: { surfaces, visibleTabIndexes: () => [0, 2] },
       infos: IDLE_SHELLS,
@@ -846,31 +753,32 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     const file = surfaces.orderKey!(0);
     stripPreferences.value = { order: [last!, hidden!, first!, file], pinned: [file] };
     tm.runAction("select-tab-1");
-    expect(surfaces.activeIndex()).toBe(0);
-    tm.cycleTab(1);
     expect(activeTabIndex.value).toBe(2);
+    expect(surfaces.activeIndex()).toBe(-1);
+    tm.cycleTab(1);
+    expect(activeTabIndex.value).toBe(0);
     tm.runAction("select-tab-3");
-    expect(activeTabIndex.value).toBe(0);
+    expect(surfaces.activeIndex()).toBe(0);
     tm.runAction("select-last-tab");
-    expect(activeTabIndex.value).toBe(0);
+    expect(surfaces.activeIndex()).toBe(0);
     tm.dispose();
     stripPreferences.value = EMPTY_STRIP_PREFERENCES;
   });
 
-  it("a file opened BEFORE a terminal tab takes the earlier digit", async () => {
+  it("a file opened BEFORE a terminal tab still comes after every space mark", async () => {
     // The projection the strip paints and the one the keymap walks are the
-    // same merge, so this cannot drift into "the eye says 1, ⌘1 says 2".
+    // same partition, so this cannot drift into "the eye says 1, ⌘1 says 2".
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
     await tm.materialize({ layout: null, cwds: ["/a"] });
-    await surfaces.openFile("/a", "/a/first.ts", true); // chip 2 for now
-    await tm.materialize({ layout: null, cwds: ["/a"] }); // opened last → chip 3
+    await surfaces.openFile("/a", "/a/first.ts", true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
 
     tm.runAction("select-tab-2");
-    expect(surfaces.activeIndex()).toBe(0); // the file, not the second terminal
+    expect(surfaces.activeIndex()).toBe(-1); // the second space, not the file
+    expect(activeTabIndex.value).toBe(1);
 
     tm.runAction("select-tab-3");
-    expect(surfaces.activeIndex()).toBe(-1);
-    expect(activeTabIndex.value).toBe(1);
+    expect(surfaces.activeIndex()).toBe(0);
 
     tm.dispose();
   });
@@ -1096,23 +1004,16 @@ describe("performable chords (Ctrl+C copies or falls through)", () => {
 });
 
 /**
- * ⌘⇧O, the Agent Board's toggle (spec §4.2).
+ * ⌘⇧O, Mission Control's toggle (DL-35.1), which took the Agent Board's chord.
  *
- * Two things this suite exists to pin, both invisible in the diff that adds
- * the action. The chord is host-gated, so it must LEAVE the keystroke alone
- * under Tauri rather than dying in the renderer; and it has to be exempt from
- * the surface half of `overlayBlocksAction`, because the composed strip
- * answers `activeIndex() >= 0` while the BOARD holds the stage — without the
- * exemption the toggle opens the Board and can never close it again.
+ * `App` owns the surface, so what this layer pins is the routing: the chord
+ * reaches the seam over a document, stays live while Mission Control itself
+ * ranks as an overlay (or it could open and never close), leaves the key alone
+ * with no terminal tab, and a tab switch dismisses it.
  */
-describe("the agent board toggle (Cmd+Shift+O)", () => {
-  beforeEach(() => {
-    resetAgentBoardStore();
-  });
-
+describe("the Mission Control toggle (Cmd+Shift+O)", () => {
   afterEach(() => {
-    resetAgentBoardStore();
-    vi.unstubAllGlobals();
+    missionControlOpen.value = false;
   });
 
   function terminalInput(): HTMLTextAreaElement {
@@ -1131,95 +1032,157 @@ describe("the agent board toggle (Cmd+Shift+O)", () => {
     return event;
   }
 
-  it("opens the board and takes the stage from a document that had it", async () => {
-    // `activeIndex: 0` is a file surface holding the stage — the case the
-    // surface half of `overlayBlocksAction` blocks for every unexempted
-    // "pane" action. Drop `toggle-agent-board` from `isSurfaceRoutedAction`
-    // and this goes red.
+  it("routes the chord to App's seam over a document, touching no surface", async () => {
+    const onToggleMissionControl = vi.fn();
     const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
-    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    const { tm } = setup({ deps: { surfaces, onToggleMissionControl }, infos: IDLE_SHELLS });
     await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     surfaces.activeIndexValue = 0;
     surfaces.calls.length = 0;
 
-    tm.runAction("toggle-agent-board");
+    tm.runAction("toggle-mission-control");
 
-    // Deactivate BEFORE the open, or the step-back takes down what was just
-    // raised — exactly one surface owns the stage.
-    expect(surfaces.calls).toEqual(["deactivate"]);
-    expect(agentBoardOpen.value).toBe(true);
-    expect(agentBoardSurfaceActive.value).toBe(true);
+    expect(onToggleMissionControl).toHaveBeenCalledTimes(1);
+    expect(surfaces.calls).toEqual([]);
     tm.dispose();
   });
 
-  it("steps the board back off the stage and hands the keyboard to the terminal", async () => {
-    // The composed strip reports the board's OWN slot as `activeIndex()`
-    // while the board holds the stage, which is why this fake says 0 too.
-    const surfaces = fakeSurfaces({ count: 0, total: 0, activeIndex: 0 });
-    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+  it("keeps the chord live while Mission Control is open, and blocks pane chords behind it", async () => {
+    const onToggleMissionControl = vi.fn();
+    const { tm } = setup({ deps: { onToggleMissionControl }, infos: IDLE_SHELLS });
     await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
-    openAgentBoard();
-    // Set AFTER init: `materialize` runs `surfaces.deactivate()`, which puts
-    // the fake back to -1 and would quietly stop this case reproducing the
-    // production one.
-    surfaces.activeIndexValue = 0;
-    // Take the caret OFF the pane first, with a real focusable element:
-    // `document.body.focus()` moves nothing, which would leave the focus
-    // assertion below true no matter what the handler did.
-    const elsewhere = document.createElement("button");
-    document.body.appendChild(elsewhere);
-    elsewhere.focus();
-    expect(document.activeElement).toBe(elsewhere);
-
-    tm.runAction("toggle-agent-board");
-
-    expect(agentBoardSurfaceActive.value).toBe(false);
-    // The CHIP survives: ⌘⇧O is the stage toggle, and only the chip's own ✕
-    // (or ⌘W) closes the tab (spec §4.4).
-    expect(agentBoardOpen.value).toBe(true);
-    // `focusActive()` ran: the keyboard is back on the pane it came from,
-    // which nothing else on this path would do.
-    expect(document.activeElement).toBe(terminalInput().closest(".pane__term"));
-    tm.dispose();
-  });
-
-  it("leaves Cmd+Shift+O alone on a host with no Board (Tauri)", async () => {
-    const { tm } = setup({ infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    await tm.init();
-    // Stubbed after init, not before: `performableContext()` reads the global
-    // per keystroke, and standing a bridge up around `init()` would have this
-    // suite exercising the host transport rather than the predicate.
-    vi.stubGlobal("__deckHost", undefined);
-    const input = terminalInput();
-    const downstream = vi.fn();
-    input.addEventListener("keydown", downstream);
-
-    const event = press(input, { key: "o", metaKey: true, shiftKey: true });
-
-    // Not consumed means the keystroke reaches the PTY instead of dying in
-    // the renderer — the whole reason the predicate is host-gated.
-    expect(event.defaultPrevented).toBe(false);
-    expect(agentBoardOpen.value).toBe(false);
-    expect(downstream).toHaveBeenCalledTimes(1);
-    tm.dispose();
-  });
-
-  it("consumes Cmd+Shift+O and opens the board once the Electron bridge is there", async () => {
-    const { tm } = setup({ infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    await tm.init();
-    // Presence is the whole tell — see the previous test on why it is stubbed
-    // here rather than before `init()`.
-    vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
+    missionControlOpen.value = true;
 
     const event = press(terminalInput(), { key: "o", metaKey: true, shiftKey: true });
+    tm.runAction("split-row");
+    // `splitActive` is async; give it every chance to land before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(event.defaultPrevented).toBe(true);
-    expect(agentBoardOpen.value).toBe(true);
-    expect(agentBoardSurfaceActive.value).toBe(true);
+    expect(onToggleMissionControl).toHaveBeenCalledTimes(1);
+    expect(tabViews.value[0]?.panes).toHaveLength(1);
+    tm.dispose();
+  });
+
+  it("leaves Cmd+Shift+O alone with no terminal tab", async () => {
+    const onToggleMissionControl = vi.fn();
+    const { tm } = setup({ deps: { onToggleMissionControl }, infos: IDLE_SHELLS });
+    await tm.init();
+
+    const event = press(document.body, { key: "o", metaKey: true, shiftKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(onToggleMissionControl).not.toHaveBeenCalled();
+    tm.dispose();
+  });
+
+  it("dismisses Mission Control when a chord switches the tab under it", async () => {
+    const { tm } = setup({ infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    expect(activeTabIndex.value).toBe(1);
+    missionControlOpen.value = true;
+
+    tm.runAction("prev-tab");
+
+    expect(missionControlOpen.value).toBe(false);
+    expect(activeTabIndex.value).toBe(0);
+    tm.dispose();
+  });
+});
+
+/**
+ * The space slide's seam (DL-35.2): observed around a terminal-to-terminal
+ * switch, never around one a surface was covering.
+ */
+describe("the tab-switch seam", () => {
+  it("reads the outgoing tab before it hides and plays once the incoming one shows", async () => {
+    const order: string[] = [];
+    const onTabSwitch = vi.fn((from: number, to: number) => {
+      order.push(`before:${from}->${to}:active=${activeTabIndex.value}`);
+      return () => order.push(`after:active=${activeTabIndex.value}`);
+    });
+    const { tm } = setup({ deps: { onTabSwitch }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+
+    tm.selectTab(0);
+
+    expect(order).toEqual(["before:1->0:active=1", "after:active=0"]);
+    tm.dispose();
+  });
+
+  it("keeps switching when the observer throws, before or after", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    let throwBefore = true;
+    const onTabSwitch = vi.fn(() => {
+      if (throwBefore) throw new Error("capture failed");
+      return () => {
+        throw new Error("play failed");
+      };
+    });
+    const { tm } = setup({ deps: { onTabSwitch }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+
+    tm.selectTab(0);
+    expect(activeTabIndex.value).toBe(0);
+    throwBefore = false;
+    tm.selectTab(1);
+    expect(activeTabIndex.value).toBe(1);
+    expect(error).toHaveBeenCalledTimes(2);
+    error.mockRestore();
+    tm.dispose();
+  });
+
+  it("observes a cross-tab jump to a pane, as the rail and Mission Control make it", async () => {
+    const onTabSwitch = vi.fn();
+    const { tm } = setup({ deps: { onTabSwitch }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    const target = tabViews.value[0]!.panes![0]!.paneId;
+
+    tm.activateForAttention(0, target);
+
+    expect(onTabSwitch).toHaveBeenCalledExactlyOnceWith(1, 0);
+    expect(activeTabIndex.value).toBe(0);
+    tm.dispose();
+  });
+
+  it("stays out of a switch that a document was covering", async () => {
+    const onTabSwitch = vi.fn();
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: -1 });
+    const { tm } = setup({ deps: { surfaces, onTabSwitch }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+
+    tm.selectTab(0);
+
+    expect(onTabSwitch).not.toHaveBeenCalled();
+    expect(activeTabIndex.value).toBe(0);
+    tm.dispose();
+  });
+
+  it("counts space marks before surface chips, so digits match what the strip draws", async () => {
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: -1 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+
+    expect(tm.spaceOrder()).toEqual([0, 1]);
+    tm.runAction("select-tab-2");
+    expect(activeTabIndex.value).toBe(1);
+    expect(surfaces.activeIndexValue).toBe(-1);
     tm.dispose();
   });
 });

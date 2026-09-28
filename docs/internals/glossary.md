@@ -23,9 +23,18 @@ owns it at a time. Not: pane, tab.
 tab. Surfaces sit beside `TabManager` behind the `SurfaceStrip` seam, are addressed by index,
 and share the strip with tabs. Not: overlay, panel.
 
-**Surface strip** — The one row of chips on the stage's frame row: terminal tabs, open
-documents and the browser tab share one chip shape, differ only by glyph, and are ordered by
-when they were opened. ⌘1–9 and tab cycling count chips. Not: tab bar, dock, toolbar.
+**Surface strip** — The one row on the stage's frame row: the current space's folder and one
+mark per terminal tab, then a chip per open document and the browser tab, each half in the
+order things were opened. ⌘1–9 and tab cycling count marks first, then chips. Not: tab bar,
+dock, toolbar.
+
+**Space** — A terminal tab as the strip and Mission Control show it: named by its workspace
+folder, with an index when several tabs share one. Not a new grouping and not persisted
+separately; it is the tab. Not: workspace, window, macOS Space.
+
+**Mission Control** — The overview ⌘⇧O opens over the stage: every space on a shelf, the
+previewed space's panes as snapshot windows. It replaced the Agent Board. Not: Board, Open
+board.
 
 **Dock** (side panel) — The docked right column with three tabs: file explorer, token usage,
 session history. It displaces the terminal grid rather than covering it. Not: sidebar, rail.

@@ -25,8 +25,8 @@ export const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 /**
  * The ids `commands` implements — 52 entries, verified against the live
  * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
- * Board's `toggle-prompts`, the browser surface's `toggle-browser`, the Agent
- * Board's `toggle-agent-board`, the dock's `toggle-dock`/`toggle-explorer`/
+ * Board's `toggle-prompts`, the browser surface's `toggle-browser`, Mission
+ * Control's `toggle-mission-control`, the dock's `toggle-dock`/`toggle-explorer`/
  * `toggle-usage`/`toggle-sessions`/`save-file`, and the Edit menu's
  * `select-all`/`undo`/`redo` alongside them.
  * (Line numbers are deliberately not cited:
@@ -74,12 +74,12 @@ export const COMMAND_ACTIONS = [
   "swap-left",
   "swap-right",
   "swap-up",
-  "toggle-agent-board",
   "toggle-browser",
   "toggle-dock",
   "toggle-expand",
   "toggle-explorer",
   "toggle-markdown-view",
+  "toggle-mission-control",
   "toggle-prompts",
   "toggle-sessions",
   "toggle-settings",

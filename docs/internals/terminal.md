@@ -124,7 +124,9 @@ Ids are process-local integers from 1, never reused.
   order and pinned prefix without rewriting open keys or owner indexes. Preferences are
   renderer-local: they survive workspace/layout switches, but are not journaled across
   application restarts. The shell supplies `visibleTabIndexes` so keyboard digits/cycling
-  count the same repository-scoped chips as the strip.
+  count the same repository-scoped chips as the strip. Since 2026-09-28 every terminal tab
+  (a [space mark](mission-control.md)) comes before every surface chip, each half in that
+  merged order, and `stripSlots` partitions identically.
 - **Strip close actions** ([`tab-strip-close.ts`](../../src/ui/tab-strip-close.ts)) capture
   identities before awaiting guards. A single close uses App's existing workspace cleanup;
   bulk closes target only visible, unpinned chips and deliberately omit that cleanup so it

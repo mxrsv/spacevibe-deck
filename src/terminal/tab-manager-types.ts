@@ -98,6 +98,12 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    */
   onToggleUsage?: () => void;
   /**
+   * ⌘⇧O (`toggle-mission-control`) and its menu item route here, the
+   * `onToggleSettings` shape: App owns the open preflight, the zoom and the
+   * return. Missing = no-op.
+   */
+  onToggleMissionControl?: () => void;
+  /**
    * Route `new-tab` through App, which owns the shared task-launcher flight.
    * Missing keeps the standalone/test behaviour of opening Quick Launch
    * directly.
@@ -135,6 +141,15 @@ export interface TabManagerDeps extends TerminalManagerDeps {
   signalConfig?: (() => Promise<AgentSignalConfig>) | null;
   opencodeAttach?: ((paneId: number) => Promise<number | null>) | null;
   hookEvents?: ((handler: (event: HookEvent) => void) => Promise<UnlistenFn>) | null;
+  /**
+   * The space slide's seam (DL-35.2). Called synchronously on a
+   * terminal-to-terminal switch in `selectTab` / `activateForAttention`,
+   * BEFORE the outgoing tab's `hide()` releases its renderers, so the caller
+   * can read that tab's panes; the function it returns runs once the incoming
+   * tab is shown. It observes the switch and changes nothing in it. Missing =
+   * an instant switch, exactly as before.
+   */
+  onTabSwitch?: (from: number, to: number) => (() => void) | void;
 }
 
 /** Owns all tabs: routing, keyboard, agent launch; info polling lives in PaneInfoPoller. */
@@ -206,6 +221,8 @@ export interface TabManager {
   dropAgentPane(targetPaneId: number, edge: Edge): Promise<boolean>;
   /** Live pane geometry of the active tab, for a drag started off the stage. */
   activeSlotRects(): readonly PaneRect[];
+  /** Owner indexes of the strip's space marks, in drawn order (DL-35.3). */
+  spaceOrder(): readonly number[];
   /** Workspace of the active tab; null when it has none (or no tab). */
   activeWorkspacePath(): string | null;
   /** Live layout + fresh per-pane CWDs for save-as-preset; null when no tab. */

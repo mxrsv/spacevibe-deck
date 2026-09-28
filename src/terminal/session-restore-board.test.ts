@@ -10,6 +10,12 @@ import {
 import { restoreSession, type RestoreDeps } from "./session-restore";
 
 vi.mock("./session-tail-store", () => ({ noteResumedPane: vi.fn() }));
+// The Board is retired behind `AGENT_BOARD_RETIRED` (DL-35.1). This suite
+// keeps covering the restore path that switch keeps, by running with it off.
+vi.mock("../ui/agent-board-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../ui/agent-board-store")>()),
+  AGENT_BOARD_RETIRED: false,
+}));
 
 const FILE_PATH = "/w/task.md";
 const SAVED_RECORD = {

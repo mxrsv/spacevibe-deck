@@ -91,10 +91,10 @@ pub fn build_view_menu<R: Runtime>(
         "Browser",
         Some("CmdOrCtrl+Shift+I"),
     )?;
-    let toggle_agent_board = action_item(
+    let toggle_mission_control = action_item(
         handle,
-        "toggle-agent-board",
-        "Agent Board",
+        "toggle-mission-control",
+        "Mission Control",
         Some("CmdOrCtrl+Shift+O"),
     )?;
     let toggle_dock = action_item(
@@ -144,7 +144,7 @@ pub fn build_view_menu<R: Runtime>(
         .separator()
         .item(&toggle_browser)
         .separator()
-        .item(&toggle_agent_board)
+        .item(&toggle_mission_control)
         .item(&toggle_dock)
         .item(&toggle_explorer)
         .item(&toggle_usage)

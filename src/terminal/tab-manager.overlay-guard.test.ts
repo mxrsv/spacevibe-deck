@@ -545,6 +545,9 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
         "undo",
         "redo",
         "toggle-settings",
+        // Joined 2026-09-28 for `toggle-settings`'s reason: Mission Control
+        // ranks as an overlay while open, so a tier would strand it (DL-35.1).
+        "toggle-mission-control",
         // `toggle-usage` LEFT this set on 2026-08-16. It was "always"
         // because the usage screen pushed an overlay rank that would have
         // blocked the only action able to close it; as a dock tab it pushes

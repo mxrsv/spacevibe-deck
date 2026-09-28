@@ -61,16 +61,13 @@ const ACTIVE: ToolbarItemState = { kind: "active" };
 
 interface DeckToolbarProps {
   /**
-   * The Board's own entry on the bar. It was a two-tab Inbox|Board switch
-   * (DECK-39) until 2026-09-09, when the owner cut it to the Board alone: with
-   * DECK-43 the Board is an OVERVIEW you step into and back out of, so "Inbox"
-   * was naming the absence of the Board rather than a place of its own.
-   * `active` is still the two-view fact, because that is what the pressed
-   * state reports; only the rendering is one item.
+   * Mission Control's entry on the bar (DL-35.1), in the place and treatment
+   * the Agent Board's one button had (DL-34.1's view control) — the overview
+   * you step into and back out of. It toggles either way, as ⌘⇧O does.
    */
-  readonly agentView?: {
-    readonly active: "inbox" | "board";
-    onSelect(view: "inbox" | "board"): void;
+  readonly missionControl?: {
+    readonly open: boolean;
+    onToggle(): void;
   };
   /**
    * Top-tab mode. Prompts and Settings then ride in the `More` menu instead
@@ -200,19 +197,18 @@ export function DeckToolbar(props: DeckToolbarProps) {
 
   return (
     <>
-      {props.agentView ? (
+      {props.missionControl ? (
         <div class="agent-view-switch" role="group" aria-label="Agent view">
-          {/* One item. A press fires even while pressed, unlike the two-tab
-              version's no-op on the selected side: with nothing beside it,
-              refusing the press would leave the control with no way back and
-              make the Board reachable only by chord or strip chip. */}
+          {/* One item. A press fires even while pressed: it is the way out of
+              Mission Control as well as the way in. */}
           <button
             type="button"
-            class={`tab agent-view-switch__tab ${props.agentView.active === "board" ? "is-active" : ""}`}
-            aria-pressed={props.agentView.active === "board"}
-            onClick={() => props.agentView?.onSelect("board")}
+            class={`tab agent-view-switch__tab ${props.missionControl.open ? "is-active" : ""}`}
+            aria-pressed={props.missionControl.open}
+            title="Mission Control"
+            onClick={() => props.missionControl?.onToggle()}
           >
-            Board
+            Overview
           </button>
         </div>
       ) : null}

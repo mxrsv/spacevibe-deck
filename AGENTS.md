@@ -35,7 +35,8 @@ Where the current behaviour of a surface is written down:
 | Process model, IPC bridge, persistence, R4 seams        | [internals/overview.md](docs/internals/overview.md)               |
 | PTYs, panes, tabs, materialization, launch, phase, menu | [internals/terminal.md](docs/internals/terminal.md)               |
 | The rail, checkout cards, tails, close and order        | [internals/agent-rail.md](docs/internals/agent-rail.md)           |
-| The Agent Board                                         | [internals/agent-board.md](docs/internals/agent-board.md)         |
+| Spaces, the strip's marks, the slide, Mission Control   | [internals/mission-control.md](docs/internals/mission-control.md) |
+| The Agent Board (retired, still builds)                  | [internals/agent-board.md](docs/internals/agent-board.md)         |
 | Explorer, editor, markdown, browser tab, path opening   | [internals/file-surface.md](docs/internals/file-surface.md)       |
 | The journal, last-session offer, resume resolution      | [internals/session-restore.md](docs/internals/session-restore.md) |
 | Usage analytics                                         | [internals/telemetry.md](docs/internals/telemetry.md)             |

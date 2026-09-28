@@ -3,6 +3,20 @@ import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
 import type { BoardDensity, BoardStatusFilter } from "./agent-board-model";
 
 /**
+ * Mission Control replaced the Board on 2026-09-28 (DL-35.1): it took the
+ * chord, the menu item and the toolbar button, so nothing on screen raises
+ * the Board any more, and a journaled Board is not restored. The code still
+ * builds and keeps its suites — the DECK-43 retirement pattern — and turning
+ * this off brings back the restore half; the entry points are Mission
+ * Control's now.
+ *
+ * Typed `boolean` rather than left as the literal `true` on purpose: the
+ * literal would make the restore branch statically unreachable and invite a
+ * dead-code pass to delete the half this constant exists to keep.
+ */
+export const AGENT_BOARD_RETIRED: boolean = true;
+
+/**
  * The Agent Board's window-scoped state (spec §4.2, §11.3) — the browser
  * store's shape, deliberately NOT `boardOpen` in `chrome/events.ts`, which is
  * the Open Board's. Three signals say whether the chip exists, where it sits

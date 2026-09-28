@@ -83,34 +83,48 @@ describe("isActionPerformable", () => {
   });
 });
 
-describe("toggle-agent-board", () => {
-  it("consumes the chord on a host that has the Board", () => {
-    expect(isActionPerformable("toggle-agent-board", context({ hostHasAgentBoard: true }))).toBe(
+describe("toggle-mission-control", () => {
+  it("consumes the chord while a terminal tab is open", () => {
+    expect(isActionPerformable("toggle-mission-control", context({ hasTerminalTab: true }))).toBe(
       true,
     );
   });
 
-  it("leaves the keystroke alone on a host that does not (Tauri)", () => {
-    expect(isActionPerformable("toggle-agent-board", context({ hostHasAgentBoard: false }))).toBe(
+  it("leaves the keystroke alone with no terminal tab", () => {
+    expect(isActionPerformable("toggle-mission-control", context({ hasTerminalTab: false }))).toBe(
       false,
     );
   });
 
-  it("reads an absent hostHasAgentBoard as no Board", () => {
+  it("reads an absent hasTerminalTab as no tab", () => {
     // The field is optional so every context literal written before this keeps
     // compiling; absent must fail toward not consuming, exactly as
     // `surfaceCanToggleView` does.
-    expect(isActionPerformable("toggle-agent-board", context())).toBe(false);
+    expect(isActionPerformable("toggle-mission-control", context())).toBe(false);
   });
 
-  it("consumes the chord whatever owns the stage, so the Board can be left", () => {
-    // Deliberately NOT stage-conditional: the chord's close branch fires while
-    // the Board itself owns the stage, which `stageOwner()` reports as
-    // "surface". A stage predicate would make the toggle one-way.
+  it("consumes the chord over a terminal or a surface", () => {
     for (const stageOwner of ["terminal", "surface"] as const) {
       expect(
-        isActionPerformable("toggle-agent-board", context({ stageOwner, hostHasAgentBoard: true })),
+        isActionPerformable(
+          "toggle-mission-control",
+          context({ stageOwner, hasTerminalTab: true }),
+        ),
       ).toBe(true);
     }
+  });
+
+  it("consumes it over its own overlay, so Mission Control can be left, and not over another", () => {
+    // The close branch fires while Mission Control is up, which `stageOwner()`
+    // reports as "overlay"; behind Settings or a modal it cannot open, so the
+    // key must reach whatever holds focus.
+    const overlay = { stageOwner: "overlay" as const, hasTerminalTab: true };
+    expect(
+      isActionPerformable(
+        "toggle-mission-control",
+        context({ ...overlay, missionControlOpen: true }),
+      ),
+    ).toBe(true);
+    expect(isActionPerformable("toggle-mission-control", context(overlay))).toBe(false);
   });
 });

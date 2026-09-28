@@ -117,14 +117,15 @@ describe("TabBar", () => {
     expect(host.querySelector('[aria-label="New tab"]')).toBeNull();
   });
 
-  it("draws close as an icon, named only by its label", () => {
+  it("draws a surface chip's close as an icon, named only by its label", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
     mount(baseProps());
 
     const close = host.querySelector(".tab__close") as HTMLButtonElement;
 
     expect(close.querySelector(".deck-icon--x")).not.toBeNull();
-    expect(close.getAttribute("aria-label")).toBe("Close tab");
+    expect(close.getAttribute("aria-label")).toBe("Close a.ts");
   });
 
   it("clicking an inactive tab calls onSelectTab", () => {
@@ -133,16 +134,16 @@ describe("TabBar", () => {
     const props = baseProps();
     mount(props);
 
-    const tabs = host.querySelectorAll(".tab");
+    const marks = host.querySelectorAll(".space-mark");
     act(() => {
-      tabs[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      marks[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(props.onSelectTab).toHaveBeenCalledTimes(1);
     expect(props.onSelectTab).toHaveBeenCalledWith(1);
   });
 
-  it("clicking the chip that already holds the stage does nothing", () => {
+  it("clicking the mark of the space that already holds the stage does nothing", () => {
     // It used to open the rename popover. The owner removed that popover from
     // the strip on 2026-08-16, so the click is inert — it must not fall
     // through to a selection either.
@@ -151,7 +152,7 @@ describe("TabBar", () => {
     const props = baseProps();
     mount(props);
 
-    const row = host.querySelector(".tab") as HTMLElement;
+    const row = host.querySelector(".space-mark") as HTMLElement;
     act(() => {
       row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -160,7 +161,7 @@ describe("TabBar", () => {
     expect(props.onSelectTab).not.toHaveBeenCalled();
   });
 
-  it("clicking close calls onCloseTab only", () => {
+  it("closing a space from its menu calls onCloseTab only", async () => {
     tabViews.value = [
       tab({
         key: 1,
@@ -173,11 +174,14 @@ describe("TabBar", () => {
     const props = baseProps();
     mount(props);
 
-    const tabs = host.querySelectorAll(".tab");
-    const close = tabs[1].querySelector(".tab__close") as HTMLButtonElement;
-
+    const marks = host.querySelectorAll(".space-mark");
     act(() => {
-      close.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      marks[1].dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((el) => el.textContent === "Close")!
+        .click();
     });
 
     expect(props.onCloseTab).toHaveBeenCalledTimes(1);
@@ -187,12 +191,10 @@ describe("TabBar", () => {
     expect(host.querySelector(".tab-popover")).toBeNull();
   });
 
-  it("leads a terminal chip with the agent's mark and no colour dot", () => {
-    // The colour dot left the chip on 2026-08-16 (DL-18.10 amended). Both of
-    // the tests this replaced asserted its fill — from the process, and from
-    // the `dotColor` override — and the override itself is untouched
-    // (`tabs-store.test.ts` still covers the merge); it simply has nothing on
-    // the strip to paint any more.
+  it("draws a terminal tab as a space mark, with no agent glyph, colour dot or label", () => {
+    // DL-35.3 (2026-09-28): a terminal tab left the chip shape. The colour dot
+    // had already gone on 2026-08-16 (DL-18.10); the glyph and label went with
+    // the chip.
     tabViews.value = [
       tab({
         key: 1,
@@ -204,17 +206,9 @@ describe("TabBar", () => {
     ];
     mount(baseProps());
 
-    expect(host.querySelector(".tab .tab__dot")).toBeNull();
-    expect(host.querySelector(".tab .tab__logo")).not.toBeNull();
-  });
-
-  it("falls back to the terminal glyph for a tab running no recognised agent", () => {
-    tabViews.value = [tab({ key: 1, name: "Alpha", process: "zsh", agents: [] })];
-    mount(baseProps());
-
-    expect(host.querySelector(".tab .tab__logo")).toBeNull();
-    expect(host.querySelector(".tab .tab__glyph svg")).not.toBeNull();
-    expect(host.querySelector(".tab .tab__dot")).toBeNull();
+    expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
+    expect(host.querySelector(".tab")).toBeNull();
+    expect(host.querySelector(".tab__logo, .tab__dot")).toBeNull();
   });
 
   it("carries no attention mark, whatever the tab's state", () => {
@@ -233,7 +227,9 @@ describe("TabBar", () => {
 
     expect(host.querySelector(".tab__attn")).toBeNull();
     expect(host.querySelector(".attn-mark")).toBeNull();
-    expect(host.querySelectorAll(".tab")).toHaveLength(2);
+    // Only panes drive a mark's needs-you (DL-35.3); a tab summary does not.
+    expect(host.querySelectorAll(".space-mark[data-needs]")).toHaveLength(0);
+    expect(host.querySelectorAll(".space-mark")).toHaveLength(2);
   });
 
   /**
@@ -251,19 +247,20 @@ describe("TabBar", () => {
       expect(host.querySelector(".tabbar__sep")).toBeNull();
     });
 
-    it("renders file tabs after a terminal tab that predates them, preview italic on the unedited preview slot only", async () => {
+    it("renders file tabs after the space marks, preview italic on the unedited preview slot only", async () => {
       tabViews.value = [tab({ key: 1, name: "Alpha" })];
       await fileController.openFile("/repo", "/repo/a.ts", true); // kept
       await fileController.openFile("/repo", "/repo/b.ts", false); // preview, untouched
       mount(baseProps());
 
       const rows = host.querySelectorAll(".tab");
-      // 1 terminal + 2 file rows, file rows AFTER the terminal one, in order.
-      expect(rows).toHaveLength(3);
-      expect(rows[1].querySelector(".tab__label")?.textContent).toBe("a.ts");
-      expect(rows[2].querySelector(".tab__label")?.textContent).toBe("b.ts");
-      expect(rows[1].querySelector(".tab__label--preview")).toBeNull(); // kept
-      expect(rows[2].querySelector(".tab__label--preview")).not.toBeNull(); // preview
+      // 1 space mark, then the 2 file chips in order.
+      expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
+      expect(rows).toHaveLength(2);
+      expect(rows[0].querySelector(".tab__label")?.textContent).toBe("a.ts");
+      expect(rows[1].querySelector(".tab__label")?.textContent).toBe("b.ts");
+      expect(rows[0].querySelector(".tab__label--preview")).toBeNull(); // kept
+      expect(rows[1].querySelector(".tab__label--preview")).not.toBeNull(); // preview
       // The segment hairline is gone with the segments themselves (DL-18.6).
       expect(host.querySelector(".tabbar__sep")).toBeNull();
     });
@@ -317,8 +314,7 @@ describe("TabBar", () => {
       const props = baseProps();
       mount(props);
 
-      const terminalRow = host.querySelector(".tab:not(.tab--file)") as HTMLElement;
-      expect(terminalRow.classList.contains("is-active")).toBe(false);
+      const terminalRow = host.querySelector(".space-mark") as HTMLElement;
 
       act(() => {
         terminalRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));

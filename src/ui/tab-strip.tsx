@@ -3,7 +3,7 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { Globe, PushPin, SquaresFour, TerminalWindow, X } from "@phosphor-icons/react";
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
+import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 import {
   mergeStripOrder,
@@ -27,6 +27,8 @@ import { tabTail } from "./agent-rail-model";
 import { TabStripMenu, type StripMenuAction, type StripMenuAnchor } from "./tab-strip-menu";
 import { createTabStripDrag } from "./tab-strip-drag";
 import { closeChips, closeTargets, type TabCloseTarget } from "./tab-strip-close";
+import { SpaceBar } from "./spaces/space-bar";
+import { buildSpaces, type Space } from "./spaces/space-model";
 
 export interface TabStripProps {
   transientPageOpen?: boolean;
@@ -155,9 +157,30 @@ export function TabStrip(props: TabStripProps) {
   const terminals = terminalChips(props, surfaceActive);
   const surfaces = surfaceChips(props);
   const preferences = stripPreferences.value;
-  const chips = mergeStripOrder(terminals, surfaces, preferences).map(
+  // DL-35.3: every terminal tab first, as a space mark, then the documents and
+  // the browser as chips — each half in the strip's one merged order, so a
+  // pinned or dragged surface keeps its place among surfaces.
+  // `TabManager.stripSlots` partitions the same way, so ⌘1–9 counts what is
+  // drawn.
+  const merged = mergeStripOrder(terminals, surfaces, preferences).map(
     (slot) => (slot.kind === "tab" ? terminals : surfaces)[slot.index]!,
   );
+  const chips = [
+    ...merged.filter((chip) => chip.kind === "terminal"),
+    ...merged.filter((chip) => chip.kind !== "terminal"),
+  ];
+  const spaces = buildSpaces({
+    tabs: tabViews.value,
+    order: chips.flatMap((chip) =>
+      chip.kind === "terminal"
+        ? [tabViews.value.findIndex((tab) => tab.key === chip.terminalKey)]
+        : [],
+    ),
+    activeIndex: activeTabIndex.value,
+    scans: repositoryScans.value,
+  });
+  const chipFor = (space: Space): Chip | undefined =>
+    chips.find((chip) => chip.kind === "terminal" && chip.terminalKey === space.key);
   const [menu, setMenu] = useState<StripMenuAnchor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -225,8 +248,24 @@ export function TabStrip(props: TabStripProps) {
 
   return (
     <>
+      {spaces.length > 0 && (
+        <SpaceBar
+          spaces={spaces}
+          home={statusInfo.value.home}
+          menuKey={owner?.kind === "terminal" ? (owner.terminalKey ?? null) : null}
+          onGo={(space) => {
+            props.onBeforeSelect?.();
+            chipFor(space)?.select();
+          }}
+          onMenu={(space, trigger, x, y) => {
+            const chip = chipFor(space);
+            if (chip) openMenu(chip, trigger, x, y);
+          }}
+        />
+      )}
       <div ref={list} class="tabbar__tabs" role="tablist" aria-label="Open tabs">
-        {chips.map((chip) => {
+        {chips.flatMap((chip) => {
+          if (chip.kind === "terminal") return [];
           const pinned = preferences.pinned.includes(chip.openedAt);
           return (
             <div
@@ -239,7 +278,7 @@ export function TabStrip(props: TabStripProps) {
               aria-expanded={menu?.key === chip.key}
               data-strip-key={chip.openedAt}
               data-pinned={String(pinned)}
-              class={`tab ${chip.kind === "terminal" ? "" : `tab--${chip.kind}`} ${chip.active ? "is-active" : ""} ${pinned ? "is-pinned" : ""}`}
+              class={`tab tab--${chip.kind} ${chip.active ? "is-active" : ""} ${pinned ? "is-pinned" : ""}`}
               title={chip.label}
               onClick={() => {
                 props.onBeforeSelect?.();
@@ -296,7 +335,12 @@ export function TabStrip(props: TabStripProps) {
           anchor={menu}
           label={owner.label}
           pinned={preferences.pinned.includes(owner.openedAt)}
-          canPin={owner.openedAt > UNSEQUENCED}
+          // DL-35.3: a space mark is not pinned; its place is the strip's
+          // order. An earlier pin can still be taken off.
+          canPin={
+            owner.openedAt > UNSEQUENCED &&
+            (owner.kind !== "terminal" || preferences.pinned.includes(owner.openedAt))
+          }
           canCloseOthers={closeTargets(chips, owner.key, "others").length > 0}
           canCloseRight={closeTargets(chips, owner.key, "right").length > 0}
           onAction={actOnMenu}

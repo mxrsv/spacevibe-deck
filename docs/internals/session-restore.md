@@ -66,6 +66,9 @@ tab count and workspace names. The offer ends one of three ways, all in
 6. Secondary window records are cleared **before** files and tab selection are restored, so
    a throw there cannot leave a stale record to fold in twice on the next boot.
 
+While `AGENT_BOARD_RETIRED` is on (Mission Control replaced the Board on 2026-09-28), the
+Board flags below are read without error and ignored. With the switch off:
+
 The main record remembers the Agent Board chip separately from whether its surface held the
 stage. Restore its surface **after** terminal selection, which deactivates every surface;
 when it was active, do not activate a saved file over it. Records without the surface flag keep

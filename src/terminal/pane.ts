@@ -138,7 +138,9 @@ export interface Pane {
   dispose(): void;
 }
 
-function toFontStack(family: string): string {
+/** Exported for the space slide's text ghost (DL-35.2), which sets a pane's
+ * last rows in the face xterm used for them. */
+export function toFontStack(family: string): string {
   // The user may enter their own fallback list — use it verbatim then
   if (family.includes(",")) {
     return family;

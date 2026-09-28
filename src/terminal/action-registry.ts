@@ -423,19 +423,15 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "browser" },
   },
   {
-    id: "toggle-agent-board",
-    label: "Agent Board",
-    // Tier "pane", the same reasoning `toggle-browser` above carries: the
-    // Board is a surface ON the stage, and every overlay covers the stage. A
-    // file surface does NOT block it, and neither does the Board itself —
-    // the command is in tab-manager's `isSurfaceRoutedAction` set, because
-    // toggling the Board IS a surface transition. Leaving it out would make
-    // the chord one-way: the composed strip reports `activeIndex() >= 0`
-    // while the Board holds the stage, so the close branch would be blocked
-    // by the very surface it is trying to leave.
-    scope: "pane",
-    // Grouped with the dock's toggles rather than the browser's, per the
-    // wiring plan's Task 6.
+    id: "toggle-mission-control",
+    label: "Mission Control",
+    // "always", `toggle-settings`'s reason: Mission Control is itself ranked
+    // as an overlay while open (`openOverlayRanks`), so a tier would make the
+    // chord one-way. The open half has its own preflight in `App` — it refuses
+    // over any other overlay and with no terminal tab (DL-35.1). It replaced
+    // the Agent Board's `toggle-agent-board` on 2026-09-28, chord and all.
+    scope: "always",
+    // Grouped with the dock's toggles, where the Board's item stood.
     menu: { submenu: "View", group: "explorer" },
   },
   {

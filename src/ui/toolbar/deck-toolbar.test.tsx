@@ -85,31 +85,28 @@ describe("DeckToolbar", () => {
   });
 
   it.each([false, true])(
-    "shows one Board entry in compact=%s, pressed while the Board holds the stage",
+    "shows one Mission Control entry in compact=%s, pressed while it is open",
     (compact) => {
-      const onSelect = vi.fn();
-      mount({ compact, agentView: { active: "inbox", onSelect } });
+      const onToggle = vi.fn();
+      mount({ compact, missionControl: { open: false, onToggle } });
       const buttons = () =>
         Array.from(host.querySelectorAll<HTMLButtonElement>(".agent-view-switch button"));
-      // One item since 2026-09-09: "Inbox" named the absence of the Board, not
-      // a place of its own (DECK-43).
-      expect(buttons().map((button) => button.textContent)).toEqual(["Board"]);
+      expect(buttons().map((button) => button.textContent)).toEqual(["Overview"]);
       expect(buttons()[0].getAttribute("aria-pressed")).toBe("false");
       act(() => buttons()[0].click());
-      expect(onSelect).toHaveBeenCalledWith("board");
+      expect(onToggle).toHaveBeenCalledTimes(1);
 
-      onSelect.mockClear();
-      mount({ compact, agentView: { active: "board", onSelect } });
+      onToggle.mockClear();
+      mount({ compact, missionControl: { open: true, onToggle } });
       expect(buttons()[0].getAttribute("aria-pressed")).toBe("true");
-      // And it fires WHILE pressed — the two-tab version refused this, which
-      // with one item would strand the user on the Board.
+      // It fires WHILE pressed: the one button is the way out as well as in.
       act(() => buttons()[0].click());
-      expect(onSelect).toHaveBeenCalledWith("board");
+      expect(onToggle).toHaveBeenCalledTimes(1);
     },
   );
 
-  it("omits the Board entry entirely when no agentView is handed in", () => {
-    mount({ agentView: undefined });
+  it("omits the Mission Control entry entirely when none is handed in", () => {
+    mount({ missionControl: undefined });
     expect(host.querySelector(".agent-view-switch")).toBeNull();
   });
 

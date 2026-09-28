@@ -25,7 +25,7 @@ import type { FileSurfaceController } from "../files/file-surface-controller";
 import { applyResumeFlags } from "../lib/launch-command";
 import { materializeChromeFrom } from "./tab-materialize";
 import { noteResumedPane } from "./session-tail-store";
-import { openAgentBoard, stepAgentBoardBack } from "../ui/agent-board-store";
+import { AGENT_BOARD_RETIRED, openAgentBoard, stepAgentBoardBack } from "../ui/agent-board-store";
 import { countAgentLaunch } from "../telemetry/usage-counters";
 import type { TabManager } from "./tab-manager";
 
@@ -432,7 +432,10 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
           )
         : null;
 
-    const restoreBoard = mainRecord?.agentBoardOpen === true && restored > 0;
+    // A record written before the Board's retirement still carries its flags;
+    // they read without error and are ignored while the switch is on.
+    const restoreBoard =
+      !AGENT_BOARD_RETIRED && mainRecord?.agentBoardOpen === true && restored > 0;
     const restoreBoardSurface = restoreBoard && mainRecord.agentBoardSurfaceActive === true;
     // selectTab deactivates every surface, including files opened above.
     deps.manager.selectTab(clampIndex(mainRecord?.activeTabIndex ?? 0, restored));

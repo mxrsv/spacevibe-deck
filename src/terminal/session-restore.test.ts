@@ -10,7 +10,11 @@ import type { CustomAgent } from "../lib/agent-catalog";
 import type { ResumeRef, ResumeRequest } from "../lib/agent-resume";
 import type { FileStatResult } from "../files/file-client";
 import type { MaterializeIntent } from "./tab-materialize";
-import { agentBoardOpen, resetAgentBoardStore } from "../ui/agent-board-store";
+import {
+  agentBoardOpen,
+  agentBoardSurfaceActive,
+  resetAgentBoardStore,
+} from "../ui/agent-board-store";
 import { resetTaskPrompts } from "./board-task-prompts";
 
 /**
@@ -728,12 +732,18 @@ describe("restoreSession", () => {
     expect(mocks.clear).toHaveBeenCalledTimes(1);
   });
 
-  it("reopens the board from a main record that restored tabs", async () => {
+  it("reads a journaled Board without error and leaves it closed while retired", async () => {
+    // DL-35.1 (2026-09-28): Mission Control replaced the Board, so a record
+    // written before that restores its tabs and ignores the Board's flags.
+    // `session-restore-board.test.ts` covers the path with the switch off.
     const { deps } = createFakeDeps({
-      records: new Map([["main", record({ tabs: [tab()], agentBoardOpen: true })]]),
+      records: new Map([
+        ["main", record({ tabs: [tab()], agentBoardOpen: true, agentBoardSurfaceActive: true })],
+      ]),
     });
     await restoreSession(deps, "main");
-    expect(agentBoardOpen.value).toBe(true);
+    expect(agentBoardOpen.value).toBe(false);
+    expect(agentBoardSurfaceActive.value).toBe(false);
   });
 
   it("does not reopen it from a record with no tabs", async () => {

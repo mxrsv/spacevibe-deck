@@ -195,10 +195,10 @@ function buildRecord(deps: SessionJournalDeps): WindowRecord {
     tabs,
     files: deps.isMain ? fileSurfacesToRecords() : [],
     activeFileTab: deps.isMain ? activeFileTab.value : null,
-    // Zero tabs = no Board (spec §4.2): the chip cannot render and
-    // `toggle-agent-board` is scope "pane", so a remembered `true` would
-    // restore a surface with nothing to show and no way out. Written false
-    // rather than left alone, so the next launch does not retry it.
+    // Zero tabs = no Board (spec §4.2): the chip cannot render, so a
+    // remembered `true` would restore a surface with nothing to show. Written
+    // false rather than left alone, so the next launch does not retry it.
+    // Always false while `AGENT_BOARD_RETIRED` holds: nothing raises the Board.
     agentBoardOpen: tabs.length > 0 && agentBoardOpen.value,
     agentBoardSurfaceActive:
       tabs.length > 0 && agentBoardOpen.value && agentBoardSurfaceActive.value,

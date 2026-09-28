@@ -22,8 +22,10 @@ tense; anything about the frozen Tauri host says so.
   transfer.
 - [Agent Rail](internals/agent-rail.md) — the rail model, state, the session-tail pairing,
   focus, the checkout card and its strip, close and order.
-- [Agent Board](internals/agent-board.md) — the grid of live agent cards, the seams it took,
-  and what Restart resumes.
+- [Spaces and Mission Control](internals/mission-control.md) — tabs as spaces, the slide,
+  the overview, and why only the current space holds a live terminal.
+- [Agent Board](internals/agent-board.md) — retired behind a live switch; the grid of agent
+  cards, the seams it took, and what Restart resumes.
 - [File surface, browser tab and path opening](internals/file-surface.md) — the explorer,
   editor, markdown policy, browser view and link routing.
 - [Session restore](internals/session-restore.md) — the journal, the last-session offer, resume

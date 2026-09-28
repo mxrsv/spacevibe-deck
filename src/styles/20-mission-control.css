@@ -1,0 +1,535 @@
+/* ── DL §35: spaces and Mission Control ───────────────────────────────────
+   A space is a terminal tab named by its workspace folder. The strip draws
+   one mark per space (DL-35.3), a switch slides the stage (DL-35.2), and
+   Mission Control zooms the panes out over the stage (DL-35.1). The zoom, the
+   slide and their fades are transform/opacity at 280 ms, run by WAAPI from
+   `src/ui/spaces/space-motion.ts`, which skips them under reduced motion. The
+   one CSS transition — the mark's pill and dot, opacity/transform/background
+   at `--duration` (DL-20.2) — is added under `no-preference` only (DL-1.5,
+   DL-35.4). */
+
+/* ── DL-35.3: the bar ── */
+
+.space-bar {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Every space's folder stacks in one grid cell and only the current one is
+   visible, so the cell is as wide as the longest name and the marks beside it
+   never move on a switch. */
+.space-bar__name {
+  display: grid;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 180px;
+  color: var(--text-primary);
+  font-size: var(--type-meta);
+  font-weight: 600;
+}
+
+.space-bar__name-slot {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  visibility: hidden;
+}
+
+.space-bar__name-slot[data-current="true"] {
+  visibility: visible;
+}
+
+/* DL-35.3 (F8): many spaces scroll inside the row, never the frame. */
+.space-bar__marks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+
+.space-bar__marks::-webkit-scrollbar {
+  display: none;
+}
+
+.space-bar__run {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.space-mark {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-flat);
+  background: transparent;
+  cursor: pointer;
+}
+
+.space-mark:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* The resting dot. */
+.space-mark::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hair-strong);
+}
+
+.space-mark:hover::before {
+  background: var(--text-muted);
+}
+
+/* DL-35.3 (F2): needs-you is the one state a mark carries — yellow for a
+   question, red once anything in the space failed (DL-3.2). */
+.space-mark[data-needs="asked"]::before {
+  background: var(--status-unread);
+}
+
+.space-mark[data-needs="failed"]::before {
+  background: var(--red);
+}
+
+/* The current space's pill: always laid out at full width and scaled down at
+   rest, so the change is a transform, never a width (DL-1.2). */
+.space-mark__pill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 6px;
+  margin: -3px 0 0 -8px;
+  border-radius: 999px;
+  background: var(--text-primary);
+  opacity: 0;
+  transform: scaleX(0.375);
+}
+
+.space-mark[aria-selected="true"]::before {
+  opacity: 0;
+}
+
+.space-mark[aria-selected="true"] .space-mark__pill {
+  opacity: 1;
+  transform: none;
+}
+
+/* A current space that needs you keeps the pill and drops a dot under it. */
+.space-mark[aria-selected="true"][data-needs]::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--status-unread);
+}
+
+.space-mark[aria-selected="true"][data-needs="failed"]::after {
+  background: var(--red);
+}
+
+/* ── DL-35.3: the hover card, a DL-13.7 hover-raised popover (DL-13.1 surface) ── */
+
+.space-card {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-surface);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.space-card__mini {
+  width: 64px;
+  height: 38px;
+}
+
+.space-card__text {
+  display: grid;
+  gap: 2px;
+}
+
+.space-card__name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: var(--type-title);
+  font-weight: 600;
+}
+
+.space-card__index,
+.mc-space__index {
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.space-card__path {
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+}
+
+.space-card__meta {
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+}
+
+/* ── A space in miniature: one cell per pane, tinted by state ── */
+
+.space-mini {
+  display: grid;
+  box-sizing: border-box;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-tab);
+  background: var(--bg);
+}
+
+.space-mini i {
+  border-radius: var(--radius-flat);
+  background: color-mix(in srgb, var(--tone) 22%, transparent);
+}
+
+.space-mini i[data-state="working"] {
+  background: color-mix(in srgb, var(--tone) 55%, transparent);
+}
+
+.space-mini i[data-state="asked"] {
+  background: var(--status-unread);
+}
+
+.space-mini i[data-state="failed"] {
+  background: var(--red);
+}
+
+.space-mini i[data-state="shell"] {
+  background: var(--hair);
+}
+
+/* ── DL-35.2: the slide ──
+   The stage is clipped for the length of a slide only, so neither the
+   incoming stage nor the outgoing ghost crosses the rail or the dock. `clip`,
+   not `hidden`: it builds no scroll container (traps.md). */
+
+.stage.is-sliding {
+  overflow: clip;
+}
+
+.space-ghost {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  background: var(--sidebar-bg);
+  pointer-events: none;
+}
+
+.space-ghost__pane {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--seam-split);
+  border-radius: var(--radius-tab);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.space-ghost__text {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+}
+
+/* ── DL-35.1: Mission Control ──
+   The same rectangle `.stage__surface` covers, above a document or the
+   browser (20) and below the Open board (30). */
+
+.mc {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.stage--strip .mc {
+  top: var(--frame-h);
+}
+
+.stage--notice .mc {
+  top: var(--notice-h);
+}
+
+.stage--strip.stage--notice .mc {
+  top: calc(var(--frame-h) + var(--notice-h));
+}
+
+.stage--dock .mc {
+  right: var(--dock-w);
+}
+
+/* The root takes focus only as a resting place (a press on a label or a gap). */
+.mc:focus {
+  outline: none;
+}
+
+.mc[data-leaving="true"] {
+  pointer-events: none;
+}
+
+.mc__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--sidebar-bg);
+}
+
+.mc-shelf {
+  display: flex;
+  gap: 20px;
+  min-width: 0;
+  padding: 10px 14px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--seam-divider);
+  background: var(--chrome-1);
+}
+
+.mc-shelf__set {
+  display: grid;
+  flex: none;
+  gap: 6px;
+}
+
+.mc-shelf__folder {
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  white-space: nowrap;
+}
+
+.mc-shelf__row {
+  display: flex;
+  gap: 8px;
+}
+
+.mc-space {
+  display: grid;
+  gap: 5px;
+  width: 96px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mc-space__mini {
+  height: 54px;
+}
+
+.mc-space[data-previewed="true"] .mc-space__mini {
+  border-color: var(--text-muted);
+}
+
+.mc-space[aria-current="true"] .mc-space__mini {
+  border-color: var(--accent);
+}
+
+.mc-space:focus-visible {
+  outline: none;
+}
+
+.mc-space:focus-visible .mc-space__mini {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.mc-space__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 14px;
+  font-size: var(--type-micro);
+}
+
+.mc-space__needs {
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--status-unread);
+  color: var(--bg);
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-space__needs[data-tone="failed"] {
+  background: var(--red);
+}
+
+.mc__spread {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 300px));
+  align-content: center;
+  justify-content: center;
+  gap: 26px 22px;
+  min-height: 0;
+  padding: 18px 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mc-window {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mc-window:focus-visible {
+  outline: none;
+}
+
+.mc-window__shot {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--seam-split);
+  border-radius: var(--radius-tab);
+  background: var(--bg);
+}
+
+.mc-window:hover .mc-window__shot,
+.mc-window:focus-visible .mc-window__shot {
+  border-color: var(--accent);
+}
+
+.mc-window[aria-current="true"] .mc-window__shot {
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+}
+
+.mc-window:focus-visible .mc-window__shot {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.mc-window__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  /* A real top border, transparent at rest, so a marked head moves nothing
+     and no offset shadow is spent on it (DL-1.3). */
+  border-top: 2px solid transparent;
+  border-bottom: 1px solid var(--hair);
+  background: var(--chrome-1);
+  font-size: var(--type-micro);
+}
+
+/* DL-34.3's rule on a window: asked and failed mark the head, nothing else does. */
+.mc-window[data-state="asked"] .mc-window__head {
+  border-top-color: var(--status-unread);
+}
+
+.mc-window[data-state="failed"] .mc-window__head {
+  border-top-color: var(--red);
+}
+
+.mc-window__who {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.mc-window__logo {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.mc-window__state {
+  color: var(--text-faint);
+}
+
+.mc-window[data-state="asked"] .mc-window__state {
+  color: var(--status-unread);
+}
+
+.mc-window[data-state="failed"] .mc-window__state {
+  color: var(--red);
+}
+
+/* Terminal content, not chrome: the window quotes a pane, so it is set in the
+   Board's mono face (DL-35.1 extends DL-34.5's scope to it). */
+.mc-window__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  margin: 0;
+  padding: 5px 7px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--board-font);
+  font-size: var(--type-micro);
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.mc-window__caption {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .space-mark::before,
+  .space-mark__pill {
+    transition:
+      opacity var(--duration) var(--ease),
+      transform var(--duration) var(--ease),
+      background-color var(--duration) var(--ease);
+  }
+}

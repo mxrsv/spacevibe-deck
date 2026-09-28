@@ -64,11 +64,11 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("binds toggle-agent-board on both platforms without colliding", () => {
-    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-agent-board");
-    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-agent-board");
-    expect(mac).toEqual([{ key: "o", meta: true, shift: true, action: "toggle-agent-board" }]);
-    expect(win).toEqual([{ key: "o", ctrl: true, shift: true, action: "toggle-agent-board" }]);
+  it("binds toggle-mission-control on both platforms without colliding", () => {
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-mission-control");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-mission-control");
+    expect(mac).toEqual([{ key: "o", meta: true, shift: true, action: "toggle-mission-control" }]);
+    expect(win).toEqual([{ key: "o", ctrl: true, shift: true, action: "toggle-mission-control" }]);
     // `o` was unbound at every modifier combination in both maps when this
     // landed (2026-09-04); a second claimant of the same chord is a conflict,
     // and the same-kind collision test below cannot say which action is at
@@ -150,7 +150,7 @@ describe("ACTION_REGISTRY", () => {
         "split-row",
         "split-column",
         "toggle-zoom-pane",
-        "toggle-agent-board",
+        "toggle-mission-control",
         "toggle-browser",
         "toggle-dock",
         "toggle-explorer",

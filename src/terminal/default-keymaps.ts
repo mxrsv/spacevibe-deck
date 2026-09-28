@@ -224,13 +224,14 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // CharKeyBinding is mandatory, not a style choice: this action has a macOS
   // menu item, and a Cocoa accelerator is declared by character (RULE above).
   { key: "j", meta: true, shift: true, action: "toggle-dock" },
-  // The Agent Board (spec §4.2). `o` is verified unused in both keymaps at
-  // every modifier combination, and it is the "overview" letter — the Board
-  // is the one surface that shows every running agent at once. ⌘⇧A, the
-  // "agents" chord, is already focus-next-attention. CharKeyBinding is
-  // mandatory, not a style choice: this action has a macOS menu item, and a
-  // Cocoa accelerator is declared by character (RULE above).
-  { key: "o", meta: true, shift: true, action: "toggle-agent-board" },
+  // Mission Control (DL-35.1), on the chord the Agent Board had: `o` is the
+  // "overview" letter, and it is the one surface that shows every running
+  // agent at once. ⌃↑ — macOS's own Mission Control — never reaches the app
+  // while the system shortcut is on, and ⌃←/⌃→ are word motion in every
+  // shell, so spaces move on the strip's existing ⌘⇧[ / ⌘⇧] and ⌘1–9 instead.
+  // CharKeyBinding is mandatory, not a style choice: this action has a macOS
+  // menu item, and a Cocoa accelerator is declared by character (RULE above).
+  { key: "o", meta: true, shift: true, action: "toggle-mission-control" },
   // Flip a markdown document between the rendered view and its source
   // (docs/internals/file-surface.md, "Markdown"; macOS only). ⌘⇧V is VS
   // Code's own chord for this and is free on the macOS keymap — ⌘V is the
@@ -399,9 +400,9 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "y", ctrl: true, shift: true, action: "toggle-sessions" },
   { key: "j", ctrl: true, shift: true, action: "toggle-dock" },
   // The macOS twin of ⌘⇧O; see that entry above. Ctrl+Shift+O is free here
-  // too, and the Board is Electron-only — the performable gate is what keeps
-  // the chord out of the way on a host that has no Board.
-  { key: "o", ctrl: true, shift: true, action: "toggle-agent-board" },
+  // too; the performable gate leaves the key alone while no terminal tab is
+  // open.
+  { key: "o", ctrl: true, shift: true, action: "toggle-mission-control" },
   { key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" },
   { key: "pageup", shift: true, action: "scroll-page-up" },
   { key: "pagedown", shift: true, action: "scroll-page-down" },

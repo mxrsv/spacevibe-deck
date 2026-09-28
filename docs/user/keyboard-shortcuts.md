@@ -15,18 +15,19 @@ program as usual.
 | ---------------------------- | ----------- | -------------------- |
 | Launch an agent | ⌘T        | Ctrl+Shift+T         |
 | Jump to the pane that needs you | ⌘⇧A      | Ctrl+Shift+A         |
-| Toggle Agent Board   | ⌘⇧O        | Ctrl+Shift+O        |
-| Next / previous chip         | ⌘⇧] / ⌘⇧[  | Ctrl+Tab / Ctrl+Shift+Tab |
-| Select chip 1–8              | ⌘1 … ⌘8    | Ctrl+1 … Ctrl+8      |
+| Mission Control              | ⌘⇧O        | Ctrl+Shift+O        |
+| Next / previous space or chip | ⌘⇧] / ⌘⇧[ | Ctrl+Tab / Ctrl+Shift+Tab |
+| Select space or chip 1–8     | ⌘1 … ⌘8    | Ctrl+1 … Ctrl+8      |
 | Select the last chip         | ⌘9         | Ctrl+9               |
 | Reopen the last closed tab   | ⌘⇧T        | Ctrl+Alt+Shift+T     |
 
-Chips count terminal tabs, open documents and the browser tab in the order they were opened.
+Each terminal tab is a space, shown in the strip as a mark after the current folder's name.
+The numbers count the spaces first, then open documents and the browser tab. A sideways
+two-finger swipe over the terminals also moves one space.
 
-On Electron, the **Board** button on the toolbar opens the Agent Board overview.
-Selecting a card returns to its terminal tab without stopping any agents.
-The [view control](../../src/ui/toolbar/deck-toolbar.tsx) follows the same active
-state as the shortcut.
+The **Overview** button on the toolbar opens Mission Control, as ⌘⇧O does. Hover a space at
+the top to see its panes, click a pane to go straight to it, or press Esc to go back
+unchanged. Nothing stops or restarts while it is open.
 
 ## Panes
 

@@ -138,6 +138,7 @@ pass cannot delete the half they exist to keep.
 | `MIGRATION_NOTICE_ENABLED` | [`src/updater/migration-notice.ts`](../../src/updater/migration-notice.ts) | `true` | Tauri builds show the "this build no longer updates itself" row                       |
 | `USAGE_CONSENT_ASKED`      | [`src/telemetry/usage-notice.ts`](../../src/telemetry/usage-notice.ts) | `false` | No consent question is asked; analytics is on by default and the modal mounts nowhere |
 | `PANE_TREE_HIDDEN`         | [`src/ui/agent-rail.tsx`](../../src/ui/agent-rail.tsx)             | `true`    | A multi-agent tab renders flat framed rows instead of a parent row with elbow guides    |
+| `AGENT_BOARD_RETIRED`      | [`src/ui/agent-board-store.ts`](../../src/ui/agent-board-store.ts) | `true`    | A journaled Agent Board is not restored; Mission Control owns the Board's entry points  |
 
 Two more retirements follow the same pattern without a constant: the theme gallery, colour
 overrides and theme import are unmounted from Settings but still build and still resolve a

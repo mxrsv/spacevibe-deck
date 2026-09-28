@@ -2,6 +2,11 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
+> **Retired 2026-09-28.** [Mission Control](mission-control.md) took the Board's chord, menu
+> item and toolbar button. This page describes code that still builds behind
+> `AGENT_BOARD_RETIRED` and is what a revert of that switch brings back; nothing on screen
+> raises the Board while it is on.
+
 The Board is a grid of cards, one per live agent pane, on the stage. It is the answer to
 "every agent app is a sidebar": the same panes the rail lists, laid out so several can be
 read at once. It **toggles against nothing** — the rail and the dock stay exactly as the

@@ -99,10 +99,9 @@ import {
   openBrowser,
 } from "../browser/browser-store";
 import {
-  agentBoardSurfaceActive,
-  openAgentBoard,
-  stepAgentBoardBack,
-} from "../ui/agent-board-store";
+  dismissMissionControl,
+  missionControlOpen,
+} from "../ui/mission-control/mission-control-store";
 import { createAgentLauncher, type AgentLaunchEntry } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
@@ -856,6 +855,37 @@ export function createTabManager(
   }
 
   function selectTab(index: number): void {
+    showTab(index, true);
+  }
+
+  /**
+   * `onTabSwitch`, fenced (DL-35.2). The seam only observes the switch, so an
+   * observer that throws — a failed read of the outgoing panes, say — is
+   * logged and the switch goes ahead exactly as it would without one.
+   */
+  function observeSwitch(from: number, to: number): () => void {
+    let landed: (() => void) | void;
+    try {
+      landed = deps.onTabSwitch?.(from, to);
+    } catch (error) {
+      console.error("[tab-manager] tab-switch observer failed before the switch:", error);
+      return () => undefined;
+    }
+    return () => {
+      try {
+        landed?.();
+      } catch (error) {
+        console.error("[tab-manager] tab-switch observer failed after the switch:", error);
+      }
+    };
+  }
+
+  /**
+   * `selectTab`'s body. `observed` is false for the two callers that select a
+   * tab they just CREATED (materialize, adoption): the slide seam is for moving
+   * between spaces the user already has, not for every new one (DL-35.2).
+   */
+  function showTab(index: number, observed: boolean): void {
     if (index < 0 || index >= tabs.length) {
       return;
     }
@@ -871,11 +901,16 @@ export function createTabManager(
       }
       return;
     }
+    // DL-35.2: the outgoing tab is read BEFORE `hide()` releases its
+    // renderers. Only a terminal-to-terminal switch slides; a surface was
+    // covering the outgoing tab, so there is nothing of it on screen to move.
+    const landed = surfaceWasActive || !observed ? undefined : observeSwitch(active, index);
     activeManager()?.hide();
     active = index;
     unread.delete(tabs[index].key); // opening the tab clears its unread badge
     tabs[index].manager.show();
     syncViews();
+    landed?.();
   }
 
   /**
@@ -934,19 +969,23 @@ export function createTabManager(
     // cross-tab. Mirrors `selectTab`'s own `surfaces.deactivate()` (Task 7):
     // without it, focus/ack below lands on a pane the user cannot see while
     // an editor still holds the DOM's keyboard focus.
+    const surfaceWasActive = surfaces.activeIndex() >= 0;
     surfaces.deactivate();
     if (index === active) {
       target.manager.focusPane(paneId); // same-tab: ack ONLY the candidate
       return;
     }
     // Cross-tab: switch without focusing (thus without acking) the target's
-    // own active pane — only the candidate below gets acknowledged.
+    // own active pane — only the candidate below gets acknowledged. The slide
+    // hook runs where `selectTab` runs it, for `selectTab`'s reason.
+    const landed = surfaceWasActive ? undefined : observeSwitch(active, index);
     activeManager()?.hide();
     active = index;
     unread.delete(target.key); // opening the tab clears legacy unread too
     target.manager.show({ focus: false }); // display + fit only, no focus/ack
     target.manager.focusPane(paneId); // acks ONLY the candidate
     syncViews();
+    landed?.();
   }
 
   /**
@@ -1149,7 +1188,7 @@ export function createTabManager(
       });
     }
     nextKey += 1;
-    selectTab(tabs.length - 1);
+    showTab(tabs.length - 1, false);
     void poller.poll();
     syncViews();
     return true;
@@ -1205,7 +1244,7 @@ export function createTabManager(
     // tab once at the end — see the field's own note for why that is worth an
     // option rather than always selecting.
     if (intent.select !== false) {
-      selectTab(tabs.indexOf(entry));
+      showTab(tabs.indexOf(entry), false);
     }
     if (!pollDeferred) {
       void poller.poll();
@@ -2389,8 +2428,9 @@ export function createTabManager(
   }
 
   /**
-   * The strip as the user sees it: every chip, terminal or surface, in the
-   * one open order (`lib/strip-order.ts`).
+   * The strip as the user sees it: every terminal tab first — the space marks
+   * (DL-35.3) — then every surface chip, each half in the one open order
+   * (`lib/strip-order.ts`).
    *
    * Every keyboard path that names a POSITION goes through this — cycling,
    * ⌘1–9 and ⌘9 — so "the third chip" resolves the same way for the keymap
@@ -2400,7 +2440,7 @@ export function createTabManager(
    */
   function stripSlots(): readonly StripSlot[] {
     const visible = deps.visibleTabIndexes?.();
-    return mergeStripOrder(
+    const merged = mergeStripOrder(
       tabs.map((tab) => ({ openedAt: tab.openedAt })),
       Array.from({ length: surfaces.count() }, (_, index) => ({
         openedAt: surfaces.orderKey?.(index) ?? UNSEQUENCED,
@@ -2409,6 +2449,15 @@ export function createTabManager(
     ).filter(
       (slot) => slot.kind === "surface" || visible === undefined || visible.includes(slot.index),
     );
+    return [
+      ...merged.filter((slot) => slot.kind === "tab"),
+      ...merged.filter((slot) => slot.kind === "surface"),
+    ];
+  }
+
+  /** Owner indexes of the space marks, in the order the strip draws them. */
+  function spaceOrder(): readonly number[] {
+    return stripSlots().flatMap((slot) => (slot.kind === "tab" ? [slot.index] : []));
   }
 
   /** Take the chip at `position` in the merged strip. Out of range = no-op. */
@@ -2427,9 +2476,9 @@ export function createTabManager(
   /**
    * ⌘⇧] / ⌘⇧[ — cycle every SURFACE in the strip, not just the terminal tabs.
    *
-   * Walks the merged open order (2026-08-16), not the old
-   * terminals-then-surfaces segments: a strip whose chips are interleaved
-   * would otherwise cycle in an order nothing on screen explains. The
+   * Walks `stripSlots()`, the order the strip draws: every space mark, then
+   * every surface chip (DL-35.3), each half in the merged open order. Cycling
+   * in any other order would be one nothing on screen explains. The
    * `tabs.length < 2` early return this replaced is why one terminal tab plus
    * three file tabs used to do nothing at all: file tabs are the keyboard path
    * to a file (spec §4.3), and that guard silently removed it.
@@ -2604,50 +2653,10 @@ export function createTabManager(
       }
       syncViews();
     },
-    // The Board is the browser's twin as a stage surface, and its toggle walks
-    // the same take-the-stage / step-back path — never through close, since
-    // the chip's own ✕ (and ⌘W) are what close the tab (spec §4.4).
-    "toggle-agent-board": () => {
-      if (agentBoardSurfaceActive.value) {
-        stepAgentBoardBack();
-        // `syncViews()` because TabManager's derived views cannot see a
-        // store-signal transition on their own; `focusActive()` because the
-        // keyboard has to land somewhere and the terminal is where it came
-        // from — this path unmounts the surface without going through a close
-        // callback of the Board's own, so nothing else would hand focus back
-        // and the caret would land on <body>. Both copied from
-        // `toggle-browser`'s close branch above.
-        syncViews();
-        activeManager()?.focusActive();
-        return;
-      }
-      // Exactly one surface owns the stage, and this is a synchronous path
-      // that keeps it so: the chord reaches the store directly rather than
-      // going through `composeSurfaceStrip.activate`, so it must clear the
-      // others itself. `takeStageForSurface` (stage-surface-strip.ts) is the
-      // chip's version of the same rule; it cannot serve here because it
-      // requires the chip to already EXIST, and the chord is what creates it.
-      //
-      // `surfaces.deactivate()` alone — it already steps the browser back
-      // through the client the strip was INJECTED with, and calling
-      // `deactivateBrowserSurface(defaultBrowserClient)` here as well would
-      // reach past that injection to the real client, which a test cannot
-      // stand in for.
-      //
-      // Deactivate first, THEN open, for two independent reasons. The strip's
-      // own `deactivate()` runs `stepBoardBack()` before anything else, so the
-      // other order raises the Board and takes it down again in this very
-      // block. And `App` runs a "the Board yields" backstop effect that steps
-      // the Board off the stage while the browser or a file surface is still
-      // active — omitting the deactivate entirely would leave BOTH flags up
-      // and have that effect undo the chord a frame later, exactly when a
-      // document is open. `activateTerminalSurface()` is synchronous, so
-      // deactivating here is what makes the effect a no-op rather than a
-      // race.
-      surfaces.deactivate();
-      openAgentBoard();
-      syncViews();
-    },
+    // Mission Control (DL-35.1) replaced the Agent Board on this chord on
+    // 2026-09-28. `App` owns it the way it owns Settings: the zoom measures
+    // the stage and the shelf reads every tab, both of which live there.
+    "toggle-mission-control": () => deps.onToggleMissionControl?.(),
     // Plain setting flips, unlike toggle-browser above: the dock is pure DOM
     // content, so there is no host view to create or tear down. Focus still
     // returns to the pane on close, same reasoning as toggle-browser and
@@ -2764,7 +2773,9 @@ export function createTabManager(
     if (settingsOpen.value) {
       ranks.push(TIER_RANK.settings);
     }
-    if (boardOpen.value || agentLaunchPage.request.value !== null) {
+    // Mission Control covers the stage the way the Open board does, and a pane
+    // chord behind it would act on a terminal the user cannot see (DL-35.1).
+    if (boardOpen.value || agentLaunchPage.request.value !== null || missionControlOpen.value) {
       ranks.push(TIER_RANK.board);
     }
     if (
@@ -2813,13 +2824,8 @@ export function createTabManager(
       // (every fake written before 2026-08-23, and `INERT_SURFACES`) answers
       // "no second view", so the chord is never consumed on its behalf.
       surfaceCanToggleView: surfaces.canToggleView?.() ?? false,
-      // `__deckHost` presence — the same one-line tell five modules in
-      // `src/host/` already use (e.g. `worktree-host.ts`'s `available`).
-      // Read here rather than imported from `electron-updater-adapter.ts`,
-      // whose `hasDeckHost()` is private. An unanswered host is a third
-      // state, and here it means "no Board", which is the direction that does
-      // not consume the chord.
-      hostHasAgentBoard: (globalThis as { __deckHost?: unknown }).__deckHost !== undefined,
+      hasTerminalTab: tabs.length > 0,
+      missionControlOpen: missionControlOpen.value,
     };
   }
 
@@ -2877,14 +2883,12 @@ export function createTabManager(
    * three in the `commands` table below),
    * `move-pane-to-new-window`, which refuses with its own chrome message
    * (`movePane` above) rather than acting on `activeManager()`, and
-   * `toggle-browser`/`toggle-agent-board`, whose commands ARE surface
-   * transitions — blocking one while an editor holds the stage would make the
-   * chord a no-op exactly when it is most useful. The Board's is load-bearing
-   * in a second way the browser's is not: `composeSurfaceStrip.activeIndex()`
-   * answers the BOARD's own slot while the Board holds the stage, so without
-   * this exemption ⌘⇧O could open the Board and never close it again.
-   * `overlayBlocksAction` exempts exactly these six from the surface block so
-   * that surface-aware behavior still runs.
+   * `toggle-browser`, whose command IS a surface transition — blocking it
+   * while an editor holds the stage would make the chord a no-op exactly when
+   * it is most useful. `overlayBlocksAction` exempts exactly these five from
+   * the surface block so that surface-aware behavior still runs. (The Agent
+   * Board's toggle was the sixth until Mission Control took its chord; that
+   * action is `"always"`, so it never reaches this check.)
    */
   function isSurfaceRoutedAction(action: ShortcutAction): boolean {
     return (
@@ -2892,7 +2896,6 @@ export function createTabManager(
       action === "save-file" ||
       action === "toggle-markdown-view" ||
       action === "toggle-browser" ||
-      action === "toggle-agent-board" ||
       action === "move-pane-to-new-window"
     );
   }
@@ -2981,7 +2984,7 @@ export function createTabManager(
       agentLaunchPage.close(true);
       return;
     }
-    if (pageIsTop && (action === "toggle-browser" || action === "toggle-agent-board")) {
+    if (pageIsTop && action === "toggle-browser") {
       agentLaunchPage.close();
     }
     if (overlayBlocksAction(action)) {
@@ -3017,6 +3020,9 @@ export function createTabManager(
       // fall through to `commands[action]?.()` below unchanged, cycleTab
       // itself needs no board-awareness of its own.
       boardOpen.value = false;
+      // Mission Control yields the same way, for the same hidden-focus reason:
+      // the switch happens on the stage it covers (DL-35.1).
+      dismissMissionControl();
     }
     // ⌘1–9 and ⌘9 count CHIPS, not terminal tabs (2026-08-16): the strip is
     // one interleaved row, so "the second chip" has to mean the second thing
@@ -3412,6 +3418,7 @@ export function createTabManager(
     activeSlotRects() {
       return activeManager()?.slotRects() ?? [];
     },
+    spaceOrder,
     activeWorkspacePath,
     captureActiveLayout,
     captureSession,

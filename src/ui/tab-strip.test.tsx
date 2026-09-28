@@ -9,6 +9,11 @@
  * on the frame it happens to be inside — including the popover anchor lookup,
  * whose root moved from the `<header>` to the tablist when the component was
  * extracted.
+ *
+ * Since 2026-09-28 (DL-35.3) a terminal tab is a space MARK, not a chip: the
+ * bar draws the current space's folder and one mark per space, and only
+ * documents, the browser and the Board keep chips. The menu, close and order
+ * behaviour below is driven through the marks for terminals.
  */
 import { render } from "preact";
 import { act } from "preact/test-utils";
@@ -138,7 +143,12 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     [...host.querySelectorAll<HTMLElement>(".tab")].find(
       (el) => el.querySelector(".tab__label")?.textContent === name,
     )!;
-  it("selects the active chip after dismissing a transient launcher", () => {
+  /** The space mark of the terminal tab with this `TabView.key`. */
+  const mark = (key: number): HTMLElement =>
+    host.querySelector<HTMLElement>(`.space-mark[data-space-key="${key}"]`)!;
+  const markKeys = (): number[] =>
+    [...host.querySelectorAll<HTMLElement>(".space-mark")].map((el) => Number(el.dataset.spaceKey));
+  it("selects a space from its mark after dismissing a transient launcher", () => {
     tabViews.value = [tab()];
     const calls: string[] = [];
     mount({
@@ -146,24 +156,24 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       onBeforeSelect: () => calls.push("dismiss"),
       onSelectTab: () => calls.push("select"),
     });
-    act(() => chipNamed("Tab").click());
+    act(() => mark(1).click());
     expect(calls).toEqual(["dismiss", "select"]);
     expect(host.querySelectorAll('[role="tab"]')).toHaveLength(1);
   });
 
-  it("reorders mounted terminal chips from mouse pointer events", () => {
-    tabViews.value = [
-      tab({ key: 1, openedAt: 1, name: "First" }),
-      tab({ key: 2, openedAt: 2, name: "Second" }),
-    ];
+  it("reorders surface chips from mouse pointer events, and marks carry no drag handle", () => {
+    tabViews.value = [tab({ key: 1, openedAt: nextOpenSequence() })];
+    openFileTab("/repo", "/repo/first.ts", { keep: true });
+    openFileTab("/repo", "/repo/second.ts", { keep: true });
     const select = vi.fn();
     mount({ onSelectTab: select });
-    const list = host.querySelector<HTMLElement>('[role="tablist"]')!;
+    expect(mark(1).hasAttribute("data-strip-key")).toBe(false);
+    const list = host.querySelector<HTMLElement>('.tabbar__tabs[role="tablist"]')!;
     const box = (left: number, width: number) =>
       ({ left, right: left + width, top: 0, bottom: 30, width, height: 30 }) as DOMRect;
     list.getBoundingClientRect = () => box(0, 200);
-    chipNamed("First").getBoundingClientRect = () => box(0, 100);
-    chipNamed("Second").getBoundingClientRect = () => box(100, 100);
+    chipNamed("first.ts").getBoundingClientRect = () => box(0, 100);
+    chipNamed("second.ts").getBoundingClientRect = () => box(100, 100);
     const pointer = (target: EventTarget, type: string, x: number) => {
       const event = new MouseEvent(type, {
         bubbles: true,
@@ -176,20 +186,20 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       target.dispatchEvent(event);
     };
     act(() => {
-      pointer(chipNamed("Second").querySelector(".tab__label")!, "pointerdown", 150);
+      pointer(chipNamed("second.ts").querySelector(".tab__label")!, "pointerdown", 150);
       pointer(window, "pointermove", 10);
       pointer(window, "pointerup", 10);
       list.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect([...list.querySelectorAll(".tab__label")].map((el) => el.textContent)).toEqual([
-      "Second",
-      "First",
+      "second.ts",
+      "first.ts",
     ]);
     expect(select).not.toHaveBeenCalled();
   });
-  const context = (name: string): void => {
+  const context = (target: string | number): void => {
     act(() => {
-      chipNamed(name).dispatchEvent(
+      (typeof target === "number" ? mark(target) : chipNamed(target)).dispatchEvent(
         new MouseEvent("contextmenu", {
           bubbles: true,
           cancelable: true,
@@ -207,24 +217,22 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
   };
 
-  it("pins a tab without selecting it, retains its name and removes its close button", async () => {
+  it("offers a space's menu without Pin, and never selects from it", () => {
     tabViews.value = [
       tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
       tab({ key: 2, name: "Beta", openedAt: nextOpenSequence() }),
     ];
     const select = vi.fn();
     mount({ onSelectTab: select });
-    context("Beta");
+    context(2);
     expect(document.querySelector('[role="menu"]')).not.toBeNull();
-    await menuAction("Pin");
-    expect(host.querySelector(".tab__label")?.textContent).toBe("Beta");
-    expect(chipNamed("Beta").querySelector(".tab__close")).toBeNull();
-    expect(chipNamed("Beta").querySelector(".tab__pin")).not.toBeNull();
+    expect(mark(2).getAttribute("aria-expanded")).toBe("true");
+    expect(
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+        (el) => el.textContent === "Pin",
+      )?.disabled,
+    ).toBe(true);
     expect(select).not.toHaveBeenCalled();
-    context("Beta");
-    await menuAction("Unpin");
-    expect(host.querySelector(".tab__label")?.textContent).toBe("Alpha");
-    expect(chipNamed("Beta").querySelector(".tab__close")).not.toBeNull();
   });
 
   it("Close Others targets only visible unpinned terminals in one guarded batch", async () => {
@@ -238,7 +246,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     setStripPinned(keys[1]!, true);
     const closeTabs = vi.fn(async () => true);
     mount({ onCloseTabs: closeTabs });
-    context("Alpha");
+    context(1);
     await menuAction("Close Others");
     expect(closeTabs).toHaveBeenCalledExactlyOnceWith([2]);
   });
@@ -252,7 +260,8 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     stripPreferences.value = { order: [3, 1, 2], pinned: [] };
     const closeTabs = vi.fn(async () => true);
     mount({ onCloseTabs: closeTabs });
-    context("Alpha");
+    expect(markKeys()).toEqual([3, 1, 2]);
+    context(1);
     await menuAction("Close to the Right");
     expect(closeTabs).toHaveBeenCalledExactlyOnceWith([1]);
   });
@@ -276,12 +285,12 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       tab({ key: 2, name: "Beta", openedAt: 2 }),
     ];
     mount();
-    context("Beta");
+    context(2);
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(document.querySelector('[role="menu"]')).toBeNull();
-    context("Beta");
+    context(2);
     act(() => {
       tabViews.value = [tab({ key: 1, name: "Alpha", openedAt: 1 })];
     });
@@ -297,11 +306,11 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     const closeTabs = vi.fn(async () => true);
     const closePath = vi.fn(async () => {});
     mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
-    context("Alpha");
+    context(1);
     await menuAction("Close Others");
     expect(closePath).toHaveBeenCalledExactlyOnceWith("/repo", "/repo/a.ts");
     expect(closeTabs).not.toHaveBeenCalled();
-    expect(chipNamed("Beta")).toBeDefined();
+    expect(mark(2)).not.toBeNull();
   });
 
   it("Close explicitly targets a pinned tab, but bulk actions are unavailable beside only pinned tabs", async () => {
@@ -314,7 +323,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     const closeTabs = vi.fn(async () => true);
     const closeTab = vi.fn();
     mount({ onCloseTabs: closeTabs, onCloseTab: closeTab });
-    context("Alpha");
+    context(1);
     expect(
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
         (el) => el.textContent === "Close Others",
@@ -342,7 +351,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
     const closeTabs = vi.fn(async () => true);
     mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
-    context("Alpha");
+    context(1);
     await menuAction("Close Others");
     expect(closeTabs).not.toHaveBeenCalled();
     await act(async () => {
@@ -373,7 +382,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
         onCloseBrowser: closeBrowser,
         onCloseAgentBoard: closeBoard,
       });
-      context("Alpha");
+      context(1);
       await menuAction("Close Others");
       expect(closeTabs).toHaveBeenCalledExactlyOnceWith([1]);
       expect(closeBrowser).toHaveBeenCalledTimes(accepted ? 1 : 0);
@@ -395,20 +404,17 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
         }),
     );
     mount({ onCloseTab: closeTab });
-    act(() => {
-      chipNamed("Alpha").querySelector<HTMLButtonElement>(".tab__close")!.click();
-    });
-    act(() => {
-      chipNamed("Alpha").querySelector<HTMLButtonElement>(".tab__close")!.click();
-    });
+    context(1);
+    await menuAction("Close");
+    context(1);
+    await menuAction("Close");
     expect(closeTab).toHaveBeenCalledExactlyOnceWith(0);
     await act(async () => {
       release();
     });
-    await vi.waitFor(() => {
-      act(() => {
-        chipNamed("Alpha").querySelector<HTMLButtonElement>(".tab__close")!.click();
-      });
+    await vi.waitFor(async () => {
+      context(1);
+      await menuAction("Close");
       expect(closeTab).toHaveBeenCalledTimes(2);
     });
     await act(async () => {
@@ -416,13 +422,14 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
   });
 
-  it("renders every chip, and no add button, with no .tabbar in the tree", () => {
+  it("renders a mark per space and a chip per surface, and no add button, with no .tabbar in the tree", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
     openFileTab("/repo", "/repo/a.ts", { keep: true });
     mount();
 
     expect(host.querySelector(".tabbar")).toBeNull();
-    expect(host.querySelectorAll(".tab")).toHaveLength(2);
+    expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
+    expect(host.querySelectorAll(".tab")).toHaveLength(1);
     expect(host.querySelector(".tab--file .tab__label")?.textContent).toBe("a.ts");
     // One row since 2026-08-16 (DL-18.6): no segment hairline anywhere in it.
     expect(host.querySelector(".tabbar__sep")).toBeNull();
@@ -433,45 +440,70 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(host.querySelector('[aria-label="New tab"]')).toBeNull();
   });
 
-  it("puts the tab's newest turn on its chip, and keeps a typed name over it", () => {
-    // DL-18.10 amended (2026-08-17, owner): a chip carries the same sentence
-    // the rail row shows, through the same precedence — so the two surfaces
-    // cannot quote different agents for one tab. A name the user typed still
-    // wins, exactly as it does in the rail (DL-27.15).
+  it("names the current space by its folder and describes every mark by folder and counts", () => {
     tabViews.value = [
-      tab({ key: 1, name: null, panes: [pane({ paneId: 11 })] }),
-      tab({ key: 2, name: "release cut", panes: [pane({ paneId: 21 })] }),
+      tab({ key: 1, workspacePath: "/w/spacevibe-deck", panes: [pane({ paneId: 11 })] }),
+      tab({
+        key: 2,
+        workspacePath: "/w/spacevibe-api",
+        panes: [pane({ paneId: 21, attention: "requested" }), pane({ paneId: 22 })],
+      }),
     ];
-    paneTails.value = new Map([
-      [11, "Reading the rail model"],
-      [21, "Wrote the migration"],
-    ]);
     mount({ scopeToActiveRepository: false });
 
-    const labels = [...host.querySelectorAll(".tab .tab__label")].map((node) => node.textContent);
-    expect(labels).toEqual(["Reading the rail model", "release cut"]);
-    // The whole sentence stays reachable even though the chip trims it
-    // (DL-27.4's contract, inherited with the sentence).
-    expect(host.querySelector(".tab")?.getAttribute("title")).toBe("Reading the rail model");
+    const shown = host.querySelector('.space-bar__name-slot[data-current="true"]');
+    expect(shown?.textContent).toBe("spacevibe-deck");
+    expect(mark(1).getAttribute("aria-selected")).toBe("true");
+    expect(mark(1).getAttribute("aria-label")).toBe("spacevibe-deck · 1 agent");
+    expect(mark(2).getAttribute("aria-label")).toBe("spacevibe-api · 2 agents · 1 need you");
+    // DL-35.3: yellow for needs-you is the one state a mark carries.
+    expect(mark(2).dataset.needs).toBe("asked");
+    act(() => {
+      tabViews.value = [
+        tabViews.value[0]!,
+        { ...tabViews.value[1]!, panes: [pane({ paneId: 21, attention: "error" })] },
+      ];
+    });
+    // A failure is red, not yellow (DL-3.2).
+    expect(mark(2).dataset.needs).toBe("failed");
+    expect(mark(1).dataset.needs).toBeUndefined();
+    // A mark is not a chip: no turn text, no process name, no native title.
+    expect(mark(1).textContent).toBe("");
+    expect(mark(1).hasAttribute("title")).toBe(false);
   });
 
-  it("keeps the process name on a chip whose agent has said nothing", () => {
-    tabViews.value = [tab({ key: 1, name: null, process: "codex", panes: [pane()] })];
+  it("indexes spaces that share a workspace in the accessible name only", () => {
+    tabViews.value = [tab({ key: 1 }), tab({ key: 2 })];
     mount({ scopeToActiveRepository: false });
 
-    expect(host.querySelector(".tab .tab__label")?.textContent).toBe("codex");
+    expect(mark(1).getAttribute("aria-label")).toBe("repo 1 · 0 agents");
+    expect(mark(2).getAttribute("aria-label")).toBe("repo 2 · 0 agents");
   });
 
-  it("places a chip by when it was opened, not by what kind it is", () => {
-    // The file opens FIRST, so its chip leads a terminal tab opened after it.
-    // Under the old two-segment strip every file chip followed every terminal
-    // chip, whatever the clock said.
+  it("raises a hover card on focus with the path under home, and drops it on blur", () => {
+    tabViews.value = [tab({ key: 1, workspacePath: "/Users/deck/repo", panes: [pane()] })];
+    mount({ scopeToActiveRepository: false });
+
+    act(() => mark(1).focus());
+    const card = document.querySelector<HTMLElement>(".space-card")!;
+    expect(card).not.toBeNull();
+    expect(mark(1).getAttribute("aria-describedby")).toBe(card.id);
+    expect(card.textContent).toContain("repo");
+    expect(card.textContent).toContain("1 agent");
+
+    act(() => mark(1).blur());
+    expect(document.querySelector(".space-card")).toBeNull();
+  });
+
+  it("draws every space mark before every surface chip, whatever was opened first", () => {
     openFileTab("/repo", "/repo/a.ts", { keep: true });
     tabViews.value = [tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() })];
     mount();
 
-    const labels = [...host.querySelectorAll(".tab .tab__label")].map((node) => node.textContent);
-    expect(labels).toEqual(["a.ts", "Alpha"]);
+    const order = [...host.querySelectorAll(".space-mark, .tab")].map((el) =>
+      el.classList.contains("space-mark") ? "mark" : el.querySelector(".tab__label")?.textContent,
+    );
+    expect(order).toEqual(["mark", "a.ts"]);
   });
 
   it("follows the active tab's repository without losing global tab indexes", () => {
@@ -541,25 +573,20 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     const onSelectTab = vi.fn();
     mount({ onSelectTab });
 
-    const labels = () =>
-      [...host.querySelectorAll(".tab:not(.tab--file) .tab__label")].map(
-        (label) => label.textContent,
-      );
     // Every tab of the repository, in TAB order — a sub-package tab resolves
     // through the same longest-prefix match, and the other repository's tab
     // stays out.
-    expect(labels()).toEqual(["main · claude", "side · codex", "main · opencode"]);
+    expect(markKeys()).toEqual([1, 2, 3]);
 
     act(() => {
-      const visibleTabs = host.querySelectorAll<HTMLElement>(".tab:not(.tab--file)");
-      visibleTabs[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      mark(3).dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onSelectTab).toHaveBeenCalledWith(2);
 
     act(() => {
       activeTabIndex.value = 3; // the other repository
     });
-    expect(labels()).toEqual(["other · gemini"]);
+    expect(markKeys()).toEqual([4]);
   });
 
   it("renders the browser chip while the tab is open and routes its actions", () => {
@@ -585,10 +612,6 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       browserSurfaceActive.value = true;
     });
     expect(chip.getAttribute("aria-selected")).toBe("true");
-    // The terminal chip stands down while the browser holds the stage.
-    expect(
-      host.querySelector(".tab:not(.tab--file):not(.tab--browser)")?.getAttribute("aria-selected"),
-    ).toBe("false");
     // A click on the ALREADY-active chip must not re-fire selection.
     chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(onSelectBrowser).toHaveBeenCalledTimes(1);
@@ -619,11 +642,6 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(host.querySelectorAll(".tab--browser")).toHaveLength(0);
     // `openAgentBoard` puts it on the stage, so the terminal chip stands down.
     expect(chip.getAttribute("aria-selected")).toBe("true");
-    expect(
-      host
-        .querySelector(".tab:not(.tab--file):not(.tab--agent-board)")
-        ?.getAttribute("aria-selected"),
-    ).toBe("false");
 
     // A click on the ALREADY-active chip must not re-fire selection.
     chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));

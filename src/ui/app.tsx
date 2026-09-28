@@ -114,6 +114,9 @@ import {
   initBrowserBridge,
 } from "../browser/browser-store";
 import { installSessionTailSync } from "../terminal/session-tail-store";
+import { toFontStack } from "../terminal/pane";
+import { useMissionControl } from "./mission-control/use-mission-control";
+import { missionControlOpen } from "./mission-control/mission-control-store";
 import { composeSurfaceStrip, takeStageForSurface } from "./stage-surface-strip";
 import {
   agentBoardOpen,
@@ -469,6 +472,32 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const toggleUsage = (): void => revealDock("usage");
 
   /**
+   * Spaces and Mission Control (DL §35). The hook owns the slide, the swipe
+   * and the surface; `App` hands it the terminal layer and the one question
+   * only `App` can answer — whether another overlay covers the stage.
+   */
+  const missionControl = useMissionControl({
+    tabs: () => tabsRef.current,
+    stage: () => stagesRef.current,
+    blocked: () =>
+      settingsOpen.value ||
+      boardOpen.value ||
+      agentLaunchPage.request.value !== null ||
+      editorRequest.value !== null ||
+      saveDialogOpen.value ||
+      agentQuickPickerOpen.value ||
+      usageConsentOpen.value,
+    surfaceActive: () => fileController.activeIndex() >= 0 || browserSurfaceActive.value,
+    font: () => ({
+      family: toFontStack(settings.value.fontFamily),
+      size: settings.value.fontSize,
+    }),
+  });
+  // The TabManager is built once, so its seams read the latest handle.
+  const missionControlRef = useRef(missionControl);
+  missionControlRef.current = missionControl;
+
+  /**
    * A history row's one action. The dock stays open: it displaces the
    * terminal grid rather than covering it (DL-19.1), so the tab this opens
    * is already on screen beside the row that opened it — closing the column
@@ -592,6 +621,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
       onToggleUsage: () => toggleUsage(),
+      onToggleMissionControl: () => missionControlRef.current.toggle(),
+      onTabSwitch: (from, to) => missionControlRef.current.onTabSwitch(from, to),
       // The seam going live (Task 5): TabManager's `SurfaceStrip` consumer
       // (cycling, ⌘W routing, "last surface, not last tab", focus,
       // applySettings — src/terminal/tab-manager.ts:269) and the file
@@ -1699,7 +1730,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     boardOpen.value ||
     settingsOpen.value ||
     editorRequest.value !== null ||
-    saveDialogOpen.value;
+    saveDialogOpen.value ||
+    // DL-35.1: Mission Control covers the stage, so it also hides the
+    // browser's native view through `panelObscured` below.
+    missionControlOpen.value;
 
   /**
    * Close an ALREADY OPEN popover the moment an overlay opens over it —
@@ -1915,21 +1949,17 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   const chromeActions = (
     <DeckToolbar
-      agentView={
-        // Electron only, and only once a tab exists — spec §4.2: with zero
-        // tabs there is no Board to show. Hidden on the Open board and behind
-        // Settings, where the bar is not the way out.
-        (globalThis as { __deckHost?: unknown }).__deckHost !== undefined &&
-        tabViews.value.length > 0 &&
-        !boardOpen.value &&
-        !settingsOpen.value
+      missionControl={
+        // Only once a tab exists — with zero tabs there is nothing to zoom out
+        // of. Hidden on the Open board and behind Settings, where the bar is
+        // not the way out (DL-35.1, DL-34.1's view control).
+        tabViews.value.length > 0 && !boardOpen.value && !settingsOpen.value
           ? {
-              active: agentBoardSurfaceActive.value ? "board" : "inbox",
-              // `toggle-agent-board` already goes both ways, so the press is
-              // unconditional: the single control opens the Board and steps
-              // back out of it, exactly as Cmd+Shift+O does.
-              onSelect: () => {
-                tabsRef.current?.runAction("toggle-agent-board");
+              open: missionControlOpen.value,
+              // The action goes both ways, so the press is unconditional,
+              // exactly as ⌘⇧O is.
+              onToggle: () => {
+                tabsRef.current?.runAction("toggle-mission-control");
               },
             }
           : undefined
@@ -2351,8 +2381,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               (spec §4.1) — its own component owns the mount condition, so it
               is testable without an `<App>` harness. `boardView` is built once
               above and shared with `boardPanel`, so the grid and the panel
-              cannot disagree about the selected card. */}
+              cannot disagree about the selected card. Retired 2026-09-28 by
+              `AGENT_BOARD_RETIRED`: nothing raises it any more, so this mount
+              is what a revert of that switch brings back. */}
           <AgentBoardSurface view={boardView} actions={boardActions} panel={boardPanel} />
+          {/* DL-35.1: Mission Control covers the stage above a document or the
+              browser (the latter hidden through `overlayCoversPane`). */}
+          {missionControl.view}
           {/* Gated on the `dockOpen` setting. The column hosts three
               surfaces since 2026-08-16, so `App` picks the body — that is
               what keeps `DockPanel` from importing every feature it can

@@ -280,6 +280,11 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   advance width. The isolation clause is untouched: `--board-font` never reads
   the terminal's `fontFamily`. App-wide mono is a separate, unmade decision;
   DL-11.4 (rail labels are `--ui-font`) is untouched.
+  **Amended 2026-09-28 (owner, §35):** Mission Control's windows quote a
+  pane's last rows, so their body text takes `--board-font` on the same
+  argument — a picture of a terminal, not chrome around one. Only the window
+  body: the window head, the shelf and the strip's marks stay `--ui-font`.
+  With the Board retired (§34), those windows are the face's live mount.
 - **DL-4.2** Values still need `font-variant-numeric: tabular-nums`. Under mono
   this was nearly inert; under a proportional face it is what stops `13px` and
   `10k lines` from jittering as they change.
@@ -510,6 +515,8 @@ custom pick shows the `↺` clear button (DL-6.1); any failure shows inline via
 - Panel slide-over: `transform` + `opacity`, 0.28s ease-out cubic (existing).
 - State changes (hover/active): `--duration` / `--ease` (DL-20.2). This read
   "0.13s ease" until 2026-08-14, when the figure became a token at 150ms.
+- Spaces (added 2026-09-28): Mission Control's zoom (DL-35.1) and the space
+  slide (DL-35.2), `transform` + `opacity` at the slide-over's 0.28s.
 - Nothing else moves. See DL-1.2 / DL-1.5.
 
 ## 8. Copy
@@ -539,7 +546,8 @@ Before shipping any chrome UI change:
    the individual classes inside it.
 4. No uppercase and no `letter-spacing` on copy (DL-4.3); text size comes from
    a `--type-*` variable, not a px literal (DL-4.5). No monospace anywhere in
-   chrome — if a rule reaches for it, the answer is `--ui-font` (DL-4.1).
+   chrome — if a rule reaches for it, the answer is `--ui-font` (DL-4.1); the
+   Board and Mission Control's window bodies are DL-4.1's named exceptions.
 5. Text fields go through `CommitInput`, multi-line ones through
    `CommitTextarea` (DL-6.3, DL-13.5). Never bind a store value straight into
    an `<input value=…>` / `<textarea value=…>` inside a surface that does not
@@ -1548,6 +1556,13 @@ window's identity and its actions at the same time.
   spelled out, with the whole of it in `title` (DL-27.4's contract, inherited
   with the sentence). Documents and the browser keep their own names; they
   have no turn to report.
+
+  **Amended 2026-09-28 (owner): terminal tabs left the chip shape for DL-35.3's
+  space marks.** Everything above still binds the document and browser chips.
+  For terminals it is superseded: no label, glyph, close control, drag or pin;
+  the marks come before every surface chip; and a mark carries needs-you in
+  yellow, the one state this rule's 2026-08-16 amendment took off the strip and
+  the owner put back for marks alone.
 
 - **DL-18.11** **No pane top-edge activity or focus effect (2026-09-18, owner).**
   The continuous working line and the one-shot rail-click locator are removed
@@ -3555,6 +3570,90 @@ Numbered 34 because §33 was the previous highest rule.
   [bar](../src/ui/agent-board-bar.tsx) and the
   [list rules](../src/styles/19-agent-board.css).
 
+**Retired 2026-09-28 (owner): Mission Control (§35) replaced the Board.** It
+took ⌘⇧O, the View menu item and the toolbar button, and a journaled Board is
+no longer restored. The Board still builds and keeps its suites behind
+[`AGENT_BOARD_RETIRED`](../src/ui/agent-board-store.ts) — the DECK-43
+retirement pattern — so these rules bind nothing on screen while that switch is
+on. DL-34.3's rule and DL-34.5's mono face carry over to Mission Control's
+windows by name (DL-35.1).
+
+## 35. Spaces and Mission Control
+
+Added 2026-09-28 from the agent overview gallery study, where the owner chose
+candidate C. A **space** is a terminal tab — the existing unit, with no new
+owner — named by its workspace folder. Numbered 35 because §34 was the highest.
+Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
+[`space-bar.tsx`](../src/ui/spaces/space-bar.tsx),
+[`space-slide.ts`](../src/ui/spaces/space-slide.ts),
+[`mission-control.tsx`](../src/ui/mission-control/mission-control.tsx) and
+[`20-mission-control.css`](../src/styles/20-mission-control.css).
+
+- **DL-35.1** **Mission Control zooms the current space's panes out into a
+  spread of windows, under a shelf of every space.** ⌘⇧O / Ctrl+Shift+O, View ▸
+  Mission Control, or the toolbar's `Overview` button (DL-34.1's view control,
+  inherited) opens it; the same chord, Esc or a press on the empty spread
+  returns unchanged. The shelf shows every space in the window, not only the
+  active repository's, grouped by workspace, each as a miniature tinted by
+  state with its needs-you count. Hover or focus a thumbnail to preview its
+  windows; press one to enter that space; press a window to return to exactly
+  that pane (`activateForAttention` — Focus Expand follows the user's setting,
+  it is never switched on as a side effect). **A window is a snapshot**
+  (`serializePane`), never a live xterm: the Agent Board's rule, so Mission
+  Control is not a second owner of a terminal. Windows keep DL-34.3 — `asked`
+  and `failed` mark the head with a real 2px top border and nothing else is
+  coloured — and their quoted text uses `--board-font`, DL-34.5's mono face,
+  because it is terminal content rather than chrome. **Motion: the zoom is a
+  FLIP on `transform`, with the backdrop and shelf on `opacity`, 280 ms
+  `cubic-bezier(0.2, 0, 0, 1)`** — the §7 slide-over duration, inside DL-1.2's
+  300 ms ceiling — run by WAAPI `element.animate`. A finite WAAPI animation is
+  not DL-1.3's `requestAnimationFrame` loop and no timer drives it; nothing runs
+  while the user is idle. It ranks as an overlay at the Open board's tier, so a
+  pane chord behind it is blocked, and it hides the browser's native view. No
+  blur: DL-29.5's scrim exception is not inherited. ⌃↑ — macOS's own Mission
+  Control — is deliberately not the chord: the system takes it first.
+- **DL-35.2** **Switching between existing spaces slides the stage, and only
+  the current space holds a live terminal.** A switch from one terminal tab to
+  another — by mark, rail, ⌘⇧[ / ⌘⇧], ⌘1–9 or a horizontal trackpad swipe
+  (60 px of horizontal wheel delta, one space per gesture, momentum swallowed
+  until the events pause for 200 ms) — slides the incoming stage in from the side of its mark while a
+  **ghost** of the outgoing one slides out: its panes' last rows as plain text
+  in the terminal's own face, laid in the rects they had, read before `hide()`
+  released their renderers. No xterm is moved, cloned or kept alive. Same
+  duration and easing as DL-35.1, `transform` only, the stage clipped with
+  `overflow: clip` for the length of the slide. A tab that was just created,
+  a switch a document or the browser was covering, and a switch into another
+  repository's scope do not slide. ⌃← / ⌃→ are not bound: they are macOS's
+  Spaces chords and word motion in every shell.
+- **DL-35.3** **The strip draws terminal tabs as space marks: the current
+  space's folder, then one mark per space, then the document and browser
+  chips.** This amends DL-18.10's one-chip-shape rule for terminals only: a
+  terminal tab is no longer a chip, so it carries no label, glyph, close
+  control, drag or pin; its context menu (Close, Close Others, Close to the
+  Right) stays on the mark. Marks keep the strip's merged order, and every
+  mark comes before every surface chip — ⌘1–9 and cycling count them in that
+  order. Consecutive marks on one workspace sit in a run 10px from the next;
+  a workspace shared by several spaces is told apart by position, with the
+  index in the accessible name and the hover card. The folder name stacks
+  every space's name in one grid cell so the marks never move on a switch. The
+  current mark is a 16×6 pill drawn at full width and scaled to a dot at rest,
+  so the change is a `transform` (DL-1.2), never a width. **Needs-you returns to
+  the strip, and it is the only state a mark carries** (`asked` + `failed`),
+  reversing DL-18.10's 2026-08-16 removal at the owner's word (2026-09-28): a
+  resting dot turns `--status-unread` for a question and `--red` once anything
+  in the space failed — DL-3.2's two roles, never one colour for both — and a
+  current space that needs you keeps its pill with a 4px dot of that colour
+  under it. Mission Control's shelf counts wear the same two colours. No
+  spinner, no other state. A mark's
+  hover or focus raises a DL-13.7 card (DL-13.1's stage surface) with the
+  space's miniature, folder and index, path, branch (Electron's repository
+  scan; omitted without one) and counts; it has no native `title`. Many marks
+  scroll inside their own row, keeping the current one in view.
+- **DL-35.4** **Reduced motion is honoured by scope.** WAAPI motion checks
+  `prefers-reduced-motion` before it plays and skips the zoom, the slide and
+  every fade; the mark's pill transition exists only under `no-preference`.
+  No class allowlist.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
@@ -3571,7 +3670,7 @@ section therefore means naming DL, or the gate does not see the citation.
 
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
-| The Agent Board is a shipping surface | `building` | wired, natively walked, owner eye review owed | §34 landed 2026-09-03 with the spec; the wiring landed 2026-09-06 (17 tasks, `73cd1b1`..`69f58cf`). `npm test` 4436/1 with the one failure the DL citation gate at its nine baseline citations, both typechecks, `npm run build`, `npm run electron:build` and `generate:menu:check` green, plus a **native `electron:dev` walk** under an isolated `userData` — the chip, ⌘⇧O both ways, the sidebar at width 0 and restored (collapsed included), a card's real scrollback in the panel with no focus theft, Stop → `ENDED` → Restart, a reply landing as _placed_, the two-step Escape, and the chip surviving a relaunch. **Not walked: Restart resuming a real session id** (the probe agent has none) — plan `building` |
+| Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).
