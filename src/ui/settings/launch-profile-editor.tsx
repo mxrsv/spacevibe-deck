@@ -1,12 +1,16 @@
 import { ArrowClockwise, CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
-import { useLayoutEffect, useRef } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
-import { ConfigGroup, ConfigRow } from "../controls/config-row";
+import { ConfigGroup, ConfigRow, NOT_AVAILABLE_ON_WINDOWS } from "../controls/config-row";
 import { CommitInput } from "../controls/commit-input";
 import { AgentChoiceValue, CLI_DEFAULT_CHOICE } from "./agent-choice-value";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { signalAdaptersPatch } from "../../settings/signal-adapter-choice";
+import {
+  agentHooksSupported,
+  ensureAgentHooksSupportLoaded,
+} from "../../settings/agent-hooks-support-store";
 import { BUILTIN_AGENTS, type BuiltinAgent } from "../../lib/agent-catalog";
 import { AGENT_LOGOS } from "../../lib/agent-logos";
 import { letterAvatar } from "../../lib/letter-avatar";
@@ -125,32 +129,57 @@ function EnabledToggle({
 const ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex", "opencode"]);
 
 /**
+ * The adapters that ride on an installed hook script. The host's "no hooks
+ * here" answer speaks for these only: opencode's adapter is a pinned server
+ * port, which no hook script is involved in.
+ */
+const HOOK_ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex"]);
+
+/**
  * The per-agent adapter switch (agent-signal contract layer, stage 2; spec
  * §10.4): whether a launch of this agent is augmented so the CLI reports to
  * Deck — Claude's guarded user-level hooks, Codex's always-ring
  * notification flag, opencode's pinned server port. Off, the agent is read
  * off the process table and output timing, and its marks are drawn hollow.
  * This setting stays inside the agent details, separate from availability.
+ *
+ * Where the host cannot run the adapter (`available` false — Windows ships no
+ * hook script) the switch keeps its place, reads off — nothing is registered,
+ * so "on" would name a state that does not exist — and says why in its
+ * tooltip. It is unavailable, not `disabled` (DL-23.6): it keeps its tab stop
+ * so the reason is reachable by keyboard, and the press is dropped here. The
+ * stored choice is left alone for a host that can honour it.
  */
 function SignalsToggle({
   agent,
   on,
+  available,
   onChange,
 }: {
   agent: BuiltinAgent;
   on: boolean;
+  available: boolean;
   onChange: (next: boolean) => void;
 }) {
+  const shown = available && on;
   return (
     <button
       type="button"
       role="switch"
-      class={`cfg-btn lp-signals ${on ? "cfg-btn--on" : "cfg-btn--off"}`}
+      class={`cfg-btn lp-signals ${shown ? "cfg-btn--on" : "cfg-btn--off"}${
+        available ? "" : " cfg-btn--disabled"
+      }`}
       aria-label={`${agent.label} signals`}
-      aria-checked={on}
-      onClick={() => onChange(!on)}
+      aria-checked={shown}
+      aria-disabled={available ? undefined : true}
+      title={available ? undefined : NOT_AVAILABLE_ON_WINDOWS}
+      onClick={() => {
+        if (available) {
+          onChange(!on);
+        }
+      }}
     >
-      {on ? "on" : "off"}
+      {shown ? "on" : "off"}
     </button>
   );
 }
@@ -161,6 +190,7 @@ function AgentRow({
   enabled,
   onToggle,
   signals,
+  signalsAvailable,
   onSignals,
   installed,
 }: {
@@ -170,6 +200,8 @@ function AgentRow({
   onToggle: (next: boolean) => void;
   /** Null for an agent no adapter exists for; the switch is then omitted. */
   signals: boolean | null;
+  /** False where the host cannot run this agent's adapter; the switch then says so. */
+  signalsAvailable: boolean;
   onSignals: (next: boolean) => void;
   installed: boolean;
 }) {
@@ -243,7 +275,12 @@ function AgentRow({
                     : "Use agent-reported status for new sessions. When off, Deck estimates status."
                 }
               >
-                <SignalsToggle agent={agent} on={signals} onChange={onSignals} />
+                <SignalsToggle
+                  agent={agent}
+                  on={signals}
+                  available={signalsAvailable}
+                  onChange={onSignals}
+                />
               </ConfigRow>
             </section>
           )}
@@ -360,6 +397,12 @@ export function LaunchProfileEditor() {
   const draftError = useSignal<string | null>(null);
   const refreshing = useSignal(false);
 
+  // Asked here, once for every row below, rather than per row: the answer is a
+  // property of the host, and five rows would each fire the same request.
+  useEffect(() => {
+    void ensureAgentHooksSupportLoaded();
+  }, []);
+
   const installedIds = new Set(detectedAgents.value.map((agent) => agent.name));
   const installed = BUILTIN_AGENTS.filter((agent) => installedIds.has(agent.id));
   const available = BUILTIN_AGENTS.filter((agent) => !installedIds.has(agent.id));
@@ -426,6 +469,7 @@ export function LaunchProfileEditor() {
       enabled={!disabled.includes(agent.id)}
       onToggle={(next) => setEnabled(agent.id, next)}
       signals={adapterOf(agent.id)}
+      signalsAvailable={agentHooksSupported.value || !HOOK_ADAPTER_AGENTS.has(agent.id)}
       onSignals={(next) => setAdapter(agent.id, next)}
       installed={installedIds.has(agent.id)}
     />

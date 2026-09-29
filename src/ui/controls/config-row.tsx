@@ -1,5 +1,13 @@
 import type { ComponentChildren } from "preact";
 
+/**
+ * The tooltip on a row whose control the Windows host cannot back. The row
+ * keeps its place and takes `aria-disabled` rather than `disabled`, so the
+ * reason stays reachable by keyboard (DL-23.6); the tooltip carries the reason
+ * instead of a sentence in the row (the minimal-text rule).
+ */
+export const NOT_AVAILABLE_ON_WINDOWS = "Not available on Windows";
+
 /** Lowercase group label above a run of config rows (DL-4.2). */
 export function ConfigGroup({ label }: { label: string }) {
   return <div class="cfg-group">{label}</div>;
