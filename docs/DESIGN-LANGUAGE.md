@@ -422,6 +422,24 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
   Anything else that wants its own size amends this list before it ships.
 
+- **DL-4.6** **Weights are authored for the variable face; Windows draws
+  three (new 2026-09-30).** Every weight this document quotes — DL-4.3's 650
+  heading, DL-13.8's 600 title, DL-27.23's 450 branch — and every
+  `font-weight` in the chrome is the macOS value, where 430 to 650 are all
+  distinct pictures. Windows draws chrome in static Segoe UI, which has 400,
+  600 and 700 only, so under `.window--windows` alone
+  [the weight ledger](../src/styles/21-windows-weights.css) `current` assigns
+  each authored weight one of the three by role: reading text 400, names and
+  labels 600, the heaviest text of a block 700. Two roles a rule separates by
+  weight stay a rung apart (DL-13.8's title stays heavier than its detail,
+  DL-27.23's project label heavier than its branch). Where macOS has more
+  tiers than Windows has weights, the size and tone the rule already names
+  carry the difference: a worktree card's agent row name (DL-27.21, 500 on
+  macOS) and the card's meta line (450) are both 400 on Windows and stay
+  apart by ink and size. No macOS value is edited to suit Windows, and a
+  chrome weight outside 400 / 600 / 700 with no ledger entry fails
+  [`windows-weights.test.ts`](../src/styles/windows-weights.test.ts) `current`.
+
 ## 5. The one control: config row
 
 Every setting is a **row**: key (+ optional one-line description) on the left,
