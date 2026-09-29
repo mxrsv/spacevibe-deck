@@ -19,6 +19,13 @@ interface OpenDialogPayload {
   readonly filters?: Array<{ name: string; extensions: string[] }>;
 }
 
+/**
+ * Both message boxes set `noLink: true`. On Windows, Electron shows any button
+ * that is not a stock one (Cancel, Yes, ...) as a command link, so a custom
+ * "Quit" / "Discard" label would turn the confirm into a link list instead of
+ * the plain button pair macOS draws. Electron documents the flag as
+ * Windows-only, so macOS is unaffected.
+ */
 export function registerDialogs(): void {
   ipcMain.handle("dialog_ask", async (event, payload) => {
     const { message, title, kind, okLabel, cancelLabel } = payload as DialogPayload;
@@ -30,6 +37,7 @@ export function registerDialogs(): void {
       buttons: [okLabel ?? "OK", cancelLabel ?? "Cancel"],
       defaultId: 0,
       cancelId: 1,
+      noLink: true,
     });
     return result.response === 0;
   });
@@ -41,6 +49,7 @@ export function registerDialogs(): void {
       message: title ?? message,
       detail: title === undefined ? undefined : message,
       buttons: ["OK"],
+      noLink: true,
     });
   });
   ipcMain.handle("dialog_open", async (event, payload) => {
