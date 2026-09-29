@@ -1,0 +1,172 @@
+/* ── Windows chrome weights ─────────────────────────────────────────────
+   WHY. Chrome text is authored against macOS's variable face, where every
+   weight from 430 to 650 draws a distinct picture: a 500 name over 450 text,
+   a 560 label over both. Windows draws the same rules in static Segoe UI,
+   which ships 400, 600 and 700 only, so the browser folds each authored
+   weight onto a face by an accident of its matching (500 lands on Regular but
+   510 on Semibold; 620 and 650 land on Bold). This file replaces that
+   accident with one decision per selector. It sits entirely under
+   `.window--windows`, so no macOS value is read, edited or shadowed
+   there. DL-4 owns typography; the weights the design language quotes are
+   the macOS values, and this file is their Windows realisation.
+
+   HOW THE THREE RUNGS ARE ASSIGNED, by role and never by number alone:
+     authored 430-520  ->  400  reading text; "medium" is a hint, not a role
+     authored 540-600  ->  600  names, labels, emphasis
+     authored 620-650  ->  700  the heaviest text of its block
+   Three groups below break the number on purpose, because a same-role peer
+   decides. Where macOS has more tiers than Windows has weights, the size and
+   tone the rule already names carry the difference.
+
+   HOW TO KEEP IT IN STEP. Author any chrome weight outside 400 / 600 / 700
+   and `windows-weights.test.ts` fails naming the selector: add
+   `.window--windows <the same selector>` to the group whose role it matches,
+   and to `NEIGHBOURS` in that test if it sits beside another role macOS
+   separates by weight. A renamed selector fails the same test as an orphan.
+   Each selector below is the ORIGINAL prefixed with `.window--windows `: one
+   class more specific than what it answers, so it wins with no `!important`.
+   A macOS rule that is MORE specific than its base needs its own line here
+   (see the last rule). Longhand `font-weight` only; the original `font:`
+   keeps the size and line-height. Glyph rendering on a real Windows machine
+   is unverified: no device has looked at this yet. */
+
+/* ── 400: reading text (authored 430-450) ───────────────────────────────
+   Values, messages, ages, meta lines, details, inputs. Every one sits beside a
+   600 or 700 title, or beside nothing heavier, so the title stays distinct
+   (DL-13.8's title over detail, DL-27.23's branch under the project). */
+.window--windows .nt-workspace-picker__menu button,
+.window--windows .nt-board__more,
+.window--windows .asr-wt__name,
+.window--windows .asr-row__name strong,
+.window--windows .asr-row__age,
+.window--windows .asr-row__msg,
+.window--windows .asr-leaf__msg,
+.window--windows .asr-leaf__agent,
+.window--windows .asr-leaf__age,
+.window--windows .asr-card__meta,
+.window--windows .asr-card__count,
+.window--windows .asr-pop__cap,
+.window--windows .asr-act__detail,
+.window--windows .asr-act__foot,
+.window--windows .asr-act__note,
+.window--windows .recent-session-activity__summary,
+.window--windows .nt-last-session__meta,
+.window--windows .nt-composer__textarea,
+.window--windows .nt-composer__prompt-collapsed,
+.window--windows .nt-board__shortcuts button,
+.window--windows .nt-quick-launch__retarget p,
+.window--windows .nt-quick-launch__foot,
+.window--windows .nt-create-workspace__folder,
+.window--windows .nt-create-workspace__body input,
+.window--windows .nt-create-workspace__body p {
+  font-weight: 400;
+}
+
+/* ── 400: quiet labels, pills and control text (authored 500-520) ───────
+   The browser splits this tier at 500 / 510 (Regular vs Semibold); it is one
+   role, and small pill and control text at Semibold reads as a heading.
+   Each is a list row, pill, chip, button or caption whose tone and box already
+   mark it, and each sits under something heavier (an agent row under its card
+   head, a chip beside its count, a link beside its 600 separator, a
+   secondary button beside the primary). `.asr-needs__chip` only mounts in
+   the gallery; it is answered here because the shipped sheet still carries it. */
+.window--windows .asr-card__badge,
+.window--windows .asr-bare__badge,
+.window--windows .asr-card__row .asr-card__name,
+.window--windows .asr-card__pill,
+.window--windows .asr-card__new .asr-card__name,
+.window--windows .asr-color-menu__swatch,
+.window--windows .asr-color-menu__default,
+.window--windows .asr-needs__chip,
+.window--windows .update-action,
+.window--windows .gsep button,
+.window--windows .btn,
+.window--windows .segmented__option,
+.window--windows .recent-session-activity__gone,
+.window--windows .pane-agent-header__message,
+.window--windows .nt-runtime-select select,
+.window--windows .nt-composer__notice,
+.window--windows .nt-composer__recovery button,
+.window--windows .nt-quick-launch__retarget button,
+.window--windows .nt-quick-launch__head span,
+.window--windows .nt-create-workspace__body label > span {
+  font-weight: 400;
+}
+
+/* ── 600, against the number: the bare checkout head (authored 500) ─────
+   Its tone is `--text-muted` while the agent rows under it are primary, so
+   weight is all that lets it read as their head. At 400 it would read
+   quieter than its own rows. It stays under the boxed card's 700 head. */
+.window--windows .asr-bare__name {
+  font-weight: 600;
+}
+
+/* ── 600: names, labels and emphasis (authored 540-590) ─────────────────
+   Group labels, cluster and section heads, count numerals, button labels
+   that state an action, the eyebrows above a heading. Each is one rung
+   above the 400 text it heads. */
+.window--windows .sidebar-new,
+.window--windows .nt-composer__prompt-head label,
+.window--windows .agent-launch-page h1,
+.window--windows .agent-launch-page__card strong,
+.window--windows .nt-workspace-picker__trigger,
+.window--windows .nt-context-control__copy strong,
+.window--windows .asr-cluster__toggle,
+.window--windows .asr-cluster__still,
+.window--windows .asr-card__count-n,
+.window--windows .asr-card__seg[data-overflow="true"],
+.window--windows .cfg-group,
+.window--windows .recent-session-activity__heading,
+.window--windows .sidebar-actions__label,
+.window--windows .lp-head__title,
+.window--windows .nt-last-session__title,
+.window--windows .nt-board__head > span,
+.window--windows .home-action,
+.window--windows .board-home__star,
+.window--windows .btn--primary {
+  font-weight: 600;
+}
+
+/* ── 600, against the number: letter marks (authored 620-650) ───────────
+   A single letter standing in for an agent or project logo, 9-10.5px. Seven
+   other letter marks are authored at 600 already; Bold at this size reads as
+   a different kind of mark, so all of them take the one rung. */
+.window--windows .asr-card__logo--letter,
+.window--windows .nt-agent-mark,
+.window--windows .worktree-agents__letter,
+.window--windows .worktree-agents__more {
+  font-weight: 600;
+}
+
+/* ── 600, against the number: the launcher's primary action (650) ───────
+   Its peer `.btn--primary` is authored 590; the same role takes the same
+   rung on a filled accent button, where Bold is heavier than the fill needs. */
+.window--windows .nt-primary-action {
+  font-weight: 600;
+}
+
+/* ── 700: the heaviest text of its block (authored 620-650) ─────────────
+   The card head over its rows and over the 600 project label above it;
+   screen and section titles over the 600 labels and 400 lede beneath them;
+   inline emphasis inside a sentence. The same Bold the browser already picks
+   for these, made explicit. (`.asr-needs__count` is gallery-only, like its
+   chip above.) */
+.window--windows .asr-card__head .asr-card__name,
+.window--windows .asr-needs__count,
+.window--windows .nt-quick-launch__head strong,
+.window--windows .nt-quick-launch__retarget strong,
+.window--windows .board-home__title,
+.window--windows .board-sessions__head h1,
+.window--windows .settings-screen__title,
+.window--windows .nt-board__head h2 {
+  font-weight: 700;
+}
+
+/* ── A more specific macOS rule than its base ───────────────────────────
+   The Agent Board's star is a quiet 400 link where the home screen's is a 600
+   button (`.nt-board--agents .board-home__star`). The base rule above gains a
+   class here, which would tie this rule's specificity and follow it on
+   source order across two stylesheets; naming it again keeps 400. */
+.window--windows .nt-board--agents .board-home__star {
+  font-weight: 400;
+}

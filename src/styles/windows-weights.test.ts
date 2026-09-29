@@ -1,0 +1,269 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import {
+  STATIC_WEIGHTS,
+  describeSite,
+  modifiesBase,
+  parseRules,
+  refines,
+  siteKey,
+  specificity,
+  toSites,
+  type Site,
+  type Weight,
+} from "./css-weight-sites";
+
+/**
+ * Guard for `src/styles/21-windows-weights.css`, the ledger that maps chrome
+ * font weights onto the three faces static Segoe UI ships (400 / 600 / 700).
+ *
+ * macOS draws chrome in a variable face where every weight between 430 and 650
+ * is distinct; on Windows the browser folds them onto 400 / 600 / 700 by an
+ * accident of the matching algorithm (500 -> 400 but 510 -> 600). No Windows
+ * device exists to look at the result, so this reads the real stylesheets and
+ * proves the ledger's shape instead: every weight the face lacks has a
+ * Windows-scoped decision, the decisions only use weights the face has, and
+ * roles that sit beside each other on one surface still differ.
+ *
+ * It is also the tripwire for the next `font-weight: 500`: the failure names
+ * the site and the file to edit.
+ */
+
+const ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const INDEX = "src/styles.css";
+const LEDGER = "src/styles/21-windows-weights.css";
+const WINDOWS_SCOPE = ".window--windows ";
+/** Never bundled into the app (R7): specimens for the gallery page. */
+const NOT_SHIPPED = "src/gallery/";
+
+const HOW_TO_FIX =
+  "Windows draws chrome in static Segoe UI (400 / 600 / 700). Add\n" +
+  "`.window--windows <the same selector> { font-weight: 400 | 600 | 700; }` to " +
+  `${LEDGER}, in the role group that matches, and keep the wrapper (@media / @container) of the original.`;
+
+function posix(path: string): string {
+  return path.split(sep).join("/");
+}
+
+/**
+ * Every stylesheet the app ships. `src/styles.css` is an `@import` index over
+ * the partials, but three chrome sheets sit beside their components and are
+ * imported from TSX instead (`pane-agent-header.css`, `agent-launch-page.css`,
+ * `board-agent-launcher.css`); a directory walk keeps a fourth from escaping.
+ */
+function shippingSheets(dir = join(ROOT, "src")): string[] {
+  return readdirSync(dir)
+    .sort()
+    .flatMap((entry) => {
+      const path = join(dir, entry);
+      const name = posix(relative(ROOT, path));
+      if (name.startsWith(NOT_SHIPPED) || name === INDEX || name === LEDGER) return [];
+      if (statSync(path).isDirectory()) return shippingSheets(path);
+      return name.endsWith(".css") ? [name] : [];
+    });
+}
+
+/** Missing files read as empty, so a deleted ledger fails on its findings, not on ENOENT. */
+function read(file: string): string {
+  const path = join(ROOT, file);
+  return existsSync(path) ? readFileSync(path, "utf8") : "";
+}
+
+const authored: Site[] = shippingSheets().flatMap((file) => toSites(parseRules(file, read(file))));
+const ledgerRules = parseRules(LEDGER, read(LEDGER));
+const authoredBySelector = new Map(
+  authored.map((site) => [siteKey(site.wrap, site.selector), site]),
+);
+
+/** Ledger selector (scope stripped) -> the weight it sets and the position of its rule. */
+const overrides = new Map<string, Weight>();
+const ledgerPosition = new Map<string, number>();
+ledgerRules.forEach((rule, position) => {
+  for (const selector of rule.selectors) {
+    if (rule.weight === null || !selector.startsWith(WINDOWS_SCOPE)) continue;
+    const key = siteKey(rule.wrap, selector.slice(WINDOWS_SCOPE.length));
+    overrides.set(key, rule.weight);
+    ledgerPosition.set(key, position);
+  }
+});
+
+const needsDecision = (site: Site): boolean =>
+  typeof site.weight === "number" && !STATIC_WEIGHTS.includes(site.weight);
+
+describe("windows weight ledger", () => {
+  it("is imported last, so it follows every rule it answers", () => {
+    const imports = [...read(INDEX).matchAll(/@import\s+["']([^"']+)["'];/g)].map((m) => m[1]);
+    expect(
+      imports[imports.length - 1],
+      "src/styles.css must import the ledger after every other partial",
+    ).toBe("./styles/21-windows-weights.css");
+  });
+
+  it("lets every weight the face lacks fall to a Windows-scoped decision", () => {
+    const missing = authored
+      .filter(needsDecision)
+      .filter((site) => !overrides.has(siteKey(site.wrap, site.selector)))
+      .map(describeSite);
+    expect(missing, `${missing.length} weights have no Windows decision.\n${HOW_TO_FIX}`).toEqual(
+      [],
+    );
+  });
+
+  it("states chrome weights as numbers, never bolder / lighter / var()", () => {
+    const unmappable = authored.filter((site) => site.weight === "unsupported").map(describeSite);
+    expect(
+      unmappable,
+      "a relative or variable weight cannot be mapped onto 400 / 600 / 700",
+    ).toEqual([]);
+  });
+
+  it("uses only the three weights static Segoe UI has, and only under .window--windows", () => {
+    const offenders = ledgerRules.flatMap((rule) => [
+      ...rule.selectors
+        .filter((selector) => !selector.startsWith(WINDOWS_SCOPE))
+        .map((selector) => `${LEDGER}:${rule.line}  ${selector} is not scoped to .window--windows`),
+      ...rule.declarations
+        .filter(
+          ({ prop, value }) => prop !== "font-weight" || !STATIC_WEIGHTS.includes(Number(value)),
+        )
+        .map(
+          ({ prop, value }) => `${LEDGER}:${rule.line}  ${prop}: ${value} is not 400 / 600 / 700`,
+        ),
+    ]);
+    expect(offenders).toEqual([]);
+  });
+
+  it("has no decision for a selector that no longer carries a weight", () => {
+    const orphans = [...overrides.keys()]
+      .filter((key) => !authoredBySelector.has(key))
+      .map((key) => key.replace("|", " "));
+    expect(orphans, "renamed or removed on macOS: drop or rename the Windows decision").toEqual([]);
+  });
+
+  it("mirrors a more specific macOS rule beside the rule it refines", () => {
+    // `.window--windows .a` (one class up) would otherwise tie or beat an
+    // authored `.scope .a`, and the Windows result would stop following macOS.
+    const unmirrored = authored
+      .filter(needsDecision)
+      .flatMap((base) =>
+        authored
+          .filter(
+            (more) =>
+              more.wrap === base.wrap &&
+              refines(more.selector, base.selector) &&
+              specificity(more.selector) >= specificity(base.selector) &&
+              !overrides.has(siteKey(more.wrap, more.selector)),
+          )
+          .map((more) => `${describeSite(more)} refines ${base.selector}`),
+      );
+    expect(unmirrored, "give the refining rule its own Windows-scoped weight").toEqual([]);
+  });
+
+  it("keeps a base class ahead of its modifier, as the macOS cascade has them", () => {
+    // Both overrides carry one class more than their originals, so they stay
+    // tied with each other and source order decides, as it does on macOS.
+    const position = (site: Site): number =>
+      ledgerPosition.get(siteKey(site.wrap, site.selector)) ?? -1;
+    const inverted = authored.flatMap((modifier) =>
+      authored
+        .filter(
+          (base) =>
+            base.file === modifier.file &&
+            base.line < modifier.line &&
+            modifiesBase(modifier.selector, base.selector) &&
+            position(modifier) !== -1 &&
+            position(base) > position(modifier),
+        )
+        .map((base) => `${modifier.selector} is listed before ${base.selector}`),
+    );
+    expect(inverted, "a modifier's Windows rule must come after its base class's").toEqual([]);
+  });
+});
+
+/**
+ * Roles that share one surface and that macOS separates by weight, heavier
+ * first. Static Segoe UI has three rungs, so a pair can merge unless the
+ * ledger keeps it apart; this is the list of pairs it must keep apart.
+ * Add a pair here when a new role sits beside another on one surface.
+ */
+const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
+  [
+    "card head over its agent rows",
+    ".asr-card__head .asr-card__name",
+    ".asr-card__row .asr-card__name",
+  ],
+  ["card head over its meta line", ".asr-card__head .asr-card__name", ".asr-card__meta"],
+  [
+    "card head over the project label above it",
+    ".asr-card__head .asr-card__name",
+    ".asr-cluster__toggle",
+  ],
+  [
+    "boxed card head over a bare checkout head",
+    ".asr-card__head .asr-card__name",
+    ".asr-bare__name",
+  ],
+  ["bare checkout head over the rows under it", ".asr-bare__name", ".asr-row__name strong"],
+  ["project label over the worktree label", ".asr-cluster__toggle", ".asr-wt__name"],
+  ["menu row title over its detail (DL-13.8)", ".asr-act__title", ".asr-act__detail"],
+  ["count over the chip text", ".asr-needs__count", ".asr-needs__chip"],
+  ["last-session title over its meta", ".nt-last-session__title", ".nt-last-session__meta"],
+  [
+    "launcher title over its eyebrow",
+    ".nt-quick-launch__head strong",
+    ".nt-quick-launch__head span",
+  ],
+  [
+    "inline emphasis over its sentence",
+    ".nt-quick-launch__retarget strong",
+    ".nt-quick-launch__retarget p",
+  ],
+  ["launcher heading over its eyebrow", ".nt-board__head h2", ".nt-board__head > span"],
+  ["composer label over the prompt", ".nt-composer__prompt-head label", ".nt-composer__textarea"],
+  [
+    "folder trigger over its menu rows",
+    ".nt-workspace-picker__trigger",
+    ".nt-workspace-picker__menu button",
+  ],
+  ["primary button over the secondary", ".btn--primary", ".btn"],
+  ["group separator over its action", ".gsep", ".gsep button"],
+  ["board title over its section heads", ".board-home__title", ".board-home__recents-head"],
+  ["settings title over a group label", ".settings-screen__title", ".cfg-group"],
+  [
+    "session heading over its summary",
+    ".recent-session-activity__heading",
+    ".recent-session-activity__summary",
+  ],
+];
+
+function authoredWeight(selector: string): number {
+  const site = authoredBySelector.get(siteKey("", selector));
+  if (!site || typeof site.weight !== "number") {
+    throw new Error(`no weight authored for ${selector}`);
+  }
+  return site.weight;
+}
+
+/** What Windows draws: the ledger's decision, else the authored weight if the face has it. */
+function windowsWeight(selector: string): number {
+  const decided = overrides.get(siteKey("", selector));
+  if (typeof decided === "number") return decided;
+  const authoredValue = authoredWeight(selector);
+  if (!STATIC_WEIGHTS.includes(authoredValue)) throw new Error(`no Windows weight for ${selector}`);
+  return authoredValue;
+}
+
+describe("windows weights keep neighbouring roles apart", () => {
+  it.each(NEIGHBOURS)("%s", (_why, heavier, lighter) => {
+    expect(
+      authoredWeight(heavier),
+      "table premise: macOS separates the pair by weight",
+    ).toBeGreaterThan(authoredWeight(lighter));
+    expect(windowsWeight(heavier), `${heavier} must stay heavier than ${lighter}`).toBeGreaterThan(
+      windowsWeight(lighter),
+    );
+  });
+});
