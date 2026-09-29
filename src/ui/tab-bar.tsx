@@ -6,6 +6,7 @@ interface TabBarProps {
   transientPageOpen?: boolean;
   onBeforeSelect?: () => void;
   onSelectTab(index: number): void;
+  onRenameTab?(index: number, name: string | null): void;
   onCloseTab(index: number): void | Promise<void>;
   onCloseTabs?(indexes: readonly number[]): Promise<boolean>;
   /**
@@ -52,6 +53,7 @@ export function TabBar(props: TabBarProps) {
         transientPageOpen={props.transientPageOpen}
         onBeforeSelect={props.onBeforeSelect}
         onSelectTab={props.onSelectTab}
+        onRenameTab={props.onRenameTab}
         onCloseTab={props.onCloseTab}
         onCloseTabs={props.onCloseTabs}
         fileController={props.fileController}

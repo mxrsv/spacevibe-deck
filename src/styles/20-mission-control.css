@@ -44,6 +44,39 @@
   visibility: visible;
 }
 
+/* A double-click renames the space in place, so the name must not be the
+   frame's drag region — that double-click would maximise the window. The field
+   floats over the cell instead of resizing it, so the marks never shift while
+   a name is typed; the label stays laid out beneath it, hidden. */
+.space-bar__name {
+  -webkit-app-region: no-drag;
+}
+
+.space-bar__name-slot {
+  position: relative;
+}
+
+.space-bar__name-slot[data-editing="true"] {
+  overflow: visible;
+}
+
+.space-bar__name-slot[data-editing="true"] .space-bar__label {
+  visibility: hidden;
+}
+
+.space-bar__rename {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  width: max(100%, 148px);
+  height: 22px;
+  transform: translateY(-50%);
+  font-size: var(--type-meta);
+  font-weight: 400;
+}
+
 /* DL-35.3 (F8): many spaces scroll inside the row, never the frame. */
 .space-bar__marks {
   display: flex;

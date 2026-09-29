@@ -1460,6 +1460,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     boardOpen.value = false;
     tabsRef.current?.selectTab(index);
   };
+  /** A space's name (DL-35.3) is the tab's own; every surface reads it back. */
+  const renameTab = (index: number, name: string | null): void => {
+    tabsRef.current?.renameTab(index, name);
+  };
   /**
    * The chrome's one tab-close entry point (RepositoryRail's "Close
    * workspace" row and TabBar's close button) — captures
@@ -2210,6 +2214,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           transientPageOpen={agentLaunchPage.request.value !== null}
           onBeforeSelect={() => agentLaunchPage.close()}
           onSelectTab={selectTab}
+          onRenameTab={renameTab}
           onCloseTab={closeTab}
           onCloseTabs={async (indexes) => (await tabsRef.current?.closeTabs(indexes)) ?? false}
           toolbar={chromeActions}
@@ -2287,6 +2292,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   transientPageOpen={agentLaunchPage.request.value !== null}
                   onBeforeSelect={() => agentLaunchPage.close()}
                   onSelectTab={selectTab}
+                  onRenameTab={renameTab}
                   onCloseTab={closeTab}
                   onCloseTabs={async (indexes) =>
                     (await tabsRef.current?.closeTabs(indexes)) ?? false

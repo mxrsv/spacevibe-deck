@@ -35,6 +35,8 @@ export interface TabStripProps {
   transientPageOpen?: boolean;
   onBeforeSelect?: () => void;
   onSelectTab(index: number): void;
+  /** Name (or, with `null`, unname) the space at this owner index. */
+  onRenameTab?(index: number, name: string | null): void;
   onCloseTab(index: number): void | Promise<void>;
   /** One existing Busy guard over the union of the targeted terminal panes. */
   onCloseTabs?(indexes: readonly number[]): Promise<boolean>;
@@ -272,6 +274,7 @@ export function TabStrip(props: TabStripProps) {
             const chip = chipFor(space);
             if (chip) openMenu(chip, trigger, x, y);
           }}
+          onRename={(space, name) => props.onRenameTab?.(space.tabIndex, name)}
         />
       )}
       <div ref={list} class="tabbar__tabs" role="tablist" aria-label="Open tabs">

@@ -60,7 +60,8 @@ function tab(overrides: Partial<TabView> = {}): TabView {
   return {
     key: 1,
     process: "node",
-    name: "Tab",
+    // Unnamed unless a test names it: a space's name now replaces its folder.
+    name: null,
     dotColor: null,
     workspacePath: "/repo",
     agents: [],
@@ -476,12 +477,108 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(mark(1).hasAttribute("title")).toBe(false);
   });
 
-  it("indexes spaces that share a workspace in the accessible name only", () => {
+  it("indexes spaces that share a workspace in the label and the accessible name", () => {
     tabViews.value = [tab({ key: 1 }), tab({ key: 2 })];
     mount({ scopeToActiveRepository: false });
 
+    expect(host.querySelector('.space-bar__name-slot[data-current="true"]')?.textContent).toBe(
+      "repo 1",
+    );
     expect(mark(1).getAttribute("aria-label")).toBe("repo 1 · 0 agents");
     expect(mark(2).getAttribute("aria-label")).toBe("repo 2 · 0 agents");
+  });
+
+  it("shows a space's name in place of its folder, and keeps folder and index in the card", () => {
+    tabViews.value = [
+      tab({ key: 1, name: "auth", panes: [pane()] }),
+      tab({ key: 2, panes: [pane({ paneId: 21 })] }),
+    ];
+    repositoryScans.value = new Map<string, RepositoryScan>([
+      [
+        "/repo",
+        {
+          kind: "repository",
+          key: "/repo/.git",
+          root: "/repo",
+          worktrees: [
+            {
+              path: "/repo",
+              head: "a",
+              branch: "main",
+              bare: false,
+              detached: false,
+              locked: null,
+              prunable: null,
+            },
+          ],
+        },
+      ],
+    ]);
+    mount({ scopeToActiveRepository: false });
+
+    expect(host.querySelector('.space-bar__name-slot[data-current="true"]')?.textContent).toBe(
+      "auth",
+    );
+    expect(mark(1).getAttribute("aria-label")).toBe("auth · 1 agent");
+    // The name never renumbers a neighbour: the unnamed one is still `repo 2`.
+    expect(mark(2).getAttribute("aria-label")).toBe("repo 2 · 1 agent");
+
+    act(() => mark(1).focus());
+    const card = document.querySelector<HTMLElement>(".space-card")!;
+    expect(card.querySelector(".space-card__name")?.textContent).toBe("auth");
+    expect(card.querySelector(".space-card__meta")?.textContent).toBe(
+      "repo 1 · main · 1 agent",
+    );
+  });
+
+  describe("renaming a space in place (DL-35.3)", () => {
+    const label = (): HTMLElement =>
+      host.querySelector<HTMLElement>('.space-bar__name-slot[data-current="true"] .space-bar__label')!;
+    const field = (): HTMLInputElement | null => host.querySelector("input.space-rename");
+    const type = (value: string, key: string): void => {
+      act(() => {
+        field()!.value = value;
+        field()!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+    };
+    const openField = (): void => {
+      act(() => {
+        label().dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      });
+    };
+
+    it("opens on a double-click of the label, saves on Enter with the tab's index", () => {
+      tabViews.value = [tab({ key: 5, name: null }), tab({ key: 6, name: null })];
+      activeTabIndex.value = 1;
+      const onRenameTab = vi.fn();
+      mount({ scopeToActiveRepository: false, onRenameTab });
+
+      expect(field()).toBeNull();
+      openField();
+      expect(field()).not.toBeNull();
+      expect(field()!.value).toBe("");
+      expect(field()!.placeholder).toBe("repo 2");
+
+      type("scroll fix", "Enter");
+      expect(onRenameTab).toHaveBeenCalledWith(1, "scroll fix");
+      expect(field()).toBeNull();
+    });
+
+    it("starts from the current name, cancels on Escape, and clears with an empty name", () => {
+      tabViews.value = [tab({ key: 5, name: "auth" })];
+      const onRenameTab = vi.fn();
+      mount({ scopeToActiveRepository: false, onRenameTab });
+
+      openField();
+      expect(field()!.value).toBe("auth");
+      type("changed", "Escape");
+      expect(onRenameTab).not.toHaveBeenCalled();
+      expect(field()).toBeNull();
+
+      openField();
+      type("", "Enter");
+      expect(onRenameTab).toHaveBeenCalledWith(0, null);
+    });
   });
 
   it("raises a name-and-counts hover card on focus, and drops it on blur", () => {
