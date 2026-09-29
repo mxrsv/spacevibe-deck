@@ -4,7 +4,8 @@ import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { FONT_FALLBACK, type Settings } from "../settings/settings-schema";
+import type { Settings } from "../settings/settings-schema";
+import { monoFontFallback } from "../settings/mono-font-fallback";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
 import { resolveTheme } from "../settings/themes";
@@ -145,7 +146,7 @@ export function toFontStack(family: string): string {
   if (family.includes(",")) {
     return family;
   }
-  return `"${family}", ${FONT_FALLBACK}`;
+  return `"${family}", ${monoFontFallback()}`;
 }
 
 export function createPane(

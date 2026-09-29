@@ -17,7 +17,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { baseName } from "../../lib/path-name";
 import { settings } from "../../settings/settings-store";
-import { FONT_FALLBACK } from "../../settings/settings-schema";
+import { monoFontFallback } from "../../settings/mono-font-fallback";
 import {
   applyMonacoTheme,
   DECK_THEME_ID,
@@ -109,7 +109,7 @@ export function FileEditor(props: FileEditorProps) {
           // DL-1.3 forbids shadows; Monaco draws one under its scroll edge.
           scrollbar: { useShadows: false },
           renderLineHighlight: "line",
-          fontFamily: `${settings.value.fontFamily}, ${FONT_FALLBACK}`,
+          fontFamily: `${settings.value.fontFamily}, ${monoFontFallback()}`,
           fontSize: settings.value.fontSize,
           tabSize: 2,
           // The file's own ending is restored on save (`applyEol`); the editor
@@ -270,7 +270,7 @@ export function FileEditor(props: FileEditorProps) {
     }
     applyMonacoTheme(handle.monaco, next);
     handle.editor.updateOptions({
-      fontFamily: `${next.fontFamily}, ${FONT_FALLBACK}`,
+      fontFamily: `${next.fontFamily}, ${monoFontFallback()}`,
       fontSize: next.fontSize,
     });
   });

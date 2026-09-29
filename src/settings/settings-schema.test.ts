@@ -569,13 +569,9 @@ describe("quickLaunchPromptExpanded", () => {
 });
 
 describe("FONT_FALLBACK", () => {
-  it("keeps the macOS faces first and the generic family last", () => {
-    // Every Mac has Menlo, so nothing appended after it is ever reached there.
-    expect(FONT_FALLBACK.startsWith("Menlo, Monaco, ")).toBe(true);
-    expect(FONT_FALLBACK.endsWith(", monospace")).toBe(true);
-  });
-
-  it("puts the Windows faces between Monaco and the generic family", () => {
-    expect(FONT_FALLBACK).toBe('Menlo, Monaco, "Cascadia Mono", Consolas, monospace');
+  it("stays the macOS list byte for byte; Windows extends it through monoFontFallback()", () => {
+    // Fonts fall back per glyph, so a face appended here would change how a
+    // Mac renders characters Menlo and Monaco lack whenever that face is installed.
+    expect(FONT_FALLBACK).toBe("Menlo, Monaco, monospace");
   });
 });

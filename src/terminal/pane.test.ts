@@ -3,7 +3,8 @@ import { act } from "preact/test-utils";
 import { tabViews } from "./tabs-store";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { DEFAULT_SETTINGS, type Settings } from "../settings/settings-schema";
 import { createPane, toFontStack, type PaneEvents } from "./pane";
 
@@ -169,11 +170,22 @@ describe("Pane column floor", () => {
 });
 
 describe("toFontStack", () => {
-  it("keeps the exact macOS prefix, so a Mac never reaches the Windows faces", () => {
-    expect(toFontStack("SF Mono").startsWith('"SF Mono", Menlo, Monaco, ')).toBe(true);
+  afterEach(() => {
+    resetDesktopEnvironmentForTests();
   });
 
-  it("ends on the Windows faces before the generic family", () => {
+  it("is the original stack byte for byte on macOS", () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
+    expect(toFontStack("SF Mono")).toBe('"SF Mono", Menlo, Monaco, monospace');
+  });
+
+  it("is the macOS stack where the platform is unsupported", () => {
+    initializeDesktopEnvironment({ platform: "unsupported", homeDir: "" });
+    expect(toFontStack("SF Mono")).toBe('"SF Mono", Menlo, Monaco, monospace');
+  });
+
+  it("ends on the Windows faces before the generic family on Windows", () => {
+    initializeDesktopEnvironment({ platform: "windows", homeDir: "C:\\Users\\Deck" });
     expect(toFontStack("SF Mono")).toBe(
       '"SF Mono", Menlo, Monaco, "Cascadia Mono", Consolas, monospace',
     );

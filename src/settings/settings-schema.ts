@@ -236,10 +236,7 @@ export const SCROLLBACK_MIN = 1000;
 export const SCROLLBACK_MAX = 100_000;
 export const SCROLLBACK_CHOICES = [1000, 5000, 10_000, 50_000, 100_000] as const;
 
-// The Windows faces trail Menlo and Monaco on purpose: every Mac has Menlo, so
-// the chain stops there on a Mac and never reaches them, while Windows skips the
-// two macOS faces and lands on a real monospace instead of the generic family.
-export const FONT_FALLBACK = 'Menlo, Monaco, "Cascadia Mono", Consolas, monospace';
+export const FONT_FALLBACK = "Menlo, Monaco, monospace";
 
 export const COLOR_KEYS = ["background", "foreground", "cursor", "selectionBackground"] as const;
 

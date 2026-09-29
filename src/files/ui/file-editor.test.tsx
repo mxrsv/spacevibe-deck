@@ -126,7 +126,7 @@ import {
   editorSettings,
   type FileSurfaceController,
 } from "../file-surface-controller";
-import { FONT_FALLBACK } from "../../settings/settings-schema";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { settings } from "../../settings/settings-store";
 import {
   openFileTab,
@@ -201,6 +201,7 @@ afterEach(() => {
   });
   host.remove();
   controller.dispose();
+  resetDesktopEnvironmentForTests();
 });
 
 describe("FileEditor", () => {
@@ -246,28 +247,58 @@ describe("FileEditor", () => {
     expect(stub.focused).toBeGreaterThan(0);
   });
 
-  it("sets the chosen face first and the shared mono fallback after it", async () => {
+  async function mountWithDocument(): Promise<void> {
     openFileTab("/r", PATH, { keep: true });
     updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
     mount();
     await act(async () => {});
+  }
 
-    // The macOS prefix is exact; the Windows faces only ever follow it.
-    expect(String(stub.options.fontFamily).startsWith("SF Mono, Menlo, Monaco, ")).toBe(true);
-    expect(stub.options.fontFamily).toBe(`${settings.value.fontFamily}, ${FONT_FALLBACK}`);
+  it("is the original font-family string byte for byte on macOS", async () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
+    await mountWithDocument();
+
+    expect(stub.options.fontFamily).toBe("SF Mono, Menlo, Monaco, monospace");
   });
 
-  it("keeps the same fallback when the face changes while the editor is open", async () => {
-    openFileTab("/r", PATH, { keep: true });
-    updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
-    mount();
-    await act(async () => {});
+  it("is the macOS string where the platform is unsupported", async () => {
+    initializeDesktopEnvironment({ platform: "unsupported", homeDir: "" });
+    await mountWithDocument();
+
+    expect(stub.options.fontFamily).toBe("SF Mono, Menlo, Monaco, monospace");
+  });
+
+  it("ends on the Windows faces before the generic family on Windows", async () => {
+    initializeDesktopEnvironment({ platform: "windows", homeDir: "C:\\Users\\Deck" });
+    await mountWithDocument();
+
+    expect(stub.options.fontFamily).toBe(
+      'SF Mono, Menlo, Monaco, "Cascadia Mono", Consolas, monospace',
+    );
+  });
+
+  it("applies the same fallback when the face changes while the editor is open", async () => {
+    initializeDesktopEnvironment({ platform: "windows", homeDir: "C:\\Users\\Deck" });
+    await mountWithDocument();
 
     await act(async () => {
       editorSettings.value = { ...settings.value, fontFamily: "JetBrains Mono" };
     });
 
-    expect(stub.options.fontFamily).toBe(`JetBrains Mono, ${FONT_FALLBACK}`);
+    expect(stub.options.fontFamily).toBe(
+      'JetBrains Mono, Menlo, Monaco, "Cascadia Mono", Consolas, monospace',
+    );
+  });
+
+  it("keeps the original string on macOS when the face changes while the editor is open", async () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
+    await mountWithDocument();
+
+    await act(async () => {
+      editorSettings.value = { ...settings.value, fontFamily: "JetBrains Mono" };
+    });
+
+    expect(stub.options.fontFamily).toBe("JetBrains Mono, Menlo, Monaco, monospace");
   });
 
   it("reports a user edit but NOT its own reload", async () => {
