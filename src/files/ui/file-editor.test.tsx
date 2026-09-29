@@ -123,8 +123,11 @@ vi.mock("../editor-host", async () => {
 import { FileEditor } from "./file-editor";
 import {
   createFileSurfaceController,
+  editorSettings,
   type FileSurfaceController,
 } from "../file-surface-controller";
+import { FONT_FALLBACK } from "../../settings/settings-schema";
+import { settings } from "../../settings/settings-store";
 import {
   openFileTab,
   pendingReveal,
@@ -241,6 +244,30 @@ describe("FileEditor", () => {
     expect(host.querySelector(".fileview__editor")).not.toBeNull();
     expect(stub.themes).toContain("deck");
     expect(stub.focused).toBeGreaterThan(0);
+  });
+
+  it("sets the chosen face first and the shared mono fallback after it", async () => {
+    openFileTab("/r", PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+    mount();
+    await act(async () => {});
+
+    // The macOS prefix is exact; the Windows faces only ever follow it.
+    expect(String(stub.options.fontFamily).startsWith("SF Mono, Menlo, Monaco, ")).toBe(true);
+    expect(stub.options.fontFamily).toBe(`${settings.value.fontFamily}, ${FONT_FALLBACK}`);
+  });
+
+  it("keeps the same fallback when the face changes while the editor is open", async () => {
+    openFileTab("/r", PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+    mount();
+    await act(async () => {});
+
+    await act(async () => {
+      editorSettings.value = { ...settings.value, fontFamily: "JetBrains Mono" };
+    });
+
+    expect(stub.options.fontFamily).toBe(`JetBrains Mono, ${FONT_FALLBACK}`);
   });
 
   it("reports a user edit but NOT its own reload", async () => {

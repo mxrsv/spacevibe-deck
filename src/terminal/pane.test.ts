@@ -5,7 +5,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, type Settings } from "../settings/settings-schema";
-import { createPane, type PaneEvents } from "./pane";
+import { createPane, toFontStack, type PaneEvents } from "./pane";
 
 beforeAll(() => {
   // Never fires: nothing in this file resizes anything, and `fit()` is
@@ -165,5 +165,21 @@ describe("Pane column floor", () => {
       propose.mockRestore();
       resize.mockRestore();
     }
+  });
+});
+
+describe("toFontStack", () => {
+  it("keeps the exact macOS prefix, so a Mac never reaches the Windows faces", () => {
+    expect(toFontStack("SF Mono").startsWith('"SF Mono", Menlo, Monaco, ')).toBe(true);
+  });
+
+  it("ends on the Windows faces before the generic family", () => {
+    expect(toFontStack("SF Mono")).toBe(
+      '"SF Mono", Menlo, Monaco, "Cascadia Mono", Consolas, monospace',
+    );
+  });
+
+  it("uses a user-entered fallback list verbatim", () => {
+    expect(toFontStack('"Iosevka", monospace')).toBe('"Iosevka", monospace');
   });
 });

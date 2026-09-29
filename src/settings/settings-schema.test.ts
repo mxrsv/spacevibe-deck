@@ -5,6 +5,7 @@ import {
   DOCK_TABS,
   DOCK_WIDTH_MAX,
   DOCK_WIDTH_MIN,
+  FONT_FALLBACK,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
   validateSettings,
@@ -564,5 +565,17 @@ describe("quickLaunchPromptExpanded", () => {
     expect(validateSettings({ quickLaunchPromptExpanded: "no" }).quickLaunchPromptExpanded).toBe(
       true,
     );
+  });
+});
+
+describe("FONT_FALLBACK", () => {
+  it("keeps the macOS faces first and the generic family last", () => {
+    // Every Mac has Menlo, so nothing appended after it is ever reached there.
+    expect(FONT_FALLBACK.startsWith("Menlo, Monaco, ")).toBe(true);
+    expect(FONT_FALLBACK.endsWith(", monospace")).toBe(true);
+  });
+
+  it("puts the Windows faces between Monaco and the generic family", () => {
+    expect(FONT_FALLBACK).toBe('Menlo, Monaco, "Cascadia Mono", Consolas, monospace');
   });
 });
