@@ -168,6 +168,15 @@ export interface TabOverride {
   readonly dotColor?: TabDotColor;
 }
 
+/** Longest name a user can give a tab; the journal itself bounds no name. */
+export const MAX_TAB_NAME_LENGTH = 40;
+
+/** A typed name, trimmed and capped; null when nothing is left, which clears it. */
+export function normalizeTabName(raw: string | null): string | null {
+  const trimmed = raw?.trim() ?? "";
+  return trimmed === "" ? null : trimmed.slice(0, MAX_TAB_NAME_LENGTH);
+}
+
 /**
  * Merge overrides on top of process-derived values. syncViews rebuilds
  * tabViews from the process poll every 2s — running derived values through

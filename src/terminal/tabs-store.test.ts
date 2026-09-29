@@ -2,10 +2,23 @@ import { describe, expect, it } from "vitest";
 import {
   applyTabOverride,
   IDLE_ATTENTION_SUMMARY,
+  MAX_TAB_NAME_LENGTH,
+  normalizeTabName,
   type AgentAttentionSummary,
   type TabView,
 } from "./tabs-store";
 import { isTabDotColor } from "../lib/tab-colors";
+
+describe("normalizeTabName", () => {
+  it("trims, caps, and turns blank or null into a clear", () => {
+    expect(normalizeTabName("  auth ")).toBe("auth");
+    expect(normalizeTabName("   ")).toBeNull();
+    expect(normalizeTabName(null)).toBeNull();
+    expect(normalizeTabName("x".repeat(MAX_TAB_NAME_LENGTH + 5))).toBe(
+      "x".repeat(MAX_TAB_NAME_LENGTH),
+    );
+  });
+});
 
 const base: TabView = {
   key: 1,

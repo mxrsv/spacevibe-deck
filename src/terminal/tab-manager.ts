@@ -113,6 +113,7 @@ import {
 import {
   activeTabIndex,
   applyTabOverride,
+  normalizeTabName,
   statusInfo,
   tabViews,
   type PaneView,
@@ -2466,6 +2467,25 @@ export function createTabManager(
     return stripSlots().flatMap((slot) => (slot.kind === "tab" ? [slot.index] : []));
   }
 
+  function renameTab(index: number, name: string | null): void {
+    const tab = tabs[index];
+    if (tab === undefined) {
+      return;
+    }
+    const next = normalizeTabName(name);
+    const dotColor = overrides.get(tab.key)?.dotColor;
+    const override: TabOverride = {
+      ...(next !== null ? { name: next } : {}),
+      ...(dotColor !== undefined ? { dotColor } : {}),
+    };
+    if (override.name === undefined && override.dotColor === undefined) {
+      overrides.delete(tab.key);
+    } else {
+      overrides.set(tab.key, override);
+    }
+    syncViews();
+  }
+
   /** Take the chip at `position` in the merged strip. Out of range = no-op. */
   function selectStripSlot(position: number): void {
     const slot = stripSlots()[position];
@@ -3425,6 +3445,7 @@ export function createTabManager(
       return activeManager()?.slotRects() ?? [];
     },
     spaceOrder,
+    renameTab,
     activeWorkspacePath,
     captureActiveLayout,
     captureSession,

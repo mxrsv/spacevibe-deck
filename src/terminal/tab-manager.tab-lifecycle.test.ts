@@ -354,9 +354,7 @@ describe("createTabManager captureSession (session journal)", () => {
         panes: [
           { cwd: "/w/a", agent: "claude", launchCommand: null, taskPrompt: null, sessionId: null },
         ],
-        // Always null since 2026-08-16: `renameTab` went with `TabPopover`,
-        // so nothing can set a name any more. The FIELD stays because the
-        // snapshot shape is shared with the transfer payload.
+        // Null until the user names the space (`renameTab`).
         name: null,
         dotColor: null,
       },
@@ -368,6 +366,39 @@ describe("createTabManager captureSession (session journal)", () => {
         dotColor: null,
       },
     ]);
+  });
+
+  it("renames a tab, journals the name, and keeps it across a poll", async () => {
+    vi.useFakeTimers();
+    try {
+      const infos = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/w/a", "zsh", "idle-shell", null)],
+      ]);
+      const { tm } = setup({ infos });
+      await tm.openFromPreset({ type: "leaf" }, ["/w/a"], { workspacePath: "/w/a" });
+      await tm.init();
+      await vi.advanceTimersByTimeAsync(0);
+
+      tm.renameTab(0, "  auth  ");
+      expect(tabViews.value[0].name).toBe("auth");
+      expect(tm.captureSession()[0].name).toBe("auth");
+
+      await vi.advanceTimersByTimeAsync(2000); // a poll rebuilds every view
+      expect(tabViews.value[0].name).toBe("auth");
+
+      tm.renameTab(0, "   ");
+      expect(tabViews.value[0].name).toBeNull();
+      expect(tm.captureSession()[0].name).toBeNull();
+
+      tm.renameTab(0, "auth");
+      tm.renameTab(0, null);
+      expect(tabViews.value[0].name).toBeNull();
+
+      tm.renameTab(7, "ghost"); // out of range: a no-op, not a throw
+      tm.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("captures the pane's task prompt, capped at the schema's byte bound", async () => {

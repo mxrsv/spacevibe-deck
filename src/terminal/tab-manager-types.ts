@@ -224,6 +224,12 @@ export interface TabManager {
   activeSlotRects(): readonly PaneRect[];
   /** Owner indexes of the strip's space marks, in drawn order (DL-35.3). */
   spaceOrder(): readonly number[];
+  /**
+   * Name the tab at `index`, or clear its name with `null` or blank text. The
+   * name is trimmed and capped (`normalizeTabName`), travels through the
+   * journal, and every surface reads it from `TabView.name`.
+   */
+  renameTab(index: number, name: string | null): void;
   /** Workspace of the active tab; null when it has none (or no tab). */
   activeWorkspacePath(): string | null;
   /** Live layout + fresh per-pane CWDs for save-as-preset; null when no tab. */
