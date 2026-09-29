@@ -129,11 +129,14 @@ function EnabledToggle({
 const ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex", "opencode"]);
 
 /**
- * The adapters that ride on an installed hook script. The host's "no hooks
- * here" answer speaks for these only: opencode's adapter is a pinned server
- * port, which no hook script is involved in.
+ * The adapters that work ONLY through an installed hook script, so the host's
+ * "no hooks here" answer speaks for them and for nothing else. Codex is
+ * excluded although it also has a hook script: its always-ring launch flag
+ * (`launch-augment.ts`) is applied on every Electron host, Windows included,
+ * so its switch still does something there and must keep working. opencode's
+ * adapter is a pinned server port, no hook script at all.
  */
-const HOOK_ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude", "codex"]);
+const HOOK_ONLY_ADAPTER_AGENTS: ReadonlySet<string> = new Set(["claude"]);
 
 /**
  * The per-agent adapter switch (agent-signal contract layer, stage 2; spec
@@ -469,7 +472,7 @@ export function LaunchProfileEditor() {
       enabled={!disabled.includes(agent.id)}
       onToggle={(next) => setEnabled(agent.id, next)}
       signals={adapterOf(agent.id)}
-      signalsAvailable={agentHooksSupported.value || !HOOK_ADAPTER_AGENTS.has(agent.id)}
+      signalsAvailable={agentHooksSupported.value || !HOOK_ONLY_ADAPTER_AGENTS.has(agent.id)}
       onSignals={(next) => setAdapter(agent.id, next)}
       installed={installedIds.has(agent.id)}
     />

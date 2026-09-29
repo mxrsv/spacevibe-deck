@@ -2,9 +2,10 @@
  * Whether this host registers agent hooks, asked of the host once per window
  * (R5) and only when Settings needs it.
  *
- * The answer decides one thing: whether Claude's and Codex's Signals switches
- * are live. Windows ships no hook script, so there they say so instead of
- * offering a control that does nothing. It is `true` until the host says
+ * The answer decides one thing: whether Claude's Signals switch is live (the
+ * adapters that work only through a hook script; see `launch-profile-editor.tsx`).
+ * Windows ships no hook script, so there it says so instead of offering a
+ * control that does nothing. It is `true` until the host says
  * otherwise, so macOS, Tauri and a failed call render the switch exactly as
  * they always did.
  */

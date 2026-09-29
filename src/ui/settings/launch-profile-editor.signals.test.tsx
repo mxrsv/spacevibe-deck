@@ -45,10 +45,12 @@ import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 /**
  * The Signals switch answers to what the HOST can do, not to the platform:
  * Windows ships no hook script (`electron/agent-hooks/hooks-supported.ts`), so
- * there Claude's and Codex's switches are unavailable (DL-23.6) and say why in
- * a tooltip. opencode's adapter is a pinned server port, not a hook, so the
- * host's answer does not speak for it. Where the host supports hooks — macOS —
- * the switch is byte-for-byte what it was before this capability existed.
+ * there Claude's switch, which works only through that script, is unavailable
+ * (DL-23.6) and says why in a tooltip. Codex's switch also drives an always-ring
+ * launch flag that works on every host, and opencode's adapter is a pinned
+ * server port, so the host's answer does not speak for either. Where the host
+ * supports hooks — macOS — every switch is byte-for-byte what it was before
+ * this capability existed.
  */
 describe("LaunchProfileEditor Signals switch", () => {
   const UNAVAILABLE = "Not available on Windows";
@@ -149,7 +151,8 @@ describe("LaunchProfileEditor Signals switch", () => {
     });
 
     it("stays live when the host never reports support (older host, Tauri, failed call)", async () => {
-      // The default answer: `NO_SIGNAL_CONFIG`, i.e. no field at all.
+      // The default answer: `NO_SIGNAL_CONFIG`, whose `hooksSupported` is true, and
+      // the very object the store reads as "the host did not answer".
       await mountSettled();
 
       for (const id of AGENTS) {
@@ -161,21 +164,18 @@ describe("LaunchProfileEditor Signals switch", () => {
   });
 
   describe("where the host ships no hooks (Windows)", () => {
-    it.each(["claude", "codex"] as const)(
-      "makes %s's switch unavailable with a reason",
-      async (id) => {
-        hostSays(false);
-        await mountSettled();
+    it("makes Claude's switch unavailable with a reason", async () => {
+      hostSays(false);
+      await mountSettled();
 
-        const control = toggle(id);
-        expect(control.getAttribute("aria-disabled")).toBe("true");
-        expect(control.getAttribute("title")).toBe(UNAVAILABLE);
-        expect(control.classList.contains("cfg-btn--disabled")).toBe(true);
-        // DL-23.6: it keeps its tab stop, or the reason is unreachable by keyboard.
-        expect(control.hasAttribute("disabled")).toBe(false);
-        expect(control.tabIndex).toBeGreaterThanOrEqual(0);
-      },
-    );
+      const control = toggle("claude");
+      expect(control.getAttribute("aria-disabled")).toBe("true");
+      expect(control.getAttribute("title")).toBe(UNAVAILABLE);
+      expect(control.classList.contains("cfg-btn--disabled")).toBe(true);
+      // DL-23.6: it keeps its tab stop, or the reason is unreachable by keyboard.
+      expect(control.hasAttribute("disabled")).toBe(false);
+      expect(control.tabIndex).toBeGreaterThanOrEqual(0);
+    });
 
     it("reads off while unavailable, even over a stored on", async () => {
       // Nothing registers a hook here, so "on" would claim a state that does not exist.
@@ -189,14 +189,51 @@ describe("LaunchProfileEditor Signals switch", () => {
       expect(settings.value.agentSignalAdapters.claude).toBe(true);
     });
 
-    it.each(["claude", "codex"] as const)("ignores a press on %s's switch", async (id) => {
+    it("ignores a press on Claude's switch", async () => {
       hostSays(false);
       await mountSettled();
 
-      press(toggle(id));
+      press(toggle("claude"));
 
       expect(updateSettings).not.toHaveBeenCalled();
-      expect(settings.value.agentSignalAdapters[id]).toBe(true);
+      expect(settings.value.agentSignalAdapters.claude).toBe(true);
+    });
+
+    // Codex's always-ring launch flag (`launch-augment.ts`) is applied on every
+    // Electron host, Windows included, so its switch still controls something
+    // there. Only its hook-script half is macOS-only.
+    it("leaves Codex's switch live, reading its stored value, and writes the setting", async () => {
+      hostSays(false);
+      await mountSettled();
+
+      const control = toggle("codex");
+      expect(control.className).toBe("cfg-btn lp-signals cfg-btn--on");
+      expect(control.getAttribute("aria-checked")).toBe("true");
+      expect(control.hasAttribute("aria-disabled")).toBe(false);
+      expect(control.hasAttribute("disabled")).toBe(false);
+      expect(control.hasAttribute("title")).toBe(false);
+
+      press(control);
+
+      expect(settings.value.agentSignalAdapters.codex).toBe(false);
+      expect(updateSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows Codex's stored off as off and lets it be switched on", async () => {
+      settings.value = {
+        ...DEFAULT_SETTINGS,
+        agentSignalAdapters: { claude: true, codex: false, opencode: true },
+      };
+      hostSays(false);
+      await mountSettled();
+
+      const control = toggle("codex");
+      expect(control.className).toBe("cfg-btn lp-signals cfg-btn--off");
+      expect(control.hasAttribute("aria-disabled")).toBe(false);
+
+      press(control);
+
+      expect(settings.value.agentSignalAdapters.codex).toBe(true);
     });
 
     it("leaves opencode's switch live: its adapter is a server port, not a hook", async () => {
