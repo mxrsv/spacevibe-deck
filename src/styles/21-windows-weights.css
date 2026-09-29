@@ -2,21 +2,25 @@
    WHY. Chrome text is authored against macOS's variable face, where every
    weight from 430 to 650 draws a distinct picture: a 500 name over 450 text,
    a 560 label over both. Windows draws the same rules in static Segoe UI,
-   which ships 400, 600 and 700 only, so the browser folds each authored
-   weight onto a face by an accident of its matching (500 lands on Regular but
-   510 on Semibold; 620 and 650 land on Bold). This file replaces that
-   accident with one decision per selector. It sits entirely under
-   `.window--windows`, so no macOS value is read, edited or shadowed
-   there. DL-4 owns typography; the weights the design language quotes are
-   the macOS values, and this file is their Windows realisation.
+   whose faces in the chrome's range are 400, 600 and 700, so the browser
+   folds each authored weight onto one of them by its font-matching rules.
+   Modelled with `@font-face` in Chromium (not measured through DirectWrite),
+   500 lands on Regular but 510 on Semibold, and 620 and 650 on Bold. This
+   file replaces that accident with one decision per selector. It sits
+   entirely under `.window--windows`, so no macOS value is read, edited or
+   shadowed there. DL-4 owns typography; the weights the design language
+   quotes are the macOS values, and this file is their Windows realisation.
 
    HOW THE THREE RUNGS ARE ASSIGNED, by role and never by number alone:
-     authored 430-520  ->  400  reading text; "medium" is a hint, not a role
+     authored 430-450  ->  400  reading text
+     authored 500-520  ->  400  quiet labels, pills, control text; "medium" is
+                                a hint, not a role
      authored 540-600  ->  600  names, labels, emphasis
      authored 620-650  ->  700  the heaviest text of its block
-   Three groups below break the number on purpose, because a same-role peer
-   decides. Where macOS has more tiers than Windows has weights, the size and
-   tone the rule already names carry the difference.
+   Three groups below break the number on purpose, because a peer decides
+   (the field caption and the model chip, 520 -> 600; letter marks, 620-650 ->
+   600). Where macOS has more tiers than Windows has weights, ink and size
+   (DL-3.4, DL-4.4) carry the difference.
 
    HOW TO KEEP IT IN STEP. Author any chrome weight outside 400 / 600 / 700
    and `windows-weights.test.ts` fails naming the selector: add
@@ -65,13 +69,15 @@
 /* ── 400: quiet labels, pills and control text (authored 500-520) ───────
    The browser splits this tier at 500 / 510 (Regular vs Semibold); it is one
    role, and small pill and control text at Semibold reads as a heading.
-   Each is a list row, pill, chip, button or caption whose tone and box already
-   mark it, and each sits under something heavier (an agent row under its card
-   head, a chip beside its count, a link beside its 600 separator, a
+   Each is a list row, pill, chip, button or note whose tone and box already
+   mark it, and each sits under something heavier (an agent row under its
+   700 card head; the bare checkout name under the 600 project label, level
+   with its own badge as on macOS; a link beside its 600 separator; a
    secondary button beside the primary). `.asr-needs__chip` only mounts in
    the gallery; it is answered here because the shipped sheet still carries it. */
 .window--windows .asr-card__badge,
 .window--windows .asr-bare__badge,
+.window--windows .asr-bare__name,
 .window--windows .asr-card__row .asr-card__name,
 .window--windows .asr-card__pill,
 .window--windows .asr-card__new .asr-card__name,
@@ -84,20 +90,27 @@
 .window--windows .segmented__option,
 .window--windows .recent-session-activity__gone,
 .window--windows .pane-agent-header__message,
-.window--windows .nt-runtime-select select,
 .window--windows .nt-composer__notice,
 .window--windows .nt-composer__recovery button,
 .window--windows .nt-quick-launch__retarget button,
-.window--windows .nt-quick-launch__head span,
-.window--windows .nt-create-workspace__body label > span {
+.window--windows .nt-quick-launch__head span {
   font-weight: 400;
 }
 
-/* ── 600, against the number: the bare checkout head (authored 500) ─────
-   Its tone is `--text-muted` while the agent rows under it are primary, so
-   weight is all that lets it read as their head. At 400 it would read
-   quieter than its own rows. It stays under the boxed card's 700 head. */
-.window--windows .asr-bare__name {
+/* ── 600, against the number: the field caption (authored 520) ──────────
+   The caption and the helper text under the same field are both faint and
+   meta-sized, so weight is the only thing macOS uses to tell them apart (520
+   over 430). At 400 they would be identical. */
+.window--windows .nt-create-workspace__body label > span {
+  font-weight: 600;
+}
+
+/* ── 600, against the number: the model chip (authored 520) ─────────────
+   A peer of the workspace and agent chips in one row, which are 600 below
+   (`.nt-context-control__copy strong`, authored 550, the same primary tone).
+   macOS draws the three almost equal; at 400 the model chip would look
+   subordinate to its neighbours. */
+.window--windows .nt-runtime-select select {
   font-weight: 600;
 }
 
@@ -138,19 +151,13 @@
   font-weight: 600;
 }
 
-/* ── 600, against the number: the launcher's primary action (650) ───────
-   Its peer `.btn--primary` is authored 590; the same role takes the same
-   rung on a filled accent button, where Bold is heavier than the fill needs. */
-.window--windows .nt-primary-action {
-  font-weight: 600;
-}
-
 /* ── 700: the heaviest text of its block (authored 620-650) ─────────────
    The card head over its rows and over the 600 project label above it;
    screen and section titles over the 600 labels and 400 lede beneath them;
-   inline emphasis inside a sentence. The same Bold the browser already picks
-   for these, made explicit. (`.asr-needs__count` is gallery-only, like its
-   chip above.) */
+   inline emphasis inside a sentence; the launcher's filled primary action
+   over the 600 chips beside it (macOS 650 over 550). The same Bold the
+   browser already picks for these, made explicit. (`.asr-needs__count` is
+   gallery-only, like its chip above.) */
 .window--windows .asr-card__head .asr-card__name,
 .window--windows .asr-needs__count,
 .window--windows .nt-quick-launch__head strong,
@@ -158,7 +165,8 @@
 .window--windows .board-home__title,
 .window--windows .board-sessions__head h1,
 .window--windows .settings-screen__title,
-.window--windows .nt-board__head h2 {
+.window--windows .nt-board__head h2,
+.window--windows .nt-primary-action {
   font-weight: 700;
 }
 

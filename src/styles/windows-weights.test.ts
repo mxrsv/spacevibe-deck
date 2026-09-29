@@ -7,6 +7,7 @@ import {
   STATIC_WEIGHTS,
   describeSite,
   modifiesBase,
+  needsWindowsDecision,
   parseRules,
   refines,
   siteKey,
@@ -21,12 +22,13 @@ import {
  * font weights onto the three faces static Segoe UI ships (400 / 600 / 700).
  *
  * macOS draws chrome in a variable face where every weight between 430 and 650
- * is distinct; on Windows the browser folds them onto 400 / 600 / 700 by an
- * accident of the matching algorithm (500 -> 400 but 510 -> 600). No Windows
- * device exists to look at the result, so this reads the real stylesheets and
- * proves the ledger's shape instead: every weight the face lacks has a
- * Windows-scoped decision, the decisions only use weights the face has, and
- * roles that sit beside each other on one surface still differ.
+ * is distinct; on Windows the browser folds them onto 400 / 600 / 700 by its
+ * font-matching rules (modelled with `@font-face` in Chromium, not measured
+ * through DirectWrite: 500 -> 400 but 510 -> 600). No Windows device exists to
+ * look at the result, so this reads the real stylesheets and proves the
+ * ledger's shape instead: every weight the face lacks has a Windows-scoped
+ * decision, the decisions only use weights the face has, and roles that sit
+ * beside each other on one surface still differ.
  *
  * It is also the tripwire for the next `font-weight: 500`: the failure names
  * the site and the file to edit.
@@ -49,20 +51,21 @@ function posix(path: string): string {
 }
 
 /**
- * Every stylesheet the app ships. `src/styles.css` is an `@import` index over
- * the partials, but three chrome sheets sit beside their components and are
- * imported from TSX instead (`pane-agent-header.css`, `agent-launch-page.css`,
- * `board-agent-launcher.css`); a directory walk keeps a fourth from escaping.
+ * Every source file the app ships whose name matches `extension`. For CSS that
+ * is a directory walk rather than the `src/styles.css` `@import` index,
+ * because three chrome sheets sit beside their components and are imported from
+ * TSX instead (`pane-agent-header.css`, `agent-launch-page.css`,
+ * `board-agent-launcher.css`); a walk keeps a fourth from escaping.
  */
-function shippingSheets(dir = join(ROOT, "src")): string[] {
+function shippingFiles(extension: RegExp, dir = join(ROOT, "src")): string[] {
   return readdirSync(dir)
     .sort()
     .flatMap((entry) => {
       const path = join(dir, entry);
       const name = posix(relative(ROOT, path));
       if (name.startsWith(NOT_SHIPPED) || name === INDEX || name === LEDGER) return [];
-      if (statSync(path).isDirectory()) return shippingSheets(path);
-      return name.endsWith(".css") ? [name] : [];
+      if (statSync(path).isDirectory()) return shippingFiles(extension, path);
+      return extension.test(name) && !/\.test\.tsx?$/.test(name) ? [name] : [];
     });
 }
 
@@ -72,7 +75,9 @@ function read(file: string): string {
   return existsSync(path) ? readFileSync(path, "utf8") : "";
 }
 
-const authored: Site[] = shippingSheets().flatMap((file) => toSites(parseRules(file, read(file))));
+const authored: Site[] = shippingFiles(/\.css$/).flatMap((file) =>
+  toSites(parseRules(file, read(file))),
+);
 const ledgerRules = parseRules(LEDGER, read(LEDGER));
 const authoredBySelector = new Map(
   authored.map((site) => [siteKey(site.wrap, site.selector), site]),
@@ -90,9 +95,6 @@ ledgerRules.forEach((rule, position) => {
   }
 });
 
-const needsDecision = (site: Site): boolean =>
-  typeof site.weight === "number" && !STATIC_WEIGHTS.includes(site.weight);
-
 describe("windows weight ledger", () => {
   it("is imported by the stylesheet index", () => {
     // Source order is not load-bearing here: every rule is its original plus
@@ -106,7 +108,7 @@ describe("windows weight ledger", () => {
 
   it("lets every weight the face lacks fall to a Windows-scoped decision", () => {
     const missing = authored
-      .filter(needsDecision)
+      .filter(needsWindowsDecision)
       .filter((site) => !overrides.has(siteKey(site.wrap, site.selector)))
       .map(describeSite);
     expect(missing, `${missing.length} weights have no Windows decision.\n${HOW_TO_FIX}`).toEqual(
@@ -114,11 +116,11 @@ describe("windows weight ledger", () => {
     );
   });
 
-  it("states chrome weights as numbers, never bolder / lighter / var()", () => {
+  it("states chrome weights as numbers, never bolder / lighter / var() or an unreadable font: shorthand", () => {
     const unmappable = authored.filter((site) => site.weight === "unsupported").map(describeSite);
     expect(
       unmappable,
-      "a relative or variable weight cannot be mapped onto 400 / 600 / 700",
+      "a relative or variable weight, or a font: shorthand this reader cannot parse, cannot be mapped onto 400 / 600 / 700",
     ).toEqual([]);
   });
 
@@ -149,7 +151,7 @@ describe("windows weight ledger", () => {
     // `.window--windows .a` (one class up) would otherwise tie or beat an
     // authored `.scope .a`, and the Windows result would stop following macOS.
     const unmirrored = authored
-      .filter(needsDecision)
+      .filter(needsWindowsDecision)
       .flatMap((base) =>
         authored
           .filter(
@@ -189,7 +191,9 @@ describe("windows weight ledger", () => {
  * Roles that share one surface and that macOS separates by weight, heavier
  * first. Static Segoe UI has three rungs, so a pair can merge unless the
  * ledger keeps it apart; this is the list of pairs it must keep apart.
- * Add a pair here when a new role sits beside another on one surface.
+ * Add a pair here when a new role sits beside another on one surface. Only
+ * roles a shipped component renders belong: a pair guarding an unmounted class
+ * (`.asr-wt__name`, `.asr-needs__chip`) constrains nothing anyone sees.
  */
 const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
   [
@@ -208,10 +212,18 @@ const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
     ".asr-card__head .asr-card__name",
     ".asr-bare__name",
   ],
-  ["bare checkout head over the rows under it", ".asr-bare__name", ".asr-row__name strong"],
-  ["project label over the worktree label", ".asr-cluster__toggle", ".asr-wt__name"],
+  ["project label over the bare checkout name", ".asr-cluster__toggle", ".asr-bare__name"],
   ["menu row title over its detail (DL-13.8)", ".asr-act__title", ".asr-act__detail"],
-  ["count over the chip text", ".asr-needs__count", ".asr-needs__chip"],
+  [
+    "field caption over the helper text of its field",
+    ".nt-create-workspace__body label > span",
+    ".nt-create-workspace__body p",
+  ],
+  [
+    "primary action over the chips beside it",
+    ".nt-primary-action",
+    ".nt-context-control__copy strong",
+  ],
   ["last-session title over its meta", ".nt-last-session__title", ".nt-last-session__meta"],
   [
     "launcher title over its eyebrow",
@@ -259,6 +271,18 @@ function windowsWeight(selector: string): number {
 }
 
 describe("windows weights keep neighbouring roles apart", () => {
+  it("names only classes a shipped component renders", () => {
+    const markup = shippingFiles(/\.tsx?$/)
+      .map(read)
+      .join("\n");
+    const unmounted = NEIGHBOURS.flatMap(([, heavier, lighter]) =>
+      [heavier, lighter].flatMap((selector) =>
+        [...selector.matchAll(/\.([\w-]+)/g)].map((m) => m[1]),
+      ),
+    ).filter((cls) => !markup.includes(cls));
+    expect(unmounted, "a pair whose class no component renders guards nothing").toEqual([]);
+  });
+
   it.each(NEIGHBOURS)("%s", (_why, heavier, lighter) => {
     expect(
       authoredWeight(heavier),

@@ -80,18 +80,48 @@ function parseWeightToken(token: string): Weight {
     : "unsupported";
 }
 
+/** What may precede the size in `font:`: a weight, a style, a variant, a stretch (in any order). */
+const WEIGHT_TOKEN = /^(?:\d+(?:\.\d+)?|bold|bolder|lighter)$/i;
+const STYLE_TOKEN =
+  /^(?:normal|italic|oblique|small-caps|(?:ultra|extra|semi)-(?:condensed|expanded)|condensed|expanded)$/i;
+const OBLIQUE_ANGLE = /^-?[\d.]+deg$/i;
+const SIZE_TOKEN =
+  /^(?:[\d.]+(?:[a-z]+|%)|0|(?:var|calc|clamp|min|max)\(|(?:xx?-)?small|medium|large|x{1,3}-large|larger|smaller)/i;
+
 /**
- * The weight a `font:` shorthand sets. A weight token sits before the size; a
- * shorthand without one resets the weight to `normal`, which is why
- * `font: var(--type-body) var(--ui-font)` is a 400 site.
+ * The weight a `font:` shorthand sets. Weight, style, variant and stretch
+ * tokens come before the size in any order; a shorthand without a weight
+ * resets it to `normal`, which is why `font: var(--type-body) var(--ui-font)`
+ * is a 400 site.
+ *
+ * Fails closed: a token before the size that is none of those, a size that is
+ * not one, or no family after it is `"unsupported"`, never a guessed 400. A
+ * guessed 400 would let a new `font: 500 …` written in a form this reader does
+ * not know pass every guard silently.
  */
-function shorthandWeight(value: string): Weight {
+export function shorthandWeight(value: string): Weight {
   const trimmed = value.trim();
-  if (/^(inherit|initial|unset)$/i.test(trimmed)) return "inherit";
-  const lead = trimmed.match(
-    /^(?:(?:italic|oblique|small-caps)\s+)*(\d{1,4}|normal|bold|bolder|lighter)\s+(?=[\d.]|var\()/i,
-  );
-  return lead ? parseWeightToken(lead[1]) : KEYWORD_WEIGHTS.normal;
+  if (/^(inherit|initial|unset|revert)$/i.test(trimmed)) return "inherit";
+  const tokens = splitTopLevel(trimmed, /\s/).filter((token) => token !== "");
+  let weight: Weight = KEYWORD_WEIGHTS.normal;
+  let at = 0;
+  for (; at < tokens.length; at++) {
+    const token = tokens[at];
+    const afterOblique = /^oblique$/i.test(tokens[at - 1] ?? "") && OBLIQUE_ANGLE.test(token);
+    if (WEIGHT_TOKEN.test(token)) weight = parseWeightToken(token);
+    else if (!STYLE_TOKEN.test(token) && !afterOblique) break;
+  }
+  const size = tokens[at];
+  if (size === undefined || !SIZE_TOKEN.test(size)) return "unsupported";
+  return tokens.slice(at + 1 + lineHeightTokens(size, tokens[at + 1])).length > 0
+    ? weight
+    : "unsupported";
+}
+
+/** Tokens the line height takes after the size: `13px/1.3` none, `13px /1.3` and `13px/ 1.3` one, `13px / 1.3` two. */
+function lineHeightTokens(size: string, next: string | undefined): number {
+  if (next === "/") return 2;
+  return size.endsWith("/") || next?.startsWith("/") ? 1 : 0;
 }
 
 /** The last `font` / `font-weight` declaration wins, exactly as the cascade reads it. */
@@ -195,6 +225,11 @@ export function toSites(rules: readonly Rule[]): Site[] {
       weight,
     }));
   });
+}
+
+/** A numeric weight the static face has no exact face for, so a Windows decision is owed. */
+export function needsWindowsDecision(site: Site): boolean {
+  return typeof site.weight === "number" && !STATIC_WEIGHTS.includes(site.weight);
 }
 
 export function siteKey(wrap: string, selector: string): string {
