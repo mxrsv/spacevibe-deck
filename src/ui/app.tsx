@@ -116,6 +116,7 @@ import {
 import { installSessionTailSync } from "../terminal/session-tail-store";
 import { toFontStack } from "../terminal/pane";
 import { useMissionControl } from "./mission-control/use-mission-control";
+import { currentSpaceOrder } from "./spaces/space-order";
 import { missionControlOpen } from "./mission-control/mission-control-store";
 import { composeSurfaceStrip, takeStageForSurface } from "./stage-surface-strip";
 import {
@@ -213,7 +214,7 @@ import { readLastSession, resumeWorkspace } from "../terminal/session-restore";
 import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
 import type { WindowRecord } from "../lib/session-schema";
 import { discardLastSession, reopenLastSession } from "./last-session-actions";
-import { activeRepositoryTabIndexes, worktreeForPath } from "../repositories/repository-model";
+import { worktreeForPath } from "../repositories/repository-model";
 import { DesktopChrome } from "./desktop-chrome";
 import {
   archivedWorkspaceResumeAvailable,
@@ -613,10 +614,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     const manager = createTabManager(host, undefined, {
-      visibleTabIndexes: () =>
-        settings.value.tabBarPosition === "left"
-          ? activeRepositoryTabIndexes(tabViews.value, activeTabIndex.value, repositoryScans.value)
-          : tabViews.value.map((_, index) => index),
+      // Every space, in the rail's order — the order the strip draws its marks
+      // in both layouts (DL-35.3), so digits, cycling and the swipe count them
+      // the same way.
+      visibleTabIndexes: currentSpaceOrder,
       onOpenTaskLauncher: openTaskLauncher,
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
@@ -2295,7 +2296,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   onCloseBrowser={closeBrowserTab}
                   onSelectAgentBoard={selectAgentBoardTab}
                   onCloseAgentBoard={closeAgentBoardTab}
-                  scopeToActiveRepository
+                  // DL-35.3 (owner, 2026-09-28): one mark per space in EVERY
+                  // workspace, so the bar is how you move between them. It
+                  // was scoped to the active repository, which left the other
+                  // workspaces with no mark at all.
+                  scopeToActiveRepository={false}
                 />
               ) : null}
               {/* The feature toolbar's sidebar-mode mount (2026-08-16). It

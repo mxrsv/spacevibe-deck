@@ -2449,10 +2449,16 @@ export function createTabManager(
     ).filter(
       (slot) => slot.kind === "surface" || visible === undefined || visible.includes(slot.index),
     );
-    return [
-      ...merged.filter((slot) => slot.kind === "tab"),
-      ...merged.filter((slot) => slot.kind === "surface"),
-    ];
+    // The space marks come in the order the shell draws them when it says
+    // (`visibleTabIndexes`, the rail's order since 2026-09-29, DL-35.3);
+    // otherwise in the merged open order.
+    const tabSlots =
+      visible === undefined
+        ? merged.filter((slot) => slot.kind === "tab")
+        : visible.flatMap((index) =>
+            index >= 0 && index < tabs.length ? [{ kind: "tab" as const, index }] : [],
+          );
+    return [...tabSlots, ...merged.filter((slot) => slot.kind === "surface")];
   }
 
   /** Owner indexes of the space marks, in the order the strip draws them. */

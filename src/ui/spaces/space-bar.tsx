@@ -1,9 +1,7 @@
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { tildify } from "../../lib/process-info";
 import { useStageOverlayFlag, useSurfacePlacement } from "../worktree-card-menus";
 import { needsTone, runsByWorkspace, spaceCounts, spaceLabel, type Space } from "./space-model";
-import { SpaceMini } from "./space-mini";
 
 /**
  * The terminal half of the strip (DL-35.3): the current space's folder, then
@@ -12,14 +10,16 @@ import { SpaceMini } from "./space-mini";
  * that stays with the rail.
  */
 
-/** DL-13.7's open delay, the rail strip's own figure. */
-const CARD_OPEN_MS = 120;
+/**
+ * DL-35.3's open delay (owner, 2026-09-29): long enough that a pointer passing
+ * over the marks on its way somewhere else raises nothing.
+ */
+const CARD_OPEN_MS = 600;
 /** Room kept beside the current mark when the row scrolls to it (DL-35.3). */
 const SCROLL_MARGIN = 12;
 
 export interface SpaceBarProps {
   readonly spaces: readonly Space[];
-  readonly home: string;
   /** Owner key of the mark whose context menu is open, for `aria-expanded`. */
   readonly menuKey: number | null;
   readonly onGo: (space: Space) => void;
@@ -31,18 +31,17 @@ interface Hover {
   readonly rect: DOMRect;
 }
 
-function SpaceCard({ space, rect, home }: { space: Space; rect: DOMRect; home: string }) {
+/** Name and counts only (owner, 2026-09-29): the miniature and path were noise at a glance. */
+function SpaceCard({ space, rect }: { space: Space; rect: DOMRect }) {
   const { ref, style } = useSurfacePlacement(rect, "below");
   useStageOverlayFlag();
   return createPortal(
     <div ref={ref} id={`space-card-${space.key}`} class="space-card" role="tooltip" style={style}>
-      <SpaceMini panes={space.panes} class="space-card__mini" />
       <span class="space-card__text">
         <span class="space-card__name">
           {space.folder}
           {space.index !== null && <span class="space-card__index">{space.index}</span>}
         </span>
-        {space.path !== null && <span class="space-card__path">{tildify(space.path, home)}</span>}
         <span class="space-card__meta">
           {space.branch === null ? spaceCounts(space) : `${space.branch} · ${spaceCounts(space)}`}
         </span>
@@ -79,7 +78,7 @@ function useHoverCard(): {
   };
 }
 
-export function SpaceBar({ spaces, home, menuKey, onGo, onMenu }: SpaceBarProps) {
+export function SpaceBar({ spaces, menuKey, onGo, onMenu }: SpaceBarProps) {
   const row = useRef<HTMLDivElement>(null);
   const card = useHoverCard();
   /**
@@ -190,7 +189,7 @@ export function SpaceBar({ spaces, home, menuKey, onGo, onMenu }: SpaceBarProps)
         ))}
       </div>
       {hovered !== undefined && card.hover !== null && (
-        <SpaceCard space={hovered} rect={card.hover.rect} home={home} />
+        <SpaceCard space={hovered} rect={card.hover.rect} />
       )}
     </div>
   );

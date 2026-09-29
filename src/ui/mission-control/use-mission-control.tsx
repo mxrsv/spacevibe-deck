@@ -2,13 +2,12 @@ import { useSignalEffect } from "@preact/signals";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { PaneRect } from "../../lib/pane-geometry";
-import { mergeStripOrder, stripPreferences } from "../../lib/strip-order";
-import { UNSEQUENCED } from "../../lib/open-sequence";
 import { repositoryScans } from "../../repositories/repositories-store";
 import { paneTails } from "../../terminal/session-tail-store";
 import type { TabManager } from "../../terminal/tab-manager";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { buildSpaces } from "../spaces/space-model";
+import { currentSpaceOrder } from "../spaces/space-order";
 import { createSpaceSlider, type SlideDirection } from "../spaces/space-slide";
 import { useSpaceSwipe } from "../spaces/use-space-swipe";
 import { MissionControl, WINDOW_ROWS, type MissionExit } from "./mission-control";
@@ -46,15 +45,10 @@ interface Opening {
 
 /** Every tab, in the strip's own order but unscoped: Mission Control shows all. */
 function allSpaces() {
-  const tabs = tabViews.value;
-  const order = mergeStripOrder(
-    tabs.map((tab) => ({ openedAt: tab.openedAt ?? UNSEQUENCED })),
-    [],
-    stripPreferences.value,
-  ).map((slot) => slot.index);
   return buildSpaces({
-    tabs,
-    order,
+    tabs: tabViews.value,
+    // The rail's order, as the strip's marks are (DL-35.3).
+    order: currentSpaceOrder(),
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
   });

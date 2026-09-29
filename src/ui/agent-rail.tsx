@@ -331,6 +331,14 @@ function WorktreeCardRail(props: AgentRailProps) {
             // carries its checkouts as rowless groups too, so that its way back
             // in is the same bare row a history-only sibling already had.
             const live = group.tabIndexes.length > 0;
+            // DL-27.27: how many agents are still running in this project, so
+            // a folded cluster still says what it holds. Shell-only tabs and
+            // exited agents are not counted.
+            const agentCount = group.worktrees.reduce(
+              (total, worktree) =>
+                total + worktree.panes.filter((pane) => pane.state !== "ended").length,
+              0,
+            );
             return (
               <div
                 class="asr-cluster"
@@ -372,6 +380,14 @@ function WorktreeCardRail(props: AgentRailProps) {
                       >
                         <WorkspaceIcon key={iconPath} path={iconPath} />
                         <span class="asr-cluster__name">{group.project}</span>
+                        {agentCount > 0 && (
+                          <span
+                            class="asr-cluster__count"
+                            title={`${agentCount} ${agentCount === 1 ? "agent" : "agents"} running`}
+                          >
+                            {agentCount}
+                          </span>
+                        )}
                         <span class="asr-cluster__caret" aria-hidden="true">
                           <DeckIcon icon={CaretRight} size={CHROME_ICON} />
                         </span>

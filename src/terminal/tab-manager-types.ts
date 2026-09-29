@@ -71,7 +71,8 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    */
   surfaces?: SurfaceStrip;
   /** The shell's current terminal projection, in owner index space. Missing
-   * means all tabs. Digits and cycling must count the same visible chips. */
+   * means all tabs. Digits and cycling must count the same visible chips, so
+   * the list is also their ORDER: the space marks are drawn in it (DL-35.3). */
   visibleTabIndexes?: () => readonly number[];
   /**
    * Cmd+Shift+A routes here instead of calling `focusNextAttention`

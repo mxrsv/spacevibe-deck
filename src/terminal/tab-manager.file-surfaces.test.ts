@@ -737,12 +737,14 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  it("digits and cycling count the space marks first, each half in manual order", async () => {
+  it("digits and cycling count the space marks first, in the shell's order, then surfaces", async () => {
     // DL-35.3: the strip draws every terminal tab as a mark, then the surface
-    // chips. A pin still orders surfaces among themselves; it no longer lifts
-    // a document ahead of the spaces.
+    // chips. The marks come in the order the shell draws them
+    // (`visibleTabIndexes`, the rail's order since 2026-09-29) — a manual
+    // strip order no longer moves them. A pin still orders surfaces among
+    // themselves; it never lifts a document ahead of the spaces.
     const { tm } = setup({
-      deps: { surfaces, visibleTabIndexes: () => [0, 2] },
+      deps: { surfaces, visibleTabIndexes: () => [2, 0] },
       infos: IDLE_SHELLS,
     });
     await tm.materialize({ layout: null, cwds: ["/a"] });

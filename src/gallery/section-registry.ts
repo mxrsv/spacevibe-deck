@@ -1,6 +1,8 @@
 import type { ComponentType } from "preact";
 import { QuickAgentBoardSection } from "./sections/quick-agent-board";
 import { AgentBoardSection } from "./sections/agent-board-section";
+import { AgentOverviewSection } from "./sections/agent-overview-section";
+import { SpaceNamesSection } from "./sections/space-names-section";
 import { BeforeAfter20260923Section } from "./sections/before-after-2026-09-23";
 import { SettingsNativeMockSection } from "./sections/settings-native-mock";
 import { AttentionDirectionSection } from "./sections/attention-direction";
@@ -60,6 +62,14 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     label: "before / after 2026-09-23",
     Section: BeforeAfter20260923Section,
   },
+  /* Registered 2026-09-27 for the owner to compare ways to manage many
+     agents (local plan `2026-09-27-agent-overview-gallery.md`); park it the
+     `unread-mark-variants` way once a direction is chosen. */
+  { id: "agent-overview", label: "agent overview", Section: AgentOverviewSection },
+  /* Registered 2026-09-29 for the owner to compare ways to show a user-given
+     space name on the strip and Mission Control's shelf; park it the
+     `unread-mark-variants` way once a direction is chosen. */
+  { id: "space-names", label: "space names", Section: SpaceNamesSection },
   { id: "quick-agent-board", label: "quick agent board", Section: QuickAgentBoardSection },
   { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },

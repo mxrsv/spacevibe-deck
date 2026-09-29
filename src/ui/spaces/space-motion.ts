@@ -1,14 +1,19 @@
 /**
  * The one motion spaces and Mission Control use (DL-35.1, DL-35.2): transform
- * and opacity only, 280 ms — DL §7's slide-over figure, inside DL-1.2's 300 ms
- * ceiling — run by the Web Animations API. A WAAPI animation is finite and
+ * and opacity only, 300 ms — DL-1.2's ceiling — run by the Web Animations API. A WAAPI animation is finite and
  * compositor-driven: it is not DL-1.3's `requestAnimationFrame` loop and no
  * timer drives it, and nothing runs while the user is idle. Everything here is
  * skipped under `prefers-reduced-motion: reduce` (DL-1.5).
  */
 
-export const SPACE_MOTION_MS = 280;
-export const SPACE_MOTION_EASE = "cubic-bezier(0.2, 0, 0, 1)";
+export const SPACE_MOTION_MS = 300;
+/**
+ * A gentle ease-out: it leaves the start without a jolt and settles long,
+ * which reads smoother on a whole-stage move than a sharp start does.
+ */
+export const SPACE_MOTION_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+/** How far the outgoing space recedes while it fades, in widths (parallax). */
+const RECEDE = 0.3;
 
 /** A box in viewport coordinates — `DOMRect` and `PaneRect` both qualify. */
 export interface Box {
@@ -75,12 +80,28 @@ export function fade(element: Element | null, direction: "in" | "out"): Animatio
   });
 }
 
-/** Slides `element` horizontally by whole widths: `from` → `to`, in units of its width. */
-export function slide(element: HTMLElement, from: number, to: number): Animation | null {
+/** Slides `element` in from `from` widths away (±1) to where it is laid out. */
+export function slideIn(element: HTMLElement, from: number): Animation | null {
+  if (reducedMotion() || typeof element.animate !== "function") return null;
+  return element.animate([{ transform: `translateX(${from * 100}%)` }, { transform: "none" }], {
+    duration: SPACE_MOTION_MS,
+    easing: SPACE_MOTION_EASE,
+  });
+}
+
+/**
+ * Moves `element` a short way towards `to` (±1) while it fades — the outgoing
+ * space receding under the incoming one, so a text ghost never has to match
+ * the live panes it hands over to.
+ */
+export function recede(element: HTMLElement, to: number): Animation | null {
   if (reducedMotion() || typeof element.animate !== "function") return null;
   return element.animate(
-    [{ transform: `translateX(${from * 100}%)` }, { transform: `translateX(${to * 100}%)` }],
-    { duration: SPACE_MOTION_MS, easing: SPACE_MOTION_EASE },
+    [
+      { transform: "none", opacity: 1 },
+      { transform: `translateX(${to * RECEDE * 100}%)`, opacity: 0 },
+    ],
+    { duration: SPACE_MOTION_MS, easing: SPACE_MOTION_EASE, fill: "forwards" },
   );
 }
 

@@ -1,0 +1,93 @@
+/* Space-name study, sidebar half (registered 2026-09-29). Scoped under `.spn`;
+   the rail's own classes (`.asr-*`) come from the shipping stylesheets. Only
+   the row's text parts and the rename field are new. Gallery-only. */
+
+.spn .spn-rails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 4px;
+}
+
+.spn .spn-railcol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  align-content: start;
+}
+
+/* ── The row's name: primary, then optional context or a second line ── */
+
+.spn .spn-r-name {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.spn .spn-r-primary,
+.spn .spn-r-context,
+.spn .spn-r-secondary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spn .spn-r-primary {
+  flex: 0 1 auto;
+}
+
+/* B: the agent's name where the ordinal was, in a secondary tone. */
+.spn .spn-r-context {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  font-weight: 400;
+}
+
+/* C: the name is the primary line; the pane's sentence sits under it. */
+.spn .spn-rail--C .spn-r-name[data-named="true"] {
+  flex-direction: column;
+  gap: 1px;
+  align-items: stretch;
+}
+
+.spn .spn-rail--C .spn-r-name[data-named="true"] .spn-r-primary {
+  font-weight: 600;
+}
+
+.spn .spn-r-secondary {
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+  font-weight: 400;
+}
+
+.spn .spn-rail--C .spn-r-row:has(.spn-r-secondary) {
+  padding-block: 5px;
+}
+
+/* ── The rename field: content above the row's full-bleed hit layer ── */
+
+.spn .asr-card__row > .spn-r-name--editing {
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.spn .spn-r-name--editing .spn-input {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 20px;
+  font-size: var(--type-meta);
+}
+
+.spn .spn-railnote {
+  max-width: 78ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.45;
+}

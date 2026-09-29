@@ -323,6 +323,25 @@
   text-overflow: ellipsis;
 }
 
+/* DL-27.27: the running-agent count before the caret, as a circular chip.
+   The fill is the checkout badges' 8% wash (04c) so the two chips read as one
+   family; a two-digit count stretches the circle into a pill. `border-box`
+   because the repo has no global reset (Known traps). */
+.asr-cluster__count {
+  display: grid;
+  flex: none;
+  box-sizing: border-box;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-muted);
+  font: 560 var(--type-micro) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
 /* DL-27.17: the folder keeps its own outer column; checkout dots start under
    the project name. The trailing caret retains its fixed slot. */
 .asr-cluster__folder,

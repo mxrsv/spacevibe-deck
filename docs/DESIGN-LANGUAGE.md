@@ -2958,6 +2958,17 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   otherwise ([entry routing](../src/ui/app.tsx)). The legacy free-standing menu
   still states its destination through [MenuSubject](../src/ui/agent-rail-card-model.ts).
 
+- **DL-27.27** **A live project header counts its running agents (2026-09-28).**
+  The owner asked for a folded project to still say how much is running in it.
+  A live cluster header prints the number of agent panes that have not exited,
+  as a 17px circular chip (`--type-micro`, `--text-muted` on the checkout
+  badges' 8% wash, stretching to a pill at two digits) just before the caret,
+  whether the cluster is open or folded. Shell-only tabs are not counted, and the count is
+  omitted at zero and on remembered headers. This narrows DL-27.12's "carries
+  no state" for the header: a count is not a state mark, so the header still
+  carries no state, age or worktree level. See
+  [`AgentRail`](../src/ui/agent-rail.tsx).
+
 ## 28. The rail's action footer
 
 > **HIDDEN since 2026-08-17 (owner).**
@@ -3646,8 +3657,11 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   under it. Mission Control's shelf counts wear the same two colours. No
   spinner, no other state. A mark's
   hover or focus raises a DL-13.7 card (DL-13.1's stage surface) with the
-  space's miniature, folder and index, path, branch (Electron's repository
-  scan; omitted without one) and counts; it has no native `title`. Many marks
+  space's folder and index, branch (Electron's repository scan; omitted
+  without one) and counts; it has no native `title`. **Amended 2026-09-29
+  (owner):** the card read as noise in the working flow, so the miniature and
+  path left it and hover opens after 600ms rather than 120ms — a pointer
+  crossing the marks raises nothing. Keyboard focus still raises it at once. Many marks
   scroll inside their own row, keeping the current one in view.
 - **DL-35.4** **Reduced motion is honoured by scope.** WAAPI motion checks
   `prefers-reduced-motion` before it plays and skips the zoom, the slide and

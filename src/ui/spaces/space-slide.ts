@@ -1,5 +1,5 @@
 import type { PaneRect } from "../../lib/pane-geometry";
-import { reducedMotion, settled, slide } from "./space-motion";
+import { recede, reducedMotion, settled, slideIn } from "./space-motion";
 
 /**
  * The space slide (DL-35.2). Only the current space holds a live terminal:
@@ -94,18 +94,25 @@ export function createSpaceSlider(deps: SpaceSlideDeps): SpaceSlider {
       if (stage === null || host === null || reducedMotion()) return () => undefined;
       const ghost = buildGhost(deps, stage);
       return () => {
-        stage.after(ghost);
+        // BEFORE the stage, so the incoming space paints over the receding
+        // ghost (and the dock, later in the DOM, over both).
+        stage.before(ghost);
         host.classList.add("is-sliding");
-        const animations = [slide(stage, direction, 0), slide(ghost, 0, -direction)].filter(
+        // Promote the stage's layer up front, so the first frame does not pay
+        // for it — the stage is the element that crosses the whole width.
+        stage.style.willChange = "transform";
+        const animations = [slideIn(stage, direction), recede(ghost, -direction)].filter(
           (animation): animation is Animation => animation !== null,
         );
         inFlight = animations;
         void settled(animations).then(() => {
           ghost.remove();
-          // A newer slide that already started keeps the clip it needs.
+          // A newer slide that already started keeps the clip and the layer
+          // it needs.
           if (inFlight === animations || inFlight.length === 0) {
             inFlight = [];
             host.classList.remove("is-sliding");
+            stage.style.willChange = "";
           }
         });
       };

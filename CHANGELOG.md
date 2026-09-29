@@ -5,7 +5,11 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
-## Unreleased
+## 2.2.0
+
+This update turns terminal tabs into spaces with a Mission Control overview,
+starts Deck from a folder-then-Run screen, and stops reopening yesterday's
+session on its own.
 
 ### Spaces and Mission Control
 
@@ -16,6 +20,10 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   it. ⌘1–9 and ⌘⇧[ / ⌘⇧] count the spaces first, then the documents.
 - **Switching spaces slides**, by mark, shortcut or a horizontal two-finger
   swipe on the terminal.
+- **Space marks stay quiet while you move the pointer.** The hover card opens
+  after a short pause instead of instantly, and shows the space's folder,
+  branch and agents without the miniature or path. Keyboard focus still opens it
+  at once.
 - **Mission Control replaces the Agent Board.** ⌘⇧O (Ctrl+Shift+O), View ▸
   Mission Control or the toolbar's **Overview** button zooms your panes out
   into a view of every space. Hover a space to preview its panes, click a pane
@@ -43,6 +51,18 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   the tab count and workspaces. **Reopen** brings the tabs and agent
   conversations back; dismiss it, or open anything else, and Deck starts clean.
   The *Restore sessions on launch* setting is gone.
+
+### Sidebar
+
+- **A project header counts its running agents.** A live project in the
+  [sidebar](src/ui/agent-rail.tsx) shows how many agents are still running in
+  it, open or folded, so a folded project still tells you what is going on.
+  Plain shell tabs are not counted, and the count is hidden at zero.
+
+### Usage
+
+- **Usage shows the overview only.** The Daily and Breakdown tabs are gone, and
+  the [Usage panel](src/ui/usage/usage-body.tsx) opens straight onto the overview.
 
 ## 2.1.0
 
@@ -97,9 +117,6 @@ card, and fixes agents that stopped drawing in narrow panes.
   times, a cost timeline for Today / 7 days / 30 days / All, and accessible chart
   and pricing details. API-equivalent estimates distinguish missing history,
   measured zero and unpriced tokens.
-
-- **Usage shows the overview only.** The Daily and Breakdown tabs are gone, and
-  the [Usage panel](src/ui/usage/usage-body.tsx) opens straight onto the overview.
 
 ### Sidebar
 

@@ -1,0 +1,271 @@
+/* Space-name study (registered 2026-09-29). Everything is scoped under `.spn`
+   and reuses the shipping `.space-*` / `.mc-*` classes for the marks, the
+   miniature and the card; only the text around them is new. Gallery-only:
+   nothing here may move into src/styles/. */
+
+.spn-study {
+  display: grid;
+  gap: 8px;
+}
+
+.spn-candidate {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px 18px;
+}
+
+.spn-candidate > .gx-statelabel {
+  margin-top: 8px;
+}
+
+.spn-strips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+  gap: 8px;
+}
+
+/* ── The strip: the real `.tabbar` and `.space-bar`, inside a frame ── */
+
+.spn .spn-tabbar {
+  box-sizing: border-box;
+  padding-left: 12px;
+  border: 1px solid var(--seam-divider);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.spn .space-bar {
+  max-width: 100%;
+}
+
+/* The name cell is the shipping one (180px, ellipsis). B repeats the folder
+   ahead of the name, so it is given 240px: that cost is part of the trade. */
+.spn .spn-tabbar--B .spn-name {
+  max-width: 240px;
+}
+
+.spn .spn-name:has(.spn-label--editing) {
+  max-width: 300px;
+}
+
+/* ── The label: lead, name, trail — each truncates, the folder first ── */
+
+.spn-label {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 20px;
+  min-height: 14px;
+  font-size: var(--type-meta);
+}
+
+.spn-line {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 5px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.spn-lead,
+.spn-main,
+.spn-trail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spn-lead {
+  flex: 0 1 auto;
+  min-width: 56px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.spn-sep {
+  flex: none;
+  color: var(--text-faint);
+}
+
+.spn-main {
+  flex: 0 1 auto;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.spn-trail {
+  flex: 0 2 auto;
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+  font-weight: 400;
+}
+
+/* An unnamed space reads exactly as today's `deck 2`. */
+.spn-main--unnamed {
+  font-weight: 600;
+}
+
+/* ── The rename field: the shipping text input, packed to the label ── */
+
+.spn-label--editing {
+  align-items: center;
+  overflow: visible;
+}
+
+.spn .spn-input {
+  flex: 0 1 148px;
+  box-sizing: border-box;
+  min-width: 64px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: var(--type-meta);
+  font-weight: 400;
+}
+
+/* The gallery cannot hold focus on several fields at once, so a static frame
+   mirrors `.text-input:focus-visible` (07-config-rows.css) by attribute. */
+.spn .spn-input[data-focused="true"] {
+  border-color: var(--accent);
+}
+
+/* ── C: a tag beside every named mark and the current one ── */
+
+.spn-markwrap {
+  display: flex;
+  align-items: center;
+}
+
+.spn-tag {
+  max-width: 92px;
+  margin: 0 8px 0 2px;
+  color: var(--text-muted);
+}
+
+.spn-tag .spn-main {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.spn-tag[data-current="true"] {
+  max-width: 190px;
+}
+
+.spn-tag[data-current="true"] .spn-main {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.spn-tag .spn-label {
+  min-width: 0;
+}
+
+.spn-tag .spn-input {
+  flex-basis: 120px;
+}
+
+/* ── The shelf: the real `.mc-shelf` ── */
+
+.spn .spn-shelf {
+  box-sizing: border-box;
+  border: 1px solid var(--seam-divider);
+  border-radius: 4px;
+}
+
+.spn-shelfpair {
+  display: grid;
+  max-width: 420px;
+}
+
+.spn .spn-thumb {
+  cursor: default;
+}
+
+.spn .spn-thumb:focus-visible {
+  outline: none;
+}
+
+.spn .spn-thumb:focus-visible .mc-space__mini {
+  border-color: var(--accent);
+}
+
+.spn .spn-thumb .mc-space__label {
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.spn .spn-thumb .spn-label {
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: var(--type-micro);
+}
+
+.spn .spn-thumb .spn-line {
+  max-width: 100%;
+}
+
+.spn .spn-thumb .spn-main {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.spn .spn-thumb .spn-main--unnamed {
+  color: var(--text-muted);
+}
+
+.spn .spn-thumb .mc-space__needs {
+  flex: none;
+}
+
+.spn .spn-thumb .spn-input {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 18px;
+  font-size: var(--type-micro);
+}
+
+.spn .spn-thumb .spn-label--editing {
+  align-self: stretch;
+  flex: 1 1 auto;
+}
+
+/* B carries the whole address on each thumbnail, so it needs the width. */
+.spn .spn-shelf--B .mc-space {
+  width: 112px;
+}
+
+.spn .spn-shelf--B .spn-lead {
+  font-weight: 400;
+}
+
+/* C: the name is the primary line; the folder header is gone. */
+.spn .spn-shelf--C .spn-main {
+  font-size: var(--type-meta);
+  font-weight: 600;
+}
+
+.spn .spn-shelf--C .spn-main--unnamed {
+  font-weight: 400;
+}
+
+/* ── The hover card, laid flat ── */
+
+.spn-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.spn .spn-card {
+  position: static;
+  z-index: auto;
+}
+
+/* C: a branch trails only the current tag; on the others it would crowd the row. */
+.spn .spn-tag[data-current="false"] .spn-trail {
+  display: none;
+}

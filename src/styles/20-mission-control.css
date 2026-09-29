@@ -98,13 +98,11 @@
   background: var(--text-muted);
 }
 
-/* DL-35.3 (F2): needs-you is the one state a mark carries — yellow for a
-   question, red once anything in the space failed (DL-3.2). */
-.space-mark[data-needs="asked"]::before {
-  background: var(--status-unread);
-}
-
-.space-mark[data-needs="failed"]::before {
+/* DL-35.3 (F2): needs-you is the one state a mark carries, in ONE colour —
+   red for a finished run you have not read, a question and a failure alike
+   (owner, 2026-09-29: no yellow on the spaces). The hover card's counts tell
+   them apart. */
+.space-mark[data-needs]::before {
   background: var(--red);
 }
 
@@ -142,10 +140,6 @@
   height: 4px;
   margin-left: -2px;
   border-radius: 50%;
-  background: var(--status-unread);
-}
-
-.space-mark[aria-selected="true"][data-needs="failed"]::after {
   background: var(--red);
 }
 
@@ -161,6 +155,9 @@
   border-radius: var(--radius-surface);
   background: var(--chrome-2);
   box-shadow: inset 0 0 0 1px var(--seam-raised);
+  /* Portalled to <body>, outside `.window`, which is where `--ui-font` is
+     set — without this the card falls back to the UA serif (DL-4.1). */
+  font-family: var(--ui-font);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -223,10 +220,8 @@
   background: color-mix(in srgb, var(--tone) 55%, transparent);
 }
 
-.space-mini i[data-state="asked"] {
-  background: var(--status-unread);
-}
-
+/* The same one colour as the marks (DL-35.3): asked and failed alike. */
+.space-mini i[data-state="asked"],
 .space-mini i[data-state="failed"] {
   background: var(--red);
 }
@@ -244,9 +239,10 @@
   overflow: clip;
 }
 
+/* No z-index: it sits BEFORE `.stage__tabs` in the DOM, so the incoming space
+   paints over it as it recedes, and the dock over both (DL-35.2). */
 .space-ghost {
   position: absolute;
-  z-index: 1;
   box-sizing: border-box;
   background: var(--sidebar-bg);
   pointer-events: none;
@@ -384,14 +380,10 @@
 .mc-space__needs {
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--status-unread);
+  background: var(--red);
   color: var(--bg);
   font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
-}
-
-.mc-space__needs[data-tone="failed"] {
-  background: var(--red);
 }
 
 .mc__spread {

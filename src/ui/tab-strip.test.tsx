@@ -251,17 +251,21 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(closeTabs).toHaveBeenCalledExactlyOnceWith([2]);
   });
 
-  it("Close to the Right follows the displayed manual order", async () => {
+  it("draws marks in the rail's order, not a manual strip order, and closes to the right of that", async () => {
+    // DL-35.3 (owner, 2026-09-29): a mark sits where its tab sits in the
+    // sidebar — one workspace's spaces together — so neither opening order
+    // nor a stored strip order moves it.
     tabViews.value = [
-      tab({ key: 1, name: "Alpha", openedAt: 1 }),
-      tab({ key: 2, name: "Beta", openedAt: 2 }),
-      tab({ key: 3, name: "Gamma", openedAt: 3 }),
+      tab({ key: 1, name: "Alpha", openedAt: 1, workspacePath: "/a" }),
+      tab({ key: 2, name: "Beta", openedAt: 2, workspacePath: "/b" }),
+      tab({ key: 3, name: "Gamma", openedAt: 3, workspacePath: "/a" }),
     ];
-    stripPreferences.value = { order: [3, 1, 2], pinned: [] };
+    stripPreferences.value = { order: [2, 3, 1], pinned: [] };
     const closeTabs = vi.fn(async () => true);
-    mount({ onCloseTabs: closeTabs });
-    expect(markKeys()).toEqual([3, 1, 2]);
-    context(1);
+    // Unscoped, as `App` mounts it since 2026-09-29: every workspace's spaces.
+    mount({ onCloseTabs: closeTabs, scopeToActiveRepository: false });
+    expect(markKeys()).toEqual([1, 3, 2]);
+    context(3);
     await menuAction("Close to the Right");
     expect(closeTabs).toHaveBeenCalledExactlyOnceWith([1]);
   });
@@ -480,7 +484,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(mark(2).getAttribute("aria-label")).toBe("repo 2 · 0 agents");
   });
 
-  it("raises a hover card on focus with the path under home, and drops it on blur", () => {
+  it("raises a name-and-counts hover card on focus, and drops it on blur", () => {
     tabViews.value = [tab({ key: 1, workspacePath: "/Users/deck/repo", panes: [pane()] })];
     mount({ scopeToActiveRepository: false });
 
@@ -490,6 +494,8 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(mark(1).getAttribute("aria-describedby")).toBe(card.id);
     expect(card.textContent).toContain("repo");
     expect(card.textContent).toContain("1 agent");
+    expect(card.textContent).not.toContain("/Users/deck");
+    expect(card.querySelector(".space-card__path, .space-card__mini")).toBeNull();
 
     act(() => mark(1).blur());
     expect(document.querySelector(".space-card")).toBeNull();
@@ -573,10 +579,11 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     const onSelectTab = vi.fn();
     mount({ onSelectTab });
 
-    // Every tab of the repository, in TAB order — a sub-package tab resolves
-    // through the same longest-prefix match, and the other repository's tab
-    // stays out.
-    expect(markKeys()).toEqual([1, 2, 3]);
+    // Every tab of the repository, in the RAIL's order (DL-35.3, 2026-09-29):
+    // the main checkout's two tabs — a sub-package tab resolves through the
+    // same longest-prefix match — then the side worktree's. The other
+    // repository's tab stays out of a scoped strip.
+    expect(markKeys()).toEqual([1, 3, 2]);
 
     act(() => {
       mark(3).dispatchEvent(new MouseEvent("click", { bubbles: true }));

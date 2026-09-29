@@ -3,7 +3,7 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { Globe, PushPin, SquaresFour, TerminalWindow, X } from "@phosphor-icons/react";
-import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 import {
   mergeStripOrder,
@@ -29,6 +29,7 @@ import { createTabStripDrag } from "./tab-strip-drag";
 import { closeChips, closeTargets, type TabCloseTarget } from "./tab-strip-close";
 import { SpaceBar } from "./spaces/space-bar";
 import { buildSpaces, type Space } from "./spaces/space-model";
+import { currentSpaceOrder } from "./spaces/space-order";
 
 export interface TabStripProps {
   transientPageOpen?: boolean;
@@ -157,16 +158,27 @@ export function TabStrip(props: TabStripProps) {
   const terminals = terminalChips(props, surfaceActive);
   const surfaces = surfaceChips(props);
   const preferences = stripPreferences.value;
-  // DL-35.3: every terminal tab first, as a space mark, then the documents and
-  // the browser as chips — each half in the strip's one merged order, so a
-  // pinned or dragged surface keeps its place among surfaces.
-  // `TabManager.stripSlots` partitions the same way, so ⌘1–9 counts what is
-  // drawn.
+  // DL-35.3: every terminal tab first, as a space mark in the RAIL's order
+  // (owner, 2026-09-29 — a mark sits where its tab sits in the sidebar and
+  // never moves because something else opened), then the documents and the
+  // browser as chips in the strip's merged order, so a pinned or dragged
+  // surface keeps its place among surfaces. `TabManager.stripSlots` reads the
+  // same `currentSpaceOrder`, so ⌘1–9 counts what is drawn.
   const merged = mergeStripOrder(terminals, surfaces, preferences).map(
     (slot) => (slot.kind === "tab" ? terminals : surfaces)[slot.index]!,
   );
+  const rank = new Map<number, number>(
+    currentSpaceOrder().flatMap((index, position) => {
+      const key = tabViews.value[index]?.key;
+      return key === undefined ? [] : [[key, position] as const];
+    }),
+  );
+  const railRank = (chip: Chip): number =>
+    rank.get(chip.terminalKey ?? -1) ?? Number.MAX_SAFE_INTEGER;
   const chips = [
-    ...merged.filter((chip) => chip.kind === "terminal"),
+    ...[...merged.filter((chip) => chip.kind === "terminal")].sort(
+      (left, right) => railRank(left) - railRank(right),
+    ),
     ...merged.filter((chip) => chip.kind !== "terminal"),
   ];
   const spaces = buildSpaces({
@@ -251,7 +263,6 @@ export function TabStrip(props: TabStripProps) {
       {spaces.length > 0 && (
         <SpaceBar
           spaces={spaces}
-          home={statusInfo.value.home}
           menuKey={owner?.kind === "terminal" ? (owner.terminalKey ?? null) : null}
           onGo={(space) => {
             props.onBeforeSelect?.();

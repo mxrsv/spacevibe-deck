@@ -637,6 +637,35 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     expect(rows()).toHaveLength(2);
   });
 
+  it("counts the project's running agents on its header, open or folded (DL-27.27)", async () => {
+    tabViews.value = [
+      tab({ key: 1, panes: [pane({ paneId: 11 }), pane({ paneId: 12, agent: "codex" })] }),
+      tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] }),
+      tab({ key: 3, panes: [pane({ paneId: 31, phase: "exited" })] }),
+      tab({ key: 4, panes: [pane({ paneId: 41, agent: null })] }),
+    ];
+    mount();
+    await settle();
+
+    const header = host.querySelector<HTMLElement>("button.asr-cluster__toggle");
+    const count = (): string | null | undefined =>
+      header?.querySelector(".asr-cluster__count")?.textContent;
+    expect(count()).toBe("3");
+
+    click(header);
+    expect(header?.getAttribute("aria-expanded")).toBe("false");
+    expect(count()).toBe("3");
+  });
+
+  it("omits the count when a project runs no agent", async () => {
+    tabViews.value = [tab({ panes: [pane({ agent: null })] })];
+    mount();
+    await settle();
+
+    expect(host.querySelector("button.asr-cluster__toggle")).not.toBeNull();
+    expect(host.querySelector(".asr-cluster__count")).toBeNull();
+  });
+
   it("keeps Tauri on the legacy repository rail", async () => {
     vi.stubGlobal("__TAURI_INTERNALS__", {});
     tabViews.value = [tab({ panes: [pane({ paneId: 11 })] })];
@@ -661,6 +690,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect([...(head?.children ?? [])].map((child) => child.className)).toEqual([
       "asr-cluster__folder",
       "asr-cluster__name",
+      "asr-cluster__count",
       "asr-cluster__caret",
     ]);
     expect(
@@ -686,7 +716,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
 
     const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
     expect(heads).toHaveLength(1);
-    expect(heads[0].textContent).toBe("main");
+    expect(heads[0].querySelector(".asr-cluster__name")?.textContent).toBe("main");
     // Both tabs belong to one repository (two checkouts, `main` and `side`),
     // each its own card, named by pane label — DL-27.15's REVERSED row line
     // (design §9.1): a row spends its word on the agent, capitalised via
@@ -710,7 +740,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     await settle();
     openAllCards();
 
-    expect(host.querySelector(".asr-cluster__head")?.textContent).toBe("main");
+    expect(host.querySelector(".asr-cluster__head .asr-cluster__name")?.textContent).toBe("main");
     expect(rows()[0].querySelector(".asr-card__name")?.textContent).toBe("Claude");
   });
 
@@ -856,7 +886,7 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     // a checkout does, named by the folder and badged `Folder` rather than
     // `Primary`, so an added folder does not read as a different kind of thing.
     expect(host.querySelectorAll(".asr-card")).toHaveLength(1);
-    expect(host.querySelector(".asr-cluster__head")?.textContent).toBe("main");
+    expect(host.querySelector(".asr-cluster__head .asr-cluster__name")?.textContent).toBe("main");
     expect(branches()).toEqual(["main"]);
     expect(host.querySelector(".asr-card__badge")?.textContent).toBe("Folder");
     expect(rows()).toHaveLength(1);
