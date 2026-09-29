@@ -1,8 +1,9 @@
 import { CaretDown } from "@phosphor-icons/react";
 import { useEffect } from "preact/hooks";
 import { settings, updateSettings } from "../../../settings/settings-store";
-import { ConfigRow } from "../../controls/config-row";
+import { ConfigRow, NOT_AVAILABLE_ON_WINDOWS } from "../../controls/config-row";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
+import { getDesktopEnvironment } from "../../../lib/platform";
 import { primaryModifierName } from "../../../lib/shortcut-label";
 import { externalApp, isExternalAppId } from "../../../lib/external-app-catalog";
 import { externalAppChoices, groupExternalApps } from "../../../links/external-app-choices";
@@ -47,15 +48,41 @@ export function LinksEditorSection() {
     void ensureExternalAppsScanned();
   }, []);
 
+  const pillLabel =
+    choices.find((choice) => choice.id === selected)?.label ?? missing?.label ?? selected;
+  const desc = `${primaryModifierName()}+click a path outside your open workspaces`;
+
+  // Windows cannot open external apps: `listExternalApps` answers `[]` off macOS
+  // (`electron/external-apps.ts`) and `open_in_app` refuses (`electron/links.ts`).
+  // The host cannot tell the renderer so — a Mac with no apps installed answers
+  // `[]` too — which is why this is the one place that reads the platform.
+  //
+  // The row keeps its place and its pill, but mounts no `<select>` to open, and
+  // takes `aria-disabled` rather than `disabled` so the tooltip stays reachable
+  // by keyboard (DL-23.6). The stored choice is left alone.
+  if (getDesktopEnvironment().platform === "windows") {
+    return (
+      <ConfigRow label="Open with" desc={desc}>
+        <button
+          type="button"
+          class="cfg-btn cfg-btn--disabled cfg-btn--unavailable"
+          aria-label="Open with"
+          aria-disabled="true"
+          title={NOT_AVAILABLE_ON_WINDOWS}
+        >
+          <span class="cfg-btn__text">{pillLabel}</span>
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={CaretDown} size={ROW_ICON} />
+          </span>
+        </button>
+      </ConfigRow>
+    );
+  }
+
   return (
-    <ConfigRow
-      label="Open with"
-      desc={`${primaryModifierName()}+click a path outside your open workspaces`}
-    >
+    <ConfigRow label="Open with" desc={desc}>
       <span class="cfg-btn cfg-btn--overlay">
-        <span class="cfg-btn__text">
-          {choices.find((choice) => choice.id === selected)?.label ?? missing?.label ?? selected}
-        </span>
+        <span class="cfg-btn__text">{pillLabel}</span>
         <span class="cfg-btn__hint">
           <DeckIcon icon={CaretDown} size={ROW_ICON} />
         </span>

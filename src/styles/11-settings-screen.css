@@ -349,6 +349,14 @@
   color: var(--text-primary);
 }
 
+/* An unavailable pill drops the hover wash on its caret too (DL-23.6). The
+   rule above out-specifies `.cfg-btn--disabled:hover .cfg-btn__hint`, so
+   without this the caret of the Windows "Open with" pill would light up under
+   the pointer. Reached only by that pill. */
+.settings-screen .cfg-btn--unavailable:hover .cfg-btn__hint {
+  color: var(--text-faint);
+}
+
 /* The clear-override button (DL-6.1), mounted here by the shortcut rows and
    the logo row. Accent ink plus a 14% accent wash on hover was the loudest
    colour left on the surface.
