@@ -352,8 +352,9 @@
 /* An unavailable pill drops the hover wash on its caret too (DL-23.6). The
    rule above out-specifies `.cfg-btn--disabled:hover .cfg-btn__hint`, so
    without this the caret of the Windows "Open with" pill would light up under
-   the pointer. Reached only by that pill. */
-.settings-screen .cfg-btn--unavailable:hover .cfg-btn__hint {
+   the pointer. Reached only by that pill, which only Windows renders, and
+   scoped under `.window--windows` like every Windows-only rule. */
+.window--windows .settings-screen .cfg-btn--unavailable:hover .cfg-btn__hint {
   color: var(--text-faint);
 }
 
