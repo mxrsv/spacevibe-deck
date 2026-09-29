@@ -43,6 +43,42 @@ describe("compact Original launch page", () => {
     expect(host.textContent).not.toContain("Recently used");
     expect(host.textContent).not.toContain("Default profile");
   });
+  it("offers Split and New space side by side when the folder already has a tab", () => {
+    const props = mount({ onRunInNewSpace: vi.fn() });
+    const buttons = [
+      ...host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button"),
+    ];
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Split Claude Code into the current tab",
+      "Run Claude Code in a new space",
+    ]);
+    // Split stays the first, focused control: Enter behaves as it always did.
+    expect(document.activeElement).toBe(buttons[0]);
+    act(() => buttons[1].click());
+    expect(props.onRunInNewSpace).toHaveBeenCalledExactlyOnceWith("claude");
+    expect(props.onRun).not.toHaveBeenCalled();
+    act(() => buttons[0].click());
+    expect(props.onRun).toHaveBeenCalledExactlyOnceWith("claude");
+    // The buttons say what will happen, so the destination row does not repeat it.
+    expect(host.textContent).not.toContain("Split · same tab");
+  });
+
+  it("keeps one Run, and the New tab destination, when nothing exists to split", () => {
+    mount({
+      target: { kind: "first-pane", workspacePath: "/repo" },
+      onRunInNewSpace: vi.fn(),
+    });
+    const buttons = host.querySelectorAll(".agent-launch-page__card button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].getAttribute("aria-label")).toBe("Run Claude Code");
+    expect(host.querySelector(".agent-launch-page__destination")?.textContent).toContain("New tab");
+  });
+
+  it("never offers the second button to a page that cannot open a space", () => {
+    mount();
+    expect(host.querySelectorAll(".agent-launch-page__card button")).toHaveLength(1);
+  });
+
   it("prevents repeated Run while pending and displays a recoverable error", () => {
     const props = mount({ pending: true, error: "Folder unavailable" });
     host.querySelector<HTMLButtonElement>("[data-launch-primary]")!.click();

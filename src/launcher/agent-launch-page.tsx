@@ -14,6 +14,11 @@ export interface AgentLaunchPageProps {
   readonly error: string | null;
   readonly active?: boolean;
   readonly onRun: (agentId: string) => void;
+  /**
+   * Run in a space of its own. Offered only when the target is a split — a
+   * folder with no tab starts one anyway, so there is nothing to choose.
+   */
+  readonly onRunInNewSpace?: (agentId: string) => void;
   readonly onBack: () => void;
   readonly onSettings: () => void;
 }
@@ -59,16 +64,14 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
         </header>
         <div class="agent-launch-page__destination">
           <span title={props.target.workspacePath}>{folder}</span>
-          <span
-            title={
-              props.target.kind === "split"
-                ? `Splits the roomiest pane in the tab holding pane ${props.target.paneId}`
-                : props.target.workspacePath
-            }
-          >
-            <DeckIcon icon={Columns} size={14} />
-            {props.target.kind === "split" ? "Split · same tab" : "New tab"}
-          </span>
+          {/* With a tab to split the buttons say what each press does, so the
+              row would only repeat them; without one it names the one outcome. */}
+          {props.target.kind !== "split" && (
+            <span title={props.target.workspacePath}>
+              <DeckIcon icon={Columns} size={14} />
+              New tab
+            </span>
+          )}
         </div>
         {!props.resolved ? <p role="status">Looking for installed agents…</p> : null}
         {props.resolved && props.agents.length === 0 ? (
@@ -79,7 +82,12 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
             </button>
           </div>
         ) : null}
-        <AgentLaunchCards agents={props.agents} pending={props.pending} onRun={props.onRun} />
+        <AgentLaunchCards
+          agents={props.agents}
+          pending={props.pending}
+          onRun={props.onRun}
+          onRunInNewSpace={props.target.kind === "split" ? props.onRunInNewSpace : undefined}
+        />
         {props.pending ? <p role="status">Opening agent…</p> : null}
         {props.error ? (
           <p class="agent-launch-page__error" role="alert">

@@ -1452,11 +1452,15 @@ export function createTabManager(
     canCommit: () => boolean,
     checkoutRoots: () => readonly string[],
   ): Promise<{ owner: TabEntry; paneId: number } | null> {
-    if (target.kind === "first-pane") {
+    if (target.kind !== "split") {
+      // A `first-pane` launch is only valid while the folder still has no tab —
+      // one that appeared since the page opened turns it into a split, which
+      // the user never chose. A `new-space` launch wants a tab regardless.
       const valid = () =>
         canCommit() &&
         !disposed &&
-        captureAgentLaunchTarget(target.workspacePath, checkoutRoots())?.kind === "first-pane";
+        (target.kind === "new-space" ||
+          captureAgentLaunchTarget(target.workspacePath, checkoutRoots())?.kind === "first-pane");
       const entry = await materializeEntry({
         layout: null,
         cwds: [target.workspacePath],
@@ -1535,8 +1539,9 @@ export function createTabManager(
         !disposed && ownerOf(paneId) === owner && owner.manager.isPaneLaunchable(paneId);
       launchCommandByPane.set(paneId, command);
       pageLaunchOwners.set(paneId, owner);
-      // First-pane materialization already registered startup readiness.
-      const pollDeferred = target.kind === "first-pane" || deferWindowsStartupPoll([paneId]);
+      // Materializing a tab (first pane or new space) already registered
+      // startup readiness; only a split into a live tab still has to.
+      const pollDeferred = target.kind !== "split" || deferWindowsStartupPoll([paneId]);
       void armLaunch([{ id: paneId, command }], owned)
         .then((armed) => {
           if (!armed && !disposed) {

@@ -97,6 +97,43 @@ describe("explicit agent launch target", () => {
     tm.dispose();
   });
 
+  it("opens a new space in a folder that already has one, instead of splitting it", async () => {
+    const pty = createMemoryPtyClient({
+      nextId: 1,
+      infos: new Map([1, 2].map((id) => [id, processInfo(id, "/repo", "zsh", "idle-shell", null)])),
+    });
+    const { tm } = wire(pty);
+    await tm.openQuickAgent(null, "/repo");
+    // The page would offer a split here; the user chose a new space instead.
+    expect(tm.captureAgentLaunchTarget("/repo")?.kind).toBe("split");
+    const result = await tm.launchAgentAtTarget(
+      { kind: "new-space", workspacePath: "/repo" },
+      "claude",
+      () => true,
+    );
+    expect(result.kind).toBe("spawned");
+    expect(tabViews.value.map((tab) => tab.workspacePath)).toEqual(["/repo", "/repo"]);
+    expect(tabViews.value.map((tab) => tab.panes?.length)).toEqual([1, 1]);
+    if (result.kind === "spawned") {
+      expect(result.receipt.tabKey).toBe(tabViews.value[1]?.key);
+    }
+    tm.dispose();
+  });
+
+  it("does not open a new space once the page has been closed", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const { tm } = wire(pty);
+    await tm.openQuickAgent(null, "/repo");
+    const result = await tm.launchAgentAtTarget(
+      { kind: "new-space", workspacePath: "/repo" },
+      "claude",
+      () => false,
+    );
+    expect(result.kind).toBe("cancelled");
+    expect(tabViews.value).toHaveLength(1);
+    tm.dispose();
+  });
+
   it("rejects a captured destination later identified as another checkout", async () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const { tm } = wire(pty);

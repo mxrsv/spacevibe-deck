@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAgentLaunchPageStore } from "./agent-launch-page-store";
-import type { AgentLaunchResult } from "../terminal/agent-launch-target";
+import type { AgentLaunchPlacement, AgentLaunchResult } from "../terminal/agent-launch-target";
 
 const target = { kind: "first-pane", workspacePath: "/repo" } as const;
 describe("agent launch page state", () => {
@@ -83,6 +83,21 @@ describe("agent launch page state", () => {
     expect(page.pending.value).toBe(false);
     expect(reveal).not.toHaveBeenCalled();
     expect(releaseStage).not.toHaveBeenCalled();
+  });
+
+  it("hands the chosen placement to the launch, defaulting to the page's own target", async () => {
+    const page = createAgentLaunchPageStore();
+    const launch = vi.fn(
+      async (
+        _agent: string,
+        _valid: () => boolean,
+        _placement: AgentLaunchPlacement,
+      ): Promise<AgentLaunchResult> => ({ kind: "cancelled" }),
+    );
+    page.open({ target, launch, restoreFocus: vi.fn(), reveal: vi.fn() });
+    await page.run("claude");
+    await page.run("claude", "new-space");
+    expect(launch.mock.calls.map((call) => call[2])).toEqual(["target", "new-space"]);
   });
 
   it("reports a thrown launch without stranding the page", async () => {

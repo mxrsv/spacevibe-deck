@@ -93,7 +93,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.agent-launch-page__destination > span:last-child {
+.agent-launch-page__destination > span + span {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -153,6 +153,21 @@
 .agent-launch-page__card button:hover:not(:disabled) {
   border-color: var(--hair-strong);
   background: var(--chrome-2);
+}
+/* Split and New space share the one button row: two equal columns, the same
+   height and outline as the single Run, so a card does not change size when
+   the choice appears. */
+.agent-launch-page__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 18px;
+}
+.agent-launch-page__choices button {
+  justify-content: center;
+  margin-top: 0;
+  padding-inline: 4px;
+  white-space: nowrap;
 }
 .agent-launch-page__empty button {
   padding: 7px 12px;

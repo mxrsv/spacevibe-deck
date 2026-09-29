@@ -7,7 +7,16 @@ export type AgentLaunchTarget =
       readonly tabKey: number;
       readonly paneId: number;
     }
-  | { readonly kind: "first-pane"; readonly workspacePath: string };
+  | { readonly kind: "first-pane"; readonly workspacePath: string }
+  /**
+   * The user asked for a space of its own although the folder already has a
+   * tab. Never captured: `resolveAgentLaunchTarget` only answers `split` or
+   * `first-pane`, and the page derives this from a press on `New space`.
+   */
+  | { readonly kind: "new-space"; readonly workspacePath: string };
+
+/** What a Run press asks for: the captured target as it stands, or a space. */
+export type AgentLaunchPlacement = "target" | "new-space";
 
 export interface LaunchTargetTab {
   readonly key: number;

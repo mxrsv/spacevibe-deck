@@ -1333,8 +1333,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         ))
           element.inert = false;
       },
-      launch: (agentId, canCommit) =>
-        manager.launchAgentAtTarget(target, agentId, canCommit, roots),
+      launch: (agentId, canCommit, placement) =>
+        manager.launchAgentAtTarget(
+          placement === "new-space"
+            ? { kind: "new-space", workspacePath: target.workspacePath }
+            : target,
+          agentId,
+          canCommit,
+          roots,
+        ),
       reveal: (receipt, canFocus) =>
         requestAnimationFrame(() => {
           if (canFocus() && !settingsOpen.value && !boardOpen.value)
@@ -2362,6 +2369,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }
               onRun={(id) => {
                 void agentLaunchPage.run(id);
+              }}
+              onRunInNewSpace={(id) => {
+                void agentLaunchPage.run(id, "new-space");
               }}
               onBack={() => agentLaunchPage.close(true)}
               onSettings={() => {

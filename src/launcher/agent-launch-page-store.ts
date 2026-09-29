@@ -1,13 +1,18 @@
 import { signal } from "@preact/signals";
 import type {
   AgentLaunchTarget,
+  AgentLaunchPlacement,
   AgentLaunchResult,
   AgentLaunchReceipt,
 } from "../terminal/agent-launch-target";
 
 export interface AgentLaunchPageRequest {
   readonly target: AgentLaunchTarget;
-  readonly launch: (agentId: string, canCommit: () => boolean) => Promise<AgentLaunchResult>;
+  readonly launch: (
+    agentId: string,
+    canCommit: () => boolean,
+    placement: AgentLaunchPlacement,
+  ) => Promise<AgentLaunchResult>;
   readonly reveal: (receipt: AgentLaunchReceipt, canFocus: () => boolean) => void;
   readonly restoreFocus: (canRestore: () => boolean) => void;
   readonly releaseStage?: () => void;
@@ -44,7 +49,7 @@ export function createAgentLaunchPageStore() {
     if (restore) previous?.restoreFocus(() => epoch === closeEpoch && request.value === null);
   }
 
-  async function run(agentId: string): Promise<void> {
+  async function run(agentId: string, placement: AgentLaunchPlacement = "target"): Promise<void> {
     const current = request.value;
     if (current === null || pending.value) return;
     const ownEpoch = epoch;
@@ -52,7 +57,7 @@ export function createAgentLaunchPageStore() {
     pending.value = true;
     error.value = null;
     try {
-      const result = await current.launch(agentId, isCurrent);
+      const result = await current.launch(agentId, isCurrent, placement);
       if (!isCurrent()) return;
       if (result.kind === "spawned") {
         request.value = null;
