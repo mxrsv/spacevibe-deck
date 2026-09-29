@@ -94,12 +94,14 @@ const needsDecision = (site: Site): boolean =>
   typeof site.weight === "number" && !STATIC_WEIGHTS.includes(site.weight);
 
 describe("windows weight ledger", () => {
-  it("is imported last, so it follows every rule it answers", () => {
+  it("is imported by the stylesheet index", () => {
+    // Source order is not load-bearing here: every rule is its original plus
+    // one class, so specificity wins wherever the two sheets load. A ledger
+    // nobody imports would silently do nothing on Windows.
     const imports = [...read(INDEX).matchAll(/@import\s+["']([^"']+)["'];/g)].map((m) => m[1]);
-    expect(
-      imports[imports.length - 1],
-      "src/styles.css must import the ledger after every other partial",
-    ).toBe("./styles/21-windows-weights.css");
+    expect(imports, "src/styles.css must @import the ledger").toContain(
+      "./styles/21-windows-weights.css",
+    );
   });
 
   it("lets every weight the face lacks fall to a Windows-scoped decision", () => {
