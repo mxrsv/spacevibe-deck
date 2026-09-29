@@ -195,6 +195,7 @@ export function useMissionControl(deps: MissionControlDeps): MissionControlHandl
         fromRects={opening.fromRects}
         leaveRef={leaveRef}
         onExit={exit}
+        onRename={(space, name) => deps.tabs()?.renameTab(space.tabIndex, name)}
         landingRects={() => deps.tabs()?.activeSlotRects() ?? []}
         onDone={(choice) => done(choice, openedAs)}
       />

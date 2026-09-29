@@ -410,7 +410,32 @@
   font-size: var(--type-micro);
 }
 
+/* The name fills the row, so an unnamed space with no index still has
+   somewhere to double-click; a long name truncates rather than push the count. */
+.mc-space__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-space__name:not(.mc-space__index) {
+  color: var(--text-primary);
+}
+
+.mc-space__rename {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 18px;
+  font-size: var(--type-micro);
+  font-weight: 400;
+}
+
 .mc-space__needs {
+  flex: none;
   padding: 0 4px;
   border-radius: 999px;
   background: var(--red);

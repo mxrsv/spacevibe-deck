@@ -2,9 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/ho
 import type { PaneRect } from "../../lib/pane-geometry";
 import { trapTab } from "../focus-trap";
 import { fade, flyFrom, flyTo, settled, type Box } from "../spaces/space-motion";
-import { needsTone, spaceCounts, spaceLabel, type Space } from "../spaces/space-model";
-import { SpaceMini } from "../spaces/space-mini";
+import type { Space } from "../spaces/space-model";
 import { MissionWindow } from "./mission-window";
+import { ShelfSpace } from "./mission-shelf-space";
 
 /**
  * Mission Control (DL-35.1): the current space's panes zoom out into a spread
@@ -41,6 +41,8 @@ export interface MissionControlProps {
   readonly fromRects: readonly PaneRect[];
   /** Carry out an exit on the stage underneath, synchronously. */
   readonly onExit: (exit: MissionExit) => void;
+  /** Name a space from its thumbnail, or clear its name with `null`. */
+  readonly onRename: (space: Space, name: string | null) => void;
   /** The current space's pane rects, read after `onExit` switched it. */
   readonly landingRects: () => readonly PaneRect[];
   /** The zoom-in has finished; unmount. */
@@ -77,6 +79,7 @@ function Shelf(props: {
   readonly previewKey: number | null;
   readonly onPreview: (space: Space) => void;
   readonly onEnter: (space: Space) => void;
+  readonly onRename: (space: Space, name: string | null) => void;
 }) {
   return (
     <div class="mc-shelf" role="group" aria-label="Spaces">
@@ -85,27 +88,14 @@ function Shelf(props: {
           <span class="mc-shelf__folder">{workspace.folder}</span>
           <div class="mc-shelf__row">
             {workspace.spaces.map((space) => (
-              <button
-                type="button"
+              <ShelfSpace
                 key={space.key}
-                class="mc-space"
-                aria-current={space.current ? "true" : undefined}
-                data-previewed={space.key === props.previewKey ? "true" : undefined}
-                aria-label={`${spaceLabel(space)} · ${spaceCounts(space)}`}
-                onMouseEnter={() => props.onPreview(space)}
-                onFocus={() => props.onPreview(space)}
-                onClick={() => props.onEnter(space)}
-              >
-                <SpaceMini panes={space.panes} class="mc-space__mini" />
-                <span class="mc-space__label" aria-hidden="true">
-                  {space.index !== null && <span class="mc-space__index">{space.index}</span>}
-                  {space.needsCount > 0 && (
-                    <span class="mc-space__needs" data-tone={needsTone(space) ?? undefined}>
-                      {space.needsCount}
-                    </span>
-                  )}
-                </span>
-              </button>
+                space={space}
+                previewed={space.key === props.previewKey}
+                onPreview={props.onPreview}
+                onEnter={props.onEnter}
+                onRename={props.onRename}
+              />
             ))}
           </div>
         </div>
@@ -183,6 +173,11 @@ export function MissionControl(props: MissionControlProps) {
       const active = document.activeElement;
       const layer = active instanceof Element ? active.closest(OTHER_LAYER) : null;
       if (layer !== null && layer !== root.current) return;
+      // A rename field answers its own Escape (it cancels the edit); one
+      // press must not also close Mission Control.
+      if (event.key === "Escape" && active instanceof Element && active.closest(".space-rename")) {
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -212,6 +207,7 @@ export function MissionControl(props: MissionControlProps) {
         previewKey={previewed?.key ?? null}
         onPreview={(space) => setPreviewKey(space.key)}
         onEnter={(space) => leave({ kind: "space", space })}
+        onRename={props.onRename}
       />
       <div
         class="mc__spread"

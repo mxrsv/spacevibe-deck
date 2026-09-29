@@ -62,6 +62,7 @@ describe("MissionControl", () => {
       focusedPaneId: 10,
       fromRects: [],
       onExit: (exit) => exits.push(exit),
+      onRename: vi.fn(),
       landingRects: () => [],
       onDone: done,
       leaveRef: { current: null },
@@ -106,6 +107,76 @@ describe("MissionControl", () => {
     const { exits } = mount();
     await act(async () => host.querySelectorAll<HTMLButtonElement>(".mc-space")[1].click());
     expect(exits).toEqual([{ kind: "space", space: expect.objectContaining({ key: 2 }) }]);
+  });
+
+  it("enters a space from the keyboard, though its thumbnail is not a <button>", async () => {
+    const { exits } = mount();
+    const thumb = host.querySelectorAll<HTMLElement>(".mc-space")[1];
+    await act(async () => {
+      thumb.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(exits).toEqual([{ kind: "space", space: expect.objectContaining({ key: 2 }) }]);
+  });
+
+  describe("naming a space on the shelf (DL-35.1)", () => {
+    const named = [
+      space(1, { current: true, index: 1, name: "auth" }),
+      space(2, { index: 2 }),
+      space(3, { folder: "spacevibe-api", path: "/w/spacevibe-api" }),
+    ];
+    const label = (at: number): string =>
+      host.querySelectorAll(".mc-space")[at].querySelector(".mc-space__label")!.textContent!;
+    const nameOf = (at: number): HTMLElement =>
+      host.querySelectorAll(".mc-space")[at].querySelector<HTMLElement>(".mc-space__name")!;
+    const field = (): HTMLInputElement | null => host.querySelector("input.space-rename");
+    const edit = (at: number): void => {
+      act(() => {
+        nameOf(at).dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      });
+    };
+    const press = (key: string): void => {
+      act(() => {
+        field()!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+    };
+
+    it("shows a name where an unnamed space shows its index, and keeps the folder header", () => {
+      mount({ spaces: named });
+      expect([label(0), label(1), label(2)]).toEqual(["auth", "2", ""]);
+      expect(host.querySelector(".mc-shelf__folder")?.textContent).toBe("spacevibe-deck");
+      expect(host.querySelectorAll(".mc-space")[0].getAttribute("aria-label")).toBe(
+        "auth · 1 agent",
+      );
+    });
+
+    it("renames on a double-click of the label, without entering the space", async () => {
+      const onRename = vi.fn();
+      const { exits } = mount({ spaces: named, onRename });
+      // The first press of a double-click must not leave Mission Control.
+      await act(async () => nameOf(1).click());
+      expect(exits).toEqual([]);
+      edit(1);
+      expect(field()!.placeholder).toBe("spacevibe-deck 2");
+
+      act(() => {
+        field()!.value = "scroll fix";
+      });
+      press("Enter");
+      expect(onRename).toHaveBeenCalledWith(expect.objectContaining({ key: 2 }), "scroll fix");
+      expect(field()).toBeNull();
+    });
+
+    it("lets Escape cancel the edit without closing Mission Control", async () => {
+      const onRename = vi.fn();
+      const { exits } = mount({ spaces: named, onRename });
+      edit(0);
+      expect(field()!.value).toBe("auth");
+      await act(async () => press("Escape"));
+      expect(field()).toBeNull();
+      expect(onRename).not.toHaveBeenCalled();
+      expect(exits).toEqual([]);
+      expect(host.querySelector(".mc")).not.toBeNull();
+    });
   });
 
   it("returns unchanged on Escape and on the empty spread, and leaves only once", async () => {
