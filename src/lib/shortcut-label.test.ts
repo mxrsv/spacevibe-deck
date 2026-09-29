@@ -3,9 +3,21 @@ import type { KeyBinding } from "../terminal/action-registry";
 import {
   formatKeyChord,
   formatShortcutBinding,
+  primaryModifierKeycap,
   shortcutLabel,
   type KeyChord,
 } from "./shortcut-label";
+
+describe("primaryModifierKeycap", () => {
+  it("is the Command glyph everywhere but Windows", () => {
+    expect(primaryModifierKeycap("macos")).toBe("⌘");
+    expect(primaryModifierKeycap("unsupported")).toBe("⌘");
+  });
+
+  it("is Ctrl on Windows", () => {
+    expect(primaryModifierKeycap("windows")).toBe("Ctrl");
+  });
+});
 
 describe("shortcutLabel", () => {
   it("preserves the preferred macOS labels", () => {

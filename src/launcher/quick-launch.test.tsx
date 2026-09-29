@@ -172,6 +172,26 @@ describe("QuickLaunch", () => {
     expect(blocked.onStartTask).not.toHaveBeenCalled();
   });
 
+  describe("start hint in the footer", () => {
+    const footerKeycaps = (): (string | null)[] =>
+      Array.from(host.querySelectorAll(".nt-quick-launch__foot kbd")).map(
+        (keycap) => keycap.textContent,
+      );
+
+    it("names the Command key on macOS", () => {
+      mount();
+      expect(footerKeycaps()).toEqual(["⌘", "↵"]);
+      expect(host.querySelector(".nt-quick-launch__foot span")?.textContent).toBe("⌘↵ start");
+    });
+
+    it("names the Control key on Windows, where the chord runs on Ctrl", () => {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({ platform: "windows", homeDir: "C:\\Users\\dev" });
+      mount();
+      expect(footerKeycaps()).toEqual(["Ctrl", "↵"]);
+    });
+  });
+
   it("returns from an in-place subview before closing the launcher", () => {
     const onBack = vi.fn();
     act(() =>

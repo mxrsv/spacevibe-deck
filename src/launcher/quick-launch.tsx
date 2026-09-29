@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import { tildify } from "../lib/process-info";
+import { primaryModifierKeycap } from "../lib/shortcut-label";
 import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { workspaceLabel } from "../lib/workspace-label";
 import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
@@ -187,7 +188,7 @@ export function QuickLaunch(props: QuickLaunchProps) {
       />
       <footer class="nt-quick-launch__foot">
         <span>
-          <kbd>⌘</kbd>
+          <kbd>{primaryModifierKeycap()}</kbd>
           <kbd>↵</kbd> start
         </span>
         <button type="button" onClick={props.onManageAgents}>

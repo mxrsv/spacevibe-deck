@@ -107,6 +107,19 @@ export function primaryModifierName(
 }
 
 /**
+ * The primary modifier as a keycap: `⌘` on macOS, `Ctrl` on Windows.
+ *
+ * Not `primaryModifierName`: that one is prose ("Cmd+click"), this one is the
+ * glyph a `<kbd>` shows. A hint printing `⌘` on Windows names a key the user
+ * does not have (DL-17.7).
+ */
+export function primaryModifierKeycap(
+  platform: DesktopPlatform = getDesktopEnvironment().platform,
+): "⌘" | "Ctrl" {
+  return platform === "windows" ? "Ctrl" : "⌘";
+}
+
+/**
  * `"Split vertically (⌘D)"`, or just `"Split vertically"` when the action has
  * no chord.
  *

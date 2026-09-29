@@ -6,6 +6,14 @@ import { settings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
 import type { Pane, SelectionSnapshot } from "./pane";
 import { matchBinding } from "./keymap";
+import { getDesktopEnvironment } from "../lib/platform";
+import { formatKeyChord, type KeyChord } from "../lib/shortcut-label";
+
+// The bar's own Enter handling, shown in its tooltips. Formatted rather than
+// written out so Windows reads "Shift+Enter", not a glyph it has no key for
+// (DL-17.7).
+const NEXT_MATCH_CHORD: KeyChord = { key: "enter" };
+const PREVIOUS_MATCH_CHORD: KeyChord = { key: "enter", shift: true };
 
 /** "resultIndex/resultCount" for the bar counter; "0/0" when empty. */
 export function formatMatchCount(resultIndex: number, resultCount: number): string {
@@ -205,11 +213,22 @@ export function openSearchBar(pane: Pane): void {
     }
   };
 
+  const { platform } = getDesktopEnvironment();
   element.append(
     input,
     counter,
-    barButton(CaretLeft, "Previous match", "Previous match (⇧↩)", findPrevious),
-    barButton(CaretRight, "Next match", "Next match (↩)", findNext),
+    barButton(
+      CaretLeft,
+      "Previous match",
+      `Previous match (${formatKeyChord(PREVIOUS_MATCH_CHORD, platform)})`,
+      findPrevious,
+    ),
+    barButton(
+      CaretRight,
+      "Next match",
+      `Next match (${formatKeyChord(NEXT_MATCH_CHORD, platform)})`,
+      findNext,
+    ),
     barButton(X, "Close", "Close (Esc)", closeSearchBar),
   );
 

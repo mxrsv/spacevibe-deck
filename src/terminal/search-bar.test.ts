@@ -268,6 +268,42 @@ describe("the search bar's own controls", () => {
   });
 });
 
+describe("the search bar's key hints", () => {
+  afterEach(() => {
+    closeSearchBar();
+    resetDesktopEnvironmentForTests();
+  });
+
+  function tooltips(platform: "macos" | "windows", homeDir: string): Record<string, string> {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({ platform, homeDir });
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    return Object.fromEntries(
+      Array.from(pane.element.querySelectorAll<HTMLButtonElement>("button")).map((button) => [
+        button.getAttribute("aria-label") ?? "",
+        button.title,
+      ]),
+    );
+  }
+
+  it("keeps the macOS glyphs", () => {
+    expect(tooltips("macos", "/Users/dev")).toEqual({
+      "Previous match": "Previous match (⇧↩)",
+      "Next match": "Next match (↩)",
+      Close: "Close (Esc)",
+    });
+  });
+
+  it("spells the keys out on Windows, where the glyphs are not keys", () => {
+    expect(tooltips("windows", "C:\\Users\\dev")).toEqual({
+      "Previous match": "Previous match (Shift+Enter)",
+      "Next match": "Next match (Enter)",
+      Close: "Close (Esc)",
+    });
+  });
+});
+
 describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or without an open bar)", () => {
   afterEach(() => {
     closeSearchBar();
