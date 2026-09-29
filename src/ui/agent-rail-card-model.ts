@@ -14,8 +14,20 @@ export interface RailCardPane extends RailPaneRow {
   readonly tabIndex: number;
   /** Empty when the pane/session pairing is not authoritative. */
   readonly model: string;
-  /** Unique within its checkout; user names win before numeric ordinals. */
+  /**
+   * Unique within its checkout, and the row's accessible name. An unnamed
+   * tab's pane is its `sentence`; a named tab's is `name · sentence`, so the
+   * ordinal that keeps rows apart lands on the sentence and never on a name.
+   */
   readonly label: string;
+  /**
+   * The name the user gave this pane's tab (DL-35.3); null or absent while
+   * unnamed. Optional, like `TabView.panes`: `buildCardEntries` always sets
+   * it, and a fixture that predates the field reads as unnamed.
+   */
+  readonly tabName?: string | null;
+  /** The pane's own words: its newest turn, else its agent's name. Absent = `label`. */
+  readonly sentence?: string;
 }
 
 /** One tab with no agent pane, retained after the visual tab tier is removed. */
@@ -81,7 +93,7 @@ export function buildCardEntries(
   rows: readonly RailTabRow[],
   models: ReadonlyMap<number, string> | undefined,
 ): readonly RailCardEntry[] {
-  type AgentDraft = Omit<RailCardPane, "label"> & { readonly baseLabel: string };
+  type AgentDraft = Omit<RailCardPane, "label" | "sentence"> & { readonly baseSentence: string };
   type ShellDraft = Omit<RailCardShell, "label"> & { readonly baseLabel: string };
   type EntryDraft = AgentDraft | ShellDraft;
 
@@ -101,8 +113,9 @@ export function buildCardEntries(
           kind: "agent" as const,
           tabIndex: row.index,
           model: models?.get(pane.paneId) ?? "",
-          // DL-27.15 / DL-27.21: the pane's own sentence takes its default name.
-          baseLabel: row.named ? row.title : pane.message.trim() || displayAgent(pane.agent),
+          tabName: row.named ? row.title : null,
+          // DL-27.15: the pane's own sentence, whether or not its tab is named.
+          baseSentence: pane.message.trim() || displayAgent(pane.agent),
         })),
   );
 
@@ -117,14 +130,25 @@ export function buildCardEntries(
   // costs one `Set` and keeps first-come ordering: an earlier row never
   // renumbers because a later one wanted its word.
   const taken = new Set<string>();
-  return drafts.map((draft): RailCardEntry => {
-    const { baseLabel, ...entry } = draft;
-    let label = baseLabel;
-    for (let ordinal = 2; taken.has(label); ordinal += 1) {
-      label = `${baseLabel} ${ordinal}`;
+  const claim = (prefix: string, base: string): string => {
+    let word = base;
+    for (let ordinal = 2; taken.has(prefix + word); ordinal += 1) {
+      word = `${base} ${ordinal}`;
     }
-    taken.add(label);
-    return { ...entry, label };
+    taken.add(prefix + word);
+    return word;
+  };
+  return drafts.map((draft): RailCardEntry => {
+    if ("baseLabel" in draft) {
+      const { baseLabel, ...shell } = draft;
+      return { ...shell, label: claim("", baseLabel) };
+    }
+    // A named tab's ordinal goes on the sentence, so a name never reads
+    // `auth 2` (DL-27.15, amended for named tabs).
+    const { baseSentence, ...pane } = draft;
+    const prefix = pane.tabName === null ? "" : `${pane.tabName} · `;
+    const sentence = claim(prefix, baseSentence);
+    return { ...pane, sentence, label: prefix + sentence };
   });
 }
 

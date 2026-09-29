@@ -545,11 +545,19 @@ button.asr-bare:hover {
    `.asr-leaf > span` precedent (04b), extended to every non-control child this row has. */
 .asr-card__row > .asr-card__glyph,
 .asr-card__row > .asr-card__name,
+.asr-card__row > .asr-card__text,
 .asr-card__row > .asr-card__pill,
 .asr-card__row > .asr-card__status,
 .asr-card__row > .asr-card__load {
   position: relative;
   pointer-events: none;
+}
+
+/* The one control among them: while a tab is being renamed its rename field
+   must receive the pointer, so the text block rises above the hit layer. */
+.asr-card__row > .asr-card__text[data-editing="true"] {
+  z-index: 1;
+  pointer-events: auto;
 }
 
 /* Explicit placement keeps the shared controls on one row even when the model is absent.
@@ -795,6 +803,40 @@ button.asr-bare:hover {
   font: 500 var(--type-meta) / 1.2 var(--ui-font);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* DL-27.15, amended for named tabs: a named tab's pane row is two lines — the
+   name in semibold, then that pane's sentence. Unnamed rows keep the one line
+   above and never reach this block. */
+.asr-card__text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.asr-card__row[data-named="true"] {
+  padding-block: 5px;
+}
+
+.asr-card__row[data-named="true"] .asr-card__name {
+  font-weight: 600;
+}
+
+.asr-card__sentence {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asr-card__rename {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 20px;
+  font-size: var(--type-meta);
+  font-weight: 400;
 }
 
 /* The model pill — state lives in the shared state/close slot and the row's

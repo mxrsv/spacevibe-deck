@@ -1026,17 +1026,21 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
     ]);
   });
 
-  it("lets a tab name a person typed win over the agent name", () => {
+  it("carries a tab name a person typed on top of the pane's own sentence", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [tab(1, "/w/deck", { name: "review", panes: [pane(1, { agent: "codex" })] })],
       }),
     );
 
-    expect(view.stream[0].worktrees[0].panes[0].label).toBe("review");
+    expect(view.stream[0].worktrees[0].panes[0]).toMatchObject({
+      tabName: "review",
+      sentence: "Codex",
+      label: "review · Codex",
+    });
   });
 
-  it("appends an ordinal to a repeated typed name too", () => {
+  it("numbers the sentence under a repeated typed name, never the name itself", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [
@@ -1049,8 +1053,8 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
     );
 
     expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
-      "review",
-      "review 2",
+      "review · Codex",
+      "review · Claude",
     ]);
   });
 

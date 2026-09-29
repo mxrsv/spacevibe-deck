@@ -83,6 +83,12 @@ export interface AgentRailProps {
    */
   onSelectTab(index: number): void;
   /**
+   * Name (or, with `null`, unname) a tab from its agent rows (DL-27.15). The
+   * Tauri `RepositoryRail` has no such gesture; its legacy rows already print
+   * the name.
+   */
+  onRenameTab?(index: number, name: string | null): void;
+  /**
    * Forget a remembered project: drop EVERY history entry the rowless header
    * stands for (a repository folds several remembered worktrees into one
    * cluster, so one path would leave a sibling and the header would simply
@@ -483,6 +489,7 @@ function WorktreeCardRail(props: AgentRailProps) {
                       onClosePane={props.onClosePane}
                       onCloseTab={props.onCloseTab}
                       onSelectTab={props.onSelectTab}
+                      onRenameTab={props.onRenameTab}
                       actions={props.cardActions}
                     />
                   ))}

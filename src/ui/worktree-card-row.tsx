@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from "preact/hooks";
 import { AgentGlyph } from "./controls/agent-glyph";
+import { SpaceRenameField } from "./spaces/space-rename-field";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { X } from "@phosphor-icons/react";
 import { subjectOf, subjectWhere } from "./agent-rail-card-model";
@@ -131,6 +133,53 @@ export interface CardAgentRowProps {
   readonly pane: RailCardPane;
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
+  /**
+   * Name (or, with `null`, unname) this pane's tab. A double-click on the row
+   * opens the field; omitted where nothing can wire it, like the segment
+   * menu's copy of the row, which then has no rename gesture.
+   */
+  readonly onRenameTab?: (tabIndex: number, name: string | null) => void;
+}
+
+/**
+ * The row's text (DL-27.15). An unnamed tab's pane is one line, its sentence.
+ * A named tab's pane is two: the name in semibold, then that pane's sentence —
+ * the name says which space, the sentence what this agent is doing. While the
+ * field is open it takes the name's line and the sentence stays beneath, so
+ * the row does not change height.
+ */
+function CardRowText({
+  pane,
+  editing,
+  onCommit,
+  onCancel,
+}: {
+  readonly pane: RailCardPane;
+  readonly editing: boolean;
+  readonly onCommit: (name: string | null) => void;
+  readonly onCancel: () => void;
+}) {
+  const named = pane.tabName !== null && pane.tabName !== undefined;
+  const sentence = pane.sentence ?? pane.label;
+  if (!editing && !named) {
+    return <span class="asr-card__name">{pane.label}</span>;
+  }
+  return (
+    <span class="asr-card__text" data-editing={editing ? "true" : undefined}>
+      {editing ? (
+        <SpaceRenameField
+          class="asr-card__rename"
+          initial={pane.tabName ?? ""}
+          placeholder={sentence}
+          onCommit={onCommit}
+          onCancel={onCancel}
+        />
+      ) : (
+        <span class="asr-card__name">{pane.tabName}</span>
+      )}
+      {named && <span class="asr-card__sentence">{sentence}</span>}
+    </span>
+  );
 }
 
 /**
@@ -146,9 +195,22 @@ export function CardAgentRow({
   pane,
   onFocusPane,
   onClosePane,
+  onRenameTab,
 }: CardAgentRowProps) {
   const label = signalLabelOf(pane.state, pane.confidence, pane.detail);
   const where = whereOf(project, group);
+  const hit = useRef<HTMLButtonElement>(null);
+  const [editing, setEditing] = useState(false);
+  const wasEditing = useRef(false);
+
+  // Unmounting the field drops focus to <body>; hand it back to the row. A
+  // press elsewhere that ended the edit has already moved focus, so it stays.
+  useEffect(() => {
+    if (wasEditing.current && !editing && document.activeElement === document.body) {
+      hit.current?.focus({ preventScroll: true });
+    }
+    wasEditing.current = editing;
+  }, [editing]);
 
   return (
     <div
@@ -157,9 +219,11 @@ export function CardAgentRow({
       data-state={pane.state}
       data-confidence={pane.confidence}
       data-focused={pane.focused}
+      data-named={pane.tabName ? "true" : undefined}
       data-pane-id={pane.paneId}
     >
       <button
+        ref={hit}
         type="button"
         class="asr-card__hit"
         aria-current={pane.focused ? "true" : undefined}
@@ -168,11 +232,20 @@ export function CardAgentRow({
         onClick={() => {
           onFocusPane(pane.tabIndex, pane.paneId);
         }}
+        onDblClick={onRenameTab === undefined ? undefined : () => setEditing(true)}
       />
       <span class="asr-card__glyph">
         <AgentGlyph agent={pane.agent} className="asr-card__logo" />
       </span>
-      <span class="asr-card__name">{pane.label}</span>
+      <CardRowText
+        pane={pane}
+        editing={editing}
+        onCommit={(name) => {
+          setEditing(false);
+          onRenameTab?.(pane.tabIndex, name);
+        }}
+        onCancel={() => setEditing(false)}
+      />
       {/* Conditional, and it stays conditional inside the segment menu too
           (spec §5): production withholds the model wherever the pane/session
           pairing is heuristic, and a menu that invented one would be the guess

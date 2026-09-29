@@ -2186,6 +2186,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               )
             }
             onSelectTab={selectTab}
+            onRenameTab={renameTab}
             legacy={{
               onOpenWorkspace: openTaskBoard,
               openWorkspaceDisabled: taskOperationPending.value !== null,

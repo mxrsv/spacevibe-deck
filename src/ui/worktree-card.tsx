@@ -209,6 +209,7 @@ function CardEntryRow({
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
   readonly onSelectTab: (tabIndex: number) => void;
   readonly onCloseTab: (tabIndex: number) => void;
+  readonly onRenameTab?: (tabIndex: number, name: string | null) => void;
 }) {
   return entry.kind === "agent" ? (
     <CardAgentRow
@@ -217,6 +218,7 @@ function CardEntryRow({
       pane={entry}
       onFocusPane={props.onFocusPane}
       onClosePane={props.onClosePane}
+      onRenameTab={props.onRenameTab}
     />
   ) : (
     <CardShellRow
@@ -458,6 +460,12 @@ export interface WorktreeCardProps {
    */
   readonly onSelectTab: (tabIndex: number) => void;
   /**
+   * Name (or unname) the tab behind an agent row: a double-click on the row.
+   * Omitted where nothing owns tab names (the gallery), which takes the
+   * gesture with it.
+   */
+  readonly onRenameTab?: (tabIndex: number, name: string | null) => void;
+  /**
    * The checkout's actions menu (spec §8) — since `rail-create-consolidation`
    * the ONE surface every create control on a checkout raises: the closed
    * card's strip `+`, the open card's `New agent` row, the bare row of a
@@ -564,6 +572,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
               onClosePane={props.onClosePane}
               onSelectTab={props.onSelectTab}
               onCloseTab={props.onCloseTab}
+              onRenameTab={props.onRenameTab}
             />
           ))}
           {/* The open card's create control: the closed strip's `+`, in row

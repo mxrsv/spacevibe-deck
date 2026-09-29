@@ -838,6 +838,71 @@ describe("WorktreeCard open list (design §5)", () => {
   });
 });
 
+describe("WorktreeCard named rows (DL-27.15, amended for named tabs)", () => {
+  const named = pane({ tabIndex: 2, tabName: "auth", sentence: "Fixing login", label: "auth · Fixing login" });
+  const hit = (): Element => host.querySelector(".asr-card__hit")!;
+  const field = (): HTMLInputElement | null => host.querySelector("input.space-rename");
+  const dblclick = (): void => {
+    act(() => {
+      hit().dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+  };
+  const key = (name: string, value?: string): void => {
+    act(() => {
+      if (value !== undefined) field()!.value = value;
+      field()!.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true }));
+    });
+  };
+
+  it("stays one line while the tab is unnamed", () => {
+    mount({ open: true, group: group({ panes: [pane({ label: "Reading the source" })] }) });
+    const row = host.querySelector(".asr-card__row")!;
+    expect(row.querySelector(".asr-card__name")?.textContent).toBe("Reading the source");
+    expect(row.querySelector(".asr-card__sentence")).toBeNull();
+    expect(row.hasAttribute("data-named")).toBe(false);
+  });
+
+  it("puts the name on top and the pane's sentence beneath, and names the row by both", () => {
+    mount({ open: true, group: group({ panes: [named] }) });
+    const row = host.querySelector(".asr-card__row")!;
+    expect(row.getAttribute("data-named")).toBe("true");
+    expect(row.querySelector(".asr-card__name")?.textContent).toBe("auth");
+    expect(row.querySelector(".asr-card__sentence")?.textContent).toBe("Fixing login");
+    expect(hit().getAttribute("aria-label")).toContain("Focus auth · Fixing login in");
+  });
+
+  it("renames the pane's tab on a double-click, keeping the row's own index", () => {
+    const onRenameTab = vi.fn();
+    mount({ open: true, group: group({ panes: [named] }), onRenameTab });
+    dblclick();
+    expect(field()!.value).toBe("auth");
+    key("Enter", "scroll fix");
+    expect(onRenameTab).toHaveBeenCalledWith(2, "scroll fix");
+    expect(field()).toBeNull();
+  });
+
+  it("offers an unnamed row the empty field, its sentence as the placeholder", () => {
+    const onRenameTab = vi.fn();
+    mount({
+      open: true,
+      group: group({ panes: [pane({ tabIndex: 1, label: "Reading the source" })] }),
+      onRenameTab,
+    });
+    dblclick();
+    expect(field()!.value).toBe("");
+    expect(field()!.placeholder).toBe("Reading the source");
+    key("Escape");
+    expect(onRenameTab).not.toHaveBeenCalled();
+    expect(field()).toBeNull();
+  });
+
+  it("does nothing on a double-click where no rename is wired", () => {
+    mount({ open: true, group: group({ panes: [named] }) });
+    dblclick();
+    expect(field()).toBeNull();
+  });
+});
+
 describe("WorktreeCard host parity — no gate (review reversal, 2026-08-26)", () => {
   // Round 1 added a `showAgentPresence` gate here on a reviewer finding;
   // round 2 reversed it on the SAME reviewer's own follow-up, once the

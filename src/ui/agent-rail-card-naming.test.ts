@@ -172,7 +172,7 @@ describe("buildCardEntries labels", () => {
     expect(labels(row)).toEqual(["Claude", "Claude 2"]);
   });
 
-  it("keeps a user-authored name ahead of a message", () => {
+  it("gives a named tab's pane the name on top and its own sentence beneath (DL-27.15)", () => {
     const row = tabRow({
       key: 1,
       index: 0,
@@ -180,7 +180,62 @@ describe("buildCardEntries labels", () => {
       named: true,
       panes: [{ ...paneRow("claude", 1), message: "Reading the source" }],
     });
-    expect(buildCardEntries([row], undefined)[0]?.label).toBe("My task");
+    const [entry] = buildCardEntries([row], undefined);
+    expect(entry).toMatchObject({
+      tabName: "My task",
+      sentence: "Reading the source",
+      label: "My task · Reading the source",
+    });
+  });
+
+  it("never numbers a name: two panes of one named tab differ by their sentence", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "auth",
+      named: true,
+      panes: [paneRow("claude", 1), paneRow("claude", 2), paneRow("codex", 3)],
+    });
+    const entries = buildCardEntries([row], undefined);
+    expect(entries.map((entry) => entry.kind === "agent" && entry.tabName)).toEqual([
+      "auth",
+      "auth",
+      "auth",
+    ]);
+    expect(entries.map((entry) => entry.kind === "agent" && entry.sentence)).toEqual([
+      "Claude",
+      "Claude 2",
+      "Codex",
+    ]);
+    expect(entries.map((entry) => entry.label)).toEqual([
+      "auth · Claude",
+      "auth · Claude 2",
+      "auth · Codex",
+    ]);
+  });
+
+  it("leaves an unnamed pane's name null and its sentence its whole label", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [{ ...paneRow("claude", 1), message: "Running the tests" }],
+    });
+    const [entry] = buildCardEntries([row], undefined);
+    expect(entry).toMatchObject({
+      tabName: null,
+      sentence: "Running the tests",
+      label: "Running the tests",
+    });
+  });
+
+  it("keeps a named shell tab on one line, its label the name", () => {
+    const row = tabRow({ key: 1, index: 0, title: "scratch", named: true, panes: [] });
+    expect(buildCardEntries([row], undefined)[0]).toMatchObject({
+      kind: "shell",
+      label: "scratch",
+    });
   });
 
   it("uses the agent name for a whitespace-only message", () => {
@@ -229,7 +284,7 @@ describe("buildCardEntries labels", () => {
     );
     const labels = entries.map((entry) => entry.label);
     expect(new Set(labels).size).toBe(labels.length);
-    expect(labels).toEqual(["Claude", "Claude 2", "Claude 2 2"]);
+    expect(labels).toEqual(["Claude", "Claude 2", "Claude 2 · Claude"]);
   });
 
   it("keeps first-come ordering — an earlier row never renumbers for a later one", () => {
