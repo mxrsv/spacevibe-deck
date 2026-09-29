@@ -218,7 +218,11 @@ describe("explicit agent launch target", () => {
       let release!: (port: number) => void;
       const { tm } = wire(pty, {
         transfer,
-        signalConfig: async () => ({ claudeSettingsPath: "/settings", hookPort: 1 }),
+        signalConfig: async () => ({
+          claudeSettingsPath: "/settings",
+          hookPort: 1,
+          hooksSupported: true,
+        }),
         opencodeAttach: () =>
           new Promise<number>((done) => {
             release = done;
@@ -334,7 +338,11 @@ describe("explicit agent launch target", () => {
         }),
     );
     const { tm } = wire(pty, {
-      signalConfig: async () => ({ claudeSettingsPath: "/settings", hookPort: 1 }),
+      signalConfig: async () => ({
+        claudeSettingsPath: "/settings",
+        hookPort: 1,
+        hooksSupported: true,
+      }),
       opencodeAttach: attach,
     });
     expect(

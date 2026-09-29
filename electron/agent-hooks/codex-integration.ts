@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { AGENT_HOOKS_DIR } from "./claude-hooks-file";
 import { codexHooksPath, syncCodexHooks } from "./codex-hooks";
+import { hooksSupported } from "./hooks-supported";
 import { storedSignalAdapterOn } from "../../src/settings/signal-adapter-choice";
 
 export function codexHookScript(): string {
@@ -36,7 +37,7 @@ interface IntegrationDeps {
 export function createCodexIntegration(deps: IntegrationDeps) {
   const script = path.join(deps.userData, AGENT_HOOKS_DIR, "deck-codex-hook.sh");
   const hooks = deps.hooksPath ?? codexHooksPath();
-  const supported = deps.supported ?? process.platform !== "win32";
+  const supported = deps.supported ?? hooksSupported();
   let ready = false;
   let enabled = false;
   let desired = false;

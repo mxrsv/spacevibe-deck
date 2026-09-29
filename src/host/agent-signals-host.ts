@@ -19,11 +19,19 @@ export const available: boolean =
 export interface AgentSignalConfig {
   readonly claudeSettingsPath: string | null;
   readonly hookPort: number | null;
+  /**
+   * Whether the host registers agent hooks at all (false on Windows, which
+   * ships no hook script). TRUE when the host does not say — a host that
+   * predates the field, Tauri, a failed call — so only an explicit `false`
+   * ever takes a control away.
+   */
+  readonly hooksSupported: boolean;
 }
 
 export const NO_SIGNAL_CONFIG: AgentSignalConfig = Object.freeze({
   claudeSettingsPath: null,
   hookPort: null,
+  hooksSupported: true,
 });
 
 /** Never rejects: a host that cannot answer has no adapters. */
@@ -48,6 +56,10 @@ export async function agentSignalConfig(): Promise<AgentSignalConfig> {
         node.hookPort > 0
           ? node.hookPort
           : null,
+      hooksSupported:
+        typeof node.hooksSupported === "boolean"
+          ? node.hooksSupported
+          : NO_SIGNAL_CONFIG.hooksSupported,
     };
   } catch (error) {
     console.warn("agent_signal_config failed:", error);

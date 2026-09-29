@@ -1,6 +1,7 @@
 /** Runtime ownership of Claude Signals; global registration is scoped to this script path. */
 import { writeClaudeHooksFiles, type ClaudeHooksFiles } from "./claude-hooks-file";
 import { claudeUserSettingsPath, syncClaudeUserSettings } from "./claude-user-settings";
+import { hooksSupported } from "./hooks-supported";
 import { storedSignalAdapterOn } from "../../src/settings/signal-adapter-choice";
 
 export function claudeSignalsEnabled(settings: unknown): boolean {
@@ -23,7 +24,7 @@ export function createClaudeIntegration(deps: IntegrationDeps) {
   let applied: boolean | null = null;
   let queue: Promise<void> = Promise.resolve();
   const log = deps.log ?? console.warn;
-  const supported = deps.supported ?? process.platform !== "win32";
+  const supported = deps.supported ?? hooksSupported();
   const settingsPath = deps.settingsPath ?? claudeUserSettingsPath();
 
   return {

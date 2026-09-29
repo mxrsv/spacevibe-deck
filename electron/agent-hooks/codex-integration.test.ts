@@ -55,6 +55,32 @@ function run(command: string, env: NodeJS.ProcessEnv, payload: unknown) {
   });
 }
 
+describe("Codex integration default hook support", () => {
+  // No `supported` dep: the integration asks the shared platform answer. The
+  // platform is swapped for the duration of the call so the case runs the
+  // same on every CI host.
+  async function syncOn(platform: NodeJS.Platform): Promise<ReturnType<typeof vi.fn>> {
+    const deps = await setup();
+    const original = Object.getOwnPropertyDescriptor(process, "platform")!;
+    const syncHooks = vi.fn(async () => {});
+    Object.defineProperty(process, "platform", { ...original, value: platform });
+    try {
+      await createCodexIntegration({ ...deps, syncHooks }).sync(on);
+    } finally {
+      Object.defineProperty(process, "platform", original);
+    }
+    return syncHooks;
+  }
+
+  it.each(["darwin", "linux"] as const)("registers hooks on %s", async (platform) => {
+    expect(await syncOn(platform)).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers nothing on win32", async () => {
+    expect(await syncOn("win32")).not.toHaveBeenCalled();
+  });
+});
+
 describe("Codex lifecycle bridge", () => {
   it("does not re-enable delivery when a pending enable finishes after disable was requested", async () => {
     const deps = await setup();

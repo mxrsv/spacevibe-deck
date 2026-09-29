@@ -82,6 +82,37 @@ describe("Claude integration lifecycle", () => {
   });
 });
 
+describe("Claude integration default hook support", () => {
+  // No `supported` dep: the integration asks the shared platform answer. The
+  // platform is swapped for the duration of the call so the case runs the
+  // same on every CI host.
+  async function syncOn(platform: NodeJS.Platform): Promise<ReturnType<typeof vi.fn>> {
+    const original = Object.getOwnPropertyDescriptor(process, "platform")!;
+    const writeFiles = vi.fn().mockResolvedValue(PATHS);
+    Object.defineProperty(process, "platform", { ...original, value: platform });
+    try {
+      const integration = createClaudeIntegration({
+        userData: "/deck",
+        settingsPath: PATHS.settingsPath,
+        writeFiles,
+        syncSettings: vi.fn().mockResolvedValue(undefined),
+      });
+      await integration.sync(ON);
+    } finally {
+      Object.defineProperty(process, "platform", original);
+    }
+    return writeFiles;
+  }
+
+  it.each(["darwin", "linux"] as const)("registers hooks on %s", async (platform) => {
+    expect(await syncOn(platform)).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers nothing on win32", async () => {
+    expect(await syncOn("win32")).not.toHaveBeenCalled();
+  });
+});
+
 describe.skipIf(process.platform === "win32")("manual Claude hook transport", () => {
   it("delivers real shell hook payloads to the authenticated pane without launcher flags", async () => {
     const root = await fs.mkdtemp(path.join(tmpdir(), "deck-manual-hook-"));

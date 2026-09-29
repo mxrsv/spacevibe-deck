@@ -26,7 +26,11 @@ function harness(infoByPane: Map<number, PaneProcessInfo>, over: { attach?: numb
   let handler: HookHandler | null = null;
   const opencodeAttach = vi.fn(async () => over.attach ?? 45123);
   const { tm, pty } = setupControllable(infoByPane, {
-    signalConfig: async () => ({ claudeSettingsPath: SETTINGS_PATH, hookPort: 45999 }),
+    signalConfig: async () => ({
+      claudeSettingsPath: SETTINGS_PATH,
+      hookPort: 45999,
+      hooksSupported: true,
+    }),
     opencodeAttach,
     hookEvents: async (next) => {
       handler = next;

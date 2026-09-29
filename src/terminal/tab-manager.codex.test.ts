@@ -30,7 +30,11 @@ async function setup(manual = false) {
   ]);
   let receive: ((event: HookEvent) => void) | null = null;
   const { tm, pty } = setupControllable(infos, {
-    signalConfig: async () => ({ claudeSettingsPath: null, hookPort: 45999 }),
+    signalConfig: async () => ({
+      claudeSettingsPath: null,
+      hookPort: 45999,
+      hooksSupported: true,
+    }),
     hookEvents: async (handler) => {
       receive = handler;
       return () => {
