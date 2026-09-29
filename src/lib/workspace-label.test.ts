@@ -34,4 +34,42 @@ describe("workspaceLabel", () => {
     expect(workspaceLabel("")).toBe("Unknown");
     expect(workspaceLabel("   ")).toBe("Unknown");
   });
+
+  // Pinned before the Windows support landed: a path without a backslash must
+  // keep its exact output, so the macOS picture cannot move.
+  it("keeps every backslash-free spelling exactly as before", () => {
+    expect(workspaceLabel("  /a/b  ")).toBe("b");
+    expect(workspaceLabel("/a b/c d/")).toBe("c d");
+    expect(workspaceLabel("//")).toBe("/");
+    expect(workspaceLabel("/a//b")).toBe("b");
+    expect(workspaceLabel("deck")).toBe("deck");
+    expect(workspaceLabel("a/b")).toBe("b");
+    expect(workspaceLabel(".")).toBe(".");
+  });
+
+  it("leaves a forward-slash drive spelling as it was", () => {
+    expect(workspaceLabel("C:")).toBe("C:");
+    expect(workspaceLabel("C:/")).toBe("C:");
+    expect(workspaceLabel("C:/Users/me/code/deck")).toBe("deck");
+    expect(workspaceLabel("/tmp/C:/")).toBe("C:");
+  });
+
+  it("names a Windows path by its last folder", () => {
+    expect(workspaceLabel("C:\\Users\\me\\code\\deck")).toBe("deck");
+    expect(workspaceLabel("C:\\Users\\me\\code\\deck\\")).toBe("deck");
+    expect(workspaceLabel("C:\\Users\\me\\code\\deck\\\\")).toBe("deck");
+    expect(workspaceLabel("  C:\\Users\\me\\code\\deck  ")).toBe("deck");
+    expect(workspaceLabel("C:/Users\\me/code\\deck")).toBe("deck");
+  });
+
+  it("shows a Windows drive root as the root, not as a bare drive letter", () => {
+    expect(workspaceLabel("C:\\")).toBe("C:\\");
+    expect(workspaceLabel("d:\\\\")).toBe("d:\\");
+  });
+
+  it("names a UNC path by its last folder", () => {
+    expect(workspaceLabel("\\\\server\\share\\deck")).toBe("deck");
+    expect(workspaceLabel("\\\\server\\share\\deck\\")).toBe("deck");
+    expect(workspaceLabel("\\\\server\\share")).toBe("share");
+  });
 });
