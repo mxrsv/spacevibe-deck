@@ -48,6 +48,8 @@ function fixture(
     tabIndex: key - 1,
     key,
     folder,
+    // The study keeps names in its own state and passes them beside the space.
+    name: null,
     index,
     path,
     branch,

@@ -1,11 +1,13 @@
 /**
- * Spaces (DL §35): a space IS a terminal tab, named by its workspace folder.
+ * Spaces (DL §35): a space IS a terminal tab, named by its workspace folder
+ * until the user gives it a name of its own.
  *
  * A pure projection over `tabViews`, in the order the caller already shows
  * terminal tabs in — the strip's merged order, scoped to the active repository
  * in sidebar mode — so ⌘1–9, cycling and the marks can never disagree about
- * which space is "the third one". No new owner, no persisted field: a tab's
- * `workspacePath` is fixed for its life, which is what makes it a stable name.
+ * which space is "the third one". No new owner: a tab's `workspacePath` is
+ * fixed for its life, which makes it a stable default name, and the user's own
+ * name is the tab's (`TabView.name`, journaled with it).
  */
 import type { PaneAgent } from "../../lib/process-info";
 import type { RepositoryScan } from "../../repositories/repository-client";
@@ -29,6 +31,8 @@ export interface Space {
   readonly key: number;
   /** The workspace folder's own name, or `~` for a tab with no workspace. */
   readonly folder: string;
+  /** The name the user gave the space (`TabView.name`); null while unnamed. */
+  readonly name: string | null;
   /** 1-based position among spaces sharing one workspace; null when alone. */
   readonly index: number | null;
   /** The workspace path as the tab holds it; null for a workspace-less tab. */
@@ -98,6 +102,7 @@ export function buildSpaces(input: SpaceInput): readonly Space[] {
       tabIndex,
       key: tab.key,
       folder: folderName(tab.workspacePath),
+      name: tab.name,
       index: shared ? position : null,
       path: tab.workspacePath,
       branch: branchOf(tab.workspacePath, input.scans),
@@ -110,9 +115,14 @@ export function buildSpaces(input: SpaceInput): readonly Space[] {
   });
 }
 
-/** A space's accessible name: folder, then its index when it has one. */
-export function spaceLabel(space: Pick<Space, "folder" | "index">): string {
+/** Where a space is: its folder, then its index when it has one. */
+export function spaceAddress(space: Pick<Space, "folder" | "index">): string {
   return space.index === null ? space.folder : `${space.folder} ${space.index}`;
+}
+
+/** What a space is called: its name, else its address (DL-35.3). */
+export function spaceLabel(space: Pick<Space, "folder" | "index" | "name">): string {
+  return space.name ?? spaceAddress(space);
 }
 
 /** `3 agents · 1 needs you`, the count line shared by the card and the shelf. */

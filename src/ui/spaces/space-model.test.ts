@@ -7,6 +7,7 @@ import {
   miniColumns,
   needsTone,
   runsByWorkspace,
+  spaceAddress,
   spaceCounts,
   spaceLabel,
 } from "./space-model";
@@ -99,6 +100,23 @@ describe("buildSpaces", () => {
     expect(spaces.map(spaceLabel)).toEqual([
       "spacevibe-deck 1",
       "spacevibe-api",
+      "spacevibe-deck 2",
+    ]);
+  });
+
+  it("carries the tab's name; the label is the name, the address stays folder and index", () => {
+    const named = [{ ...tab(10, DECK), name: "auth" }, tab(12, DECK)];
+    const [first, second] = buildSpaces({
+      tabs: named,
+      order: [0, 1],
+      activeIndex: 0,
+      scans: SCANS,
+    });
+    expect([first.name, second.name]).toEqual(["auth", null]);
+    expect([spaceLabel(first), spaceLabel(second)]).toEqual(["auth", "spacevibe-deck 2"]);
+    // The name never renumbers its neighbours.
+    expect([spaceAddress(first), spaceAddress(second)]).toEqual([
+      "spacevibe-deck 1",
       "spacevibe-deck 2",
     ]);
   });

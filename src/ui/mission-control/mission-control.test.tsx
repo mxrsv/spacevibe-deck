@@ -15,6 +15,7 @@ function space(key: number, overrides: Partial<Space> = {}): Space {
     tabIndex: key - 1,
     key,
     folder: "spacevibe-deck",
+    name: null,
     index: null,
     path: "/w/spacevibe-deck",
     branch: null,
