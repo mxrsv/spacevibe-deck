@@ -839,7 +839,12 @@ describe("WorktreeCard open list (design §5)", () => {
 });
 
 describe("WorktreeCard named rows (DL-27.15, amended for named tabs)", () => {
-  const named = pane({ tabIndex: 2, tabName: "auth", sentence: "Fixing login", label: "auth · Fixing login" });
+  const named = pane({
+    tabIndex: 2,
+    tabName: "auth",
+    sentence: "Fixing login",
+    label: "auth · Fixing login",
+  });
   const hit = (): Element => host.querySelector(".asr-card__hit")!;
   const field = (): HTMLInputElement | null => host.querySelector("input.space-rename");
   const dblclick = (): void => {

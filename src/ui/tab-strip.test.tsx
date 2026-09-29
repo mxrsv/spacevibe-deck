@@ -526,14 +526,14 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     act(() => mark(1).focus());
     const card = document.querySelector<HTMLElement>(".space-card")!;
     expect(card.querySelector(".space-card__name")?.textContent).toBe("auth");
-    expect(card.querySelector(".space-card__meta")?.textContent).toBe(
-      "repo 1 · main · 1 agent",
-    );
+    expect(card.querySelector(".space-card__meta")?.textContent).toBe("repo 1 · main · 1 agent");
   });
 
   describe("renaming a space in place (DL-35.3)", () => {
     const label = (): HTMLElement =>
-      host.querySelector<HTMLElement>('.space-bar__name-slot[data-current="true"] .space-bar__label')!;
+      host.querySelector<HTMLElement>(
+        '.space-bar__name-slot[data-current="true"] .space-bar__label',
+      )!;
     const field = (): HTMLInputElement | null => host.querySelector("input.space-rename");
     const type = (value: string, key: string): void => {
       act(() => {
