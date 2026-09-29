@@ -1,5 +1,6 @@
 import { CaretDown } from "@phosphor-icons/react";
 import { useMemo, useState } from "preact/hooks";
+import { getDesktopEnvironment } from "../../lib/platform";
 import { CommitInput } from "./commit-input";
 import { ConfigRow } from "./config-row";
 import { DeckIcon, ROW_ICON } from "./deck-icon";
@@ -16,14 +17,26 @@ const FONT_CANDIDATES = [
   "Hack",
 ];
 
+// Kept out of FONT_CANDIDATES: the picker lists every installed candidate, and a
+// Mac with Microsoft Office has Consolas, so a shared entry would change its list.
+// They lead on Windows the way the shared list leads with the macOS faces.
+const WINDOWS_FONT_CANDIDATES = ["Cascadia Mono", "Consolas"];
+
 const CUSTOM_VALUE = "__custom__";
+
+function fontCandidates(): readonly string[] {
+  return getDesktopEnvironment().platform === "windows"
+    ? [...WINDOWS_FONT_CANDIDATES, ...FONT_CANDIDATES]
+    : FONT_CANDIDATES;
+}
 
 // Compare rendered width against fallback fonts — document.fonts.check()
 // returns false positives for system fonts that are not installed
 function detectInstalledFonts(): string[] {
+  const candidates = fontCandidates();
   const context = document.createElement("canvas").getContext("2d");
   if (!context) {
-    return FONT_CANDIDATES;
+    return [...candidates];
   }
   const sample = "mmmmmmmmmmlliWQ@#1470";
   const measure = (font: string): number => {
@@ -32,7 +45,7 @@ function detectInstalledFonts(): string[] {
   };
   const baselineMono = measure("16px monospace");
   const baselineSerif = measure("16px serif");
-  return FONT_CANDIDATES.filter(
+  return candidates.filter(
     (family) =>
       measure(`16px "${family}", monospace`) !== baselineMono ||
       measure(`16px "${family}", serif`) !== baselineSerif,
@@ -51,7 +64,7 @@ export function FontRow({ value, onChange }: FontRowProps) {
   /* oxlint-disable react-hooks/exhaustive-deps -- detection runs once per mount; re-running per value would re-scan */
   const available = useMemo(() => {
     const detected = detectInstalledFonts();
-    if (!detected.includes(value) && FONT_CANDIDATES.includes(value)) {
+    if (!detected.includes(value) && fontCandidates().includes(value)) {
       return [value, ...detected];
     }
     return detected;
