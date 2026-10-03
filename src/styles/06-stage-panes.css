@@ -496,6 +496,18 @@
      The 1px costs the terminal nothing — the grid re-fits to the padding box
      and a cell is never that small. */
   border: 1px solid var(--seam-split);
+  /* DL-21.5: the focus edge below changes colour, it does not snap. */
+  transition: border-color var(--duration) var(--ease);
+}
+
+/* DL-18.12 (amended 2026-10-03, owner): the pane that holds the keyboard traces its card in the
+   rail's inverted-row fill (DL-27.22). `is-active` is `layout-engine.ts`'s own class and it is
+   set only while the tab holds more than one pane, so a lone pane keeps the ordinary edge. Only
+   the colour of the border DL-18.12 already draws changes, so nothing moves — and it stays a
+   real border for the reason above. The variable the rail row reads is scoped to that row,
+   which is why the mix is restated here. */
+.pane-slot.is-active > .pane {
+  border-color: color-mix(in srgb, var(--text-primary) 74%, var(--sidebar-bg));
 }
 
 .pane__bar {

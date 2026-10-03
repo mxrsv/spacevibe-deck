@@ -19,6 +19,19 @@
   /* DL-3.3: distinguish the header through a neutral surface step. */
   background: var(--chrome-2);
   border-bottom-color: var(--seam-divider);
+  /* DL-21.5: joining and leaving the focused sheet below is a colour change, not a snap. */
+  transition:
+    background-color var(--duration) var(--ease),
+    border-bottom-color var(--duration) var(--ease);
+}
+/* DL-32.7 (amended 2026-10-03, owner): the focused pane's header drops its lid. It takes the
+   pane's own `--bg` (xterm paints the same theme background) and loses its seam, so header and
+   terminal read as one sheet inside the focus edge `06-stage-panes.css` draws, while every
+   other pane keeps its header on chrome. `is-active` is set only while the tab holds more than
+   one pane. The bar's height is unchanged: the seam turns transparent, it is not removed. */
+.pane-slot.is-active .pane--agent-header > .pane__bar {
+  background: var(--bg);
+  border-bottom-color: transparent;
 }
 .pane-bar-hidden .pane--agent-header > .pane__anchor {
   display: none;
