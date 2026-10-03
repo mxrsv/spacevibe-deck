@@ -5,6 +5,62 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+This update makes Quick Launch a single press, groups the strip's spaces by
+project, and brings Deck's window controls, paths, shortcuts and fonts in line
+with Windows.
+
+### Spaces and Quick Launch
+
+- **A Quick Launch card is one press, and New space is a quiet icon.** When the
+  folder already has a space open, pressing an
+  [agent card](src/launcher/agent-launch-cards.tsx) adds the agent beside your
+  current panes as before, and the small **+** icon on its right opens it in a
+  space of its own; hover it for the **New space** tip. Enter still splits.
+- **A start-screen agent card is one press.** On the
+  [start screen](src/open-board/board-composer.tsx) each installed agent is a
+  card marked with an arrow; pressing it starts the agent, and choosing a folder
+  still never does.
+- **A space opened with the + icon names itself.** It is called after its folder
+  and the agent, such as `spacevibe-deck · Claude Code`. Your own name still
+  replaces it, and a long folder name is shortened before the agent's.
+- **Spaces group by project in the strip.** The
+  [strip](src/ui/spaces/space-bar.tsx) keeps a project's spaces together in one
+  capsule, and a repository and its worktrees count as one project.
+  [Mission Control](src/ui/mission-control/mission-control.tsx) groups its
+  spaces by project the same way. The marks sit centred in the bar, with the
+  name at its left.
+- **A hidden space that needs you still shows.** When the strip is scrolled so
+  that a [mark asking for you](src/ui/spaces/space-edge.ts) is out of sight, a
+  red dot appears at the edge on that side.
+
+### Windows
+
+- **Minimize, maximize and close.** Windows' own window buttons now sit at the
+  right of Deck's top row, in Deck's colours, and the row leaves room for them,
+  so [nothing sits underneath](src/styles/22-caption-overlay.css).
+- **Folder names, not full paths.** The sidebar, recent folders and the start
+  screen name a workspace by its
+  [last folder](src/lib/workspace-label.ts) instead of the whole `C:\…` path.
+  The new-worktree form [suggests a path](src/lib/worktree-path.ts) in the
+  repository's own separator style.
+- **Ctrl+S saves the document you are editing.** In a terminal, Ctrl+S still
+  goes to the terminal.
+- **Plain confirm dialogs.** Confirmations show two ordinary buttons.
+- **Hints name your keys.** The [search bar](src/terminal/search-bar.ts)'s
+  Previous and Next match tooltips read Shift+Enter and Enter, in place of the
+  Mac symbols.
+- **Fonts.** The terminal and the editor fall back to Cascadia Mono or Consolas,
+  and the font picker offers them when they are installed. Interface text
+  keeps a clear hierarchy on Segoe UI, drawn in regular, semibold and bold.
+- **Unavailable settings say so.** In
+  [Settings](src/ui/settings/launch-profile-editor.tsx), the Claude Signals
+  switch and the
+  [Open with](src/ui/settings/sections/links-editor-section.tsx) row are dimmed
+  with a "Not available on Windows" tooltip, because Deck cannot do those on
+  Windows yet.
+
 ## 2.2.0
 
 This update turns terminal tabs into spaces with a Mission Control overview,
@@ -38,17 +94,17 @@ session on its own.
   agents show the name over what each one is doing, and double-clicking one of
   those rows renames it too.
 - **Split or New space from Quick Launch.** When the folder already has a space
-  open, pressing an [agent card](src/launcher/agent-launch-cards.tsx) adds the
-  agent beside your current panes as before, and the small **+** on its right
-  opens it in a space of its own. Enter still splits.
+  open, each [agent card](src/launcher/agent-launch-cards.tsx) offers **Split**,
+  which adds the agent beside your current panes as before, and **New space**,
+  which opens it in a space of its own. Enter still splits.
 
 ### Start screen
 
 - **Choose a folder, then press Run.** The
   [start screen](src/open-board/board-composer.tsx) opens a
   [folder menu](src/open-board/workspace-picker.tsx) with **Open folder…** and
-  your recent workspaces, then shows each agent as a card with a **Run** arrow.
-  Choosing a folder never starts an agent; only pressing a card does.
+  your recent workspaces, then shows each agent as a card with its own **Run**
+  button. Choosing a folder never starts an agent; only Run does.
 - **Drop a folder from Finder or Explorer** onto the start screen to use it as
   the workspace. Files, several items at once, or a missing folder are refused
   with a message.
