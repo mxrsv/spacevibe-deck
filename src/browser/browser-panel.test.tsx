@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { parseRules } from "../styles/css-weight-sites";
 import { BrowserPanel } from "./browser-panel";
 import type { BrowserClient } from "./browser-client";
-import { browserNotice, browserState, resetBrowserStore, EMPTY_STATE } from "./browser-store";
+import { BrowserSurface } from "./browser-surface";
+import {
+  browserNotice,
+  browserState,
+  browserSurfaceActive,
+  resetBrowserStore,
+  EMPTY_STATE,
+} from "./browser-store";
 
 // jsdom has no ResizeObserver, and the panel installs one to keep the host's
 // native view aligned with this column.
@@ -127,5 +136,77 @@ describe("BrowserPanel", () => {
     const note = host.querySelector(".browser-panel__note");
     expect(note?.textContent).toBe("Connection refused");
     expect(note?.className).toContain("browser-panel__note--error");
+  });
+});
+
+/**
+ * On Windows the OS paints its caption buttons over the top-right of the frame
+ * row, and a native `WebContentsView` paints above every DOM layer, so a page
+ * that reached that row would sit where the buttons are. It cannot, by
+ * construction: the view's bounds are the rectangle of `.browser-panel__view`,
+ * which lives inside `.stage__surface`, which starts below the strip. This
+ * guards the construction. It proves DOM placement and the offset rules exist;
+ * jsdom has no layout, so it does not measure the rectangle the host receives.
+ */
+describe("the native view stays below the frame row", () => {
+  const stylesheet = parseRules(
+    "06-stage-panes.css",
+    readFileSync("src/styles/06-stage-panes.css", "utf8"),
+  );
+  const shell = parseRules("02-shell.css", readFileSync("src/styles/02-shell.css", "utf8"));
+  const value = (rules: typeof stylesheet, selector: string, prop: string) =>
+    rules
+      .find((rule) => rule.selectors.includes(selector))
+      ?.declarations.find((d) => d.prop === prop)?.value;
+
+  it("measures a placeholder that follows the address bar, inside the stage surface", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    browserSurfaceActive.value = true;
+    act(() => {
+      render(<BrowserSurface hidden={false} onClose={() => {}} client={fakeClient()} />, host);
+    });
+
+    expect(host.querySelector(".stage__surface > .browser-panel")).not.toBeNull();
+    expect(host.querySelector(".stage__strip")).toBeNull();
+    const bar = host.querySelector(".browser-panel__bar")!;
+    const view = host.querySelector(".browser-panel__view")!;
+    expect(bar.compareDocumentPosition(view) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    act(() => render(null, host));
+    host.remove();
+    resetBrowserStore();
+  });
+
+  it("starts the surface below the strip in sidebar layout, with or without a notice", () => {
+    expect(value(stylesheet, ".stage--strip .stage__surface", "top")).toBe("var(--frame-h)");
+    expect(value(stylesheet, ".stage--strip.stage--notice .stage__surface", "top")).toBe(
+      "calc(var(--frame-h) + var(--notice-h))",
+    );
+  });
+
+  it("puts the stage under the tab bar in top-tab layout: only the sidebar shell spans row 1", () => {
+    const placed = shell
+      .filter((rule) => rule.selectors.some((selector) => /(^| )\.stage$/.test(selector)))
+      .filter((rule) => rule.declarations.some((d) => d.prop === "grid-row"));
+    expect(placed.map((rule) => rule.selectors)).toEqual([[".window--sidebar > .stage"]]);
+  });
+
+  it("gives neither the surface nor the panel a rule that lifts it into the frame row", () => {
+    const rules = stylesheet.filter((rule) =>
+      rule.selectors.some((s) => /\.stage__surface|\.browser-panel/.test(s)),
+    );
+    expect(rules.length).toBeGreaterThan(0);
+    const lifting = rules.flatMap((rule) =>
+      rule.declarations
+        .filter(
+          (d) =>
+            (d.prop === "position" && d.value === "fixed") ||
+            d.prop === "grid-row" ||
+            (["top", "margin-top"].includes(d.prop) && /^(calc\()?-/.test(d.value)) ||
+            (["transform", "translate"].includes(d.prop) && /translate(Y)?\(\s*-/.test(d.value)),
+        )
+        .map((d) => `${rule.selectors.join(", ")} { ${d.prop}: ${d.value} }`),
+    );
+    expect(lifting).toEqual([]);
   });
 });
