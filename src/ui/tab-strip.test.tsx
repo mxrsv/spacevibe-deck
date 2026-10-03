@@ -433,8 +433,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       tab({ key: 2, workspacePath: "/w/alpha" }),
       tab({ key: 3, workspacePath: "/w/beta" }),
     ];
-    // Unscoped, as the tab bar mounts it: the scoped sidebar strip draws only the
-    // active repository, so it can hold at most one capsule.
+    // Unscoped, as `App` mounts it since 2026-09-28 (DL-35.3): every workspace's spaces.
     mount({ scopeToActiveRepository: false });
 
     const capsules = [...host.querySelectorAll<HTMLElement>('.space-bar__run[role="group"]')];
