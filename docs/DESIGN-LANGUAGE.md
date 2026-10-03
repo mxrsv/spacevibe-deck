@@ -763,9 +763,10 @@ inset: 0` and covers the sidebar, the rail and the frame row; the Open board
   underneath — Escape, and a **Back** control in its own header — so covering
   the row costs a shortcut, not an exit. A screen taking this exemption
   inherits two obligations from the row it swallowed: its header reserves the
-  macOS traffic lights' footprint (`--frame-lights-w`; the OS paints its
-  buttons over that box regardless of what the page draws there) and carries
-  the window's drag region. Locked by
+  window controls' footprint (`--frame-lights-w` for the macOS traffic lights,
+  `--frame-controls-w` for the Windows caption buttons, DL-18.4; the OS paints
+  its buttons over that box regardless of what the page draws there) and
+  carries the window's drag region. Locked by
   [`app.test.tsx`](../src/ui/app.test.tsx) `current`, which asserts the
   exemption together with both ways out rather than just deleting the old
   assertion.
@@ -1348,19 +1349,30 @@ window's identity and its actions at the same time.
   2026-08-14 with the redesign's shell; before it, sidebar mode put a
   full-width band above both columns, and until later the same day column 2's
   half of the row was empty and the terminal ran to the top of the window.
-- **DL-18.4** On macOS the traffic lights sit **inside** the row behind a
-  reserved inset of `--frame-lights-w`, and whichever element is the frame
-  reserves that inset itself. The inset is a footprint, not a control: the OS
-  paints its buttons over exactly that box, so it is `aria-hidden`, holds no
-  content, and anything placed there would sit underneath them. The frame is
-  Deck's chrome, not OS spacing the app happens to sit under.
-- **DL-18.5** Platform differences change the inset, never the row. Windows
-  draws its own controls and owns the system title row, so `--frame-lights-w`
-  is `0px` and the inset collapses to zero width and paints nothing — the row
-  keeps the same height and the same content. Whether the element is left out
-  of the tree or collapsed by CSS is each occupant's business; what the rule
-  requires is that nothing is reserved. Reserving space no OS will paint into
-  is a gap, not a frame.
+- **DL-18.4** **Each platform reserves the side of the row where its OS paints
+  the window controls.** They sit **inside** the row, over the web contents,
+  behind a reserved inset: on macOS the traffic lights at the left, behind
+  `--frame-lights-w`; on Windows under the Electron host the minimize,
+  maximize and close buttons at the right, behind `--frame-controls-w`.
+  Whichever element is the frame's end on that side reserves the inset itself
+  — on Windows, one rule per occupant of the row's right end in
+  [`22-caption-overlay.css`](../src/styles/22-caption-overlay.css) `current`.
+  The inset is a footprint, not a control: the OS paints its buttons over
+  exactly that box, so it holds no content (an `aria-hidden` element or plain
+  padding, whichever the occupant uses), and anything placed there would sit
+  underneath them. The frame is Deck's chrome, not OS spacing the app happens
+  to sit under.
+- **DL-18.5** Platform differences change the inset, never the row: wherever
+  the controls are, the row keeps the same height and the same content. An
+  inset exists only where a host paints controls into the row. macOS has none
+  on the right; Windows has none on the left (`--frame-lights-w` is `0px`
+  under `.window--windows`). On the right `--frame-controls-w` is `0px` unless
+  the shell carries `window--caption-overlay`, which `DesktopChrome` sets only
+  on Windows with the Electron host — Tauri's Windows build keeps a native
+  title bar above the row and reserves nothing. Whether an inset is an element
+  left out of the tree or collapsed by CSS is each occupant's business; what
+  the rule requires is that nothing is reserved where no OS paints. Reserving
+  space no OS will paint into is a gap, not a frame.
 - **DL-18.6** **The tabs are the frame row's stage-side occupant, in both
   layouts.** Top-tab mode has always drawn them there; sidebar mode does too
   since 2026-08-14, as `.stage__strip` — the same `TabStrip` component, the
@@ -1667,7 +1679,8 @@ covering it, and it can hold something that is not Deck's own pixels.
   is an arrangement, not a single position, and only its CLOSED half belongs
   to the stage. A SHOWN column carries its own control at that column's
   **outer** edge — the navigation sidebar's sits beside the traffic lights,
-  so the dock's ends its tab row against the window's right edge — and the
+  so the dock's ends its tab row at the window's right edge, short of the
+  Windows caption buttons' footprint where there is one (DL-18.4) — and the
   strip carries it only while the column is gone. Exactly one of the two is
   ever on screen: `App` gates the stage mount on the panel being absent. The
   control does not shrink at DL-19.4's floor; the compact tab group and the
@@ -1809,7 +1822,9 @@ direction token rebuild §9.4
   the strength of a screenshot that was not asking about type.
 - **DL-20.4** **Frame height is not in this section either.** DL-18.2's 34px is
   load-bearing geometry: `hiddenInset` and `--frame-lights-w` are tuned so the
-  macOS traffic lights centre inside the row. The direction's 54px was never seen
+  macOS traffic lights centre inside the row, and the Windows overlay is
+  opened at the same height (`FRAME_HEIGHT_PX`, held to `--frame-h` by a
+  test). The direction's 54px was never seen
   at native density. Changing the frame is a window-chrome decision with its own
   fork, not a numeric-scale entry.
 - **DL-20.5** Spacing, weight, border-width and layer scales are **not adopted**.
