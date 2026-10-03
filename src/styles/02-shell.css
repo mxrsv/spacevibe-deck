@@ -4,9 +4,11 @@
   height: 100vh;
   width: 100vw;
   display: grid;
-  /* DL-18: ONE command row. There is no separate title bar — the traffic
-     lights sit inside this row behind a reserved inset, so the frame is
-     authored chrome rather than an empty OS band above the app. */
+  /* DL-18: ONE command row. There is no separate title bar — the OS paints its
+     window controls inside this row behind a reserved inset (the traffic
+     lights on the left on macOS, the caption buttons on the right on Windows
+     under Electron), so the frame is authored chrome rather than an empty OS
+     band above the app. */
   grid-template-rows: var(--frame-h) 1fr var(--status-h);
   color: var(--text-primary);
   font-family: var(--ui-font);
@@ -14,8 +16,12 @@
   background: var(--bg);
 }
 
-/* Native Windows chrome owns the system title row, so there is no inset to
-   reserve — the row is the same height and carries the same content. */
+/* Windows has no traffic lights, so nothing is reserved on the LEFT. Its window
+   controls are on the RIGHT: under the Electron host the OS paints them inside
+   this row and `22-caption-overlay.css` reserves their footprint; Tauri's
+   Windows build keeps a native title bar above the row and reserves nothing.
+   Either way the row is the same height and carries the same content
+   (DL-18.4, DL-18.5). */
 .window--windows {
   --frame-lights-w: 0px;
 }
@@ -58,8 +64,9 @@
   -webkit-app-region: drag;
 }
 
-/* Windows draws its own controls on the right, so there is nothing to reserve
-   on the left and the element collapses to zero rather than leaving a gap. */
+/* Windows' controls are on the right (see `.window--windows` above), so there
+   is nothing to reserve on the left and the element drops out of layout rather
+   than leaving a gap. */
 .window--windows .deck-frame__lights {
   display: none;
 }

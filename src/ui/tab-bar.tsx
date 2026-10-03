@@ -47,7 +47,9 @@ export function TabBar(props: TabBarProps) {
           macOS footprint and only `.window--windows` zeroes it and hides the
           element outright, so the `"unsupported"` platform fallback (see
           platform.ts) also reserves that width, not just macOS
-          (DL-18.5 — nothing is reserved where no OS paints). */}
+          (DL-18.5 — nothing is reserved where no OS paints). The bar's right
+          end is the other half: under Electron on Windows
+          `22-caption-overlay.css` pads it for the caption buttons (DL-18.4). */}
       <div class="deck-frame__lights" aria-hidden="true" />
       <TabStrip
         transientPageOpen={props.transientPageOpen}

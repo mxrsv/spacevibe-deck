@@ -37,6 +37,19 @@ constants that currently switch behaviour off and are meant to be flipped back.
 - **Props on the element `DesktopChrome` returns are applied on mount and never updated.**
   The sidebar's live width and collapsed flag are written to `:root` imperatively to
   sidestep it.
+- **Under Electron on Windows the OS paints its caption buttons inside Deck's frame row, not
+  in a title bar above it.** The window opens with `titleBarStyle: "hidden"` and a
+  `titleBarOverlay` ([`window-options.ts`](../../electron/window-options.ts)), so minimize,
+  maximize and close sit over the web contents at the row's right end, as the traffic lights
+  do on the left on macOS (DL-18.4). `DesktopChrome` sets `window--caption-overlay` only for
+  Windows plus the Electron host, and only under that class does `--frame-controls-w` leave
+  `0px` ([`22-caption-overlay.css`](../../src/styles/22-caption-overlay.css)); Tauri's
+  Windows build keeps a native title bar above the row and reserves nothing. A new occupant
+  of the row's right end must pad itself by that token or the buttons cover it, and a new
+  surface under the corner needs an entry in
+  [`title-bar-overlay-colors.ts`](../../src/lib/title-bar-overlay-colors.ts) so the buttons
+  keep its colour. How the buttons render, theme and scale is unverified, and the 138px
+  fallback is what applies if `env(titlebar-area-*)` is undefined.
 - **A pane's terminal never goes below 24 columns, even when its box does.** opencode 1.18.31 stops
   painting for good once its pty drops to 20 columns or fewer, also under tmux, and Deck
   panes get that narrow easily. [`fit()`](../../src/terminal/pane.ts) clamps the size there,

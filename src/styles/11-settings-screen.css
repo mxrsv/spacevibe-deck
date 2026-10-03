@@ -122,10 +122,12 @@
 /* The header now stands where the window's own frame row used to be, so it
    inherits that row's two obligations (2026-08-19):
 
-   - it reserves the macOS traffic lights' footprint, because the OS paints its
+   - it reserves the window controls' footprint, because the OS paints its
      buttons over exactly that box and anything placed there sits underneath
-     them. `--frame-lights-w` is 0 on Windows, where the OS owns its own
-     controls on the right, so the padding collapses on its own;
+     them. On the left that is the macOS traffic lights: `--frame-lights-w` is
+     0 on Windows, whose controls are on the right, so the padding collapses on
+     its own. On the right it is the Windows caption buttons under Electron,
+     which `22-caption-overlay.css` pads for (`--frame-controls-w`);
    - it is the drag surface. Covering the frame row would otherwise cost the
      window its only draggable strip while Settings is open. Every interactive
      child opts back out below — inside a drag region the OS takes the pointer

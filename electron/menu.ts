@@ -253,12 +253,14 @@ export function buildMenu(deps: MenuDeps): void {
   if (process.platform !== "darwin") {
     // Windows/Linux chrome carries its own menu, but "install nothing" is not
     // the same as "no menu". Electron installs a DEFAULT menu when the app
-    // never calls `setApplicationMenu` itself, and `titleBarStyle:
-    // "hiddenInset"` makes the window frameless on Windows — so the menu BAR
-    // is skipped while its accelerators are already registered with the focus
-    // manager. The shipped Windows preview therefore answers Ctrl+R with a
-    // renderer reload and Ctrl+W by closing the window, neither of which Deck
-    // asked for and neither of which `WINDOWS_KEYMAP` contests.
+    // never calls `setApplicationMenu` itself, and the Windows window is
+    // frameless — `titleBarStyle: "hidden"` plus a `titleBarOverlay` that has
+    // the OS paint its caption buttons in Deck's own frame row
+    // (`window-options.ts`) — so the menu BAR is skipped while its
+    // accelerators are already registered with the focus manager. The shipped
+    // Windows preview therefore answers Ctrl+R with a renderer reload and
+    // Ctrl+W by closing the window, neither of which Deck asked for and
+    // neither of which `WINDOWS_KEYMAP` contests.
     //
     // Passing null is what actually removes them.
     Menu.setApplicationMenu(null);

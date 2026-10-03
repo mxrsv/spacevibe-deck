@@ -143,7 +143,9 @@ export function DockPanel(props: DockPanelProps) {
           DL-18.9's arrangement,
           mirrored: while a column is SHOWN its hide control rides the column
           it hides, at that column's outer edge — the sidebar's beside the
-          traffic lights, this one against the window's right edge. Only the
+          traffic lights, this one at the window's right edge (short of the
+          Windows caption buttons' footprint, which `22-caption-overlay.css`
+          reserves in this header). Only the
           CLOSED half stays on the stage, because a closed column cannot hold
           its own way back out; `App` mounts that one and gates it on the
           panel being gone, so the two never appear together.
