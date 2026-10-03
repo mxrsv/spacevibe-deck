@@ -309,6 +309,21 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("window_set_title_bar_overlay carries the flat { color, symbolColor } payload and has an Electron handler", () => {
+    // The handler takes its payload whole (it validates an untrusted object
+    // rather than destructuring it), so the generic key check above cannot read
+    // it; `register-shell.test.ts` pins the two keys it reads. Here: the call
+    // site sends exactly those two, and the handler is registered under the name.
+    const sites = callSites.filter((site) => site.channel === "window_set_title_bar_overlay");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["color", "symbolColor"]);
+    }
+    expect(readFileSync("electron/ipc/register-shell.ts", "utf8")).toContain(
+      "ipcMain.handle(CHANNELS.windowSetTitleBarOverlay",
+    );
+  });
+
   it("leaves resolve_paths and open_editor untouched, so the Tauri twin stays valid", () => {
     // Design §6: the two channels ⌘+click already used are unchanged, which is
     // what lets `src-tauri/src/links.rs` keep answering them.

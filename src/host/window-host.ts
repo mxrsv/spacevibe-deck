@@ -3,8 +3,8 @@
  * `@tauri-apps/api/webview`.
  *
  * Only the methods the renderer actually uses are here: `close`, `isFocused`,
- * `onFocusChanged`, `scaleFactor`, `toggleMaximize`, and the webview's
- * `onDragDropEvent`. Anything else would be dead surface.
+ * `onFocusChanged`, `scaleFactor`, `setTitleBarOverlay`, `toggleMaximize`, and
+ * the webview's `onDragDropEvent`. Anything else would be dead surface.
  *
  * Note there is deliberately NO close-requested subscription: the main process
  * owns that, which is what keeps a wedged renderer from making quit
@@ -72,6 +72,28 @@ class DeckWindow {
 
   toggleMaximize(): Promise<void> {
     return invoke("window_toggle_maximize");
+  }
+
+  /**
+   * Publish the frame's colour and ink for the Windows caption buttons.
+   *
+   * Never rejects, so the theme effect can call it on every host: the browser
+   * preview and Tauri have no bridge and the host answers nothing off win32.
+   * Values must be `rgb()` / `rgba()` or hex — `color-mix()` and `var()` are
+   * refused main-side — so the caller resolves them through `getComputedStyle`.
+   */
+  async setTitleBarOverlay(colors: { color: string; symbolColor: string }): Promise<void> {
+    if (hostBridge() === undefined) {
+      return;
+    }
+    try {
+      await invoke("window_set_title_bar_overlay", {
+        color: colors.color,
+        symbolColor: colors.symbolColor,
+      });
+    } catch (error) {
+      console.warn("window_set_title_bar_overlay failed:", error);
+    }
   }
 
   async isFocused(): Promise<boolean> {

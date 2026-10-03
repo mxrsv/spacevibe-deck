@@ -4,6 +4,8 @@
  * lifecycle.
  */
 import { app, BrowserWindow, clipboard, ipcMain, Notification, shell } from "electron";
+import { FRAME_HEIGHT_PX, isOverlayColor } from "../window-options";
+import { CHANNELS } from "./channels";
 
 /**
  * Schemes Deck will hand to the OS.
@@ -15,7 +17,8 @@ import { app, BrowserWindow, clipboard, ipcMain, Notification, shell } from "ele
  */
 const OPENABLE_SCHEMES = new Set(["http:", "https:", "mailto:", "tel:"]);
 
-export function registerShell(): void {
+export function registerShell(platform: NodeJS.Platform = process.platform): void {
+  let rejectionLogged = false;
   // No `window_is_focused` / `window_scale_factor` handlers: both are answered
   // in the renderer from `document.hasFocus()` and `devicePixelRatio`. The
   // main-process versions were worse — `getZoomFactor()` returns the user's ZOOM
@@ -32,6 +35,30 @@ export function registerShell(): void {
     } else {
       window.maximize();
     }
+  });
+
+  ipcMain.handle(CHANNELS.windowSetTitleBarOverlay, (event, payload: unknown) => {
+    // Called by every renderer on every theme change; only Windows paints an
+    // overlay, so everywhere else this resolves without touching the window.
+    if (platform !== "win32") {
+      return;
+    }
+    // Untrusted: the payload is taken whole so a missing or non-object one is a
+    // rejection like any bad colour, not a TypeError thrown into the renderer.
+    const { color, symbolColor } = (payload ?? {}) as Record<string, unknown>;
+    if (!isOverlayColor(color) || !isOverlayColor(symbolColor)) {
+      // Once, not per theme change: the values are never echoed into the log.
+      if (!rejectionLogged) {
+        rejectionLogged = true;
+        console.warn("Deck: ignored a title bar overlay that is not an rgb() or hex colour pair");
+      }
+      return;
+    }
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window || window.isDestroyed() || typeof window.setTitleBarOverlay !== "function") {
+      return;
+    }
+    window.setTitleBarOverlay({ color, symbolColor, height: FRAME_HEIGHT_PX });
   });
 
   ipcMain.handle("shell_open_url", (_event, { url }) => {

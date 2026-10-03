@@ -171,3 +171,35 @@ describe("onDragDropEvent", () => {
     unlisten();
   });
 });
+
+describe("setTitleBarOverlay", () => {
+  const COLORS = { color: "rgb(10, 10, 10)", symbolColor: "rgb(203, 203, 203)" };
+
+  it("sends the two colours as flat keys", async () => {
+    const invoke = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("__deckHost", { invoke, listen: vi.fn() });
+
+    await getCurrentWindow().setTitleBarOverlay(COLORS);
+
+    expect(invoke).toHaveBeenCalledWith("window_set_title_bar_overlay", COLORS);
+  });
+
+  // The caller sits in a theme effect and invokes it on every host; a browser
+  // preview or Tauri has no bridge and must read as "nothing to paint".
+  it("resolves quietly when there is no host", async () => {
+    await expect(getCurrentWindow().setTitleBarOverlay(COLORS)).resolves.toBeUndefined();
+  });
+
+  it("resolves when the host refuses the call", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("__deckHost", {
+      invoke: vi.fn().mockRejectedValue(new Error("no handler")),
+      listen: vi.fn(),
+    });
+
+    await expect(getCurrentWindow().setTitleBarOverlay(COLORS)).resolves.toBeUndefined();
+
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+});
