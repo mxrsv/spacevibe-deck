@@ -102,12 +102,12 @@
 }
 .agent-launch-page__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 8px;
 }
 .agent-launch-page__card {
+  display: flex;
   min-width: 0;
-  padding: 13px;
   border: 1px solid var(--hair);
   border-radius: 8px;
   background: var(--chrome-1);
@@ -119,55 +119,66 @@
   border-color: var(--hair-strong);
   background: var(--chrome-2);
 }
+/* The card is one press; `New space` is the quiet icon beside it (DL-32.6). */
+.agent-launch-page__card .agent-launch-page__main {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
 .agent-launch-page__logo {
   display: block;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 27px;
+  flex: none;
+  width: 20px;
+  height: 20px;
 }
 .agent-launch-page__logo--letter {
-  font-size: 24px;
+  font-size: 16px;
   text-align: center;
 }
-.agent-launch-page__card strong {
-  display: block;
+.agent-launch-page__main strong {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 550;
 }
-.agent-launch-page__card button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin-top: 18px;
-  padding: 7px 9px;
-  box-sizing: border-box;
-  border: 1px solid var(--hair);
-  border-radius: 4px;
-  background: var(--chrome-1);
-  font-size: 11px;
+.agent-launch-page__main .deck-icon,
+.agent-launch-page__missing {
+  flex: none;
+  color: var(--text-muted);
 }
-.agent-launch-page__card button:hover:not(:disabled) {
-  border-color: var(--hair-strong);
-  background: var(--chrome-2);
+.agent-launch-page__missing {
+  font-size: var(--type-micro);
 }
-/* Split and New space share the one button row: two equal columns, the same
-   height and outline as the single Run, so a card does not change size when
-   the choice appears. */
-.agent-launch-page__choices {
+.agent-launch-page__card:hover .agent-launch-page__main .deck-icon {
+  color: var(--text-primary);
+}
+.agent-launch-page__card .agent-launch-page__alt {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 18px;
+  flex: none;
+  place-items: center;
+  align-self: stretch;
+  width: 34px;
+  border: 0;
+  border-left: 1px solid var(--hair);
+  border-radius: 0 7px 7px 0;
+  background: transparent;
+  color: var(--text-muted);
 }
-.agent-launch-page__choices button {
-  justify-content: center;
-  margin-top: 0;
-  padding-inline: 4px;
-  white-space: nowrap;
+.agent-launch-page__card .agent-launch-page__alt:hover:not(:disabled) {
+  background: var(--hair);
+  color: var(--text-primary);
+}
+.agent-launch-page__card button:focus-visible {
+  outline-offset: -2px;
 }
 .agent-launch-page__empty button {
   padding: 7px 12px;
@@ -191,15 +202,7 @@
 .agent-launch-page .agent-launch-page__error {
   color: var(--text-primary);
 }
-@container (max-width: 620px) {
-  .agent-launch-page__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 @container (max-width: 280px) {
-  .agent-launch-page__grid {
-    grid-template-columns: 1fr;
-  }
   .agent-launch-page__destination {
     flex-wrap: wrap;
   }

@@ -38,17 +38,17 @@ session on its own.
   agents show the name over what each one is doing, and double-clicking one of
   those rows renames it too.
 - **Split or New space from Quick Launch.** When the folder already has a space
-  open, each [agent card](src/launcher/agent-launch-cards.tsx) offers **Split**,
-  which adds the agent beside your current panes as before, and **New space**,
-  which opens it in a space of its own. Enter still splits.
+  open, pressing an [agent card](src/launcher/agent-launch-cards.tsx) adds the
+  agent beside your current panes as before, and the small **+** on its right
+  opens it in a space of its own. Enter still splits.
 
 ### Start screen
 
 - **Choose a folder, then press Run.** The
   [start screen](src/open-board/board-composer.tsx) opens a
   [folder menu](src/open-board/workspace-picker.tsx) with **Open folder…** and
-  your recent workspaces, then shows each agent as a card with its own **Run**
-  button. Choosing a folder never starts an agent; only Run does.
+  your recent workspaces, then shows each agent as a card with a **Run** arrow.
+  Choosing a folder never starts an agent; only pressing a card does.
 - **Drop a folder from Finder or Explorer** onto the start screen to use it as
   the workspace. Files, several items at once, or a missing folder are refused
   with a message.

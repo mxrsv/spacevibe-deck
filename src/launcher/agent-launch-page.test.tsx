@@ -43,7 +43,7 @@ describe("compact Original launch page", () => {
     expect(host.textContent).not.toContain("Recently used");
     expect(host.textContent).not.toContain("Default profile");
   });
-  it("offers Split and New space side by side when the folder already has a tab", () => {
+  it("makes the card Split and offers New space as an icon beside it when the folder has a tab", () => {
     const props = mount({ onRunInNewSpace: vi.fn() });
     const buttons = [
       ...host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button"),
@@ -72,6 +72,17 @@ describe("compact Original launch page", () => {
     expect(buttons).toHaveLength(1);
     expect(buttons[0].getAttribute("aria-label")).toBe("Run Claude Code");
     expect(host.querySelector(".agent-launch-page__destination")?.textContent).toContain("New tab");
+  });
+
+  it("shows a missing agent as disabled, with no New space button", () => {
+    mount({
+      agents: [{ id: "codex", label: "Codex", missing: true, detail: "codex" }],
+      onRunInNewSpace: vi.fn(),
+    });
+    const buttons = host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].disabled).toBe(true);
+    expect(buttons[0].textContent).toContain("Not installed");
   });
 
   it("never offers the second button to a page that cannot open a space", () => {
