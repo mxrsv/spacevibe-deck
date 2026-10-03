@@ -7,7 +7,7 @@ import {
   folderName,
   miniColumns,
   needsTone,
-  runsByWorkspace,
+  runsByGroup,
   spaceAddress,
   spaceCounts,
   spaceLabel,
@@ -174,19 +174,55 @@ describe("needsTone", () => {
   });
 });
 
-describe("runsByWorkspace", () => {
-  it("groups only consecutive spaces on one workspace", () => {
+describe("runsByGroup", () => {
+  it("groups only consecutive spaces of one project", () => {
     const spaces = buildSpaces({
       tabs: [tab(1, DECK), tab(2, DECK), tab(3, API), tab(4, DECK)],
       order: [0, 1, 2, 3],
       activeIndex: 0,
       scans: new Map(),
     });
-    expect(runsByWorkspace(spaces).map((run) => run.map((space) => space.key))).toEqual([
+    expect(runsByGroup(spaces).map((run) => run.map((space) => space.key))).toEqual([
       [1, 2],
       [3],
       [4],
     ]);
+  });
+});
+
+describe("project groups", () => {
+  const groups = new Map([
+    [0, { key: DECK, label: "spacevibe-deck" }],
+    [1, { key: DECK, label: "spacevibe-deck" }],
+    [2, { key: API, label: "spacevibe-api" }],
+  ]);
+
+  it("puts a worktree in its repository's run, though its path and index differ", () => {
+    const spaces = buildSpaces({
+      tabs: [tab(1, DECK), tab(2, FIX), tab(3, API)],
+      order: [0, 1, 2],
+      activeIndex: 0,
+      scans: SCANS,
+      groups,
+    });
+    expect(runsByGroup(spaces).map((run) => run.map((space) => space.key))).toEqual([[1, 2], [3]]);
+    expect(spaces.map((space) => space.groupLabel)).toEqual([
+      "spacevibe-deck",
+      "spacevibe-deck",
+      "spacevibe-api",
+    ]);
+    // `folder N` stays per path: the worktree is alone on its own.
+    expect(spaces[1].index).toBeNull();
+  });
+
+  it("makes a tab the rail does not list a project of its own folder", () => {
+    const [space] = buildSpaces({
+      tabs: [tab(1, API)],
+      order: [0],
+      activeIndex: 0,
+      scans: new Map(),
+    });
+    expect(space.groupLabel).toBe("spacevibe-api");
   });
 });
 

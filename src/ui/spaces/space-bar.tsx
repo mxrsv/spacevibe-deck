@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useStageOverlayFlag, useSurfacePlacement } from "../worktree-card-menus";
 import {
   needsTone,
-  runsByWorkspace,
+  runsByGroup,
   spaceAddress,
   spaceCounts,
   spaceLabel,
@@ -166,8 +166,14 @@ export function SpaceBar({ spaces, menuKey, onGo, onMenu, onRename }: SpaceBarPr
         aria-label="Spaces"
         onScroll={card.hide}
       >
-        {runsByWorkspace(spaces).map((run) => (
-          <span key={run[0].key} class="space-bar__run">
+        {runsByGroup(spaces).map((run) => (
+          <span
+            key={run[0].key}
+            class="space-bar__run"
+            role="group"
+            aria-label={run[0].groupLabel}
+            data-current={run.some((space) => space.current)}
+          >
             {run.map((space) => (
               <button
                 type="button"

@@ -427,6 +427,19 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
   });
 
+  it("holds each project's marks in one named capsule", () => {
+    tabViews.value = [
+      tab({ key: 1, workspacePath: "/w/alpha" }),
+      tab({ key: 2, workspacePath: "/w/alpha" }),
+      tab({ key: 3, workspacePath: "/w/beta" }),
+    ];
+    mount();
+
+    const capsules = [...host.querySelectorAll<HTMLElement>('.space-bar__run[role="group"]')];
+    expect(capsules.map((capsule) => capsule.getAttribute("aria-label"))).toEqual(["alpha", "beta"]);
+    expect(capsules.map((capsule) => capsule.querySelectorAll(".space-mark").length)).toEqual([2, 1]);
+  });
+
   it("renders a mark per space and a chip per surface, and no add button, with no .tabbar in the tree", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
     openFileTab("/repo", "/repo/a.ts", { keep: true });

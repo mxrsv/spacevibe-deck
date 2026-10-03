@@ -29,7 +29,7 @@ import { createTabStripDrag } from "./tab-strip-drag";
 import { closeChips, closeTargets, type TabCloseTarget } from "./tab-strip-close";
 import { SpaceBar } from "./spaces/space-bar";
 import { buildSpaces, type Space } from "./spaces/space-model";
-import { currentSpaceOrder } from "./spaces/space-order";
+import { currentSpaceLayout } from "./spaces/space-order";
 
 export interface TabStripProps {
   transientPageOpen?: boolean;
@@ -165,12 +165,13 @@ export function TabStrip(props: TabStripProps) {
   // never moves because something else opened), then the documents and the
   // browser as chips in the strip's merged order, so a pinned or dragged
   // surface keeps its place among surfaces. `TabManager.stripSlots` reads the
-  // same `currentSpaceOrder`, so ⌘1–9 counts what is drawn.
+  // same `currentSpaceLayout`, so ⌘1–9 counts what is drawn.
   const merged = mergeStripOrder(terminals, surfaces, preferences).map(
     (slot) => (slot.kind === "tab" ? terminals : surfaces)[slot.index]!,
   );
+  const layout = currentSpaceLayout();
   const rank = new Map<number, number>(
-    currentSpaceOrder().flatMap((index, position) => {
+    layout.order.flatMap((index, position) => {
       const key = tabViews.value[index]?.key;
       return key === undefined ? [] : [[key, position] as const];
     }),
@@ -192,6 +193,7 @@ export function TabStrip(props: TabStripProps) {
     ),
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
+    groups: layout.groups,
   });
   const chipFor = (space: Space): Chip | undefined =>
     chips.find((chip) => chip.kind === "terminal" && chip.terminalKey === space.key);

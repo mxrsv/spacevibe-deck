@@ -13,28 +13,60 @@ import { buildAgentRail, type AgentRailInput } from "../agent-rail-model";
 
 export type SpaceOrderInput = Omit<AgentRailInput, "now" | "tails" | "models">;
 
-/** Owner tab indexes in rail order; a tab the rail does not list goes last. */
-export function spaceOrderFromRail(input: SpaceOrderInput): readonly number[] {
-  // The clock only formats ages, which no index depends on.
-  const view = buildAgentRail({ ...input, now: 0 });
-  const listed = [
-    ...new Set(
-      view.stream.flatMap((group) =>
-        group.worktrees.flatMap((worktree) => worktree.rows.map((row) => row.index)),
-      ),
-    ),
-  ].filter((index) => index >= 0 && index < input.tabs.length);
-  const seen = new Set(listed);
-  return [...listed, ...input.tabs.flatMap((_, index) => (seen.has(index) ? [] : [index]))];
+/** The project a space belongs to: the rail's stable identity and its printed name. */
+export interface SpaceGroup {
+  /** `RailStreamGroup.orderKey` — a repository and its worktrees share it. */
+  readonly key: string;
+  readonly label: string;
 }
 
-/** `spaceOrderFromRail` over the window's live stores. */
-export function currentSpaceOrder(): readonly number[] {
-  return spaceOrderFromRail({
+export interface SpaceLayout {
+  /** Owner tab indexes in rail order; a tab the rail does not list goes last. */
+  readonly order: readonly number[];
+  /** Owner tab index → its project; absent for a tab the rail does not list. */
+  readonly groups: ReadonlyMap<number, SpaceGroup>;
+}
+
+/**
+ * One `buildAgentRail` call yields the order and each tab's project, so the
+ * grouping the strip, the shelf and the sidebar draw cannot drift from the
+ * order they are drawn in (DL-35.3).
+ */
+export function spaceLayoutFromRail(input: SpaceOrderInput): SpaceLayout {
+  // The clock only formats ages, which no index depends on.
+  const view = buildAgentRail({ ...input, now: 0 });
+  const groups = new Map<number, SpaceGroup>();
+  const listed: number[] = [];
+  for (const group of view.stream) {
+    for (const worktree of group.worktrees) {
+      for (const row of worktree.rows) {
+        if (row.index < 0 || row.index >= input.tabs.length || groups.has(row.index)) continue;
+        groups.set(row.index, { key: group.orderKey, label: group.project });
+        listed.push(row.index);
+      }
+    }
+  }
+  const unlisted = input.tabs.flatMap((_, index) => (groups.has(index) ? [] : [index]));
+  return { order: [...listed, ...unlisted], groups };
+}
+
+/** Owner tab indexes in rail order. */
+export function spaceOrderFromRail(input: SpaceOrderInput): readonly number[] {
+  return spaceLayoutFromRail(input).order;
+}
+
+/** `spaceLayoutFromRail` over the window's live stores. */
+export function currentSpaceLayout(): SpaceLayout {
+  return spaceLayoutFromRail({
     tabs: tabViews.value,
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
     workspaceHistoryPaths: workspacesData.value.recents.map((recent) => recent.path),
     railOrder: settings.value.railOrder,
   });
+}
+
+/** The order alone, for callers that draw nothing by project. */
+export function currentSpaceOrder(): readonly number[] {
+  return currentSpaceLayout().order;
 }

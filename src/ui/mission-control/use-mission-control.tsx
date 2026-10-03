@@ -7,7 +7,7 @@ import { paneTails } from "../../terminal/session-tail-store";
 import type { TabManager } from "../../terminal/tab-manager";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { buildSpaces } from "../spaces/space-model";
-import { currentSpaceOrder } from "../spaces/space-order";
+import { currentSpaceLayout } from "../spaces/space-order";
 import { createSpaceSlider, type SlideDirection } from "../spaces/space-slide";
 import { useSpaceSwipe } from "../spaces/use-space-swipe";
 import { MissionControl, WINDOW_ROWS, type MissionExit } from "./mission-control";
@@ -45,12 +45,14 @@ interface Opening {
 
 /** Every tab, in the strip's own order but unscoped: Mission Control shows all. */
 function allSpaces() {
+  // The rail's order and projects, as the strip's marks are (DL-35.3).
+  const layout = currentSpaceLayout();
   return buildSpaces({
     tabs: tabViews.value,
-    // The rail's order, as the strip's marks are (DL-35.3).
-    order: currentSpaceOrder(),
+    order: layout.order,
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
+    groups: layout.groups,
   });
 }
 

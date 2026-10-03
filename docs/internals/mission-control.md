@@ -21,6 +21,13 @@ space through `renameTab` from the launch closure in [`app.tsx`](../../src/ui/ap
 `launchAgentAtTarget` returns its receipt, so naming never enters tab materialization; the
 tab is found by `receipt.tabKey` because an index can move while the launch is in flight.
 
+**One grouping key, from the rail.** The strip's capsules and the shelf's sets group by
+`Space.group`, the rail's `RailStreamGroup.orderKey` (a repository key, or `plain:<path>`),
+never by `path`: a worktree has its own path but belongs to its repository's project.
+[`spaceLayoutFromRail`](../../src/ui/spaces/space-order.ts) returns the order and each tab's
+group from one `buildAgentRail` call, so they cannot drift. Use `orderKey`, not `key`: `key`
+carries a tier prefix and changes when a project's last tab closes. `folder N` stays per path.
+
 The order is the strip's own, and the strip changed to make that true: every terminal tab
 comes before every surface chip, each half in the merged open/manual order.
 [`TabManager.stripSlots`](../../src/terminal/tab-manager.ts) partitions the same way, so

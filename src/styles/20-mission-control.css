@@ -81,7 +81,7 @@
 .space-bar__marks {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -93,10 +93,25 @@
   display: none;
 }
 
+/* DL-35.3: one capsule per project — a repository and its worktrees are one —
+   with the marks tight inside it, outlined while it holds the current space.
+   The outline is an inset ring, so the capsule never changes size. */
 .space-bar__run {
   display: flex;
   flex: none;
   align-items: center;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hair-strong) 40%, transparent);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.space-bar__run[data-current="true"] {
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+}
+
+.space-bar__run .space-mark {
+  width: 16px;
 }
 
 .space-mark {

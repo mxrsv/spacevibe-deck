@@ -51,19 +51,18 @@ export interface MissionControlProps {
   readonly leaveRef: { current: ((exit: MissionExit) => void) | null };
 }
 
-interface Workspace {
+interface Project {
   readonly key: string;
-  readonly folder: string;
+  readonly label: string;
   readonly spaces: readonly Space[];
 }
 
-/** Spaces grouped by workspace, each group where its first space stands. */
-function byWorkspace(spaces: readonly Space[]): readonly Workspace[] {
-  return spaces.reduce<readonly Workspace[]>((groups, space) => {
-    const key = space.path ?? "";
-    const found = groups.find((group) => group.key === key);
+/** Spaces grouped by project, each group where its first space stands. */
+function byProject(spaces: readonly Space[]): readonly Project[] {
+  return spaces.reduce<readonly Project[]>((groups, space) => {
+    const found = groups.find((group) => group.key === space.group);
     return found === undefined
-      ? [...groups, { key, folder: space.folder, spaces: [space] }]
+      ? [...groups, { key: space.group, label: space.groupLabel, spaces: [space] }]
       : groups.map((group) =>
           group === found ? { ...group, spaces: [...group.spaces, space] } : group,
         );
@@ -83,9 +82,9 @@ function Shelf(props: {
 }) {
   return (
     <div class="mc-shelf" role="group" aria-label="Spaces">
-      {byWorkspace(props.spaces).map((workspace) => (
+      {byProject(props.spaces).map((workspace) => (
         <div key={workspace.key} class="mc-shelf__set">
-          <span class="mc-shelf__folder">{workspace.folder}</span>
+          <span class="mc-shelf__folder">{workspace.label}</span>
           <div class="mc-shelf__row">
             {workspace.spaces.map((space) => (
               <ShelfSpace

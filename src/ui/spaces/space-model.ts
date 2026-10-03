@@ -14,6 +14,7 @@ import type { RepositoryScan } from "../../repositories/repository-client";
 import { worktreeForPath } from "../../repositories/repository-model";
 import { MAX_TAB_NAME_LENGTH, NO_PANES, type TabView } from "../../terminal/tabs-store";
 import { paneState, type RailState } from "../agent-rail-model";
+import type { SpaceGroup } from "./space-order";
 
 /** What a pane is in a space's miniature: an agent's rail state, or a shell. */
 export type SpacePaneState = RailState | "shell";
@@ -37,6 +38,14 @@ export interface Space {
   readonly index: number | null;
   /** The workspace path as the tab holds it; null for a workspace-less tab. */
   readonly path: string | null;
+  /**
+   * The project the space belongs to (the rail's `orderKey`): a repository and
+   * its worktrees are one, a plain folder stands alone. Strip capsules and
+   * shelf sets group by this, never by `path`.
+   */
+  readonly group: string;
+  /** The project's printed name. */
+  readonly groupLabel: string;
   /** The checked-out branch, when a repository scan knows it (Electron only). */
   readonly branch: string | null;
   readonly panes: readonly SpacePane[];
@@ -55,6 +64,11 @@ export interface SpaceInput {
   readonly order: readonly number[];
   readonly activeIndex: number;
   readonly scans: ReadonlyMap<string, RepositoryScan>;
+  /**
+   * Owner index → project, from `spaceLayoutFromRail`. A tab without an entry
+   * is its own folder's project, which is how a plain folder reads anyway.
+   */
+  readonly groups?: ReadonlyMap<number, SpaceGroup>;
 }
 
 /** The folder a space is called by: the last segment of its path. */
@@ -111,6 +125,10 @@ export function buildSpaces(input: SpaceInput): readonly Space[] {
     const shared = keys.filter((other) => other === key).length > 1;
     const position = keys.slice(0, at).filter((other) => other === key).length + 1;
     const panes = spacePanes(tab);
+    const project = input.groups?.get(tabIndex) ?? {
+      key: `plain:${key}`,
+      label: folderName(tab.workspacePath),
+    };
     return {
       tabIndex,
       key: tab.key,
@@ -118,6 +136,8 @@ export function buildSpaces(input: SpaceInput): readonly Space[] {
       name: tab.name,
       index: shared ? position : null,
       path: tab.workspacePath,
+      group: project.key,
+      groupLabel: project.label,
       branch: branchOf(tab.workspacePath, input.scans),
       panes,
       agentCount: panes.filter((pane) => pane.agent !== null).length,
@@ -155,11 +175,11 @@ export function needsTone(
   return space.needsCount > 0 ? "asked" : null;
 }
 
-/** Consecutive spaces on one workspace, in order — the bar spaces them apart. */
-export function runsByWorkspace(spaces: readonly Space[]): readonly (readonly Space[])[] {
+/** Consecutive spaces of one project, in order — the strip draws one capsule per run. */
+export function runsByGroup(spaces: readonly Space[]): readonly (readonly Space[])[] {
   return spaces.reduce<readonly (readonly Space[])[]>((runs, space) => {
     const last = runs[runs.length - 1];
-    return last !== undefined && pathKey(last[0].path) === pathKey(space.path)
+    return last !== undefined && last[0].group === space.group
       ? [...runs.slice(0, -1), [...last, space]]
       : [...runs, [space]];
   }, []);

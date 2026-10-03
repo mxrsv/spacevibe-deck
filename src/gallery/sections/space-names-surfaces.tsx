@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import {
   needsTone,
-  runsByWorkspace,
+  runsByGroup,
   spaceCounts,
   spaceLabel,
   type Space,
@@ -74,7 +74,7 @@ export function StripRow(props: StripRowProps) {
           <span class="space-bar__name spn-name">{labelFor(props, "strip", current, state)}</span>
         )}
         <div class="space-bar__marks" role="tablist" aria-label="Spaces">
-          {runsByWorkspace(spaces).map((run) => (
+          {runsByGroup(spaces).map((run) => (
             <span key={run[0].key} class="space-bar__run">
               {run.map((space) => {
                 const named = (props.names[space.key] ?? null) !== null;
@@ -155,7 +155,7 @@ export function ShelfRow(props: ShelfRowProps) {
   const spaces = withCurrent(SPACES, props.currentKey).filter(
     (space) => props.only === undefined || props.only.includes(space.key),
   );
-  const sets = runsByWorkspace(spaces);
+  const sets = runsByGroup(spaces);
   return (
     <div class={`mc-shelf spn-shelf spn-shelf--${props.variant}`} role="group" aria-label="Spaces">
       {sets.map((set) => (

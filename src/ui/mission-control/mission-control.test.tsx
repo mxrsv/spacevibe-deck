@@ -18,6 +18,8 @@ function space(key: number, overrides: Partial<Space> = {}): Space {
     name: null,
     index: null,
     path: "/w/spacevibe-deck",
+    group: "plain:/w/spacevibe-deck",
+    groupLabel: "spacevibe-deck",
     branch: null,
     panes: [{ paneId: key * 10, agent: "claude", state: "working" }],
     agentCount: 1,
@@ -50,6 +52,8 @@ describe("MissionControl", () => {
         space(2, {
           folder: "spacevibe-api",
           path: "/w/spacevibe-api",
+          group: "plain:/w/spacevibe-api",
+          groupLabel: "spacevibe-api",
           needsCount: 1,
           panes: [
             { paneId: 20, agent: "codex", state: "asked" },
@@ -79,6 +83,22 @@ describe("MissionControl", () => {
     expect(windows().map((item) => item.dataset.pane)).toEqual(["10"]);
     expect(host.querySelector(".mc-window__body")?.textContent).toBe("rows of 10");
     expect(document.activeElement).toBe(windows()[0]);
+  });
+
+  it("sets spaces by project: a worktree sits under its repository's name", () => {
+    mount({
+      spaces: [
+        space(1, { current: true }),
+        space(2, { folder: "fix-rail", path: "/w/fix-rail" }),
+        space(3, { folder: "spacevibe-api", group: "plain:/w/spacevibe-api", groupLabel: "spacevibe-api" }),
+      ],
+    });
+    const sets = [...host.querySelectorAll(".mc-shelf__set")];
+    expect(sets.map((set) => set.querySelector(".mc-shelf__folder")?.textContent)).toEqual([
+      "spacevibe-deck",
+      "spacevibe-api",
+    ]);
+    expect(sets[0].querySelectorAll(".mc-space")).toHaveLength(2);
   });
 
   it("previews another space on hover, and marks asked windows by state", () => {

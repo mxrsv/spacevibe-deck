@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { RepositoryScan } from "../../repositories/repository-client";
 import type { TabView } from "../../terminal/tabs-store";
-import { spaceOrderFromRail } from "./space-order";
+import { spaceLayoutFromRail, spaceOrderFromRail } from "./space-order";
 
 function tab(key: number, workspacePath: string, openedAt: number): TabView {
   return {
@@ -44,5 +45,39 @@ describe("spaceOrderFromRail", () => {
     const order = spaceOrderFromRail(input(tabs));
 
     expect([...order].sort()).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe("spaceLayoutFromRail", () => {
+  const worktree = (path: string, branch: string) => ({
+    path,
+    head: "0".repeat(40),
+    branch,
+    bare: false,
+    detached: false,
+    locked: null,
+    prunable: null,
+  });
+  const repository: RepositoryScan = {
+    kind: "repository",
+    key: "/w/deck/.git",
+    root: "/w/deck",
+    worktrees: [worktree("/w/deck", "main"), worktree("/w/deck-side", "side")],
+  };
+
+  it("gives a repository and its worktree one project key, and a plain folder its own", () => {
+    const tabs = [tab(1, "/w/deck", 1), tab(2, "/w/other", 2), tab(3, "/w/deck-side", 3)];
+    const { order, groups } = spaceLayoutFromRail({
+      ...input(tabs),
+      scans: new Map([
+        ["/w/deck", repository],
+        ["/w/deck-side", repository],
+      ]),
+    });
+
+    expect(order).toEqual([0, 2, 1]);
+    expect(groups.get(0)?.key).toBe(groups.get(2)?.key);
+    expect(groups.get(1)?.key).not.toBe(groups.get(0)?.key);
+    expect(groups.get(1)?.label).toBe("other");
   });
 });

@@ -52,6 +52,8 @@ function fixture(
     name: null,
     index,
     path,
+    group: path,
+    groupLabel: folder,
     branch,
     panes: panes(key, states),
     agentCount: states.filter((state) => state !== "shell").length,
