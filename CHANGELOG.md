@@ -30,6 +30,17 @@ session on its own.
   to jump straight to it, or press Esc to go back where you were.
 - If you had rebound or unbound the Agent Board's shortcut, that setting is
   dropped: ⌘⇧O now opens Mission Control.
+- **Name a space.** Double-click the current space's folder name on the
+  [strip](src/ui/spaces/space-bar.tsx), or a space's label in
+  [Mission Control](src/ui/mission-control/mission-control.tsx), and type a
+  name. Enter or clicking away saves, Esc cancels, and an empty name goes back
+  to the folder. In the [sidebar](src/ui/worktree-card.tsx), a named space's
+  agents show the name over what each one is doing, and double-clicking one of
+  those rows renames it too.
+- **Split or New space from Quick Launch.** When the folder already has a space
+  open, each [agent card](src/launcher/agent-launch-cards.tsx) offers **Split**,
+  which adds the agent beside your current panes as before, and **New space**,
+  which opens it in a space of its own. Enter still splits.
 
 ### Start screen
 
