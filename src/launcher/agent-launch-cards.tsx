@@ -96,7 +96,9 @@ export function AgentLaunchCards(props: AgentLaunchCardsProps) {
               class="agent-launch-page__main"
               data-launch-primary
               disabled={blocked}
-              aria-label={withSpace ? `Split ${agent.label} into the current tab` : `Run ${agent.label}`}
+              aria-label={
+                withSpace ? `Split ${agent.label} into the current tab` : `Run ${agent.label}`
+              }
               onClick={() => props.onRun(agent.id)}
             >
               <AgentGlyph

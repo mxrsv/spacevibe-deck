@@ -90,7 +90,11 @@ describe("MissionControl", () => {
       spaces: [
         space(1, { current: true }),
         space(2, { folder: "fix-rail", path: "/w/fix-rail" }),
-        space(3, { folder: "spacevibe-api", group: "plain:/w/spacevibe-api", groupLabel: "spacevibe-api" }),
+        space(3, {
+          folder: "spacevibe-api",
+          group: "plain:/w/spacevibe-api",
+          groupLabel: "spacevibe-api",
+        }),
       ],
     });
     const sets = [...host.querySelectorAll(".mc-shelf__set")];

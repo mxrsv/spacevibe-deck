@@ -95,7 +95,9 @@ describe("autoSpaceName", () => {
   });
 
   it("falls back to the agent alone when no room is left for a folder", () => {
-    expect(autoSpaceName("deck", "x".repeat(MAX_TAB_NAME_LENGTH))).toBe("x".repeat(MAX_TAB_NAME_LENGTH));
+    expect(autoSpaceName("deck", "x".repeat(MAX_TAB_NAME_LENGTH))).toBe(
+      "x".repeat(MAX_TAB_NAME_LENGTH),
+    );
   });
 });
 

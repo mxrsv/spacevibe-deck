@@ -9,6 +9,7 @@ import {
   spaceLabel,
   type Space,
 } from "./space-model";
+import { useEdgeNeeds } from "./space-edge";
 import { SpaceRenameField } from "./space-rename-field";
 
 /**
@@ -105,6 +106,10 @@ export function SpaceBar({ spaces, menuKey, onGo, onMenu, onRename }: SpaceBarPr
    */
   const pressing = useRef(false);
   const current = spaces.find((space) => space.current);
+  const edge = useEdgeNeeds(
+    row,
+    spaces.map((space) => `${space.key}${needsTone(space) === null ? "" : "!"}`).join(),
+  );
   const hovered = spaces.find((space) => space.key === card.hover?.key);
 
   // A switch made behind the field (attention navigation, a closed tab) takes
@@ -159,81 +164,95 @@ export function SpaceBar({ spaces, menuKey, onGo, onMenu, onRename }: SpaceBarPr
           );
         })}
       </span>
-      <div
-        ref={row}
-        class="space-bar__marks"
-        role="tablist"
-        aria-label="Spaces"
-        onScroll={card.hide}
-      >
-        {runsByGroup(spaces).map((run) => (
-          <span
-            key={run[0].key}
-            class="space-bar__run"
-            role="group"
-            aria-label={run[0].groupLabel}
-            data-current={run.some((space) => space.current)}
-          >
-            {run.map((space) => (
-              <button
-                type="button"
-                key={space.key}
-                role="tab"
-                class="space-mark"
-                data-space-key={space.key}
-                aria-selected={space.current}
-                aria-label={`${spaceLabel(space)} · ${spaceCounts(space)}`}
-                aria-describedby={
-                  hovered?.key === space.key ? `space-card-${space.key}` : undefined
-                }
-                aria-haspopup="menu"
-                aria-expanded={menuKey === space.key}
-                data-needs={needsTone(space) ?? undefined}
-                onMouseEnter={(event) => card.show(space.key, event.currentTarget, CARD_OPEN_MS)}
-                onMouseLeave={() => {
-                  // A press released off the mark never fires `pointerup` here.
-                  pressing.current = false;
-                  card.hide();
-                }}
-                onPointerDown={() => {
-                  pressing.current = true;
-                }}
-                onPointerUp={() => {
-                  pressing.current = false;
-                }}
-                onPointerCancel={() => {
-                  // A touch press that became a scroll of the row ends here.
-                  pressing.current = false;
-                }}
-                onFocus={(event) => {
-                  if (!pressing.current) card.show(space.key, event.currentTarget, 0);
-                }}
-                onBlur={card.hide}
-                onClick={() => {
-                  card.hide();
-                  onGo(space);
-                }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  card.hide();
-                  onMenu(space, event.currentTarget, event.clientX, event.clientY);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+      <div class="space-bar__scroll">
+        <div
+          ref={row}
+          class="space-bar__marks"
+          role="tablist"
+          aria-label="Spaces"
+          onScroll={card.hide}
+        >
+          {runsByGroup(spaces).map((run) => (
+            <span
+              key={run[0].key}
+              class="space-bar__run"
+              role="group"
+              aria-label={run[0].groupLabel}
+              data-current={run.some((space) => space.current)}
+            >
+              {run.map((space) => (
+                <button
+                  type="button"
+                  key={space.key}
+                  role="tab"
+                  class="space-mark"
+                  data-space-key={space.key}
+                  aria-selected={space.current}
+                  aria-label={`${spaceLabel(space)} · ${spaceCounts(space)}`}
+                  aria-describedby={
+                    hovered?.key === space.key ? `space-card-${space.key}` : undefined
+                  }
+                  aria-haspopup="menu"
+                  aria-expanded={menuKey === space.key}
+                  data-needs={needsTone(space) ?? undefined}
+                  onMouseEnter={(event) => card.show(space.key, event.currentTarget, CARD_OPEN_MS)}
+                  onMouseLeave={() => {
+                    // A press released off the mark never fires `pointerup` here.
+                    pressing.current = false;
+                    card.hide();
+                  }}
+                  onPointerDown={() => {
+                    pressing.current = true;
+                  }}
+                  onPointerUp={() => {
+                    pressing.current = false;
+                  }}
+                  onPointerCancel={() => {
+                    // A touch press that became a scroll of the row ends here.
+                    pressing.current = false;
+                  }}
+                  onFocus={(event) => {
+                    if (!pressing.current) card.show(space.key, event.currentTarget, 0);
+                  }}
+                  onBlur={card.hide}
+                  onClick={() => {
+                    card.hide();
+                    onGo(space);
+                  }}
+                  onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     card.hide();
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    onMenu(space, event.currentTarget, rect.left, rect.bottom);
-                  }
-                }}
-              >
-                <span class="space-mark__pill" aria-hidden="true" />
-              </button>
-            ))}
-          </span>
-        ))}
+                    onMenu(space, event.currentTarget, event.clientX, event.clientY);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      card.hide();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      onMenu(space, event.currentTarget, rect.left, rect.bottom);
+                    }
+                  }}
+                >
+                  <span class="space-mark__pill" aria-hidden="true" />
+                </button>
+              ))}
+            </span>
+          ))}
+        </div>
+        {(["left", "right"] as const).map(
+          (side) =>
+            edge[side] !== null && (
+              <span
+                key={side}
+                class="space-bar__edge"
+                data-side={side}
+                role="img"
+                aria-label="A hidden space needs you"
+              />
+            ),
+        )}
       </div>
       {hovered !== undefined && card.hover !== null && (
         <SpaceCard space={hovered} rect={card.hover.rect} />

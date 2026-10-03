@@ -93,6 +93,45 @@
   display: none;
 }
 
+/* DL-35.3: a needs-you mark scrolled out of sight shows at the row's edge —
+   a fade, then a red dot — so the one state a mark carries is never hidden. */
+.space-bar__scroll {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.space-bar__edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  width: 44px;
+  pointer-events: none;
+}
+
+.space-bar__edge::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.space-bar__edge[data-side="left"] {
+  left: 0;
+  padding-left: 12px;
+  background: linear-gradient(to left, transparent, var(--chrome-1) 55%);
+}
+
+.space-bar__edge[data-side="right"] {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 12px;
+  background: linear-gradient(to right, transparent, var(--chrome-1) 55%);
+}
+
 /* DL-35.3: one capsule per project — a repository and its worktrees are one —
    with the marks tight inside it, outlined while it holds the current space.
    The outline is an inset ring, so the capsule never changes size. */
