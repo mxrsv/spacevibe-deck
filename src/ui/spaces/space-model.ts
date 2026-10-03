@@ -12,7 +12,7 @@
 import type { PaneAgent } from "../../lib/process-info";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { worktreeForPath } from "../../repositories/repository-model";
-import { NO_PANES, type TabView } from "../../terminal/tabs-store";
+import { MAX_TAB_NAME_LENGTH, NO_PANES, type TabView } from "../../terminal/tabs-store";
 import { paneState, type RailState } from "../agent-rail-model";
 
 /** What a pane is in a space's miniature: an agent's rail state, or a shell. */
@@ -62,6 +62,19 @@ export function folderName(path: string | null): string {
   if (path === null) return "~";
   const segments = path.split(/[\\/]+/).filter((segment) => segment !== "");
   return segments[segments.length - 1] ?? path;
+}
+
+/**
+ * The name a space gets when an agent launch creates it (DL-35.3): its folder
+ * and the agent, `spacevibe-deck · Claude Code`. Inside the 40-character cap
+ * the folder gives way, not the agent, because the agent is what tells two
+ * spaces on one folder apart.
+ */
+export function autoSpaceName(folder: string, agentLabel: string): string {
+  const suffix = ` · ${agentLabel}`;
+  const room = MAX_TAB_NAME_LENGTH - suffix.length;
+  if (folder.length + suffix.length <= MAX_TAB_NAME_LENGTH) return folder + suffix;
+  return room > 1 ? `${folder.slice(0, room - 1)}…${suffix}` : agentLabel;
 }
 
 function pathKey(path: string | null): string {

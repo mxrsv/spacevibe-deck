@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../../repositories/repository-client";
-import type { PaneView, TabView } from "../../terminal/tabs-store";
+import { MAX_TAB_NAME_LENGTH, type PaneView, type TabView } from "../../terminal/tabs-store";
 import {
+  autoSpaceName,
   buildSpaces,
   folderName,
   miniColumns,
@@ -78,6 +79,23 @@ describe("folderName", () => {
     expect(folderName(DECK)).toBe("spacevibe-deck");
     expect(folderName("C:\\work\\api\\")).toBe("api");
     expect(folderName(null)).toBe("~");
+  });
+});
+
+describe("autoSpaceName", () => {
+  it("joins the full folder name and the agent's label", () => {
+    expect(autoSpaceName("spacevibe-deck", "Claude Code")).toBe("spacevibe-deck · Claude Code");
+    expect(autoSpaceName("api", "My Agent")).toBe("api · My Agent");
+  });
+
+  it("shortens the folder, never the agent, to stay inside the tab-name cap", () => {
+    const name = autoSpaceName("spacevibe-academy-marketing-site", "Claude Code");
+    expect(name).toHaveLength(MAX_TAB_NAME_LENGTH);
+    expect(name.endsWith("… · Claude Code")).toBe(true);
+  });
+
+  it("falls back to the agent alone when no room is left for a folder", () => {
+    expect(autoSpaceName("deck", "x".repeat(MAX_TAB_NAME_LENGTH))).toBe("x".repeat(MAX_TAB_NAME_LENGTH));
   });
 });
 

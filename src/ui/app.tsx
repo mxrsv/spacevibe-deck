@@ -117,6 +117,7 @@ import { installSessionTailSync } from "../terminal/session-tail-store";
 import { toFontStack } from "../terminal/pane";
 import { useMissionControl } from "./mission-control/use-mission-control";
 import { currentSpaceOrder } from "./spaces/space-order";
+import { autoSpaceName, folderName } from "./spaces/space-model";
 import { missionControlOpen } from "./mission-control/mission-control-store";
 import { composeSurfaceStrip, takeStageForSurface } from "./stage-surface-strip";
 import {
@@ -1333,15 +1334,25 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         ))
           element.inert = false;
       },
-      launch: (agentId, canCommit, placement) =>
-        manager.launchAgentAtTarget(
+      launch: async (agentId, canCommit, placement) => {
+        const result = await manager.launchAgentAtTarget(
           placement === "new-space"
             ? { kind: "new-space", workspacePath: target.workspacePath }
             : target,
           agentId,
           canCommit,
           roots,
-        ),
+        );
+        // A space the launch created is named for its folder and agent; the
+        // user's own name replaces this one like any other (DL-35.3).
+        if (result.kind === "spawned" && placement === "new-space") {
+          const index = tabViews.value.findIndex((tab) => tab.key === result.receipt.tabKey);
+          const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId;
+          if (index >= 0)
+            manager.renameTab(index, autoSpaceName(folderName(target.workspacePath), label));
+        }
+        return result;
+      },
       reveal: (receipt, canFocus) =>
         requestAnimationFrame(() => {
           if (canFocus() && !settingsOpen.value && !boardOpen.value)

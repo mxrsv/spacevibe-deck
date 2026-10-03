@@ -16,6 +16,11 @@ fixed for its life, which is what makes the folder a stable name, and tabs shari
 get a 1-based index in display order. The journal, the last-session offer and restore are
 therefore untouched — they already carry every tab with its path and layout.
 
+A space's own name is the tab's `name` override, already journaled. The launcher names a new
+space through `renameTab` from the launch closure in [`app.tsx`](../../src/ui/app.tsx), after
+`launchAgentAtTarget` returns its receipt, so naming never enters tab materialization; the
+tab is found by `receipt.tabKey` because an index can move while the launch is in flight.
+
 The order is the strip's own, and the strip changed to make that true: every terminal tab
 comes before every surface chip, each half in the merged open/manual order.
 [`TabManager.stripSlots`](../../src/terminal/tab-manager.ts) partitions the same way, so
