@@ -443,7 +443,9 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   is not 400 / 600 / 700 and has no ledger entry, or that the reader cannot
   parse as a plain number, fails
   [`windows-weights.test.ts`](../src/styles/windows-weights.test.ts) `current`;
-  a weight set from script or an inline style is not covered.
+  not covered: a `var()` or `calc()` in the weight position of a `font:`
+  shorthand (read as the size, so the rule reads as 400), a weight inside
+  `@keyframes`, and a weight set from script or an inline style.
 
 ## 5. The one control: config row
 
