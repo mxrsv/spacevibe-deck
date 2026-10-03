@@ -201,6 +201,11 @@ const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
     ".asr-card__head .asr-card__name",
     ".asr-card__row .asr-card__name",
   ],
+  [
+    "named tab's row name over an unnamed row's name (its sentence declares no weight)",
+    '.asr-card__row[data-named="true"] .asr-card__name',
+    ".asr-card__row .asr-card__name",
+  ],
   ["card head over its meta line", ".asr-card__head .asr-card__name", ".asr-card__meta"],
   [
     "card head over the project label above it",

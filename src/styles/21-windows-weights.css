@@ -30,7 +30,7 @@
    Each selector below is the ORIGINAL prefixed with `.window--windows `: one
    class more specific than what it answers, so it wins with no `!important`.
    A macOS rule that is MORE specific than its base needs its own line here
-   (see the last rule). Longhand `font-weight` only; the original `font:`
+   (see the last section). Longhand `font-weight` only; the original `font:`
    keeps the size and line-height. Glyph rendering on a real Windows machine
    is unverified: no device has looked at this yet. */
 
@@ -117,7 +117,11 @@
 /* ── 600: names, labels and emphasis (authored 540-590) ─────────────────
    Group labels, cluster and section heads, count numerals, button labels
    that state an action, the eyebrows above a heading. Each is one rung
-   above the 400 text it heads. */
+   above the 400 text it heads. The running-agent count chip on a project
+   header (`.asr-cluster__count`) takes its label's rung: macOS authors both
+   at 560, so there is no weight step between them to keep, and a 10.5px
+   numeral at 400 in a tinted circle would read thinner than every other
+   count numeral here. */
 .window--windows .sidebar-new,
 .window--windows .nt-composer__prompt-head label,
 .window--windows .agent-launch-page h1,
@@ -126,6 +130,7 @@
 .window--windows .nt-context-control__copy strong,
 .window--windows .asr-cluster__toggle,
 .window--windows .asr-cluster__still,
+.window--windows .asr-cluster__count,
 .window--windows .asr-card__count-n,
 .window--windows .asr-card__seg[data-overflow="true"],
 .window--windows .cfg-group,
@@ -171,10 +176,22 @@
 }
 
 /* ── A more specific macOS rule than its base ───────────────────────────
-   The Agent Board's star is a quiet 400 link where the home screen's is a 600
-   button (`.nt-board--agents .board-home__star`). The base rule above gains a
-   class here, which would tie this rule's specificity and follow it on
-   source order across two stylesheets; naming it again keeps 400. */
+   Each rule below answers a macOS rule that refines one the groups above
+   override. The base override gains a class here, which would tie the
+   refining rule's specificity and follow it on source order across two
+   stylesheets; naming the refinement again, one class heavier, keeps its
+   answer. */
+
+/* The Agent Board's star is a quiet 400 link where the home screen's is a 600
+   button (`.nt-board--agents .board-home__star`). */
 .window--windows .nt-board--agents .board-home__star {
   font-weight: 400;
+}
+
+/* A named tab's row reads name over sentence, the name semibold (DL-27.15). An
+   unnamed row's name is 400 above (`.asr-card__row .asr-card__name`), the
+   sentence under a name draws 400 too, so the name keeps its authored 600 or
+   the pair loses its only cue. */
+.window--windows .asr-card__row[data-named="true"] .asr-card__name {
+  font-weight: 600;
 }
