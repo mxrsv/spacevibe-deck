@@ -330,7 +330,7 @@ const FOCUS_MARKS: readonly {
 }[] = [
   {
     id: "wash",
-    title: "A — a louder wash (shipped default)",
+    title: "A — a louder wash (previous default)",
     note: "one signifier, just legible: the focused row's wash goes from `--tone` 11% to 20% against a 5% rest and a 9% hover. DL-27.22 is untouched — this is the rule it already states, at a step you can see next to a rim glow. Costs nothing and reads weakest of the three when the row above it is busy.",
   },
   {
@@ -343,10 +343,40 @@ const FOCUS_MARKS: readonly {
     title: "C — wash + a leading accent bar",
     note: 'a 16% neutral wash plus a 3px `--accent` bar down the row\'s left edge. The only candidate that answers "which row" without comparing one row to its neighbours, and the only one still readable at a glance down a full rail. Spends `--accent` too, and amends DL-27.22\'s "never a second signifier".',
   },
+  {
+    id: "bar-quiet",
+    title: "D — C, and no busy rim on the rows",
+    note: "candidate C plus the subtractive half of the owner's 2026-10-03 ask: the working row's 34% hairline is removed, so the focus mark no longer has to survive it. The loading bars still say a row is busy; nothing else competes with the wash and bar. Amends DL-27.22 (second signifier) and DL-27.3's busy vocabulary (the rim goes).",
+  },
+  {
+    id: "frame",
+    title: "E — an accent frame",
+    note: "the hairline frame the 2026-08-26 pass dropped, because it landed on the busy rim's own pixel. With the rim gone (as in D) that collision is gone too: a 1px `--accent` inset frame plus a faint accent wash. Reads as a selected card inside the card, no bar. DL-1.3's permitted inset hairline, so no shadow; amends DL-21.1 (a border on a rail row) and DL-27.22.",
+  },
+  {
+    id: "weight",
+    title: "F — bar, and the name goes bold",
+    note: "D's bar and wash, plus the focused row's name at weight 700 against 500 everywhere else. Typography as the second signifier: it survives a theme whose accent sits close to the wash, and costs no colour. Amends DL-27.22 and leans on DL-4.4's weight axis only.",
+  },
+  {
+    id: "invert",
+    title: "G — inverted row (shipped 2026-10-03)",
+    note: "chosen by the owner and now the production sheet: the row fills with `--text-primary` at 74% over the chrome and its name, sentence, pill, bars, neutral dots and close flip to `--sidebar-bg`, so it is the only light block in the column. Reverses DL-21.1 (wash only) for the agent row; DL-27.22 states the exception. The other eight columns are the historical comparison and are drawn against the pre-G values.",
+  },
+  {
+    id: "fade",
+    title: "H — bar + a fading wash",
+    note: "D's bar, with the wash running from 30% accent at the bar down to 4% at the far edge, so the eye is led along the row instead of hitting a box. A gradient on one row only; DL-1.3 bans blur and offset shadow, not gradients, but DL-27.25 refuses a gradient beam on the card, so this one stays on the row.",
+  },
+  {
+    id: "spot",
+    title: "I — bar, and the others step back",
+    note: "D's bar and wash on the focused row, and every other agent row drops to 55% opacity. Focus is carried by what recedes, which is the one option that works even when the focused row is scrolled half out of view. Touches the specimen note's 'rows never dim by state': this dims by focus, which is a different axis, but the sentence needs rewording if it is picked.",
+  },
 ];
 
 /**
- * The focused row, drawn three ways (owner, 2026-08-26, after a screenshot of
+ * The focused row, drawn several ways (owner, 2026-08-26, after a screenshot of
  * four agent rows with no readable answer to "which one am I typing into").
  *
  * Every column is the SHIPPED component and the SHIPPED sheet — each candidate

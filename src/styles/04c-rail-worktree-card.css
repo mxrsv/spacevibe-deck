@@ -606,63 +606,53 @@ button.asr-bare:hover {
   border-color: transparent;
 }
 
-/* A busy row keeps one static hairline. Activity motion belongs only to the load mark below. */
-.asr-card__row[data-state="working"] {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asr-card-busy) 34%, transparent);
-}
-
 /*
- * The agent holding the keyboard (DL-27.22), REDRAWN on the owner's ask (2026-08-26: "the
- * active and focus state of each agent item has to be clearer and stand out more").
+ * The agent holding the keyboard (DL-27.22) is an INVERTED row (owner, 2026-10-03, chosen from
+ * nine gallery candidates after the report that the focused agent did not stand out, twice:
+ * 2026-08-26 and again today). A wash of any strength lost to the busy rim and to the five
+ * sibling rows' own washes, so the row now fills with `--text-primary` over the chrome and its
+ * ink flips to `--sidebar-bg`: the one light block in the column. The ink is a variable so a
+ * theme or a candidate restates one line, and every mark that would vanish on that fill (name,
+ * sentence, pill, loading bars, the neutral dots, the close) reads it below.
  *
- * It shipped as a single wash two steps above rest — `--tone` at 11% against 5% — with hover
- * sitting between them at 9%. Measured against a busy row that is ALSO wearing the rim glow,
- * that 6% step is the quietest thing on the row: the owner's own screenshot has four rows and
- * no readable answer to "which one am I typing into". DL-27.22's "one step of wash, never a
- * second signifier" was written for the shipped rail's flat rows, where a row is the only
- * object in its column; a card row already competes with a rim, a corner badge, a pill and
- * three bars.
- *
- * All three layers are drawn unconditionally and pinned to one custom property each, so the
- * owner's Task 10 pass picks a candidate by overriding variables rather than by editing
- * selectors — the same shape `--asr-card-busy` and `--asr-card-active-frame` already use, and
- * the same shape the gallery's candidate columns override. The SHIPPED default is candidate A:
- * wash only, at a step that can actually be seen. `transparent` on the other two is what makes
- * A a pure strengthening of DL-27.22 rather than an amendment of it — B and C add a second
- * signifier and Task 11 amends the rule only if one of them is picked.
+ * The working rim is gone with it: a hairline on every busy row was the noise this had to
+ * outshout, and the loading bars still say a row is busy.
  */
 .asr-card__row {
-  /* The wash. A hairline FRAME was drawn as a third candidate and dropped before it reached
-     this file: DL-21.1's selected-chip treatment lands on the exact pixel the busy rim's own
-     `inset 0 0 0 1px` occupies, so on a working row — the row most likely to be focused — it
-     is invisible, and on a still row it says "selected" in the same stroke the card around it
-     already uses for "hovered". Two layers, not three. */
-  --asr-card-focus-bg: color-mix(in srgb, var(--tone) 20%, transparent);
-  /* The leading bar: the one signifier that reads without comparing a row to its neighbours.
-     `transparent` ships, so the default is a wash alone and DL-27.22 stands unamended until
-     the owner picks otherwise. */
-  --asr-card-focus-bar: transparent;
+  --asr-card-focus-bg: color-mix(in srgb, var(--text-primary) 74%, var(--sidebar-bg));
+  --asr-card-focus-ink: var(--sidebar-bg);
 }
 
 .asr-card__row[data-focused="true"] {
   background: var(--asr-card-focus-bg);
 }
 
-/* The optional focus bar is inert and stays out of `.asr-card__hit`'s way. */
-.asr-card__row[data-focused="true"]::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 3px;
-  /* A capsule, not a squared-off tick. `999px` rather than a per-corner shorthand: DL-20.1's
-     scale is closed and the design-language gate matches a `border-radius` value WHOLE, so a
-     four-corner shorthand reads as off-scale even when every corner in it is on the scale.
-     At 3px wide the capsule and a 3px per-corner rounding are the same picture anyway. */
-  border-radius: 999px;
-  background: var(--asr-card-focus-bar);
-  pointer-events: none;
+.asr-card__row[data-focused="true"] :is(.asr-card__name, .asr-card__glyph) {
+  color: var(--asr-card-focus-ink);
+}
+
+.asr-card__row[data-focused="true"] .asr-card__sentence {
+  color: color-mix(in srgb, var(--asr-card-focus-ink) 72%, transparent);
+}
+
+.asr-card__row[data-focused="true"] .asr-card__pill {
+  background: color-mix(in srgb, var(--asr-card-focus-ink) 14%, transparent);
+  color: var(--asr-card-focus-ink);
+}
+
+.asr-card__row[data-focused="true"] .asr-card__load > i,
+.asr-card__row[data-focused="true"]
+  .asr-card__dot:is([data-state="working"], [data-state="done"], [data-state="ended"]) {
+  background: var(--asr-card-focus-ink);
+}
+
+.asr-card__row[data-focused="true"] .asr-row__action {
+  color: color-mix(in srgb, var(--asr-card-focus-ink) 72%, transparent);
+}
+
+.asr-card__row[data-focused="true"] .asr-row__action:hover {
+  background: color-mix(in srgb, var(--asr-card-focus-ink) 14%, transparent);
+  color: var(--asr-card-focus-ink);
 }
 
 /* --------------------------------------------------------------------- the glyph + badge */
@@ -851,10 +841,6 @@ button.asr-bare:hover {
   color: var(--text-muted);
   font: 500 var(--type-micro) / 1.5 var(--ui-font);
   white-space: nowrap;
-}
-
-.asr-card__row[data-focused="true"] .asr-card__pill {
-  color: var(--text-primary);
 }
 
 /* ------------------------------------------------------------------------- "New agent" */

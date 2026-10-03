@@ -1888,15 +1888,78 @@
  * The focused-row candidates (`railFocusMarkSpecimen`), on the owner's ask of
  * 2026-08-26 that the active agent row read louder. Same mechanism and same
  * reason as the busy hues above: the production sheet pins
- * `--asr-card-focus-bg` / `--asr-card-focus-frame` / `--asr-card-focus-bar`
- * on `.asr-card__row` itself, so only a rule that also names that class can
- * out-cascade it. Candidate A is the shipped default and needs no rule here.
+ * `--asr-card-focus-bg` / `--asr-card-focus-ink` on `.asr-card__row` itself,
+ * so only a rule that also names that class can out-cascade it.
+ *
+ * G (inverted row) shipped on 2026-10-03 and IS the production sheet now, so
+ * it needs no rule here. Every other column is HISTORICAL: the first rule
+ * below hands them the pre-G values (neutral wash, the ordinary text ink),
+ * and the leading bar and the working rim they were drawn with are not in
+ * the production sheet any more — the bar is drawn here, the rim is simply
+ * absent from all nine columns.
  */
+:where([data-focus]:not([data-focus="invert"])) .asr-card__row {
+  --asr-card-focus-bg: color-mix(in srgb, var(--tone) 20%, transparent);
+  --asr-card-focus-ink: var(--text-primary);
+}
+
+/* The leading bar C, D, F, H and I carry, moved out of the production sheet when it stopped
+   being a shipping candidate. Inert, and clear of the hit layer. */
+[data-focus] .asr-card__row[data-focused="true"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--asr-card-focus-bar, transparent);
+  pointer-events: none;
+}
+
 [data-focus="tint"] .asr-card__row {
   --asr-card-focus-bg: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
-[data-focus="bar"] .asr-card__row {
+[data-focus="bar"] .asr-card__row,
+[data-focus="bar-quiet"] .asr-card__row,
+[data-focus="weight"] .asr-card__row,
+[data-focus="spot"] .asr-card__row {
   --asr-card-focus-bg: color-mix(in srgb, var(--tone) 16%, transparent);
   --asr-card-focus-bar: var(--accent);
+}
+
+/* E: a frame instead of a bar. Safe now that the rim is off the pixel it used to share. */
+[data-focus="frame"] .asr-card__row {
+  --asr-card-focus-bg: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+[data-focus="frame"] .asr-card__row[data-focused="true"] {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* F: the name is the second signifier. */
+[data-focus="weight"] .asr-card__row[data-focused="true"] .asr-card__name {
+  font-weight: 700;
+}
+
+/* H: the bar, plus a wash that fades out along the row. */
+[data-focus="fade"] .asr-card__row {
+  --asr-card-focus-bar: var(--accent);
+}
+
+[data-focus="fade"] .asr-card__row[data-focused="true"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 30%, transparent),
+    color-mix(in srgb, var(--accent) 4%, transparent) 75%
+  );
+}
+
+/* I: everything that is not focused steps back. The hit layer and the hover-only close stay
+   out of it: the close rests at opacity 0 and an override here would reveal it. */
+[data-focus="spot"]
+  .asr-card__row:not([data-focused="true"])
+  > :not(.asr-card__hit, .asr-row__actions) {
+  opacity: 0.55;
 }
