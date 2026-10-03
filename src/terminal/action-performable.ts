@@ -52,20 +52,19 @@ export interface PerformableContext {
    * row in the table below is shared by both keymaps but conditional on only
    * one of them.
    *
-   * Optional like the fields above, and the one that inverts their direction:
-   * absent reads as macOS, which consumes ⌘S unconditionally, because absent
-   * has to mean "the behaviour that shipped before Windows had a binding".
-   * `performableContext()` always supplies it.
+   * Required, unlike the fields above: a missing value would have to default
+   * toward consuming the key, the opposite of every other field here, so a
+   * context built without it is a compile error instead.
    */
-  readonly keymapPlatform?: KeymapPlatform;
+  readonly keymapPlatform: KeymapPlatform;
 }
 
 type Predicate = (context: PerformableContext) => boolean;
 
 /**
- * The clipboard actions and the rendered-view toggle. Every other action
- * answers true, so this table can take the remaining pane-scoped actions later
- * as a data change rather than a rework (spec, Non-goals).
+ * Actions whose chord is conditional; every other action answers true, so this
+ * table can take the remaining pane-scoped actions later as a data change
+ * rather than a rework (spec, Non-goals).
  */
 const PREDICATES: ReadonlyMap<ShortcutAction, Predicate> = new Map<ShortcutAction, Predicate>([
   // Stage-conditional only: inside a terminal it keeps consuming even with no

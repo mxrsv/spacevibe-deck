@@ -4,6 +4,7 @@ import { isActionPerformable, type PerformableContext } from "./action-performab
 const context = (overrides: Partial<PerformableContext> = {}): PerformableContext => ({
   stageOwner: "terminal",
   hasSelection: false,
+  keymapPlatform: "macos",
   ...overrides,
 });
 
@@ -143,16 +144,6 @@ describe("isActionPerformable — save-file", () => {
       true,
     );
   });
-
-  it.each(STAGE_OWNERS)(
-    "reads an absent platform as today's behaviour with %s on the stage",
-    (stageOwner) => {
-      // The field is optional so every context literal written before it keeps
-      // compiling, and absent must mean "the keymap that existed before Windows
-      // had a binding" — which consumed unconditionally.
-      expect(isActionPerformable("save-file", context({ stageOwner }))).toBe(true);
-    },
-  );
 
   it("consumes Ctrl+S on Windows while a surface owns the stage", () => {
     expect(

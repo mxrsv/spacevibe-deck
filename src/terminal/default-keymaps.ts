@@ -178,10 +178,14 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // windows-parity). Ctrl+S was first left unbound there because a terminal
   // owns it (XOFF, flow control), and the PTY must keep receiving it. What
   // makes the binding safe is that `save-file` is PERFORMABLE
-  // (action-performable.ts): on Windows it is consumed only while a file
-  // surface owns the stage, the pattern `copy-or-interrupt` uses for Ctrl+C,
-  // so over a terminal the key is never preventDefault()ed. On macOS the same
-  // predicate row answers true everywhere, so ⌘S behaves as it always did.
+  // (action-performable.ts): on Windows it is consumed only while a surface
+  // (document, browser tab or Board) owns the stage, the pattern
+  // `copy-or-interrupt` uses for Ctrl+C, so over a terminal the key is never
+  // preventDefault()ed. `save()` is a no-op for the browser tab and the Board,
+  // and the browser tab is a native view whose own keystrokes never reach the
+  // renderer listener, so in practice a document is the only owner that saves.
+  // On macOS the same predicate row answers true everywhere, so ⌘S behaves as
+  // it always did.
   // Rejected: a Windows-only Save control on the file surface (UI macOS does
   // not have, which works against parity) and leaving Windows unbound with a
   // documented rebind (a Windows user who edits a file would have no save chord
@@ -332,7 +336,7 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
  * interrupt itself. Deck writes no interrupt byte of its own; hardcoding
  * `\x03` would pin one encoding a different keyboard protocol does not use.
  * Ctrl+S: bound to `save-file`, PERFORMABLE the other way round — consumed
- * only while a file surface owns the stage, so a terminal still receives it.
+ * only while a surface owns the stage, so a terminal still receives it.
  * See action-performable.ts and docs/internals/terminal.md.
  *
  * Clipboard actions dispatch through the shared path every other chord uses —
