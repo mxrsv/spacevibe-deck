@@ -1,0 +1,71 @@
+/* ── The caption-button inset: DL-18's frame row, mirrored on the right ────
+   WHY. Under the Electron host on Windows the OS paints its minimise /
+   maximise / close buttons INSIDE Deck's one 34px frame row, at the window's
+   top-right, on top of the web contents (Window Controls Overlay). Anything
+   Deck lays out at that corner sits underneath them and cannot be clicked.
+   macOS has the same problem on the LEFT and solves it with
+   `--frame-lights-w`: the row's left-most occupant reserves the footprint.
+   This is that arrangement for the right-most occupant, one rule per
+   occupant and layout state.
+
+   SCOPE. Every rule below sits under `.window--caption-overlay`, which
+   `desktop-chrome.tsx` applies only on Windows when the Electron host is
+   present. Tauri's Windows build keeps a native title bar ABOVE the row, so
+   nothing overlaps there and a reservation would be a dead gap; macOS never
+   gets the class. No macOS-visible value is read, edited or shadowed here,
+   and `caption-overlay.test.ts` fails if a rule lands outside the marker.
+
+   THE TOKEN. The footprint is the width the title-bar area leaves to its
+   right: `100vw - x - width`, which is the buttons' real width at any DPI
+   once the host reports it. When it does not (`env()` undefined) the inner
+   fallback is `100vw - 138px`, so the whole expression is 138px. Either way
+   the failure is benign: if the overlay were not active content would only
+   keep a 138px gap, and if it is, nothing sits under the buttons.
+   Ceiling: an overlay with the buttons on the LEFT (right-to-left Windows)
+   yields 0 here and reserves nothing on that side; Deck has no such layout.
+
+   HOW EACH OCCUPANT RESERVES. `padding-right`, never `right:`, so a row's
+   bottom hairline still runs the full width. Each value is the occupant's
+   own right padding (restated, since it is a shorthand there) plus the
+   footprint. Where the reserved box is padding of a drag surface (the strip,
+   the tab bar, the Settings head) it stays draggable, which is correct: the
+   OS answers the pointer over the buttons themselves. The dock's header is
+   not a drag surface today and stays one that is not. */
+
+.window--caption-overlay {
+  --frame-controls-w: calc(
+    100vw - env(titlebar-area-x, 0px) -
+      env(titlebar-area-width, calc(100vw - var(--frame-controls-fallback-w)))
+  );
+}
+
+/* Sidebar layout: the stage strip is the frame row's right half, so it ends at
+   the window edge whether the sidebar is expanded or collapsed (collapsing only
+   hides the left column). Not while the dock is open: `.stage--dock` pulls the
+   strip's `right` in to the dock's edge, and the dock's header owns the corner
+   instead (below) — padding here would be a dead gap beside it. `.stage--strip`
+   and `.stage--dock` ride the stage element, which `App` keeps current; the
+   shell's own `window--sidebar` class is not re-applied after a layout change. */
+.window--caption-overlay .stage--strip:not(.stage--dock) .stage__strip {
+  padding-right: calc(var(--frame-controls-w) + 8px);
+}
+
+/* Sidebar layout, dock open: the docked column owns its edge top to bottom
+   (DL-19.1), so its header row is what ends at the corner. In top-tab layout
+   the stage is the grid's second row, below the tab bar, and the dock's header
+   never touches the frame row — hence `.stage--strip`. The hide control is last
+   in this row, which is why the padding is on the end. */
+.window--caption-overlay .stage--strip .dock-panel__header {
+  padding-right: calc(var(--frame-controls-w) + 4px);
+}
+
+/* Top-tab layout: the tab bar IS the frame row and spans the window. */
+.window--caption-overlay .tabbar {
+  padding-right: calc(var(--frame-controls-w) + 8px);
+}
+
+/* Settings covers the whole window, frame row included (DL-11), so its header
+   stands where the row is and inherits the row's obligations. */
+.window--caption-overlay .settings-screen__head {
+  padding-right: calc(var(--frame-controls-w) + 16px);
+}

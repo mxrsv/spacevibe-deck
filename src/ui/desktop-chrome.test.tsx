@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DesktopChrome } from "./desktop-chrome";
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+  type DesktopPlatform,
+} from "../lib/platform";
 
 let host: HTMLDivElement;
 
@@ -36,6 +40,7 @@ afterEach(() => {
   act(() => render(null, host));
   host.remove();
   resetDesktopEnvironmentForTests();
+  vi.unstubAllGlobals();
 });
 
 /**
@@ -67,5 +72,65 @@ describe("frame row drag surfaces", () => {
 
     const control = host.querySelector<HTMLElement>(".deck-frame button")!;
     expect(control.closest("[data-tauri-drag-region]")).toBeNull();
+  });
+});
+
+/**
+ * The marker that turns the caption-button inset on (`22-caption-overlay.css`).
+ * Only the Electron host paints caption buttons over the web contents, and only
+ * on Windows: Tauri's Windows build keeps a native title bar ABOVE the row, so a
+ * reservation there would be a dead gap, and macOS reserves the other side.
+ * The host shows itself the way every facade reads it, through `__deckHost`.
+ */
+describe("caption-overlay marker", () => {
+  const HOMES: Record<DesktopPlatform, string> = {
+    macos: "/Users/deck",
+    windows: "C:\\Users\\Deck",
+    unsupported: "",
+  };
+
+  function markerFor(platform: DesktopPlatform, sidebar: boolean): boolean {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({ platform, homeDir: HOMES[platform] });
+    act(() => render(null, host));
+    act(() => {
+      render(
+        <DesktopChrome
+          sidebar={sidebar}
+          toolbar={null}
+          sidebarNavigation={<nav />}
+          topTabs={<header />}
+          stage={<main />}
+          status={null}
+          onMacTitlebarDoubleClick={() => {}}
+        />,
+        host,
+      );
+    });
+    return host.firstElementChild!.classList.contains("window--caption-overlay");
+  }
+
+  const electronHost = () => vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
+  const tauriHost = () => vi.stubGlobal("__TAURI_INTERNALS__", {});
+
+  it.each([true, false])(
+    "is carried on Windows under the Electron host (sidebar %s)",
+    (sidebar) => {
+      electronHost();
+      expect(markerFor("windows", sidebar)).toBe(true);
+    },
+  );
+
+  it.each([
+    ["macOS with the Electron host", "macos", electronHost],
+    ["macOS without a host", "macos", () => {}],
+    ["an unsupported platform with the Electron host", "unsupported", electronHost],
+    ["Windows in the browser preview, no host", "windows", () => {}],
+    ["Windows under Tauri, native title bar", "windows", tauriHost],
+  ] as const)("is absent on %s", (_, platform, installHost) => {
+    installHost();
+    for (const sidebar of [true, false]) {
+      expect(markerFor(platform, sidebar)).toBe(false);
+    }
   });
 });

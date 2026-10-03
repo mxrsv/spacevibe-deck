@@ -7,8 +7,9 @@ import { SidebarGrip } from "./sidebar-grip";
  * slot (frame row, sidebar or top tabs, stage, status), and the gallery
  * specimens that photograph a layout mount this directly with their own
  * static children. Purely presentational — it holds no app state of its
- * own and reads only the running platform (for `window--${platform}` and
- * the macOS traffic-light inset).
+ * own and reads only the running platform and whether the Electron host is
+ * present (for `window--${platform}`, the macOS traffic-light inset and the
+ * Windows caption-button inset).
  */
 interface DesktopChromeProps {
   readonly sidebar: boolean;
@@ -44,6 +45,14 @@ interface DesktopChromeProps {
 export function DesktopChrome(props: DesktopChromeProps) {
   const platform = getDesktopEnvironment().platform;
   const windows = platform === "windows";
+  // The right-hand mirror of the traffic-light inset (`22-caption-overlay.css`):
+  // only the Electron host paints caption buttons over the row. Its preload
+  // bridge is how every facade tells it apart — Tauri's Windows build keeps a
+  // native title bar above the row, so reserving there would be a dead gap.
+  // Platform and host never change after boot, so the root's frozen props
+  // (see `sidebar-shell.ts`) cannot go stale on this class.
+  const captionOverlay =
+    windows && (globalThis as { __deckHost?: unknown }).__deckHost !== undefined;
   // No occupant, no row: the grid reserves `--status-h` for the bottom band,
   // so leaving it at 28px with nothing in it would be a stripe of empty
   // chrome rather than a hidden bar.
@@ -51,6 +60,7 @@ export function DesktopChrome(props: DesktopChromeProps) {
   const classes = [
     "window",
     `window--${platform}`,
+    captionOverlay ? "window--caption-overlay" : "",
     props.sidebar ? "window--sidebar" : "",
     hasStatus ? "" : "window--no-status",
   ]

@@ -137,6 +137,14 @@
   /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
      plus breathing room before the first tab. */
   --frame-lights-w: 78px;
+  /* The mirror of the above on the RIGHT: the Windows caption buttons the
+     Electron host paints over the frame row (Window Controls Overlay).
+     Zero here, so macOS and every host that paints nothing there reserves
+     nothing; `22-caption-overlay.css` raises it under its marker class, and
+     only there. `-fallback-w` is the buttons' size when the browser reports
+     no title-bar area: three 46px buttons at 100% scale. */
+  --frame-controls-w: 0px;
+  --frame-controls-fallback-w: 138px;
   --status-h: 28px;
   /* 275px, up from 200px on 2026-08-14, and it is a drag-affordance figure
      before it is a taste one. The frame moved into this column (DL-18.3), so

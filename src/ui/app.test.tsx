@@ -125,6 +125,27 @@ describe("DesktopChrome platform structure", () => {
     },
   );
 
+  // The same matrix for the one Windows build that paints caption buttons over
+  // the row (Electron). The left stays empty — nothing is painted there — and
+  // the shell gains the marker `22-caption-overlay.css` keys the right-hand
+  // inset on. macOS rows above are untouched and never carry it.
+  it.each([
+    ["windows", false],
+    ["windows", true],
+  ] as const)(
+    "%s under the Electron host (sidebar %s) marks the shell for the right inset",
+    (platform, sidebar) => {
+      vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
+      try {
+        const root = mount(platform, sidebar);
+        expect(root.classList.contains("window--caption-overlay")).toBe(true);
+        expect(root.querySelector(".deck-frame__lights")).toBe(null);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
   // The bottom band is a setting (`showStatusBar`, off by default). With no
   // occupant the ROW must go too — a 28px stripe of empty chrome is not a
   // hidden status bar.
