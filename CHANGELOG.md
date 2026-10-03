@@ -5,7 +5,7 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
-## Unreleased
+## 2.3.0
 
 This update makes Quick Launch a single press, groups the strip's spaces by
 project, and brings Deck's window controls, paths, shortcuts and fonts in line
@@ -34,6 +34,10 @@ with Windows.
 - **A hidden space that needs you still shows.** When the strip is scrolled so
   that a [mark asking for you](src/ui/spaces/space-edge.ts) is out of sight, a
   red dot appears at the edge on that side.
+- **The focused agent stands out.** In the sidebar, the agent you are on is a
+  solid, inverted row; a busy agent shows only its loading bars. In a tab split
+  into several panes, the focused pane takes the same inverted edge, and its
+  header joins the terminal below it.
 
 ### Windows
 
