@@ -26,9 +26,18 @@ const FALLBACK_YELLOW = "#e0af68";
 const FALLBACK_MAGENTA = "#bb9af7";
 const FALLBACK_CYAN = "#7dcfff";
 
+/**
+ * The two colours every chrome token derives from, with the fallbacks the
+ * stylesheet's `:root` carries. Exported so a consumer that needs the colour a
+ * surface paints (the Windows caption-button overlay) resolves it from the
+ * same `(bg, fg)` the chrome used rather than from a second fallback list.
+ */
+export function themeBaseColors(theme: ITheme): { readonly bg: string; readonly fg: string } {
+  return { bg: theme.background ?? FALLBACK_BG, fg: theme.foreground ?? FALLBACK_FG };
+}
+
 export function applyThemeVars(rootStyle: CSSStyleDeclaration, theme: ITheme): void {
-  const bg = theme.background ?? FALLBACK_BG;
-  const fg = theme.foreground ?? FALLBACK_FG;
+  const { bg, fg } = themeBaseColors(theme);
   const chrome = deriveChromeColors(bg, fg);
   rootStyle.setProperty("--bg", bg);
   rootStyle.setProperty("--fg", fg);

@@ -257,6 +257,7 @@ const ELECTRON_ONLY: Readonly<Record<string, CannedHandler>> = {
 
   window_close: () => null,
   window_toggle_maximize: () => null,
+  window_set_title_bar_overlay: () => null,
 
   dialog_open: () => null,
   dialog_message: () => null,

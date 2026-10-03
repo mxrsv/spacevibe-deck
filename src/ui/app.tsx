@@ -196,6 +196,7 @@ import { DockPanel } from "./dock/dock-panel";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "./sidebar-actions";
 import { DockToggle } from "./dock/dock-toggle";
 import { useDockPresence } from "./dock/dock-presence";
+import { useTitleBarOverlaySync } from "./title-bar-overlay-sync";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
 import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
@@ -2040,6 +2041,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // it can animate out instead of blinking away. `mounted` is what decides
   // whether the panel is in the DOM; `entered` is what it is painted at.
   const dockPresence = useDockPresence(dockPainted, dockDragging);
+  // After `dockPainted`, which is half of what decides the corner's colour.
+  useTitleBarOverlaySync({
+    settings: settings.value,
+    sidebar,
+    dockPainted,
+    settingsOpen: settingsOpen.value,
+  });
   // The chrome carries the dock's hide control only while the column is gone
   // — an open panel holds its own at its outer edge (DL-19.3, amended). Gated
   // on the MOUNT, not the setting: during the slide-out the panel still holds
