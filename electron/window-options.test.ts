@@ -22,7 +22,8 @@ describe("windowChromeOptions", () => {
   // macOS must not change: these are the options `createWindow` passed before
   // the extraction, whole-object, so an added or renamed key turns this red.
   it.each(["darwin", "linux"] as const)("keeps %s on today's hiddenInset options", (platform) => {
-    expect(windowChromeOptions(platform, INITIAL_OVERLAY_COLORS)).toEqual({
+    // Strict, so a `titleBarOverlay: undefined` key sneaking in also fails.
+    expect(windowChromeOptions(platform, INITIAL_OVERLAY_COLORS)).toStrictEqual({
       titleBarStyle: "hiddenInset",
     });
   });
