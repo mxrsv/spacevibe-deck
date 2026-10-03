@@ -89,7 +89,7 @@ rail completely. The toggle beside the traffic lights brings it back.
 ## Files
 
 Open the file explorer (**⌘⇧B**) to browse the workspace. A file opens as a document on the
-stage: an editor with **⌘S** to save. Markdown opens rendered; **⌘⇧V** flips it to source.
+stage: an editor with **⌘S** (Windows: **Ctrl+S**) to save. Markdown opens rendered; **⌘⇧V** flips it to source.
 
 **⌘+click** (Windows: **Ctrl+click**) on a path an agent prints opens it. A path inside a
 workspace this window has open lands in Deck's own editor at that line; anything else goes to

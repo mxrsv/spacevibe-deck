@@ -68,7 +68,7 @@ unchanged. Nothing stops or restarts while it is open.
 | Session history            | ⌘⇧Y   | Ctrl+Shift+Y |
 | Browser tab                | ⌘⇧I   | Ctrl+Shift+I |
 | Prompt Board               | ⌘⇧P   | Ctrl+Shift+P |
-| Save the open document     | ⌘S    | —            |
+| Save the open document     | ⌘S    | Ctrl+S       |
 | Markdown: rendered ↔ source | ⌘⇧V  | —            |
 | Settings                   | ⌘,    | Ctrl+,       |
 
@@ -89,5 +89,7 @@ and overwritten, but not renamed or deleted from inside the app.
 - On macOS, menu-bound chords such as Find and Clear Buffer are consumed by the menu bar
   before a document can see them.
 - Bracket and digit chords bind to the physical key position, so they work on non-US layouts.
-- ⌘S and ⌘⇧V have no Windows binding: bare Ctrl+S is terminal flow control and Ctrl+Shift+V is
-  paste. Use the controls on the document surface instead.
+- On Windows, Ctrl+S saves the open document, but only while a document is on the stage. Over a
+  terminal it still goes to the terminal, as it always has.
+- ⌘⇧V has no Windows binding because Ctrl+Shift+V is paste. Use the toggle on the document
+  surface instead.
