@@ -821,6 +821,102 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     expect(writeFile).not.toHaveBeenCalled();
     tm.dispose();
   });
+
+  // Windows has no menu, so the keystroke is the only road to `save-file`: it
+  // must walk the same `handleShortcut` -> `dispatchAction` -> `surfaces.save()`
+  // route the macOS menu's `runAction` ends in. Driven through the pane's own
+  // textarea because that is where a real keystroke starts.
+  describe("Ctrl+S on Windows", () => {
+    const WORKSPACE = String.raw`C:\work`;
+    const FILE = String.raw`C:\work\one.ts`;
+
+    function useWindows(): void {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({ platform: "windows", homeDir: String.raw`C:\Users\dev` });
+    }
+
+    function terminalInput(): HTMLTextAreaElement {
+      const input = document.querySelector<HTMLTextAreaElement>(
+        '[data-testid="fake-terminal-input"]',
+      );
+      if (input === null) {
+        throw new Error("Expected the fake terminal input to be mounted");
+      }
+      return input;
+    }
+
+    function pressCtrlS(): KeyboardEvent {
+      const event = new KeyboardEvent("keydown", {
+        key: "s",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      terminalInput().dispatchEvent(event);
+      return event;
+    }
+
+    afterEach(() => {
+      resetDesktopEnvironmentForTests();
+    });
+
+    it("saves a dirty file on the stage and consumes the key", async () => {
+      useWindows();
+      const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+      await tm.materialize({ layout: null, cwds: [WORKSPACE] });
+      await tm.init();
+      await surfaces.openFile(WORKSPACE, FILE, true);
+      surfaces.setText(FILE, "changed\n");
+
+      const event = pressCtrlS();
+      await vi.waitFor(() => expect(writeFile).toHaveBeenCalledTimes(1));
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(writeFile.mock.calls[0]?.slice(1, 3)).toEqual([FILE, "changed\n"]);
+      tm.dispose();
+    });
+
+    it("consumes the key over a clean file without raising an error", async () => {
+      useWindows();
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+      await tm.materialize({ layout: null, cwds: [WORKSPACE] });
+      await tm.init();
+      await surfaces.openFile(WORKSPACE, FILE, true);
+
+      const event = pressCtrlS();
+      await flush();
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(consoleError).not.toHaveBeenCalled();
+      expect(surfaces.activeIndex()).toBe(0);
+      consoleError.mockRestore();
+      tm.dispose();
+    });
+
+    it("leaves the key to the terminal when no file is on the stage", async () => {
+      useWindows();
+      const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+      await tm.materialize({ layout: null, cwds: [WORKSPACE] });
+      await tm.init();
+      // A file is open but a terminal tab holds the stage.
+      await surfaces.openFile(WORKSPACE, FILE, true);
+      surfaces.setText(FILE, "changed\n");
+      surfaces.deactivate();
+      const downstream = vi.fn();
+      terminalInput().addEventListener("keydown", downstream);
+
+      const event = pressCtrlS();
+      await flush();
+
+      // Not consumed means xterm still gets the key and encodes it for the PTY.
+      expect(event.defaultPrevented).toBe(false);
+      expect(downstream).toHaveBeenCalledTimes(1);
+      expect(downstream).toHaveBeenLastCalledWith(event);
+      expect(writeFile).not.toHaveBeenCalled();
+      tm.dispose();
+    });
+  });
 });
 
 /**
@@ -1001,6 +1097,118 @@ describe("performable chords (Ctrl+C copies or falls through)", () => {
     const event = press(input, { key: "V", metaKey: true, shiftKey: true });
 
     expect(event.defaultPrevented).toBe(false);
+    tm.dispose();
+  });
+
+  // ⌘S is `save-file`, and Windows now shares its predicate-table row. These
+  // pin the macOS side, which has always consumed ⌘S wherever it lands — the
+  // Windows-only conditionality must not leak into it. `beforeEach` leaves the
+  // environment on macOS; the second case is the browser-only dev preview,
+  // which resolves to the same keymap.
+  it.each(["macos", "unsupported"] as const)(
+    "still consumes Cmd+S inside a terminal on %s",
+    async (platform) => {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({
+        platform,
+        homeDir: platform === "macos" ? "/Users/dev" : "",
+      });
+      const surfaces = fakeSurfaces();
+      const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+      await tm.materialize({ layout: null, cwds: ["/a"] });
+      await tm.init();
+      const downstream = vi.fn();
+      terminalInput().addEventListener("keydown", downstream);
+
+      const event = press(terminalInput(), { key: "s", metaKey: true });
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(surfaces.calls).toContain("save");
+      expect(downstream).not.toHaveBeenCalled();
+      tm.dispose();
+    },
+  );
+
+  it("still consumes Cmd+S over a surface on macOS", async () => {
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    surfaces.calls.length = 0;
+
+    const event = press(terminalInput(), { key: "s", metaKey: true });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(surfaces.calls).toContain("save");
+    tm.dispose();
+  });
+
+  it("does not turn bare Ctrl+S into a save on macOS", async () => {
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    surfaces.calls.length = 0;
+
+    const event = press(terminalInput(), { key: "s", ctrlKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(surfaces.calls).not.toContain("save");
+    tm.dispose();
+  });
+
+  // Ctrl+S on Windows (windows-parity, save-file option (a)): performable, the
+  // way Ctrl+C is. The real-controller cases that prove a dirty file reaches
+  // disk live with the controller fixture further down.
+  it("consumes Ctrl+S on Windows while a file surface owns the stage", async () => {
+    useWindows();
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    surfaces.calls.length = 0;
+
+    const event = press(terminalInput(), { key: "s", ctrlKey: true });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(surfaces.calls).toContain("save");
+    tm.dispose();
+  });
+
+  it("does not consume Ctrl+S on Windows over a terminal, so the PTY still gets it", async () => {
+    useWindows();
+    const surfaces = fakeSurfaces();
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    await tm.init();
+    const downstream = vi.fn();
+    terminalInput().addEventListener("keydown", downstream);
+
+    const event = press(terminalInput(), { key: "s", ctrlKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(surfaces.calls).not.toContain("save");
+    expect(downstream).toHaveBeenCalledTimes(1);
+    expect(downstream).toHaveBeenLastCalledWith(event);
+    tm.dispose();
+  });
+
+  it("does not consume Ctrl+S on Windows behind an overlay", async () => {
+    useWindows();
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    settingsOpen.value = true;
+
+    const event = press(terminalInput(), { key: "s", ctrlKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(surfaces.calls).not.toContain("save");
     tm.dispose();
   });
 });

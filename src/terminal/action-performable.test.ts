@@ -128,3 +128,47 @@ describe("toggle-mission-control", () => {
     expect(isActionPerformable("toggle-mission-control", context(overlay))).toBe(false);
   });
 });
+
+/**
+ * `save-file` is bare ⌘S on macOS and bare Ctrl+S on Windows, and both keymaps
+ * read this one predicate table. macOS has always consumed ⌘S wherever it was
+ * pressed, so the macOS answer is pinned to "true for every stage owner" and
+ * the Windows rule is the only thing allowed to differ.
+ */
+describe("isActionPerformable — save-file", () => {
+  const STAGE_OWNERS = ["terminal", "surface", "overlay"] as const;
+
+  it.each(STAGE_OWNERS)("keeps consuming ⌘S on macOS with %s on the stage", (stageOwner) => {
+    expect(isActionPerformable("save-file", context({ stageOwner, keymapPlatform: "macos" }))).toBe(
+      true,
+    );
+  });
+
+  it.each(STAGE_OWNERS)(
+    "reads an absent platform as today's behaviour with %s on the stage",
+    (stageOwner) => {
+      // The field is optional so every context literal written before it keeps
+      // compiling, and absent must mean "the keymap that existed before Windows
+      // had a binding" — which consumed unconditionally.
+      expect(isActionPerformable("save-file", context({ stageOwner }))).toBe(true);
+    },
+  );
+
+  it("consumes Ctrl+S on Windows while a surface owns the stage", () => {
+    expect(
+      isActionPerformable(
+        "save-file",
+        context({ stageOwner: "surface", keymapPlatform: "windows" }),
+      ),
+    ).toBe(true);
+  });
+
+  it.each(["terminal", "overlay"] as const)(
+    "leaves Ctrl+S to the PTY or the overlay on Windows with %s on the stage",
+    (stageOwner) => {
+      expect(
+        isActionPerformable("save-file", context({ stageOwner, keymapPlatform: "windows" })),
+      ).toBe(false);
+    },
+  );
+});

@@ -83,17 +83,18 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("binds save-file on macOS, and leaves bare Ctrl+S unbound on Windows (PTY-reserved)", () => {
+  it("binds save-file on ⌘S and on Ctrl+S, the latter as a performable action", () => {
     const mac = MACOS_KEYMAP.filter((binding) => binding.action === "save-file");
     const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "save-file");
     expect(mac).toEqual([{ key: "s", meta: true, action: "save-file" }]);
-    // Bare Ctrl+S stays PTY-reserved on Windows (terminal flow control) until
-    // an explicit binding decision says otherwise — save-file commits to bare
-    // ⌘S only (docs/internals/file-surface.md). Asserting `[]` locks that
-    // deliberate absence in, so a future add is a conscious edit here, not a
-    // silent gap.
-    expect(win).toEqual([]);
-    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    // Bare Ctrl+S was PTY-reserved on Windows (terminal flow control) until the
+    // 2026-09-30 decision (windows-parity, save-file option (a)). It is bound
+    // now because `save-file` is PERFORMABLE there — consumed only while a file
+    // surface owns the stage, so a terminal still receives the key
+    // (action-performable.ts). Pinning the exact binding keeps a second
+    // claimant of the chord a conscious edit here.
+    expect(win).toEqual([{ key: "s", ctrl: true, action: "save-file" }]);
+    // It has a macOS menu item, so the RULE above CharKeyBinding requires `key`.
     expect(mac[0]).not.toHaveProperty("code");
   });
 

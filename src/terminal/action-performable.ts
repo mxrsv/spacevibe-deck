@@ -12,6 +12,7 @@
  * Deliberately pure: it reads a context value, never a signal, so the rules
  * are testable without mounting a tab manager.
  */
+import type { KeymapPlatform } from "../lib/keybindings";
 import type { ShortcutAction } from "./keymap";
 
 /** Which kind of thing currently owns the stage. */
@@ -45,6 +46,18 @@ export interface PerformableContext {
    * Absent reads as closed.
    */
   readonly missionControlOpen?: boolean;
+  /**
+   * Which keymap is live, as `keymapPlatform` collapses it (`unsupported`, the
+   * browser-only dev preview, runs the macOS one). Read by `save-file`, whose
+   * row in the table below is shared by both keymaps but conditional on only
+   * one of them.
+   *
+   * Optional like the fields above, and the one that inverts their direction:
+   * absent reads as macOS, which consumes ⌘S unconditionally, because absent
+   * has to mean "the behaviour that shipped before Windows had a binding".
+   * `performableContext()` always supplies it.
+   */
+  readonly keymapPlatform?: KeymapPlatform;
 }
 
 type Predicate = (context: PerformableContext) => boolean;
@@ -68,6 +81,20 @@ const PREDICATES: ReadonlyMap<ShortcutAction, Predicate> = new Map<ShortcutActio
   [
     "toggle-markdown-view",
     (context) => context.stageOwner === "surface" && context.surfaceCanToggleView === true,
+  ],
+  // Platform AND stage conditional. On Windows the chord is bare Ctrl+S, which
+  // a terminal owns (XOFF, flow control), so it is consumed only while a
+  // surface holds the stage — over a terminal or behind an overlay the key
+  // reaches the PTY or whatever the overlay has focused, the way Ctrl+C
+  // reaches it with nothing selected. macOS answers true everywhere: ⌘S was
+  // never PTY-shared, has always been consumed wherever it lands, and this
+  // table row being shared must not change that. The stage test is
+  // `"surface"`, which also covers a browser tab or the retired Agent Board;
+  // `SurfaceStrip.save()` is a no-op there, so the cost is a swallowed key
+  // over a surface that had no use for it.
+  [
+    "save-file",
+    (context) => context.keymapPlatform !== "windows" || context.stageOwner === "surface",
   ],
   // Tab-conditional, and overlay-conditional only for OTHER overlays. Mission
   // Control ranks as an overlay while open, so `stageOwner()` answers

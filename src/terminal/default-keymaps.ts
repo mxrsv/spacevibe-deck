@@ -171,11 +171,21 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // Capture the live layout as a preset — also in the Window menu
   { key: "s", meta: true, shift: true, action: "save-preset" },
   // Save the active file surface (see docs/internals/file-surface.md). Bare
-  // ⌘S, distinct from ⌘⇧S save-preset above. No Windows binding: bare Ctrl+S
-  // stays PTY-reserved (terminal flow control) until an explicit binding
-  // decision says otherwise — see WINDOWS_KEYMAP's own top-of-file comment on
-  // bare Ctrl+ chords staying available to the PTY. Has a menu item, so
+  // ⌘S, distinct from ⌘⇧S save-preset above. Has a menu item, so
   // CharKeyBinding is mandatory, not a style choice (RULE above).
+  //
+  // Windows binds bare Ctrl+S to the same action (decided 2026-09-30,
+  // windows-parity). Ctrl+S was first left unbound there because a terminal
+  // owns it (XOFF, flow control), and the PTY must keep receiving it. What
+  // makes the binding safe is that `save-file` is PERFORMABLE
+  // (action-performable.ts): on Windows it is consumed only while a file
+  // surface owns the stage, the pattern `copy-or-interrupt` uses for Ctrl+C,
+  // so over a terminal the key is never preventDefault()ed. On macOS the same
+  // predicate row answers true everywhere, so ⌘S behaves as it always did.
+  // Rejected: a Windows-only Save control on the file surface (UI macOS does
+  // not have, which works against parity) and leaving Windows unbound with a
+  // documented rebind (a Windows user who edits a file would have no save chord
+  // until they found it in Settings).
   { key: "s", meta: true, action: "save-file" },
   // Jump to the highest-severity actionable Attention Rail candidate; routed
   // through an app-level seam so it can share the overlay preflight with a
@@ -241,11 +251,12 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // there, and a PERFORMABLE action that declines the key does not fall
   // through to a second binding — it stops consuming, and the keystroke
   // reaches whatever holds focus. Binding both would therefore break paste in
-  // a terminal rather than share the chord. Same shape as `save-file` above,
-  // which is bare ⌘S with no Windows twin; the toggle control on the surface
-  // is the reachable half on Windows. CharKeyBinding is mandatory, not a style
-  // choice: this action has a macOS menu item, and a Cocoa accelerator is
-  // declared by character (RULE above).
+  // a terminal rather than share the chord. The toggle control on the surface
+  // is the reachable half on Windows. (`save-file` above had no Windows twin
+  // until 2026-09-30; its Ctrl+S has no rival binding to lose to, which is
+  // what lets it be performable where this chord cannot.) CharKeyBinding is
+  // mandatory, not a style choice: this action has a macOS menu item, and a
+  // Cocoa accelerator is declared by character (RULE above).
   { key: "v", meta: true, shift: true, action: "toggle-markdown-view" },
   // Move the focused pane into its own window. Cmd+Shift+M is free on both
   // keymaps (no `m`/`KeyM` binding existed on either) and `m` is the "move"
@@ -312,7 +323,7 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
 
 /**
  * Windows Terminal-style chords keep conventional bare Ctrl sequences
- * available to the PTY, with two exceptions. Ctrl+V: Deck owns standard text
+ * available to the PTY, with three exceptions. Ctrl+V: Deck owns standard text
  * paste through Ctrl+V, Ctrl+Shift+V, and physical Shift+Insert; Alt+V remains
  * unbound so the active agent can handle it if that CLI supports the chord.
  * Ctrl+C: bound to `copy-or-interrupt`, which is PERFORMABLE — it consumes the
@@ -320,6 +331,8 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
  * nothing selected the key is never preventDefault()ed and xterm encodes the
  * interrupt itself. Deck writes no interrupt byte of its own; hardcoding
  * `\x03` would pin one encoding a different keyboard protocol does not use.
+ * Ctrl+S: bound to `save-file`, PERFORMABLE the other way round — consumed
+ * only while a file surface owns the stage, so a terminal still receives it.
  * See action-performable.ts and docs/internals/terminal.md.
  *
  * Clipboard actions dispatch through the shared path every other chord uses —
@@ -386,6 +399,9 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "k", ctrl: true, shift: true, action: "clear-buffer" },
   { key: "n", ctrl: true, alt: true, shift: true, action: "new-preset" },
   { key: "s", ctrl: true, alt: true, shift: true, action: "save-preset" },
+  // The macOS twin of ⌘S; the macOS entry records why a bare Ctrl chord is safe
+  // here. Performable: over a terminal the key is left alone.
+  { key: "s", ctrl: true, action: "save-file" },
   {
     key: "a",
     ctrl: true,

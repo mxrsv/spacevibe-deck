@@ -323,6 +323,14 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("v", { ctrlKey: true }))).toBeNull();
     expect(matchBinding(codeEvent("Insert", "Unidentified", { shiftKey: true }))).toBeNull();
   });
+
+  // Windows gained Ctrl+S → save-file on 2026-09-30; the macOS side must not
+  // move. ⌘S stays the one save chord and bare Ctrl+S stays a plain Ctrl
+  // keystroke for the PTY.
+  it("keeps ⌘S on save-file and bare Ctrl+S unbound", () => {
+    expect(matchBinding(keyEvent("s", { metaKey: true }))).toBe("save-file");
+    expect(matchBinding(keyEvent("s", { ctrlKey: true }))).toBeNull();
+  });
 });
 
 describe("WINDOWS_KEYMAP", () => {
@@ -352,6 +360,9 @@ describe("WINDOWS_KEYMAP", () => {
     ["k", { ctrlKey: true, shiftKey: true }, "clear-buffer"],
     ["n", { ctrlKey: true, altKey: true, shiftKey: true }, "new-preset"],
     ["s", { ctrlKey: true, altKey: true, shiftKey: true }, "save-preset"],
+    // Performable (action-performable.ts): matched here for every stage owner,
+    // consumed only while a file surface holds the stage.
+    ["s", { ctrlKey: true }, "save-file"],
     ["a", { ctrlKey: true, shiftKey: true }, "focus-next-attention"],
     [",", { ctrlKey: true }, "toggle-settings"],
     ["u", { ctrlKey: true, shiftKey: true }, "toggle-usage"],

@@ -52,6 +52,7 @@ import {
 import { contractSignalOf, type HookEvent } from "../lib/agent-signal-map";
 import { lastSessionIdFor, noteExplicitTail } from "./session-tail-store";
 import { usageConsentOpen } from "../telemetry/consent-store";
+import { activeKeymapPlatform } from "./active-keymap";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
 import {
@@ -2857,6 +2858,9 @@ export function createTabManager(
       surfaceCanToggleView: surfaces.canToggleView?.() ?? false,
       hasTerminalTab: tabs.length > 0,
       missionControlOpen: missionControlOpen.value,
+      // The keymap that produced the match, so `save-file` can tell its two
+      // chords apart (action-performable.ts).
+      keymapPlatform: activeKeymapPlatform(),
     };
   }
 
