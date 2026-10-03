@@ -4,7 +4,11 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentLaunchPage, type AgentLaunchPageProps } from "./agent-launch-page";
 
-vi.mock("../ui/controls/deck-icon", () => ({ DeckIcon: () => <span /> }));
+// Keep the real module's other exports (CHROME_ICON, ...) so a new export cannot break this mock.
+vi.mock("../ui/controls/deck-icon", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../ui/controls/deck-icon")>()),
+  DeckIcon: () => <span />,
+}));
 
 let host: HTMLDivElement;
 beforeEach(() => {
