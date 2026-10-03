@@ -330,14 +330,16 @@ opencode reporting port, its server cannot provide a contract session identity f
   what makes two modals exclude each other with no extra concept.
 - **A chord that cannot act does not eat the key.**
   [`action-performable.ts`](../../src/terminal/action-performable.ts) is asked before
-  `preventDefault()`; a false answer leaves the event to whatever holds focus. Four
-  predicates exist: `copy-selection` needs a terminal on the stage; `copy-or-interrupt`
+  `preventDefault()`; a false answer leaves the event to whatever holds focus. The
+  predicates: `copy-selection` needs a terminal on the stage; `copy-or-interrupt`
   (Ctrl+C on Windows) needs a terminal and a selection, and otherwise lets xterm encode the
   interrupt itself, because Deck writes no `\x03`; `toggle-markdown-view` needs a document
-  that can toggle; `save-file` is keyed by platform, because both keymaps share its row. On
-  macOS (and the browser-only preview) it is always performable, so ⌘S is consumed wherever
-  it lands, as before. On Windows it needs a file surface on the stage, because bare Ctrl+S
-  is terminal flow control and must still reach the PTY.
+  that can toggle; `toggle-mission-control` needs a terminal tab and no overlay other than
+  Mission Control itself; `save-file` is keyed by platform, because both keymaps share its
+  row. On macOS (and the browser-only preview) it is always performable, so ⌘S is consumed
+  wherever it lands, as before. On Windows it needs a surface (document, browser tab or
+  Board) on the stage, because bare Ctrl+S is terminal flow control and must still reach
+  the PTY.
 - **The menu is generated on Tauri and derived at runtime on Electron.**
   `scripts/generate-menu.ts` writes `src-tauri/src/menu_registry.rs`; `electron/menu.ts`
   imports the registry directly and builds the native menu on macOS only, installing
