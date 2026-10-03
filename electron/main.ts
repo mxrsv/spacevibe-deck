@@ -40,6 +40,7 @@ import { ptyInfo, type PtyInfo } from "./pty/info";
 import { validateAgentProcessMatchers } from "./platform/classify";
 import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
 import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
+import { INITIAL_OVERLAY_COLORS, windowChromeOptions } from "./window-options";
 import { StoreRegistry } from "./store";
 import { createWatchRegistry } from "./fs/watch";
 import { MainDirtyRegistry } from "./dirty-registry";
@@ -192,11 +193,13 @@ function createWindow(label: string): BrowserWindow {
   const window = new BrowserWindow({
     width: 1100,
     height: 720,
-    titleBarStyle: "hiddenInset",
+    ...windowChromeOptions(process.platform, INITIAL_OVERLAY_COLORS),
     // The pre-render ground follows `--bg`'s default (`styles/01-tokens.css` :root,
     // `FALLBACK_BG` in theme-vars.ts), or window-open and resize flash a
     // colour the app never shows again. Tauri's window config carries the same
     // value for the same reason — changing one without the other is the drift.
+    // `INITIAL_OVERLAY_COLORS` (window-options.ts) starts the Windows caption
+    // buttons on this ground too.
     backgroundColor: "#0a0a0a",
     webPreferences: {
       preload: PRELOAD,
