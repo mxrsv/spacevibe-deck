@@ -1,3 +1,5 @@
+import { isWindowsPath } from "./path-name";
+
 const TRAILING_SEPARATOR = /[\\/]$/;
 
 // What a path with no separator of its own is joined with: the spelling this
@@ -10,16 +12,36 @@ const DEFAULT_SEPARATOR = "/";
  * convention, so the field stays editable and this only computes the
  * starting value.
  *
- * Either separator is honoured and the suggestion is spelled with the one the
- * repo path uses, so `C:\code\deck` suggests `C:\code\deck-worktrees\<branch>`.
- * The branch keeps its own slashes (git accepts both on Windows). Only unit
- * tests cover the Windows spelling; no Windows device has run this flow.
+ * A repo path spelled like a Windows one (`isWindowsPath`) is cut at either
+ * separator and the suggestion uses the one the path uses, so `C:\code\deck`
+ * suggests `C:\code\deck-worktrees\<branch>`. The branch keeps its own slashes
+ * (git accepts both on Windows). Every other path is `/`-only, because a
+ * backslash is a legal filename character on macOS and Linux and must stay
+ * part of the folder name there. Only unit tests cover the Windows spelling;
+ * no Windows device has run this flow.
  */
 export function suggestWorktreeDest(repoPath: string, branch: string): string {
   const trimmedBranch = branch.trim();
   if (repoPath === "" || trimmedBranch === "") {
     return "";
   }
+  return isWindowsPath(repoPath)
+    ? windowsDest(repoPath, trimmedBranch)
+    : posixDest(repoPath, trimmedBranch);
+}
+
+function posixDest(repoPath: string, trimmedBranch: string): string {
+  const trimmedRepo = repoPath.endsWith("/") && repoPath !== "/" ? repoPath.slice(0, -1) : repoPath;
+  const lastSlash = trimmedRepo.lastIndexOf("/");
+  const parent = lastSlash <= 0 ? "" : trimmedRepo.slice(0, lastSlash);
+  const repoName = trimmedRepo.slice(lastSlash + 1);
+  if (repoName === "") {
+    return "";
+  }
+  return `${parent}/${repoName}-worktrees/${trimmedBranch}`;
+}
+
+function windowsDest(repoPath: string, trimmedBranch: string): string {
   const trimmedRepo =
     TRAILING_SEPARATOR.test(repoPath) && repoPath.length > 1 ? repoPath.slice(0, -1) : repoPath;
   // The cut `baseName` and `parentDirectory` make in `path-name.ts`, mirrored

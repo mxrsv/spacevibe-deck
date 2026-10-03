@@ -1,4 +1,4 @@
-import { baseName } from "./path-name";
+import { baseName, isWindowsPath } from "./path-name";
 
 /**
  * One spelling per workspace, so two tabs cannot claim the same folder just
@@ -20,9 +20,13 @@ const TRAILING_SEPARATORS = /[\\/]+$/;
 const WINDOWS_DRIVE_ROOT = /^[A-Za-z]:\\+$/;
 
 /**
- * Display name for a workspace path: the basename of the directory. Either
- * separator cuts, because Windows paths reach the renderer as `C:\code\deck`
- * while git reports the same folder as `C:/code/deck`.
+ * Display name for a workspace path: the basename of the directory.
+ *
+ * Only a path spelled like a Windows one (`isWindowsPath`) is cut at `\` as
+ * well as `/`: Windows paths reach the renderer as `C:\code\deck` while git
+ * reports the same folder as `C:/code/deck`. Every other path keeps the
+ * `/`-only reading, because a backslash is a legal filename character on
+ * macOS and Linux and `/Users/me/a\b` is one folder called `a\b`.
  * Pure — no React, no Web API. Path display itself uses `tildify`.
  */
 export function workspaceLabel(path: string): string {
@@ -30,6 +34,22 @@ export function workspaceLabel(path: string): string {
   if (trimmed === "") {
     return "Unknown";
   }
+  return isWindowsPath(trimmed) ? windowsLabel(trimmed) : posixLabel(trimmed);
+}
+
+function posixLabel(trimmed: string): string {
+  if (trimmed === "/") {
+    return "/";
+  }
+  const withoutTrailing = trimmed.replace(/\/+$/, "");
+  if (withoutTrailing === "") {
+    return "/";
+  }
+  const base = withoutTrailing.slice(withoutTrailing.lastIndexOf("/") + 1);
+  return base === "" ? "Unknown" : base;
+}
+
+function windowsLabel(trimmed: string): string {
   // A drive root has no folder name to show, and stripping its separator would
   // leave the bare drive letter, which reads as a relative "current dir on C".
   if (WINDOWS_DRIVE_ROOT.test(trimmed)) {

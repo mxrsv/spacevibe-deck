@@ -54,6 +54,14 @@ describe("suggestWorktreeDest", () => {
     expect(suggestWorktreeDest("C:/code/deck", "feat/x")).toBe("C:/code/deck-worktrees/feat/x");
   });
 
+  // A backslash is a legal filename character on macOS and Linux, so a path
+  // that does not look like a Windows one must never be cut or joined with it.
+  it("keeps a literal backslash in a POSIX folder name", () => {
+    expect(suggestWorktreeDest("/Users/me/a\\b", "feat/x")).toBe("/Users/me/a\\b-worktrees/feat/x");
+    expect(suggestWorktreeDest("/Users/me/proj\\", "x")).toBe("/Users/me/proj\\-worktrees/x");
+    expect(suggestWorktreeDest("a\\b", "x")).toBe("/a\\b-worktrees/x");
+  });
+
   it("keeps a Windows repo path's own separator", () => {
     expect(suggestWorktreeDest("C:\\code\\deck", "feat/x")).toBe(
       "C:\\code\\deck-worktrees\\feat/x",

@@ -47,6 +47,16 @@ describe("workspaceLabel", () => {
     expect(workspaceLabel(".")).toBe(".");
   });
 
+  // A backslash is a legal filename character on macOS and Linux, so a path
+  // that does not look like a Windows one must never be cut at it.
+  it("keeps a literal backslash in a POSIX folder name", () => {
+    expect(workspaceLabel("/Users/me/a\\b")).toBe("a\\b");
+    expect(workspaceLabel("/Users/me/proj\\")).toBe("proj\\");
+    expect(workspaceLabel("/Users/me/a\\b/")).toBe("a\\b");
+    expect(workspaceLabel("\\")).toBe("\\");
+    expect(workspaceLabel("a\\b")).toBe("a\\b");
+  });
+
   it("leaves a forward-slash drive spelling as it was", () => {
     expect(workspaceLabel("C:")).toBe("C:");
     expect(workspaceLabel("C:/")).toBe("C:");
