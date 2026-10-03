@@ -10,9 +10,13 @@
 
 /* ── DL-35.3: the bar ── */
 
+/* The marks are centred in the bar, the name stays at its left edge: equal
+   outer tracks put the middle one on the bar's centre however short the
+   name is, so a short name leaves no gap beside the marks. */
 .space-bar {
-  display: flex;
-  flex: 0 1 auto;
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -23,7 +27,7 @@
    never move on a switch. */
 .space-bar__name {
   display: grid;
-  flex: 0 1 auto;
+  justify-self: start;
   min-width: 0;
   max-width: 180px;
   color: var(--text-primary);
