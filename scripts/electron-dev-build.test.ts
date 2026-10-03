@@ -4,6 +4,11 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { watchMain } from "./electron-dev-build.mjs";
 
+// A rebuild here takes ~150 ms alone, but the file-watch recovery has been seen at 1.8 s when
+// the CPU is oversubscribed, and the 3 s it used to wait timed out in 2 of 3 full `npm test`
+// runs. Two of these waits plus the fixture must stay inside that test's own 15_000 ms.
+const LOADED_REBUILD_WAIT_MS = 6000;
+
 const cleanup: Array<() => void> = [];
 afterEach(() =>
   cleanup
@@ -115,9 +120,9 @@ describe("incremental Electron development compiler", () => {
   it("recovers when a missing dependency is created after a failed build", async () => {
     const f = await fixture();
     f.put("electron/main.ts", 'export { value } from "../src/missing/value";');
-    await expect.poll(() => f.events.at(-1)?.ok, { timeout: 3000 }).toBe(false);
+    await expect.poll(() => f.events.at(-1)?.ok, { timeout: LOADED_REBUILD_WAIT_MS }).toBe(false);
     f.put("src/missing/value.ts", "export const value = 7;");
-    await expect.poll(() => f.events.at(-1)?.ok, { timeout: 3000 }).toBe(true);
+    await expect.poll(() => f.events.at(-1)?.ok, { timeout: LOADED_REBUILD_WAIT_MS }).toBe(true);
     expect(f.output("src/missing/value.cjs")).toContain("= 7");
   }, 15_000);
 
