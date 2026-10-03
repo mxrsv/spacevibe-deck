@@ -144,7 +144,7 @@
   flex: none;
   align-items: center;
   padding: 0 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-tab);
   background: color-mix(in srgb, var(--hair-strong) 40%, transparent);
   box-shadow: inset 0 0 0 1px transparent;
 }
