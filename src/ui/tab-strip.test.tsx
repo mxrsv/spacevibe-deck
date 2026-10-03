@@ -433,7 +433,9 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       tab({ key: 2, workspacePath: "/w/alpha" }),
       tab({ key: 3, workspacePath: "/w/beta" }),
     ];
-    mount();
+    // Unscoped, as the tab bar mounts it: the scoped sidebar strip draws only the
+    // active repository, so it can hold at most one capsule.
+    mount({ scopeToActiveRepository: false });
 
     const capsules = [...host.querySelectorAll<HTMLElement>('.space-bar__run[role="group"]')];
     expect(capsules.map((capsule) => capsule.getAttribute("aria-label"))).toEqual([
