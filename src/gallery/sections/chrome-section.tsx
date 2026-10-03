@@ -25,6 +25,7 @@ import {
 } from "../chrome-fixtures";
 import { SEED_ATTENTION, SEED_LAYOUT } from "../seed-data";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
+import { WindowsControlsSpecimens } from "./chrome-windows-controls";
 
 /** Every phase the update pill can be in, `hidden` excluded — it renders nothing. */
 const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
@@ -129,6 +130,10 @@ export function ChromeSection() {
           />
         </div>
       </Specimen>
+
+      {/* The same shell as Windows + Electron: the caption buttons' footprint
+          at the frame row's right end, in every layout state that reaches it. */}
+      <WindowsControlsSpecimens />
 
       {/*
         Component-state coverage, not composition review — which is why the

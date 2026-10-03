@@ -1,0 +1,72 @@
+/*
+ * The Windows + Electron specimens (`chrome-windows-controls.tsx`).
+ *
+ * The frame is the window: the stand-in is positioned against it the way the
+ * OS positions its buttons against the real window, so the specimen's own
+ * `.window` has to fill it.
+ *
+ * `contain: layout` makes the frame the containing block for `position: fixed`
+ * descendants. Settings is fixed to the viewport in the app (DL-11) and would
+ * otherwise cover the whole gallery page. It also makes the frame a stacking
+ * context, so the stand-in below can out-rank Settings' `z-index: 35`.
+ */
+.gx-caption-frame {
+  position: relative;
+  height: 100%;
+  contain: layout;
+}
+
+/* The direction sheet insets and rounds Settings (`chatgpt-direction.css`);
+   the shipped surface is full-bleed, and the header's right end is exactly
+   what these specimens exist to check. */
+.gx-caption-frame .settings-screen {
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--chrome-2);
+}
+
+/*
+ * The OS caption buttons' footprint. Written out here on purpose, NOT read from
+ * `--frame-controls-w` / `--frame-controls-fallback-w`: those are Deck's
+ * reservation, and a stand-in that read the same number could never show that
+ * the reservation is too small. Three 46px buttons, 34px tall (`--frame-h`).
+ * Clearly fake — hatched, dashed, labelled — so no screenshot passes for the
+ * real thing, and translucent so anything underneath still shows through.
+ */
+.gx-caption-standin {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: repeat(3, 46px);
+  box-sizing: border-box;
+  width: 138px;
+  height: 34px;
+  pointer-events: none;
+  outline: 1px dashed #ff2bd6;
+  outline-offset: -1px;
+  background: repeating-linear-gradient(
+    135deg,
+    rgb(255 43 214 / 0.5) 0 5px,
+    rgb(255 43 214 / 0.2) 5px 10px
+  );
+  color: #fff;
+  font:
+    9px/34px ui-monospace,
+    monospace;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.gx-caption-standin > span + span {
+  border-left: 1px dashed #ff2bd6;
+}
+
+.gx-caption-dock-body {
+  margin: 0;
+  padding: 12px;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}

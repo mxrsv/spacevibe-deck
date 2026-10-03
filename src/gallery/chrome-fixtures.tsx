@@ -1,4 +1,5 @@
 import { CaretDown, GitFork, Plus } from "@phosphor-icons/react";
+import type { ComponentChildren } from "preact";
 import { RepositoryRail } from "../ui/repository-rail";
 import { AgentRail } from "../ui/agent-rail";
 import { TabBar } from "../ui/tab-bar";
@@ -98,12 +99,20 @@ export function deckToolbarSpecimen({ promptsDisabled = false }: SpecimenOptions
   );
 }
 
-export function tabBarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}) {
+/**
+ * `trailing` is the dock's closed-state toggle, which `App` hands the tab bar
+ * in top-tab mode. Absent by default, so every existing specimen is unchanged.
+ */
+export function tabBarSpecimen({
+  promptsDisabled = false,
+  trailing,
+}: SpecimenOptions & { readonly trailing?: ComponentChildren } = {}) {
   return (
     <TabBar
       onSelectTab={NOOP}
       onCloseTab={NOOP}
       toolbar={deckToolbarSpecimen({ promptsDisabled })}
+      trailing={trailing}
       onSelectBrowser={NOOP}
       onCloseBrowser={NOOP}
       onSelectAgentBoard={NOOP}
