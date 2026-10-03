@@ -77,10 +77,9 @@ class DeckWindow {
   /**
    * Publish the frame's colour and ink for the Windows caption buttons.
    *
-   * Never rejects, so the theme effect can call it on every host: the browser
-   * preview and Tauri have no bridge and the host answers nothing off win32.
-   * Values must be `rgb()` / `rgba()` or hex — `color-mix()` and `var()` are
-   * refused main-side — so the caller resolves them through `getComputedStyle`.
+   * Never rejects: the browser preview and Tauri have no bridge, and a host
+   * that refuses the call only logs. Both values must be `#rrggbb`; the host
+   * drops anything else (`src/lib/title-bar-overlay-colors.ts` derives them).
    */
   async setTitleBarOverlay(colors: { color: string; symbolColor: string }): Promise<void> {
     if (hostBridge() === undefined) {

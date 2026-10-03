@@ -25,29 +25,18 @@ export const INITIAL_OVERLAY_COLORS: OverlayColors = {
   symbolColor: "#cbcbcb",
 };
 
-/** A real computed colour is under 40 characters; the cap bounds the regex work. */
-const MAX_OVERLAY_COLOR_LENGTH = 64;
-const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
-const CHANNEL = String.raw`\d{1,3}(?:\.\d{1,4})?`;
-const ALPHA = String.raw`(?:\d(?:\.\d{1,4})?|\.\d{1,4})`;
-const RGB_COLOR = new RegExp(
-  String.raw`^rgba?\(\s*${CHANNEL}\s*,\s*${CHANNEL}\s*,\s*${CHANNEL}\s*(?:,\s*${ALPHA}\s*)?\)$`,
-  "i",
-);
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 /**
- * Whether a renderer-supplied value may reach `setTitleBarOverlay`: `#rgb`,
- * `#rrggbb`, `#rrggbbaa`, or the comma form of `rgb()` / `rgba()` that
- * `getComputedStyle` serialises. A strict allowlist rather than a CSS parser —
+ * Whether a renderer-supplied value may reach `setTitleBarOverlay`: `#rrggbb`
+ * and nothing else. That is all the renderer derives (presets, validated
+ * colour overrides and `mixHex`), and it leaves out `#rrggbbaa`, which
+ * Electron reads as AARRGGBB. A strict allowlist rather than a CSS parser —
  * the renderer is not the trust boundary, and a colour the OS cannot parse
  * falls back to system defaults instead of failing loudly.
  */
 export function isOverlayColor(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= MAX_OVERLAY_COLOR_LENGTH &&
-    (HEX_COLOR.test(value) || RGB_COLOR.test(value))
-  );
+  return typeof value === "string" && HEX_COLOR.test(value);
 }
 
 export type WindowChromeOptions = Pick<

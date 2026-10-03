@@ -70,9 +70,9 @@ export const CHANNELS = {
   windowLabel: "window_label",
   // The theme's frame colour and ink for the Windows caption buttons
   // (`titleBarOverlay`). Electron-only like the block above: Tauri keeps its
-  // native title row. The renderer calls it on every host and main answers
-  // nothing but win32; flat `{ color, symbolColor }` per R6, both validated in
-  // `register-shell.ts` before they reach the window.
+  // native title row. Only a Windows renderer calls it, and only when the
+  // frame corner's colour changes; flat `{ color, symbolColor }` per R6, both
+  // `#rrggbb` and validated in `register-shell.ts` before they reach the window.
   windowSetTitleBarOverlay: "window_set_title_bar_overlay",
   detectAgents: "detect_agents",
   dirsExist: "dirs_exist",

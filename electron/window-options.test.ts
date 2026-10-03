@@ -51,41 +51,36 @@ describe("window chrome constants", () => {
 });
 
 describe("isOverlayColor", () => {
-  it.each([
-    "#fff",
-    "#0a0a0a",
-    "#0A0A0AFF",
-    "rgb(10, 10, 10)",
-    "rgba(10, 10, 10, 0.5)",
-    "rgb(10.5, 20, 30)",
-    "rgba(0,0,0,.25)",
-  ])("accepts %s", (value) => {
+  // The renderer only ever derives `#rrggbb` (presets, validated overrides and
+  // `mixHex`), so that is the whole accepted format.
+  it.each(["#0a0a0a", "#0A0A0A", "#cbcbcb", "#FFFFFF"])("accepts %s", (value) => {
     expect(isOverlayColor(value)).toBe(true);
   });
 
   // Everything else reaches `setTitleBarOverlay` as untrusted renderer input;
-  // the allowlist is the whole defence, so CSS the OS cannot parse, injected
-  // trailing text and non-strings must all fail it.
+  // the allowlist is the whole defence, so every other CSS colour form, CSS the
+  // OS cannot parse, injected trailing text and non-strings must fail it.
+  // `#rrggbbaa` is out on purpose: Electron reads 8-digit hex as AARRGGBB.
   it.each([
+    "#fff",
+    "#0a0a0aff",
+    "#1234",
+    "#12345",
+    "#gggggg",
+    "#0a0a0a\n",
+    "0a0a0a",
+    "rgb(10, 10, 10)",
+    "rgba(10, 10, 10, 0.5)",
     "red",
     "var(--bg)",
     "color-mix(in srgb, #000 90%, #fff)",
-    "#12",
-    "#1234",
-    "#gggggg",
-    "#fff\n",
-    "rgb(1, 2)",
-    "rgb(a, b, c)",
     "rgb(1, 2, 3); url(x)",
-    "rgb(1, 2, 3, 4, 5)",
-    // Well-formed, but longer than any real computed colour: the cap bounds the work.
-    `rgb(1,${" ".repeat(70)}2, 3)`,
     "",
   ])("rejects %j", (value) => {
     expect(isOverlayColor(value)).toBe(false);
   });
 
-  it.each([12, null, undefined, {}, ["#fff"]])("rejects the non-string %j", (value) => {
+  it.each([12, null, undefined, {}, ["#0a0a0a"]])("rejects the non-string %j", (value) => {
     expect(isOverlayColor(value)).toBe(false);
   });
 });

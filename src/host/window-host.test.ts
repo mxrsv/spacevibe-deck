@@ -173,7 +173,7 @@ describe("onDragDropEvent", () => {
 });
 
 describe("setTitleBarOverlay", () => {
-  const COLORS = { color: "rgb(10, 10, 10)", symbolColor: "rgb(203, 203, 203)" };
+  const COLORS = { color: "#0a0a0a", symbolColor: "#cbcbcb" };
 
   it("sends the two colours as flat keys", async () => {
     const invoke = vi.fn().mockResolvedValue(undefined);
@@ -184,8 +184,8 @@ describe("setTitleBarOverlay", () => {
     expect(invoke).toHaveBeenCalledWith("window_set_title_bar_overlay", COLORS);
   });
 
-  // The caller sits in a theme effect and invokes it on every host; a browser
-  // preview or Tauri has no bridge and must read as "nothing to paint".
+  // A Windows renderer under the browser preview or Tauri has no bridge and
+  // must read as "nothing to paint".
   it("resolves quietly when there is no host", async () => {
     await expect(getCurrentWindow().setTitleBarOverlay(COLORS)).resolves.toBeUndefined();
   });

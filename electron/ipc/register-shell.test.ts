@@ -20,7 +20,7 @@ vi.mock("electron", () => ({
 }));
 
 const EVENT = { sender: {} };
-const VALID = { color: "rgb(10, 10, 10)", symbolColor: "rgb(203, 203, 203)" };
+const VALID = { color: "#0a0a0a", symbolColor: "#cbcbcb" };
 
 function setOverlay(payload: unknown): unknown {
   const handler = mocks.handlers.get(CHANNELS.windowSetTitleBarOverlay);
@@ -42,8 +42,8 @@ beforeEach(() => {
 });
 
 describe("window_set_title_bar_overlay", () => {
-  // The renderer calls it unconditionally, so every host but Windows has to
-  // answer without touching the window at all.
+  // Only a Windows renderer calls it, but a stray call from any other host
+  // has to answer without touching the window at all.
   it.each(["darwin", "linux"] as const)("is a no-op on %s", (platform) => {
     registerShell(platform);
 
@@ -58,14 +58,17 @@ describe("window_set_title_bar_overlay", () => {
     setOverlay(VALID);
 
     expect(mocks.setTitleBarOverlay).toHaveBeenCalledExactlyOnceWith({
-      color: "rgb(10, 10, 10)",
-      symbolColor: "rgb(203, 203, 203)",
+      color: "#0a0a0a",
+      symbolColor: "#cbcbcb",
       height: 34,
     });
   });
 
   it.each([
     ["a colour the OS cannot parse", { ...VALID, color: "color-mix(in srgb, red, blue)" }],
+    ["an rgb() colour", { ...VALID, color: "rgb(10, 10, 10)" }],
+    ["short hex", { ...VALID, symbolColor: "#fff" }],
+    ["8-digit hex", { ...VALID, color: "#0a0a0aff" }],
     ["a bad symbol colour", { ...VALID, symbolColor: "url(x)" }],
     ["a missing key", { color: VALID.color }],
     ["a non-string", { color: 1, symbolColor: 2 }],

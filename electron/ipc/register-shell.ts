@@ -38,8 +38,8 @@ export function registerShell(platform: NodeJS.Platform = process.platform): voi
   });
 
   ipcMain.handle(CHANNELS.windowSetTitleBarOverlay, (event, payload: unknown) => {
-    // Called by every renderer on every theme change; only Windows paints an
-    // overlay, so everywhere else this resolves without touching the window.
+    // Only a Windows renderer calls this, and only when the frame corner's
+    // colour changes; any other host resolves without touching the window.
     if (platform !== "win32") {
       return;
     }
@@ -47,10 +47,10 @@ export function registerShell(platform: NodeJS.Platform = process.platform): voi
     // rejection like any bad colour, not a TypeError thrown into the renderer.
     const { color, symbolColor } = (payload ?? {}) as Record<string, unknown>;
     if (!isOverlayColor(color) || !isOverlayColor(symbolColor)) {
-      // Once, not per theme change: the values are never echoed into the log.
+      // Once, not per colour change: the values are never echoed into the log.
       if (!rejectionLogged) {
         rejectionLogged = true;
-        console.warn("Deck: ignored a title bar overlay that is not an rgb() or hex colour pair");
+        console.warn("Deck: ignored a title bar overlay that is not a #rrggbb colour pair");
       }
       return;
     }
