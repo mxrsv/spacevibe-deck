@@ -1207,13 +1207,16 @@ part of this design language instead of becoming a new widget genre: it is a
 
 ## 16. Usage overview
 
-The owner-selected C hierarchy in [OverviewContent](../src/ui/usage/sections/overview-section.tsx)
-puts current allowance before historical cost. The two answer different questions:
+The owner-selected hierarchy in [OverviewContent](../src/ui/usage/sections/overview-section.tsx)
+leads with the cost figure, then current allowance, then history (DL-16.1). The two answer different questions:
 remaining subscription capacity comes from limit readings, while estimated API cost
 comes from this machine's recorded token history. Neither is a subscription invoice.
 
-- **DL-16.1** The order is **Remaining allowance → cost period → Cost over time →
-  Estimated API cost → per-agent accounting and pricing details**. The
+- **DL-16.1** The order is **Estimated API cost → per-agent accounting and pricing
+  details → Remaining allowance → cost period → Cost over time**. **Amended
+  2026-10-04 (owner):** the cost figure leads the page, reversing the earlier
+  allowance-first order; the period selector stays beside the chart it names and
+  still scopes the figure above it. The
   [allowance table](../src/ui/usage/remaining-allowance.tsx) uses actual returned
   durations, visible reset times and remaining percentages; missing, expired,
   failed and unsupported readings stay unknown, while a measured zero stays zero.
@@ -1221,8 +1224,9 @@ comes from this machine's recorded token history. Neither is a subscription invo
   is loading or stale. Its sidebar counterpart retains DL-33.1's treatment.
 - **DL-16.2** The compact cost figure uses the sentence-case label **Estimated API
   cost**, tabular numbers, and a visible API-equivalent disclaimer. The
-  [Overview treatment](../src/styles/12-usage.css) keeps allowance and the chart
-  above the accounting, with flat surfaces, hairlines and the existing theme tokens.
+  [Overview treatment](../src/styles/12-usage.css) puts the figure first and
+  separates it from the allowance and chart below with a hairline, on flat
+  surfaces and the existing theme tokens.
   A partial price estimate must disclose the excluded models and tokens; an absent
   amount is a dash, never an invented zero.
 - **DL-16.3** A **share bar** may sit under any row that names a part of a
@@ -1626,6 +1630,12 @@ window's identity and its actions at the same time.
   is added. [Rail selection](../src/ui/app.tsx) still activates the exact pane;
   [agent phase and attention](../src/terminal/tab-manager.ts) still supply the
   existing rail and Board indicators. Pane geometry is unchanged by this removal.
+  **Amended 2026-10-03 (owner), reversing the "no replacement effect" half:**
+  the focused pane of a multi-pane tab now wears a static focus mark — its card
+  edge in the rail's inverted fill (DL-18.12) and its header joined to the
+  terminal (DL-32.7). It is neither the removed working line nor the one-shot
+  locator: nothing animates but a `--duration` colour change, and a tab with one
+  pane has no mark, because `is-active` is not set for it.
 
 - **DL-18.12** **A pane is a card on the stage gutter (2026-09-18, owner).**
   `--stage-gutter` is 4px and applies to all four edges of the work area AND
@@ -1654,6 +1664,12 @@ window's identity and its actions at the same time.
   `--sidebar-bg` on the stage side, the same 1px ran between two identical
   surfaces — a line with no step behind it, which DL-2.3 forbids. The rail and
   the gutter are one chrome plane now, and the card's border is the boundary.
+  **Amended 2026-10-03 (owner): the border carries focus.** On the focused pane
+  of a multi-pane tab (`.pane-slot.is-active`, set by
+  [`layout-engine.ts`](../src/terminal/layout-engine.ts)) the same 1px border
+  takes DL-27.22's inverted fill, `--text-primary` at 74% over `--sidebar-bg`,
+  and eases back with DL-20.2's motion pair. Only its colour changes, so the card
+  does not move, and it stays a real border for the reason above.
 
 ## 19. Docked side panels
 
@@ -1882,7 +1898,9 @@ looking at rendered specimens across four themes.
   `--radius-tab` role), so the wash and the frame trace THAT corner there;
   every other genre keeps `--radius-control`. Other genres are otherwise
   unchanged: a border on a rail row or a settings category is still a
-  violation.
+  violation. **Second scoped exception, added 2026-10-03 (owner): the Electron
+  card rail's focused agent row is an inverted fill, not this wash** — DL-27.22
+  records it and why. Every other genre keeps `--tab-active-bg`.
 - **DL-21.2** **Hover is a quieter wash than selection, never the same one.**
   Hover is a neutral `--tone` wash at 6%; selection is `--tab-active-bg`. They
   are different values on purpose — a hover that paints what "selected" looks
@@ -2647,6 +2665,21 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   padding — with the turn on one line a leaf and a tab row are the same object
   seen twice, and two heights read as two lists.
 
+  **AMENDED 2026-09-29 (owner, for named tabs only): a named tab's pane row is
+  two lines — the name in semibold, then that pane's own sentence.** Naming a
+  space (DL-35.3) put one word on every pane of the tab, so the one-line rule
+  printed `auth` and `auth 2` and hid the only text that told the rows apart.
+  The name now says which space and the sentence what this agent is doing; the
+  generated ordinal, when two panes still read alike, lands on the sentence and
+  never on a name. The row's accessible name and tooltip carry both
+  (`auth · Fixing login`). An unnamed tab's row is unchanged, one line. A
+  double-click on a row renames its tab in place, through the same field as
+  the strip (DL-35.3); the segment menu's copy of the row has no rename
+  gesture. Built by
+  [`buildCardEntries`](../src/ui/agent-rail-card-model.ts) and
+  [`CardAgentRow`](../src/ui/worktree-card-row.tsx). **Electron only:** the
+  Tauri `RepositoryRail` keeps its own rows and already prints the name.
+
 - **DL-27.16** **The Agent Rail is live work only (2026-08-19, owner).** A row
   must originate from a live tab; persisted workspace history and archived
   sessions never produce rail output. Resume belongs to the Sessions surface,
@@ -2836,6 +2869,22 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   is directed. **A document or the browser on the stage does not clear it:**
   the active pane is unchanged and the mark then reads as where the keyboard
   returns to, where clearing it would blink the rail on every file opened.
+  **Amended 2026-10-03 (owner), for the Electron card rail's agent row: the
+  focused row INVERTS instead of washing.** The wash, raised to `--tone` 20% on
+  2026-08-26, still lost to the five sibling rows' own washes and to the busy
+  rim, and the owner reported the focused agent unreadable a second time. The
+  row now fills with `--text-primary` at 74% over `--sidebar-bg` and every mark
+  on it reads `--asr-card-focus-ink` (`--sidebar-bg`): name, sentence, model
+  pill, loading bars, the neutral `working`/`done`/`ended` dots and the close.
+  `asked` and `failed` keep `--yellow` and `--red`, which read on that fill.
+  Contrast is 8.5:1 on `deck-dark` and 5.75:1 on `deck-light` (measured in the
+  gallery). **This is a scoped exception to DL-21.1's "wash and nothing else"**
+  — an inverted fill is the one selection mark in the app that is not
+  `--tab-active-bg` — and it stays one signifier: no bar, no frame, no accent
+  (DL-21.6 holds). **The working rim is retired with it:** a busy row no longer
+  draws a hairline, and the loading bars alone say it is busy. The gallery's
+  eight other candidates are kept as a historical comparison. The Tauri
+  legacy rail's `.asr-leaf` keeps the wash.
 - **DL-27.23** **The rail has three tiers: project, worktree, agent row
   (2026-08-25, owner).** Every tab of a project is printed under the worktree
   it runs in, and a worktree group is **always labelled** — including when a
@@ -2925,19 +2974,25 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   motion: `background` is outside DL-1.2's list.
   [Head band](../src/styles/04c-rail-worktree-card.css).
 
-  **Worktree colors (DECK-44, 2026-09-09).** The checkout's context menu includes
-  **Worktree color**, showing the current color name. Pressing that item
-  expands six theme-aware swatches and **Default** inside the same popover,
-  without toggling the card or launching an agent. Empty checkouts also open
-  the menu on right-click. The head dot is an indicator, not a color button.
-  An explicit choice colors the head dot in both active
-  and inactive cards, plus the active frame; Default restores the
-  neutral/busy head dot and green active treatment. Agent status marks keep
-  their existing meaning. The palette uses the rail popover surface, with a
-  neutral selection outline, keyboard focus and Escape/outside dismissal.
-  Choices belong to checkout-root paths and survive session closure; branch
-  labels and agent state do not determine identity color.
-  [Color control](../src/ui/worktree-color-picker.tsx).
+  **Worktree colors removed (owner, 2026-10-04).** Per-checkout recoloring and its
+  context-menu item are gone; every checkout shares one identity. The focused
+  workspace is framed as a whole: a 1px neutral `--hair-strong` outline around
+  the project header and all its cards, and the active checkout's head takes a
+  quiet `--state-hover-bg` band instead of the 2026-10-03 inverted fill.
+  [Cluster frame](../src/styles/04c-rail-worktree-card.css).
+
+  **Amended 2026-10-04 (owner): a project's only card is not a disclosure.**
+  With one card under a collapsible project header, the header caret and the
+  card chevron hid the same rows, so the rail offered two collapses for one
+  thing. Such a card stays open, and its head only focuses: no chevron, no
+  `aria-expanded`, and the caret's track is dropped rather than left empty.
+  From two cards up, each card folds on its own as above
+  ([`cardsFold`](../src/ui/agent-rail.tsx), [card head](../src/ui/worktree-card.tsx)).
+  The project header's press now matches a card head's: it focuses the
+  project's active checkout, else its first card, and toggles. The frame's
+  padding, the gaps between cards and the header's spare width focus the same
+  way without toggling, as a card's whitespace does — except on a folded
+  project, where the frame is only the header and the same press also opens it.
 
   **The actions menu lost its heading in the same change (owner).** It printed
   `Actions for <checkout>` over `Runs in <branch> [Primary|Worktree]` 6px from
@@ -2992,8 +3047,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   label keeps its width. Working shows the three staggered loading bars recorded
   in DL-1.2; other states use their existing dot/stop square, and idle stays empty.
   Row glyphs carry no corner badge; closed-strip glyphs keep theirs.
-  A working row also keeps one static inset hairline — no blur,
-  gradient beam or rasterized custom-property animation. The card is
+  A working row paints no rim and no animation but the loading bars (the rim
+  hairline was retired 2026-10-03, DL-27.22) — no blur, gradient beam or
+  rasterized custom-property animation. The card is
   Electron-only; [`AgentRail`](../src/ui/agent-rail.tsx) `current` routes Tauri
   to the legacy [`RepositoryRail`](../src/ui/repository-rail.tsx) `current`.
 
@@ -3039,6 +3095,14 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   no state" for the header: a count is not a state mark, so the header still
   carries no state, age or worktree level. See
   [`AgentRail`](../src/ui/agent-rail.tsx).
+
+  **Amended 2026-10-04 (owner): the count and the caret are one slot.** The
+  chip and the caret beside it read as two trailing marks. They now stack in
+  the same slot: the count at rest, the caret in its place on cluster hover or
+  keyboard focus. A folded cluster with no count keeps the caret visible at
+  rest, so folded still reads differently from empty. The header's last track
+  is now the live close's alone, and the toggle stops 23px short of the edge so
+  the count did not move ([header styles](../src/styles/04a-agent-rail.css)).
 
 ## 28. The rail's action footer
 
@@ -3343,12 +3407,13 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
 
 - **DL-32.1** **Agent cards are the Open Board's focal artifact.** The
   [board](../src/open-board/board-composer.tsx) shares the compact logo, name
-  and explicit Run button of [Quick Launch cards](../src/launcher/agent-launch-cards.tsx).
+  and arrow press of [Quick Launch cards](../src/launcher/agent-launch-cards.tsx).
   The [workspace popover](../src/open-board/workspace-picker.tsx) (DL-13.1)
   sits above the cards; recent workspaces form a quieter
   second rhythm below. Choosing or [dropping one folder](../src/open-board/use-workspace-drop.ts)
   establishes context and never starts a process. Run opens the chosen agent
-  in that folder. With staged prompts explicitly enabled, the existing
+  in that folder; the arrow is the card's `Run`, named by its `aria-label`
+  (2026-10-03, owner). With staged prompts explicitly enabled, the existing
   [composer](../src/launcher/launcher-fields.tsx) remains visible instead.
 - **DL-32.2** **The context toolbar prints identity, never field labels.** A
   workspace is folder glyph + name and an agent is logo + name. `Workspace`,
@@ -3377,6 +3442,26 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
   in DL-32.4 ([page](../src/launcher/agent-launch-page.tsx),
   [treatment](../src/launcher/agent-launch-page.css), [integration](../src/ui/app.tsx)).
 
+  **AMENDED 2026-09-30, reshaped 2026-10-03 (owner): a card is one press, and
+  while the folder already has a tab a quiet icon beside it opens a new
+  space.** ⌘T used to split that tab every time, and the destination row's
+  `Split · same tab` read like a switch though nothing on it could be pressed;
+  a user who wanted a space of their own had to leave for the rail's `+`.
+  Two equal buttons on every card asked the same placement question five
+  times, so the card itself now means `Split` (or `Run` when the folder has no
+  tab), and a 34px icon-only `PlusCircle` button on its right edge means `New
+  space` ([`launchAgentAtTarget`](../src/terminal/tab-manager.ts) with a
+  `new-space` target). Its name is a DL-13.7 hover tip (400ms for a pointer,
+  at once for keyboard focus), never a native `title`; its `aria-label` is `Run
+  <agent> in a new space`. The card's press takes the initial focus, so Enter
+  still splits; nothing is remembered and no modifier changes it, which is
+  DL-32.6's no-state rule. A missing agent keeps `Not installed`, disabled,
+  with no icon. The card is a tile — a 20px logo, the name at 12px and an
+  `ArrowRight` on one line — on an `auto-fill, minmax(176px, 1fr)` grid, so a
+  wide page gets more columns instead of a few very wide cards. With no tab to
+  split there is one outcome, so the destination row says `New tab`. The same
+  card serves the Open board (DL-32.1).
+
 - **DL-32.7** **Agent panes carry one compact identity header.** On Electron,
   the [pane header](../src/terminal/pane-agent-header.tsx) uses the sidebar's
   latest message, an agent logo and a trailing Claude-only effort control. The message
@@ -3385,6 +3470,13 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
   Hover stays neutral and keyboard focus stays explicit in the
   [treatment](../src/terminal/pane-agent-header.css). The control opens Claude's
   native model/effort picker; Deck does not display an unverified effort value.
+  **Amended 2026-10-03 (owner): the focused pane's header joins its terminal.**
+  On `.pane-slot.is-active` the bar takes the pane's own `--bg` and its bottom
+  seam turns transparent, so header and body read as one sheet inside DL-18.12's
+  focus edge, while every other pane keeps its header on `--chrome-2` (DL-3.3).
+  The bar's height is unchanged, and the join relies on xterm painting the same
+  theme background as `--bg`, which it does because both read `theme.background`
+  ([`theme-vars.ts`](../src/lib/theme-vars.ts)).
 
 ## 33. Sidebar usage and retained activity rows
 
@@ -3664,7 +3756,9 @@ windows by name (DL-35.1).
 
 Added 2026-09-28 from the agent overview gallery study, where the owner chose
 candidate C. A **space** is a terminal tab — the existing unit, with no new
-owner — named by its workspace folder. Numbered 35 because §34 was the highest.
+owner — named by its workspace folder until the user gives it a name of its
+own (2026-09-29; the name is the tab's, so every surface reads the same one).
+Numbered 35 because §34 was the highest.
 Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
 [`space-bar.tsx`](../src/ui/spaces/space-bar.tsx),
 [`space-slide.ts`](../src/ui/spaces/space-slide.ts),
@@ -3674,10 +3768,18 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
 - **DL-35.1** **Mission Control zooms the current space's panes out into a
   spread of windows, under a shelf of every space.** ⌘⇧O / Ctrl+Shift+O, View ▸
   Mission Control, or the toolbar's `Overview` button (DL-34.1's view control,
-  inherited) opens it; the same chord, Esc or a press on the empty spread
+  inherited; hidden since 2026-10-04 by
+  [`MISSION_CONTROL_BUTTON_HIDDEN`](../src/ui/toolbar/deck-toolbar.tsx)) opens it; the same chord, Esc or a press on the empty spread
   returns unchanged. The shelf shows every space in the window, not only the
-  active repository's, grouped by workspace, each as a miniature tinted by
-  state with its needs-you count. Hover or focus a thumbnail to preview its
+  active repository's, grouped by workspace under the folder's name, each as a
+  miniature tinted by state with its label — the space's name, or its index
+  while unnamed — and its needs-you count. **A double-click on the label
+  renames the space in place** (the field of DL-35.3); a press on the label
+  never enters the space, or the first click of a double-click would leave
+  before the field opened, and Esc there cancels the edit, not Mission Control.
+  A thumbnail is a `div` with the button role rather than a `<button>`, because
+  the field is a text input; Enter and Space enter the space as they do on a
+  button. Hover or focus a thumbnail to preview its
   windows; press one to enter that space; press a window to return to exactly
   that pane (`activateForAttention` — Focus Expand follows the user's setting,
   it is never switched on as a side effect). **A window is a snapshot**
@@ -3708,16 +3810,38 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   repository's scope do not slide. ⌃← / ⌃→ are not bound: they are macOS's
   Spaces chords and word motion in every shell.
 - **DL-35.3** **The strip draws terminal tabs as space marks: the current
-  space's folder, then one mark per space, then the document and browser
-  chips.** This amends DL-18.10's one-chip-shape rule for terminals only: a
+  space's name, then one mark per space, then the document and browser
+  chips.** The name is what the user typed, else the folder and — for a
+  workspace shared by several spaces — its index (`spacevibe-deck 2`).
+  **A space an agent launch creates names itself** (2026-10-03, owner): `New
+  space` on a launch card sets `spacevibe-deck · Claude Code` through the same
+  rename a typed name takes ([`autoSpaceName`](../src/ui/spaces/space-model.ts)),
+  the folder shortened with `…` before the agent is inside the 40 characters.
+  The first pane of a folder and a split keep the folder; a typed name always
+  replaces this one, and clearing it returns to `folder N`.
+  **A double-click on the name renames the space in place** (2026-09-29,
+  owner): Enter saves, Esc cancels, blur saves, and an empty name reverts to
+  the default; the name is trimmed and capped at 40 characters. The field
+  floats over the name's cell rather than resizing it, so the marks do not
+  move while a name is typed, and the name is not a window-drag region for the
+  same double-click's sake. The name belongs to the tab: it is journaled and
+  restored with it, and the rail, the shelf and the card read the same one.
+  This amends DL-18.10's one-chip-shape rule for terminals only: a
   terminal tab is no longer a chip, so it carries no label, glyph, close
   control, drag or pin; its context menu (Close, Close Others, Close to the
   Right) stays on the mark. Marks keep the strip's merged order, and every
   mark comes before every surface chip — ⌘1–9 and cycling count them in that
-  order. Consecutive marks on one workspace sit in a run 10px from the next;
-  a workspace shared by several spaces is told apart by position, with the
-  index in the accessible name and the hover card. The folder name stacks
-  every space's name in one grid cell so the marks never move on a switch. The
+  order. Each project's marks sit in one **capsule** (2026-10-03, owner): a
+  repository and its worktrees are one project, a plain folder stands alone,
+  and the capsule is a tint with the marks tight inside it (16px each), 6px from
+  the next and outlined while it holds the current space. It is a `group`
+  named by the project. The key is the rail's `orderKey`, produced by the same
+  call as the order ([`spaceLayoutFromRail`](../src/ui/spaces/space-order.ts)),
+  so the strip, the shelf's sets and the sidebar cannot disagree about which
+  spaces belong together; the order stays the sidebar's. A workspace shared by
+  several spaces is told apart by position, with the index in the label, the
+  accessible name and the hover card. The folder name stacks
+  every space's label in one grid cell so the marks never move on a switch. The
   current mark is a 16×6 pill drawn at full width and scaled to a dot at rest,
   so the change is a `transform` (DL-1.2), never a width. **Needs-you returns to
   the strip, and it is the only state a mark carries** (`asked` + `failed`),
@@ -3725,14 +3849,20 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   resting dot turns `--status-unread` for a question and `--red` once anything
   in the space failed — DL-3.2's two roles, never one colour for both — and a
   current space that needs you keeps its pill with a 4px dot of that colour
-  under it. Mission Control's shelf counts wear the same two colours. No
-  spinner, no other state. A mark's
+  under it. Mission Control's shelf counts wear the same two colours. **A
+  needs-you mark scrolled out of sight shows at the row's edge** (2026-10-03,
+  owner): a 44px fade into the strip and a 6px red dot on the side that hides
+  one ([`hiddenNeeds`](../src/ui/spaces/space-edge.ts), re-measured on scroll
+  and resize), red only like the marks themselves. No spinner, no other state. A mark's
   hover or focus raises a DL-13.7 card (DL-13.1's stage surface) with the
-  space's folder and index, branch (Electron's repository scan; omitted
-  without one) and counts; it has no native `title`. **Amended 2026-09-29
-  (owner):** the card read as noise in the working flow, so the miniature and
-  path left it and hover opens after 600ms rather than 120ms — a pointer
-  crossing the marks raises nothing. Keyboard focus still raises it at once. Many marks
+  space's name (the folder and index while unnamed), branch (Electron's
+  repository scan; omitted without one) and counts, the folder and index
+  moving to the branch line once a name has taken the title
+  (`folder N · branch · counts`); it has no native `title`. **Amended
+  2026-09-29 (owner):** the card read as noise in the working flow, so the
+  miniature and path left it and hover opens after 600ms rather than 120ms — a
+  pointer crossing the marks raises nothing. Keyboard focus still raises it at
+  once. Many marks
   scroll inside their own row, keeping the current one in view.
 - **DL-35.4** **Reduced motion is honoured by scope.** WAAPI motion checks
   `prefers-reduced-motion` before it plays and skips the zoom, the slide and
@@ -3756,7 +3886,10 @@ section therefore means naming DL, or the gate does not see the citation.
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
 | Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
-| Settings Studio is an accepted shipping surface | `building` | integrated and browser-reviewed; owner acceptance pending | 2026-10-04: [Appearance](../src/ui/settings/sections/appearance-section.tsx) and [Agents](../src/ui/settings/sections/agents-section.tsx); 102 targeted tests and TypeScript passed, Chromium wide/480px interactions checked; full-window contracts retained, native acceptance unrun |
+| Space workflow refinements are a shipping surface | `building` | built, unrun and unwalked; owner eye review owed | 2026-10-03 on `main` (4478840, 664edc5, 0fab403, 0c743a2): launch cards (DL-32.6), auto-named spaces and project capsules and the edge marker (DL-35.3). No `tsc`, `npm test` or `electron:dev` run yet. The walk must cover five agents on one card row, the New space tip by keyboard, a worktree inside its repository's capsule, and a red edge dot with enough spaces to scroll |
+| Space names are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-09-29 on `feat/space-names`: the strip (DL-35.3), the shelf (DL-35.1) and the rail row (DL-27.15's amendment) rename and render a name. The walk must cover the floating strip field over a short name and a 40-character one, the shelf field inside a 96px thumbnail, and a named and an unnamed space in one folder |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).
+
+| Settings Studio is an accepted shipping surface | `building` | integrated and browser-reviewed; owner acceptance pending | 2026-10-04: [Appearance](../src/ui/settings/sections/appearance-section.tsx) and [Agents](../src/ui/settings/sections/agents-section.tsx); 102 targeted tests and TypeScript passed, Chromium wide/480px interactions checked; full-window contracts retained, native acceptance unrun |

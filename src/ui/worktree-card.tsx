@@ -4,8 +4,6 @@ import { CaretRight, GitBranch, GitFork, Plus, TerminalWindow, X } from "@phosph
 import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
 import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
 import { CardStrip } from "./worktree-card-strip";
-import { settings } from "../settings/settings-store";
-import { worktreeColorStyle } from "../settings/worktree-colors";
 import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
 import {
   checkoutBadge,
@@ -120,27 +118,51 @@ function Badge({
  * The label is `checkoutLabel`, not `group.name`: the primary checkout's
  * folder name IS the project name the cluster header printed directly above,
  * so it is named by its branch instead (DL-27.25, amended).
+ *
+ * Without `onToggle` the card is not a disclosure (DL-27.25, amended
+ * 2026-10-04): the head only focuses, with no caret and no `aria-expanded`.
  */
 function CardHead({
   project,
   group,
   open,
+  onFocus,
   onToggle,
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly open: boolean;
-  readonly onToggle: () => void;
+  readonly onFocus: () => void;
+  readonly onToggle?: () => void;
 }) {
   const where = whereOf(project, group);
+  const working = group.live ? ", working" : "";
+  if (onToggle === undefined) {
+    return (
+      <button
+        type="button"
+        class="asr-card__head"
+        aria-label={`Focus ${where}${working}`}
+        title={where}
+        onClick={onFocus}
+      >
+        <span class="asr-card__mark" data-live={group.live} aria-hidden="true" />
+        <span class="asr-card__name">{checkoutLabel(group)}</span>
+        <Badge className="asr-card__badge" badge={checkoutBadge(group)} />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       class="asr-card__head"
       aria-expanded={open}
-      aria-label={`${open ? "Collapse" : "Expand"} ${where}${group.live ? ", working" : ""}`}
+      aria-label={`${open ? "Collapse" : "Expand"} ${where}${working}`}
       title={`${open ? "Collapse" : "Expand"} agents — ${where}`}
-      onClick={onToggle}
+      onClick={() => {
+        onFocus();
+        onToggle();
+      }}
     >
       <span class="asr-card__mark" data-live={group.live} aria-hidden="true" />
       <span class="asr-card__name">{checkoutLabel(group)}</span>
@@ -278,10 +300,7 @@ function BareCheckout({
 
   if (actions === undefined) {
     return (
-      <div
-        class="asr-bare-heading"
-        style={worktreeColorStyle(settings.value.worktreeColors, group.path)}
-      >
+      <div class="asr-bare-heading">
         <div class="asr-bare" data-shell="false">
           {content}
         </div>
@@ -297,7 +316,6 @@ function BareCheckout({
   return (
     <div
       class="asr-bare-heading"
-      style={worktreeColorStyle(settings.value.worktreeColors, group.path)}
       onContextMenu={(event) => {
         event.preventDefault();
         menu.openAt(event.currentTarget.getBoundingClientRect());
@@ -445,7 +463,12 @@ export interface WorktreeCardProps {
   readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly open: boolean;
-  readonly onToggle: (key: string) => void;
+  /**
+   * Omitted when the card is the project's only one: the project header's
+   * collapse already hides exactly these rows, so a second caret would
+   * repeat it (DL-27.25, amended 2026-10-04). The caller passes `open` true.
+   */
+  readonly onToggle?: (key: string) => void;
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;
   /**
    * DL-27.21, kept: every agent row closes its own pane. The shipped rail
@@ -478,6 +501,29 @@ export interface WorktreeCardProps {
   readonly actions?: CardActions;
 }
 
+/**
+ * Focus a checkout (DL-27.25): keep its selected entry when present, otherwise
+ * the first in opening order. A checkout with no entries has nothing to focus.
+ */
+export function focusCheckout(
+  group: RailWorktreeGroup,
+  onFocusPane: (tabIndex: number, paneId: number) => void,
+  onSelectTab: (tabIndex: number) => void,
+): void {
+  const entry =
+    group.entries.find((candidate) =>
+      candidate.kind === "agent" ? candidate.focused : candidate.active,
+    ) ?? group.entries[0];
+  if (entry === undefined) {
+    return;
+  }
+  if (entry.kind === "agent") {
+    onFocusPane(entry.tabIndex, entry.paneId);
+  } else {
+    onSelectTab(entry.tabIndex);
+  }
+}
+
 export function WorktreeCard(props: WorktreeCardProps) {
   const { group, project } = props;
   // The actions menu belongs to the CARD, not to the strip: a right-click
@@ -495,23 +541,14 @@ export function WorktreeCard(props: WorktreeCardProps) {
     return <BareCheckout project={project} group={group} actions={props.actions} />;
   }
 
-  const actions = props.actions;
+  const { actions, onToggle } = props;
   const focusCard = (): void => {
-    const entry =
-      group.entries.find((candidate) =>
-        candidate.kind === "agent" ? candidate.focused : candidate.active,
-      ) ?? group.entries[0];
-    if (entry.kind === "agent") {
-      props.onFocusPane(entry.tabIndex, entry.paneId);
-    } else {
-      props.onSelectTab(entry.tabIndex);
-    }
+    focusCheckout(group, props.onFocusPane, props.onSelectTab);
   };
   return (
     <article
       ref={cardRef}
       class="asr-card"
-      style={worktreeColorStyle(settings.value.worktreeColors, group.path)}
       data-open={props.open}
       data-active={group.active}
       data-live={group.live}
@@ -522,7 +559,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
         const target = event.target;
         if (
           target === event.currentTarget ||
-          (target instanceof Element && target.matches(".asr-card__meta, .asr-card__count"))
+          (target instanceof Element && target.matches(".asr-card__meta"))
         ) {
           focusCard();
         }
@@ -546,10 +583,8 @@ export function WorktreeCard(props: WorktreeCardProps) {
         project={project}
         group={group}
         open={props.open}
-        onToggle={() => {
-          focusCard();
-          props.onToggle(group.key);
-        }}
+        onFocus={focusCard}
+        onToggle={onToggle && (() => onToggle(group.key))}
       />
       {/* The meta line: the age alone (design §4), indented under the name
           by Task 7's CSS. Rendered in both card states — only a `compact`
@@ -558,10 +593,6 @@ export function WorktreeCard(props: WorktreeCardProps) {
       {group.age !== "" && <p class="asr-card__meta">{group.age}</p>}
       {props.open ? (
         <Fragment>
-          {/* The count alone, no `Agents` label (design §5, §8.4: the
-              owner-dropped label would also reopen DL-4.3's closed
-              uppercase exception). */}
-          <div class="asr-card__count">{group.entries.length} active</div>
           {group.entries.map((entry) => (
             <CardEntryRow
               key={entry.kind === "agent" ? entry.paneId : entry.key}

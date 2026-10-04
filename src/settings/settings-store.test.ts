@@ -163,25 +163,6 @@ describe("settings persistence", () => {
     expect(saveMock).not.toHaveBeenCalled();
   });
 
-  it("persists checkout colors and reloads them through the settings schema", async () => {
-    const colors = { "/repo/main": "purple", "/other/main": "cyan" } as const;
-    let saved: unknown = DEFAULT_SETTINGS;
-    const sendPatch = vi.fn(async (patch) => {
-      saved = mergeSettings(saved, patch);
-      return saved;
-    });
-    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
-    await initSettings();
-    updateSettings({ worktreeColors: colors });
-    await flushSettingsSave();
-    expect(sendPatch).toHaveBeenCalledWith({ worktreeColors: colors });
-    expect(setMock).not.toHaveBeenCalled();
-    settings.value = DEFAULT_SETTINGS;
-    getMock.mockResolvedValueOnce(saved);
-    await initSettings();
-    expect(settings.value.worktreeColors).toEqual(colors);
-  });
-
   it("reports a load failure and blocks writes until a retry succeeds", async () => {
     const before = settings.value;
     const sendPatch = vi.fn(async () => ({}));

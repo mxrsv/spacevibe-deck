@@ -15,7 +15,6 @@ import {
 import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
 import { runtimeFor, type AgentRuntimeDefault } from "../launcher/runtime-catalog";
 import type { SignalAdapters } from "../lib/launch-augment";
-import { validateWorktreeColors, type WorktreeColors } from "./worktree-colors";
 import { validateQuickAgentIds } from "./quick-agents";
 import { SIGNAL_ADAPTERS_REVISION, signalChoicesAreCurrent } from "./signal-adapter-choice";
 import {
@@ -108,7 +107,6 @@ export interface Settings {
    */
   railOrder: readonly string[];
   /** Checkout-root paths, independent of branch labels and live sessions. */
-  worktreeColors: WorktreeColors;
   /**
    * The agent a new tab opens with when nothing else names one. Null = fall
    * back to the first detected agent, which is what Deck did before this
@@ -264,7 +262,6 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledAgents: [],
   quickAgentIds: null,
   railOrder: [],
-  worktreeColors: {},
   defaultAgent: null,
   defaultLaunchProfiles: {},
   agentModels: {},
@@ -631,7 +628,6 @@ export function validateSettings(raw: unknown): Settings {
       : DEFAULT_SETTINGS.disabledAgents,
     quickAgentIds: validateQuickAgentIds(source.quickAgentIds),
     railOrder: validateRailOrder(source.railOrder),
-    worktreeColors: validateWorktreeColors(source.worktreeColors),
     agentModels: validateAgentModels(source.agentModels),
     agentRuntimeDefaults: validateAgentRuntimeDefaults(source.agentRuntimeDefaults),
     agentSignalAdapters: validateSignalAdapters(

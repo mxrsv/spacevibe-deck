@@ -16,7 +16,7 @@ import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
 import { buildAgentRail, type RailStreamGroup } from "./agent-rail-model";
-import { WorktreeCard } from "./worktree-card";
+import { focusCheckout, WorktreeCard } from "./worktree-card";
 import type { CardActions } from "./worktree-card-menus";
 import { RepositoryRail } from "./repository-rail";
 import { SidebarNewButton } from "./sidebar-toggle";
@@ -345,10 +345,46 @@ function WorktreeCardRail(props: AgentRailProps) {
                 total + worktree.panes.filter((pane) => pane.state !== "ended").length,
               0,
             );
+            const activeCheckout = group.worktrees.find((worktree) => worktree.active);
+            // DL-27.25 (amended 2026-10-04): a lone card under a header that
+            // collapses would carry a second caret hiding the same rows, so
+            // its own disclosure is dropped and it stays open.
+            const cardsFold =
+              !(group.labelled && live) ||
+              group.worktrees.filter((worktree) => worktree.entries.length > 0).length > 1;
+            // Like a card head (DL-27.25): the project's active checkout, else
+            // its first card. A rowless checkout has no entry to focus.
+            const focusProject = (): void => {
+              const target =
+                activeCheckout ?? group.worktrees.find((worktree) => worktree.entries.length > 0);
+              if (target !== undefined) {
+                focusCheckout(target, props.onFocusPane, props.onSelectTab);
+              }
+            };
             return (
               <div
                 class="asr-cluster"
                 key={group.key}
+                // The frame's padding, the gaps between cards and the head
+                // row's spare width focus without toggling — the card's own
+                // whitespace rule, one tier up. Controls keep their targets.
+                // A FOLDED project also opens: the frame is then just the
+                // header, and focusing an already-focused project would leave
+                // the press with no visible effect.
+                onClick={(event) => {
+                  const target = event.target;
+                  if (
+                    live &&
+                    (target === event.currentTarget ||
+                      (target instanceof Element && target.matches(".asr-cluster__head")))
+                  ) {
+                    focusProject();
+                    if (collapsed) {
+                      toggleGroup(group.key);
+                    }
+                  }
+                }}
+                data-active={activeCheckout !== undefined}
                 // The project identity the manual order is stored against
                 // (DL-27.20). Written on the block rather than on the header
                 // because the whole block is what moves.
@@ -381,21 +417,27 @@ function WorktreeCardRail(props: AgentRailProps) {
                         aria-expanded={!collapsed}
                         aria-label={`${collapsed ? "Expand" : "Collapse"} project ${group.project}`}
                         onClick={() => {
+                          focusProject();
                           toggleGroup(group.key);
                         }}
                       >
                         <WorkspaceIcon key={iconPath} path={iconPath} />
                         <span class="asr-cluster__name">{group.project}</span>
-                        {agentCount > 0 && (
-                          <span
-                            class="asr-cluster__count"
-                            title={`${agentCount} ${agentCount === 1 ? "agent" : "agents"} running`}
-                          >
-                            {agentCount}
+                        {/* DL-27.27 (amended 2026-10-04): the count and the
+                            caret share ONE slot — the count at rest, the
+                            caret on hover or keyboard focus. */}
+                        <span class="asr-cluster__tail">
+                          {agentCount > 0 && (
+                            <span
+                              class="asr-cluster__count"
+                              title={`${agentCount} ${agentCount === 1 ? "agent" : "agents"} running`}
+                            >
+                              {agentCount}
+                            </span>
+                          )}
+                          <span class="asr-cluster__caret" aria-hidden="true">
+                            <DeckIcon icon={CaretRight} size={CHROME_ICON} />
                           </span>
-                        )}
-                        <span class="asr-cluster__caret" aria-hidden="true">
-                          <DeckIcon icon={CaretRight} size={CHROME_ICON} />
                         </span>
                       </button>
                     ) : (
@@ -476,15 +518,17 @@ function WorktreeCardRail(props: AgentRailProps) {
                     cluster (DL-27.11/DL-27.24): a folded project hides its
                     cards with its rows. A card's own open/closed state is a
                     SEPARATE, window-local disclosure one tier down
-                    (`foldedCardKeys`): open unless the user folded it. */}
+                    (`foldedCardKeys`): open unless the user folded it — and
+                    only while the project holds two or more cards
+                    (`cardsFold`); a lone card is always open. */}
                 {!collapsed &&
                   group.worktrees.map((worktree) => (
                     <WorktreeCard
                       key={worktree.key}
                       project={group.project}
                       group={worktree}
-                      open={!foldedCardKeys.value.has(worktree.key)}
-                      onToggle={toggleCard}
+                      open={!cardsFold || !foldedCardKeys.value.has(worktree.key)}
+                      onToggle={cardsFold ? toggleCard : undefined}
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
                       onCloseTab={props.onCloseTab}

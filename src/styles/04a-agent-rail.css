@@ -203,7 +203,10 @@
   grid-column: 1 / -1;
   align-items: center;
   gap: 6px;
-  padding: 0;
+  /* The last track is the close's alone since the caret moved into the count's
+     slot (DL-27.27, amended 2026-10-04): 17px for it plus the 6px gap the caret
+     used to leave, so the count did not move. */
+  padding: 0 23px 0 0;
   border: 0;
   background: transparent;
   color: var(--text-muted);
@@ -299,22 +302,9 @@
 /* A LIVE header's close (DL-27.21, close model 2026-08-22, table row 4). Same
    box, same track, same reveal — the only difference is what the press means:
    here it closes every tab of the project first and forgets the folder second.
-
-   The track is already occupied on a live header, by the caret, so the two
-   trade the slot exactly the way the ROWS trade theirs: DL-27.5's close swaps
-   in over the agent glyph, and that same 17px column is what the caret sits on
-   (the header's grid is the rows' grid restated). Nothing reflows, and the
-   header keeps one trailing slot rather than growing a fourth track that would
-   pull every control off the rows' own columns.
-
-   The caret loses even the collapsed exemption while this is up: `:has` is
-   scoped to the header, so a remembered cluster — which has no caret at all —
-   is untouched, and a live one only gives it up under the pointer or a
-   keyboard focus that is already on the close. */
-.asr-cluster:hover .asr-cluster__head:has(.asr-cluster__remove--live) .asr-cluster__caret,
-.asr-cluster__head:has(.asr-cluster__remove--live:focus-visible) .asr-cluster__caret {
-  opacity: 0;
-}
+   The caret used to share this track and hide under it; since 2026-10-04 it
+   swaps with the count instead (DL-27.27, amended), so the close has the track
+   to itself. */
 
 .asr-cluster__name {
   min-width: 0;
@@ -340,10 +330,24 @@
   color: var(--text-muted);
   font: 560 var(--type-micro) / 1 var(--ui-font);
   font-variant-numeric: tabular-nums;
+  transition: opacity var(--duration) var(--ease);
+}
+
+/* DL-27.27 (amended 2026-10-04): the count and the caret stack in ONE slot, so
+   the header carries one trailing mark, not two side by side. */
+.asr-cluster__tail {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 17px;
+}
+
+.asr-cluster__tail > * {
+  grid-area: 1 / 1;
 }
 
 /* DL-27.17: the folder keeps its own outer column; checkout dots start under
-   the project name. The trailing caret retains its fixed slot. */
+   the project name. */
 .asr-cluster__folder,
 .asr-cluster__caret {
   display: flex;
@@ -352,12 +356,12 @@
   width: 17px;
 }
 
-/* Hover-revealed like the launcher beside it (owner, 2026-08-20): the caret
-   is a control cue, not information, so the resting header is folder → name
-   and nothing else. Keyboard focus reveals it too (a control the keyboard can
-   reach and the eye cannot is worse than no control), and a COLLAPSED cluster
-   keeps it visible — with rows hidden, the turned caret is the only thing
-   saying the project is folded rather than empty. */
+/* Hover-revealed (owner, 2026-08-20): the caret is a control cue, not
+   information. Keyboard focus reveals it too (a control the keyboard can reach
+   and the eye cannot is worse than no control). Revealed, it takes the count's
+   place. A COLLAPSED cluster with no count keeps it visible — with rows hidden
+   and nothing in the slot, the turned caret is the only thing saying the
+   project is folded rather than empty. */
 .asr-cluster__caret {
   opacity: 0;
   transition:
@@ -367,8 +371,15 @@
 
 .asr-cluster:hover .asr-cluster__caret,
 .asr-cluster__toggle:focus-visible .asr-cluster__caret,
-.asr-cluster[data-collapsed="true"] .asr-cluster__caret {
+.asr-cluster[data-collapsed="true"]
+  .asr-cluster__tail:not(:has(.asr-cluster__count))
+  .asr-cluster__caret {
   opacity: 1;
+}
+
+.asr-cluster:hover .asr-cluster__count,
+.asr-cluster__toggle:focus-visible .asr-cluster__count {
+  opacity: 0;
 }
 
 .asr-cluster__toggle[aria-expanded="true"] .asr-cluster__caret {

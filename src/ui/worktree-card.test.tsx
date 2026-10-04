@@ -179,14 +179,25 @@ describe("WorktreeCard head (design §4)", () => {
     expect(onFocusPane).not.toHaveBeenCalled();
   });
 
+  it("drops its own disclosure when nothing wires a toggle (a project's only card)", () => {
+    const onFocusPane = vi.fn();
+    mount({ group: group({ panes: [pane()] }), open: true, onToggle: undefined, onFocusPane });
+    const head = host.querySelector(".asr-card__head");
+    expect(head?.hasAttribute("aria-expanded")).toBe(false);
+    expect(head?.querySelector(".asr-card__chevron")).toBeNull();
+    click(head);
+    expect(onFocusPane).toHaveBeenCalledOnce();
+    expect(host.querySelectorAll(".asr-card__row")).toHaveLength(1);
+  });
+
   it("focuses card whitespace and metadata without toggling disclosure", () => {
     const onFocusPane = vi.fn();
     const onToggle = vi.fn();
     mount({ group: group({ panes: [pane()], age: "now" }), open: true, onFocusPane, onToggle });
-    for (const selector of [".asr-card", ".asr-card__meta", ".asr-card__count"]) {
+    for (const selector of [".asr-card", ".asr-card__meta"]) {
       click(host.querySelector(selector));
     }
-    expect(onFocusPane).toHaveBeenCalledTimes(3);
+    expect(onFocusPane).toHaveBeenCalledTimes(2);
     expect(onToggle).not.toHaveBeenCalled();
   });
 

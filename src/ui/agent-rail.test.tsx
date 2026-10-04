@@ -690,9 +690,14 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect([...(head?.children ?? [])].map((child) => child.className)).toEqual([
       "asr-cluster__folder",
       "asr-cluster__name",
-      "asr-cluster__count",
-      "asr-cluster__caret",
+      "asr-cluster__tail",
     ]);
+    // DL-27.27 (amended 2026-10-04): count and caret share the trailing slot.
+    expect(
+      [...(head?.querySelector(".asr-cluster__tail")?.children ?? [])].map(
+        (child) => child.className,
+      ),
+    ).toEqual(["asr-cluster__count", "asr-cluster__caret"]);
     expect(
       head?.querySelector(".asr-cluster__folder > span")?.getAttribute("data-deck-icon-size"),
     ).toBe("15");
@@ -910,6 +915,41 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(rows()).toHaveLength(0);
   });
 
+  it("focuses the project's checkout when its header is pressed", async () => {
+    const onFocusPane = vi.fn();
+    tabViews.value = [tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] })];
+    mount({ onFocusPane });
+    await settle();
+
+    click(host.querySelector("button.asr-cluster__toggle"));
+    expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(0, 21);
+  });
+
+  it("focuses the project from its frame's padding without toggling it", async () => {
+    const onFocusPane = vi.fn();
+    tabViews.value = [tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] })];
+    mount({ onFocusPane });
+    await settle();
+
+    for (const selector of [".asr-cluster", ".asr-cluster__head"]) {
+      click(host.querySelector(selector));
+    }
+    expect(onFocusPane).toHaveBeenCalledTimes(2);
+    expect(host.querySelector(".asr-cluster")?.getAttribute("data-collapsed")).toBe("false");
+  });
+
+  it("opens a folded project from its frame's padding", async () => {
+    tabViews.value = [tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] })];
+    mount();
+    await settle();
+
+    click(host.querySelector("button.asr-cluster__toggle"));
+    const cluster = host.querySelector(".asr-cluster");
+    expect(cluster?.getAttribute("data-collapsed")).toBe("true");
+    click(cluster);
+    expect(cluster?.getAttribute("data-collapsed")).toBe("false");
+  });
+
   it("carries the checkout's branch into the row's accessible name and tooltip", async () => {
     tabViews.value = [tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] })];
     mount();
@@ -938,17 +978,33 @@ describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", ()
     expect(host.querySelectorAll(".asr-card__seg--add")).toHaveLength(0);
     expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
     expect(host.querySelectorAll("button.asr-bare")).toHaveLength(1);
+  });
+
+  it("keeps a project's only card open, its collapse left to the project header", async () => {
+    // DL-27.25 (amended 2026-10-04): one card beside a bare row is still the
+    // project's only disclosure target, so the card head carries no caret.
+    mount({ cardActions: ACTIONS });
+    await settle();
+
+    const head = host.querySelector<HTMLElement>(".asr-card__head");
+    expect(head?.hasAttribute("aria-expanded")).toBe(false);
+    click(head);
+    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
+  });
+
+  it("swaps a folded card's New agent row for the strip's +", async () => {
+    tabViews.value = [
+      tab({ key: 1, panes: [pane({ paneId: 11 })] }),
+      tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] }),
+    ];
+    mount({ cardActions: ACTIONS });
+    await settle();
 
     // Folded, the card's control is the strip's trailing `+` and the row is
     // gone — still one per checkout.
-    act(() => {
-      host
-        .querySelector<HTMLElement>(".asr-card__head")
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    click(host.querySelector(".asr-card__head"));
     expect(host.querySelectorAll(".asr-card__seg--add")).toHaveLength(1);
-    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(0);
-    expect(host.querySelectorAll("button.asr-bare")).toHaveLength(1);
+    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
   });
 
   it("opens the checkout's agent list from New agent and starts nothing on the press", async () => {
@@ -1198,17 +1254,13 @@ describe("AgentRail project close (close model, 2026-08-22, table row 4)", () =>
     expect(host.querySelectorAll("button.asr-cluster__remove")).toHaveLength(1);
   });
 
-  it("gives the live close the caret's own slot (DL-27.21)", () => {
-    // The header's trailing 17px track is the rows' glyph column restated, and
-    // the close swaps into it exactly as DL-27.5's row close swaps into the
-    // glyph — no fourth track, so nothing moves off the rows' own columns.
+  it("gives the live close the header's last track and swaps the caret with the count", () => {
+    // The header's trailing 17px track is the rows' glyph column restated —
+    // no fourth track, so nothing moves off the rows' own columns. Since
+    // 2026-10-04 the caret leaves it for the count's slot (DL-27.27, amended).
     const css = readFileSync("src/styles/04a-agent-rail.css", "utf8");
-    expect(css).toContain(
-      ".asr-cluster:hover .asr-cluster__head:has(.asr-cluster__remove--live) .asr-cluster__caret,",
-    );
-    expect(css).toContain(
-      ".asr-cluster__head:has(.asr-cluster__remove--live:focus-visible) .asr-cluster__caret {",
-    );
+    expect(css).toContain(".asr-cluster:hover .asr-cluster__count,");
+    expect(css).not.toContain(":has(.asr-cluster__remove--live) .asr-cluster__caret");
     // Two tracks since `rail-create-consolidation` (2026-09-02) took the
     // launcher's middle one: the close pins into the last, which is the caret's.
     const head = css.slice(

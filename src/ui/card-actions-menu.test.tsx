@@ -125,7 +125,7 @@ describe("CardActionsMenu placements", () => {
     expect(menu?.querySelector(".asr-pop__sep")?.nextElementSibling?.textContent).toContain(
       "Open shell",
     );
-    expect(menu?.querySelector('[aria-label="Worktree color"]')).not.toBeNull();
+    expect(menu?.querySelector(".asr-color-action")).toBeNull();
   });
 
   it("states its destination in a heading and ends with the board row when free-standing", () => {

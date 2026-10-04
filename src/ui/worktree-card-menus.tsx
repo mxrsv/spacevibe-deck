@@ -10,7 +10,6 @@ import {
   SquareHalf,
   TerminalWindow,
 } from "@phosphor-icons/react";
-import { WorktreeColorPicker } from "./worktree-color-picker";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { CardAgentRow, whereOf } from "./worktree-card-row";
@@ -859,9 +858,6 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
           })}
         </Fragment>
       ))}
-      {props.subject.labelled && placement === "anchored" && (
-        <WorktreeColorPicker path={props.subject.path} onClose={props.onClose} />
-      )}
       <p class="asr-act__foot">
         <DeckIcon icon={Info} size={CHROME_ICON} />
         <span>

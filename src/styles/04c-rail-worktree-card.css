@@ -55,12 +55,6 @@
      anything an agent is doing). A variable rather than a literal so Task 10's pick is one
      edit and every mark below restates only this line. */
   --asr-card-busy: color-mix(in srgb, var(--tone) 62%, transparent);
-  /* The ACTIVE checkout's frame (Task 10 gate row 4). Ships as the owner's own drawn candidate
-     — an accent border — which is a DL-21.1 exception pending Task 11 (that rule gives the
-     selected item a neutral `--hair-strong` frame and nothing else); the neutral alternative
-     is a one-line swap of this variable to `var(--hair-strong)`; either way it stays a hairline
-     (`inset 0 0 0 1px`), so DL-1.3 is untouched by this half regardless of the pick. */
-  --asr-card-active-frame: color-mix(in srgb, var(--worktree-color, var(--green)) 72%, transparent);
   /* The agent list's own rhythm: one row's height and the gap between rows, used everywhere
      the list measures against them so a later change to either is one edit. */
   --asr-card-row-h: 28px;
@@ -224,7 +218,43 @@ button.asr-bare:hover {
    by this half regardless of which colour Task 10 picks. */
 .asr-card[data-active="true"],
 .asr-card[data-active="true"]:hover {
-  box-shadow: inset 0 0 0 1px var(--asr-card-active-frame);
+  /* The cluster's frame is the only boundary; a fill here would draw a second inner box. */
+  background: none;
+  box-shadow: none;
+}
+
+/* The frame wraps the WHOLE project cluster (folder header + cards), not just the active card.
+   An inset outline paints above the children's backgrounds and takes no layout space. */
+.asr-cluster {
+  /* Same inset on every cluster so focus changes the frame, never the layout; it keeps the
+     cards off the frame instead of touching it. */
+  box-sizing: border-box;
+  padding: 3px 6px 6px;
+  border-radius: var(--radius-tight);
+}
+
+/* Spacing inside the frame (owner, 2026-10-04): the cluster owns the outer inset, so the card
+   drops its own bottom padding; the header lets go of the 6px hug so the folder row does not
+   touch the head band; the meta line sits a hair below the band. */
+.asr-cluster[data-active="true"] .asr-cluster__head {
+  /* Right inset mirrors the left (7px) so the count badge sits as far from the frame as the
+     folder does; 3px more below keeps the folder row centred between frame and band. */
+  padding: 6px 7px 4px 7px;
+  margin-bottom: -2px;
+}
+
+.asr-cluster[data-active="true"] .asr-card[data-active="true"] {
+  padding-bottom: 3px;
+}
+
+.asr-cluster[data-active="true"] .asr-card[data-active="true"] .asr-card__meta {
+  margin-top: 2px;
+}
+
+.asr-cluster[data-active="true"] {
+  background: var(--tab-active-bg);
+  outline: 1px solid var(--hair-strong);
+  outline-offset: -1px;
 }
 
 /* A linked worktree (not the primary checkout) draws its frame dashed. An inset box-shadow
@@ -246,7 +276,20 @@ button.asr-bare:hover {
 
 .asr-card[data-primary="false"][data-active="true"] {
   box-shadow: none;
-  outline-color: var(--asr-card-active-frame);
+  outline: 0;
+}
+
+/* Only the ACTIVE checkout is a full card. Every other one (rest, open, linked worktree) stays
+   a card but quiet: a faint fill and no frame, so the focus is the one boxed, outlined item.
+   Hover raises the fill a step. Placed after the rules above so it wins at equal specificity. */
+.asr-card:not([data-active="true"]) {
+  background: color-mix(in srgb, var(--tab-rest-bg) 45%, transparent);
+  box-shadow: none;
+  outline: 0;
+}
+
+.asr-card:not([data-active="true"]):hover {
+  background: var(--tab-rest-bg);
 }
 
 /* ---------------------------------------------------------------------- the head */
@@ -272,6 +315,12 @@ button.asr-bare:hover {
   text-align: left;
   cursor: pointer;
   border-radius: var(--asr-card-pill-radius);
+}
+
+/* A project's only card is not a disclosure (DL-27.25, amended 2026-10-04): no caret,
+   so no empty caret track after the badge. */
+.asr-card__head:not([aria-expanded]) {
+  grid-template-columns: 14px minmax(7ch, 1fr) minmax(0, auto);
 }
 
 .asr-card__head:hover,
@@ -457,20 +506,9 @@ button.asr-bare:hover {
   white-space: nowrap;
 }
 
-/* --------------------------------------------------------------- the count line */
-
-/* The open list's own count, alone and trailing — no `Agents` label (design §5, §8.4: a label
-   here would reopen DL-4.3's closed uppercase exception). */
-.asr-card__count {
-  display: flex;
-  justify-content: flex-end;
-  /* The block break before the list starts: the base 1px `gap` plus this margin totals close
-     to the specimen's own 5px `.gxwc-agents { margin-top: 5px }`. */
-  margin-top: 3px;
-  padding: 2px 6px 3px 8px;
-  color: var(--text-faint);
-  font: 450 var(--type-micro) / 1.3 var(--ui-font);
-  white-space: nowrap;
+/* The open list has no count line (owner, 2026-10-04); this is the break before its first row. */
+.asr-card > .asr-card__row:not(.asr-card__row ~ .asr-card__row) {
+  margin-top: 5px;
 }
 
 /* -------------------------------------------------------------------- the agent row */
@@ -647,12 +685,11 @@ button.asr-bare:hover {
 }
 
 /*
- * The ACTIVE checkout's head takes the same inversion (DL-27.25, owner, 2026-10-03, H of nine
- * gallery candidates after the report that the active card read the same as its open
- * neighbours), so "focused" has one look at both levels. The head bleeds to the card's edges as
- * a band: the negative margins undo the card's own padding above and the padding puts the
- * head's columns back where they were. The head dot keeps a chosen worktree colour; without
- * one it reads the ink, since the resting and busy tones vanish on the fill.
+ * The ACTIVE checkout's head is a quiet band (owner, 2026-10-04, replacing the inverted fill of
+ * 2026-10-03: it outshouted the project frame). It bleeds to the card's edges: the negative
+ * margins undo the card's own padding above and the padding puts the head's columns back where
+ * they were. The frame around the whole cluster says "focused"; the band only marks which
+ * checkout inside it.
  */
 .asr-card[data-active="true"] .asr-card__head {
   width: auto;
@@ -662,25 +699,7 @@ button.asr-bare:hover {
   border-start-end-radius: var(--asr-card-radius);
   border-end-start-radius: 0;
   border-end-end-radius: 0;
-  background: var(--asr-card-focus-bg);
-  color: var(--asr-card-focus-ink);
-}
-
-.asr-card[data-active="true"] .asr-card__head :is(.asr-card__name, .asr-card__chevron) {
-  color: var(--asr-card-focus-ink);
-}
-
-.asr-card[data-active="true"] .asr-card__head .asr-card__badge {
-  background: color-mix(in srgb, var(--asr-card-focus-ink) 14%, transparent);
-  color: var(--asr-card-focus-ink);
-}
-
-.asr-card[data-active="true"] .asr-card__head .asr-card__mark::before {
-  background: var(--worktree-color, color-mix(in srgb, var(--asr-card-focus-ink) 40%, transparent));
-}
-
-.asr-card[data-active="true"] .asr-card__head .asr-card__mark[data-live="true"]::before {
-  background: var(--worktree-color, var(--asr-card-focus-ink));
+  background: var(--state-hover-bg);
 }
 
 /* --------------------------------------------------------------------- the glyph + badge */
