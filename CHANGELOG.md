@@ -7,10 +7,19 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## 2.4.0
 
-This update redesigns the Appearance and Agents settings, keeps settings changed
-in one window from undoing another window's edits, and makes the active
-checkout easier to spot in the rail.
+This update adds eight built-in agents and an Add agent card to Quick Launch,
+redesigns the Appearance and Agents settings, keeps settings changed in one
+window from undoing another window's edits, and makes the active checkout
+easier to spot in the rail.
 
+- **Eight more agents out of the box.** Deck now
+  [recognises](docs/user/agents.md#built-in-agents) GitHub Copilot, Amp, Kimi
+  Code, Kiro, Grok Build, Mistral Vibe, Crush and Droid, each with its logo.
+  They launch bare, without flag, model or effort controls (Droid keeps its
+  autonomy level and spec mode).
+- **Add agents from Quick Launch.** An **Add agent** card on the
+  [launcher](src/launcher/quick-agent-editor.tsx) picks which agents appear
+  there, and it shares one list with Settings → Quick agents.
 - **Appearance and Agents settings have a new layout.**
   [Appearance](src/ui/settings/sections/appearance-section.tsx) shows each
   choice as a picture, and [Agents](src/ui/settings/sections/agents-section.tsx)
