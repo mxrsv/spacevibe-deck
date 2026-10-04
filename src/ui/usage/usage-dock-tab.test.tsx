@@ -73,7 +73,7 @@ it.each([false, true])(
     const order = [...host.querySelector(".usage-overview")!.children].map(
       (node) => node.className,
     );
-    expect(order.slice(0, 3)).toEqual(["usage-allowance", "usage-range", "usage-timeline"]);
+    expect(order.slice(0, 3)).toEqual(["usage-hero", "usage-allowance", "usage-range"]);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15_000);
     });

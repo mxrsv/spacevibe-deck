@@ -344,9 +344,9 @@
 }
 .usage-overview .usage-hero {
   max-width: none;
-  padding: 20px 0 0;
-  border-top: 1px solid var(--hair);
-  margin-top: 20px;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--hair);
+  margin-bottom: 20px;
 }
 .usage-overview .usage-hero__figure {
   font-size: 28px;

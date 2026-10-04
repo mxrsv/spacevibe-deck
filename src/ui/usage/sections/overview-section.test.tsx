@@ -197,8 +197,8 @@ describe("OverviewSection", () => {
     mount();
     expect(host.querySelectorAll(".usage-range__option")).toHaveLength(4);
     expect([...host.querySelectorAll("summary")].map((node) => node.textContent)).toEqual([
-      "Chart data",
       "Pricing details",
+      "Chart data",
     ]);
     expect(host.querySelectorAll("input, select, a")).toHaveLength(0);
   });

@@ -204,19 +204,6 @@ export function OverviewContent({
   const definition = USAGE_RANGES.find((entry) => entry.id === range)!;
   return (
     <div class="usage-overview">
-      <RemainingAllowance {...limits} />
-      <UsageRangeSelector value={range} onChange={onRangeChange} />
-      {loading && !buckets.length ? (
-        <p class="usage-overview__note" role="status">
-          Reading recorded token history…
-        </p>
-      ) : null}
-      {stale ? (
-        <p class="usage-overview__note" role="status">
-          Cost history is stale — showing the last good read
-        </p>
-      ) : null}
-      <CostTimeline timeline={timeline} />
       <section class="usage-hero" aria-label="Estimated API cost">
         <p class="usage-hero__eyebrow">Estimated API cost</p>
         <p class={`usage-hero__figure ${total === null ? "usage-hero__figure--absent" : ""}`}>
@@ -247,6 +234,19 @@ export function OverviewContent({
           )}
         </details>
       </section>
+      <RemainingAllowance {...limits} />
+      <UsageRangeSelector value={range} onChange={onRangeChange} />
+      {loading && !buckets.length ? (
+        <p class="usage-overview__note" role="status">
+          Reading recorded token history…
+        </p>
+      ) : null}
+      {stale ? (
+        <p class="usage-overview__note" role="status">
+          Cost history is stale — showing the last good read
+        </p>
+      ) : null}
+      <CostTimeline timeline={timeline} />
     </div>
   );
 }
