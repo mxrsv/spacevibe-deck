@@ -1,8 +1,9 @@
 /* ── The worktree card's two popovers ──────────────────────────────────────
    `SegmentMenu` and `CardActionsMenu` (`src/ui/worktree-card-menus.tsx`), per
    `docs/internals/agent-rail.md` Ported
-   from the owner-approved gallery specimen (`strip-actions-variants.css`,
-   `gxsa-` prefix) onto the `asr-` vocabulary the rail already owns.
+   from the owner-approved gallery specimen (`gxsa-` prefix, removed from the
+   gallery 2026-10-03, still in git history) onto the `asr-` vocabulary the
+   rail already owns.
 
    A separate sheet from `04c-rail-worktree-card.css` because that file was at
    its split threshold before these rules (F8), and because these surfaces are

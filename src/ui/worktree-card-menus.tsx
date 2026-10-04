@@ -479,8 +479,8 @@ type MenuRow = ActionRow | NoteRow;
 
 /**
  * The row glyphs. `split` and `branch` were chosen by the owner on 2026-08-30
- * from eight candidates drawn in the gallery
- * (`gallery/sections/action-glyph-variants.tsx`, parked with the choice):
+ * from eight candidates drawn in the gallery (the comparison page is in git
+ * history, removed 2026-10-03):
  *
  * - `split` was `ColumnsPlusRight` — two columns and a plus, which reads as
  *   adding a column of CHROME rather than splitting the pane the row acts on.

@@ -80,19 +80,7 @@ const GLYPH_EXEMPT = (path: string): boolean =>
   // is Phosphor's `X` through `DeckIcon` like every other, and
   // `worktree-card.test.tsx` asserts that directly, so the rule this exemption
   // relaxes is still enforced where it matters.
-  path === "ui/worktree-card-strip.tsx" ||
-  // The parked drawing that segment was chosen from, mirroring the same `×N`
-  // in its own `gxsa-` vocabulary. It is out of the gallery registry and
-  // reaches no bundle (R7 plus `gallery-entry.test.ts`), but the scan reads
-  // every source file, so the record of the review needs the same exemption
-  // as the thing it produced.
-  path === "gallery/sections/strip-actions-variants.tsx" ||
-  // The parked 2026-09-18 before/after record. Its `×` occurs only inside
-  // `note="..."` prose describing the DL-27.25 `×N` count ("the segment, the
-  // ×2 and the open row"), never as a control — the specimens draw their own
-  // chrome. Parked out of the registry like `strip-actions-variants.tsx`
-  // above, and exempted on the same grounds.
-  path === "gallery/sections/before-after-2026-09-18.tsx";
+  path === "ui/worktree-card-strip.tsx";
 
 function sourceFiles(dir = SOURCE_ROOT): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

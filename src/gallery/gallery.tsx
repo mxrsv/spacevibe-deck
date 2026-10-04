@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { Suspense } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { GALLERY_SECTIONS } from "./section-registry";
 import { unhandledCommands } from "./host-stub";
@@ -99,7 +100,11 @@ export function Gallery() {
 
       <main ref={contentRef} class="gx-content">
         <div key={active.id} class="gx-section">
-          <Section />
+          {/* Sections are lazy (see `section-registry.ts`); the first visit to
+              one waits on its module graph. */}
+          <Suspense fallback={null}>
+            <Section />
+          </Suspense>
         </div>
       </main>
 

@@ -3,8 +3,7 @@
  *
  * The REAL component and the real store — not a drawing. It replaces the
  * `explorer header direction` comparison page, whose candidate C shipped on
- * 2026-08-25; that file stays in the tree as the record of the review, out of
- * the registry, like `unread-mark-variants`.
+ * 2026-08-25; that page is in git history, removed 2026-10-03.
  *
  * What it exists to answer is measurable and nothing else can answer it: jsdom
  * has no layout, so "every row is still 22px, the cluster fits inside the root

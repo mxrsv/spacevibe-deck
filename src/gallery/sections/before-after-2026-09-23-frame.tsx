@@ -6,8 +6,8 @@ import { resolveTheme } from "../../settings/themes";
 import "./before-after-2026-09-23.css";
 
 /**
- * The comparison frame shared by the three before-after-2026-09-23 group
- * files. `before` is what ships today, drawn with the shipped component over
+ * The before / after comparison frame, first drawn for the 2026-09-23 review
+ * and now shared by the space-workflow pages. `before` is what ships today, drawn with the shipped component over
  * a fixture wherever one exists; `after` is the candidate. A candidate for a
  * surface Deck does not have yet is gallery-only markup built from the app's
  * own tokens and classes, and its note says so — the gallery must never pass

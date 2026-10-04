@@ -1,26 +1,44 @@
 import type { ComponentType } from "preact";
-import { QuickAgentBoardSection } from "./sections/quick-agent-board";
-import { AgentBoardSection } from "./sections/agent-board-section";
-import { AgentOverviewSection } from "./sections/agent-overview-section";
-import { SpaceNamesSection } from "./sections/space-names-section";
-import { BeforeAfter20260923Section } from "./sections/before-after-2026-09-23";
-import { SettingsNativeMockSection } from "./sections/settings-native-mock";
-import { AttentionDirectionSection } from "./sections/attention-direction";
-import { BoardSection } from "./sections/board-section";
-import { ChromeSection } from "./sections/chrome-section";
-import { ExplorerTreeSection } from "./sections/explorer-tree-section";
-import { MatrixSection } from "./sections/matrix-section";
-import { NavigationSection, AgentUsageSection } from "./sections/navigation-section";
-import { OverlaysSection } from "./sections/overlays-section";
-import { PopoversSection } from "./sections/popovers-section";
-import { RowsSection } from "./sections/rows-section";
-import { SeamSection } from "./sections/seam-section";
-import { SettingsDirectionSection } from "./sections/settings-direction";
-import { ToolbarSection } from "./sections/toolbar-section";
-import { TokensSection } from "./sections/tokens-section";
-import { LaunchProfilesSection } from "./sections/launch-profiles-section";
-import { SignalMarkVariantsSection } from "./sections/signal-mark-variants";
-import { UsageDirectionsSection } from "./sections/usage-directions";
+import { lazy } from "preact/compat";
+
+/* Every section loads on demand: importing them all up front made each
+   gallery page load transform and fetch nearly the whole app's module graph
+   (334 `src/` modules on 2026-10-03) to show one section. A section's own
+   stylesheet now arrives with it, so it must import every stylesheet it
+   draws with rather than lean on a neighbour having loaded it. */
+const AgentBoardSection = lazy(() =>
+  import("./sections/agent-board-section").then((m) => m.AgentBoardSection),
+);
+const BoardSection = lazy(() => import("./sections/board-section").then((m) => m.BoardSection));
+const ChromeSection = lazy(() => import("./sections/chrome-section").then((m) => m.ChromeSection));
+const ExplorerTreeSection = lazy(() =>
+  import("./sections/explorer-tree-section").then((m) => m.ExplorerTreeSection),
+);
+const MatrixSection = lazy(() => import("./sections/matrix-section").then((m) => m.MatrixSection));
+const NavigationSection = lazy(() =>
+  import("./sections/navigation-section").then((m) => m.NavigationSection),
+);
+const AgentUsageSection = lazy(() =>
+  import("./sections/navigation-section").then((m) => m.AgentUsageSection),
+);
+const OverlaysSection = lazy(() =>
+  import("./sections/overlays-section").then((m) => m.OverlaysSection),
+);
+const PopoversSection = lazy(() =>
+  import("./sections/popovers-section").then((m) => m.PopoversSection),
+);
+const RowsSection = lazy(() => import("./sections/rows-section").then((m) => m.RowsSection));
+const SeamSection = lazy(() => import("./sections/seam-section").then((m) => m.SeamSection));
+const SettingsDirectionSection = lazy(() =>
+  import("./sections/settings-direction").then((m) => m.SettingsDirectionSection),
+);
+const ToolbarSection = lazy(() =>
+  import("./sections/toolbar-section").then((m) => m.ToolbarSection),
+);
+const TokensSection = lazy(() => import("./sections/tokens-section").then((m) => m.TokensSection));
+const LaunchProfilesSection = lazy(() =>
+  import("./sections/launch-profiles-section").then((m) => m.LaunchProfilesSection),
+);
 
 export interface GallerySection {
   readonly id: string;
@@ -33,20 +51,10 @@ export interface GallerySection {
  * shell, then the surfaces that cover it. Historical comparison pages stay
  * out of this registry so the review surface shows one visual language only.
  *
- * `unread mark direction` was registered on 2026-08-25 and taken out the same
- * day: its candidate C shipped, so the real rail in every section below now
- * draws it and a four-way comparison would show three treatments that lost
- * beside a `current` column that is no longer current. The file stays in the
- * tree as the record of that review, unimported like the other parked
- * comparison pages.
- *
- * `explorer header direction` was registered on 2026-08-25 and taken out the
- * same day the work shipped: its candidate C is what the real tree draws now,
- * so a three-way comparison would show two treatments that lost beside a
- * `current` column that is no longer current. The file stays in the tree as
- * the record of that review, unimported like the other parked comparison
- * pages — and `explorer tree` takes its slot, mounting the shipping
- * `FileTreeView` where the drawing used to stand.
+ * A comparison page leaves once its direction ships or is dropped — the
+ * registry entry and its files both go (2026-10-03); git history keeps the
+ * drawing a choice was made against. A comparison whose `current` column is
+ * no longer current only shows treatments that lost.
  *
  * `state matrix` returned on 2026-08-13. It was parked while the direction was
  * nine fixed hex values, where four theme columns would have been four copies
@@ -55,22 +63,6 @@ export interface GallerySection {
  * `window chrome`, next to the shell it cross-checks.
  */
 export const GALLERY_SECTIONS: readonly GallerySection[] = [
-  /* Registered 2026-09-23 for the owner to pick from; park it the
-     `unread-mark-variants` way once the choices are made. */
-  {
-    id: "before-after-2026-09-23",
-    label: "before / after 2026-09-23",
-    Section: BeforeAfter20260923Section,
-  },
-  /* Registered 2026-09-27 for the owner to compare ways to manage many
-     agents (local plan `2026-09-27-agent-overview-gallery.md`); park it the
-     `unread-mark-variants` way once a direction is chosen. */
-  { id: "agent-overview", label: "agent overview", Section: AgentOverviewSection },
-  /* Registered 2026-09-29 for the owner to compare ways to show a user-given
-     space name on the strip and Mission Control's shelf; park it the
-     `unread-mark-variants` way once a direction is chosen. */
-  { id: "space-names", label: "space names", Section: SpaceNamesSection },
-  { id: "quick-agent-board", label: "quick agent board", Section: QuickAgentBoardSection },
   { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
   {
@@ -78,30 +70,10 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     label: "light/dark settings",
     Section: SettingsDirectionSection,
   },
-  {
-    id: "settings-native-mock",
-    label: "settings · native form proposal",
-    Section: SettingsNativeMockSection,
-  },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
   { id: "navigation", label: "navigation", Section: NavigationSection },
   { id: "agent-usage", label: "agent usage", Section: AgentUsageSection },
-  { id: "usage-directions", label: "usage directions", Section: UsageDirectionsSection },
-  {
-    id: "attention",
-    label: "attention direction",
-    Section: AttentionDirectionSection,
-  },
-  /* Registered 2026-09-03 for the agent-signal contract layer's stage 0: the
-     inferred/explicit mark and the `ended` word are drawn as candidates for
-     the owner's eye, variant A of each shipping meanwhile. Parked the way
-     `unread-mark-variants` was once the owner has chosen. */
-  {
-    id: "signal-marks",
-    label: "signal mark direction",
-    Section: SignalMarkVariantsSection,
-  },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
   { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },
@@ -109,18 +81,6 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "board", label: "open board", Section: BoardSection },
   { id: "agent-board", label: "agent board", Section: AgentBoardSection },
   { id: "explorer-tree", label: "explorer tree", Section: ExplorerTreeSection },
-  /* PARKED 2026-08-30, the same day it was registered — the `unread-mark-variants`
-     precedent again: the owner picked `SquareHalf` and `GitFork`, they shipped into
-     `worktree-card-menus.tsx`'s `ACTION_GLYPHS`, and a comparison whose incumbent
-     column is no longer the incumbent shows six treatments that lost beside two that
-     are simply what the menu draws. `action-glyph-variants.tsx` and its stylesheet
-     stay in the tree as the drawn record of what the choice was made against. */
-  /* PARKED 2026-08-27, the `unread-mark-variants` precedent: the closed-strip
-     actions candidate SHIPPED into `worktree-card-strip.tsx` /
-     `worktree-card-menus.tsx`, so its "per-pane — what ships" control column
-     stopped being current and the comparison started lying. The specimen files
-     stay in the tree as the drawn record of what was chosen and what was turned
-     down; the registry entry and its import are what go. */
   {
     id: "launch-profiles",
     label: "launch profiles",

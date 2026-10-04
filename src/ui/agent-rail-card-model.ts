@@ -270,7 +270,7 @@ export function checkoutBadge(group: RailWorktreeGroup): CheckoutBadge {
 
 /* ─────────────────────────── the closed strip, as agent kinds ───────────────
  * Ported from the owner-approved gallery specimen
- * (`src/gallery/sections/strip-actions-model.ts`, parked with its section) per
+ * (`strip-actions-model.ts`, removed from the gallery 2026-10-03, in git history) per
  * `docs/internals/agent-rail.md`
  *
  * `stripSegments` above is kept: it is one pane per segment, which is what a

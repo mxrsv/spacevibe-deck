@@ -146,17 +146,20 @@ describe("the gallery entry stays out of the app bundle", () => {
     expect(chrome).not.toContain("Ambient Light");
 
     const registry = readFileSync(join(SOURCE_ROOT, "gallery/section-registry.ts"), "utf8");
-    // The drawing is parked, not deleted — the record of the review survives.
+    // Decided comparison pages leave the tree, not just the registry
+    // (2026-10-03); git history keeps the drawings. Neither may come back.
     expect(existsSync(join(SOURCE_ROOT, "gallery/sections/explorer-header-variants.tsx"))).toBe(
-      true,
+      false,
     );
     expect(registry).not.toContain("ExplorerHeaderVariantsSection");
     expect(registry).toContain("ExplorerTreeSection");
 
     // The actions-menu glyph review (2026-08-30), same shape one surface
     // later: the owner picked `SquareHalf` and `GitFork`, they shipped into
-    // `ACTION_GLYPHS`, and the comparison left the registry the same day.
-    expect(existsSync(join(SOURCE_ROOT, "gallery/sections/action-glyph-variants.tsx"))).toBe(true);
+    // `ACTION_GLYPHS`, and the comparison left the gallery.
+    expect(existsSync(join(SOURCE_ROOT, "gallery/sections/action-glyph-variants.tsx"))).toBe(
+      false,
+    );
     expect(registry).not.toContain("ActionGlyphVariantsSection");
     const menus = readFileSync(join(SOURCE_ROOT, "ui/worktree-card-menus.tsx"), "utf8");
     expect(menus).toContain("split: SquareHalf");
