@@ -5,6 +5,24 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+- **Droid shows its logo.** The agent was drawn as a letter in 2.4.0; it now wears
+  Factory's [mark](src/lib/agent-logos.ts) like the other built-in agents.
+- **A project's only checkout has no second collapse.** When a project has one
+  checkout, its [card](src/ui/worktree-card.tsx) stays open and pressing its head
+  focuses it, so the header's caret is the only fold. The active checkout's head
+  is a quiet band instead of an inverted fill, and the focused workspace is
+  framed as a whole.
+- **Worktree colours are removed.** Every checkout shares one look; the
+  Worktree color item and the saved choices are gone.
+- **Crush is withdrawn for now.** It no longer appears in the agent list or the
+  [docs](docs/user/agents.md#built-in-agents).
+- **The Overview button is hidden from the toolbar.** Mission Control still opens
+  with ⌘⇧O and from View ▸ Mission Control.
+- **The usage overview leads with the estimated cost.** The remaining allowance,
+  range picker and cost timeline now sit below it.
+
 ## 2.4.0
 
 This update adds eight built-in agents and an Add agent card to Quick Launch,
