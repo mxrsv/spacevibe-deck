@@ -658,7 +658,10 @@ button.asr-bare:hover {
   width: auto;
   margin: -6px -9px 0 calc(-1 * var(--asr-worktree-inset));
   padding: 4px 9px 4px var(--asr-worktree-inset);
-  border-radius: var(--asr-card-radius) var(--asr-card-radius) 0 0;
+  border-start-start-radius: var(--asr-card-radius);
+  border-start-end-radius: var(--asr-card-radius);
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
   background: var(--asr-card-focus-bg);
   color: var(--asr-card-focus-ink);
 }
