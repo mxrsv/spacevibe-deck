@@ -157,9 +157,7 @@ describe("the gallery entry stays out of the app bundle", () => {
     // The actions-menu glyph review (2026-08-30), same shape one surface
     // later: the owner picked `SquareHalf` and `GitFork`, they shipped into
     // `ACTION_GLYPHS`, and the comparison left the gallery.
-    expect(existsSync(join(SOURCE_ROOT, "gallery/sections/action-glyph-variants.tsx"))).toBe(
-      false,
-    );
+    expect(existsSync(join(SOURCE_ROOT, "gallery/sections/action-glyph-variants.tsx"))).toBe(false);
     expect(registry).not.toContain("ActionGlyphVariantsSection");
     const menus = readFileSync(join(SOURCE_ROOT, "ui/worktree-card-menus.tsx"), "utf8");
     expect(menus).toContain("split: SquareHalf");
