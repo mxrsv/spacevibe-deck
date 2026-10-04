@@ -117,7 +117,7 @@
   height: 20px;
   min-width: 34px;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   font-size: 0;
   background: var(--chrome-2);
   border-color: var(--text-faint);

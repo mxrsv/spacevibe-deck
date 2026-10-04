@@ -157,9 +157,8 @@ describe("settings persistence", () => {
     await initSettings();
     updateSettings({ fontSize: 14 });
     const flushing = flushSettingsSave();
-    const rejection = expect(flushing).rejects.toThrow("disk full");
     patch.reject(new Error("disk full"));
-    await rejection;
+    await expect(flushing).rejects.toThrow("disk full");
     expect(persistError.value).toContain("Couldn't save settings");
     expect(saveMock).not.toHaveBeenCalled();
   });
