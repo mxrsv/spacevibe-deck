@@ -25,6 +25,7 @@ import {
 import { createMemorySettingsSync, type SettingsSyncClient } from "./settings-sync";
 import { DEFAULT_SETTINGS } from "./settings-schema";
 import { persistError } from "../chrome/events";
+import { mergeSettings } from "../../electron/settings-merge";
 
 function deferred<T>(): {
   readonly promise: Promise<T>;
@@ -51,7 +52,7 @@ describe("settings persistence", () => {
     }));
     getMock.mockReset();
     getMock.mockResolvedValue(undefined);
-    setMock.mockClear();
+    setMock.mockReset();
     saveMock.mockClear();
     persistError.value = null;
     // Install the in-memory sync BEFORE initSettings, which otherwise falls
@@ -63,7 +64,11 @@ describe("settings persistence", () => {
   });
 
   it("surfaces a failed settings write to the user", async () => {
-    setMock.mockRejectedValueOnce(new Error("disk full"));
+    configureSettingsSync({
+      sendPatch: vi.fn().mockRejectedValueOnce(new Error("disk full")),
+      listenMerged: async () => () => {},
+    });
+    await initSettings();
     updateSettings({ fontSize: 15 });
     await vi.waitFor(() => {
       expect(persistError.value).not.toBeNull();
@@ -75,17 +80,103 @@ describe("settings persistence", () => {
     expect(saveMock).toHaveBeenCalled();
   });
 
+  it("keeps disjoint edits from windows holding the same older snapshot", async () => {
+    const snapshot = { ...DEFAULT_SETTINGS, fontSize: 13, scrollback: 10_000 };
+    let saved: unknown = snapshot;
+    setMock.mockImplementationOnce(async (_key, value) => {
+      saved = value;
+    });
+    setMock.mockImplementationOnce(async (_key, value) => {
+      saved = value;
+    });
+    const sendPatch = vi.fn(async (patch) => {
+      saved = mergeSettings(saved, patch);
+      return saved;
+    });
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
+    await initSettings();
+
+    settings.value = snapshot;
+    updateSettings({ fontSize: 14 });
+    await Promise.resolve();
+    // The second window edits before receiving the first window's broadcast.
+    settings.value = snapshot;
+    updateSettings({ scrollback: 50_000 });
+    await Promise.resolve();
+
+    expect(saved).toMatchObject({ fontSize: 14, scrollback: 50_000 });
+    expect(setMock).not.toHaveBeenCalled();
+    expect(sendPatch.mock.calls.map(([patch]) => patch)).toEqual([
+      { fontSize: 14 },
+      { scrollback: 50_000 },
+    ]);
+  });
+
+  it("waits for in-flight patches before flushing the host store", async () => {
+    const patch = deferred<unknown>();
+    configureSettingsSync({ sendPatch: () => patch.promise, listenMerged: async () => () => {} });
+    await initSettings();
+    saveMock.mockClear();
+    updateSettings({ fontSize: 14 });
+    saveMock.mockClear();
+    const flushing = flushSettingsSave();
+    try {
+      await Promise.resolve();
+      expect(saveMock).not.toHaveBeenCalled();
+    } finally {
+      patch.resolve({ ...DEFAULT_SETTINGS, fontSize: 14 });
+      await flushing;
+    }
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for every pending patch before saving", async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    const sendPatch = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
+    await initSettings();
+    updateSettings({ fontSize: 14 });
+    updateSettings({ scrollback: 50_000 });
+    const flushing = flushSettingsSave();
+    first.resolve({});
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveMock).not.toHaveBeenCalled();
+    second.resolve({});
+    await flushing;
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a flush when a pending patch fails and keeps the error visible", async () => {
+    const patch = deferred<unknown>();
+    configureSettingsSync({ sendPatch: () => patch.promise, listenMerged: async () => () => {} });
+    await initSettings();
+    updateSettings({ fontSize: 14 });
+    const flushing = flushSettingsSave();
+    const rejection = expect(flushing).rejects.toThrow("disk full");
+    patch.reject(new Error("disk full"));
+    await rejection;
+    expect(persistError.value).toContain("Couldn't save settings");
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
   it("persists checkout colors and reloads them through the settings schema", async () => {
     const colors = { "/repo/main": "purple", "/other/main": "cyan" } as const;
+    let saved: unknown = DEFAULT_SETTINGS;
+    const sendPatch = vi.fn(async (patch) => {
+      saved = mergeSettings(saved, patch);
+      return saved;
+    });
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
+    await initSettings();
     updateSettings({ worktreeColors: colors });
-    await vi.waitFor(() =>
-      expect(setMock).toHaveBeenCalledWith(
-        "settings",
-        expect.objectContaining({ worktreeColors: colors }),
-      ),
-    );
-    await vi.waitFor(() => expect(saveMock).toHaveBeenCalled());
-    const saved = setMock.mock.calls.at(-1)?.[1];
+    await flushSettingsSave();
+    expect(sendPatch).toHaveBeenCalledWith({ worktreeColors: colors });
+    expect(setMock).not.toHaveBeenCalled();
     settings.value = DEFAULT_SETTINGS;
     getMock.mockResolvedValueOnce(saved);
     await initSettings();
@@ -94,6 +185,8 @@ describe("settings persistence", () => {
 
   it("reports a load failure and blocks writes until a retry succeeds", async () => {
     const before = settings.value;
+    const sendPatch = vi.fn(async () => ({}));
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
     setMock.mockClear();
     loadMock.mockRejectedValueOnce(new Error("permission denied"));
 
@@ -105,7 +198,33 @@ describe("settings persistence", () => {
       message: "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     });
     expect(settings.value.fontSize).toBe(before.fontSize + 1);
+    expect(sendPatch).not.toHaveBeenCalled();
     expect(setMock).not.toHaveBeenCalled();
+    await initSettings();
+    updateSettings({ fontSize: 17 });
+    expect(sendPatch).toHaveBeenCalledWith({ fontSize: 17 });
+  });
+
+  it("blocks patches while the settings snapshot is still loading", async () => {
+    const loading = deferred<unknown>();
+    const sendPatch = vi.fn(async () => ({}));
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
+    loadMock.mockImplementationOnce(async () => {
+      await loading.promise;
+      return {
+        get: getMock,
+        set: setMock,
+        save: saveMock,
+        loadState: { state: "ready", fresh: false },
+      };
+    });
+    const initializing = initSettings();
+    updateSettings({ fontSize: 17 });
+    expect(sendPatch).not.toHaveBeenCalled();
+    loading.resolve(undefined);
+    await initializing;
+    updateSettings({ fontSize: 18 });
+    expect(sendPatch).toHaveBeenCalledWith({ fontSize: 18 });
   });
 
   it("treats a null settings payload as unreadable rather than as fresh defaults", async () => {

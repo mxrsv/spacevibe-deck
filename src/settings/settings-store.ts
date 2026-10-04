@@ -24,6 +24,7 @@ let sync: SettingsSyncClient | null = null;
 let loadGeneration = 0;
 let mergedRevision = 0;
 let settingsDegraded = false;
+let pendingPatches: readonly Promise<unknown>[] = [];
 let syncListener: {
   readonly client: SettingsSyncClient;
   readonly ready: Promise<void>;
@@ -152,33 +153,24 @@ export async function initSettings(): Promise<void> {
   }
 }
 
-/**
- * Write settings through, and say so when the write fails.
- *
- * `set` only updates the plugin's in-memory cache; the disk write happens
- * later on the autosave timer, and the plugin discards that error. So a full
- * disk or a permission problem used to be completely silent: the UI showed the
- * new value, `PersistErrorBar` never appeared, and the loss only surfaced at
- * the next launch as settings that had "reset themselves". Awaiting an
- * explicit `save` moves that failure back into view.
- *
- * What this still does NOT fix: the plugin writes with truncate-then-write
- * rather than write-temp-then-rename, so a crash mid-write can leave the file
- * partial. Recovering from that needs an atomic writer on the Rust side.
- */
-function persist(next: Settings): void {
-  const current = store;
-  if (current === null || settingsLoadState.value.status !== "ready") {
+/** The host patch command saves before answering; never write a stale whole snapshot. */
+function persistPatch(patch: Partial<Settings>): void {
+  if (sync === null) {
+    reportPersistError("Couldn't save settings — the settings bridge is unavailable.");
     return;
   }
-  void (async () => {
-    try {
-      await current.set(STORE_KEY, next);
-      await current.save();
-    } catch {
-      reportPersistError("Couldn't save settings — changes may not survive a relaunch.");
-    }
-  })();
+  const request = sync.sendPatch(patch);
+  pendingPatches = [...pendingPatches, request];
+  const forget = (): void => {
+    pendingPatches = pendingPatches.filter((pending) => pending !== request);
+  };
+  void request.then(forget, (error: unknown) => {
+    forget();
+    console.warn("Settings patch save failed:", error);
+    reportPersistError(
+      "Couldn't save settings — changes may not survive a relaunch or reach other windows.",
+    );
+  });
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
@@ -196,7 +188,6 @@ export function updateSettings(patch: Partial<Settings>): void {
   // Rust merge is what stops two windows clobbering each other; the merged
   // broadcast reconciles this window a moment later.
   settings.value = next;
-  persist(next);
   // `apply_settings_patch` ALSO returns the merged object, and this
   // deliberately ignores it. There must be exactly one authoritative path to
   // state, and it is the `settings:merged` BROADCAST — one ordered stream
@@ -207,10 +198,7 @@ export function updateSettings(patch: Partial<Settings>): void {
   // user is looking at. Applying both is what produces a flicker.
   //
   // So the reply is used for ONE thing: knowing the write failed.
-  void sync?.sendPatch(patch).catch((err: unknown) => {
-    console.warn("Settings patch merge failed:", err);
-    reportPersistError("Couldn't sync settings across windows — other windows may be stale.");
-  });
+  persistPatch(patch);
 }
 
 /**
@@ -272,6 +260,7 @@ export function updateColorOverride(key: keyof TerminalColors, value: string | u
  */
 export async function flushSettingsSave(): Promise<void> {
   if (settingsLoadState.value.status === "ready") {
+    await Promise.all(pendingPatches);
     await store?.save();
   }
 }
