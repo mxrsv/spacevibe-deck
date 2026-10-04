@@ -2894,13 +2894,25 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   `whereOf` drops a repeated segment on the same rule, so every accessible name
   and tooltip inherits the fix rather than restating it.
 
+  **Amended 2026-10-03 (owner): the active card's head inverts.** Three open
+  cards differed only by the active one's 1px frame, and the owner reported the
+  active checkout reading the same as its neighbours. The head now bleeds to
+  the card's edges as a band in DL-27.22's inverted fill, `--text-primary` at
+  74% over `--sidebar-bg`, and its name, badge and chevron read
+  `--asr-card-focus-ink`, so "focused" looks the same on the card and on the
+  agent row. The frame stays. The head dot keeps an explicit worktree colour and
+  otherwise reads the ink, because the resting and busy tones vanish on the
+  fill; the active badge therefore no longer carries the worktree colour. No
+  motion: `background` is outside DL-1.2's list.
+  [Head band](../src/styles/04c-rail-worktree-card.css).
+
   **Worktree colors (DECK-44, 2026-09-09).** The checkout's context menu includes
   **Worktree color**, showing the current color name. Pressing that item
   expands six theme-aware swatches and **Default** inside the same popover,
   without toggling the card or launching an agent. Empty checkouts also open
   the menu on right-click. The head dot is an indicator, not a color button.
   An explicit choice colors the head dot in both active
-  and inactive cards, plus the active frame and badge; Default restores the
+  and inactive cards, plus the active frame; Default restores the
   neutral/busy head dot and green active treatment. Agent status marks keep
   their existing meaning. The palette uses the rail popover surface, with a
   neutral selection outline, keyboard focus and Escape/outside dismissal.

@@ -181,16 +181,6 @@ button.asr-bare:hover {
   padding: 1px 5px;
 }
 
-/* The active checkout's badge takes the same identity color as its frame (DL-27.25) — no
-   `data-accent` prop on `Badge` itself, since `.asr-card` already carries `data-active` and a
-   descendant selector reaches the same pixels with no component change. `.asr-bare` never
-   carries `data-active` (a bare checkout cannot be the one holding the window's focus), so this
-   never needs to guard against a bare badge matching it. */
-.asr-card[data-active="true"] .asr-card__badge {
-  background: color-mix(in srgb, var(--worktree-color, var(--green)) 15%, transparent);
-  color: color-mix(in srgb, var(--worktree-color, var(--green)) 78%, var(--text-primary));
-}
-
 /* ------------------------------------------------------------------------- the card */
 
 /* An inset hairline, DL-1.3's own permitted shape and DL-27.19's retired precedent: a border
@@ -618,7 +608,8 @@ button.asr-bare:hover {
  * The working rim is gone with it: a hairline on every busy row was the noise this had to
  * outshout, and the loading bars still say a row is busy.
  */
-.asr-card__row {
+.asr-card__row,
+.asr-card__head {
   --asr-card-focus-bg: color-mix(in srgb, var(--text-primary) 74%, var(--sidebar-bg));
   --asr-card-focus-ink: var(--sidebar-bg);
 }
@@ -653,6 +644,40 @@ button.asr-bare:hover {
 .asr-card__row[data-focused="true"] .asr-row__action:hover {
   background: color-mix(in srgb, var(--asr-card-focus-ink) 14%, transparent);
   color: var(--asr-card-focus-ink);
+}
+
+/*
+ * The ACTIVE checkout's head takes the same inversion (DL-27.25, owner, 2026-10-03, H of nine
+ * gallery candidates after the report that the active card read the same as its open
+ * neighbours), so "focused" has one look at both levels. The head bleeds to the card's edges as
+ * a band: the negative margins undo the card's own padding above and the padding puts the
+ * head's columns back where they were. The head dot keeps a chosen worktree colour; without
+ * one it reads the ink, since the resting and busy tones vanish on the fill.
+ */
+.asr-card[data-active="true"] .asr-card__head {
+  width: auto;
+  margin: -6px -9px 0 calc(-1 * var(--asr-worktree-inset));
+  padding: 4px 9px 4px var(--asr-worktree-inset);
+  border-radius: var(--asr-card-radius) var(--asr-card-radius) 0 0;
+  background: var(--asr-card-focus-bg);
+  color: var(--asr-card-focus-ink);
+}
+
+.asr-card[data-active="true"] .asr-card__head :is(.asr-card__name, .asr-card__chevron) {
+  color: var(--asr-card-focus-ink);
+}
+
+.asr-card[data-active="true"] .asr-card__head .asr-card__badge {
+  background: color-mix(in srgb, var(--asr-card-focus-ink) 14%, transparent);
+  color: var(--asr-card-focus-ink);
+}
+
+.asr-card[data-active="true"] .asr-card__head .asr-card__mark::before {
+  background: var(--worktree-color, color-mix(in srgb, var(--asr-card-focus-ink) 40%, transparent));
+}
+
+.asr-card[data-active="true"] .asr-card__head .asr-card__mark[data-live="true"]::before {
+  background: var(--worktree-color, var(--asr-card-focus-ink));
 }
 
 /* --------------------------------------------------------------------- the glyph + badge */
