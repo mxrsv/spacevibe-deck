@@ -22,7 +22,21 @@ describe("agent registry", () => {
   });
 
   it("keeps the active order, which is the digit-key contract", () => {
-    expect(ACTIVE_AGENT_IDS).toEqual(["claude", "codex", "opencode", "agy", "gemini"]);
+    expect(ACTIVE_AGENT_IDS).toEqual([
+      "claude",
+      "codex",
+      "opencode",
+      "agy",
+      "gemini",
+      "copilot",
+      "amp",
+      "kimi",
+      "kiro-cli",
+      "grok",
+      "vibe",
+      "crush",
+      "droid",
+    ]);
     expect(BUILTIN_AGENTS.map((agent) => agent.id)).toEqual(ACTIVE_AGENT_IDS);
   });
 

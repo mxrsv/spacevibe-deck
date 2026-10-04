@@ -116,3 +116,19 @@ export const valued = (flags: readonly string[], value: string, label: string): 
 export function values(...raw: readonly string[]): readonly RuntimeValue[] {
   return raw.map((value) => ({ value, label: value }));
 }
+
+/**
+ * A built-in whose CLI was not installed when it was added, so no `--help`
+ * could be read: launch the bare binary, offer no flag controls and no model or
+ * effort, and resume by relaunching bare. Each of those is `null`/empty rather
+ * than a guess, per the header above; the agent's own file replaces this
+ * with a full definition once someone with the CLI installed reads its help.
+ */
+export function unreadAgent(agent: Pick<BuiltinAgent, "id" | "label" | "url">): AgentDefinition {
+  return {
+    ...agent,
+    resume: { id: () => agent.id, latest: agent.id, bare: agent.id },
+    runtime: { modelFlag: null, models: [], effortFlag: null, efforts: [] },
+    launchFlags: [],
+  };
+}

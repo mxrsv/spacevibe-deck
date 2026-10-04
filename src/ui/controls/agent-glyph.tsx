@@ -28,7 +28,7 @@ export function AgentGlyph({ agent, className }: AgentGlyphProps) {
   if (ink !== undefined) {
     return (
       <svg class={className} viewBox={ink.viewBox} fill="currentColor" aria-hidden="true">
-        <path d={ink.path} />
+        <path d={ink.path} fill-rule={ink.fillRule} />
       </svg>
     );
   }

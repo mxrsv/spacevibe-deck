@@ -1,8 +1,10 @@
-import { useLayoutEffect, useRef } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { ArrowLeft, Columns, Gear } from "@phosphor-icons/react";
 import type { AgentOption } from "../lib/agent-catalog";
+import type { QuickAgentChoice } from "../settings/quick-agent-choices";
 import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { AgentLaunchCards } from "./agent-launch-cards";
+import { QuickAgentEditor } from "./quick-agent-editor";
 import { DeckIcon } from "../ui/controls/deck-icon";
 import "./agent-launch-page.css";
 
@@ -19,6 +21,12 @@ export interface AgentLaunchPageProps {
    * folder with no tab starts one anyway, so there is nothing to choose.
    */
   readonly onRunInNewSpace?: (agentId: string) => void;
+  /**
+   * Every agent with its pinned state, and the toggle that writes it. Offered
+   * together: the grid ends with `Add agent`, which opens the editor.
+   */
+  readonly choices?: readonly QuickAgentChoice[];
+  readonly onToggleChoice?: (agentId: string) => void;
   readonly onBack: () => void;
   readonly onSettings: () => void;
 }
@@ -26,7 +34,10 @@ export interface AgentLaunchPageProps {
 /** DL-32.6: a transient stage page; no dialog, tab slot or PTY ownership. */
 export function AgentLaunchPage(props: AgentLaunchPageProps) {
   const root = useRef<HTMLElement>(null);
+  const [editing, setEditing] = useState(false);
   const active = props.active !== false;
+  const { choices, onToggleChoice } = props;
+  const canEdit = choices !== undefined && onToggleChoice !== undefined;
   useLayoutEffect(() => {
     if (!active) return;
     const control = root.current?.querySelector<HTMLElement>(
@@ -49,7 +60,12 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
         if (active && event.key === "Escape" && !event.isComposing) {
           event.preventDefault();
           event.stopPropagation();
-          props.onBack();
+          if (editing) {
+            setEditing(false);
+            root.current?.querySelector<HTMLElement>("[data-launch-add]")?.focus();
+          } else {
+            props.onBack();
+          }
         }
       }}
     >
@@ -87,7 +103,12 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
           pending={props.pending}
           onRun={props.onRun}
           onRunInNewSpace={props.target.kind === "split" ? props.onRunInNewSpace : undefined}
+          onEditAgents={canEdit ? () => setEditing((open) => !open) : undefined}
+          editing={editing}
         />
+        {canEdit && editing ? (
+          <QuickAgentEditor choices={choices} onToggle={onToggleChoice} />
+        ) : null}
         {props.pending ? <p role="status">Opening agent…</p> : null}
         {props.error ? (
           <p class="agent-launch-page__error" role="alert">

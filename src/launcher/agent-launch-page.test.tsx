@@ -125,4 +125,45 @@ describe("compact Original launch page", () => {
     );
     expect(covered.onBack).not.toHaveBeenCalled();
   });
+
+  it("opens the agent editor from Add agent, and Escape closes it before leaving the page", () => {
+    const onToggleChoice = vi.fn();
+    const props = mount({
+      choices: [
+        { id: "claude", label: "Claude Code", pinned: true, blocked: null, toggleable: true },
+        { id: "droid", label: "Droid", pinned: false, blocked: "Not installed", toggleable: false },
+      ],
+      onToggleChoice,
+    });
+    const add = host.querySelector<HTMLButtonElement>("[data-launch-add]")!;
+    expect(host.querySelector(".agent-launch-page__editor")).toBeNull();
+    act(() => add.click());
+    expect(add.getAttribute("aria-expanded")).toBe("true");
+    const boxes = host.querySelectorAll<HTMLInputElement>(".agent-launch-page__editor input");
+    expect([...boxes].map((box) => [box.checked, box.disabled])).toEqual([
+      [true, false],
+      [false, true],
+    ]);
+    expect(host.querySelector(".agent-launch-page__editor")?.textContent).toContain(
+      "Not installed",
+    );
+    act(() => boxes[0].click());
+    expect(onToggleChoice).toHaveBeenCalledExactlyOnceWith("claude");
+    const escape = () =>
+      act(() => {
+        host
+          .querySelector("section")!
+          .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      });
+    escape();
+    expect(host.querySelector(".agent-launch-page__editor")).toBeNull();
+    expect(props.onBack).not.toHaveBeenCalled();
+    escape();
+    expect(props.onBack).toHaveBeenCalledOnce();
+  });
+
+  it("offers no Add agent card when the page cannot edit the list", () => {
+    mount();
+    expect(host.querySelector("[data-launch-add]")).toBeNull();
+  });
 });

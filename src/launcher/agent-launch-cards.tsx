@@ -1,6 +1,6 @@
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { ArrowRight, PlusCircle } from "@phosphor-icons/react";
+import { ArrowRight, Plus, PlusCircle } from "@phosphor-icons/react";
 import type { AgentOption } from "../lib/agent-catalog";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
@@ -23,6 +23,13 @@ interface AgentLaunchCardsProps {
    * the Open board's cards always start a tab of their own.
    */
   readonly onRunInNewSpace?: (agentId: string) => void;
+  /**
+   * When set, the grid ends with an `Add agent` card that edits which agents
+   * the grid shows. `editing` is its disclosure state; the editor itself is
+   * the caller's, so the card stays a plain button.
+   */
+  readonly onEditAgents?: () => void;
+  readonly editing?: boolean;
 }
 
 function NewSpaceTip({ rect, id }: { rect: DOMRect; id: string }) {
@@ -122,6 +129,18 @@ export function AgentLaunchCards(props: AgentLaunchCardsProps) {
           </article>
         );
       })}
+      {props.onEditAgents !== undefined && (
+        <button
+          type="button"
+          class="agent-launch-page__add"
+          data-launch-add
+          aria-expanded={props.editing === true}
+          onClick={props.onEditAgents}
+        >
+          <DeckIcon icon={Plus} size={CHROME_ICON} />
+          Add agent
+        </button>
+      )}
     </div>
   );
 }

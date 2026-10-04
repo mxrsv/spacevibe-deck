@@ -2,6 +2,7 @@ import { AgentLaunchPage } from "../launcher/agent-launch-page";
 import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-launch-page-store";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
+import { quickAgentChoices, toggleQuickAgent } from "../settings/quick-agent-choices";
 import { quickAgentOptions } from "../settings/quick-agents";
 import { activeCategory } from "./settings/active-category-store";
 import { listen, type UnlistenFn } from "../host/bridge";
@@ -2392,6 +2393,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onRunInNewSpace={(id) => {
                 void agentLaunchPage.run(id, "new-space");
               }}
+              choices={quickAgentChoices()}
+              onToggleChoice={toggleQuickAgent}
               onBack={() => agentLaunchPage.close(true)}
               onSettings={() => {
                 activeCategory.value = "agents";

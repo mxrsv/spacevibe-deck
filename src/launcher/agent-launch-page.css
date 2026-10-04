@@ -219,3 +219,80 @@
 .stage--strip.stage--notice > .agent-launch-page {
   top: calc(var(--frame-h) + var(--notice-h));
 }
+
+/* The card that edits the grid: the same box as an agent card, drawn as a gap. */
+.agent-launch-page__add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--hair-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted) !important;
+  font-size: 12px;
+  transition:
+    border-color 140ms,
+    color 140ms;
+}
+.agent-launch-page__add:hover,
+.agent-launch-page__add[aria-expanded="true"] {
+  border-color: var(--text-muted);
+  color: var(--text-primary) !important;
+}
+.agent-launch-page__editor {
+  margin-top: 12px;
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  background: var(--chrome-1);
+}
+.agent-launch-page__editor header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hair);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.agent-launch-page__editor ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+.agent-launch-page__editor label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.agent-launch-page__editor label:hover {
+  background: var(--chrome-2);
+}
+.agent-launch-page__editor strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.agent-launch-page__editor label > span {
+  margin-left: auto;
+  font-size: var(--type-micro);
+  color: var(--text-muted);
+}
+.agent-launch-page__editor input {
+  accent-color: var(--accent);
+}
+.agent-launch-page__editor input:disabled,
+.agent-launch-page__editor input:disabled ~ * {
+  cursor: default;
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-launch-page__add {
+    transition: none;
+  }
+}

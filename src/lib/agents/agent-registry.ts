@@ -8,11 +8,19 @@
  */
 import type { AgentDefinition } from "./agent-definition";
 import { AGY } from "./agy";
+import { AMP } from "./amp";
 import { CLAUDE } from "./claude";
 import { CODEX } from "./codex";
+import { COPILOT } from "./copilot";
+import { CRUSH } from "./crush";
 import { CURSOR_AGENT } from "./cursor-agent";
+import { DROID } from "./droid";
 import { GEMINI } from "./gemini";
+import { GROK } from "./grok";
+import { KIMI } from "./kimi";
+import { KIRO } from "./kiro";
 import { OPENCODE } from "./opencode";
+import { VIBE } from "./vibe";
 
 /**
  * Order is reach, not history, and it is a contract: it decides the chip order
@@ -27,6 +35,14 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   AGY,
   GEMINI,
   CURSOR_AGENT,
+  COPILOT,
+  AMP,
+  KIMI,
+  KIRO,
+  GROK,
+  VIBE,
+  CRUSH,
+  DROID,
 ];
 
 /** The agents Deck probes, lists, classifies and resumes: every one not withdrawn. */

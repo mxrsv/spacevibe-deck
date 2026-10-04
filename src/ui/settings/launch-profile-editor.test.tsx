@@ -28,6 +28,7 @@ vi.mock("../../terminal/link-client", () => ({
 
 import { LaunchProfileEditor } from "./launch-profile-editor";
 import { detectedAgents } from "../../terminal/agent-detection-store";
+import { BUILTIN_AGENTS } from "../../lib/agent-catalog";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { SIGNAL_ADAPTERS_REVISION } from "../../settings/signal-adapter-choice";
@@ -131,7 +132,7 @@ describe("LaunchProfileEditor", () => {
     expect(host.textContent).toContain("1 detected");
     expect(host.textContent).toContain("Available to install");
     // Both lists carry the same row; only the heading above them differs.
-    expect(host.querySelectorAll(".lp-agent")).toHaveLength(5);
+    expect(host.querySelectorAll(".lp-agent")).toHaveLength(BUILTIN_AGENTS.length);
   });
 
   it("shows runtime defaults only for installed agents and supported flags", () => {

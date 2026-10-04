@@ -6,7 +6,7 @@ and reads the tool's own session logs where it knows their format.
 
 ## Built-in agents
 
-Deck recognises five agents out of the box. Each ships with a launch command, and the command
+Deck recognises thirteen agents out of the box. Each ships with a launch command, and the command
 is shown on screen in Settings → Agents rather than hidden behind a label.
 
 | Agent       | Launch command                                                              |
@@ -16,6 +16,14 @@ is shown on screen in Settings → Agents rather than hidden behind a label.
 | OpenCode    | `opencode`                                                                  |
 | Antigravity | `agy --dangerously-skip-permissions`                                        |
 | Gemini CLI  | `gemini --yolo`                                                             |
+| GitHub Copilot | `copilot`                                                                |
+| Amp         | `amp`                                                                       |
+| Kimi Code   | `kimi`                                                                      |
+| Kiro        | `kiro-cli`                                                                  |
+| Grok Build  | `grok`                                                                      |
+| Mistral Vibe | `vibe`                                                                     |
+| Crush       | `crush`                                                                     |
+| Droid       | `droid`                                                                     |
 
 Codex's `-c tui.animations=false` turns off its idle animations. Codex keeps repainting its
 prompt while it waits, and Deck would read that as an agent still working, so the row would
@@ -26,10 +34,12 @@ write your own Codex command, keep that flag, or set `animations = false` under 
 Several of these skip the tool's own confirmation prompts. That is the point of Deck, which
 exists to run agents that keep working, and it is also why every command is spelled out and
 why each one can be disabled. OpenCode ships bare because its `--auto` mode is opt-in per
-session.
+session. The eight agents added after Gemini CLI ship bare too: Deck has not read their flag
+lists, so it offers no flag, model or effort controls for them (Droid's autonomy level and spec
+mode are the exception) and relaunches them bare on resume.
 
-Until you choose [quick agents](#quick-agents), the checkout menu offers the first five
-installed agents: these in this order, then your custom agents
+Until you choose [quick agents](#quick-agents), quick launch and the checkout menu offer the
+first five installed agents: these in this order, then your custom agents
 ([quick agent defaults](../../src/settings/quick-agents.ts)).
 
 ## Settings → Agents
@@ -75,8 +85,9 @@ custom agent.
 
 ## Quick agents
 
-In Settings → Agents → Quick agents, choose up to five agents for the checkout menu.
-Deselect one to make room for another. Your choices are saved; agents you disable or
+Quick agents are the cards on the quick launcher and the rows in the checkout menu. Choose up
+to five, either in Settings → Agents → Quick agents or from the launcher itself: its last card,
+**Add agent**, opens a list with a box per agent. Deselect one to make room for another. Your choices are saved; agents you disable or
 uninstall stop appearing in the menu without being replaced by another agent
 ([quick agent settings](../../src/ui/settings/quick-agents-section.tsx)).
 
@@ -103,6 +114,8 @@ logs only for the built-ins it knows.
 | OpenCode    | yes                      | exact session id                           |
 | Gemini CLI  | no                       | `--resume latest`                          |
 | Antigravity | no                       | best-effort session id, else `--continue`  |
+| Droid       | no                       | `--resume --last` for the folder           |
+| Other built-ins | no                   | relaunch bare                              |
 | Custom      | no                       | relaunches the declared command unchanged  |
 
 By default, working, needs-you and failed states come from the terminal itself (bell,

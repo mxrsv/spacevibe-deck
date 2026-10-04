@@ -138,6 +138,14 @@ local agent storage.
 - **[OpenCode](https://opencode.ai):** `opencode`
 - **[Antigravity](https://antigravity.google):** `agy --dangerously-skip-permissions`
 - **[Gemini CLI](https://github.com/google-gemini/gemini-cli):** `gemini --yolo`
+- **[GitHub Copilot](https://docs.github.com/copilot/concepts/agents/about-copilot-cli):** `copilot`
+- **[Amp](https://ampcode.com):** `amp`
+- **[Kimi Code](https://www.kimi.com/code):** `kimi`
+- **[Kiro](https://kiro.dev/cli):** `kiro-cli`
+- **[Grok Build](https://x.ai/cli):** `grok`
+- **[Mistral Vibe](https://docs.mistral.ai/vibe/code/cli/):** `vibe`
+- **[Crush](https://github.com/charmbracelet/crush):** `crush`
+- **[Droid](https://docs.factory.ai/cli/getting-started/overview):** `droid`
 
 These are the commands Deck ships, not hidden defaults. Settings lets you disable a built-in,
 replace its launch command, or add another CLI command.

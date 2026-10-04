@@ -360,7 +360,7 @@ const EXPECTED_ROWS = [
   "Add agent",
   "Add command",
   "Token usage",
-  "Checkout menu",
+  "Pinned agents",
   // links & editor. One row, not two, since 2026-08-19: `editorId` +
   // `editorCommand` became the single `externalAppId`, so the custom-command
   // field that used to appear under the picker is gone with the setting it
