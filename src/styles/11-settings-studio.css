@@ -1,0 +1,287 @@
+/* DL-11.6: B — Studio, scoped to Appearance and Agents. Existing controls,
+   neutral chrome and the full-window keyboard/loading contracts stay shared. */
+.settings-screen__doc--studio {
+  width: min(1080px, calc(100% - 80px));
+  box-sizing: border-box;
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  color: var(--text-primary);
+}
+.settings-screen__fields--studio {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.settings-group {
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  background: var(--chrome-1);
+  overflow: clip;
+  min-width: 0;
+}
+.settings-group__head {
+  padding: 20px 22px 8px;
+}
+.settings-group__head h3 {
+  margin: 0;
+  font-size: var(--type-title);
+  font-weight: 600;
+}
+.settings-group__head p {
+  margin: 5px 0 0;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+.settings-group__body {
+  padding: 6px 22px 14px;
+}
+.settings-group .cfg-group {
+  margin: 14px 0 12px;
+  border: 0;
+  padding: 0;
+}
+.settings-group .cfg-row {
+  padding: 12px 0;
+}
+.settings-group .cfg-row + .cfg-row {
+  border-top: 1px solid var(--hair);
+}
+.settings-group .cfg-row__key {
+  min-width: 0;
+}
+.settings-group .cfg-row__desc {
+  line-height: 1.5;
+}
+.appearance-studio {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(280px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.appearance-studio__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+/* DL-6 / DL-24: pictured mode choices retain native radio semantics. */
+.studio-theme-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 10px 0 4px;
+}
+.studio-theme-choice {
+  padding: 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+.studio-theme-choice .theme-mini {
+  width: 100%;
+  height: 88px;
+}
+.studio-theme-choice > span:last-child {
+  display: block;
+  padding: 9px 3px 3px;
+  font-size: var(--type-body);
+}
+.studio-theme-choice:hover {
+  background: var(--state-hover-bg);
+}
+.studio-theme-choice.is-selected {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+}
+.studio-theme-choice:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 3px;
+}
+/* DL-6: Studio switches are neutral rails; aria-checked remains their value. */
+.settings-screen__fields--studio .cfg-btn[role="switch"] {
+  position: relative;
+  box-sizing: border-box;
+  width: 34px;
+  height: 20px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 0;
+  background: var(--chrome-2);
+  border-color: var(--text-faint);
+}
+.settings-screen__fields--studio .cfg-btn[role="switch"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--duration) var(--ease);
+}
+.settings-screen__fields--studio .cfg-btn[aria-checked="true"][role="switch"] {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
+.settings-screen__fields--studio .cfg-btn[aria-checked="true"][role="switch"]::after {
+  transform: translateX(14px);
+  background: var(--chrome-1);
+}
+.appearance-preview {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+  padding-top: 4px;
+}
+.appearance-preview__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: var(--type-meta);
+}
+.appearance-preview__heading > span:last-child {
+  color: var(--text-faint);
+}
+.appearance-preview__window {
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  overflow: clip;
+  display: grid;
+  background: var(--chrome-1);
+}
+.appearance-preview__window.is-left {
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+.appearance-preview__tabs {
+  display: flex;
+  gap: 5px;
+  padding: 10px;
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+}
+.is-left .appearance-preview__tabs {
+  flex-direction: column;
+  border-right: 1px solid var(--hair);
+}
+.is-top .appearance-preview__tabs {
+  border-bottom: 1px solid var(--hair);
+}
+.appearance-preview__tabs > span {
+  padding: 7px;
+  border-radius: var(--radius-control);
+}
+.appearance-preview__tabs .is-active {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+.appearance-preview__pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.appearance-preview__pane-bar {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--hair);
+  font-size: var(--type-meta);
+}
+.appearance-preview__terminal {
+  padding: 22px 18px;
+  min-height: 252px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  line-height: 1.7;
+  flex: 1;
+}
+.appearance-preview__terminal p {
+  margin: 0 0 12px;
+  white-space: nowrap;
+}
+.appearance-preview__prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.appearance-preview__cursor {
+  display: inline-block;
+  width: 7px;
+  height: 1.1em;
+}
+.appearance-preview__status {
+  grid-column: 1 / -1;
+  padding: 7px 12px;
+  border-top: 1px solid var(--hair);
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+.appearance-preview__caption {
+  margin: 15px 0 6px;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+.appearance-preview__note {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+  line-height: 1.5;
+}
+/* The narrower Studio document also narrows each agent's own container. */
+@container (max-width: 400px) {
+  .settings-screen__fields--studio .lp-agent-details .cfg-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .settings-screen__fields--studio .lp-agent-details .cfg-row__value {
+    justify-content: flex-start;
+  }
+  .settings-screen__fields--studio .lp-agent-details .cfg-row:has([role="switch"]) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .settings-screen__fields--studio .lp-agent-details .cfg-row:has([role="switch"]) .cfg-row__value {
+    width: auto;
+  }
+}
+@media (max-width: 1100px) {
+  .appearance-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .appearance-preview {
+    position: static;
+  }
+}
+@media (max-width: 720px) {
+  .settings-screen__doc--studio {
+    width: 100%;
+    padding-inline: 18px;
+  }
+  .settings-group__head {
+    padding: 16px 14px 6px;
+  }
+  .settings-group__body {
+    padding: 4px 14px 10px;
+  }
+  .appearance-preview__window.is-left {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-theme-choice,
+  .settings-screen__fields--studio .cfg-btn[role="switch"]::after {
+    transition: none;
+  }
+}

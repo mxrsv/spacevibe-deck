@@ -504,6 +504,15 @@ file), not a fixed `<select>` list. Its value reads `default` / `custom`; a
 custom pick shows the `↺` clear button (DL-6.1); any failure shows inline via
 `.cfg-custom--error` (DL-6.2).
 
+**Amended 2026-10-04 (owner, B — Studio):** Appearance and Agents use neutral
+rail-and-thumb switches for boolean values; checked state retains `role="switch"`
+and `aria-checked`. Other categories retain the text pills. Appearance mode
+uses one labelled radiogroup of pictured cards in the group body rather than a
+config row (§5 exception), following §24, with the same keyboard and conversion
+confirmation contracts as the segmented picker. The selected card has a neutral
+frame and selection wash. Anchors: [Studio styles](../src/styles/11-settings-studio.css)
+and [mode selector](../src/ui/settings/theme-mode-selector.tsx).
+
 - **DL-6.1** An overridden-from-default value may show a small `↺` clear
   button beside the pill — the only permitted second element in a value slot.
 - **DL-6.2** A `menu` whose option list can't cover every case (font family,
@@ -831,6 +840,16 @@ inset: 0` and covers the sidebar, the rail and the frame row; the Open board
   Anchors: [`settings-screen.tsx`](../src/ui/settings/settings-screen.tsx)
   `current`, [`settings-categories.ts`](../src/ui/settings/settings-categories.ts)
   `current`.
+  **Amended 2026-10-04 (owner, B — Studio):** Appearance and Agents use
+  separate groups with the same neutral surface, edge and radius. Their document
+  measure is `min(1080px, 100% - 80px)`. Appearance puts controls beside a
+  read-only terminal specimen that reflects current settings, stacking below
+  1100px. All controls remain accessible at compact widths. The outer disabled
+  fieldset, focus trap, Back/Escape and draggable header remain shared. Other
+  categories retain the single grouped surface. Anchors:
+  [Appearance](../src/ui/settings/sections/appearance-section.tsx),
+  [Agents](../src/ui/settings/sections/agents-section.tsx),
+  [Studio styles](../src/styles/11-settings-studio.css).
 - **DL-11.7** **Below 720px the rail narrows and the document loses its
   gutters (2026-08-19).** Deck's supported minimum is 480px, where DL-11.1's
   fixed 220px rail would leave 260px for a 58-character measure. The rail goes
@@ -3724,7 +3743,7 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-**One open claim, in the table below.** The only prior standing entry —
+**Two open claims, in the table below.** The only prior standing entry —
 `DL-16`'s text being cited from nine places in `src/` but never written — was
 closed on 2026-08-12 when the rule was transcribed from its call sites as §18
 and the citations moved with it. `scripts/design-language.test.ts` now fails
@@ -3737,6 +3756,7 @@ section therefore means naming DL, or the gate does not see the citation.
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
 | Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
+| Settings Studio is an accepted shipping surface | `building` | integrated and browser-reviewed; owner acceptance pending | 2026-10-04: [Appearance](../src/ui/settings/sections/appearance-section.tsx) and [Agents](../src/ui/settings/sections/agents-section.tsx); 102 targeted tests and TypeScript passed, Chromium wide/480px interactions checked; full-window contracts retained, native acceptance unrun |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).

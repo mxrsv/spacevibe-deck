@@ -74,6 +74,21 @@ describe("ThemeModeSelector", () => {
     });
   };
 
+  it("keeps pictured modes keyboard-selectable and confirms hidden overrides", async () => {
+    settings.value = { ...DEFAULT_SETTINGS, colorOverrides: { background: "#123456" } };
+    act(() => {
+      render(<ThemeModeSelector presentation="cards" />, host);
+    });
+    expect(updateSettings).not.toHaveBeenCalled();
+    act(() => {
+      options()[1].dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+    });
+    await settle();
+    expect(document.activeElement).toBe(options()[0]);
+    expect(ask).toHaveBeenCalledOnce();
+    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-light", colorOverrides: {} });
+  });
+
   it("offers exactly two modes as one radio group", () => {
     mount();
 

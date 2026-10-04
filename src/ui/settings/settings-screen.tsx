@@ -99,6 +99,7 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
     SETTINGS_CATEGORIES.find((category) => category.id === activeCategory.value) ??
     SETTINGS_CATEGORIES[0];
   const Section = active.Section;
+  const studio = active.id === "appearance" || active.id === "agents";
   const loading = settingsLoadState.value.status === "loading";
 
   return (
@@ -151,7 +152,7 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
               The title is NOT the panel's accessible name — `aria-labelledby`
               above still points at the rail tab the user pressed, so the tab
               and the panel it opened keep naming each other. */}
-          <div class="settings-screen__doc">
+          <div class={`settings-screen__doc ${studio ? "settings-screen__doc--studio" : ""}`}>
             <header class="settings-screen__intro">
               <h2 class="settings-screen__title">{active.label}</h2>
               <p class="settings-screen__lede">{active.description}</p>
@@ -175,7 +176,10 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
                 edit. Closing that needs the store to refuse the clobber the
                 way `mergedRevision` already refuses a stale broadcast; this
                 covers one entry point, not the race. */}
-            <fieldset class="settings-screen__fields" disabled={loading}>
+            <fieldset
+              class={`settings-screen__fields ${studio ? "settings-screen__fields--studio" : ""}`}
+              disabled={loading}
+            >
               <Section />
             </fieldset>
           </div>

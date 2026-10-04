@@ -14,7 +14,8 @@ import {
 import { revealDockTab, settings, updateSettings } from "../../../settings/settings-store";
 import { settingsOpen } from "../../../chrome/events";
 import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
-import { ConfigGroup, ConfigRow } from "../../controls/config-row";
+import { SettingsGroup } from "../settings-group";
+import { ConfigRow } from "../../controls/config-row";
 import { CommitInput } from "../../controls/commit-input";
 import { LaunchProfileEditor } from "../launch-profile-editor";
 import { QuickAgentsSection } from "../quick-agents-section";
@@ -194,161 +195,167 @@ export function AgentsSection() {
       {/* No `Built in` group label above this: the editor heads its own two
           lists with `Installed` / `Available to install`, and a third heading
           stacked on top of them named the same thing twice. */}
-      <LaunchProfileEditor />
-      <QuickAgentsSection />
+      <SettingsGroup>
+        <LaunchProfileEditor />
+      </SettingsGroup>
+      <SettingsGroup>
+        <QuickAgentsSection />
+      </SettingsGroup>
 
-      <ConfigGroup label="Agent identities" />
-      {customAgents.map((agent) => (
-        <Fragment key={agent.id}>
-          <div
-            class="cfg-row cfg-row--item"
-            // Leaving the row commits and closes whichever field was open. A
-            // click elsewhere is how people leave a field; without this the row
-            // would stay a form until something else took focus.
-            onFocusOut={() => {
-              editing.value = null;
-            }}
-          >
-            <div class="cfg-row__key">
-              {editing.value === labelKey(agent.id) ? (
-                <CommitInput
-                  value={agent.label}
-                  placeholder="name"
-                  ariaLabel={`Name for ${agent.label}`}
-                  autoFocus
-                  onCommit={(label) => renameAgent(agent.id, label)}
-                />
-              ) : (
-                <button
-                  type="button"
-                  class="cfg-row__label cfg-row__label--edit"
-                  title="Rename"
-                  onClick={() => {
-                    editing.value = labelKey(agent.id);
-                  }}
-                >
-                  {agent.label}
-                </button>
-              )}
-            </div>
-            <div class="cfg-row__value">
-              {editing.value === commandKey(agent.id) ? (
-                <CommitInput
-                  value={agent.command}
-                  placeholder="command"
-                  ariaLabel={`Command for ${agent.label}`}
-                  autoFocus
-                  onCommit={(command) => retargetAgent(agent.id, command)}
-                />
-              ) : (
-                <button
-                  type="button"
-                  class="cfg-btn"
-                  title={`${agent.command} — click to edit`}
-                  onClick={() => {
-                    editing.value = commandKey(agent.id);
-                  }}
-                >
-                  {agent.command}
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              class="cfg-row__remove"
-              aria-label={`Remove ${agent.label}`}
-              title={`Remove ${agent.label}`}
-              onClick={() => removeAgent(agent.id)}
-            >
-              <DeckIcon icon={Trash} size={ROW_ICON} />
-            </button>
-          </div>
-          {editError.value?.id === agent.id && (
-            <div class="cfg-custom--error" role="status">
-              {editError.value.message}
-            </div>
-          )}
-        </Fragment>
-      ))}
-
-      {draftOpen.value ? (
-        <>
-          <div class="cfg-row cfg-row--item">
-            <div class="cfg-row__key">
-              <input
-                type="text"
-                class="text-input text-input--small"
-                placeholder="name"
-                aria-label="New agent name"
-                value={draftLabel.value}
-                onInput={(event) => {
-                  draftLabel.value = event.currentTarget.value;
-                  draftError.value = null;
-                }}
-                onKeyDown={cancelDraftOnEscape}
-              />
-            </div>
-            <div class="cfg-row__value">
-              <input
-                type="text"
-                class="text-input text-input--small"
-                placeholder="aider --model sonnet"
-                aria-label="New agent command"
-                value={draftCommand.value}
-                onInput={(event) => {
-                  draftCommand.value = event.currentTarget.value;
-                  draftError.value = null;
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    commitDraft();
-                    return;
-                  }
-                  cancelDraftOnEscape(event);
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              class="cfg-row__remove"
-              aria-label="Discard the new agent"
-              onClick={() => {
-                draftOpen.value = false;
-                draftError.value = null;
+      <SettingsGroup title="Agent identities" description="Add and name the other CLIs you run.">
+        {customAgents.map((agent) => (
+          <Fragment key={agent.id}>
+            <div
+              class="cfg-row cfg-row--item"
+              // Leaving the row commits and closes whichever field was open. A
+              // click elsewhere is how people leave a field; without this the row
+              // would stay a form until something else took focus.
+              onFocusOut={() => {
+                editing.value = null;
               }}
             >
-              <DeckIcon icon={X} size={ROW_ICON} />
-            </button>
-          </div>
-          {draftError.value !== null && (
-            <div class="cfg-custom--error" role="status">
-              {draftError.value}
+              <div class="cfg-row__key">
+                {editing.value === labelKey(agent.id) ? (
+                  <CommitInput
+                    value={agent.label}
+                    placeholder="name"
+                    ariaLabel={`Name for ${agent.label}`}
+                    autoFocus
+                    onCommit={(label) => renameAgent(agent.id, label)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    class="cfg-row__label cfg-row__label--edit"
+                    title="Rename"
+                    onClick={() => {
+                      editing.value = labelKey(agent.id);
+                    }}
+                  >
+                    {agent.label}
+                  </button>
+                )}
+              </div>
+              <div class="cfg-row__value">
+                {editing.value === commandKey(agent.id) ? (
+                  <CommitInput
+                    value={agent.command}
+                    placeholder="command"
+                    ariaLabel={`Command for ${agent.label}`}
+                    autoFocus
+                    onCommit={(command) => retargetAgent(agent.id, command)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    class="cfg-btn"
+                    title={`${agent.command} — click to edit`}
+                    onClick={() => {
+                      editing.value = commandKey(agent.id);
+                    }}
+                  >
+                    {agent.command}
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                class="cfg-row__remove"
+                aria-label={`Remove ${agent.label}`}
+                title={`Remove ${agent.label}`}
+                onClick={() => removeAgent(agent.id)}
+              >
+                <DeckIcon icon={Trash} size={ROW_ICON} />
+              </button>
             </div>
-          )}
-        </>
-      ) : null}
+            {editError.value?.id === agent.id && (
+              <div class="cfg-custom--error" role="status">
+                {editError.value.message}
+              </div>
+            )}
+          </Fragment>
+        ))}
 
-      <ConfigRow label="Add agent" desc="Declare a new CLI identity and the binary Deck can run">
-        <button
-          type="button"
-          class="cfg-btn"
-          onClick={() => {
-            if (draftOpen.value) {
-              commitDraft();
-              return;
-            }
-            draftOpen.value = true;
-          }}
-        >
-          {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
-        </button>
-      </ConfigRow>
+        {draftOpen.value ? (
+          <>
+            <div class="cfg-row cfg-row--item">
+              <div class="cfg-row__key">
+                <input
+                  type="text"
+                  class="text-input text-input--small"
+                  placeholder="name"
+                  aria-label="New agent name"
+                  value={draftLabel.value}
+                  onInput={(event) => {
+                    draftLabel.value = event.currentTarget.value;
+                    draftError.value = null;
+                  }}
+                  onKeyDown={cancelDraftOnEscape}
+                />
+              </div>
+              <div class="cfg-row__value">
+                <input
+                  type="text"
+                  class="text-input text-input--small"
+                  placeholder="aider --model sonnet"
+                  aria-label="New agent command"
+                  value={draftCommand.value}
+                  onInput={(event) => {
+                    draftCommand.value = event.currentTarget.value;
+                    draftError.value = null;
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      commitDraft();
+                      return;
+                    }
+                    cancelDraftOnEscape(event);
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                class="cfg-row__remove"
+                aria-label="Discard the new agent"
+                onClick={() => {
+                  draftOpen.value = false;
+                  draftError.value = null;
+                }}
+              >
+                <DeckIcon icon={X} size={ROW_ICON} />
+              </button>
+            </div>
+            {draftError.value !== null && (
+              <div class="cfg-custom--error" role="status">
+                {draftError.value}
+              </div>
+            )}
+          </>
+        ) : null}
 
-      <ConfigRow label="Token usage" desc="Tokens and estimated cost for Claude Code and Codex">
-        <button type="button" class="cfg-btn" onClick={openUsage}>
-          open …
-        </button>
-      </ConfigRow>
+        <ConfigRow label="Add agent" desc="Declare a new CLI identity and the binary Deck can run">
+          <button
+            type="button"
+            class="cfg-btn"
+            onClick={() => {
+              if (draftOpen.value) {
+                commitDraft();
+                return;
+              }
+              draftOpen.value = true;
+            }}
+          >
+            {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
+          </button>
+        </ConfigRow>
+      </SettingsGroup>
+      <SettingsGroup title="Usage">
+        <ConfigRow label="Token usage" desc="Tokens and estimated cost for Claude Code and Codex">
+          <button type="button" class="cfg-btn" onClick={openUsage}>
+            open …
+          </button>
+        </ConfigRow>
+      </SettingsGroup>
     </>
   );
 }

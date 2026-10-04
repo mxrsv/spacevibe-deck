@@ -1,4 +1,4 @@
-import { Minus, Plus, Repeat } from "@phosphor-icons/react";
+import { Minus, Plus } from "@phosphor-icons/react";
 import {
   clampFontSize,
   FONT_SIZE_MAX,
@@ -7,12 +7,18 @@ import {
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
-import { ConfigGroup, ConfigRow, ToggleRow } from "../../controls/config-row";
+import { ConfigRow, ToggleRow } from "../../controls/config-row";
 import { FontRow } from "../../controls/font-row";
 import { LogoRow } from "../../controls/logo-row";
+import { SettingsGroup } from "../settings-group";
+import { AppearancePreview } from "../appearance-preview";
+import { AgentChoiceValue } from "../agent-choice-value";
 import { ThemeModeSelector } from "../theme-mode-selector";
 
-const TAB_BAR_CHOICES: readonly TabBarPosition[] = ["left", "top"];
+const TAB_BAR_CHOICES = [
+  { value: "left", label: "Left" },
+  { value: "top", label: "Top" },
+] as const;
 
 export function AppearanceSection() {
   const current = settings.value;
@@ -21,77 +27,68 @@ export function AppearanceSection() {
     updateSettings({ fontSize: clampFontSize(current.fontSize + delta) });
   };
 
-  const cycleTabBar = (): void => {
-    const index = TAB_BAR_CHOICES.indexOf(current.tabBarPosition);
-    const next = TAB_BAR_CHOICES[(index + 1) % TAB_BAR_CHOICES.length];
-    updateSettings({ tabBarPosition: next });
-  };
-
   return (
-    <>
-      {/* Two segments where the theme gallery, the import action, the themes
-          folder and the four colour override rows used to be (2026-08-19).
-          None of that was deleted — `theme-gallery.tsx`, `color-overrides.tsx`
-          and every parser still build and still have their tests — it is
-          unmounted, so a legacy selection keeps working while Settings offers
-          one plain product choice. */}
-      <ConfigGroup label="Theme" />
-      <ThemeModeSelector />
-      <ConfigGroup label="Type and chrome" />
-      <FontRow
-        value={current.fontFamily}
-        onChange={(fontFamily) => updateSettings({ fontFamily })}
-      />
-      <ConfigRow label="Font size">
-        <span class="cfg-btn cfg-step" role="group" aria-label="Font size">
-          <button
-            type="button"
-            class="cfg-step__btn"
-            aria-label="Decrease font size"
-            disabled={current.fontSize <= FONT_SIZE_MIN}
-            onClick={() => stepFontSize(-1)}
-          >
-            <DeckIcon icon={Minus} size={ROW_ICON} />
-          </button>
-          <span class="cfg-step__val">{current.fontSize}px</span>
-          <button
-            type="button"
-            class="cfg-step__btn"
-            aria-label="Increase font size"
-            disabled={current.fontSize >= FONT_SIZE_MAX}
-            onClick={() => stepFontSize(1)}
-          >
-            <DeckIcon icon={Plus} size={ROW_ICON} />
-          </button>
-        </span>
-      </ConfigRow>
-      <LogoRow />
-      <ConfigRow label="Tab bar position" desc="Where the tab list sits">
-        <button
-          type="button"
-          class="cfg-btn"
-          title="Next position"
-          aria-label={`Tab bar position: ${current.tabBarPosition}. Switch to next position`}
-          onClick={cycleTabBar}
-        >
-          {current.tabBarPosition}
-          <span class="cfg-btn__hint">
-            <DeckIcon icon={Repeat} size={ROW_ICON} />
-          </span>
-        </button>
-      </ConfigRow>
-      <ToggleRow
-        label="Show pane bar"
-        desc="Pane name bar inside splits"
-        checked={current.showPaneBar}
-        onToggle={() => updateSettings({ showPaneBar: !current.showPaneBar })}
-      />
-      <ToggleRow
-        label="Show status bar"
-        desc="Branch, path and window readout along the bottom"
-        checked={current.showStatusBar}
-        onToggle={() => updateSettings({ showStatusBar: !current.showStatusBar })}
-      />
-    </>
+    <div class="appearance-studio">
+      <div class="appearance-studio__controls">
+        <SettingsGroup title="Color mode" description="Choose a light or dark workspace.">
+          <ThemeModeSelector presentation="cards" />
+        </SettingsGroup>
+        <SettingsGroup title="Terminal text" description="Shared with the built-in editor.">
+          <FontRow
+            value={current.fontFamily}
+            onChange={(fontFamily) => updateSettings({ fontFamily })}
+          />
+          <ConfigRow label="Font size">
+            <span class="cfg-btn cfg-step" role="group" aria-label="Font size">
+              <button
+                type="button"
+                class="cfg-step__btn"
+                aria-label="Decrease font size"
+                disabled={current.fontSize <= FONT_SIZE_MIN}
+                onClick={() => stepFontSize(-1)}
+              >
+                <DeckIcon icon={Minus} size={ROW_ICON} />
+              </button>
+              <span class="cfg-step__val">{current.fontSize}px</span>
+              <button
+                type="button"
+                class="cfg-step__btn"
+                aria-label="Increase font size"
+                disabled={current.fontSize >= FONT_SIZE_MAX}
+                onClick={() => stepFontSize(1)}
+              >
+                <DeckIcon icon={Plus} size={ROW_ICON} />
+              </button>
+            </span>
+          </ConfigRow>
+        </SettingsGroup>
+        <SettingsGroup title="Workspace">
+          <ConfigRow label="Tab bar position" desc="Where the tab list sits">
+            <AgentChoiceValue
+              label="Tab bar position"
+              value={current.tabBarPosition}
+              choices={TAB_BAR_CHOICES}
+              onChange={(value) => updateSettings({ tabBarPosition: value as TabBarPosition })}
+            />
+          </ConfigRow>
+          <ToggleRow
+            label="Show pane bar"
+            desc="Pane name bar inside splits"
+            checked={current.showPaneBar}
+            onToggle={() => updateSettings({ showPaneBar: !current.showPaneBar })}
+          />
+          <ToggleRow
+            label="Show status bar"
+            desc="Branch, path and window readout along the bottom"
+            checked={current.showStatusBar}
+            onToggle={() => updateSettings({ showStatusBar: !current.showStatusBar })}
+          />
+        </SettingsGroup>
+        <SettingsGroup title="Identity">
+          <LogoRow />
+        </SettingsGroup>
+      </div>
+      <AppearancePreview />
+    </div>
   );
 }

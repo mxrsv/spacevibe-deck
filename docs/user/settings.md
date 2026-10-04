@@ -6,16 +6,20 @@ and apply to every Deck window.
 
 ## Appearance
 
+[Appearance](../../src/ui/settings/sections/appearance-section.tsx) groups color mode,
+terminal text, workspace chrome and identity. Its read-only preview updates as you
+choose settings; it does not launch a terminal session.
+
 - **Theme** — Light or Dark. Dark is the default. On Dark, the terminal is the deepest surface
   in the window and the chrome stands above it.
-- **Font size** — the terminal font size (default 13).
+- **Font and size** — shared by terminals and the built-in editor (default size 13).
 - **Tab bar position** — the chips live in the sidebar layout (default) or along the top.
 - **Show pane bar** — a name bar inside each split (off by default).
 - **Show status bar** — branch, path and window readout along the bottom (off by default).
 
 ## Browser
 
-- **Home address** — the page the browser tab opens on when it has no page yet (default
+- **Home address** — the page the browser tab opens on when there is no previous page to restore (default
   `http://localhost:3000`).
 
 ## Terminal
@@ -24,8 +28,7 @@ and apply to every Deck window.
 
 ## Agents
 
-The agent catalog: installed and available built-ins, per-agent launch commands, the default
-agent, the enable switch, and declared custom agents. See [Agents](agents.md).
+The agent catalog: installed and available built-ins, per-agent launch commands, the enable switch, quick-launch choices, and declared custom agents. See [Agents](agents.md).
 
 ## Links & editor
 
@@ -65,9 +68,9 @@ the file untouched; the day's counts are lost when you quit.
 
 ## Reset
 
-**Restore defaults** returns every preference (theme, font, colours, behaviour, agents,
-prompts) to a fresh install's state, after a confirmation. It does not touch your agents' own
-session logs.
+[**Restore defaults**](../../src/ui/settings/sections/reset-section.tsx) resets app
+settings, custom agents, launch configurations and prompt templates after a confirmation.
+Your custom logo, workspaces and agents’ own session logs stay.
 
 ## Where Deck keeps its data
 

@@ -7,8 +7,13 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- [Appearance](src/ui/settings/sections/appearance-section.tsx) and
+  [Agents](src/ui/settings/sections/agents-section.tsx) use the Studio layout,
+  with pictured appearance choices and a live sample workspace.
 - [Settings saves](src/settings/settings-store.ts) merge only changed fields so
   edits from different windows do not overwrite unrelated preferences.
+- [Settings descriptions](src/ui/settings/settings-categories.ts) clarify always-on
+  analytics, browser page restoration and what resetting defaults keeps.
 
 ## 2.3.0
 

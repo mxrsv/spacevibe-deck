@@ -69,7 +69,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {
     id: "browser",
     label: "Browser",
-    description: "Set the page the browser tab opens on.",
+    description: "Choose a home page for when there is no previous browser page to restore.",
     Section: BrowserSection,
   },
   {
@@ -111,7 +111,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {
     id: "privacy",
     label: "Privacy",
-    description: "Decide whether Deck shares optional usage stats, and read what they contain.",
+    description: "Read what Deck’s always-on usage analytics collect.",
     Section: PrivacySection,
   },
   // Last on purpose: it is still the one stop that throws work away, and the
@@ -119,7 +119,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {
     id: "reset",
     label: "Reset",
-    description: "Return every preference to the state a fresh install starts in.",
+    description: "Reset settings, agent configurations and templates. Your custom logo stays.",
     Section: ResetSection,
   },
 ];

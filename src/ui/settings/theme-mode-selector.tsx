@@ -8,7 +8,9 @@ import {
   conversionDiscardsData,
   themeModeOf,
   type ThemeMode,
+  getPreset,
 } from "../../settings/themes";
+import { ThemeCardPreview } from "./theme-card-preview";
 import { ConfigRow } from "../controls/config-row";
 
 interface ModeOption {
@@ -25,7 +27,7 @@ const MODE_OPTIONS: readonly ModeOption[] = [
 
 /**
  * The whole of Appearance's theme choice since 2026-08-19: two segments, one
- * value, no cards and no import.
+ * value. Studio shows the same choice as two visual cards.
  *
  * What it does NOT do is as load-bearing as what it does. It never writes on
  * mount. A user arriving with `tokyo-night`, an imported file, or colour
@@ -41,7 +43,11 @@ const MODE_OPTIONS: readonly ModeOption[] = [
  * the user can no longer see — and stays out of the way for a legacy built-in,
  * where nothing is lost that re-picking cannot restore.
  */
-export function ThemeModeSelector() {
+export function ThemeModeSelector({
+  presentation = "segments",
+}: {
+  readonly presentation?: "segments" | "cards";
+}) {
   const groupRef = useRef<HTMLDivElement>(null);
   const converting = useSignal(false);
   const current = settings.value;
@@ -112,32 +118,42 @@ export function ThemeModeSelector() {
     void select(next.value);
   };
 
-  return (
+  const chooser = (
+    <div
+      ref={groupRef}
+      class={presentation === "cards" ? "studio-theme-choices" : "segmented"}
+      role="radiogroup"
+      aria-label="Appearance mode"
+      onKeyDown={onKeyDown}
+    >
+      {MODE_OPTIONS.map((option) => {
+        const selected = option.value === mode;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
+            class={`${presentation === "cards" ? "studio-theme-choice" : "segmented__option"} ${selected ? "is-selected" : ""}`}
+            onClick={() => void select(option.value)}
+          >
+            {presentation === "cards" && (
+              <span aria-hidden="true">
+                <ThemeCardPreview preset={getPreset(CANONICAL_THEME_IDS[option.value])} />
+              </span>
+            )}
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+  return presentation === "cards" ? (
+    chooser
+  ) : (
     <ConfigRow label="Appearance" desc="Use a light or dark surface across Deck">
-      <div
-        ref={groupRef}
-        class="segmented"
-        role="radiogroup"
-        aria-label="Appearance mode"
-        onKeyDown={onKeyDown}
-      >
-        {MODE_OPTIONS.map((option) => {
-          const selected = option.value === mode;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              tabIndex={selected ? 0 : -1}
-              class={`segmented__option ${selected ? "is-selected" : ""}`}
-              onClick={() => void select(option.value)}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+      {chooser}
     </ConfigRow>
   );
 }

@@ -32,10 +32,12 @@ vi.mock("../../chrome/events", async (importOriginal) => {
   };
 });
 
+import { createMemorySettingsSync } from "../../settings/settings-sync";
 import { SettingsScreen } from "./settings-screen";
 import { activeCategory } from "./active-category-store";
 import { SETTINGS_CATEGORIES } from "./settings-categories";
-import { settingsLoadState } from "../../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
+import { configureSettingsSync, settings, settingsLoadState } from "../../settings/settings-store";
 
 describe("SettingsScreen — Escape / focus (M2)", () => {
   let host: HTMLDivElement;
@@ -425,6 +427,8 @@ describe("SettingsScreen — every setting survived the move", () => {
 
     const seen = new Set<string>();
     const collect = (): void => {
+      if (host.querySelector('[role="radiogroup"][aria-label="Appearance mode"]'))
+        seen.add("Appearance");
       for (const label of host.querySelectorAll(".cfg-row__label")) {
         // Quick-agent choices are catalog-driven; their interaction tests
         // assert selection and limits without duplicating the catalog here.
@@ -453,6 +457,39 @@ describe("SettingsScreen — every setting survived the move", () => {
     expect([...seen].sort()).toEqual([...EXPECTED_ROWS].sort());
   });
 
+  it("updates the preview from the real appearance controls", () => {
+    configureSettingsSync(createMemorySettingsSync());
+    settings.value = {
+      ...DEFAULT_SETTINGS,
+      fontSize: 13,
+      showPaneBar: false,
+      showStatusBar: false,
+    };
+    settingsLoadState.value = { status: "ready" };
+    act(() => {
+      render(<SettingsScreen open onClose={vi.fn()} />, host);
+    });
+    const click = (selector: string): void => {
+      act(() => {
+        host.querySelector<HTMLButtonElement>(selector)!.click();
+      });
+    };
+    click('[aria-label="Increase font size"]');
+    expect(settings.value.fontSize).toBe(14);
+    expect(host.querySelector<HTMLElement>(".appearance-preview__terminal")?.style.fontSize).toBe(
+      "14px",
+    );
+    click('[role="switch"][aria-label="Show pane bar"]');
+    click('[role="switch"][aria-label="Show status bar"]');
+    expect(host.querySelector(".appearance-preview__pane-bar")?.textContent).toContain("Terminal");
+    expect(host.querySelector(".appearance-preview__status")?.textContent).toContain("main");
+    click('[aria-label="Tab bar position"] button:last-child');
+    expect(settings.value.tabBarPosition).toBe("top");
+    expect(host.querySelector(".appearance-preview__window")?.classList.contains("is-top")).toBe(
+      true,
+    );
+  });
+
   it("visits every registered category on the walk", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
@@ -477,7 +514,7 @@ describe("SettingsScreen — every setting survived the move", () => {
    * `EXPECTED_ROWS` proves nothing on its own. Appearance has to be checked
    * for their absence directly.
    */
-  it("reaches no theme card, import action or colour override from Appearance", () => {
+  it("offers only the two appearance modes without theme imports or colour overrides", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
