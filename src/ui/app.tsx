@@ -141,7 +141,7 @@ import {
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
-import { DeckToolbar } from "./toolbar/deck-toolbar";
+import { DeckToolbar, MISSION_CONTROL_BUTTON_HIDDEN } from "./toolbar/deck-toolbar";
 // The sidebar slot's occupant. `RepositoryRail` and `WorkspaceSidebar` are
 // deliberately still in the tree with their tests: each successive rail keeps
 // its predecessor's callback contract, so swapping back is this one import and
@@ -1977,8 +1977,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       missionControl={
         // Only once a tab exists — with zero tabs there is nothing to zoom out
         // of. Hidden on the Open board and behind Settings, where the bar is
-        // not the way out (DL-35.1, DL-34.1's view control).
-        tabViews.value.length > 0 && !boardOpen.value && !settingsOpen.value
+        // not the way out (DL-35.1, DL-34.1's view control). Hidden outright
+        // while `MISSION_CONTROL_BUTTON_HIDDEN` is on; ⌘⇧O still works.
+        !MISSION_CONTROL_BUTTON_HIDDEN &&
+        tabViews.value.length > 0 &&
+        !boardOpen.value &&
+        !settingsOpen.value
           ? {
               open: missionControlOpen.value,
               // The action goes both ways, so the press is unconditional,

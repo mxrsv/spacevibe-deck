@@ -56,6 +56,15 @@ export function toolbarLabel(id: ActionId): string {
     .join(" ");
 }
 
+/**
+ * The toolbar's `Overview` button is HIDDEN for now (owner, 2026-10-04).
+ * Mission Control itself stays: ⌘⇧O and View ▸ Mission Control still open it
+ * (DL-35.1). `App` reads this flag and passes no `missionControl`, so the
+ * component and its tests stand — restoring the button is flipping this one
+ * constant, the revert seam `SIDEBAR_TOOLS_HIDDEN` established.
+ */
+export const MISSION_CONTROL_BUTTON_HIDDEN = true;
+
 const IDLE: ToolbarItemState = { kind: "idle" };
 const ACTIVE: ToolbarItemState = { kind: "active" };
 
