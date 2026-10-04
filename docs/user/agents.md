@@ -6,7 +6,7 @@ and reads the tool's own session logs where it knows their format.
 
 ## Built-in agents
 
-Deck recognises thirteen agents out of the box. Each ships with a launch command, and the command
+Deck recognises twelve agents out of the box. Each ships with a launch command, and the command
 is shown on screen in Settings → Agents rather than hidden behind a label.
 
 | Agent       | Launch command                                                              |
@@ -22,7 +22,6 @@ is shown on screen in Settings → Agents rather than hidden behind a label.
 | Kiro        | `kiro-cli`                                                                  |
 | Grok Build  | `grok`                                                                      |
 | Mistral Vibe | `vibe`                                                                     |
-| Crush       | `crush`                                                                     |
 | Droid       | `droid`                                                                     |
 
 Codex's `-c tui.animations=false` turns off its idle animations. Codex keeps repainting its
@@ -34,7 +33,7 @@ write your own Codex command, keep that flag, or set `animations = false` under 
 Several of these skip the tool's own confirmation prompts. That is the point of Deck, which
 exists to run agents that keep working, and it is also why every command is spelled out and
 why each one can be disabled. OpenCode ships bare because its `--auto` mode is opt-in per
-session. The eight agents added after Gemini CLI ship bare too: Deck has not read their flag
+session. The seven agents added after Gemini CLI ship bare too: Deck has not read their flag
 lists, so it offers no flag, model or effort controls for them (Droid's autonomy level and spec
 mode are the exception) and relaunches them bare on resume.
 

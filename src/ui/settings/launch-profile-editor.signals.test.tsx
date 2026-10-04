@@ -264,7 +264,7 @@ describe("LaunchProfileEditor Signals switch", () => {
       hostSays(false);
       await mountSettled();
 
-      expect(host.querySelectorAll(".lp-agent")).toHaveLength(13);
+      expect(host.querySelectorAll(".lp-agent")).toHaveLength(12);
       expect(agentSignalConfig).toHaveBeenCalledTimes(1);
     });
 

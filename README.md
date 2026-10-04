@@ -144,7 +144,6 @@ local agent storage.
 - **[Kiro](https://kiro.dev/cli):** `kiro-cli`
 - **[Grok Build](https://x.ai/cli):** `grok`
 - **[Mistral Vibe](https://docs.mistral.ai/vibe/code/cli/):** `vibe`
-- **[Crush](https://github.com/charmbracelet/crush):** `crush`
 - **[Droid](https://docs.factory.ai/cli/getting-started/overview):** `droid`
 
 These are the commands Deck ships, not hidden defaults. Settings lets you disable a built-in,

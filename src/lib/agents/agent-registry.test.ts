@@ -34,7 +34,6 @@ describe("agent registry", () => {
       "kiro-cli",
       "grok",
       "vibe",
-      "crush",
       "droid",
     ]);
     expect(BUILTIN_AGENTS.map((agent) => agent.id)).toEqual(ACTIVE_AGENT_IDS);
@@ -53,7 +52,7 @@ describe("agent registry", () => {
 
   it("switches a withdrawn agent off in every derived table", () => {
     const withdrawn = AGENT_DEFINITIONS.filter((agent) => agent.withdrawn === true);
-    expect(withdrawn.map((agent) => agent.id)).toEqual(["cursor-agent"]);
+    expect(withdrawn.map((agent) => agent.id)).toEqual(["cursor-agent", "crush"]);
     for (const agent of withdrawn) {
       expect(ACTIVE_AGENT_IDS).not.toContain(agent.id);
       expect(runtimeFor(agent.id)).toBeNull();
