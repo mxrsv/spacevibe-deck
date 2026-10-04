@@ -5,15 +5,25 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
-## Unreleased
+## 2.4.0
 
-- [Appearance](src/ui/settings/sections/appearance-section.tsx) and
-  [Agents](src/ui/settings/sections/agents-section.tsx) use the Studio layout,
-  with pictured appearance choices and a live sample workspace.
-- [Settings saves](src/settings/settings-store.ts) merge only changed fields so
-  edits from different windows do not overwrite unrelated preferences.
-- [Settings descriptions](src/ui/settings/settings-categories.ts) clarify always-on
-  analytics, browser page restoration and what resetting defaults keeps.
+This update redesigns the Appearance and Agents settings, keeps settings changed
+in one window from undoing another window's edits, and makes the active
+checkout easier to spot in the rail.
+
+- **Appearance and Agents settings have a new layout.**
+  [Appearance](src/ui/settings/sections/appearance-section.tsx) shows each
+  choice as a picture, and [Agents](src/ui/settings/sections/agents-section.tsx)
+  previews your changes in a live sample workspace.
+- **Settings from different windows no longer overwrite each other.** A
+  [save](src/settings/settings-store.ts) now writes only the fields you changed,
+  so an edit in one window keeps the preferences another window just set.
+- **Clearer settings descriptions.** The
+  [descriptions](src/ui/settings/settings-categories.ts) now explain always-on
+  analytics, browser page restoration and what resetting to defaults keeps.
+- **The active checkout stands out in the rail.** Its
+  [card](src/styles/04c-rail-worktree-card.css) header takes the same inverted
+  look as the focused agent row, so "focused" has one look at both levels.
 
 ## 2.3.0
 
