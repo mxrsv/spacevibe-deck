@@ -53,9 +53,6 @@ unsupported tails fall back to the agent name
 Click a worktree card's heading to focus its session and expand or collapse its agents.
 Clicking the card's empty space focuses it without changing expansion
 ([worktree card](src/ui/worktree-card.tsx)).
-Right-click a worktree and choose **Worktree color**, or **Default** to reset its color.
-The choice stays with that checkout and colors its dot, selected frame and badge
-([worktree color picker](src/ui/worktree-color-picker.tsx)).
 
 ### One project stage
 
