@@ -196,6 +196,29 @@ Its own launch receipt can reuse the newly created pane until a confirmed ID is 
 a guessed pairing cannot redirect or invalidate that receipt. See
 [`live-session-state.ts`](../../src/ui/sessions/live-session-state.ts).
 
+## The needs-you chip
+
+The strip's count of `asked` and `failed` panes (DL-27.26) lives in
+[`src/ui/attention/`](../../src/ui/attention/). What a maintainer would get wrong:
+
+- **It is a projection of this page's model, not a second reading of the tracker.**
+  [`buildAttentionList`](../../src/ui/attention-list-model.ts) walks the same
+  `buildAgentRail` panes the rows come from, so the count cannot disagree with the
+  sidebar. `asked` folds a question, a warning and an unchecked finish, so an entry's
+  reason says `Needs you` and cannot say which; telling them apart means carrying
+  `PaneView.attention` through `RailPaneRow`.
+- **A choice is `activateForAttention`, never `focusNextAttention`.** `App` passes the
+  rail's own `focusRailPane`, so the overlay preflight runs first and only the chosen
+  pane is acknowledged. ⌘⇧A is unchanged: the oldest pane of the highest severity.
+- **The age is the tracker's `changedAt`:** the last time any visible field changed, not
+  when the attention latched. A session id or a phase change after the latch moves it.
+  The rail's own age is the same field.
+- **A closed pane leaves no entry, and nothing retains one.** `disposeTab` prunes the
+  tracker right after taking the ⌘⇧T snapshot, which keeps layout, name, colour, cwds and
+  workspace — no agent, no session id, no attention — and closing a pane that is not its
+  tab's last takes no snapshot at all. A stale entry with Resume and Dismiss needs a
+  store written before that prune, which is on the close seam (R4).
+
 ## Close model
 
 The control closes the thing its row names ([`close-coordinator.ts`](../../src/terminal/close-coordinator.ts)):

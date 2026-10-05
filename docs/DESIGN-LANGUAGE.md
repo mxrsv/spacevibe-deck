@@ -3074,6 +3074,19 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   [`AgentRail`](../src/ui/agent-rail.tsx). Per-agent status indicators and the
   [Board bar](../src/ui/agent-board-bar.tsx) remain available.
 
+  **Amended 2026-10-06 (owner): the aggregate returns on the strip, not the
+  sidebar.** A chip at the strip's trailing end prints the number of panes that
+  are `asked` or `failed` (red dot when any failed, yellow otherwise) and is
+  absent at zero. It opens a DL-13.1 popover listing only those panes, loudest
+  first, each a DL-13.8 two-line row: reason, then space and branch; an
+  inferred state says so. Choosing a row is `activateForAttention` on that pane
+  — it acknowledges that pane and no other. Working, done, idle and ended are
+  counted in the footer, never listed. The popover answers nothing on the
+  agent's behalf. Built by
+  [`AttentionChip`](../src/ui/attention/attention-chip.tsx) over
+  [`buildAttentionList`](../src/ui/attention-list-model.ts); the sidebar still
+  carries no aggregate line.
+
   **Checkout creation (2026-09-18, DECK-27):** the open `New agent` row,
   collapsed strip `+`, bare checkout and flat folder row open the compact
   full-page agent launcher on Electron. Opening creates nothing; `Run` splits
@@ -3885,6 +3898,7 @@ section therefore means naming DL, or the gate does not see the citation.
 
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
+| The needs-you chip is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-06 on `feat/attention-popover` (DL-27.26 amended): the chip, its popover and the strip mount. Drawn in the gallery's `needs-you chip` section in both themes; no `electron:dev` walk, no `electron:smoke`. The walk must cover a failed and an asked pane in different spaces, Enter and Esc by keyboard, the popover over the browser tab's native view, and the strip at a 480px window beside the sidebar, where the chip costs the marks row about one mark |
 | Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
 | Space workflow refinements are a shipping surface | `building` | built, unrun and unwalked; owner eye review owed | 2026-10-03 on `main` (4478840, 664edc5, 0fab403, 0c743a2): launch cards (DL-32.6), auto-named spaces and project capsules and the edge marker (DL-35.3). No `tsc`, `npm test` or `electron:dev` run yet. The walk must cover five agents on one card row, the New space tip by keyboard, a worktree inside its repository's capsule, and a red edge dot with enough spaces to scroll |
 | Space names are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-09-29 on `feat/space-names`: the strip (DL-35.3), the shelf (DL-35.1) and the rail row (DL-27.15's amendment) rename and render a name. The walk must cover the floating strip field over a short name and a 40-character one, the shelf field inside a 96px thumbnail, and a named and an unnamed space in one folder |
