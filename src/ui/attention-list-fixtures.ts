@@ -1,7 +1,8 @@
 /**
- * Fixtures for the attention list's tests: panes, tabs and a repository scan
- * wired through the real `buildAgentRail`, so a test drives the same projection
- * the chip reads instead of a hand-built stream that could drift from it.
+ * Fixtures for the attention list's tests and its gallery section: panes, tabs
+ * and a repository scan wired through the real `buildAgentRail`, so both drive
+ * the same projection the chip reads instead of a hand-built stream that could
+ * drift from it. The clock is the fixed `NOW`, so ages are the same every time.
  */
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
