@@ -6,6 +6,7 @@ import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { WebglAddon } from "@xterm/addon-webgl";
 import type { Settings } from "../settings/settings-schema";
 import { monoFontFallback } from "../settings/mono-font-fallback";
+import { applyHiddenPaneRenderFix } from "./hidden-pane-render-fix";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
 import { resolveTheme } from "../settings/themes";
@@ -443,6 +444,9 @@ export function createPane(
   function mount(): void {
     if (!opened) {
       term.open(termEl);
+      // After `open()`, which creates the render service the fix wraps. Keeps
+      // a pane in a hidden tab from repainting every row on each scroll.
+      applyHiddenPaneRenderFix(term);
       if (isWebKitWebView()) {
         applyWebkitImeFix(term);
       }

@@ -5,8 +5,16 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
-## Unreleased
+## 2.5.0
 
+This update keeps Deck responsive while agents in other spaces are printing,
+simplifies the rail's checkout cards, and tidies the toolbar and usage view.
+
+- **Deck stays smooth while hidden spaces print.** A terminal in a space you are
+  not looking at no longer redraws itself on every new line, which could keep
+  the window busy and, with many agents running, freeze it for seconds at a
+  time. [Hidden panes](src/terminal/hidden-pane-render-fix.ts) now catch up
+  once, when you switch to them.
 - **Droid shows its logo.** The agent was drawn as a letter in 2.4.0; it now wears
   Factory's [mark](src/lib/agent-logos.ts) like the other built-in agents.
 - **A project's only checkout has no second collapse.** When a project has one
