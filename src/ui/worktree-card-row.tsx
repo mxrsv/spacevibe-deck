@@ -61,6 +61,15 @@ export function signalLabelOf(
 export const BUSY_STATE: RailState = "working";
 
 /**
+ * The states that need the user. Only these rows keep their logo's full ink;
+ * every other row's logo goes quiet (DL-27.21, amended 2026-10-06), so the rows
+ * asking for the user are the only full-colour logos in the column.
+ */
+export function needsUser(state: RailState): boolean {
+  return state === "asked" || state === "failed";
+}
+
+/**
  * `project · checkout · branch` — the accessible-name prefix every control on
  * a card carries, matching what the shipped rail's `whereOf` produced before
  * the tab tier's removal took the project name out of this component's reach.
@@ -223,6 +232,7 @@ export function CardAgentRow({
       data-confidence={pane.confidence}
       data-focused={pane.focused}
       data-named={pane.tabName ? "true" : undefined}
+      data-quiet={needsUser(pane.state) ? undefined : "true"}
       data-pane-id={pane.paneId}
     >
       <button

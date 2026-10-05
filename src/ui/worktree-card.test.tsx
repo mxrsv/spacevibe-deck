@@ -1199,3 +1199,70 @@ describe("WorktreeCard row badge (DL-27.21, amended 2026-10-06)", () => {
     expect(host.querySelectorAll(".asr-card__seg .asr-card__load > i")).toHaveLength(3);
   });
 });
+
+describe("WorktreeCard quiet logos (DL-27.21, amended 2026-10-06)", () => {
+  // Rows that need the user keep the logo's full ink; every other row's logo
+  // goes quiet, so the asking rows are the only full-colour logos in the column.
+  it.each(["asked", "failed"] as const)("leaves a %s row's logo at full ink", (state) => {
+    mount({ open: true, group: group({ panes: [pane({ state })] }) });
+
+    const row = host.querySelector<HTMLElement>(".asr-card__row")!;
+    expect(row.dataset.state).toBe(state);
+    expect(row.hasAttribute("data-quiet")).toBe(false);
+  });
+
+  it.each(["working", "done", "idle", "ended"] as const)("quiets a %s row's logo", (state) => {
+    mount({ open: true, group: group({ panes: [pane({ state })] }) });
+
+    const row = host.querySelector<HTMLElement>(".asr-card__row")!;
+    expect(row.dataset.state).toBe(state);
+    expect(row.dataset.quiet).toBe("true");
+  });
+
+  it("decides each row on its own state, whatever its neighbours say", () => {
+    mount({
+      open: true,
+      group: group({
+        panes: [
+          pane({ paneId: 1, state: "asked" }),
+          pane({ paneId: 2, agent: "codex", label: "Codex", state: "done" }),
+          pane({ paneId: 3, agent: "droid", label: "Droid", state: "failed" }),
+        ],
+      }),
+    });
+
+    const quiet = [...host.querySelectorAll<HTMLElement>(".asr-card__row")].map((row) =>
+      row.hasAttribute("data-quiet"),
+    );
+    expect(quiet).toEqual([false, true, false]);
+  });
+
+  it("draws every kind of logo inside the row, for the stylesheet to quiet by kind", () => {
+    // Colour image, ink mark and letter avatar: `data-quiet` styles each by its
+    // element (`img`, `svg`, the `--letter` span), so each must keep that shape.
+    mount({
+      open: true,
+      group: group({
+        panes: [
+          pane({ paneId: 1, agent: "claude", state: "done" }),
+          pane({ paneId: 2, agent: "codex", label: "Codex", state: "done" }),
+          pane({ paneId: 3, agent: "crush", label: "Crush", state: "done" }),
+        ],
+      }),
+    });
+
+    const logos = [...host.querySelectorAll(".asr-card__row .asr-card__glyph > .asr-card__logo")];
+    expect(logos.map((logo) => logo.tagName.toLowerCase())).toEqual(["img", "svg", "span"]);
+    expect(logos[2].classList.contains("asr-card__logo--letter")).toBe(true);
+  });
+
+  it("does not mark the closed strip's segments quiet", () => {
+    mount({
+      open: false,
+      group: group({ panes: [pane({ paneId: 1, state: "done" })] }),
+    });
+
+    expect(host.querySelector(".asr-card__seg")).not.toBeNull();
+    expect(host.querySelector("[data-quiet]")).toBeNull();
+  });
+});

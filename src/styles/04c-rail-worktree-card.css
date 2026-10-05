@@ -757,6 +757,27 @@ button.asr-bare:hover {
   font: 620 var(--type-micro) / 1 var(--ui-font);
 }
 
+/* Quiet logos (DL-27.21, amended 2026-10-06). A row whose agent does not need the user
+   (`data-quiet`, set for anything but `asked` and `failed`) draws its logo quiet, so the rows
+   that do need the user are the only full-colour logos in the column. By kind: a colour image
+   fades by `opacity`, a single-colour ink mark (`AGENT_INK_MARKS`, drawn in `currentColor`)
+   takes `--text-faint`, and a letter avatar is already neutral and stays as it is. No `filter`
+   (DL-1.3). Both values are starting points for the gallery's "Row badge" section, which
+   restates them per variant through the two properties below. */
+.asr-card__row[data-quiet="true"] img.asr-card__logo {
+  opacity: var(--asr-quiet-opacity, 0.4);
+}
+
+.asr-card__row[data-quiet="true"] svg.asr-card__logo {
+  color: var(--text-faint);
+}
+
+/* On the focused row the ink is the inverted fill's own (`--asr-card-focus-ink`), so a quiet
+   mark is that ink at reduced alpha rather than `--text-faint`, which would vanish on the fill. */
+.asr-card__row[data-quiet="true"][data-focused="true"] svg.asr-card__logo {
+  color: color-mix(in srgb, var(--asr-card-focus-ink) var(--asr-quiet-ink-alpha, 45%), transparent);
+}
+
 /* Every card state dot has a solid fill, separated from the agent glyph by a quiet ring in the
    ground it sits on: the sidebar on the strip, the row's own ground (`--asr-badge-ground`) on a
    row. Confidence stays in the row/segment label, so inferred states do not become dark holes. */
