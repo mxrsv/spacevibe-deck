@@ -146,6 +146,13 @@ interface FeatureToolbarProps {
    * entirely on a host that reports no installed apps.
    */
   readonly externalApp?: ComponentChildren;
+  /**
+   * The needs-you chip (DL-27.26, amended 2026-10-06), which owns its own count,
+   * colour and popover and so cannot be a `ToolbarItem` either. It leads the
+   * trailing controls, ahead of the external-app button, and is absent while
+   * nothing needs the user.
+   */
+  readonly attention?: ComponentChildren;
 }
 
 export function FeatureToolbar({
@@ -154,6 +161,7 @@ export function FeatureToolbar({
   pinnedMenu,
   pinnedMenuAnchored,
   externalApp,
+  attention,
 }: FeatureToolbarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const updateRef = useRef<HTMLSpanElement>(null);
@@ -238,6 +246,7 @@ export function FeatureToolbar({
   // toolbar blank.
   const trailingExtras = (
     <>
+      {attention}
       {externalApp}
       {updateAction !== undefined && (
         <span ref={updateRef} class="ftoolbar__update">

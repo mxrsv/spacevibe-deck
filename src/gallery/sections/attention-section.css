@@ -61,3 +61,18 @@
   color: var(--text-faint);
   font: var(--type-meta) / 1.4 var(--ui-font);
 }
+
+/* The real strip is `position: absolute` in the app; a specimen gives it a
+   frame-row box to fill. */
+.gx-attn-strips {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  justify-items: start;
+}
+
+.gx-attn-stripframe {
+  position: relative;
+  height: var(--frame-h);
+  background: var(--chrome-1);
+}

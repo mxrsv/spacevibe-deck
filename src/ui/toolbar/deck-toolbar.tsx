@@ -101,6 +101,12 @@ interface DeckToolbarProps {
    * own icon and its own menu, so `ToolbarItem` cannot describe it.
    */
   readonly externalApp?: ComponentChildren;
+  /**
+   * The needs-you chip (DL-27.26, amended 2026-10-06), built by `App` because
+   * the focus it triggers runs the app's attention preflight. Projected in as a
+   * node, like `externalApp`: it owns its own count, colour and popover.
+   */
+  readonly attention?: ComponentChildren;
   onToggleBrowser(): void;
   onSplitRow(): void;
   onSplitColumn(): void;
@@ -229,6 +235,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
         // is what keeps a second Prompt Board popover off the screen.
         items={[]}
         externalApp={props.externalApp}
+        attention={props.attention}
         updateAction={props.updateAction}
         pinnedMenu={
           props.compact || SIDEBAR_TOOLS_HIDDEN ? [...paneItems, ...globalItems] : paneItems

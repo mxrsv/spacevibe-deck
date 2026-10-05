@@ -142,6 +142,7 @@ import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
 import { DeckToolbar, MISSION_CONTROL_BUTTON_HIDDEN } from "./toolbar/deck-toolbar";
+import { AttentionStripChip } from "./attention/attention-strip-chip";
 // The sidebar slot's occupant. `RepositoryRail` and `WorkspaceSidebar` are
 // deliberately still in the tree with their tests: each successive rail keeps
 // its predecessor's callback contract, so swapping back is this one import and
@@ -1994,6 +1995,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           : undefined
       }
       externalApp={externalAppControl}
+      // DL-27.26 (amended 2026-10-06): the needs-you chip rides the strip's
+      // trailing end in both layouts, because `chromeActions` is the one
+      // element either mounts. It takes the rail's own pane-exact callback, so
+      // a choice walks the same overlay preflight a rail row does and then
+      // `activateForAttention`, which acknowledges that pane and no other.
+      attention={<AttentionStripChip onFocusPane={focusRailPane} />}
       compact={!sidebar}
       browserActive={browserSurfaceActive.value}
       settingsOpen={settingsOpen.value}

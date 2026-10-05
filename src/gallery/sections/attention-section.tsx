@@ -9,6 +9,7 @@ import { AttentionPanel } from "../../ui/attention/attention-panel";
 import type { AttentionList } from "../../ui/attention-list-model";
 import { MINUTE, NOW, list, pane, repo, tab } from "../../ui/attention-list-fixtures";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
+import { StripAtWidth } from "./attention-strip-specimen";
 import "./attention-section.css";
 
 /**
@@ -182,6 +183,17 @@ export function AttentionSection() {
       >
         <div class="gx-attn-strip">
           <AttentionChip list={many} onFocusPane={NOOP} />
+        </div>
+      </Specimen>
+      <Specimen
+        name="in the strip"
+        note="The shipping strip with the chip mounted before the toolbar's controls, seeded with the gallery's own tabs. 205px is a 480px window beside the default 275px sidebar (Tauri's minWidth; Electron sets none); 480px is the same window with the sidebar hidden. The marks row scrolls inside itself, so the chip costs it width and never pushes a mark out of the frame."
+        surface="bg"
+      >
+        <div class="gx-attn-strips">
+          {[205, 320, 480, 760].map((width) => (
+            <StripAtWidth key={width} width={width} withChip />
+          ))}
         </div>
       </Specimen>
       <div class="gx-attn-themes">

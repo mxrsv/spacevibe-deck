@@ -175,4 +175,26 @@ describe("DeckToolbar", () => {
       expect(labels).not.toContain("Browser");
     }
   });
+  // DL-27.26 (amended 2026-10-06): the needs-you chip leads the strip's trailing
+  // controls, so it sits next to the toolbar rather than inside the drag filler.
+  it("seats the needs-you chip first among the trailing controls", () => {
+    mount({
+      attention: <button type="button" aria-label="2 need you" />,
+      externalApp: <button type="button" aria-label="Open in editor" />,
+    });
+
+    const labels = Array.from(host.querySelectorAll(".ftoolbar button")).map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual(["2 need you", "Open in editor", "More actions"]);
+    expect(
+      host.querySelector(".ftoolbar__drag")?.nextElementSibling?.getAttribute("aria-label"),
+    ).toBe("2 need you");
+  });
+
+  it("draws no chip slot when nothing is handed in", () => {
+    mount();
+
+    expect(host.querySelector('[aria-label$="need you"]')).toBeNull();
+  });
 });
