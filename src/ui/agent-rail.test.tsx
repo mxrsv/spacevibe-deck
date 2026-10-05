@@ -1277,7 +1277,7 @@ describe("AgentRail project close (close model, 2026-08-22, table row 4)", () =>
 });
 
 describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
-  it("keeps the agent glyph separate from the trailing state and close", async () => {
+  it("puts the state badge on the agent glyph and keeps close in the trailing cell", async () => {
     // Both non-idle, deliberately: `idle` paints no badge at all (its own
     // pinned test below), so this checks the badge's PLACEMENT on a state
     // that actually draws one.
@@ -1301,9 +1301,10 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
       expect(row.firstElementChild?.classList.contains("asr-card__hit")).toBe(true);
       expect(row.querySelector(".asr-card__glyph")).not.toBeNull();
       expect(row.querySelector(".asr-card__glyph .asr-card__logo")).not.toBeNull();
-      // DL-27.21: the state shares close's trailing slot, leaving the brand glyph clear.
-      expect(row.querySelector(".asr-card__glyph .asr-card__dot")).toBeNull();
-      expect(row.querySelector(".asr-card__status .asr-card__dot")).not.toBeNull();
+      // DL-27.21, amended 2026-10-06: the state is the corner badge on the logo;
+      // the trailing cell keeps only the working bars and, on hover, close.
+      expect(row.querySelector(".asr-card__glyph .asr-card__dot")).not.toBeNull();
+      expect(row.querySelector(".asr-card__status .asr-card__dot")).toBeNull();
       expect(row.querySelector(".asr-row__actions")).not.toBeNull();
     }
   });
@@ -1328,7 +1329,7 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
   it.each([
     { name: "working", pane: pane({ phase: "working" }), mark: "working" },
     { name: "done", pane: pane({ hasRun: true }), mark: "done" },
-  ])("keeps $name legible with a trailing state mark", async ({ pane: paneView, mark }) => {
+  ])("keeps $name legible with one state signal", async ({ pane: paneView, mark }) => {
     tabViews.value = [tab({ panes: [paneView] })];
     mount();
     await settle();
@@ -1337,10 +1338,14 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     const row = rows()[0];
     const status = row.querySelector(".asr-card__status");
     if (mark === "working") {
+      // Working keeps its trailing bars and carries no dot anywhere on the row.
       expect(status?.querySelectorAll(".asr-card__load > i").length).toBeGreaterThan(0);
-      expect(status?.querySelector(".asr-card__dot")).toBeNull();
+      expect(row.querySelector(".asr-card__dot")).toBeNull();
     } else {
-      expect(status?.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe(mark);
+      expect(row.querySelector(".asr-card__glyph .asr-card__dot")?.getAttribute("data-state")).toBe(
+        mark,
+      );
+      expect(status?.querySelector(".asr-card__dot")).toBeNull();
     }
   });
 

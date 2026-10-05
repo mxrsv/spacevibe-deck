@@ -47,6 +47,8 @@
   --asr-card-row-h: 28px;
   --asr-card-row-gap: 2px;
   --asr-card-radius: 6px;
+  /* The surface the panes' rows sit on, so their state badge's ring (04c) matches it. */
+  --asr-row-base: var(--chrome-2);
   position: fixed;
   z-index: 30;
   box-sizing: border-box;

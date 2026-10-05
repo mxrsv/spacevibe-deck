@@ -252,6 +252,8 @@ button.asr-bare:hover {
 }
 
 .asr-cluster[data-active="true"] {
+  /* The surface its rows sit on, for their state badge's ring (`--asr-badge-ground`). */
+  --asr-row-base: var(--tab-active-bg);
   background: var(--tab-active-bg);
   outline: 1px solid var(--hair-strong);
   outline-offset: -1px;
@@ -540,6 +542,11 @@ button.asr-bare:hover {
   border: 0;
   border-radius: var(--asr-card-radius);
   background: color-mix(in srgb, var(--tone) 5%, transparent);
+  /* The ground the state badge's ring is painted in (DL-27.21): this row's own wash over
+     what it sits on, restated for the hover wash and the focused fill below, so the ring
+     reads as a cut-out of the row instead of a halo. `--asr-row-base` is the surface the row
+     sits on where that is not the sidebar. */
+  --asr-badge-ground: color-mix(in srgb, var(--tone) 5%, var(--asr-row-base, var(--sidebar-bg)));
   color: inherit;
   font: inherit;
   text-align: left;
@@ -547,6 +554,7 @@ button.asr-bare:hover {
 }
 
 .asr-card__row:hover {
+  --asr-badge-ground: color-mix(in srgb, var(--tone) 9%, var(--asr-row-base, var(--sidebar-bg)));
   background: color-mix(in srgb, var(--tone) 9%, transparent);
 }
 
@@ -629,11 +637,6 @@ button.asr-bare:hover {
   grid-area: 1 / 1;
 }
 
-.asr-card__status > .asr-card__dot {
-  position: static;
-  border-color: transparent;
-}
-
 /*
  * The agent holding the keyboard (DL-27.22) is an INVERTED row (owner, 2026-10-03, chosen from
  * nine gallery candidates after the report that the focused agent did not stand out, twice:
@@ -653,6 +656,7 @@ button.asr-bare:hover {
 }
 
 .asr-card__row[data-focused="true"] {
+  --asr-badge-ground: var(--asr-card-focus-bg);
   background: var(--asr-card-focus-bg);
 }
 
@@ -704,15 +708,25 @@ button.asr-bare:hover {
 
 /* --------------------------------------------------------------------- the glyph + badge */
 
-/* Row state and closed-strip badges share their mark size (DL-27.21). */
-.asr-card__glyph,
-.asr-card__status {
+/* The closed strip's badge: 5px dot, 1.5px ring. */
+.asr-card__glyph {
   --asr-badge-size: 5px;
   --asr-badge-ring: 1.5px;
   --asr-badge-outset: 2px;
 }
 
-/* Overflow stays visible for the closed strip's corner badge; row glyphs have no badge. */
+/* The row's own badge (DL-27.21, amended 2026-10-06): the same mechanism at a larger size, so
+   the mark sits beside the name the eye is reading and a 5px dot is not the thing that gets
+   skipped. Starting values; the gallery's "Row badge" section draws 6, 7 and 8px for the
+   owner's eye review. The outset grows with the badge so its centre stays on the logo's
+   corner rather than moving inward over the mark. */
+.asr-card__row .asr-card__glyph {
+  --asr-badge-size: 7px;
+  --asr-badge-ring: 2px;
+  --asr-badge-outset: 3px;
+}
+
+/* The corner badge sits outside the logo's box, so the glyph keeps its overflow visible. */
 .asr-card__glyph {
   position: relative;
   display: grid;
@@ -743,8 +757,9 @@ button.asr-bare:hover {
   font: 620 var(--type-micro) / 1 var(--ui-font);
 }
 
-/* Every card state dot has a solid fill, separated from the agent glyph by a quiet ring.
-   Confidence stays in the row/segment label, so inferred states do not become dark holes. */
+/* Every card state dot has a solid fill, separated from the agent glyph by a quiet ring in the
+   ground it sits on: the sidebar on the strip, the row's own ground (`--asr-badge-ground`) on a
+   row. Confidence stays in the row/segment label, so inferred states do not become dark holes. */
 .asr-card__dot {
   position: absolute;
   bottom: calc(-1 * var(--asr-badge-outset));
@@ -752,7 +767,7 @@ button.asr-bare:hover {
   box-sizing: content-box;
   width: var(--asr-badge-size);
   height: var(--asr-badge-size);
-  border: var(--asr-badge-ring) solid var(--sidebar-bg);
+  border: var(--asr-badge-ring) solid var(--asr-badge-ground, var(--sidebar-bg));
   border-radius: 50%;
 }
 
