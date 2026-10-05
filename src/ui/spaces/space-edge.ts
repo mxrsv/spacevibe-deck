@@ -17,8 +17,9 @@ const NOTHING: EdgeNeeds = { left: null, right: null };
 /**
  * Which side of a scrolled strip hides a needs-you mark (DL-35.3). A mark is
  * hidden once its centre is out of the frame, since its dot is the centre.
- * Red only: needs-you is one colour on the strip (owner, 2026-09-29). Takes
- * rects, not elements, because jsdom has no layout to measure.
+ * Red only, whichever tone is hidden: the marks themselves took a second ink
+ * for a question (DL-35.3, owner 2026-10-06) and the edge dot has not followed
+ * them. Takes rects, not elements, because jsdom has no layout to measure.
  */
 export function hiddenNeeds(frame: Span, needsYou: readonly Span[]): EdgeNeeds {
   const centres = needsYou.map((mark) => (mark.left + mark.right) / 2);
