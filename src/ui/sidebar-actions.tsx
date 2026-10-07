@@ -1,6 +1,14 @@
-import { ChatText, ClockCounterClockwise, Gauge, Gear, Globe, TreeView } from "@phosphor-icons/react";
+import {
+  ChatText,
+  ClockCounterClockwise,
+  Gauge,
+  Gear,
+  Globe,
+  SquaresFour,
+  TreeView,
+} from "@phosphor-icons/react";
 import type { ComponentChildren } from "preact";
-import { useRef } from "preact/hooks";
+import { useRef, useState } from "preact/hooks";
 import { shortcutLabel } from "../lib/shortcut-label";
 import type { ActionId } from "../terminal/action-registry";
 import {
@@ -9,6 +17,7 @@ import {
   useTooltipVisibility,
 } from "./controls/action-tooltip";
 import { DeckIcon, RAIL_ICON, type DeckIconComponent } from "./controls/deck-icon";
+import { RailToolsMenu } from "./rail-tools-menu";
 import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar/toolbar-item";
 import { toolbarLabel } from "./toolbar/toolbar-label";
 
@@ -40,6 +49,11 @@ export interface SidebarActionsProps {
   readonly promptPopover?: ComponentChildren;
   /** Only so the popover mounts in this row's slot — never painted as state. */
   readonly promptsOpen: boolean;
+  /**
+   * The rail is the avatar column (DL-27.29): one `Tools` button opens the
+   * icons as a popover (DL-28.6). Electron only, like the row itself.
+   */
+  readonly collapsed?: boolean;
   onOpenSessions(): void;
   onOpenUsage(): void;
   onOpenExplorer(): void;
@@ -147,7 +161,67 @@ function ToolButton({ item, tooltipSuppressed }: ToolButtonProps) {
   );
 }
 
+interface OpenToolsMenu {
+  readonly trigger: HTMLButtonElement;
+  readonly rect: DOMRect;
+}
+
+/**
+ * Collapsed, the six icons give way to one grid button at the column's foot
+ * (DL-28.6) that opens the same six as rows of a popover. It carries a native
+ * `title` like the column's avatars: a tooltip centred above a 36px column
+ * would hang far from its button, and the name is all it would say.
+ */
+function CollapsedTools(props: SidebarActionsProps) {
+  const [open, setOpen] = useState<OpenToolsMenu | null>(null);
+  const close = (restoreFocus: boolean): void => {
+    const trigger = open?.trigger;
+    setOpen(null);
+    if (restoreFocus) {
+      trigger?.focus();
+    }
+  };
+
+  return (
+    <nav class="sidebar-actions sidebar-actions--collapsed" aria-label="Tools">
+      {/* Also the Prompt Board's anchor while the rail is collapsed. */}
+      <div class="sidebar-actions__slot">
+        <button
+          type="button"
+          class="iconbtn sidebar-actions__tool"
+          aria-label="Tools"
+          title="Tools"
+          aria-haspopup="menu"
+          aria-expanded={open !== null}
+          onClick={(event) => {
+            if (open !== null) {
+              close(false);
+              return;
+            }
+            const trigger = event.currentTarget;
+            setOpen({ trigger, rect: trigger.getBoundingClientRect() });
+          }}
+        >
+          <DeckIcon icon={SquaresFour} size={RAIL_ICON} />
+        </button>
+        {open !== null && (
+          <RailToolsMenu
+            items={railToolItems(props)}
+            rect={open.rect}
+            trigger={open.trigger}
+            onClose={close}
+          />
+        )}
+        {props.promptsOpen ? props.promptPopover : null}
+      </div>
+    </nav>
+  );
+}
+
 export function SidebarActions(props: SidebarActionsProps) {
+  if (props.collapsed === true) {
+    return <CollapsedTools {...props} />;
+  }
   return (
     <nav class="sidebar-actions" aria-label="Tools">
       {/* The positioning context for the Prompt Board popover, which opens from

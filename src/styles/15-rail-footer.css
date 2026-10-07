@@ -29,6 +29,15 @@
   height: 26px;
 }
 
+/* DL-28.6: in the avatar column the six icons are one `Tools` button, centred
+   under the avatars with the same seam above it. The column centres its
+   children, which would shrink the seam to the button's width. */
+.sidebar-actions--collapsed {
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+}
+
 /* The usage summary draws its own hairline and gap for the days it closed the
    rail alone; behind the tools row it shares theirs. */
 .sidebar-actions + .agent-usage-summary {

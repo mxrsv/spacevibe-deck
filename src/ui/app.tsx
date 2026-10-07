@@ -1907,6 +1907,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    */
   const railActions = (
     <SidebarActions
+      // `railToolsMounted` already implies the Electron column, so collapsed
+      // here is exactly the avatar column's `Tools` button (DL-28.6).
+      collapsed={effectiveSidebarCollapsed()}
       // Every callback here OPENS and stops. Pressing the row of something
       // already on screen is a no-op, so none of them can be the thing that
       // puts a surface away — that stays with each surface's own control.

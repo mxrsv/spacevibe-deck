@@ -207,6 +207,17 @@ describe("AgentRail collapsed (DL-27.29)", () => {
     expect(host.querySelector(".sidebar-launcher")).toBeNull();
   });
 
+  // DL-28.6: the tools stay reachable while collapsed, at the column's foot.
+  it("seats the rail's footer after the avatars, not inside their list", async () => {
+    mount({ collapsed: true, footer: <div data-testid="rail-footer" /> });
+    await settle();
+
+    const footer = host.querySelector('[data-testid="rail-footer"]');
+    const list = host.querySelector(".asr-column__list");
+    expect(list?.contains(footer)).toBe(false);
+    expect(list?.nextElementSibling).toBe(footer);
+  });
+
   it("draws the tree and no avatars when expanded", async () => {
     mount({ collapsed: false });
     await settle();

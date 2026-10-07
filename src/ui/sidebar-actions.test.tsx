@@ -2,6 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { railCardMenuOpen } from "../chrome/events";
 import { SidebarActions } from "./sidebar-actions";
 
 describe("SidebarActions", () => {
@@ -155,5 +156,151 @@ describe("SidebarActions", () => {
 
     act(() => tools()[0]?.focus());
     expect(document.querySelector(".action-tip")).toBeNull();
+  });
+
+  // DL-28.6: collapsed, the six icons are one `Tools` button and its popover.
+  describe("collapsed", () => {
+    const button = (): HTMLButtonElement =>
+      host.querySelector<HTMLButtonElement>('button[aria-label="Tools"]')!;
+    const menu = (): HTMLElement | null => document.querySelector(".rail-tools-menu");
+    const rows = (): HTMLButtonElement[] =>
+      Array.from(document.querySelectorAll<HTMLButtonElement>(".rail-tools-menu [role=menuitem]"));
+    const press = (element: Element): void => {
+      act(() => {
+        element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+    };
+    const key = (name: string): void => {
+      act(() => {
+        document.activeElement?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }),
+        );
+      });
+    };
+
+    it("draws one Tools button and no icon row; expanded draws the reverse", () => {
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      expect(button()).not.toBeNull();
+      expect(tools()).toHaveLength(1);
+      expect(host.querySelector(".sidebar-actions__tools")).toBeNull();
+
+      act(() => render(<SidebarActions {...base} />, host));
+      expect(host.querySelector('button[aria-label="Tools"]')).toBeNull();
+      expect(tools()).toHaveLength(6);
+    });
+
+    it("opens the six tools as rows with their chords, in order", () => {
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      expect(menu()).toBeNull();
+
+      press(button());
+
+      expect(button().getAttribute("aria-expanded")).toBe("true");
+      expect(rows().map((row) => row.querySelector(".toolbar-menu__label")?.textContent)).toEqual([
+        "Session history",
+        "Token usage",
+        "Explorer",
+        "Prompts",
+        "Browser",
+        "Settings",
+      ]);
+      for (const row of rows()) {
+        expect(row.querySelector(".toolbar-menu__kbd")?.textContent).not.toBe("");
+      }
+      // Focus lands on the first row once the menu is placed.
+      expect(document.activeElement).toBe(rows()[0]);
+    });
+
+    it("runs a chosen row once and closes without taking focus back", () => {
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      press(button());
+
+      press(rows()[2]!);
+
+      expect(base.onOpenExplorer).toHaveBeenCalledTimes(1);
+      expect(menu()).toBeNull();
+      expect(document.activeElement).not.toBe(button());
+    });
+
+    it("keeps an unavailable Prompts row in place, inert, with its reason", () => {
+      act(() =>
+        render(
+          <SidebarActions {...base} collapsed promptsUnavailable="no pane to paste into" />,
+          host,
+        ),
+      );
+      press(button());
+
+      const prompts = rows()[3]!;
+      expect(prompts.getAttribute("aria-disabled")).toBe("true");
+      expect(prompts.textContent).toContain("no pane to paste into");
+      press(prompts);
+      expect(base.onOpenPrompts).not.toHaveBeenCalled();
+      expect(menu()).not.toBeNull();
+    });
+
+    it("closes on Escape and returns focus to the button", () => {
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      press(button());
+
+      key("Escape");
+
+      expect(menu()).toBeNull();
+      expect(document.activeElement).toBe(button());
+    });
+
+    it("closes on an outside press, and a second press on the button toggles it shut", () => {
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      press(button());
+      act(() => {
+        document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      });
+      expect(menu()).toBeNull();
+
+      press(button());
+      expect(menu()).not.toBeNull();
+      press(button());
+      expect(menu()).toBeNull();
+    });
+
+    it("moves between rows with the arrow keys, wrapping", () => {
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      press(button());
+
+      key("ArrowUp");
+      expect(document.activeElement).toBe(rows()[5]);
+      key("ArrowDown");
+      expect(document.activeElement).toBe(rows()[0]);
+    });
+
+    it("raises the stage overlay flag while open and clears it after", async () => {
+      // The flag's release is delayed on purpose (`useStageOverlayFlag`), so a
+      // sweep across menus is one hide; the earlier tests' releases land first.
+      const released = (): Promise<void> =>
+        act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 320));
+        });
+      await released();
+      act(() => render(<SidebarActions {...base} collapsed />, host));
+      expect(railCardMenuOpen.value).toBe(false);
+
+      press(button());
+      expect(railCardMenuOpen.value).toBe(true);
+
+      key("Escape");
+      await released();
+      expect(railCardMenuOpen.value).toBe(false);
+    });
+
+    it("anchors the Prompt Board popover to the button's slot", () => {
+      act(() =>
+        render(
+          <SidebarActions {...base} collapsed promptsOpen promptPopover={<div class="pp" />} />,
+          host,
+        ),
+      );
+
+      expect(host.querySelector(".sidebar-actions__slot .pp")).not.toBeNull();
+    });
   });
 });

@@ -3187,12 +3187,17 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
 
 ## 28. The rail's action footer
 
-> **HIDDEN since 2026-08-17 (owner).**
-> [`SIDEBAR_TOOLS_HIDDEN`](../src/ui/sidebar-actions.tsx) `current` takes the
-> `Tools` block out of the rail; the rail now ends at its last workspace row.
-> The rules below, the component and its CSS all stand — restoring it is
-> flipping that one constant, the same revert seam `PANE_TREE_HIDDEN` uses.
+> **Restored 2026-10-07 (owner, decision 9) as an icon row on Electron's sidebar.**
+> The tools are a single row of icon buttons at the foot of the rail, below the
+> project list and above the usage summary, in this order: Session history,
+> Token usage, Explorer, Prompts, Browser, Settings. `SIDEBAR_TOOLS_HIDDEN` is
+> deleted. The frozen Tauri rail and top-tab mode do not mount the row
+> ([`SidebarActions`](../src/ui/sidebar-actions.tsx) `current`).
 >
+> **HIDDEN from 2026-08-17 to 2026-10-07 (owner), kept as the record of that
+> period.** A flag took the `Tools` block out of the rail, which then ended at
+> its last workspace row. The flag was the same revert seam `PANE_TREE_HIDDEN`
+> uses.
 > **It moved rather than vanished, and it had to.** These five rows were
 > mounted in exactly one place per layout — this footer in sidebar mode,
 > `More` in top-tab mode — and the Prompt Board popover anchors to the
@@ -3215,10 +3220,20 @@ reserved — the next free number above §27, not the gap.
   surfaces it opens. It **closes the rail** since 2026-08-25: it was written to
   sit above the sidebar banner, which kept the closing position (DL-26.4) until
   that feature was removed.
+
+  **Amended 2026-10-07 (owner):** the row sits below the project list and above
+  the §33 usage summary; the usage summary, not the row, now closes the rail.
 - **DL-28.2** Its members are **rows, not icons**: the column has prose width,
   so a row says what it does instead of teaching a glyph. Hover takes DL-21.2's
   quieter wash, and an action that cannot run follows DL-23.6 rather than
   taking a `disabled` attribute.
+
+  **Amended 2026-10-07 (owner): icons, not rows.** The rail's own rows now
+  carry a task label and a status line, so the foot reads as chrome beside
+  them: six `RAIL_ICON`-sized icon buttons with DL-23's tooltip (name and
+  chord) opening **above** the button (DL-23.4 amended). Hover takes DL-21.2's
+  wash, keyboard focus DL-21.3's outline, and an action that cannot run follows
+  DL-23.6.
 - **DL-28.3** The footer carries **everything that is not an operation on the
   focused pane**: the surfaces Deck can open (the browser, and the dock's own
   tabs) and the window's own actions. A control that acts on a pane — a
@@ -3233,6 +3248,11 @@ reserved — the next free number above §27, not the gap.
   built from one projection, so neither can drift
   ([`pinnedMenu`](../src/ui/toolbar/feature-toolbar.tsx) `current`).
 
+  **Amended 2026-10-07 (owner):** top-tab mode and the Tauri host still stand
+  the global group up in `More`; the Electron sidebar mounts the icon row
+  instead and `More` then carries the pane group only. So does an Electron
+  window with no live rail, which has nothing to hold the row.
+
 - **DL-28.5** **These rows OPEN, and report nothing (2026-08-16).** They carry
   no selection state — no DL-21.1 wash, no `aria-pressed`, no `aria-expanded` —
   and pressing the row of a surface already on screen is a no-op. Closing
@@ -3243,6 +3263,22 @@ reserved — the next free number above §27, not the gap.
   them: a chord stays a toggle (`revealDockTab`), a launcher opens
   (`openDockTab`, [`settings-store.ts`](../src/settings/settings-store.ts)
   `current`).
+
+  **Amended 2026-10-07 (owner): the icons keep the rule.** An icon opens its
+  surface and reports nothing — no wash, no `aria-pressed`, no `aria-expanded`
+  (DL-21.8). Prompts keeps `aria-haspopup` without `aria-expanded`.
+
+- **DL-28.6** **Collapsed, the row becomes one `Tools` button (2026-10-07,
+  owner).** In DL-27.29's avatar column the six icons give way to a single grid
+  button at the column's foot. Pressing it opens a DL-13 popover beside the
+  column whose rows are the same six tools with their chords (DL-23.5's row
+  shape); choosing a row runs it and closes the popover, Esc closes it and
+  returns focus to the button, and the stage overlay flag is raised while it is
+  open so the browser's native view steps aside. The Prompt Board popover
+  anchors to this button while the rail is collapsed. The button carries a
+  native `title`, like the column's avatars, because a tooltip centred above a
+  36px column would hang far from it
+  ([`RailToolsMenu`](../src/ui/rail-tools-menu.tsx) `current`).
 
 ## 29. Modals
 

@@ -277,6 +277,7 @@ function WorktreeCardRail(props: AgentRailProps) {
       <RailAvatarColumn
         avatars={buildRailAvatars(view)}
         stream={view.stream}
+        footer={props.footer}
         cards={{
           onFocusPane: props.onFocusPane,
           onClosePane: props.onClosePane,

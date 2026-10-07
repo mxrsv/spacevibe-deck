@@ -194,6 +194,7 @@ export function agentRailNavigationSpecimen({
       footer={
         showFooter ? (
           <SidebarActions
+            collapsed={collapsed}
             sessionsAvailable
             promptsUnavailable={promptsDisabled ? "no pane to paste into" : null}
             promptsOpen={false}
