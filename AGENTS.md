@@ -27,6 +27,11 @@ documentation index is [docs/README.md](docs/README.md).
   [internals/telemetry.md](docs/internals/telemetry.md); the receiving service is
   [backend/](backend/README.md).
 - **The Electron cutover is a clean install**, with no settings or workspace migration.
+- **The navigation rail refresh runs as a queue.** Its
+  [spec](docs/specs/2026-10-06-navigation-rail-refresh.md) lists the slices in order; the first
+  row not `Done` is the next work. That slice's plan carries an Operating contract: once the
+  owner approves the plan, the contract is your authorization — run its tasks and gates
+  without asking again, and stop only for the hard stops it names.
 
 Where the current behaviour of a surface is written down:
 
@@ -162,8 +167,9 @@ index is [docs/README.md](docs/README.md).
   appended PR summaries. When a documented decision changes, rewrite or remove the text; never
   append a second account. Keep a local explanation in a code comment; use an internal page
   only when the reasoning crosses boundaries.
-- **Plans, specs, research notes and review reports are not committed.** A merged PR is the
-  implementation record. Active work lives in a local plan under `docs/plans/`, which is
+- **Specs under `docs/specs/` are committed** so a reset or a fresh worktree cannot lose
+  them (owner, 2026-10-07). **Plans, research notes and review reports are not.** A merged PR
+  is the implementation record. Active work lives in a local plan under `docs/plans/`, which is
   gitignored, so it exists only in the primary checkout: a session in a worktree reads and
   updates it there by absolute path.
 - `docs/DESIGN-LANGUAGE.md` stays at its path and keeps its numbering: a test reads it, and
