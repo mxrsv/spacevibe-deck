@@ -25,6 +25,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 - **The strip shows where you are.** It reads project › branch › space › session
   for the focused pane, and its marks — with ⌘1–9 and switching between spaces —
   cover the current project; other projects are a click away in the rail.
+- **Collapse the rail to a column of projects.** The toggle, a drag past the
+  rail's edge or **⌘B** (Ctrl+Shift+L on Windows) shrinks it to one avatar per
+  project instead of hiding it. A badge counts the agents waiting on you, red
+  when one failed. Press an avatar to open that project's sessions beside the
+  column, and arrow keys walk the avatars. Switching never moves the pane you
+  are typing in.
 
 ## 2.6.0
 
