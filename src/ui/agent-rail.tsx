@@ -273,7 +273,20 @@ function WorktreeCardRail(props: AgentRailProps) {
   }
 
   if (props.collapsed === true) {
-    return <RailAvatarColumn avatars={buildRailAvatars(view)} />;
+    return (
+      <RailAvatarColumn
+        avatars={buildRailAvatars(view)}
+        stream={view.stream}
+        cards={{
+          onFocusPane: props.onFocusPane,
+          onClosePane: props.onClosePane,
+          onCloseTab: props.onCloseTab,
+          onSelectTab: props.onSelectTab,
+          onRenameTab: props.onRenameTab,
+          actions: props.cardActions,
+        }}
+      />
+    );
   }
 
   return (

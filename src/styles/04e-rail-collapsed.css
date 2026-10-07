@@ -121,3 +121,43 @@
       color var(--duration) var(--ease);
   }
 }
+
+/* ── The flyout (DL-27.29) ───────────────────────────────────────────────────
+   A DL-13 popover: `.asr-pop` supplies the fixed surface, its radius and the
+   row base the badges' rings are cut from. What it holds is the tree's own
+   `WorktreeCard`, so no row or checkout rule is restated here. */
+.asr-flyout {
+  width: 288px;
+  max-height: calc(100vh - 16px);
+  padding: 6px;
+  gap: 4px;
+}
+
+.asr-flyout__head {
+  padding: 4px 8px 2px;
+  color: var(--text-primary);
+  font: 600 var(--type-body) / 1.2 var(--ui-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The cluster's own frame is the tree's project frame; inside a popover it would
+   be a second box around the first. */
+.asr-flyout .asr-cluster {
+  padding: 0;
+}
+
+/* DL-1.5: motion only where the user has not asked for less. Reduced, the flyout
+   simply appears. */
+@media (prefers-reduced-motion: no-preference) {
+  .asr-flyout {
+    animation: asr-flyout-in var(--duration) var(--ease);
+  }
+}
+
+@keyframes asr-flyout-in {
+  from {
+    opacity: 0;
+  }
+}

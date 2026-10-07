@@ -45,6 +45,8 @@ import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
 import { sessionArchive } from "../terminal/session-journal";
 import { paneModels, paneTails } from "../terminal/session-tail-store";
+import { railCardMenuOpen } from "../chrome/events";
+import type { CardActions } from "./worktree-card-menus";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -291,5 +293,158 @@ describe("AgentRail collapsed (DL-27.29)", () => {
 
     expect(host.querySelector(".asr-avatar")).toBeNull();
     expect(host.querySelector(".asr-rail--column")).toBeNull();
+  });
+});
+
+function press(element: Element | null | undefined): void {
+  act(() => {
+    element?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+function flyout(): HTMLElement | null {
+  return host.querySelector<HTMLElement>(".asr-flyout");
+}
+
+function key(name: string): void {
+  act(() => {
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }),
+    );
+  });
+}
+
+describe("AgentRail collapsed flyout (DL-27.29)", () => {
+  it("opens nothing on hover alone", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    act(() => {
+      avatars()[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      avatars()[0].dispatchEvent(new MouseEvent("pointerenter", { bubbles: true }));
+    });
+
+    expect(flyout()).toBeNull();
+    expect(avatars()[0].getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("opens the project's checkouts as the tree's own cards on press", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    press(avatars()[1]);
+
+    const open = flyout();
+    expect(open?.getAttribute("aria-label")).toBe("api sessions");
+    expect(open?.querySelector(".asr-flyout__head")?.textContent).toBe("api");
+    // `WorktreeCard`, not a restyled copy: the tree's checkout and row classes.
+    expect(open?.querySelectorAll(".asr-checkout")).toHaveLength(1);
+    expect(open?.querySelector(".asr-checkout__name")?.textContent).toBe("main");
+    expect(open?.querySelectorAll(".asr-card__row")).toHaveLength(1);
+    expect(avatars()[1].getAttribute("aria-expanded")).toBe("true");
+    // Keyboard users land in it: the first control takes focus.
+    expect(open?.contains(document.activeElement)).toBe(true);
+  });
+
+  it("focuses the exact pane behind a flyout row and closes (RAIL5)", async () => {
+    const onFocusPane = vi.fn();
+    mount({ collapsed: true, onFocusPane });
+    await settle();
+    press(avatars()[1]);
+
+    press(flyout()?.querySelector(".asr-card__row .asr-card__hit"));
+
+    // The pane's GLOBAL tab index (the second tab) and its own id.
+    expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(1, 21);
+    expect(flyout()).toBeNull();
+  });
+
+  it("closes on Esc and returns focus to the avatar", async () => {
+    mount({ collapsed: true });
+    await settle();
+    press(avatars()[0]);
+    expect(flyout()).not.toBeNull();
+
+    key("Escape");
+
+    expect(flyout()).toBeNull();
+    expect(document.activeElement).toBe(avatars()[0]);
+  });
+
+  it("closes on a press outside, and a second press on its avatar closes too", async () => {
+    mount({ collapsed: true });
+    await settle();
+    press(avatars()[0]);
+
+    act(() => {
+      document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    });
+    expect(flyout()).toBeNull();
+
+    press(avatars()[0]);
+    expect(flyout()).not.toBeNull();
+    press(avatars()[0]);
+    expect(flyout()).toBeNull();
+  });
+
+  it("keeps one flyout at a time", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    press(avatars()[0]);
+    press(avatars()[1]);
+
+    expect(host.querySelectorAll(".asr-flyout")).toHaveLength(1);
+    expect(flyout()?.querySelector(".asr-flyout__head")?.textContent).toBe("api");
+  });
+
+  it("raises the stage overlay flag so the browser's native view steps aside", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    press(avatars()[0]);
+    expect(railCardMenuOpen.value).toBe(true);
+
+    key("Escape");
+    // The flag's release is delayed on purpose (`useStageOverlayFlag`), so a sweep
+    // across menus is one hide rather than several.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 320));
+    });
+    expect(railCardMenuOpen.value).toBe(false);
+  });
+
+  it("closes the flyout when a checkout's `+` opens the launcher", async () => {
+    const onOpenAgentLauncher = vi.fn();
+    const cardActions: CardActions = {
+      agents: [],
+      agentsResolved: true,
+      onRunAgent: vi.fn(),
+      onSplitHere: vi.fn(),
+      onOpenAgentLauncher,
+    };
+    mount({ collapsed: true, cardActions });
+    await settle();
+    press(avatars()[0]);
+
+    press(flyout()?.querySelector(".asr-checkout__add"));
+
+    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/w/deck");
+    expect(flyout()).toBeNull();
+  });
+
+  it("follows the project: its last tab closing takes the flyout with it", async () => {
+    mount({ collapsed: true });
+    await settle();
+    press(avatars()[1]);
+    expect(flyout()).not.toBeNull();
+
+    act(() => {
+      tabViews.value = [tab({ key: 1, workspacePath: "/w/deck", panes: [pane({ paneId: 11 })] })];
+    });
+    await settle();
+
+    expect(flyout()).toBeNull();
+    expect(avatars()).toHaveLength(1);
   });
 });
