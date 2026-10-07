@@ -2715,6 +2715,14 @@ export function createTabManager(
         focusStage();
       }
     },
+    // The setting, straight (DL-27.29): the sidebar's own buttons and drag write
+    // the same one, so every route switches tree and column identically. The
+    // control that had focus (a rail row, an avatar) unmounts with the switch, so
+    // the stage takes focus back — the same pane, never another one.
+    "toggle-sidebar": () => {
+      updateSettings({ sidebarCollapsed: !settings.value.sidebarCollapsed });
+      focusStage();
+    },
     // Guarded where its two siblings are not, because this tab can be ABSENT:
     // `availableDockTabs` drops it on a host with no `sessions_list`, and
     // `resolveDockTab` then falls the column back to explorer — so an
@@ -2962,6 +2970,7 @@ export function createTabManager(
     return (
       action === "toggle-dock" ||
       action === "toggle-explorer" ||
+      action === "toggle-sidebar" ||
       action === "toggle-sessions" ||
       action === "toggle-usage"
     );

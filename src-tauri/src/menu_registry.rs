@@ -103,6 +103,7 @@ pub fn build_view_menu<R: Runtime>(
         "Side Panel",
         Some("CmdOrCtrl+Shift+J"),
     )?;
+    let toggle_sidebar = action_item(handle, "toggle-sidebar", "Sidebar", Some("CmdOrCtrl+B"))?;
     let toggle_explorer = action_item(
         handle,
         "toggle-explorer",
@@ -146,6 +147,7 @@ pub fn build_view_menu<R: Runtime>(
         .separator()
         .item(&toggle_mission_control)
         .item(&toggle_dock)
+        .item(&toggle_sidebar)
         .item(&toggle_explorer)
         .item(&toggle_usage)
         .item(&toggle_sessions)

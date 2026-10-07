@@ -47,14 +47,19 @@ function avatarName(avatar: RailAvatar): string {
 interface AvatarProps {
   readonly avatar: RailAvatar;
   readonly open: boolean;
+  /** The one avatar the Tab key stops on; the arrow keys move it (roving tabindex). */
+  readonly tabStop: boolean;
   onPress(button: HTMLButtonElement): void;
+  onFocus(): void;
 }
 
-function Avatar({ avatar, open, onPress }: AvatarProps) {
+function Avatar({ avatar, open, tabStop, onPress, onFocus }: AvatarProps) {
   return (
     <button
       type="button"
       class="asr-avatar"
+      tabIndex={tabStop ? 0 : -1}
+      onFocus={onFocus}
       data-current={avatar.current}
       data-key={avatar.key}
       aria-current={avatar.current ? "true" : undefined}
@@ -170,6 +175,22 @@ function RailFlyout({ group, rect, trigger, cards, onClose }: FlyoutProps) {
   );
 }
 
+/** Where an arrow key moves from `index`, or `null` for a key the column leaves alone. */
+function avatarTarget(key: string, index: number, count: number): number | null {
+  switch (key) {
+    case "ArrowDown":
+      return Math.min(count - 1, index + 1);
+    case "ArrowUp":
+      return Math.max(0, index - 1);
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+
 interface OpenFlyout {
   readonly key: string;
   readonly trigger: HTMLButtonElement;
@@ -179,6 +200,11 @@ interface OpenFlyout {
 export function RailAvatarColumn({ avatars, stream, cards }: RailAvatarColumnProps) {
   // One flyout at a time: a single slot, so pressing another avatar replaces it.
   const [open, setOpen] = useState<OpenFlyout | null>(null);
+  const [stopKey, setStopKey] = useState<string | null>(null);
+  // The remembered stop, else the project holding the selected tab, else the first.
+  const tabStopKey = avatars.some((avatar) => avatar.key === stopKey)
+    ? stopKey
+    : (avatars.find((avatar) => avatar.current) ?? avatars[0])?.key;
   const openGroup = open === null ? undefined : stream.find((group) => group.key === open.key);
 
   // The project can leave the rail under an open flyout (its last tab closed).
@@ -199,12 +225,29 @@ export function RailAvatarColumn({ avatars, stream, cards }: RailAvatarColumnPro
   return (
     <nav class="asr-rail asr-rail--mounted asr-rail--column" aria-label="Agents">
       <div class="asr-column__drag" data-tauri-drag-region aria-hidden="true" />
-      <div class="asr-column__list">
+      <div
+        class="asr-column__list"
+        onKeyDown={(event) => {
+          // ↑/↓ walk the avatars; Enter and Space are the button's own press, which opens
+          // the flyout. Anything inside the open flyout never bubbles through this list.
+          const buttons = [...event.currentTarget.querySelectorAll<HTMLElement>(".asr-avatar")];
+          const index = buttons.findIndex((button) => button === document.activeElement);
+          const target = index < 0 ? null : avatarTarget(event.key, index, buttons.length);
+          if (target !== null) {
+            event.preventDefault();
+            buttons[target].focus();
+          }
+        }}
+      >
         {avatars.map((avatar) => (
           <Avatar
             key={avatar.key}
             avatar={avatar}
             open={open?.key === avatar.key}
+            tabStop={avatar.key === tabStopKey}
+            onFocus={() => {
+              setStopKey(avatar.key);
+            }}
             onPress={(button) => {
               // A second press on the avatar that opened it closes it.
               if (open?.key === avatar.key) {

@@ -524,6 +524,21 @@ describe("file surfaces in the tab strip", () => {
     tm.dispose();
   });
 
+  it("toggle-sidebar still switches the sidebar while a file surface owns the stage", async () => {
+    const surfaces = fakeSurfaces({ count: 1, total: 1 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    surfaces.activeIndexValue = 0;
+    expect(settings.value.sidebarCollapsed).toBe(false);
+
+    tm.runAction("toggle-sidebar");
+    expect(settings.value.sidebarCollapsed).toBe(true);
+
+    tm.runAction("toggle-sidebar");
+    expect(settings.value.sidebarCollapsed).toBe(false);
+    tm.dispose();
+  });
+
   it("toggle-explorer still reveals and puts away the column while a file surface owns the stage", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });

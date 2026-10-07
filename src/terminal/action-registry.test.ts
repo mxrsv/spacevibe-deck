@@ -46,6 +46,18 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
+  // DL-27.29: ⌘B on macOS, where a bare ⌘ chord never reaches the PTY. Windows
+  // cannot take Ctrl+B (readline's cursor-back, tmux's prefix), so it gets
+  // Ctrl+Shift+L, with `b` left to the explorer's Ctrl+Shift+B.
+  it("binds toggle-sidebar on both platforms without shadowing a terminal key", () => {
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-sidebar");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-sidebar");
+    expect(mac).toEqual([{ key: "b", meta: true, action: "toggle-sidebar" }]);
+    expect(win).toEqual([{ key: "l", ctrl: true, shift: true, action: "toggle-sidebar" }]);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
   it("binds toggle-usage on both platforms without colliding", () => {
     const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-usage");
     const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-usage");
@@ -121,7 +133,7 @@ describe("ACTION_REGISTRY", () => {
   // renderer because their native Cocoa roles cannot reach Monaco.
   // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
   // copy-selection — see docs/internals/terminal.md.
-  it("has exactly the 55 action ids including updater menu actions", () => {
+  it("has exactly the 56 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -134,6 +146,7 @@ describe("ACTION_REGISTRY", () => {
         "toggle-prompts",
         "toggle-usage",
         "toggle-sessions",
+        "toggle-sidebar",
         "toggle-markdown-view",
         "move-pane-to-new-window",
         "new-tab",

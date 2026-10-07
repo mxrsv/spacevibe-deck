@@ -109,6 +109,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "toggle-mission-control": "app",
   "toggle-dock": "app",
   "toggle-explorer": "app",
+  "toggle-sidebar": "app",
   "toggle-sessions": "app",
   "toggle-usage": "app",
   "focus-next-attention": "app",

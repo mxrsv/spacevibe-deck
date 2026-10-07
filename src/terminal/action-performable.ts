@@ -107,6 +107,9 @@ const PREDICATES: ReadonlyMap<ShortcutAction, Predicate> = new Map<ShortcutActio
       context.hasTerminalTab === true &&
       (context.stageOwner !== "overlay" || context.missionControlOpen === true),
   ],
+  // Tab-conditional: with no tab the rail is not mounted, so there is nothing to
+  // switch and ⌘B must reach whatever holds focus (DL-27.29).
+  ["toggle-sidebar", (context) => context.hasTerminalTab === true],
 ]);
 
 export function isActionPerformable(action: ShortcutAction, context: PerformableContext): boolean {

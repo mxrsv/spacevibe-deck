@@ -449,6 +449,18 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "explorer" },
   },
   {
+    id: "toggle-sidebar",
+    label: "Sidebar",
+    // Tier "pane" and in `isChromeScopedAction` alongside `toggle-dock`, for the
+    // same reasons: the sidebar stands BESIDE the stage, a document on the stage
+    // must not strand it, and every overlay covers the column with the grid.
+    // On Electron the sidebar's collapse is DL-27.29's avatar column; Tauri
+    // hides it (DL-18.9). Performable only while a tab is open — with none the
+    // rail does not exist, so the key reaches whatever holds focus.
+    scope: "pane",
+    menu: { submenu: "View", group: "explorer" },
+  },
+  {
     id: "toggle-explorer",
     label: "Explorer",
     // Tier "pane", same overlay reasoning as toggle-browser above: the

@@ -83,6 +83,7 @@ export const COMMAND_ACTIONS = [
   "toggle-prompts",
   "toggle-sessions",
   "toggle-settings",
+  "toggle-sidebar",
   "toggle-usage",
   "toggle-zoom-pane",
   "undo",

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
+import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -446,5 +447,98 @@ describe("AgentRail collapsed flyout (DL-27.29)", () => {
 
     expect(flyout()).toBeNull();
     expect(avatars()).toHaveLength(1);
+  });
+});
+
+function arrow(name: string): void {
+  act(() => {
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true }),
+    );
+  });
+}
+
+describe("AgentRail collapsed keyboard and motion (COLLAPSE2)", () => {
+  it("is one tab stop, on the current project, with every avatar a real button", async () => {
+    activeTabIndex.value = 1;
+    mount({ collapsed: true });
+    await settle();
+
+    expect(avatars().map((avatar) => avatar.tabIndex)).toEqual([-1, 0]);
+    // A native button: Enter and Space press it, which is what opens the flyout.
+    expect(avatars().every((avatar) => avatar.tagName === "BUTTON")).toBe(true);
+  });
+
+  it("starts the tab stop on the first avatar when none is current", async () => {
+    tabViews.value = [tab({ key: 1, workspacePath: "/w/deck", panes: [pane({ paneId: 11 })] })];
+    tabViews.value = [
+      ...tabViews.value,
+      tab({ key: 2, workspacePath: "/w/api", panes: [pane({ paneId: 21 })] }),
+    ];
+    activeTabIndex.value = -1;
+    mount({ collapsed: true });
+    await settle();
+
+    expect(avatars().map((avatar) => avatar.tabIndex)).toEqual([0, -1]);
+  });
+
+  it("walks the avatars with the arrow keys, Home and End, and the tab stop follows", async () => {
+    mount({ collapsed: true });
+    await settle();
+    act(() => avatars()[0].focus());
+
+    arrow("ArrowDown");
+    expect(document.activeElement).toBe(avatars()[1]);
+    expect(avatars().map((avatar) => avatar.tabIndex)).toEqual([-1, 0]);
+
+    // The ends hold rather than wrap.
+    arrow("ArrowDown");
+    expect(document.activeElement).toBe(avatars()[1]);
+
+    arrow("ArrowUp");
+    expect(document.activeElement).toBe(avatars()[0]);
+    arrow("End");
+    expect(document.activeElement).toBe(avatars()[1]);
+    arrow("Home");
+    expect(document.activeElement).toBe(avatars()[0]);
+  });
+
+  it("leaves other keys alone", async () => {
+    mount({ collapsed: true });
+    await settle();
+    act(() => avatars()[0].focus());
+    const event = new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true });
+
+    act(() => {
+      avatars()[0].dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(avatars()[0]);
+  });
+
+  it("keeps focus on the avatar through a flyout that opens and closes by keyboard", async () => {
+    mount({ collapsed: true });
+    await settle();
+    act(() => avatars()[1].focus());
+
+    press(avatars()[1]);
+    expect(flyout()?.contains(document.activeElement)).toBe(true);
+    key("Escape");
+
+    expect(document.activeElement).toBe(avatars()[1]);
+  });
+
+  // DL-1.5 / COLLAPSE2: the partial's motion is added under `no-preference` and never
+  // switched off by class name, so under `reduce` the column and flyout are still.
+  it("declares every transition and animation inside the no-preference scope", () => {
+    const css = readFileSync("src/styles/04e-rail-collapsed.css", "utf8");
+    const outsideMotion = css.replace(
+      /@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}\n(?=\n|$)/g,
+      "",
+    );
+
+    expect(css).toMatch(/prefers-reduced-motion: no-preference/);
+    expect(outsideMotion).not.toMatch(/\b(transition|animation)\s*:/);
   });
 });

@@ -380,6 +380,63 @@ describe("toggle-explorer", () => {
   });
 });
 
+describe("toggle-sidebar (DL-27.29)", () => {
+  beforeEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+    settings.value = { ...DEFAULT_SETTINGS };
+  });
+
+  afterEach(() => {
+    settingsOpen.value = false;
+    settings.value = DEFAULT_SETTINGS;
+  });
+
+  it("flips the one stored collapse, so the buttons, the drag and the chord agree", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    expect(settings.value.sidebarCollapsed).toBe(false);
+
+    tm.runAction("toggle-sidebar");
+    expect(settings.value.sidebarCollapsed).toBe(true);
+
+    tm.runAction("toggle-sidebar");
+    expect(settings.value.sidebarCollapsed).toBe(false);
+    tm.dispose();
+  });
+
+  it("never moves the focused pane or the selected tab", async () => {
+    const { manager } = await mountManagerWithAgentPane("claude");
+    const snapshot = () => ({
+      active: activeTabIndex.value,
+      focused: tabViews.value.map((tab) => tab.panes?.map((pane) => pane.focused)),
+    });
+    const before = snapshot();
+    expect(before.focused.flat()).toContain(true);
+
+    manager.runAction("toggle-sidebar");
+    manager.runAction("toggle-sidebar");
+
+    expect(snapshot()).toEqual(before);
+    manager.dispose();
+  });
+
+  it("is blocked while Settings covers the grid, an ordinary 'pane' tier", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    settingsOpen.value = true;
+
+    tm.runAction("toggle-sidebar");
+
+    expect(settings.value.sidebarCollapsed).toBe(false);
+    tm.dispose();
+  });
+});
+
 describe("toggle-usage", () => {
   beforeEach(() => {
     // Same reasoning as `toggle-prompts` above: `settingsOpen` is not reset

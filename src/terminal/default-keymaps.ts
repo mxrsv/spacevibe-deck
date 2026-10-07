@@ -217,6 +217,12 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // not a style choice: this action has a macOS menu item, and a Cocoa
   // accelerator is declared by character (RULE above).
   { key: "b", meta: true, shift: true, action: "toggle-explorer" },
+  // The sidebar (DL-27.29): ⌘B is the chord every editor trains for "toggle side
+  // bar", and ⌘⇧B above is already its explorer. Bare ⌘ chords never reach the
+  // PTY, so unlike Windows nothing in a terminal is shadowed. CharKeyBinding is
+  // mandatory, not a style choice: this action has a macOS menu item, and a
+  // Cocoa accelerator is declared by character (RULE above).
+  { key: "b", meta: true, action: "toggle-sidebar" },
   // Token usage screen. ⌘⇧U is free on both keymaps — `u` is bound nowhere at
   // any modifier combination, verified exhaustively. CharKeyBinding is
   // mandatory, not a style choice: this action has a macOS menu item, and a
@@ -389,6 +395,11 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "i", ctrl: true, shift: true, action: "toggle-browser" },
   // Same chord as macOS, one modifier swapped — see the mac entry above.
   { key: "b", ctrl: true, shift: true, action: "toggle-explorer" },
+  // The sidebar (DL-27.29). Not Ctrl+B, the macOS chord's twin: bare Ctrl+B is
+  // readline's cursor-back and tmux's prefix, so a Ctrl+B Deck consumed would
+  // break both. Ctrl+Shift+B is the explorer above; `l` (left column) is unbound
+  // at every modifier combination on this keymap.
+  { key: "l", ctrl: true, shift: true, action: "toggle-sidebar" },
   { key: "tab", ctrl: true, action: "next-tab" },
   { key: "tab", ctrl: true, shift: true, action: "prev-tab" },
   ...WINDOWS_TAB_SELECT_BINDINGS,

@@ -163,3 +163,18 @@ describe("isActionPerformable — save-file", () => {
     },
   );
 });
+
+describe("toggle-sidebar", () => {
+  it("consumes the chord while a terminal tab is open, whoever owns the stage", () => {
+    for (const stageOwner of ["terminal", "surface", "overlay"] as const) {
+      expect(
+        isActionPerformable("toggle-sidebar", context({ stageOwner, hasTerminalTab: true })),
+      ).toBe(true);
+    }
+  });
+
+  it("leaves the keystroke alone with no tab, when there is no rail to switch", () => {
+    expect(isActionPerformable("toggle-sidebar", context({ hasTerminalTab: false }))).toBe(false);
+    expect(isActionPerformable("toggle-sidebar", context())).toBe(false);
+  });
+});
