@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+## 2.6.0
+
+This update shows which agents need you from the strip, moves each agent's state
+onto its logo in the rail, and stops a busy start from hiding installed agents.
+
 - **See every agent that needs you from the strip.** A
   [chip](src/ui/attention/attention-chip.tsx) at the strip's trailing end counts
   the agents waiting on you; it opens a list of them, failures first, and
