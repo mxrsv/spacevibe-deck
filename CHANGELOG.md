@@ -8,10 +8,13 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 ## Unreleased
 
 - **The rail is a tree.** Each project lists its checkouts by branch, worktrees
-  tagged, and each checkout its agents beneath it — no cards to open or fold.
-  An agent's row leads with what it is working on: the space's name, else your
-  [first prompt](src/ui/agent-rail-card-model.ts) to it (Claude Code and Codex),
-  then the agent and what it last said.
+  tagged, and each checkout its agents beneath it — no cards to open or fold,
+  and no frame around the project you are in. Rows are flat text on two lines.
+  The first leads with what the agent is working on: the space's name, else your
+  [first prompt](src/ui/agent-rail-card-model.ts) to it (Claude Code and Codex).
+  The second names the agent and what it last said, or its
+  [state](src/ui/agent-rail-card-model.ts) — Working, Needs you, Finished,
+  Ready — until it has said anything. The model moves into the row's tooltip.
 - **A project says how many agents need you.** Its header shows `N need you`,
   red when one of them failed, instead of how many are running.
 - **Start an agent from the checkout you mean.** The `+` beside a checkout's
