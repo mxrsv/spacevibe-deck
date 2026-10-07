@@ -136,6 +136,8 @@ the interface cleanup; do not enable disabled prompt delivery flags by default.
 - **LAUNCH3:** Any future prompt delivery defines supported providers and readiness
   behavior. Unknown support never becomes blind keystroke injection or silent loss.
 
+Requirements for the entry points and the page:
+[launch actions](2026-10-08-launch-actions.md) (owner, 2026-10-08).
 References: [launcher](../../src/launcher/agent-launch-page.tsx),
 [disabled prompt delivery](../../src/terminal/task-prompt-send.ts),
 [launcher proposal](../plans/2026-09-24-launcher-refresh.md),

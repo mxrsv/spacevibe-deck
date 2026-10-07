@@ -102,6 +102,9 @@ IDs map to the parent's NAV1–3 and ATT1–3 where noted.
 - **RAIL4**: Each checkout offers "New agent here" that opens the launcher **on that
   checkout**. The launcher's destination line shows Split only when the focused pane belongs
   to that checkout; otherwise it shows New space, and the launch does what the line said.
+  The per-checkout control is withdrawn by [launch actions](2026-10-08-launch-actions.md)
+  decision 3 (owner, 2026-10-08) in favour of one sidebar create row; the placement rule
+  stays there as PAGE1.
 - **RAIL5** (NAV2): Selecting a row focuses that exact pane, switching space if needed; a
   pane outside the visible layout is never selected into an undrawn state.
 
