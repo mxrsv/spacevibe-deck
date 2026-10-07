@@ -1,8 +1,9 @@
 # Launch actions: one launcher and one create row
 
 Date: 2026-10-08
-Status: Active — every decision taken 2026-10-08 (1–9 from the mock, 10–13 as recommended);
-slice 1's plan is drafted and awaits approval ([Delivery slices](#delivery-slices)).
+Status: Active — every decision taken 2026-10-08 (1–9 from the mock, 10–13 as recommended).
+The work is split into six packages over three waves ([Work packages](#work-packages)); the
+wave-1 plans await approval.
 Owner checkout: `/Users/kyantran/Documents/Development/spacevibe-workspace/spacevibe-deck`
 Baseline: written against `origin/main` at `ae395a9e` (2026-10-08), after the navigation rail's
 slice 3c moved `+ New` onto the identity row.
@@ -169,21 +170,30 @@ IDs map to the parent's LAUNCH1–2 where noted. LAUNCH3 (prompt delivery) is ou
   deleted with their tests and gallery specimens. DL-32.4 is withdrawn. No user-visible
   behaviour changes.
 
-## Delivery slices
+## Work packages
 
-The slices run in order, one plan and one session each. The first row not `Done` is the next
-work. Its plan carries an Operating contract: once the owner approves that plan, the contract
-is the agent's authorization. A session that finishes a slice sets its row to `Done` with the
-date and commits, then drafts the next slice's plan for approval. It does not start that
-slice's code in the same session.
+The work is split so that independent packages can be built by parallel agents, each in its
+own worktree, with its own plan. A package may start once every package it depends on is
+`Done` on `origin/main`. Packages in the same wave run at the same time. The shared rules for
+running them — worktrees, merge queue, gates, and what a package may edit — live in the
+[umbrella plan](../plans/2026-10-08-launch-actions.md). Each package plan carries its own
+tasks and Operating contract.
 
-| Slice | Requirements | Plan | Status |
-| --- | --- | --- | --- |
-| 1. Sidebar create row and entry routing | ROW-C1–C7 | [launch-create-row](../plans/2026-10-08-launch-create-row.md) | Plan drafted 2026-10-08, awaiting approval |
-| 2. Launch page context row | PAGE1, PAGE2, PAGE7 | — | Not started |
-| 3. Launch page details | PAGE3–PAGE6 | — | Not started |
-| 4. No tab open → launcher | EMPTY1, EMPTY2 (R4 seam) | — | Not started |
-| 5. Retire the legacy pieces | RETIRE1 | — | Not started |
+A package's **write set** is the files it owns: no other package in the same wave edits
+them. **Touch points** are shared files that several packages edit, each only in the place
+named. A change outside both is a hard stop for that package.
+
+| Pkg | Wave | Requirements | Depends on | Write set | Touch points | Plan | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A. Sidebar create row | 1 | ROW-C1–C7 | — | rail create-row component (new), sidebar worktree form (new), folder action (new), `agent-rail.tsx`, `agent-rail-column.tsx`, `worktree-card.tsx`, rail CSS (`02-shell`, `04a`, `04c`) | `app.tsx` (the identity row's `newButton` and the folder handler), DL §27 | [launch-create-row](../plans/2026-10-08-launch-create-row.md) | Plan drafted, awaiting approval |
+| B. Launch page context row | 1 | PAGE1, PAGE7 | — | context-row component (new), `agent-launch-page-store.ts` | `agent-launch-page.tsx` (the destination block only), `app.tsx` (`openAgentLaunchPage` only), DL §32 | [launch-page-context](../plans/2026-10-08-launch-page-context.md) | Plan drafted, awaiting approval |
+| E. Retire the legacy pieces | 1 | RETIRE1 | — | `launcher-store.ts`, `quick-launch.tsx`, `app-policy.ts`, gallery `board-section.tsx` | `launcher-fields.tsx` (the `Create worktree…` option), `worktree-card-menus.tsx` (the `Create branch from here` row), `tab-manager.ts` (the `newTab` fallback line only, R4), `app.tsx` (`closeQuickLaunch` callers), DL-32.4 | [launch-retire-legacy](../plans/2026-10-08-launch-retire-legacy.md) | Plan drafted, awaiting approval |
+| B2. Create from the page | 2 | PAGE2 | A, B | — | B's context-row component, A's form and folder action | drafted when wave 1 is `Done` | Not started |
+| C. Launch page details | 2 | PAGE3–PAGE6 | B | `agent-launch-cards.tsx`, `quick-agent-editor.tsx`, `agent-launch-page.css`, profile popover (new) | `agent-launch-page.tsx` (cards, preview, footer), `tab-manager.ts` (`launchAgentAtTarget` command override, R4), DL §4 and §32 | drafted when B is `Done` | Not started |
+| D. No tab open → launcher | 3 | EMPTY1, EMPTY2 | B2 | — | `app.tsx` (boot and `openTaskLauncher`), `agent-launch-target.ts`, the context row, the Open board's last-session and drop modules, DL-32.1 (R4) | drafted when B2 is `Done` | Not started |
+
+Wave 1 needs three worktrees at once. Wave 2 needs two. Wave 3 is one package on its own,
+because it crosses the R4 seam and every launch path.
 
 ## Open decisions
 
@@ -204,8 +214,15 @@ None. Questions 1–4 were answered on 2026-10-08 as decisions 10–13.
   - RAIL4's per-checkout launch (navigation rail refresh, slice 3, shipped 2026-10-07);
   - DL-32.6's `Add agent` card (2.4.0).
 - **EMPTY1 crosses a load-bearing seam (R4).** It needs a launch target before a workspace
-  exists, and today `captureAgentLaunchTarget` requires one. That slice needs its own plan
+  exists, and today `captureAgentLaunchTarget` requires one. Package D needs its own plan
   and cross-boundary verification.
+- **PAGE4 also touches the R4 seam.** `launchAgentAtTarget` composes the command itself
+  (`pageAgentCommand` reads the stored default profile). A per-visit profile pick therefore
+  needs a command override passed into it. Package C's plan names that one parameter and
+  its tests; nothing else in `tab-manager.ts` changes.
+- **RETIRE1 removes one line of `tab-manager.ts`:** `newTab`'s fallback to
+  `toggleQuickLaunch` when `onOpenTaskLauncher` is absent. Package E proves the fallback is
+  unreachable from the app before it deletes it.
 - **Tauri** (feature-frozen) keeps
   [`RepositoryRail`](../../src/ui/repository-rail.tsx), its `New Workspace` and the Open
   board. The launch page is unavailable there (`agentLaunchPageAvailable`), so nothing in
