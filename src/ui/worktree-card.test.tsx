@@ -735,43 +735,22 @@ describe("WorktreeCard row badge (DL-27.21, amended 2026-10-06)", () => {
   });
 });
 
-describe("WorktreeCard quiet logos (DL-27.21, amended 2026-10-06)", () => {
-  // Rows that need the user keep the logo's full ink; every other row's logo
-  // goes quiet, so the asking rows are the only full-colour logos in the column.
-  it.each(["asked", "failed"] as const)("leaves a %s row's logo at full ink", (state) => {
-    mount({ group: group({ panes: [pane({ state })] }) });
+describe("WorktreeCard logos keep their colour (DL-27.21, amended 2026-10-07)", () => {
+  // Quiet logos are withdrawn: no row carries `data-quiet`, whatever its state,
+  // so no rule can fade a logo; the corner badge alone carries the state.
+  it.each(["asked", "failed", "working", "done", "idle", "ended"] as const)(
+    "leaves a %s row's logo unchanged",
+    (state) => {
+      mount({ group: group({ panes: [pane({ state })] }) });
 
-    const row = host.querySelector<HTMLElement>(".asr-card__row")!;
-    expect(row.dataset.state).toBe(state);
-    expect(row.hasAttribute("data-quiet")).toBe(false);
-  });
+      const row = host.querySelector<HTMLElement>(".asr-card__row")!;
+      expect(row.dataset.state).toBe(state);
+      expect(row.hasAttribute("data-quiet")).toBe(false);
+      expect(row.querySelector(".asr-card__logo")).not.toBeNull();
+    },
+  );
 
-  it.each(["working", "done", "idle", "ended"] as const)("quiets a %s row's logo", (state) => {
-    mount({ group: group({ panes: [pane({ state })] }) });
-
-    const row = host.querySelector<HTMLElement>(".asr-card__row")!;
-    expect(row.dataset.state).toBe(state);
-    expect(row.dataset.quiet).toBe("true");
-  });
-
-  it("decides each row on its own state, whatever its neighbours say", () => {
-    mount({
-      group: group({
-        panes: [
-          pane({ paneId: 1, state: "asked" }),
-          pane({ paneId: 2, agent: "codex", label: "Codex", state: "done" }),
-          pane({ paneId: 3, agent: "droid", label: "Droid", state: "failed" }),
-        ],
-      }),
-    });
-
-    const quiet = [...host.querySelectorAll<HTMLElement>(".asr-card__row")].map((row) =>
-      row.hasAttribute("data-quiet"),
-    );
-    expect(quiet).toEqual([false, true, false]);
-  });
-
-  it("draws every kind of logo inside the row, for the stylesheet to quiet by kind", () => {
+  it("draws every kind of logo inside the row", () => {
     mount({
       group: group({
         panes: [

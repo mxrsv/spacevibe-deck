@@ -11,8 +11,9 @@ import "./row-badge-section.css";
 
 /**
  * The agent row's leading edge, for the owner to size by eye (owner decision 6,
- * 2026-10-06: a state badge on the logo's corner, quiet logos for every row that
- * does not need the user; DL-27.21 as amended that day).
+ * 2026-10-06: a state badge on the logo's corner, DL-27.21 as amended that day;
+ * the quiet logos that decision paired with it were withdrawn 2026-10-07, so
+ * every logo here keeps its full colour or ink).
  *
  * Every rail is the shipped `WorktreeCard`, so its rows are the shipped
  * `CardAgentRow` on the shipped sheet, opened onto one row per state. A column
@@ -57,16 +58,6 @@ function fiveRows(focusedId: number | null): readonly RailCardPane[] {
     pane({ paneId: 5, agent: "claude", label: "Claude", state: "idle", model: "Sonnet 4.5" }),
   ];
   return rows.map((row) => ({ ...row, focused: row.paneId === focusedId }));
-}
-
-/** Claude and Codex, each once at full ink and once quiet — the contrast check. */
-function contrastRows(): readonly RailCardPane[] {
-  return [
-    pane({ paneId: 1, agent: "claude", label: "Claude", state: "asked", model: "Sonnet 4.5" }),
-    pane({ paneId: 2, agent: "claude", label: "Claude", state: "done", model: "Sonnet 4.5" }),
-    pane({ paneId: 3, agent: "codex", label: "Codex", state: "failed", model: "GPT-5.1" }),
-    pane({ paneId: 4, agent: "codex", label: "Codex", state: "done", model: "GPT-5.1" }),
-  ];
 }
 
 function group(panes: readonly RailCardPane[]): RailWorktreeGroup {
@@ -183,21 +174,21 @@ const SIZES: readonly Variant[] = [
   },
   {
     id: "b6",
-    title: "Badge 6px, quiet logos",
+    title: "Badge 6px",
     note: "6px dot, 2px ring. The least of the three that covers the logo; the ring is the part that costs the mark its corner.",
     className: "gxrb--b6",
     panes: fiveRows(null),
   },
   {
     id: "b7",
-    title: "Badge 7px, quiet logos (the shipped start)",
+    title: "Badge 7px (the shipped start)",
     note: "7px dot, 2px ring, 3px outset: the values the row sheet starts at. The working row carries no dot — its bars sit in the trailing cell — and idle carries none either.",
     className: "gxrb--b7",
     panes: fiveRows(null),
   },
   {
     id: "b8",
-    title: "Badge 8px, quiet logos",
+    title: "Badge 8px",
     note: "8px dot, 2px ring. The loudest; on a 14px logo the badge and its ring cover about half the mark.",
     className: "gxrb--b8",
     panes: fiveRows(null),
@@ -227,35 +218,11 @@ const FOCUSED: readonly Variant[] = [
     panes: fiveRows(1),
   },
   {
-    id: "focus-quiet",
-    title: "Focused quiet row · 7px",
-    note: "a done row holding the keyboard: its ink mark is the fill's own ink at reduced alpha, and its neutral dot flips to that ink like the pill and the bars do. The two rows above and below it stay quiet.",
+    id: "focus-done",
+    title: "Focused done row · 7px",
+    note: "a done row holding the keyboard: its ink mark takes the fill's own ink, and its neutral dot flips to that ink like the pill and the bars do.",
     className: "gxrb--b7",
     panes: fiveRows(3),
-  },
-];
-
-const STRENGTHS: readonly Variant[] = [
-  {
-    id: "q30",
-    title: "Quiet at 30%",
-    note: "colour images at opacity 0.3, a focused ink mark at 35% of the fill's ink. An ink mark at rest is `--text-faint` in every column — it is a token, not a value this section varies.",
-    className: "gxrb--b7 gxrb--q30",
-    panes: contrastRows(),
-  },
-  {
-    id: "q40",
-    title: "Quiet at 40% (the shipped start)",
-    note: "opacity 0.4, focused ink at 45%. Claude is full above, quiet below; Codex is full above, quiet below, so each pair is one logo twice.",
-    className: "gxrb--b7",
-    panes: contrastRows(),
-  },
-  {
-    id: "q55",
-    title: "Quiet at 55%",
-    note: "opacity 0.55, focused ink at 60%. The fade a colour logo can take before it stops reading as quiet and starts reading as the logo.",
-    className: "gxrb--b7 gxrb--q55",
-    panes: contrastRows(),
   },
 ];
 
@@ -263,29 +230,22 @@ export function RowBadgeSection() {
   return (
     <>
       <SectionHead
-        title="Row badge and quiet logos"
-        blurb="Owner decision 6 (2026-10-06): the state mark moves from the trailing cell onto the agent logo's corner, and the logos of rows that do not need the user go quiet, so the rows that do are the only full-colour logos in the column. The owner picks the badge size and the quiet strength here by eye. Every rail is the shipped worktree card; every column is a variant class on the scope around it."
+        title="Row badge"
+        blurb="Owner decision 6 (2026-10-06): the state mark moves from the trailing cell onto the agent logo's corner. The quiet logos that decision paired with it were withdrawn on 2026-10-07, so every logo keeps its full colour or ink and the badge alone carries the state. The owner picks the badge size here by eye. Every rail is the shipped worktree card; every column is a variant class on the scope around it."
       />
       <Specimen
         name="Badge size"
-        note="today, then 6, 7 and 8px, each with quiet logos on. Dark above, light below. Rows from the top: asked (Claude), failed (Codex), done (Droid), working (Gemini), idle (Claude). Hover a row to see its ring take the hover wash."
+        note="today, then 6, 7 and 8px, each with full-colour logos. Dark above, light below. Rows from the top: asked (Claude), failed (Codex), done (Droid), working (Gemini), idle (Claude). Hover a row to see its ring take the hover wash."
         surface="none"
       >
         <Columns variants={SIZES} />
       </Specimen>
       <Specimen
         name="Focused row"
-        note="the keyboard's row is the inverted fill; the ring and the quiet ink both have to survive it. The badge stays on the logo while the pointer is on a row; only the trailing cell yields to close."
+        note="the keyboard's row is the inverted fill; the ring and the logo's ink both have to survive it. The badge stays on the logo while the pointer is on a row; only the trailing cell yields to close."
         surface="none"
       >
         <Columns variants={FOCUSED} />
-      </Specimen>
-      <Specimen
-        name="Quiet strength"
-        note="how far a quiet logo steps back, at the 7px badge. A quiet logo has to read clearly apart from a full one in both themes, and a colour logo faded too far reads as disabled rather than as quiet."
-        surface="none"
-      >
-        <Columns variants={STRENGTHS} />
       </Specimen>
     </>
   );

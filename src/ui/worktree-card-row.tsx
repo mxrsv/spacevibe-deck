@@ -55,9 +55,10 @@ export function signalLabelOf(
 export const BUSY_STATE: RailState = "working";
 
 /**
- * The states that need the user. Only these rows keep their logo's full ink;
- * every other row's logo goes quiet (DL-27.21, amended 2026-10-06), so the rows
- * asking for the user are the only full-colour logos in the column.
+ * The states that need the user: the attention list, the project header's
+ * count and the collapsed rail's marks read them. A row's logo keeps its full
+ * colour in every state (DL-27.21, amended 2026-10-07); the corner badge alone
+ * carries the state.
  */
 export function needsUser(state: RailState): boolean {
   return state === "asked" || state === "failed";
@@ -233,7 +234,6 @@ export function CardAgentRow({
       data-state={pane.state}
       data-confidence={pane.confidence}
       data-focused={pane.focused}
-      data-quiet={needsUser(pane.state) ? undefined : "true"}
       data-pane-id={pane.paneId}
     >
       <button

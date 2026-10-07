@@ -1,13 +1,11 @@
 /* The row-badge section's own treatment (`row-badge-section.tsx`): the layout of its columns and
-   the variant classes that choose a badge size and a quiet strength. Gallery-only; nothing here
-   is in the shipping sheet, and no variant redraws a row.
+   the variant classes that choose a badge size. Gallery-only; nothing here is in the shipping
+   sheet, and no variant redraws a row.
 
    A variant class sits on the scope around a rail, and the shipped row sheet (04c) reads it
-   three ways:
-   - the three badge variables are declared on `.asr-card__row .asr-card__glyph` (specificity
+   two ways:
+   - the badge variables are declared on `.asr-card__row .asr-card__glyph` (specificity
      0,2,0), so a variant restates them on a longer selector (0,3,0);
-   - `--asr-quiet-opacity` and `--asr-quiet-ink-alpha` are read with a fallback and declared
-     nowhere in the shipping sheet, so a plain ancestor declaration is enough;
    - `today` is the one variant that undoes shipped rules rather than parameterising them. */
 
 .gxrb-columns {
@@ -60,28 +58,10 @@
   --asr-badge-outset: 3.5px;
 }
 
-.gxrb--q30 {
-  --asr-quiet-opacity: 0.3;
-  --asr-quiet-ink-alpha: 35%;
-}
-
-.gxrb--q55 {
-  --asr-quiet-opacity: 0.55;
-  --asr-quiet-ink-alpha: 60%;
-}
-
-/* Today: no badge on the logo, every logo at full ink, and the state back in the trailing cell
-   as the 5px dot the sheet drew there before 2026-10-06. */
+/* Today: no badge on the logo, and the state back in the trailing cell as the 5px dot the sheet
+   drew there before 2026-10-06. */
 .gxrb--today .asr-card__glyph > .asr-card__dot {
   display: none;
-}
-
-.gxrb--today .asr-card__row[data-quiet="true"] img.asr-card__logo {
-  opacity: 1;
-}
-
-.gxrb--today .asr-card__row[data-quiet="true"] svg.asr-card__logo {
-  color: inherit;
 }
 
 .gxrb--today

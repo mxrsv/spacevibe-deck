@@ -19,7 +19,7 @@ import type { RailCardEntry, RailCardShell, RailWorktreeGroup } from "./agent-ra
  * (a row of controls, not one button, for the same reason the cluster header
  * is one: the `+` cannot live inside the focus button), `__focus`, `__glyph`,
  * `__name`, `__tag` and `__add` its parts. The rows keep the `.asr-card__row`
- * family unchanged — hit layer, logo badge, quiet logos, bars and close are
+ * family unchanged — hit layer, logo badge, bars and close are
  * DL-27.21's — so the rows did not move when the box around them went.
  *
  * Mounted on Electron only: `AgentRail` routes Tauri to `RepositoryRail`.

@@ -5,7 +5,7 @@
    Electron with DL-27.28. Design: `docs/internals/agent-rail.md`.
 
    `worktree-card.tsx` emits `.asr-checkout` and its `__line` parts, and the session rows keep
-   the `.asr-card__row` family — hit layer, logo badge, quiet logos, bars and close (DL-27.21) —
+   the `.asr-card__row` family — hit layer, logo badge, bars and close (DL-27.21) —
    plus the rail's existing `.asr-row__actions` / `.asr-row__action--close` vocabulary.
 
    `box-sizing: border-box` is declared on everything here that takes a percentage or a fixed
@@ -421,27 +421,6 @@ button.asr-checkout__focus:focus-visible,
   background: var(--chrome-2);
   color: var(--text-muted);
   font: 620 var(--type-micro) / 1 var(--ui-font);
-}
-
-/* Quiet logos (DL-27.21, amended 2026-10-06). A row whose agent does not need the user
-   (`data-quiet`, set for anything but `asked` and `failed`) draws its logo quiet, so the rows
-   that do need the user are the only full-colour logos in the column. By kind: a colour image
-   fades by `opacity`, a single-colour ink mark (`AGENT_INK_MARKS`, drawn in `currentColor`)
-   takes `--text-faint`, and a letter avatar is already neutral and stays as it is. No `filter`
-   (DL-1.3). Both values are starting points for the gallery's "Row badge" section, which
-   restates them per variant through the two properties below. */
-.asr-card__row[data-quiet="true"] img.asr-card__logo {
-  opacity: var(--asr-quiet-opacity, 0.4);
-}
-
-.asr-card__row[data-quiet="true"] svg.asr-card__logo {
-  color: var(--text-faint);
-}
-
-/* On the focused row the ink is the inverted fill's own (`--asr-card-focus-ink`), so a quiet
-   mark is that ink at reduced alpha rather than `--text-faint`, which would vanish on the fill. */
-.asr-card__row[data-quiet="true"][data-focused="true"] svg.asr-card__logo {
-  color: color-mix(in srgb, var(--asr-card-focus-ink) var(--asr-quiet-ink-alpha, 45%), transparent);
 }
 
 /* Every state dot has a solid fill, separated from the agent glyph by a quiet ring in the row's
