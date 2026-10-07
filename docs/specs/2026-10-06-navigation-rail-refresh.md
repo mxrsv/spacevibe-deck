@@ -43,7 +43,7 @@ C slim shell) and a fifth, D, built from the review's recommendation:
    (every logo stays coloured, so the needs-you rows do not stand out) and status at the
    right edge (the eye has to leave the text column to scan for attention).
 7. **Task label source (RAIL3)** (owner, 2026-10-07): the tab name; for an unnamed tab, the
-   provider's session title (Claude Code and Codex only); otherwise the agent label. Never an
+   session's first user prompt — the only "title" Deck reads (Claude Code and Codex only); otherwise the agent label. Never an
    invented name.
 8. **Project header count (RAIL2)** (owner, 2026-10-07): the needs-you count, red when any
    failed, takes the slot DL-27.27 gives the running-agent count. The running count leaves
@@ -51,10 +51,10 @@ C slim shell) and a fifth, D, built from the review's recommendation:
 9. **Tools return to the rail (TOOLS1)** (owner, 2026-10-07): an icon row with tooltips at the
    rail's foot, reversing the hidden `Tools` footer (§28, 2026-08-17). Pane actions leave
    `More` for the pane header.
-10. **Shipped as-is** (2026-10-07): slices 1–2 merged before their eye review. Their PRs'
+10. **Shipped as-is** (owner, 2026-10-07): slices 1–2 merged before their eye review. Their PRs'
     "Needs owner decision" items (badge size, quiet opacity, age source, narrow-width cost)
     stand as shipped unless the owner raises one; later slices do not reopen them.
-11. **ATT-D3 leaves this queue** (2026-10-07): nothing retains a closed pane's attention, and a
+11. **ATT-D3 leaves this queue** (owner, 2026-10-07): nothing retains a closed pane's attention, and a
     store for it sits on the close seam (an AGENTS.md fork). It needs its own spec.
 
 ## Requirements and acceptance criteria
@@ -144,7 +144,7 @@ session starts from that plan without asking again what it decides.
 | --- | --- | --- | --- |
 | 1. Row badge + quiet logos, two-ink space marks | ROW1–4, STRIP2 | [rail-row-badge](../plans/2026-10-06-rail-row-badge.md) | Done — PR #39, 2026-10-07 |
 | 2. Needs attention popover | ATT-D1, D2, D4 | [attention-popover](../plans/2026-10-06-attention-popover.md) | Done — PR #40, 2026-10-07 |
-| 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | **Next** — plan awaiting owner approval |
+| 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | **Next** — plan approved 2026-10-07, ready to run |
 | 4. Collapsed mode | COLLAPSE1–2 | written when slice 3 is Done | Queued |
 | 5. Tools and pane actions | TOOLS1–2 | written when slice 4 is Done | Queued |
 
@@ -170,6 +170,7 @@ its button.
     state badge" (2026-09-09). The owner's 2026-10-06 choice of badge + quiet logos is that
     reversal; the plan restates it in the amended rule text.
   - STRIP2 reverses DL-35.3's "no yellow on the spaces" (owner, 2026-09-29).
+  - STRIP3 reverses DL-35.3's every-workspace marks (owner, 2026-09-28); approved 2026-10-07 with the slice 3 plan.
   - ATT-D1's chip brings back an aggregate needs-you control, which DL-27.26 removed from the
     sidebar (owner, 2026-09-21); the chip sits on the strip, not the sidebar.
   - RAIL2's needs-you count takes the slot DL-27.27 gives the running-agent count
