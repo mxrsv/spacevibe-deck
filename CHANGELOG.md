@@ -7,6 +7,9 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Agent logos in the rail keep their colour again.** The faded logos 2.6.0
+  showed on rows that do not need you are gone; every row keeps its full-colour
+  logo, and the badge on its corner still tells the state.
 - **The rail is a tree.** Each project lists its checkouts by branch, worktrees
   tagged, and each checkout its agents beneath it — no cards to open or fold,
   and no frame around the project you are in. Rows are flat text on two lines.

@@ -61,9 +61,10 @@ attention and phase come from is in
 
 On a session row the badge is drawn on the corner of the row's own logo, never in the
 trailing cell, which keeps only the working bars and close.
-The same row quiets its logo unless `needsUser` holds (`asked` or `failed`), so the badge is
-not what keeps a needs-you logo at full ink: a row's logo kind (colour image, ink mark, letter
-avatar) decides how it goes quiet, and it never uses `filter`.
+A row's logo keeps its full colour or ink in every state (quiet logos were withdrawn
+2026-10-07, DL-27.21): the badge alone carries the state. `needsUser` (`asked` or `failed`)
+still feeds the attention list, the project header's count and the collapsed rail, but it no
+longer touches the logo.
 
 Codex's [output-timing fallback](../../src/terminal/agent-attention.ts) is armed only
 after genuine keyboard or paste [input](../../src/terminal/pane.ts) reaches the current

@@ -2877,13 +2877,12 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   drawn larger than the strip's (row badge 7px with a 2px ring in the row's
   ground, including the hover wash and the focused fill), so the mark sits
   beside the name the eye is reading. Idle stays unmarked and a working row
-  carries no dot — one state signal per row. **Quiet logos:** a row whose agent
-  does not need the user (anything but `asked` or `failed`) shows its logo
-  quiet — a colour image at reduced opacity, an ink mark in `--text-faint`, a
-  letter avatar unchanged — so the rows that need the user are the only
-  full-colour logos in the column. No `filter` (DL-1.3). The state word stays
-  in the accessible name and tooltip. See
+  carries no dot — one state signal per row. The state word stays in the
+  accessible name and tooltip. See
   [the shared row](../src/ui/worktree-card-row.tsx).
+  **Amended 2026-10-07 (owner): quiet logos are withdrawn.** Every row's logo
+  keeps its full colour or ink in every state; the corner badge alone carries
+  the state.
 - **DL-27.22** **The row whose pane holds the keyboard carries the selection
   wash (2026-08-23, owner).** Until this rule the rail could show NOTHING as
   selected: DL-27.8 puts the wash on `.asr-row--tab`, and a multi-agent tab
@@ -3089,8 +3088,8 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   same cell; the model pill stays visible and the label keeps its width.
   Working shows the three staggered loading bars recorded in DL-1.2 and no dot;
   every other state is a corner badge on the row's own logo, and idle stays
-  empty. A row whose agent does not need the user draws its logo quiet
-  (DL-27.21). Closed-strip glyphs keep their smaller badge.
+  empty. The logo keeps its full colour in every state (DL-27.21, amended
+  2026-10-07). Closed-strip glyphs keep their smaller badge.
   A working row paints no rim and no animation but the loading bars (the rim
   hairline was retired 2026-10-03, DL-27.22) — no blur, gradient beam or
   rasterized custom-property animation. The card is
@@ -3182,7 +3181,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   `--text-muted`. Without a sentence the second line carries the state word in the sentence's
   place (DL-27.2, amended); when the task label already is the agent label, the second line is
   the sentence or state word alone. The state word also stays in the accessible name. The
-  row badge, quiet logos and close follow DL-27.21. The project header's caret is the only
+  row badge and close follow DL-27.21; the logo keeps its full colour. The project header's caret is the only
   fold.
 
   **Amended 2026-10-07 (owner): rows are flat.** No fill at rest — hover wash only, and the

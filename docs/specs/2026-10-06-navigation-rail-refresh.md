@@ -61,6 +61,8 @@ C slim shell) and a fifth, D, built from the review's recommendation:
     row is two lines with the CLI name · newest turn or state word (reversing DL-27.2's "no
     status word in the row"), the model pill moves to the tooltip, and the focused project's
     outline goes. Slice 3b.
+13. **Quiet logos withdrawn** (owner, 2026-10-07): ROW2 is reversed; logos keep full colour, the
+    corner badge (ROW1) stays.
 
 ## Requirements and acceptance criteria
 
@@ -83,7 +85,7 @@ IDs map to the parent's NAV1–3 and ATT1–3 where noted.
   the 5px strip size is what the owner judged easy to skip). The ring stays legible on hover
   and on the focused row. Working keeps its trailing bars (DL-27.25's motion exception),
   so a working row carries no dot — one state signal per row, as today.
-- **ROW2**: Rows needing the user (`asked`, `failed`) keep the logo's full ink; every other
+- **ROW2** (withdrawn by decision 13, 2026-10-07; every logo keeps its full colour): Rows needing the user (`asked`, `failed`) keep the logo's full ink; every other
   row's logo goes quiet. Colour images quiet by `opacity`, single-colour ink marks (Codex,
   Copilot, Grok, Kimi, Droid) by `--text-faint` ink, letter avatars stay as they are — no
   `filter` (DL-1.3). A quiet ink mark must read clearly apart from a full one.
