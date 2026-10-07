@@ -229,11 +229,7 @@ export function SidebarActions(props: SidebarActionsProps) {
       <div class="sidebar-actions__slot">
         <div class="sidebar-actions__tools">
           {railToolItems(props).map((item) => (
-            <ToolButton
-              key={item.id}
-              item={item}
-              tooltipSuppressed={props.promptsOpen}
-            />
+            <ToolButton key={item.id} item={item} tooltipSuppressed={props.promptsOpen} />
           ))}
         </div>
         {props.promptsOpen ? props.promptPopover : null}

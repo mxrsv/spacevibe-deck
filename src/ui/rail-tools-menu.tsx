@@ -59,8 +59,7 @@ export function RailToolsMenu({ items, rect, trigger, onClose }: RailToolsMenuPr
   );
   useStageOverlayFlag();
 
-  const rows = (): HTMLButtonElement[] =>
-    Array.from(ref.current?.querySelectorAll("button") ?? []);
+  const rows = (): HTMLButtonElement[] => Array.from(ref.current?.querySelectorAll("button") ?? []);
 
   // Hidden until measured, and a hidden element cannot take focus: so the first
   // row is focused once placed, which is what makes Enter on the button land here.
