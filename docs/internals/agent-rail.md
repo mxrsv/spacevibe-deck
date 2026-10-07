@@ -299,6 +299,38 @@ header's caret is the only fold.
 - **No frame marks the focused project.** The current checkout's label line and the focused
   row are the only "you are here" marks; rows have no fill at rest.
 
+## The collapsed column
+
+On Electron the sidebar's collapse is a column of project avatars, not an empty edge
+(DL-27.29, amending DL-18.9); Tauri still hides it. There is one stored fact,
+`settings.sidebarCollapsed`, written by the stage-strip toggle, the frame row's toggle, a drag
+past the floor and the `toggle-sidebar` chord alike, so the four routes cannot disagree.
+
+- **The shell attribute is `column`, not `true`.** [`applySidebarShell`](../../src/ui/sidebar-shell.ts)
+  writes `data-sidebar-collapsed="column"` on Electron; every rule that hides the rail keys on
+  `"true"` and still applies to Tauri. Reusing `"true"` would hide the column along with the
+  tree. The width is [`SIDEBAR_COLUMN_WIDTH`](../../src/ui/panel-resize.ts) through
+  [`sidebarPaintWidth`](../../src/ui/app-policy.ts), and an armed drag paints it too, so the
+  column snaps under a pointer that has passed the floor.
+- **The frame row is hidden in column mode.** Its 78px traffic-light reservation does not fit a
+  52px cell, so [the column](../../src/ui/agent-rail-column.tsx) carries its own drag strip
+  where the lights are painted and the stage strip insets by the remainder
+  ([styles](../../src/styles/04e-rail-collapsed.css)). The expand control stays on the strip's
+  leading edge, DL-18.9's second mount; the column draws no control of its own.
+- **Avatars are a projection of the tree's view** ([`buildRailAvatars`](../../src/ui/agent-rail-collapsed-model.ts)),
+  so the badge counts the same `asked` and `failed` panes the header does. Remembered projects
+  have no avatar. A project without a favicon prints its initials rather than the shared
+  folder glyph.
+- **The flyout is the tree's `WorktreeCard`.** It restyles nothing, so a change to a row
+  reaches it. Choosing a row or any `+` action closes it first, because each opens something on
+  the stage. A checkout menu opened inside the flyout shares its capture-phase Escape listener,
+  so one Esc closes both.
+- **`AgentRail` unmounts the list while collapsed,** so the cluster drag controller is rebound
+  whenever the rail expands again.
+- **`toggle-sidebar` is ⌘B on macOS and Ctrl+Shift+L on Windows.** Bare Ctrl+B is readline's
+  cursor-back and tmux's prefix, so Deck cannot consume it. The chord is performable only while
+  a tab is open, and it returns focus to the stage because the control that held it unmounts.
+
 ## One create control per checkout
 
 A checkout's `+` on its label line opens the Electron

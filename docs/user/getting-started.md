@@ -75,8 +75,11 @@ The ⌘T menu also offers **Open another project…** to choose another workspac
 - **Browser tab** (**⌘⇧I**). A page beside your terminals, opening on the home address from
   Settings → Browser.
 
-Drag the seam between the rail and the stage to resize it; drag it past its floor to hide the
-rail completely. The toggle beside the traffic lights brings it back.
+Drag the seam between the rail and the stage to resize it. Drag it past its floor, press
+**⌘B** or use the toggle beside the traffic lights to collapse the rail to a column of project
+avatars. A badge on an avatar counts the agents waiting on you, and pressing one opens that
+project's sessions beside the column. **⌘B** or the toggle at the start of the tab strip
+expands it again.
 
 ## Panes and tabs
 

@@ -63,6 +63,7 @@ unchanged. Nothing stops or restarts while it is open.
 
 | Action                     | macOS | Windows      |
 | -------------------------- | ----- | ------------ |
+| Toggle the sidebar         | ⌘B    | Ctrl+Shift+L |
 | Toggle the side panel      | ⌘⇧J   | Ctrl+Shift+J |
 | File explorer              | ⌘⇧B   | Ctrl+Shift+B |
 | Token usage                | ⌘⇧U   | Ctrl+Shift+U |
