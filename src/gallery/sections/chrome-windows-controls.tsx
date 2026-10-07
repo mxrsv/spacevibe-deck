@@ -3,7 +3,7 @@ import { DesktopChrome } from "../../ui/desktop-chrome";
 import { DockPanel } from "../../ui/dock/dock-panel";
 import { DOCK_TABS } from "../../ui/dock/dock-tab-registry";
 import { DockToggle } from "../../ui/dock/dock-toggle";
-import { SIDEBAR_HIDDEN_WIDTH } from "../../ui/panel-resize";
+import { SIDEBAR_COLUMN_WIDTH } from "../../ui/panel-resize";
 import { SettingsScreen } from "../../ui/settings/settings-screen";
 import { SidebarToggle } from "../../ui/sidebar-toggle";
 import {
@@ -119,16 +119,16 @@ function CaptionFrame({ state }: { state: CaptionState }) {
     <div
       class="gx-caption-frame window--windows window--caption-overlay"
       data-caption-state={state.id}
-      data-sidebar-collapsed={collapsed ? "true" : "false"}
+      data-sidebar-collapsed={collapsed ? "column" : "false"}
       style={{
-        "--sidebar-w": `${collapsed ? SIDEBAR_HIDDEN_WIDTH : DEFAULT_SETTINGS.sidebarWidth}px`,
+        "--sidebar-w": `${collapsed ? SIDEBAR_COLUMN_WIDTH : DEFAULT_SETTINGS.sidebarWidth}px`,
       }}
     >
       <DesktopChrome
         sidebar={state.sidebar}
         sidebarToggle={state.sidebar && !collapsed ? sidebarFrameActionsSpecimen() : null}
         toolbar={null}
-        sidebarNavigation={state.sidebar ? agentRailNavigationSpecimen() : null}
+        sidebarNavigation={state.sidebar ? agentRailNavigationSpecimen({ collapsed }) : null}
         topTabs={state.sidebar ? null : tabBarSpecimen({ trailing: closedDockToggle(state) })}
         stage={<CaptionStage state={state} collapsed={collapsed} />}
         status={null}

@@ -140,6 +140,8 @@ interface AgentRailSpecimenOptions {
   readonly onFocusPane?: (index: number, paneId: number) => void;
   readonly showFooter?: boolean;
   readonly promptsDisabled?: boolean;
+  /** DL-27.29: the rail as the avatar column the collapsed sidebar shows on Electron. */
+  readonly collapsed?: boolean;
 }
 
 /**
@@ -177,9 +179,11 @@ export function agentRailNavigationSpecimen({
   // A specimen that wants the footer as a DL §28 record still passes `true`.
   showFooter = !SIDEBAR_TOOLS_HIDDEN,
   promptsDisabled = false,
+  collapsed = false,
 }: AgentRailSpecimenOptions = {}) {
   return (
     <AgentRail
+      collapsed={collapsed}
       onSelectTab={onSelectTab}
       onCloseTab={NOOP}
       onClosePane={NOOP}

@@ -5,7 +5,7 @@ import { DesktopChrome } from "../../ui/desktop-chrome";
 import { WorkspaceSpinner } from "../../ui/workspace-spinner";
 import { MigrationBanner } from "../../ui/migration-banner";
 import { activeTabIndex } from "../../terminal/tabs-store";
-import { SIDEBAR_HIDDEN_WIDTH } from "../../ui/panel-resize";
+import { SIDEBAR_COLUMN_WIDTH } from "../../ui/panel-resize";
 import { SidebarToggle } from "../../ui/sidebar-toggle";
 import { DockToggle } from "../../ui/dock/dock-toggle";
 import { SidebarActions } from "../../ui/sidebar-actions";
@@ -66,7 +66,7 @@ export function ChromeSection() {
 
       <Specimen
         name="Worktree-scoped TabStrip"
-        note="click a tab row or agent row in the real rail — the real stage strip follows that project and hides tabs from every other project"
+        note="click a tab row or agent row in the real rail — the real stage strip follows that project and hides tabs from every other project. The toggle collapses the rail to its avatar column (DL-27.29); its toggle returns on the strip"
         surface="none"
         tall
       >
@@ -75,10 +75,10 @@ export function ChromeSection() {
             collapsed rail here does not collapse every other rail on the
             page. Same attribute, same variable, same CSS. */}
         <div
-          data-sidebar-collapsed={railCollapsed.value ? "true" : "false"}
+          data-sidebar-collapsed={railCollapsed.value ? "column" : "false"}
           style={{
             "--sidebar-w": `${
-              railCollapsed.value ? SIDEBAR_HIDDEN_WIDTH : DEFAULT_SETTINGS.sidebarWidth
+              railCollapsed.value ? SIDEBAR_COLUMN_WIDTH : DEFAULT_SETTINGS.sidebarWidth
             }px`,
           }}
         >
@@ -97,6 +97,7 @@ export function ChromeSection() {
             toolbar={null}
             sidebarNavigation={agentRailNavigationSpecimen({
               onSelectTab: selectGalleryTab,
+              collapsed: railCollapsed.value,
             })}
             topTabs={null}
             stage={
