@@ -1,8 +1,8 @@
 # Navigation rail refresh (treatment D)
 
 Date: 2026-10-06
-Status: Active — every open decision answered 2026-10-07; slices 1–2 merged, slices 3–5 run
-in order under the [Delivery slices](#delivery-slices) queue.
+Status: Active — every open decision answered 2026-10-07; all five slices are merged on `main`
+([Delivery slices](#delivery-slices)); open only for the owner's native walk (REVIEW1).
 Owner checkout: `/Users/kyantran/Documents/Development/spacevibe-workspace/spacevibe-deck`
 Baseline: written against `main` at `72b525e5` (2026-10-06); slices 3–5 start from `origin/main`
 after slices 1–2 (`0a6fa105`). Plans under `docs/plans/` are gitignored and exist only in the
@@ -152,11 +152,13 @@ session starts from that plan without asking again what it decides.
 | 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | Done — 2026-10-07, `d81b9404` `4496da97` `d4933cae` `32a2ccf1` `a1b1ede4` `a963727a` `70413a4f` and the CHANGELOG commit; native walk (REVIEW1) owed |
 | 3b. Tree matches mock D | RAIL1–3, decision 12 | [rail-tree-visual](../plans/2026-10-07-rail-tree-visual.md) | **Done** — 2026-10-07, `6068bdef` `e4e0e2b3` `9b0c9eb3` `51626709` `137540e1` |
 | 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | **Done** — 2026-10-07, `d394086b` `1815b510` `9e8966ec` `9b9656a4` `7b7402ab` `0f811400` `7c08001c`; native walk owed (ledger row in DL) |
-| 5. Tools and pane actions | TOOLS1–2 | [rail-tools](../plans/2026-10-07-rail-tools.md) | **Next** — approved 2026-10-07, running on `main` |
+| 5. Tools and pane actions | TOOLS1–2 | [rail-tools](../plans/2026-10-07-rail-tools.md) | **Done** — 2026-10-07, `bd7d8781` `ce9fa078` `7c8b8665` `9576fb6e` `40be8e30` `90355cab` `7f1cb447` `a9f81237`; native walk owed (ledger row in DL) |
 
 A session that finishes a slice sets its row to `Done` with the date and commits, then drafts
 the next slice's plan with its Operating contract for owner approval; it does not start that
 slice's code in the same session.
+
+The queue is complete pending the owner's native walk (REVIEW1).
 
 ## Open decisions
 
