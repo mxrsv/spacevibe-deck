@@ -294,6 +294,8 @@ export interface AgentRailInput {
   /** Model per pane id. Optional for the same reason `tails` is: a caller that
    *  reads no sessions (the gallery, most tests) is the shape this shipped with. */
   readonly models?: ReadonlyMap<number, string>;
+  /** First prompt per pane id (`sessionTitlesFor`, DL-27.28). Optional like `tails`. */
+  readonly titles?: ReadonlyMap<number, string>;
   /**
    * The order the user dragged the project clusters into, by
    * `RailStreamGroup.orderKey`, top first (spec §5). Optional and defaulting
@@ -810,7 +812,7 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
         // name the user was reading it by; the state mark carries the urgency
         // where the tab already is.
         const rows = sortByOpenOrder(worktree.tabs.map((railTab) => tabRow(group, railTab, input)));
-        const entries = buildCardEntries(rows, input.models);
+        const entries = buildCardEntries(rows, input.models, input.titles);
         const panes = entries.flatMap((entry) => (entry.kind === "agent" ? [entry] : []));
         const newestChange = panes.reduce((newest, pane) => Math.max(newest, pane.changedAt), 0);
         return {

@@ -3129,6 +3129,20 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   is now the live close's alone, and the toggle stops 23px short of the edge so
   the count did not move ([header styles](../src/styles/04a-agent-rail.css)).
 
+- **DL-27.28** **The Electron rail is a flat tree: project › checkout › session (2026-10-07,
+  owner).** Supersedes DL-27.25's card on Electron; DL-27.25 stays as the record. A project
+  header is followed by one label line per checkout — branch name, `worktree` tag for a
+  linked worktree, and a trailing `+` that opens the launcher on that checkout — then that
+  checkout's session rows, indented one step. No card frame, border or fill groups a checkout;
+  the checkout holding the focused pane carries the current mark on its label line. A session
+  row is two lines: the task label (tab name, else the session's first prompt, else the agent
+  label) in the row's weight, then the agent label · the newest turn (DL-27.15's sentence) in
+  `--text-muted`. Without a sentence the second line is the agent label alone; when the task
+  label already is the agent label, the second line is the sentence alone, and a row with
+  neither is one line. The state word stays in the tooltip and accessible name (DL-27.2). The
+  row badge, quiet logos and close follow DL-27.21. The project header's caret is the only
+  fold.
+
 ## 28. The rail's action footer
 
 > **HIDDEN since 2026-08-17 (owner).**

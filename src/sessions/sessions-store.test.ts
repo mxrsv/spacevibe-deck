@@ -9,6 +9,8 @@ import {
   recentSessionsLoadState,
   refreshRecentSessions,
   refreshSessions,
+  requestSessionTitles,
+  SESSION_TITLE_SCAN_INTERVAL_MS,
   resetSessionFilters,
   sessionAgentFilter,
   sessionEntries,
@@ -477,5 +479,66 @@ describe("refreshRecentSessions", () => {
 
     expect(sessionsSupported.value).toBe(true);
     expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(["full"]);
+  });
+});
+
+describe("requestSessionTitles (rail A2)", () => {
+  function countingClient(entries: readonly SessionEntry[]): {
+    readonly client: ReturnType<typeof createMemorySessionsClient>;
+    readonly calls: () => number;
+  } {
+    const inner = createMemorySessionsClient({
+      entries,
+      totals: { claude: entries.length, codex: 0 },
+      limit: 500,
+    });
+    let count = 0;
+    return {
+      client: {
+        ...inner,
+        list: (limit) => {
+          count += 1;
+          return inner.list(limit);
+        },
+      },
+      calls: () => count,
+    };
+  }
+  // The throttle is module state, so every test starts far past the last one.
+  let base = 1e12;
+  beforeEach(() => {
+    base += 10 * SESSION_TITLE_SCAN_INTERVAL_MS;
+  });
+
+  it("scans when a pane's session is unknown, then not again inside the interval", async () => {
+    const { client, calls } = countingClient([entry({ sessionId: "a" })]);
+    requestSessionTitles(["a"], base, client);
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls()).toBe(1);
+    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(["a"]);
+
+    requestSessionTitles(["b"], base + SESSION_TITLE_SCAN_INTERVAL_MS - 1, client);
+    expect(calls()).toBe(1);
+    requestSessionTitles(["b"], base + SESSION_TITLE_SCAN_INTERVAL_MS, client);
+    expect(calls()).toBe(2);
+  });
+
+  it("does not scan when every session is already known", () => {
+    sessionEntries.value = [entry({ sessionId: "a" })];
+    const { client, calls } = countingClient([]);
+    requestSessionTitles(["a"], base, client);
+    requestSessionTitles([], base, client);
+    expect(calls()).toBe(0);
+  });
+
+  it("does not scan on a host without session history or during a scan", () => {
+    const { client, calls } = countingClient([]);
+    sessionsSupported.value = false;
+    requestSessionTitles(["a"], base, client);
+    sessionsSupported.value = true;
+    sessionsLoadState.value = { status: "loading" };
+    requestSessionTitles(["a"], base, client);
+    expect(calls()).toBe(0);
   });
 });

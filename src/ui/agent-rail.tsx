@@ -1,5 +1,5 @@
 import { CaretRight, Folder, X } from "@phosphor-icons/react";
-import { useSignal, useSignalEffect } from "@preact/signals";
+import { untracked, useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
@@ -16,6 +16,8 @@ import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
 import { buildAgentRail, type RailStreamGroup } from "./agent-rail-model";
+import { sessionTitlesFor, untitledSessionIds } from "./agent-rail-card-model";
+import { requestSessionTitles, sessionEntries } from "../sessions/sessions-store";
 import { focusCheckout, WorktreeCard } from "./worktree-card";
 import type { CardActions } from "./worktree-card-menus";
 import { RepositoryRail } from "./repository-rail";
@@ -227,6 +229,9 @@ function WorktreeCardRail(props: AgentRailProps) {
     // Do not surface `paneModels` here: its pane→session pairing is ranked by
     // cwd/mtime and then pinned, not causally bound to the pane. Gallery/model
     // callers may still inject trusted model facts directly into the pure view.
+    // DL-27.28: an unnamed row's first line is its session's first prompt,
+    // joined on the contract-layer session id only.
+    titles: sessionTitlesFor(tabs, sessionEntries.value),
     // The order the user dragged these projects into (DL-27.20). App-level,
     // so a drag in one window reorders the rail in every window.
     railOrder: settings.value.railOrder,
@@ -294,6 +299,15 @@ function WorktreeCardRail(props: AgentRailProps) {
         .filter((path): path is string => path !== null),
       ...workspacesData.value.recents.map((recent) => recent.path),
     ]);
+  });
+
+  // A2: a session the list does not know yet is scanned for, throttled in the
+  // store. Only the tabs are tracked; the store's own signals are its business.
+  useSignalEffect(() => {
+    const ids = untitledSessionIds(tabViews.value);
+    untracked(() => {
+      requestSessionTitles(ids, Date.now());
+    });
   });
 
   function toggleGroup(key: string): void {

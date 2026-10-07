@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildCardEntries, checkoutBadge, checkoutLabel } from "./agent-rail-card-model";
+import {
+  buildCardEntries,
+  checkoutBadge,
+  checkoutLabel,
+  sessionTitlesFor,
+  untitledSessionIds,
+} from "./agent-rail-card-model";
+import type { PaneView, TabView } from "../terminal/tabs-store";
 import { whereOf } from "./worktree-card-row";
 import type { RailPaneRow, RailTabRow, RailWorktreeGroup } from "./agent-rail-model";
 
@@ -296,5 +303,164 @@ describe("buildCardEntries labels", () => {
       undefined,
     );
     expect(entries.map((entry) => entry.label)).toEqual(["Shell", "Shell 2"]);
+  });
+});
+
+/* ───────────────────────── two-line rows (DL-27.28) ───────────────────────── */
+
+describe("buildCardEntries task label and second line", () => {
+  const lines = (entries: readonly ReturnType<typeof buildCardEntries>[number][]) =>
+    entries.map((entry) =>
+      entry.kind === "agent" ? [entry.taskLabel, entry.secondLine] : [entry.label],
+    );
+
+  it("leads a named tab with its name, then the agent label and the turn", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "auth",
+      named: true,
+      panes: [{ ...paneRow("claude", 1), message: "Fixing login" }, paneRow("codex", 2)],
+    });
+    expect(lines(buildCardEntries([row], undefined))).toEqual([
+      ["auth", "Claude · Fixing login"],
+      ["auth", "Codex"],
+    ]);
+  });
+
+  it("leads an unnamed pane with its session's first prompt", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [{ ...paneRow("claude", 1), message: "Reading the source" }, paneRow("claude", 2)],
+    });
+    const titles = new Map([
+      [1, "Make the rail a tree"],
+      [2, "Make the rail a tree"],
+    ]);
+    const entries = buildCardEntries([row], undefined, titles);
+    expect(lines(entries)).toEqual([
+      ["Make the rail a tree", "Claude · Reading the source"],
+      ["Make the rail a tree", "Claude"],
+    ]);
+    expect(entries.map((entry) => entry.label)).toEqual([
+      "Make the rail a tree · Reading the source",
+      "Make the rail a tree · Claude",
+    ]);
+  });
+
+  it("prefers the tab name over a first prompt", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "auth",
+      named: true,
+      panes: [paneRow("claude", 1)],
+    });
+    const [entry] = buildCardEntries([row], undefined, new Map([[1, "A prompt"]]));
+    expect(entry).toMatchObject({ taskLabel: "auth", secondLine: "Claude" });
+  });
+
+  it("falls back to the agent label, with the turn alone beneath it", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [{ ...paneRow("claude", 1), message: "Running the tests" }, paneRow("codex", 2)],
+    });
+    expect(lines(buildCardEntries([row], undefined))).toEqual([
+      ["Claude", "Running the tests"],
+      ["Codex", ""],
+    ]);
+  });
+
+  it("keeps two Claude panes of one checkout apart on their visible lines", () => {
+    const silent = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [paneRow("claude", 1), paneRow("claude", 2)],
+    });
+    const echo = tabRow({
+      key: 2,
+      index: 1,
+      title: "",
+      named: false,
+      panes: [
+        { ...paneRow("claude", 3), message: "Done" },
+        { ...paneRow("claude", 4), message: "Done" },
+      ],
+    });
+    const named = tabRow({
+      key: 3,
+      index: 2,
+      title: "auth",
+      named: true,
+      panes: [paneRow("claude", 5), paneRow("claude", 6)],
+    });
+    const visible = lines(buildCardEntries([silent, echo, named], undefined)).map((pair) =>
+      pair.join("\n"),
+    );
+    expect(new Set(visible).size).toBe(visible.length);
+    expect(visible.slice(0, 2)).toEqual(["Claude\n", "Claude 2\n"]);
+  });
+});
+
+describe("sessionTitlesFor", () => {
+  const entry = (sessionId: string, title: string | null, agent: "claude" | "codex" = "claude") => ({
+    agent,
+    sessionId,
+    cwd: "/repos/spacevibe-board",
+    lastActivityMs: 1,
+    title,
+    sourcePath: `/sessions/${sessionId}.jsonl`,
+  });
+  const tab = (name: string | null, panes: readonly Partial<PaneView>[]) =>
+    ({
+      name,
+      panes: panes.map((pane, index) => ({
+        paneId: index + 1,
+        agent: "claude",
+        attention: "none",
+        phase: "idle",
+        hasRun: false,
+        changedAt: 0,
+        ...pane,
+      })),
+    }) as unknown as TabView;
+
+  it("joins a pane's session id to its first prompt, one line", () => {
+    const titles = sessionTitlesFor(
+      [tab(null, [{ sessionId: "a" }, { sessionId: "b" }, { sessionId: null }])],
+      [entry("a", "  Fix the\n  login page "), entry("b", null)],
+    );
+    expect([...titles]).toEqual([[1, "Fix the login page"]]);
+  });
+
+  it("never joins across agents", () => {
+    const titles = sessionTitlesFor(
+      [tab(null, [{ sessionId: "a", agent: "codex" }])],
+      [entry("a", "Claude's prompt", "claude")],
+    );
+    expect(titles.size).toBe(0);
+  });
+
+  it("asks only for the sessions of unnamed Claude Code and Codex panes", () => {
+    expect(
+      untitledSessionIds([
+        tab(null, [
+          { sessionId: "a" },
+          { sessionId: "b", agent: "codex" },
+          { sessionId: "c", agent: "opencode" },
+          { sessionId: null },
+          { sessionId: "d", agent: null },
+        ]),
+        tab("auth", [{ sessionId: "e" }]),
+      ]),
+    ).toEqual(["a", "b"]);
   });
 });

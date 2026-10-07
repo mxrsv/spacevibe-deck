@@ -5,6 +5,8 @@
  * while you look at them; a history list does not — the spec is scan-on-open,
  * re-stat on re-open, and the main-process cache makes the second open cheap.
  * A 5 s poll here would re-read up to 1000 transcript heads for nothing.
+ * The one other trigger is the rail asking for a first prompt it lacks,
+ * throttled to a scan per 30 s (`requestSessionTitles`).
  */
 import { batch, signal } from "@preact/signals";
 import { defaultSessionsClient, type SessionsClient } from "./sessions-client";
@@ -191,6 +193,36 @@ export async function refreshRecentSessions(
       recentSessionsLoading.value = false;
     }
   }
+}
+
+/** At most one rail-requested scan per this window (navigation rail refresh, A2). */
+export const SESSION_TITLE_SCAN_INTERVAL_MS = 30_000;
+let lastTitleScanAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * The rail's way to learn a first prompt (DL-27.28): scan the session list when
+ * a pane's session is not in it yet, at most once per interval. The list is
+ * otherwise scanned only when Sessions or the Open board opens, so a fresh
+ * agent would keep its agent label until then. Until a scan lands the row
+ * reads the agent label, which is the fallback anyway.
+ */
+export function requestSessionTitles(
+  sessionIds: readonly string[],
+  now: number,
+  client: SessionsClient = defaultSessionsClient,
+): void {
+  if (!sessionsSupported.value || sessionsLoadState.value.status === "loading") {
+    return;
+  }
+  const known = new Set(sessionEntries.value.map((entry) => entry.sessionId));
+  if (sessionIds.every((id) => known.has(id))) {
+    return;
+  }
+  if (now - lastTitleScanAt < SESSION_TITLE_SCAN_INTERVAL_MS) {
+    return;
+  }
+  lastTitleScanAt = now;
+  void refreshSessions(client);
 }
 
 export async function refreshSessions(

@@ -5,7 +5,9 @@
  */
 import { BUILTIN_AGENTS } from "../lib/agent-catalog";
 import type { PaneAgent } from "../lib/process-info";
+import { SESSION_AGENTS, type SessionEntry } from "../lib/session-history";
 import type { SignalConfidence } from "../terminal/agent-attention";
+import { NO_PANES, type TabView } from "../terminal/tabs-store";
 import type { RailPaneRow, RailState, RailTabRow } from "./agent-rail-model";
 
 /** One agent pane on a worktree card. */
@@ -28,6 +30,18 @@ export interface RailCardPane extends RailPaneRow {
   readonly tabName?: string | null;
   /** The pane's own words: its newest turn, else its agent's name. Absent = `label`. */
   readonly sentence?: string;
+  /**
+   * The row's first line (DL-27.28): the tab name, else the session's first
+   * prompt, else the agent label — carrying the checkout's ordinal when two
+   * rows would otherwise read alike. Absent = `label`.
+   */
+  readonly taskLabel?: string;
+  /**
+   * The row's second line (DL-27.28): the agent label · the newest turn, the
+   * agent label alone without a turn, the turn alone when the task label is
+   * already the agent label, and empty when there is neither.
+   */
+  readonly secondLine?: string;
 }
 
 /** One tab with no agent pane, retained after the visual tab tier is removed. */
@@ -88,12 +102,55 @@ const STATE_RANK: Readonly<Record<RailState, number>> = {
 
 export const STRIP_VISIBLE = 3;
 
+/**
+ * The session's first prompt per agent pane (RAIL3, DL-27.28) — the only
+ * "title" Deck reads (`SessionEntry.title`, Claude Code and Codex only),
+ * joined on the pane's contract-layer `sessionId`, never on a guessed pairing.
+ * Whitespace collapses so a multi-line prompt reads as one line.
+ */
+export function sessionTitlesFor(
+  tabs: readonly TabView[],
+  entries: readonly SessionEntry[],
+): ReadonlyMap<number, string> {
+  const byId = new Map(entries.map((entry) => [entry.sessionId, entry]));
+  const titles = new Map<number, string>();
+  for (const pane of tabs.flatMap((tab) => tab.panes ?? NO_PANES)) {
+    const entry = pane.sessionId ? byId.get(pane.sessionId) : undefined;
+    const title = entry?.title?.replace(/\s+/g, " ").trim();
+    if (entry !== undefined && entry.agent === pane.agent && title) {
+      titles.set(pane.paneId, title);
+    }
+  }
+  return titles;
+}
+
+/**
+ * Session ids of agent panes in unnamed tabs — the panes whose first line
+ * would read a first prompt. The rail asks the session list for these (A2).
+ */
+export function untitledSessionIds(tabs: readonly TabView[]): readonly string[] {
+  return tabs.flatMap((tab) =>
+    tab.name
+      ? []
+      : (tab.panes ?? NO_PANES).flatMap((pane) =>
+          pane.sessionId && SESSION_AGENTS.some((agent) => agent === pane.agent)
+            ? [pane.sessionId]
+            : [],
+        ),
+  );
+}
+
 /** Build every selectable card entry and allocate checkout-wide labels. */
 export function buildCardEntries(
   rows: readonly RailTabRow[],
   models: ReadonlyMap<number, string> | undefined,
+  titles?: ReadonlyMap<number, string>,
 ): readonly RailCardEntry[] {
-  type AgentDraft = Omit<RailCardPane, "label" | "sentence"> & { readonly baseSentence: string };
+  type AgentDraft = Omit<RailCardPane, "label" | "sentence"> & {
+    readonly baseSentence: string;
+    readonly said: boolean;
+    readonly title: string | null;
+  };
   type ShellDraft = Omit<RailCardShell, "label"> & { readonly baseLabel: string };
   type EntryDraft = AgentDraft | ShellDraft;
 
@@ -114,8 +171,10 @@ export function buildCardEntries(
           tabIndex: row.index,
           model: models?.get(pane.paneId) ?? "",
           tabName: row.named ? row.title : null,
+          title: row.named ? null : (titles?.get(pane.paneId) ?? null),
           // DL-27.15: the pane's own sentence, whether or not its tab is named.
           baseSentence: pane.message.trim() || displayAgent(pane.agent),
+          said: pane.message.trim() !== "",
         })),
   );
 
@@ -144,11 +203,21 @@ export function buildCardEntries(
       return { ...shell, label: claim("", baseLabel) };
     }
     // A named tab's ordinal goes on the sentence, so a name never reads
-    // `auth 2` (DL-27.15, amended for named tabs).
-    const { baseSentence, ...pane } = draft;
-    const prefix = pane.tabName === null ? "" : `${pane.tabName} · `;
+    // `auth 2` (DL-27.15, amended for named tabs). A first prompt is the
+    // user's words too, so it is a task label on the same terms (DL-27.28).
+    const { baseSentence, said, title, ...pane } = draft;
+    const task = pane.tabName ?? title;
+    const prefix = task === null ? "" : `${task} · `;
     const sentence = claim(prefix, baseSentence);
-    return { ...pane, sentence, label: prefix + sentence };
+    const agent = displayAgent(pane.agent);
+    // DL-27.28's two lines. Without a task the first line is the agent label —
+    // or, before the agent has spoken, the claimed sentence, which is that
+    // label with the ordinal that keeps two silent rows apart.
+    const lines =
+      task === null
+        ? { taskLabel: said ? agent : sentence, secondLine: said ? sentence : "" }
+        : { taskLabel: task, secondLine: said ? `${agent} · ${sentence}` : sentence };
+    return { ...pane, sentence, label: prefix + sentence, ...lines };
   });
 }
 
