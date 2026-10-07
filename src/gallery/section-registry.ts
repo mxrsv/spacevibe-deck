@@ -24,6 +24,9 @@ const NavigationSection = lazy(() =>
 const AgentUsageSection = lazy(() =>
   import("./sections/navigation-section").then((m) => m.AgentUsageSection),
 );
+const RowBadgeSection = lazy(() =>
+  import("./sections/row-badge-section").then((m) => m.RowBadgeSection),
+);
 const OverlaysSection = lazy(() =>
   import("./sections/overlays-section").then((m) => m.OverlaysSection),
 );
@@ -76,6 +79,7 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
   { id: "navigation", label: "navigation", Section: NavigationSection },
+  { id: "row-badge", label: "row badge", Section: RowBadgeSection },
   { id: "agent-usage", label: "agent usage", Section: AgentUsageSection },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
   { id: "attention", label: "needs-you chip", Section: AttentionSection },

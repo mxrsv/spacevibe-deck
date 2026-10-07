@@ -1135,3 +1135,134 @@ describe("agent launcher create controls", () => {
     expect(onOpenAgentLauncher).toHaveBeenCalledOnce();
   });
 });
+
+describe("WorktreeCard row badge (DL-27.21, amended 2026-10-06)", () => {
+  // The state moved off the trailing cell and onto the logo's corner: the mark
+  // sits beside the name the eye is reading, and the trailing cell keeps only
+  // what moves (the working bars) and what the pointer reaches for (close).
+  it.each(["asked", "failed", "done", "ended"] as const)(
+    "draws %s as the badge on the row's own logo and nothing in the trailing cell",
+    (state) => {
+      mount({ open: true, group: group({ panes: [pane({ state })] }) });
+
+      const row = host.querySelector(".asr-card__row")!;
+      const badge = row.querySelector(".asr-card__glyph > .asr-card__dot");
+      expect(badge?.getAttribute("data-state")).toBe(state);
+      expect(badge?.getAttribute("aria-hidden")).toBe("true");
+      // One state signal per row, and it is not in the shared trailing cell.
+      expect(row.querySelectorAll(".asr-card__dot")).toHaveLength(1);
+      expect(row.querySelector(".asr-card__status .asr-card__dot")).toBeNull();
+      // The cell is still laid out, so the pill and close keep their edge.
+      expect(row.querySelector(".asr-card__status .asr-card__load")).not.toBeNull();
+    },
+  );
+
+  it.each(["working", "idle"] as const)("carries no badge on a %s row", (state) => {
+    mount({ open: true, group: group({ panes: [pane({ state })] }) });
+
+    const row = host.querySelector(".asr-card__row")!;
+    expect(row.querySelector(".asr-card__dot")).toBeNull();
+    // Working keeps its trailing bars (DL-27.25's motion exception); idle is blank.
+    expect(row.querySelectorAll(".asr-card__status .asr-card__load > i")).toHaveLength(
+      state === "working" ? 3 : 0,
+    );
+  });
+
+  it("keeps the agent label and the state word in the name and tooltip", () => {
+    mount({ open: true, group: group({ panes: [pane({ state: "asked", label: "Claude" })] }) });
+
+    const hit = host.querySelector<HTMLElement>(".asr-card__hit")!;
+    expect(hit.getAttribute("aria-label")).toMatch(/^Focus Claude in .*, needs you$/);
+    expect(hit.getAttribute("title")).toBe("Claude — needs you");
+  });
+
+  it("leaves the closed strip's badge on its segment glyph, working included", () => {
+    mount({
+      open: false,
+      group: group({
+        panes: [
+          pane({ paneId: 1, agent: "claude", state: "asked" }),
+          pane({ paneId: 2, agent: "codex", label: "Codex", state: "working" }),
+        ],
+      }),
+    });
+
+    const segments = host.querySelectorAll(".asr-card__seg .asr-card__glyph");
+    expect(segments).toHaveLength(2);
+    expect(segments[0].querySelector(":scope > .asr-card__dot")?.getAttribute("data-state")).toBe(
+      "asked",
+    );
+    // The strip still pairs a working badge with its bars; only rows dropped the dot.
+    expect(segments[1].querySelector(":scope > .asr-card__dot")?.getAttribute("data-state")).toBe(
+      "working",
+    );
+    expect(host.querySelectorAll(".asr-card__seg .asr-card__load > i")).toHaveLength(3);
+  });
+});
+
+describe("WorktreeCard quiet logos (DL-27.21, amended 2026-10-06)", () => {
+  // Rows that need the user keep the logo's full ink; every other row's logo
+  // goes quiet, so the asking rows are the only full-colour logos in the column.
+  it.each(["asked", "failed"] as const)("leaves a %s row's logo at full ink", (state) => {
+    mount({ open: true, group: group({ panes: [pane({ state })] }) });
+
+    const row = host.querySelector<HTMLElement>(".asr-card__row")!;
+    expect(row.dataset.state).toBe(state);
+    expect(row.hasAttribute("data-quiet")).toBe(false);
+  });
+
+  it.each(["working", "done", "idle", "ended"] as const)("quiets a %s row's logo", (state) => {
+    mount({ open: true, group: group({ panes: [pane({ state })] }) });
+
+    const row = host.querySelector<HTMLElement>(".asr-card__row")!;
+    expect(row.dataset.state).toBe(state);
+    expect(row.dataset.quiet).toBe("true");
+  });
+
+  it("decides each row on its own state, whatever its neighbours say", () => {
+    mount({
+      open: true,
+      group: group({
+        panes: [
+          pane({ paneId: 1, state: "asked" }),
+          pane({ paneId: 2, agent: "codex", label: "Codex", state: "done" }),
+          pane({ paneId: 3, agent: "droid", label: "Droid", state: "failed" }),
+        ],
+      }),
+    });
+
+    const quiet = [...host.querySelectorAll<HTMLElement>(".asr-card__row")].map((row) =>
+      row.hasAttribute("data-quiet"),
+    );
+    expect(quiet).toEqual([false, true, false]);
+  });
+
+  it("draws every kind of logo inside the row, for the stylesheet to quiet by kind", () => {
+    // Colour image, ink mark and letter avatar: `data-quiet` styles each by its
+    // element (`img`, `svg`, the `--letter` span), so each must keep that shape.
+    mount({
+      open: true,
+      group: group({
+        panes: [
+          pane({ paneId: 1, agent: "claude", state: "done" }),
+          pane({ paneId: 2, agent: "codex", label: "Codex", state: "done" }),
+          pane({ paneId: 3, agent: "crush", label: "Crush", state: "done" }),
+        ],
+      }),
+    });
+
+    const logos = [...host.querySelectorAll(".asr-card__row .asr-card__glyph > .asr-card__logo")];
+    expect(logos.map((logo) => logo.tagName.toLowerCase())).toEqual(["img", "svg", "span"]);
+    expect(logos[2].classList.contains("asr-card__logo--letter")).toBe(true);
+  });
+
+  it("does not mark the closed strip's segments quiet", () => {
+    mount({
+      open: false,
+      group: group({ panes: [pane({ paneId: 1, state: "done" })] }),
+    });
+
+    expect(host.querySelector(".asr-card__seg")).not.toBeNull();
+    expect(host.querySelector("[data-quiet]")).toBeNull();
+  });
+});

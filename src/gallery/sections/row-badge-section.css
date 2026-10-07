@@ -1,0 +1,107 @@
+/* The row-badge section's own treatment (`row-badge-section.tsx`): the layout of its columns and
+   the variant classes that choose a badge size and a quiet strength. Gallery-only; nothing here
+   is in the shipping sheet, and no variant redraws a row.
+
+   A variant class sits on the scope around a rail, and the shipped row sheet (04c) reads it
+   three ways:
+   - the three badge variables are declared on `.asr-card__row .asr-card__glyph` (specificity
+     0,2,0), so a variant restates them on a longer selector (0,3,0);
+   - `--asr-quiet-opacity` and `--asr-quiet-ink-alpha` are read with a fallback and declared
+     nowhere in the shipping sheet, so a plain ancestor declaration is enough;
+   - `today` is the one variant that undoes shipped rules rather than parameterising them. */
+
+.gxrb-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.gxrb-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.gxrb-column__title {
+  margin: 0;
+  color: var(--gx-bright);
+}
+
+.gxrb-column__note {
+  margin: 0;
+  color: var(--gx-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* A theme scope: text ink and font are what the sidebar would hand its rows. */
+.gxrb {
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+/* The shipped rail sits on the sidebar's own plane, and a row's badge ring is cut from the
+   ground that plane gives it. The study frame paints `--chrome-1` under the rail instead, which
+   would move every ring off its row's ground by a step the app never shows. */
+.gxrb .asr-study__stage .asr-rail {
+  --asr-cutout: var(--sidebar-bg);
+  background: var(--sidebar-bg);
+}
+
+/* The outset moves with the dot so its centre stays 2.5px in from the logo's corner. */
+.gxrb--b6 .asr-card__row .asr-card__glyph {
+  --asr-badge-size: 6px;
+  --asr-badge-outset: 2.5px;
+}
+
+.gxrb--b8 .asr-card__row .asr-card__glyph {
+  --asr-badge-size: 8px;
+  --asr-badge-outset: 3.5px;
+}
+
+.gxrb--q30 {
+  --asr-quiet-opacity: 0.3;
+  --asr-quiet-ink-alpha: 35%;
+}
+
+.gxrb--q55 {
+  --asr-quiet-opacity: 0.55;
+  --asr-quiet-ink-alpha: 60%;
+}
+
+/* Today: no badge on the logo, every logo at full ink, and the state back in the trailing cell
+   as the 5px dot the sheet drew there before 2026-10-06. */
+.gxrb--today .asr-card__glyph > .asr-card__dot {
+  display: none;
+}
+
+.gxrb--today .asr-card__row[data-quiet="true"] img.asr-card__logo {
+  opacity: 1;
+}
+
+.gxrb--today .asr-card__row[data-quiet="true"] svg.asr-card__logo {
+  color: inherit;
+}
+
+.gxrb--today
+  .asr-card__row:is([data-state="asked"], [data-state="failed"], [data-state="done"])
+  .asr-card__status::after {
+  content: "";
+  grid-area: 1 / 1;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.gxrb--today .asr-card__row[data-state="asked"] .asr-card__status::after {
+  background: var(--status-unread);
+}
+
+.gxrb--today .asr-card__row[data-state="failed"] .asr-card__status::after {
+  background: var(--red);
+}
+
+.gxrb--today .asr-card__row[data-state="done"] .asr-card__status::after {
+  background: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
+}

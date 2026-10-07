@@ -189,12 +189,17 @@
   background: var(--text-muted);
 }
 
-/* DL-35.3 (F2): needs-you is the one state a mark carries, in ONE colour —
-   red for a finished run you have not read, a question and a failure alike
-   (owner, 2026-09-29: no yellow on the spaces). The hover card's counts tell
-   them apart. */
+/* DL-35.3 (F2): needs-you is the one state a mark carries, in the rail's two inks —
+   red for a failure and `--status-unread` yellow for a question or an unread
+   finished run (owner, 2026-10-06, reversing 2026-09-29's single red). A space
+   with both reads red: `needsTone` ranks `failed` first. The hover card's
+   counts still say how many. */
 .space-mark[data-needs]::before {
   background: var(--red);
+}
+
+.space-mark[data-needs="asked"]::before {
+  background: var(--status-unread);
 }
 
 /* The current space's pill: always laid out at full width and scaled down at
@@ -221,7 +226,7 @@
   transform: none;
 }
 
-/* A current space that needs you keeps the pill and drops a dot under it. */
+/* A current space that needs you keeps the pill and drops a dot under it, in the same two inks. */
 .space-mark[aria-selected="true"][data-needs]::after {
   content: "";
   position: absolute;
@@ -232,6 +237,10 @@
   margin-left: -2px;
   border-radius: 50%;
   background: var(--red);
+}
+
+.space-mark[aria-selected="true"][data-needs="asked"]::after {
+  background: var(--status-unread);
 }
 
 /* ── DL-35.3: the hover card, a DL-13.7 hover-raised popover (DL-13.1 surface) ── */
@@ -311,7 +320,8 @@
   background: color-mix(in srgb, var(--tone) 55%, transparent);
 }
 
-/* The same one colour as the marks (DL-35.3): asked and failed alike. */
+/* Still one colour for asked and failed alike: the miniature has not taken the marks' two inks
+   (DL-35.3, amended 2026-10-06 for the marks only). */
 .space-mini i[data-state="asked"],
 .space-mini i[data-state="failed"] {
   background: var(--red);

@@ -2842,12 +2842,22 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   DL-3.2's danger ink on something a project close asks about ONCE for every
   pane at a time. **What the rail still does not close: a whole multi-agent
   tab.** ⌘⇧W is that, and nothing in the rail duplicates it.
-  **Agent card rows (2026-09-09):** one trailing 16px cell holds the state
-  indicator at rest and close on hover or keyboard focus anywhere in the row.
-  Working uses the existing loading indicator; other states use their dot or
-  stop square, and idle stays empty. The model stays visible and the message
-  keeps its width. The leading agent glyph carries no state badge; closed-strip
-  glyphs retain theirs. See [the shared row](../src/ui/worktree-card-row.tsx).
+  **Agent card rows (2026-09-09):** one trailing 16px cell is shared with close
+  on hover or keyboard focus anywhere in the row; the model stays visible and
+  the message keeps its width.
+  **Amended 2026-10-06 (owner): the state moves onto the logo.** The trailing
+  cell keeps only the working bars at rest and close on hover or keyboard
+  focus. Every other state is the strip's corner badge on the row's own logo,
+  drawn larger than the strip's (row badge 7px with a 2px ring in the row's
+  ground, including the hover wash and the focused fill), so the mark sits
+  beside the name the eye is reading. Idle stays unmarked and a working row
+  carries no dot — one state signal per row. **Quiet logos:** a row whose agent
+  does not need the user (anything but `asked` or `failed`) shows its logo
+  quiet — a colour image at reduced opacity, an ink mark in `--text-faint`, a
+  letter avatar unchanged — so the rows that need the user are the only
+  full-colour logos in the column. No `filter` (DL-1.3). The state word stays
+  in the accessible name and tooltip. See
+  [the shared row](../src/ui/worktree-card-row.tsx).
 - **DL-27.22** **The row whose pane holds the keyboard carries the selection
   wash (2026-08-23, owner).** Until this rule the rail could show NOTHING as
   selected: DL-27.8 puts the wash on `.asr-row--tab`, and a multi-agent tab
@@ -3041,12 +3051,14 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   A selected shell tab marks the card active just as a selected agent tab does.
   Model pills render only from an authoritative pane/session pairing; the
   production rail currently withholds its heuristic pairing, so absence is the
-  truthful state. **An agent row shares one trailing 16px cell between state and
-  close (2026-09-09).** Hover or keyboard focus anywhere in the row hides its
-  state and shows close in that same cell; the model pill stays visible and the
-  label keeps its width. Working shows the three staggered loading bars recorded
-  in DL-1.2; other states use their existing dot/stop square, and idle stays empty.
-  Row glyphs carry no corner badge; closed-strip glyphs keep theirs.
+  truthful state. **An agent row shares one trailing 16px cell between its
+  working bars and close (2026-09-09, amended 2026-10-06 by DL-27.21).** Hover
+  or keyboard focus anywhere in the row hides the bars and shows close in that
+  same cell; the model pill stays visible and the label keeps its width.
+  Working shows the three staggered loading bars recorded in DL-1.2 and no dot;
+  every other state is a corner badge on the row's own logo, and idle stays
+  empty. A row whose agent does not need the user draws its logo quiet
+  (DL-27.21). Closed-strip glyphs keep their smaller badge.
   A working row paints no rim and no animation but the loading bars (the rim
   hairline was retired 2026-10-03, DL-27.22) — no blur, gradient beam or
   rasterized custom-property animation. The card is
@@ -3859,14 +3871,16 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   so the change is a `transform` (DL-1.2), never a width. **Needs-you returns to
   the strip, and it is the only state a mark carries** (`asked` + `failed`),
   reversing DL-18.10's 2026-08-16 removal at the owner's word (2026-09-28): a
-  resting dot turns `--status-unread` for a question and `--red` once anything
-  in the space failed — DL-3.2's two roles, never one colour for both — and a
-  current space that needs you keeps its pill with a 4px dot of that colour
-  under it. Mission Control's shelf counts wear the same two colours. **A
+  resting dot is `--red` once anything in the space failed and
+  `--status-unread` yellow for a question or an unread finished run — the
+  rail's two inks and DL-3.2's two roles, never one colour for both (owner,
+  2026-10-06, reversing 2026-09-29's single red) — and a current space that
+  needs you keeps its pill with a 4px dot of that colour under it. Mission
+  Control's shelf counts wear the same two colours. **A
   needs-you mark scrolled out of sight shows at the row's edge** (2026-10-03,
   owner): a 44px fade into the strip and a 6px red dot on the side that hides
   one ([`hiddenNeeds`](../src/ui/spaces/space-edge.ts), re-measured on scroll
-  and resize), red only like the marks themselves. No spinner, no other state. A mark's
+  and resize), red whichever tone it hides. No spinner, no other state. A mark's
   hover or focus raises a DL-13.7 card (DL-13.1's stage surface) with the
   space's name (the folder and index while unnamed), branch (Electron's
   repository scan; omitted without one) and counts, the folder and index
@@ -3902,6 +3916,7 @@ section therefore means naming DL, or the gate does not see the citation.
 | Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
 | Space workflow refinements are a shipping surface | `building` | built, unrun and unwalked; owner eye review owed | 2026-10-03 on `main` (4478840, 664edc5, 0fab403, 0c743a2): launch cards (DL-32.6), auto-named spaces and project capsules and the edge marker (DL-35.3). No `tsc`, `npm test` or `electron:dev` run yet. The walk must cover five agents on one card row, the New space tip by keyboard, a worktree inside its repository's capsule, and a red edge dot with enough spaces to scroll |
 | Space names are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-09-29 on `feat/space-names`: the strip (DL-35.3), the shelf (DL-35.1) and the rail row (DL-27.15's amendment) rename and render a name. The walk must cover the floating strip field over a short name and a 40-character one, the shelf field inside a 96px thumbnail, and a named and an unnamed space in one folder |
+| Every needs-you surface of a space wears the rail's two inks | `building` | the strip's marks do; the rest stay single red, owner decision owed | 2026-10-06 on `feat/rail-row-badge`: the marks and the current space's under-dot paint `--status-unread` for a question and `--red` for a failure (DL-35.3). DL-35.3 also says the shelf counts wear the same two colours, but `.mc-space__needs` paints `--red` for both (its `data-tone` is emitted and the stylesheet never reads it); the miniature's cells and the hidden-needs edge dot are single red too. Unwalked in `electron:dev` |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).

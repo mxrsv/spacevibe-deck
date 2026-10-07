@@ -45,17 +45,23 @@ grouping rather than regrouping on its own.
 
 `paneState` reads latched attention before live phase:
 
-| Attention                              | Phase     | `hasRun` | Rail state | Mark                  |
-| -------------------------------------- | --------- | -------- | ---------- | --------------------- |
-| `error`                                | any       | any      | `failed`   | red dot               |
-| `requested`, `warning`, `completed`    | any       | any      | `asked`    | yellow dot            |
-| `none`                                 | `working` | any      | `working`  | spinner, no dot       |
-| `none`                                 | other     | true     | `done`     | nothing               |
-| `none`                                 | other     | false    | `idle`     | nothing               |
+| Attention                           | Phase     | `hasRun` | Rail state | Mark                   |
+| ----------------------------------- | --------- | -------- | ---------- | ---------------------- |
+| `error`                             | any       | any      | `failed`   | red badge              |
+| `requested`, `warning`, `completed` | any       | any      | `asked`    | yellow badge           |
+| `none`                              | `working` | any      | `working`  | loading bars, no badge |
+| `none`                              | other     | true     | `done`     | quiet gray badge       |
+| `none`                              | other     | false    | `idle`     | nothing                |
 
 The words (`failed`, `needs you`, `working`, `done`, `idle`) live only in the row's title and
 accessible name. Where attention and phase come from is in
 [terminal.md](terminal.md#agent-phase-and-attention).
+
+On a checkout card the badge is drawn on the corner of the row's own logo, the strip's badge at
+a larger row size, never in the trailing cell, which keeps only the working bars and close.
+The same row quiets its logo unless `needsUser` holds (`asked` or `failed`), so the badge is
+not what keeps a needs-you logo at full ink: a row's logo kind (colour image, ink mark, letter
+avatar) decides how it goes quiet, and it never uses `filter`.
 
 Codex's [output-timing fallback](../../src/terminal/agent-attention.ts) is armed only
 after genuine keyboard or paste [input](../../src/terminal/pane.ts) reaches the current
