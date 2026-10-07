@@ -1,5 +1,6 @@
 import deckLogoUrl from "../../.github/assets/icon.svg";
 import { Plus, SidebarSimple } from "@phosphor-icons/react";
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { createNewPaneDragController, type NewPaneDropDeps } from "./new-pane-drag";
@@ -51,7 +52,11 @@ interface SidebarNewButtonProps {
   readonly newPaneDrop?: NewPaneDropDeps;
 }
 
-/** The pinned launcher below the sidebar identity row (DL-27.14). */
+/**
+ * The workspace launcher (DL-27.14). On Electron it is a small `+ New` at the trailing end of the
+ * sidebar identity row (amended 2026-10-07, mock D); Tauri's legacy rail still pins it, full
+ * width, above its list. The visible word is `New`; the accessible name stays `New Workspace`.
+ */
 export function SidebarNewButton({
   disabled = false,
   onOpenWorkspace,
@@ -88,13 +93,15 @@ export function SidebarNewButton({
       onClick={onOpenWorkspace}
     >
       <DeckIcon icon={Plus} size={CHROME_ICON} />
-      <span>New Workspace</span>
+      <span>New</span>
     </button>
   );
 }
 
 /** The sidebar identity row, following the native traffic lights (DL-18.9). */
-export function SidebarFrameActions(props: SidebarToggleProps) {
+export function SidebarFrameActions(
+  props: SidebarToggleProps & { readonly newButton?: ComponentChildren },
+) {
   const isDevelopment = getDesktopEnvironment().isDevelopment === true;
   return (
     <div class="sidebar-frame-actions">
@@ -113,6 +120,7 @@ export function SidebarFrameActions(props: SidebarToggleProps) {
           </span>
         ) : null}
       </span>
+      {props.newButton}
     </div>
   );
 }

@@ -102,6 +102,27 @@ describe("SidebarToggle", () => {
     expect(host.querySelector(".sidebar-brand__version")?.textContent).toBe("V1.2.0");
   });
 
+  it("ends the identity row with a small New that keeps its full accessible name", () => {
+    const onOpenWorkspace = vi.fn();
+    act(() =>
+      render(
+        <SidebarFrameActions
+          collapsed={false}
+          onToggle={vi.fn()}
+          newButton={<SidebarNewButton onOpenWorkspace={onOpenWorkspace} />}
+        />,
+        host,
+      ),
+    );
+    const row = host.querySelector(".sidebar-frame-actions");
+    const button = row?.lastElementChild as HTMLButtonElement;
+    expect(button.classList.contains("sidebar-new")).toBe(true);
+    expect(button.textContent).toBe("New");
+    expect(button.getAttribute("aria-label")).toBe("New Workspace");
+    act(() => button.click());
+    expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the workspace from the standalone launcher", () => {
     const onOpenWorkspace = vi.fn();
     act(() => render(<SidebarNewButton onOpenWorkspace={onOpenWorkspace} />, host));

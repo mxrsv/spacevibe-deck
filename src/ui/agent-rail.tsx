@@ -39,8 +39,9 @@ import { RailAvatarColumn } from "./agent-rail-column";
  * checkout), never what selecting or closing a tab means (R4).
  *
  * One list, no mode switch: a cluster per project in the order the user opened
- * them. The `New` launcher stays above the scrolling list, beneath the
- * sidebar identity row (DL-27.14). Since 2026-08-20 (owner) the rail is no longer live work only:
+ * them. The `New` launcher is a small `+ New` on the sidebar identity row
+ * (DL-27.14, amended 2026-10-07), mounted by `App`, not by this rail. Since 2026-08-20
+ * (owner) the rail is no longer live work only:
  * a REMEMBERED project — a workspace-history entry whose last tab has closed —
  * keeps its header, so closing the work does not remove the place it ran in.
  * Since `rail-create-consolidation` (2026-09-02) that header carries no `+`;
@@ -292,13 +293,6 @@ function WorktreeCardRail(props: AgentRailProps) {
 
   return (
     <nav class="asr-rail asr-rail--mounted" aria-label="Agents">
-      <div class="sidebar-launcher">
-        <SidebarNewButton
-          disabled={props.legacy.openWorkspaceDisabled}
-          onOpenWorkspace={props.legacy.onOpenWorkspace}
-          newPaneDrop={props.newPaneDrop}
-        />
-      </div>
       {/* The scrolling half: the rows. The footer and the banner below stay
           pinned to the bottom of the column, which is the split `.wsbar__list`
           drew before this rail replaced it. */}

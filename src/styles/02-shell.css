@@ -159,6 +159,17 @@
     color var(--duration) var(--ease);
 }
 
+/* DL-27.14 (amended 2026-10-07, mock D's `.rail-new`): on the sidebar identity row `New` is a
+   small text control at the row's trailing end — meta size, muted, no border, a hover wash. */
+.sidebar-frame-actions .sidebar-new {
+  flex: none;
+  height: auto;
+  margin-inline-start: 4px;
+  padding: 3px 7px;
+  border: 0;
+  font: 400 var(--type-meta) / 1 var(--ui-font);
+}
+
 .sidebar-new:hover {
   background: var(--state-hover-bg);
   color: var(--text-primary);

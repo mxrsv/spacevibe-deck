@@ -1488,14 +1488,17 @@ describe("AgentRail carried-over jobs", () => {
     expect(hit()?.getAttribute("aria-current")).toBe("true");
   });
 
-  it("keeps New above the project scrollport", async () => {
+  // DL-27.14 (amended 2026-10-07): Electron's `New` lives on the sidebar identity row, which
+  // `App` mounts; the tree itself draws no launcher.
+  it("starts the Electron rail with the project scrollport, not a launcher", async () => {
     mount();
     await settle();
 
-    const launcher = host.querySelector(".sidebar-launcher");
-    expect(launcher?.querySelector(".sidebar-new")).not.toBeNull();
-    expect(launcher?.nextElementSibling).toBe(host.querySelector(".asr-rail__list"));
-    expect(host.querySelector(".asr-rail__list")?.contains(launcher)).toBe(false);
+    expect(host.querySelector(".sidebar-launcher")).toBeNull();
+    expect(host.querySelector(".sidebar-new")).toBeNull();
+    expect(host.querySelector(".asr-rail")?.firstElementChild).toBe(
+      host.querySelector(".asr-rail__list"),
+    );
     expect(host.querySelector(".asr-stream")?.firstElementChild).not.toBeNull();
   });
 

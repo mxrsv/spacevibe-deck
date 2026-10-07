@@ -208,7 +208,8 @@ import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { applySidebarShell } from "./sidebar-shell";
-import { SidebarFrameActions, SidebarToggle } from "./sidebar-toggle";
+import { SidebarFrameActions, SidebarNewButton, SidebarToggle } from "./sidebar-toggle";
+import type { NewPaneDropDeps } from "./new-pane-drag";
 import {
   clearWindowRecord,
   flushSessionJournal,
@@ -2221,6 +2222,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     launchCanRetryPrompt(currentLaunchAttempt.outcome) &&
     tabsRef.current?.canRetryTaskPrompt(currentLaunchAttempt.tabKey) === true;
 
+  // Dragging `New` onto a pane adds an agent there. Shared by the Electron frame row's `+ New`
+  // and Tauri's launcher inside the legacy rail.
+  const newPaneDrop: NewPaneDropDeps = {
+    // Read at pointer time, so the rects belong to whatever tab is on
+    // the stage right now rather than to the one that was there when
+    // the rail last rendered.
+    //
+    // `panelObscured()`, not `overlayCoversPane()`: the question here
+    // is the native view's question — "is anything painting over the
+    // stage" — because the rail keeps its column while the board, the
+    // full-bleed Settings screen and every modal cover the panes.
+    // Reporting no targets is how the drag goes inert; a pane docked
+    // behind an opaque screen is the ⌘T-under-`WebContentsView` bug in
+    // another shape.
+    slotRects: () => (panelObscured() ? [] : (tabsRef.current?.activeSlotRects() ?? [])),
+    onDrop: (paneId, edge) => {
+      void tabsRef.current?.dropAgentPane(paneId, edge);
+    },
+  };
+
   return (
     <DesktopChrome
       sidebar={sidebar}
@@ -2233,7 +2254,21 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       sidebarToggle={
         railAvailable && !effectiveSidebarCollapsed() ? (
-          <SidebarFrameActions collapsed={false} onToggle={toggleSidebarCollapsed} />
+          <SidebarFrameActions
+            collapsed={false}
+            onToggle={toggleSidebarCollapsed}
+            // DL-27.14 (amended 2026-10-07): Electron's `+ New` sits on this row; Tauri's
+            // legacy rail keeps its own launcher.
+            newButton={
+              avatarColumn ? (
+                <SidebarNewButton
+                  disabled={taskOperationPending.value !== null}
+                  onOpenWorkspace={openTaskBoard}
+                  newPaneDrop={newPaneDrop}
+                />
+              ) : undefined
+            }
+          />
         ) : null
       }
       // Sidebar layout keeps the frame row for the traffic lights and the
@@ -2246,23 +2281,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       sidebarNavigation={
         railAvailable ? (
           <AgentRail
-            newPaneDrop={{
-              // Read at pointer time, so the rects belong to whatever tab is on
-              // the stage right now rather than to the one that was there when
-              // the rail last rendered.
-              //
-              // `panelObscured()`, not `overlayCoversPane()`: the question here
-              // is the native view's question — "is anything painting over the
-              // stage" — because the rail keeps its column while the board, the
-              // full-bleed Settings screen and every modal cover the panes.
-              // Reporting no targets is how the drag goes inert; a pane docked
-              // behind an opaque screen is the ⌘T-under-`WebContentsView` bug in
-              // another shape.
-              slotRects: () => (panelObscured() ? [] : (tabsRef.current?.activeSlotRects() ?? [])),
-              onDrop: (paneId, edge) => {
-                void tabsRef.current?.dropAgentPane(paneId, edge);
-              },
-            }}
+            newPaneDrop={newPaneDrop}
             footer={railToolsMounted ? railActions : undefined}
             collapsed={avatarColumn && effectiveSidebarCollapsed()}
             usageSummary={
