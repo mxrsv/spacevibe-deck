@@ -113,6 +113,7 @@ button.asr-checkout__focus {
 
 button.asr-checkout__focus:hover {
   background: var(--state-hover-bg);
+  color: var(--text-primary);
 }
 
 button.asr-checkout__focus:focus-visible,
@@ -135,8 +136,8 @@ button.asr-checkout__focus:focus-visible,
 }
 
 /* DL-27.28's current mark: the checkout holding the focused pane reads in full ink at a heavier
-   weight, glyph included. The project frame around the cluster says which project; this says
-   which checkout inside it. */
+   weight, glyph included. With the project frame withdrawn, this and the focused row are the whole
+   "you are here" mark. */
 .asr-checkout[data-current="true"] .asr-checkout__name {
   color: var(--text-primary);
   font-weight: 600;
@@ -159,10 +160,13 @@ button.asr-checkout__focus:focus-visible,
 }
 
 /* The checkout's one create control (DL-27.26, amended 2026-10-07), the size of a row's close
-   so the two trailing controls share one right edge. Always visible: a launcher that appears
-   only on hover is missing exactly when someone looks for it. */
+   so the two trailing controls share one right edge. Revealed on hover or focus of its label
+   line, as the mock's `.co-add` is (DL-27.28, amended): by `opacity`, never `display`, so it
+   stays in the tab order and its own focus reveals it for a keyboard. */
 .asr-checkout__add {
   display: grid;
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
   box-sizing: border-box;
   width: var(--asr-card-action-size);
   height: var(--asr-card-action-size);
@@ -175,35 +179,24 @@ button.asr-checkout__focus:focus-visible,
   cursor: pointer;
 }
 
+.asr-checkout__line:hover .asr-checkout__add,
+.asr-checkout__line:focus-within .asr-checkout__add {
+  opacity: 1;
+}
+
 .asr-checkout__add:hover {
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
-/* The frame wraps the WHOLE project cluster (folder header + checkouts). An inset outline
-   paints above the children's backgrounds and takes no layout space. */
+/* The project cluster (folder header + checkouts) carries no frame, fill or outline, focused or
+   not (DL-27.28, amended 2026-10-07; DL-27.25's 2026-10-04 frame is withdrawn): the focused
+   checkout's label line and the focused row mark where you are. The inset below is the one the
+   header and the label lines are measured from. */
 .asr-cluster {
-  /* Same inset on every cluster so focus changes the frame, never the layout. */
   box-sizing: border-box;
   padding: 3px 6px 6px;
   border-radius: var(--radius-tight);
-}
-
-/* Spacing inside the frame (owner, 2026-10-04): the header lets go of the 6px hug so the folder
-   row does not touch the frame. */
-.asr-cluster[data-active="true"] .asr-cluster__head {
-  /* Right inset mirrors the left (7px) so the count badge sits as far from the frame as the
-     folder does. */
-  padding: 6px 7px 4px 7px;
-  margin-bottom: -2px;
-}
-
-.asr-cluster[data-active="true"] {
-  /* The surface its rows sit on, for their state badge's ring (`--asr-badge-ground`). */
-  --asr-row-base: var(--tab-active-bg);
-  background: var(--tab-active-bg);
-  outline: 1px solid var(--hair-strong);
-  outline-offset: -1px;
 }
 
 /* -------------------------------------------------------------------- the agent row */

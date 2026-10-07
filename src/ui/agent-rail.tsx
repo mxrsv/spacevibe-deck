@@ -375,7 +375,6 @@ function WorktreeCardRail(props: AgentRailProps) {
                     }
                   }
                 }}
-                data-active={activeCheckout !== undefined}
                 // The project identity the manual order is stored against
                 // (DL-27.20). Written on the block rather than on the header
                 // because the whole block is what moves.
