@@ -4,7 +4,8 @@ Date: 2026-10-08
 Status: Active — every decision taken 2026-10-08 (1–9 from the mock, 10–13 as recommended);
 slice 1's plan is drafted and awaits approval ([Delivery slices](#delivery-slices)).
 Owner checkout: `/Users/kyantran/Documents/Development/spacevibe-workspace/spacevibe-deck`
-Baseline: written against `main` at `0127500b` (2026-10-08).
+Baseline: written against `origin/main` at `ae395a9e` (2026-10-08), after the navigation rail's
+slice 3c moved `+ New` onto the identity row.
 Host: Electron. Tauri is feature-frozen and keeps today's rail and Open board (see
 [Forks and constraints](#forks-and-constraints)).
 Parent: [Deck product improvements](2026-10-06-deck-product-improvements.md), rank 3 (clear
@@ -18,8 +19,9 @@ Give each create verb — add an agent, create a worktree, open a folder — one
 place, that always does the same thing. Today the three verbs are spread over four surfaces
 and nine controls whose labels and destinations depend on host and state:
 
-- The rail's `New Workspace` opens the Open board, while dragging the same button docks an
-  agent pane ([`SidebarNewButton`](../../src/ui/sidebar-toggle.tsx)).
+- The small `+ New` on the sidebar identity row (accessible name `New Workspace`, DL-27.14
+  amended 2026-10-07) opens the Open board, while dragging the same button docks an agent
+  pane ([`SidebarNewButton`](../../src/ui/sidebar-toggle.tsx)).
 - ⌘T (`new-tab`, labelled `New Agent…`) opens the launch page, the Open board when no
   workspace is active, or a free-standing actions menu on Tauri
   ([`openTaskLauncher`](../../src/ui/app.tsx)).
@@ -103,7 +105,8 @@ IDs map to the parent's LAUNCH1–2 where noted. LAUNCH3 (prompt delivery) is ou
 - **ROW-C3** (LAUNCH1): `Agent`, ⌘T (`new-tab`) and the Agent Board's `New agent` all open
   the launch page on the checkout of the focused pane, or on the active workspace when no
   pane is focused. None of them opens the Open board. A second ⌘T while the page is up
-  closes it, as today.
+  closes it, as today. With no workspace at all, EMPTY1 applies; until slice 4 ships, that
+  case keeps today's Open board.
 - **ROW-C4**: Dragging `Agent` onto a visible pane docks that workspace's last-used agent at
   the nearest edge, with today's threshold, ghost and overlay
   ([`new-pane-drag.ts`](../../src/ui/new-pane-drag.ts)). The drag goes inert when no pane is
