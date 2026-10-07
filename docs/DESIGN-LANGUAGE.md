@@ -1541,6 +1541,9 @@ window's identity and its actions at the same time.
   reversed that half, so `sidebarCollapsed` and a drag are once again the only
   ways the column reaches width 0.
 
+  **Amended 2026-10-07 (owner):** on Electron the collapsed column is DL-27.29's avatar column,
+  not an empty edge; Tauri still hides it.
+
 - **DL-18.10** **One chip shape, one row, one order (2026-08-16).** The strip
   had two segments until this rule: every terminal tab, a `.tabbar__sep`
   hairline, then every non-terminal surface. Both are gone. A chip is a
@@ -3170,6 +3173,17 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   **Amended 2026-10-07 (owner): rows are flat.** No fill at rest — hover wash only, and the
   focused row's DL-27.22 fill. Every session row is two lines (DL-27.2 amended); the model
   pill leaves the row for its tooltip.
+
+- **DL-27.29** **Collapsed, the rail is a column of project avatars (2026-10-07, owner).**
+  On Electron the sidebar's collapse (DL-18.9's control, setting and drag) narrows the rail to
+  one avatar per live project, in rail order, instead of hiding it. An avatar is the project's
+  `WorkspaceIcon` with a corner badge counting the panes that need the user — `--status-unread`,
+  `--red` when any failed, absent at zero (DL-27.27) — and the project holding the focused pane
+  carries the current mark. Pressing an avatar opens a DL-13 popover beside the column with that
+  project's checkout tree exactly as DL-27.28 draws it; choosing a row focuses its pane and
+  closes the popover, Esc closes it. Collapse and expand never move the focused pane, and the
+  strip's breadcrumb (DL-35.3) keeps the identity the column cannot print. The state word stays
+  in each avatar's accessible name (DL-27.2).
 
 ## 28. The rail's action footer
 
