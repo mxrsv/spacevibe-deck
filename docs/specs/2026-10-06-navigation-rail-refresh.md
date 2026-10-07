@@ -56,6 +56,11 @@ C slim shell) and a fifth, D, built from the review's recommendation:
     stand as shipped unless the owner raises one; later slices do not reopen them.
 11. **ATT-D3 leaves this queue** (owner, 2026-10-07): nothing retains a closed pane's attention, and a
     store for it sits on the close seam (an AGENTS.md fork). It needs its own spec.
+12. **The tree matches mock D visually** (owner, 2026-10-07): slice 3 shipped the structure
+    but the rail still read as cards. Rows go flat (fill only on hover and focus), every session
+    row is two lines with the CLI name · newest turn or state word (reversing DL-27.2's "no
+    status word in the row"), the model pill moves to the tooltip, and the focused project's
+    outline goes. Slice 3b.
 
 ## Requirements and acceptance criteria
 
@@ -145,7 +150,8 @@ session starts from that plan without asking again what it decides.
 | 1. Row badge + quiet logos, two-ink space marks | ROW1–4, STRIP2 | [rail-row-badge](../plans/2026-10-06-rail-row-badge.md) | Done — PR #39, 2026-10-07 |
 | 2. Needs attention popover | ATT-D1, D2, D4 | [attention-popover](../plans/2026-10-06-attention-popover.md) | Done — PR #40, 2026-10-07 |
 | 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | Done — 2026-10-07, `d81b9404` `4496da97` `d4933cae` `32a2ccf1` `a1b1ede4` `a963727a` `70413a4f` and the CHANGELOG commit; native walk (REVIEW1) owed |
-| 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | **Next** — plan proposed, awaiting owner approval |
+| 3b. Tree matches mock D | RAIL1–3, decision 12 | [rail-tree-visual](../plans/2026-10-07-rail-tree-visual.md) | **Next** — approved 2026-10-07, running |
+| 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | Queued — plan proposed, awaiting owner approval |
 | 5. Tools and pane actions | TOOLS1–2 | written when slice 4 is Done | Queued |
 
 A session that finishes a slice sets its row to `Done` with the date and commits, then drafts
@@ -178,6 +184,8 @@ its button.
   - TOOLS1 reverses the hidden rail footer (§28, 2026-08-17).
   - Answered 2026-10-06: the owner approved the reversals slices 1–2 need (DL-27.21 row
     badge, DL-35.3 yellow, DL-27.26 strip chip) with their plans' DL text.
+  - Answered 2026-10-07: DL-27.2's no-status-word rule and DL-27.25's project outline are
+    reversed for the tree (decision 12, slice 3b).
   - Answered 2026-10-07: DL-27.27 (decision 8) and §28 (decision 9) are reversed; each
     slice's plan carries the rule text for approval with the plan.
 - The HTML mock drew today's row as status + logo on the left; the real row is logo on the
