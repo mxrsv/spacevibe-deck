@@ -178,11 +178,11 @@
      declared anyway so a later `width` cannot reopen it. */
   box-sizing: border-box;
   align-items: center;
-  /* DL-27.17: folder owns the outer column. The name starts at 30px
-     (7px inset + 17px icon slot + 6px gap), aligned with checkout dots. */
+  /* DL-27.17: folder owns the outer column. The 15px icon centres in its 17px slot, so 5px of
+     padding here plus the rail's 8px puts it at 14px from the sidebar edge (DL-27.28, mock D). */
   grid-template-columns: minmax(0, 1fr) 17px;
   gap: 7px;
-  padding: 6px 4px 2px 7px;
+  padding: 6px 4px 2px 5px;
   /* The HUG: this header belongs to the card directly under it, so it sits
      2px off it — the 6px padding-bottom + `.asr-cluster`'s gap, pulled back by
      this margin (2026-09-10). Spent as a negative margin rather than out of

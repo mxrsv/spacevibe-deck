@@ -23,12 +23,12 @@
  */
 .asr-checkout,
 .asr-card__row {
-  /* DL-27.23: the checkout's glyph starts under the project text at 30px; a 14px track starting
-     here centres a 9px mark on that edge. */
-  --asr-worktree-inset: 27.5px;
-  /* DL-27.28's one indent step: a session row's logo starts where its checkout's name does
-     (the 14px glyph track plus its 6px gap, less the row's own 8px leading padding). */
-  --asr-tree-step: 12px;
+  /* DL-27.28 (amended 2026-10-07, mock D): measured from the sidebar edge, the rail's 8px plus
+     this puts the checkout's 13px branch glyph (centred in its 14px track) at 22px. */
+  --asr-worktree-inset: 13.5px;
+  /* DL-27.28's one indent step: the session row's edge lands at 26px (8px rail + inset + this),
+     the logo 9px inside it at 35px. */
+  --asr-tree-step: 4.5px;
   /* Radius (spec §9.8). 6px sits between DL-20.1's `--radius-flat` (2px) and `--radius-tight`
      (8px) and matches no existing rung — the owner's own pick (2026-08-25). Every
      `border-radius` in this file is this variable, the pill variable below, or an actual `50%`
@@ -183,11 +183,12 @@ button.asr-checkout__focus:focus-visible,
 
 /* The project cluster (folder header + checkouts) carries no frame, fill or outline, focused or
    not (DL-27.28, amended 2026-10-07; DL-27.25's 2026-10-04 frame is withdrawn): the focused
-   checkout's label line and the focused row mark where you are. The inset below is the one the
-   header and the label lines are measured from. */
+   checkout's label line and the focused row mark where you are. No leading inset: the rail's own
+   8px is the whole margin, so the project icon (14px), the branch glyph (22px) and the rows
+   (26px) are measured from the sidebar edge as in mock D. */
 .asr-cluster {
   box-sizing: border-box;
-  padding: 3px 6px 6px;
+  padding: 3px 6px 6px 0;
   border-radius: var(--radius-tight);
 }
 
@@ -216,7 +217,7 @@ button.asr-checkout__focus:focus-visible,
      totals `--asr-card-row-gap` (2px). Declared on every row rather than only
      `+ .asr-card__row` so the first row under the label line gets the same room as the rest. */
   margin-top: calc(var(--asr-card-row-gap) - 1px);
-  padding: var(--asr-card-row-pad-y) 6px var(--asr-card-row-pad-y) 8px;
+  padding: var(--asr-card-row-pad-y) 6px var(--asr-card-row-pad-y) 9px;
   border: 0;
   border-radius: var(--asr-card-radius);
   /* DL-27.28, amended 2026-10-07: rows are flat — no fill at rest, so the tree reads as text and
