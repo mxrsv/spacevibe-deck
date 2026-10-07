@@ -49,8 +49,8 @@ C slim shell) and a fifth, D, built from the review's recommendation:
    failed, takes the slot DL-27.27 gives the running-agent count. The running count leaves
    the header.
 9. **Tools return to the rail (TOOLS1)** (owner, 2026-10-07): an icon row with tooltips at the
-   rail's foot, reversing the hidden `Tools` footer (§28, 2026-08-17). Pane actions leave
-   `More` for the pane header.
+   rail's foot, reversing the hidden `Tools` footer (§28, 2026-08-17). Global tools leave
+   `More`; pane actions live on the pane header and stay in `More` (TOOLS2).
 10. **Shipped as-is** (owner, 2026-10-07): slices 1–2 merged before their eye review. Their PRs'
     "Needs owner decision" items (badge size, quiet opacity, age source, narrow-width cost)
     stand as shipped unless the owner raises one; later slices do not reopen them.
