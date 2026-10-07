@@ -1,5 +1,9 @@
-import { AgentGlyph } from "../controls/agent-glyph";
-import { EM_DASH, USAGE_AGENT_LABEL, USAGE_AGENT_ORDER } from "./usage-format";
+import {
+  EM_DASH,
+  USAGE_AGENT_LABEL,
+  USAGE_AGENT_ORDER,
+  USAGE_AGENT_SHORT_LABEL,
+} from "./usage-format";
 import { useAgentLimits } from "./use-agent-limits";
 import {
   currentLimitWindows,
@@ -25,12 +29,15 @@ export function AgentUsageSummary({
         {USAGE_AGENT_ORDER.map((agent) => {
           const reading = snapshot.find((row) => row.agent === agent);
           const windows = currentLimitWindows(reading, nowMs);
-          const value = windows
-            .map(
-              (window) =>
-                `${limitWindowLabel(window.durationMinutes)} ${Math.floor(100 - window.usedPercent)}%`,
-            )
-            .join(" · ");
+          // One window per agent (DL-33.1, amended 2026-10-07): the one closest to its limit.
+          // The tooltip still lists every window.
+          const binding = windows.reduce<(typeof windows)[number] | undefined>(
+            (tightest, window) =>
+              tightest === undefined || window.usedPercent > tightest.usedPercent
+                ? window
+                : tightest,
+            undefined,
+          );
           const unavailable =
             reading?.state === "error"
               ? "Could not refresh limits"
@@ -54,9 +61,12 @@ export function AgentUsageSummary({
                 aria-label={`${USAGE_AGENT_LABEL[agent]}: ${detail}. Open usage details`}
                 title={`${USAGE_AGENT_LABEL[agent]} · ${detail}`}
               >
-                <AgentGlyph agent={agent} className="agent-usage-summary__glyph" />
-                <span class="agent-usage-summary__limit" aria-hidden="true">
-                  {value || EM_DASH}
+                <span aria-hidden="true">
+                  {USAGE_AGENT_SHORT_LABEL[agent]}{" "}
+                  <b class="agent-usage-summary__limit">
+                    {binding ? `${Math.floor(100 - binding.usedPercent)}%` : EM_DASH}
+                  </b>
+                  {binding ? ` · ${limitWindowLabel(binding.durationMinutes)}` : null}
                 </span>
               </button>
             </li>

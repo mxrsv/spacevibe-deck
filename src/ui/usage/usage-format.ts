@@ -43,6 +43,12 @@ export const USAGE_AGENT_LABEL: Readonly<Record<UsageAgent, string>> = {
   codex: "Codex",
 };
 
+/** The sidebar's one-line summary names an agent by its short word (DL-33.1, amended 2026-10-07). */
+export const USAGE_AGENT_SHORT_LABEL: Readonly<Record<UsageAgent, string>> = {
+  claude: "Claude",
+  codex: "Codex",
+};
+
 /**
  * The sentence every dollar figure carries (spec §Decisions 1): the number is
  * an estimate at API prices, and it was priced from a snapshot taken on a

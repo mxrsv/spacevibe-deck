@@ -80,10 +80,10 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 0 6px;
   overflow-y: hidden;
   overflow-x: auto;
   overscroll-behavior: contain;
@@ -94,27 +94,27 @@
   flex: none;
 }
 
+/* DL-33.1 (amended 2026-10-07, mock D's `.usage`): one micro line of faint text — no badge, no
+   logo — so the foot reads as chrome under the tools row. The press target is the text itself,
+   padded vertically only. */
 .agent-usage-summary__agent {
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
+  display: block;
   min-width: 0;
-  padding: 4px 7px;
+  padding: 3px 0;
   border: 0;
-  border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--tone) 8%, transparent);
-  color: var(--text-primary);
+  background: none;
+  color: var(--text-faint);
   font: inherit;
   font-size: var(--type-micro);
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--duration) var(--ease);
+  transition: color var(--duration) var(--ease);
 }
 
 .agent-usage-summary__agent:hover {
-  background: var(--state-hover-bg);
+  color: var(--text-muted);
 }
 
 .agent-usage-summary button:focus-visible,
@@ -123,16 +123,9 @@
   outline-offset: -2px;
 }
 
-.agent-usage-summary__glyph {
-  width: 15px;
-  height: 15px;
-  flex: none;
-  object-fit: contain;
-}
-
 .agent-usage-summary__limit {
-  white-space: nowrap;
   color: var(--text-muted);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 

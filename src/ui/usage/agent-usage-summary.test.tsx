@@ -51,12 +51,12 @@ describe("live sidebar limits", () => {
         },
       ];
       act(() => render(<RailAgentLimits onOpenUsage={() => undefined} />, host));
-      expect(host.textContent).toContain("7d 18%");
+      expect(host.textContent).toContain("Codex 18% · 7d");
       await act(async () => {
         await vi.advanceTimersByTimeAsync(reason === "reset" ? 2000 : LIMIT_MAX_AGE_MS + 1);
       });
       expect(host.textContent).not.toContain("18%");
-      expect(host.querySelector('[aria-label^="Codex:"]')?.textContent?.trim()).toBe("—");
+      expect(host.querySelector('[aria-label^="Codex:"]')?.textContent?.trim()).toBe("Codex —");
       const cleanup = vi.mocked(observeAgentLimits).mock.results[0].value;
       act(() => render(null, host));
       expect(cleanup).toHaveBeenCalledOnce();
