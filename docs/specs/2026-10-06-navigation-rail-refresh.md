@@ -152,7 +152,7 @@ session starts from that plan without asking again what it decides.
 | 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | Done — 2026-10-07, `d81b9404` `4496da97` `d4933cae` `32a2ccf1` `a1b1ede4` `a963727a` `70413a4f` and the CHANGELOG commit; native walk (REVIEW1) owed |
 | 3b. Tree matches mock D | RAIL1–3, decision 12 | [rail-tree-visual](../plans/2026-10-07-rail-tree-visual.md) | **Done** — 2026-10-07, `6068bdef` `e4e0e2b3` `9b0c9eb3` `51626709` `137540e1` |
 | 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | **Done** — 2026-10-07, `d394086b` `1815b510` `9e8966ec` `9b9656a4` `7b7402ab` `0f811400` `7c08001c`; native walk owed (ledger row in DL) |
-| 5. Tools and pane actions | TOOLS1–2 | [rail-tools](../plans/2026-10-07-rail-tools.md) | Queued — plan proposed (T1–T8), runs after 3b and 4 merge |
+| 5. Tools and pane actions | TOOLS1–2 | [rail-tools](../plans/2026-10-07-rail-tools.md) | **Next** — approved 2026-10-07, running on `main` |
 
 A session that finishes a slice sets its row to `Done` with the date and commits, then drafts
 the next slice's plan with its Operating contract for owner approval; it does not start that
