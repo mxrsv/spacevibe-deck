@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../../repositories/repository-client";
-import type { TabView } from "../../terminal/tabs-store";
 import { repositoryScans } from "../../repositories/repositories-store";
-import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
+import { activeTabIndex, tabViews, type TabView } from "../../terminal/tabs-store";
 import { currentProjectSpaceOrder, spaceLayoutFromRail, spaceOrderFromRail } from "./space-order";
 
 function tab(key: number, workspacePath: string, openedAt: number): TabView {
