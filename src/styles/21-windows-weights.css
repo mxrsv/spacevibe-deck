@@ -76,6 +76,7 @@
 .window--windows .asr-checkout__name,
 .window--windows .asr-checkout__tag,
 .window--windows .asr-card__row .asr-card__name,
+.window--windows .asr-cluster__count,
 .window--windows .asr-needs__chip,
 .window--windows .update-action,
 .window--windows .gsep button,
@@ -110,10 +111,7 @@
 /* ── 600: names, labels and emphasis (authored 540-590) ─────────────────
    Group labels, cluster and section heads, count numerals, button labels
    that state an action, the eyebrows above a heading. Each is one rung
-   above the 400 text it heads. The needs-you count on a project header
-   (`.asr-cluster__count`) takes its label's rung: macOS authors both at 560,
-   so there is no weight step between them to keep, and 10.5px coloured text
-   at 400 would read thinner than every other count here. */
+   above the 400 text it heads. */
 .window--windows .sidebar-new,
 .window--windows .nt-composer__prompt-head label,
 .window--windows .agent-launch-page h1,
@@ -123,7 +121,6 @@
 .window--windows .nt-context-control__copy strong,
 .window--windows .asr-cluster__toggle,
 .window--windows .asr-cluster__still,
-.window--windows .asr-cluster__count,
 .window--windows .cfg-group,
 .window--windows .recent-session-activity__heading,
 .window--windows .lp-head__title,
@@ -174,11 +171,4 @@
    button (`.nt-board--agents .board-home__star`). */
 .window--windows .nt-board--agents .board-home__star {
   font-weight: 400;
-}
-
-/* The current checkout's label is DL-27.28's current mark: full ink at 600
-   over its 400 siblings (`.asr-checkout__name` above). Without its own line
-   here the base override would tie it and the mark would lose its weight. */
-.window--windows .asr-checkout[data-current="true"] .asr-checkout__name {
-  font-weight: 600;
 }

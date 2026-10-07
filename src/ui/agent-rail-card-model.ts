@@ -38,9 +38,9 @@ export interface RailCardPane extends RailPaneRow {
   /**
    * The row's second line (DL-27.28, amended 2026-10-07): the agent label ·
    * the status, where the status is the newest turn or, before one, the state
-   * word (`stateWord`). When the task label already is the agent label it is
-   * the status alone. Never empty on a built entry; absent on a hand-made
-   * fixture, which the row then reads as the state word.
+   * word (`stateWord`), whether or not the task label is the agent label too.
+   * Never empty on a built entry; absent on a hand-made fixture, which the
+   * row then reads as the state word.
    */
   readonly secondLine?: string;
 }
@@ -237,15 +237,16 @@ export function buildCardEntries(
     const prefix = task === null ? "" : `${task} · `;
     const sentence = claim(prefix, baseSentence);
     const agent = displayAgent(pane.agent);
-    // DL-27.28's two lines. Without a task the first line is the agent label —
-    // or, before the agent has spoken, the claimed sentence, which is that
-    // label with the ordinal that keeps two silent rows apart — and the second
-    // is the status alone. With a task the second is `agent · status`; a silent
-    // row's agent word is the claimed sentence for the same ordinal reason.
+    // DL-27.28's two lines; the second always opens with the agent label
+    // (amended 2026-10-07, mock D). Without a task the first line is the agent
+    // label — or, before the agent has spoken, the claimed sentence, which is
+    // that label with the ordinal that keeps two silent rows apart. With a task
+    // a silent row's agent word on the second line is the claimed sentence for
+    // the same ordinal reason.
     const word = stateWord(pane);
     const lines =
       task === null
-        ? { taskLabel: said ? agent : sentence, secondLine: said ? sentence : word }
+        ? { taskLabel: said ? agent : sentence, secondLine: `${agent} · ${said ? sentence : word}` }
         : { taskLabel: task, secondLine: `${said ? agent : sentence} · ${said ? sentence : word}` };
     return { ...pane, sentence, label: prefix + sentence, ...lines };
   });

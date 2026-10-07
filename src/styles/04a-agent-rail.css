@@ -209,8 +209,9 @@
   padding: 0 23px 0 0;
   border: 0;
   background: transparent;
+  /* DL-27.28 (amended 2026-10-07, mock D): the project name is the tree's loudest word. */
   color: var(--text-primary);
-  font: 560 var(--type-project) / 1.2 var(--ui-font);
+  font: 600 var(--type-project) / 1.2 var(--ui-font);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -243,7 +244,7 @@
   align-items: center;
   gap: 6px;
   color: var(--text-primary);
-  font: 560 var(--type-project) / 1.2 var(--ui-font);
+  font: 600 var(--type-project) / 1.2 var(--ui-font);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -319,7 +320,8 @@
 .asr-cluster__count {
   flex: none;
   color: var(--status-unread);
-  font: 560 var(--type-micro) / 1 var(--ui-font);
+  /* Regular weight, as the mock's `.cnt` (DL-27.28, amended 2026-10-07): the colour carries it. */
+  font: 400 var(--type-micro) / 1 var(--ui-font);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   transition: opacity var(--duration) var(--ease);

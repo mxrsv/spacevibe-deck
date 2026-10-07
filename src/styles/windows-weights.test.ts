@@ -197,11 +197,6 @@ describe("windows weight ledger", () => {
  */
 const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
   ["project label over a checkout's label", ".asr-cluster__toggle", ".asr-checkout__name"],
-  [
-    "the current checkout's label over its siblings (DL-27.28's current mark)",
-    '.asr-checkout[data-current="true"] .asr-checkout__name',
-    ".asr-checkout__name",
-  ],
   ["menu row title over its detail (DL-13.8)", ".asr-act__title", ".asr-act__detail"],
   [
     "field caption over the helper text of its field",

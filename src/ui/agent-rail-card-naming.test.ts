@@ -353,7 +353,7 @@ describe("buildCardEntries task label and second line", () => {
     expect(entry).toMatchObject({ taskLabel: "auth", secondLine: "Claude · Ready" });
   });
 
-  it("falls back to the agent label, with the turn or the state word alone beneath it", () => {
+  it("falls back to the agent label, with agent · turn or agent · state word beneath it", () => {
     const row = tabRow({
       key: 1,
       index: 0,
@@ -362,8 +362,8 @@ describe("buildCardEntries task label and second line", () => {
       panes: [{ ...paneRow("claude", 1), message: "Running the tests" }, paneRow("codex", 2)],
     });
     expect(lines(buildCardEntries([row], undefined))).toEqual([
-      ["Claude", "Running the tests"],
-      ["Codex", "Ready"],
+      ["Claude", "Claude · Running the tests"],
+      ["Codex", "Codex · Ready"],
     ]);
   });
 
@@ -383,7 +383,7 @@ describe("buildCardEntries task label and second line", () => {
     });
     expect(lines(buildCardEntries([named, spoken], undefined))).toEqual([
       ["auth", "Claude · Working"],
-      ["Claude", "Editing the rail"],
+      ["Claude", "Claude · Editing the rail"],
     ]);
   });
 
@@ -430,7 +430,7 @@ describe("buildCardEntries task label and second line", () => {
       pair.join("\n"),
     );
     expect(new Set(visible).size).toBe(visible.length);
-    expect(visible.slice(0, 2)).toEqual(["Claude\nReady", "Claude 2\nReady"]);
+    expect(visible.slice(0, 2)).toEqual(["Claude\nClaude · Ready", "Claude 2\nClaude · Ready"]);
   });
 });
 

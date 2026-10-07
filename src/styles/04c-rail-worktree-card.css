@@ -332,8 +332,9 @@ button.asr-checkout__focus:focus-visible,
  * The agent holding the keyboard (DL-27.22) is an INVERTED row (owner, 2026-10-03, chosen from
  * nine gallery candidates after the report that the focused agent did not stand out, twice:
  * 2026-08-26 and again today). A wash of any strength lost to the busy rim and to the five
- * sibling rows' own washes, so the row now fills with `--text-primary` over the chrome and its
- * ink flips to `--sidebar-bg`: the one light block in the column. The ink is a variable so a
+ * sibling rows' own washes, so the row now fills with `--text-primary` and its ink flips to
+ * `--bg` (a true inversion, as mock D; amended 2026-10-07, it was a 74% mix over `--sidebar-bg`):
+ * the one light block in the column. The ink is a variable so a
  * theme or a candidate restates one line, and every mark that would vanish on that fill (name,
  * sentence, loading bars, the neutral dots, the close) reads it below.
  *
@@ -341,8 +342,8 @@ button.asr-checkout__focus:focus-visible,
  * outshout, and the loading bars still say a row is busy.
  */
 .asr-card__row {
-  --asr-card-focus-bg: color-mix(in srgb, var(--text-primary) 74%, var(--sidebar-bg));
-  --asr-card-focus-ink: var(--sidebar-bg);
+  --asr-card-focus-bg: var(--text-primary);
+  --asr-card-focus-ink: var(--bg);
 }
 
 .asr-card__row[data-focused="true"] {

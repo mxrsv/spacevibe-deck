@@ -559,14 +559,14 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     const listed = rows();
     expect(listed.map((row) => row.dataset.state)).toEqual(["asked", "working"]);
     // DL-27.28: an unnamed row with no first prompt leads with its agent label
-    // and carries the turn on its second line.
+    // and carries `agent · turn` on its second line.
     expect(listed.map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
       "Claude",
       "Codex",
     ]);
     expect(listed.map((row) => row.querySelector(".asr-card__sentence")?.textContent)).toEqual([
-      "Permission needed: prisma migrate dev",
-      "Running the suite",
+      "Claude · Permission needed: prisma migrate dev",
+      "Codex · Running the suite",
     ]);
     expect(listed[0]?.querySelector(".asr-card__hit")?.getAttribute("title")).toContain(
       "Permission needed: prisma migrate dev",
@@ -720,7 +720,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     ).toBe("15");
     expect(readFileSync("src/styles/01-tokens.css", "utf8")).toContain("--type-project: 15px");
     expect(readFileSync("src/styles/04a-agent-rail.css", "utf8")).toContain(
-      "font: 560 var(--type-project)",
+      "font: 600 var(--type-project)",
     );
   });
 
