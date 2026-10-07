@@ -2010,6 +2010,14 @@ program
   interactions and outlive no layout change; an anchored-positioning rewrite
   buys nothing the app can show. Revisit only if chrome ever scrolls under an
   open tooltip.
+
+  **Amended 2026-10-07 (owner): a tooltip may open above.** A trigger in the
+  window's bottom edge — the rail's tools row — passes `placement: "above"`; the
+  tooltip is then positioned from the trigger's top edge and centred above it,
+  clamped half a tooltip's width (124px) from the window's sides rather than
+  the 90px the top toolbar's names need. Every other trigger keeps the default,
+  below
+  ([`action-tooltip.tsx`](../src/ui/controls/action-tooltip.tsx) `current`).
 - **DL-23.5** The overflow menu is a §13 popover made of rows: group order,
   icon, label, chord and state survive the move off the bar, and the group
   separator moves with them. `role="menu"` promises arrow keys, so arrows
@@ -2038,6 +2046,13 @@ program
   ([`feature-toolbar.tsx`](../src/ui/toolbar/feature-toolbar.tsx) `current`),
   and top-tab mode's menu prints the pane group first, then the DL-28.4 rows,
   separated by the group hairline DL-23.5 already carries.
+
+  **Amended 2026-10-07 (owner):** on Electron's sidebar layout `More` carries the
+  pane group only; the global group sits in the rail's icon row (DL-28 amended).
+  Top-tab mode, Tauri and an Electron window with no live rail print the pane
+  group, a hairline, then the global group, as before. `More` keeps the pane
+  group because a plain shell pane has no agent header (DL-32.8)
+  ([`deck-toolbar.tsx`](../src/ui/toolbar/deck-toolbar.tsx) `current`).
 - **DL-23.9** **The menu row reads one rung up the ladder (2026-08-16).**
   `.toolbar-menu__row` takes `--type-title` (14px) for its label, `--type-body`
   for its chord and `--type-meta` for its unavailable reason, with a
@@ -3242,6 +3257,11 @@ reserved — the next free number above §27, not the gap.
   already on screen, while these rows say in words what can be opened at all.
   A row for a surface the running host cannot serve is **omitted, not
   disabled**, matching DL-19.7.
+
+  **Amended 2026-10-07 (owner):** the members are Session history, Token usage,
+  Explorer (the dock's explorer tab, ⌘⇧B), Prompts, Browser and Settings. Pane
+  operations stay off the rail: they live on the agent pane's header (DL-32.8)
+  and in `More` (DL-23.8).
 - **DL-28.4** **Top-tab mode has no rail, so the same members ride in the
   toolbar's `More` menu there** — one menu standing in for the footer, never
   a second row of icons that layout does not otherwise have. Both mounts are
@@ -3594,6 +3614,24 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
   The bar's height is unchanged, and the join relies on xterm painting the same
   theme background as `--bg`, which it does because both read `theme.background`
   ([`theme-vars.ts`](../src/lib/theme-vars.ts)).
+  **Amended 2026-10-07 (owner):** the header is logo · message · Effort (Claude
+  only) · pane actions (DL-32.8).
+
+- **DL-32.8** **The agent header carries its pane's actions (2026-10-07,
+  owner).** Four icon buttons end the
+  [header](../src/terminal/pane-agent-header.tsx): Split horizontally, Split
+  vertically, Focus expand and Close pane, each with DL-23's tooltip (name and
+  chord). They act on the pane whose header holds them, not on whichever pane is
+  focused ([`pane-header-actions.ts`](../src/terminal/pane-header-actions.ts)
+  routes them through the entry points the rail already uses). They are hidden
+  (`opacity: 0`) until the pane is hovered or holds focus, stay in the tab order,
+  and drop the fade under reduced motion (DL-1.5). Hover is DL-21.2's wash and
+  focus DL-21.3's outline; Focus expand is a toggle that paints no state
+  (DL-21.8). Each stops `pointerdown` and `mousedown`, so a press on a button
+  never starts the pane drag the rest of the header begins (`pane-drag.ts`). A
+  plain shell pane has no agent header and keeps `More`. When the header is
+  narrower than 280px the splits are not drawn and Focus expand and Close pane
+  stay.
 
 ## 33. Sidebar usage and retained activity rows
 

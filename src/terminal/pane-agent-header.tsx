@@ -1,10 +1,26 @@
 import { effect } from "@preact/signals";
 import { render } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
-import { CaretDown } from "@phosphor-icons/react";
+import {
+  ArrowsOut,
+  CaretDown,
+  SquareSplitHorizontal,
+  SquareSplitVertical,
+  XSquare,
+} from "@phosphor-icons/react";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
-import { DeckIcon } from "../ui/controls/deck-icon";
+import {
+  ActionTooltip,
+  tooltipTriggerProps,
+  useTooltipVisibility,
+} from "../ui/controls/action-tooltip";
+import { DeckIcon, type DeckIconComponent } from "../ui/controls/deck-icon";
+import { toolbarLabel } from "../ui/toolbar/toolbar-label";
+import { shortcutLabel } from "../lib/shortcut-label";
+import { settings } from "../settings/settings-store";
 import { tabViews, type PaneView } from "./tabs-store";
+import { paneHeaderActions } from "./pane-header-actions";
+import type { ActionId } from "./action-registry";
 import { paneTails } from "./session-tail-store";
 import { CLAUDE_EFFORT_PICKER_KEY, CLAUDE_EFFORT_PICKER_HINT } from "../lib/agent-effort";
 import { reportChromeMessage } from "../chrome/events";
@@ -16,6 +32,12 @@ interface PaneHeaderInput {
   focus(): void;
 }
 const OPEN_FAILED = "Could not open Claude Code's effort picker. Try again.";
+/**
+ * Below this header width the splits drop. The logo, a readable stretch of
+ * message, Claude's Effort control and all four actions need about this much;
+ * at the 24-column pane floor the message would otherwise be squeezed to nothing.
+ */
+const NARROW_HEADER_PX = 280;
 
 function currentPane(id: number): PaneView | undefined {
   return tabViews
@@ -24,18 +46,137 @@ function currentPane(id: number): PaneView | undefined {
     .find((pane) => pane.paneId === id);
 }
 
+interface HeaderActionProps {
+  readonly paneId: number;
+  readonly id: ActionId;
+  readonly icon: DeckIconComponent;
+  /** Present only for a toggle: reaches ARIA, never the paint (DL-21.8). */
+  readonly pressed?: boolean;
+  onPress(): void;
+}
+
+/** One header button and its DL-23 tooltip — a component because the tooltip is a hook per control. */
+function HeaderAction({ paneId, id, icon, pressed, onPress }: HeaderActionProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const tooltip = useTooltipVisibility();
+  const label = toolbarLabel(id);
+  const tooltipId = `pane-act-tip-${paneId}-${id}`;
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        class="pane-agent-header__act"
+        aria-label={label}
+        aria-pressed={pressed}
+        aria-describedby={tooltip.anchor !== null ? tooltipId : undefined}
+        {...tooltipTriggerProps(tooltip, ref)}
+        onClick={onPress}
+      >
+        <DeckIcon icon={icon} size={14} />
+      </button>
+      {tooltip.anchor !== null && (
+        <ActionTooltip
+          id={tooltipId}
+          label={label}
+          shortcut={shortcutLabel(id)}
+          reason={null}
+          anchor={tooltip.anchor}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * The pane's own actions (DL-32.8): they act on the pane whose header holds
+ * them, through the handlers `App` registered (`pane-header-actions.ts`). The
+ * container stops `pointerdown` and `mousedown` like the Effort control, since
+ * the bar is the pane's drag handle (`pane-drag.ts`). Never `disabled`: a closed
+ * pane's header is gone, and an exited agent's pane can still be split or closed.
+ *
+ * When the pane is too narrow for the message the two splits are not drawn, and
+ * Focus expand and Close pane stay (DL-32.8).
+ */
+function HeaderActions({
+  paneId,
+  expandActive,
+  narrow,
+}: {
+  paneId: number;
+  expandActive: boolean;
+  narrow: boolean;
+}) {
+  return (
+    <div
+      class="pane-agent-header__actions"
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      {!narrow && (
+        <>
+          <HeaderAction
+            paneId={paneId}
+            id="split-row"
+            icon={SquareSplitHorizontal}
+            onPress={() => paneHeaderActions().split(paneId, "row")}
+          />
+          <HeaderAction
+            paneId={paneId}
+            id="split-column"
+            icon={SquareSplitVertical}
+            onPress={() => paneHeaderActions().split(paneId, "column")}
+          />
+        </>
+      )}
+      <HeaderAction
+        paneId={paneId}
+        id="toggle-expand"
+        icon={ArrowsOut}
+        pressed={expandActive}
+        onPress={() => paneHeaderActions().toggleExpand(paneId)}
+      />
+      <HeaderAction
+        paneId={paneId}
+        id="close-pane"
+        icon={XSquare}
+        onPress={() => paneHeaderActions().close(paneId)}
+      />
+    </div>
+  );
+}
+
 export function PaneAgentHeader({
   pane,
   message,
   input,
+  expandActive = false,
 }: {
   pane: PaneView;
   message: string;
   input: PaneHeaderInput;
+  /** `settings.focusExpand`, read by the mount's effect like `pane` and `message`. */
+  expandActive?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const generation = useRef(0);
   const inFlight = useRef(false);
+  const root = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  // A JS measure, not a container query: `container-type` is layout containment,
+  // which would make the bar the containing block for the actions' `fixed`
+  // tooltips and move them.
+  useLayoutEffect(() => {
+    const element = root.current;
+    if (element === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) => {
+      setNarrow((entry?.contentRect.width ?? Number.POSITIVE_INFINITY) < NARROW_HEADER_PX);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   useLayoutEffect(() => {
     generation.current += 1;
     inFlight.current = false;
@@ -81,7 +222,7 @@ export function PaneAgentHeader({
   if (!pane.agent) return null;
   const label = message.trim() || displayAgent(pane.agent);
   return (
-    <div class="pane-agent-header">
+    <div ref={root} class="pane-agent-header">
       <span class="pane-agent-header__identity" title={pane.agent}>
         <AgentGlyph agent={pane.agent} className="pane-agent-header__logo" />
       </span>
@@ -107,6 +248,7 @@ export function PaneAgentHeader({
           </button>
         </div>
       )}
+      <HeaderActions paneId={pane.paneId} expandActive={expandActive} narrow={narrow} />
     </div>
   );
 }
@@ -127,9 +269,12 @@ export function mountPaneAgentHeader(
       .flatMap((tab) => tab.panes ?? [])
       .find((candidate) => candidate.paneId === id);
     const message = paneTails.value.get(id) ?? "";
+    const expandActive = settings.value.focusExpand;
     element.classList.toggle("pane--agent-header", Boolean(pane?.agent));
     render(
-      pane?.agent ? <PaneAgentHeader pane={pane} message={message} input={input} /> : null,
+      pane?.agent ? (
+        <PaneAgentHeader pane={pane} message={message} input={input} expandActive={expandActive} />
+      ) : null,
       host,
     );
   });

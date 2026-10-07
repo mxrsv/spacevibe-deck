@@ -89,3 +89,47 @@
   color: var(--text-faint);
   cursor: default;
 }
+/* DL-32.8: the pane's own actions end the header. Hidden until the pane is hovered
+   or holds focus, so a resting window shows the logo and the message alone, but never
+   out of the tab order: `:focus-within` reveals them for the keyboard, and the focused
+   pane — whose terminal holds focus inside the pane — is always the one showing them.
+   The space is reserved at rest, so the message does not reflow when they appear. */
+.pane-agent-header__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+  opacity: 0;
+}
+.pane:hover .pane-agent-header__actions,
+.pane:focus-within .pane-agent-header__actions {
+  opacity: 1;
+}
+/* DL-21.2's wash on hover and DL-21.3's outline on keyboard focus; DL-21.8 means no
+   rule paints Focus expand's pressed state, which reaches ARIA alone. The wash is the
+   same neutral step on `--chrome-2` and on the focused pane's `--bg` sheet. */
+.pane-agent-header__act {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.pane-agent-header__act:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+.pane-agent-header__act:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* DL-1.5: motion only where the user has not asked for less. Reduced, they just appear. */
+@media (prefers-reduced-motion: no-preference) {
+  .pane-agent-header__actions {
+    transition: opacity var(--duration) var(--ease);
+  }
+}

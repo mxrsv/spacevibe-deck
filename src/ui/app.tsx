@@ -115,6 +115,10 @@ import {
   initBrowserBridge,
 } from "../browser/browser-store";
 import { installSessionTailSync } from "../terminal/session-tail-store";
+import {
+  createPaneHeaderHandlers,
+  registerPaneHeaderActions,
+} from "../terminal/pane-header-actions";
 import { toFontStack } from "../terminal/pane";
 import { useMissionControl } from "./mission-control/use-mission-control";
 import { currentProjectSpaceOrder } from "./spaces/space-order";
@@ -1565,6 +1569,31 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       removeWorkspaceRecents(historyPaths);
     }
   };
+  /**
+   * The agent pane header's own buttons (DL-32.8). They act on the pane whose
+   * header was pressed, so each handler resolves that pane's tab and goes
+   * through the entry point the rail already uses for a pane-exact act.
+   *
+   * `createPaneHeaderHandlers` holds the rules; this only hands it the entry
+   * points. Close goes through `closePaneAt`, so the pane's own ✕ and the
+   * rail's ✕ are one close model. Re-registered each render so the handlers
+   * never close over a stale `App`.
+   */
+  useEffect(() =>
+    registerPaneHeaderActions(
+      createPaneHeaderHandlers({
+        tabIndexOf: (paneId) =>
+          tabViews
+            .peek()
+            .findIndex((tab) => (tab.panes ?? []).some((pane) => pane.paneId === paneId)),
+        focusPane: focusRailPane,
+        activePaneId: () => tabsRef.current?.activePaneId() ?? null,
+        splitActive: (direction) => void tabsRef.current?.splitActive(direction),
+        toggleFocusExpand: () => updateSettings({ focusExpand: !settings.peek().focusExpand }),
+        closePaneAt: (index, paneId) => void closePaneAt(index, paneId),
+      }),
+    ),
+  );
   /**
    * The browser chip's select: the browser takes the stage, the file surface
    * steps back — App is the one module that sees both stores, so this is
