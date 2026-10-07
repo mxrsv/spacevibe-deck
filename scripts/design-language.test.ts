@@ -450,8 +450,8 @@ describe("design-language feature glyph treatment", () => {
     for (const selector of [
       ".dock-tabs__chip:hover",
       ".dock-tabs__chip.is-active",
-      ".sidebar-actions__row:hover",
-      ".sidebar-actions__row.is-active",
+      ".sidebar-actions__tool:hover",
+      ".sidebar-actions__tool.is-active",
     ]) {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const body = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";

@@ -199,6 +199,7 @@ export function agentRailNavigationSpecimen({
             promptsOpen={false}
             onOpenBrowser={NOOP}
             onOpenUsage={NOOP}
+            onOpenExplorer={NOOP}
             onOpenSessions={NOOP}
             onOpenPrompts={NOOP}
             onOpenSettings={NOOP}

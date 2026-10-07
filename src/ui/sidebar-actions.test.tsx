@@ -11,25 +11,18 @@ describe("SidebarActions", () => {
     sessionsAvailable: true,
     promptsOpen: false,
     promptsUnavailable: null,
-    onOpenBrowser: vi.fn(),
-    onOpenUsage: vi.fn(),
     onOpenSessions: vi.fn(),
+    onOpenUsage: vi.fn(),
+    onOpenExplorer: vi.fn(),
     onOpenPrompts: vi.fn(),
+    onOpenBrowser: vi.fn(),
     onOpenSettings: vi.fn(),
   };
 
   beforeEach(() => {
     host = document.createElement("div");
     document.body.appendChild(host);
-    for (const spy of [
-      base.onOpenBrowser,
-      base.onOpenUsage,
-      base.onOpenSessions,
-      base.onOpenPrompts,
-      base.onOpenSettings,
-    ]) {
-      spy.mockClear();
-    }
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -37,85 +30,115 @@ describe("SidebarActions", () => {
     host.remove();
   });
 
-  function rows(): HTMLButtonElement[] {
-    return Array.from(host.querySelectorAll(".sidebar-actions__row"));
+  function tools(): HTMLButtonElement[] {
+    return Array.from(host.querySelectorAll(".sidebar-actions__tool"));
   }
 
-  it("names every surface the rail can open, in order", () => {
+  const names = (): (string | null)[] => tools().map((tool) => tool.getAttribute("aria-label"));
+
+  it("names every surface the rail can open, in the owner's order", () => {
     act(() => render(<SidebarActions {...base} />, host));
 
-    expect(rows().map((row) => row.textContent)).toEqual([
-      "Open browser",
-      "Token usage",
+    expect(names()).toEqual([
       "Session history",
+      "Token usage",
+      "Explorer",
       "Prompts",
+      "Browser",
       "Settings",
     ]);
   });
 
-  it("gives each launcher one prominent feature glyph larger than its text", () => {
+  it("draws icons only — no label text in the row", () => {
     act(() => render(<SidebarActions {...base} />, host));
 
-    for (const row of rows()) {
-      const icons = row.querySelectorAll("svg.feature-glyph");
-      expect(icons).toHaveLength(1);
-      expect(icons[0]?.getAttribute("width")).toBe("15");
+    for (const tool of tools()) {
+      expect(tool.textContent).toBe("");
+      expect(tool.querySelectorAll("svg")).toHaveLength(1);
+      expect(tool.querySelector("svg")?.getAttribute("width")).toBe("16");
     }
   });
 
-  // Same precedent as the dock's own tab row: a row that opens an empty
-  // surface is worse than no row.
+  // Same precedent as the dock's own tab row: a control that opens an empty
+  // surface is worse than none.
   it("drops Session history on a host that cannot answer for it", () => {
     act(() => render(<SidebarActions {...base} sessionsAvailable={false} />, host));
 
-    expect(rows().map((row) => row.textContent)).not.toContain("Session history");
+    expect(names()).not.toContain("Session history");
+    expect(tools()).toHaveLength(5);
   });
 
-  it("routes each row to its own callback", () => {
+  it("routes each icon to its own callback, once", () => {
     act(() => render(<SidebarActions {...base} />, host));
 
-    for (const row of rows()) {
-      act(() => row.click());
+    for (const tool of tools()) {
+      act(() => tool.click());
     }
 
-    expect(base.onOpenBrowser).toHaveBeenCalledTimes(1);
-    expect(base.onOpenUsage).toHaveBeenCalledTimes(1);
     expect(base.onOpenSessions).toHaveBeenCalledTimes(1);
+    expect(base.onOpenUsage).toHaveBeenCalledTimes(1);
+    expect(base.onOpenExplorer).toHaveBeenCalledTimes(1);
     expect(base.onOpenPrompts).toHaveBeenCalledTimes(1);
+    expect(base.onOpenBrowser).toHaveBeenCalledTimes(1);
     expect(base.onOpenSettings).toHaveBeenCalledTimes(1);
   });
 
-  // These rows are shortcuts that open, not toggles. They must report no
-  // selection state at all — no pressed row, no `aria-pressed`, nothing that
-  // implies pressing again would put the surface away.
+  // DL-28.5 / DL-21.8: these open and report nothing — no pressed icon, no
+  // `aria-pressed`, no `aria-expanded`, nothing that implies a second press
+  // would put the surface away.
   it("paints no selection state, even while its surfaces are open", () => {
     act(() => render(<SidebarActions {...base} promptsOpen />, host));
 
-    for (const row of rows()) {
-      expect(row.classList.contains("is-active")).toBe(false);
-      expect(row.hasAttribute("aria-pressed")).toBe(false);
-      expect(row.hasAttribute("aria-expanded")).toBe(false);
+    for (const tool of tools()) {
+      expect(tool.classList.contains("is-active")).toBe(false);
+      expect(tool.hasAttribute("aria-pressed")).toBe(false);
+      expect(tool.hasAttribute("aria-expanded")).toBe(false);
     }
   });
 
-  // DL-23.6: unavailable is not disabled. The row keeps its place in the tab
+  it("marks only Prompts as opening a popover", () => {
+    act(() => render(<SidebarActions {...base} />, host));
+
+    const popups = tools().filter((tool) => tool.hasAttribute("aria-haspopup"));
+    expect(popups.map((tool) => tool.getAttribute("aria-label"))).toEqual(["Prompts"]);
+    expect(popups[0]?.getAttribute("aria-haspopup")).toBe("dialog");
+  });
+
+  // DL-23.6: unavailable is not disabled. The icon keeps its place in the tab
   // order so the reason stays reachable without a pointer; only activation is
   // blocked.
-  it("keeps an unavailable Prompts row focusable but inert, with its reason", () => {
+  it("keeps an unavailable Prompts icon focusable but inert, and says why on focus", () => {
     act(() =>
       render(<SidebarActions {...base} promptsUnavailable="no pane to paste into" />, host),
     );
 
-    const prompts = rows().find((row) => row.textContent === "Prompts")!;
+    const prompts = tools().find((tool) => tool.getAttribute("aria-label") === "Prompts")!;
     expect(prompts.getAttribute("aria-disabled")).toBe("true");
     expect(prompts.hasAttribute("disabled")).toBe(false);
-    expect(prompts.getAttribute("title")).toBe("no pane to paste into");
+    expect(prompts.classList.contains("is-unavailable")).toBe(true);
 
     act(() => prompts.click());
     expect(base.onOpenPrompts).not.toHaveBeenCalled();
+
+    act(() => prompts.focus());
+    const tip = document.querySelector(".action-tip");
+    expect(tip?.textContent).toContain("no pane to paste into");
   });
 
-  it("hangs the popover off the Prompts row, and only while it is open", () => {
+  it("opens a tooltip above the icon on keyboard focus, carrying name and chord", () => {
+    act(() => render(<SidebarActions {...base} />, host));
+
+    const explorer = tools().find((tool) => tool.getAttribute("aria-label") === "Explorer")!;
+    act(() => explorer.focus());
+
+    const tip = document.querySelector(".action-tip");
+    expect(tip?.classList.contains("action-tip--above")).toBe(true);
+    expect(tip?.querySelector(".action-tip__label")?.textContent).toBe("Explorer");
+    expect(tip?.querySelector(".action-tip__kbd")?.textContent).not.toBe("");
+    expect(explorer.getAttribute("aria-describedby")).toBe(tip?.id);
+  });
+
+  it("hangs the popover off the row's slot, and only while it is open", () => {
     act(() => render(<SidebarActions {...base} promptPopover={<div class="pp" />} />, host));
     expect(host.querySelector(".sidebar-actions__slot .pp")).toBeNull();
 
@@ -123,5 +146,14 @@ describe("SidebarActions", () => {
       render(<SidebarActions {...base} promptsOpen promptPopover={<div class="pp" />} />, host),
     );
     expect(host.querySelector(".sidebar-actions__slot .pp")).not.toBeNull();
+  });
+
+  it("keeps tooltips off the popover's path while it is open", () => {
+    act(() =>
+      render(<SidebarActions {...base} promptsOpen promptPopover={<div class="pp" />} />, host),
+    );
+
+    act(() => tools()[0]?.focus());
+    expect(document.querySelector(".action-tip")).toBeNull();
   });
 });

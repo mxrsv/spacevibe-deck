@@ -1,32 +1,13 @@
-/* ── Rail footer: window actions (src/ui/sidebar-actions.tsx) ──────────────
-   DL §28. Pinned under the scrolling workspace list and closing the rail —
-   the sidebar banner it used to sit above was removed on 2026-08-25. Rows,
-   not icons: the column has prose width, so a row can say what it does. ── */
+/* ── Rail foot: the tools row (src/ui/sidebar-actions.tsx) ──────────────────
+   DL §28. Pinned under the scrolling workspace list, above the usage summary,
+   which closes the rail. Icons, not rows: the rail's own rows carry a task
+   label and a status line, so the foot reads as chrome beside them (DL-28.2,
+   amended 2026-10-07). The hairline above is shared with the usage summary
+   below — one seam for the pair. ── */
 .sidebar-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
   flex: 0 0 auto;
-  /* Bottom is deliberately larger than the rest: this group ends at the window
-     edge, and a row flush against that edge reads as clipped rather than as
-     the last item. 20px also clears the window's rounded corner. */
-  padding: 6px 6px 20px;
+  padding: 6px 0 0;
   border-top: 1px solid var(--sidebar-seam);
-}
-
-/* DL-4.4: names something, so sentence case, and since the 2026-08-16
-   amendment a label heading a LIST OF ROWS stands one rung above them
-   (`--type-title` over the rows' `--type-body`) in `--text-muted` — the same
-   treatment as the stream's cluster header (DL-27.9) directly above it in this
-   very column. This rule also carried a real defect until that pass:
-   `--type-caption` is not a token this app declares, so the declaration was
-   invalid and the label silently inherited its size from the shell. */
-.sidebar-actions__label {
-  padding: 2px 6px 4px;
-  color: var(--text-muted);
-  font-family: var(--ui-font);
-  font-size: var(--type-title);
-  font-weight: 560;
 }
 
 /* The positioning context for the Prompt Board popover, which opens from the
@@ -35,57 +16,24 @@
   position: relative;
 }
 
-.sidebar-actions__row {
+.sidebar-actions__tools {
   display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 7px 6px 7px 9px;
-  border: none;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: var(--type-body);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background var(--duration) var(--ease),
-    color var(--duration) var(--ease);
+  gap: 2px;
 }
 
-/* DL-21.2: the quieter hover wash. */
-.sidebar-actions__row:hover {
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
+/* `.iconbtn` supplies the surface, DL-21.2's hover wash and DL-21.3's focus
+   outline; this only widens the 24px square to the mock's 30 × 26 so six of
+   them read as a row, not a clump. DL-21.8: there is no active rule, ever. */
+.sidebar-actions__tool {
+  width: 30px;
+  height: 26px;
 }
 
-/* DL-21.1: the full wash says which surface is up. */
-.sidebar-actions__row.is-active {
-  background: var(--tab-active-bg);
-  color: var(--text-primary);
-}
-
-/* DL-23.6: unavailable is not disabled — faint on an unchanged surface, no
-   hover wash, still focusable so its reason stays reachable. */
-.sidebar-actions__row.is-unavailable,
-.sidebar-actions__row.is-unavailable:hover {
-  background: transparent;
-  color: var(--text-faint);
-  cursor: default;
-}
-
-/* The collapsed rail sheds prose (DL-18.9), so these rows shed their labels
-   with everything else and centre on the icon that is left. */
-.window--sidebar-collapsed .sidebar-actions__label,
-.window--sidebar-collapsed .sidebar-actions__row span:not([class]) {
-  display: none;
-}
-
-.window--sidebar-collapsed .sidebar-actions__row {
-  justify-content: center;
-  padding-left: 6px;
-  padding-right: 6px;
+/* The usage summary draws its own hairline and gap for the days it closed the
+   rail alone; behind the tools row it shares theirs. */
+.sidebar-actions + .agent-usage-summary {
+  margin-top: 0;
+  border-top: 0;
 }
 
 /* This layout's Prompt Board opens from the rail's bottom-left corner, so it

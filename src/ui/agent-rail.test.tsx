@@ -1499,7 +1499,9 @@ describe("AgentRail carried-over jobs", () => {
     expect(host.querySelector(".asr-stream")?.firstElementChild).not.toBeNull();
   });
 
-  it("places optional recent activity outside the project scrollport and before the footer", async () => {
+  // DL-28.1 (amended 2026-10-07): the tools row, then the usage summary, which
+  // closes the rail.
+  it("places the tools row, then the usage summary, outside the project scrollport", async () => {
     mount({
       usageSummary: <section data-testid="recent-activity" />,
       footer: <div data-testid="rail-footer" />,
@@ -1514,9 +1516,9 @@ describe("AgentRail carried-over jobs", () => {
     expect(stream?.parentElement).toBe(list);
     expect(list?.contains(activity)).toBe(false);
     expect(activity?.parentElement).toBe(list?.parentElement);
-    expect(list?.nextElementSibling).toBe(activity);
+    expect(list?.nextElementSibling).toBe(footer);
     expect(list?.contains(footer)).toBe(false);
-    expect(activity?.nextElementSibling).toBe(footer);
+    expect(footer?.nextElementSibling).toBe(activity);
   });
 
   it("adds no rail wrapper when recent activity is omitted", async () => {

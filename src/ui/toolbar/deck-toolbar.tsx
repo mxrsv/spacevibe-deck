@@ -8,10 +8,10 @@ import {
   XSquare,
 } from "@phosphor-icons/react";
 import type { ComponentChildren } from "preact";
-import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import { FeatureToolbar } from "./feature-toolbar";
 import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
+import { toolbarLabel } from "./toolbar-label";
 
 /**
  * The shipping projection of the feature toolbar — the piece that turns app
@@ -33,27 +33,7 @@ import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
  * column.
  */
 
-const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(
-  ACTION_REGISTRY.map((action) => [action.id, action.label]),
-);
-
-/**
- * Registry labels are macOS menu grammar — Title Case, with a trailing
- * ellipsis on dialog openers. Chrome copy is sentence case (§8) and the
- * "opens a surface" job belongs to `aria-haspopup` here, so the toolbar layer
- * re-cases at its boundary and the registry keeps the menu's spelling (D6).
- * The transform lowercases every word after the first, which is right for
- * every projected label today; an action whose label carries a proper noun
- * would need its own casing here, not a registry change.
- */
-export function toolbarLabel(id: ActionId): string {
-  const raw = REGISTRY_LABELS.get(id) ?? id;
-  return raw
-    .replace(/…$/, "")
-    .split(" ")
-    .map((word, index) => (index === 0 ? word : word.toLowerCase()))
-    .join(" ");
-}
+export { toolbarLabel };
 
 /**
  * The toolbar's `Overview` button is HIDDEN for now (owner, 2026-10-04).

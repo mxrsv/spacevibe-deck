@@ -507,8 +507,10 @@ function WorktreeCardRail(props: AgentRailProps) {
         </section>
       </div>
 
-      {props.usageSummary}
+      {/* DL-28.1 (amended 2026-10-07): the tools row, then the usage summary,
+          which closes the rail. */}
       {props.footer}
+      {props.usageSummary}
     </nav>
   );
 }

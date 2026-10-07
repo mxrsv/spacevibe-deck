@@ -207,6 +207,7 @@ export function ChromeSection() {
               promptsUnavailable={null}
               onOpenBrowser={NOOP}
               onOpenUsage={NOOP}
+              onOpenExplorer={NOOP}
               onOpenSessions={NOOP}
               onOpenPrompts={NOOP}
               onOpenSettings={NOOP}

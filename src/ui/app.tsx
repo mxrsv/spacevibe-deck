@@ -1916,6 +1916,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         }
       }}
       onOpenUsage={() => openDockTab("usage")}
+      onOpenExplorer={() => openDockTab("explorer")}
       sessionsAvailable={sessionsSupported.value}
       onOpenSessions={() => openDockTab("sessions")}
       promptsOpen={promptsOpen.value}
