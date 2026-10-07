@@ -43,17 +43,14 @@ import { validateLogoDataUrl } from "../settings/logo-store";
  * keeps its header, so closing the work does not remove the place it ran in.
  * Since `rail-create-consolidation` (2026-09-02) that header carries no `+`;
  * the project's remembered checkouts print as rowless groups under it, and
- * their bare rows are the way back in.
+ * their label lines' `+` is the way back in.
  *
- * One `WorktreeCard` per checkout (DL-27.23/DL-27.24, amended 2026-08-26 —
- * `docs/internals/agent-rail.md`): the tab tier
- * is gone from the rail entirely. A checkout is a boxed, pressable, expandable
- * card whose rows retain every agent PANE plus every shell-only tab, flattened
- * across whichever tabs hold them — `worktree-card.tsx` owns that render;
- * this file only decides which checkouts exist and hands each one off. A labelled
- * project can still collapse as a whole, one disclosure per cluster; a card's
- * own open/closed state is a separate, window-local disclosure one tier down
- * (`foldedCardKeys` — open by default since 2026-09-18, DL-27.25 amended).
+ * One `WorktreeCard` per checkout (DL-27.28 — `docs/internals/agent-rail.md`):
+ * the rail is a flat tree of project, checkout and session. A checkout is a
+ * label line and its rows — every agent PANE plus every shell-only tab,
+ * flattened across whichever tabs hold them — and `worktree-card.tsx` owns
+ * that render; this file only decides which checkouts exist and hands each
+ * one off. A labelled project collapses as a whole, the one disclosure left.
  *
  * Ported from the owner-approved gallery specimen
  * `src/gallery/agent-status-rail.tsx`, whose `asr-` class names are kept 1:1 so
@@ -124,11 +121,10 @@ export interface AgentRailProps {
   /** Focus one exact pane: activate its tab, focus that pane, ack it. */
   onFocusPane(index: number, paneId: number): void;
   /**
-   * The actions menu every worktree card raises from its strip's `+` or a
-   * right-click (`docs/internals/agent-rail.md`
-   * §8). Omitted where nothing owns those seams (the gallery), in which case no
-   * card carries a `+` at all (DL-19.7) — a launcher that opens nothing is
-   * worse than none.
+   * What every checkout's label-line `+` and right-click raise
+   * (`docs/internals/agent-rail.md`). Omitted where nothing owns those seams
+   * (the gallery), in which case no checkout carries a `+` at all (DL-19.7) —
+   * a launcher that opens nothing is worse than none.
    */
   readonly cardActions?: CardActions;
   /**
@@ -203,15 +199,6 @@ function WorktreeCardRail(props: AgentRailProps) {
   // Which labelled project groups are folded. A new Set each time rather than
   // a mutated one (C1), so the signal actually notifies.
   const collapsedGroupKeys = useSignal<ReadonlySet<string>>(new Set());
-  // Which worktree cards the user has FOLDED, keyed by `RailWorktreeGroup.key`
-  // (the worktree's own path) — the `toggleGroup` precedent, one tier down.
-  // Inverted on 2026-09-18 (owner, design review L1; DL-27.25 amended): a
-  // card is open unless folded, so the rail at rest prints each agent's newest
-  // sentence instead of a strip of glyphs the user had to press open after
-  // every launch. Still WINDOW-LOCAL and unpersisted, per the owner's
-  // 2026-08-26 answer (design §11.6/§13.7): settings are app-level, so
-  // persisting would make every window share one open/closed state.
-  const foldedCardKeys = useSignal<ReadonlySet<string>>(new Set());
 
   const view = buildAgentRail({
     tabs,
@@ -318,14 +305,6 @@ function WorktreeCardRail(props: AgentRailProps) {
     collapsedGroupKeys.value = next;
   }
 
-  function toggleCard(key: string): void {
-    const next = new Set(foldedCardKeys.value);
-    if (!next.delete(key)) {
-      next.add(key);
-    }
-    foldedCardKeys.value = next;
-  }
-
   return (
     <nav class="asr-rail asr-rail--mounted" aria-label="Agents">
       <div class="sidebar-launcher">
@@ -360,14 +339,8 @@ function WorktreeCardRail(props: AgentRailProps) {
               0,
             );
             const activeCheckout = group.worktrees.find((worktree) => worktree.active);
-            // DL-27.25 (amended 2026-10-04): a lone card under a header that
-            // collapses would carry a second caret hiding the same rows, so
-            // its own disclosure is dropped and it stays open.
-            const cardsFold =
-              !(group.labelled && live) ||
-              group.worktrees.filter((worktree) => worktree.entries.length > 0).length > 1;
-            // Like a card head (DL-27.25): the project's active checkout, else
-            // its first card. A rowless checkout has no entry to focus.
+            // Like a checkout's label line (DL-27.28): the project's active
+            // checkout, else its first with rows. A rowless one has nothing to focus.
             const focusProject = (): void => {
               const target =
                 activeCheckout ?? group.worktrees.find((worktree) => worktree.entries.length > 0);
@@ -379,9 +352,8 @@ function WorktreeCardRail(props: AgentRailProps) {
               <div
                 class="asr-cluster"
                 key={group.key}
-                // The frame's padding, the gaps between cards and the head
-                // row's spare width focus without toggling — the card's own
-                // whitespace rule, one tier up. Controls keep their targets.
+                // The frame's padding and the head row's spare width focus
+                // without toggling. Controls keep their targets.
                 // A FOLDED project also opens: the frame is then just the
                 // header, and focusing an already-focused project would leave
                 // the press with no visible effect.
@@ -516,33 +488,22 @@ function WorktreeCardRail(props: AgentRailProps) {
                         )}
                   </div>
                 )}
-                {/* The worktree tier (DL-27.23/DL-27.24, amended): each
-                    checkout is a CARD now, not a sub-header plus a run of tab
-                    rows — the tab tier is gone from the rail entirely (design
-                    `2026-08-25-rail-worktree-card-design.md` §3). A card is a
-                    sibling of every other card inside the cluster, for the
-                    same reason the sub-header used to be: the cluster is the
-                    grid that spaces every line in it, and a wrapper would
-                    have to restate that rhythm. It keeps `.asr-cluster__head`
-                    the only thing a drag can start from (DL-27.20) —
-                    `WorktreeCard` renders its own `.asr-card__head`, which
-                    `rail-cluster-drag.ts` never matches.
+                {/* The checkout tier (DL-27.28): each checkout is a label
+                    line and its session rows, a sibling of every other
+                    checkout inside the cluster — the cluster is the grid that
+                    spaces every line in it. `.asr-cluster__head` stays the
+                    only thing a drag can start from (DL-27.20);
+                    `rail-cluster-drag.ts` never matches a checkout's line.
 
-                    Collapse is still the PROJECT's, one disclosure per
-                    cluster (DL-27.11/DL-27.24): a folded project hides its
-                    cards with its rows. A card's own open/closed state is a
-                    SEPARATE, window-local disclosure one tier down
-                    (`foldedCardKeys`): open unless the user folded it — and
-                    only while the project holds two or more cards
-                    (`cardsFold`); a lone card is always open. */}
+                    The project header's caret is the only fold
+                    (DL-27.11/DL-27.28): a folded project hides its checkouts
+                    with their rows, and a checkout has no disclosure of its own. */}
                 {!collapsed &&
                   group.worktrees.map((worktree) => (
                     <WorktreeCard
                       key={worktree.key}
                       project={group.project}
                       group={worktree}
-                      open={!cardsFold || !foldedCardKeys.value.has(worktree.key)}
-                      onToggle={cardsFold ? toggleCard : undefined}
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
                       onCloseTab={props.onCloseTab}

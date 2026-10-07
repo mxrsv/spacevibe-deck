@@ -8,18 +8,12 @@ import type { RailCardPane, RailState, RailWorktreeGroup } from "./agent-rail-mo
 import type { SignalConfidence } from "../terminal/agent-attention";
 
 /**
- * The parts a worktree card and its popovers BOTH draw.
+ * The session row of a rail checkout and the marks it draws.
  *
  * Split out of `worktree-card.tsx` on 2026-08-27 (spec
- * `docs/internals/agent-rail.md`): the segment
- * menu lists the panes behind a segment as the production `.asr-card__row`,
- * "reused rather than restated, so the glyph, the state dot, the model pill,
- * the hover wash and DL-27.21's ✕ all arrive for free". Reuse across two
- * components needs one owner — importing the row back out of `worktree-card`
- * would be a cycle, since the card imports the menus.
- *
- * Nothing here changed in behaviour when it moved; the card's own header
- * comment still owns the class vocabulary and the host-parity decision.
+ * `docs/internals/agent-rail.md`) so the closed card's segment menu could
+ * reuse the row; that menu retired with the card (DL-27.28), and the row
+ * stays here as the rail's one session-row owner.
  */
 
 /**
@@ -154,11 +148,10 @@ export interface CardAgentRowProps {
 }
 
 /**
- * The row's text (DL-27.15). An unnamed tab's pane is one line, its sentence.
- * A named tab's pane is two: the name in semibold, then that pane's sentence —
- * the name says which space, the sentence what this agent is doing. While the
- * field is open it takes the name's line and the sentence stays beneath, so
- * the row does not change height.
+ * The row's text (DL-27.28): the task label, then the agent label · the newest
+ * turn beneath it. `buildCardEntries` decides both lines; a row whose second
+ * line is empty is one line. While the field is open it takes the first line
+ * and the second stays beneath, so the row does not change height.
  */
 function CardRowText({
   pane,
@@ -171,10 +164,10 @@ function CardRowText({
   readonly onCommit: (name: string | null) => void;
   readonly onCancel: () => void;
 }) {
-  const named = pane.tabName !== null && pane.tabName !== undefined;
-  const sentence = pane.sentence ?? pane.label;
-  if (!editing && !named) {
-    return <span class="asr-card__name">{pane.label}</span>;
+  const first = pane.taskLabel ?? pane.label;
+  const second = pane.secondLine ?? "";
+  if (!editing && second === "") {
+    return <span class="asr-card__name">{first}</span>;
   }
   return (
     <span class="asr-card__text" data-editing={editing ? "true" : undefined}>
@@ -182,14 +175,14 @@ function CardRowText({
         <SpaceRenameField
           class="asr-card__rename"
           initial={pane.tabName ?? ""}
-          placeholder={sentence}
+          placeholder={first}
           onCommit={onCommit}
           onCancel={onCancel}
         />
       ) : (
-        <span class="asr-card__name">{pane.tabName}</span>
+        <span class="asr-card__name">{first}</span>
       )}
-      {named && <span class="asr-card__sentence">{sentence}</span>}
+      {second !== "" && <span class="asr-card__sentence">{second}</span>}
     </span>
   );
 }
@@ -231,7 +224,7 @@ export function CardAgentRow({
       data-state={pane.state}
       data-confidence={pane.confidence}
       data-focused={pane.focused}
-      data-named={pane.tabName ? "true" : undefined}
+      data-lines={pane.secondLine ? "2" : undefined}
       data-quiet={needsUser(pane.state) ? undefined : "true"}
       data-pane-id={pane.paneId}
     >

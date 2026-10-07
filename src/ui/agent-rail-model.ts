@@ -35,18 +35,15 @@ import { UNSEQUENCED } from "../lib/open-sequence";
 // cycle and never a runtime one.
 import { applyRailOrder } from "./rail-order";
 import {
-  STRIP_VISIBLE,
   buildCardEntries,
   outranks,
   sortWorktrees,
-  stripSegments,
   type MenuSubject,
   type RailCardEntry,
   type RailCardPane,
   type RailCardShell,
   type RailWorktreeGroup,
 } from "./agent-rail-card-model";
-export { STRIP_VISIBLE, stripSegments };
 export type { MenuSubject };
 export type { RailCardEntry, RailCardPane, RailCardShell, RailWorktreeGroup };
 

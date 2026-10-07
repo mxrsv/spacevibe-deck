@@ -34,7 +34,7 @@ export function NavigationSection() {
       </Specimen>
       <Specimen
         name="Worktree card"
-        note="the shipped WorktreeCard in isolation, at rail width: closed and open side by side. ai-terminal's five panes are fed by three different tabs, flattened onto one card — the card's load-bearing claim, invisible in a fixture where every card's panes come from a single tab."
+        note="the shipped WorktreeCard in isolation, at rail width: the checkout tree of DL-27.28. ai-terminal's five panes are fed by three different tabs, flattened under one label line — invisible in a fixture where every checkout's panes come from a single tab."
         surface="none"
       >
         {railWorktreeCardsSpecimen()}

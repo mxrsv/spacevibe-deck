@@ -47,8 +47,6 @@
 .window--windows .asr-leaf__msg,
 .window--windows .asr-leaf__agent,
 .window--windows .asr-leaf__age,
-.window--windows .asr-card__meta,
-.window--windows .asr-pop__cap,
 .window--windows .asr-act__detail,
 .window--windows .asr-act__foot,
 .window--windows .asr-act__note,
@@ -69,17 +67,16 @@
    The browser splits this tier at 500 / 510 (Regular vs Semibold); it is one
    role, and small pill and control text at Semibold reads as a heading.
    Each is a list row, pill, chip, button or note whose tone and box already
-   mark it, and each sits under something heavier (an agent row under its
-   700 card head; the bare checkout name under the 600 project label, level
-   with its own badge as on macOS; a link beside its 600 separator; a
-   secondary button beside the primary). `.asr-needs__chip` only mounts in
-   the gallery; it is answered here because the shipped sheet still carries it. */
-.window--windows .asr-card__badge,
-.window--windows .asr-bare__badge,
-.window--windows .asr-bare__name,
+   mark it, and each sits under something heavier (a checkout's label and
+   its tag under the 600 project label, level with each other as on macOS;
+   a session row beside its checkout's label, apart by size and ink; a link
+   beside its 600 separator; a secondary button beside the primary).
+   `.asr-needs__chip` only mounts in the gallery; it is answered here because
+   the shipped sheet still carries it. */
+.window--windows .asr-checkout__name,
+.window--windows .asr-checkout__tag,
 .window--windows .asr-card__row .asr-card__name,
 .window--windows .asr-card__pill,
-.window--windows .asr-card__new .asr-card__name,
 .window--windows .asr-needs__chip,
 .window--windows .update-action,
 .window--windows .gsep button,
@@ -129,8 +126,6 @@
 .window--windows .asr-cluster__toggle,
 .window--windows .asr-cluster__still,
 .window--windows .asr-cluster__count,
-.window--windows .asr-card__count-n,
-.window--windows .asr-card__seg[data-overflow="true"],
 .window--windows .cfg-group,
 .window--windows .recent-session-activity__heading,
 .window--windows .sidebar-actions__label,
@@ -155,13 +150,11 @@
 }
 
 /* ── 700: the heaviest text of its block (authored 620-650) ─────────────
-   The card head over its rows and over the 600 project label above it;
-   screen and section titles over the 600 labels and 400 lede beneath them;
+   Screen and section titles over the 600 labels and 400 lede beneath them;
    inline emphasis inside a sentence; the launcher's filled primary action
    over the 600 chips beside it (macOS 650 over 550). The same Bold the
    browser already picks for these, made explicit. (`.asr-needs__count` is
    gallery-only, like its chip above.) */
-.window--windows .asr-card__head .asr-card__name,
 .window--windows .asr-needs__count,
 .window--windows .nt-quick-launch__head strong,
 .window--windows .nt-quick-launch__retarget strong,
@@ -186,10 +179,9 @@
   font-weight: 400;
 }
 
-/* A named tab's row reads name over sentence, the name semibold (DL-27.15). An
-   unnamed row's name is 400 above (`.asr-card__row .asr-card__name`), the
-   sentence under a name draws 400 too, so the name keeps its authored 600 or
-   the pair loses its only cue. */
-.window--windows .asr-card__row[data-named="true"] .asr-card__name {
+/* The current checkout's label is DL-27.28's current mark: full ink at 600
+   over its 400 siblings (`.asr-checkout__name` above). Without its own line
+   here the base override would tie it and the mark would lose its weight. */
+.window--windows .asr-checkout[data-current="true"] .asr-checkout__name {
   font-weight: 600;
 }

@@ -211,39 +211,17 @@ function click(element: Element | null | undefined): void {
 }
 
 /**
- * A worktree card's OPEN agent rows (design
- * `2026-08-25-rail-worktree-card-design.md` §5) — replaces the old tab-row
- * selector. `New agent` is its own leaf, `.asr-card__new` (review fix,
- * 2026-08-26) — it shares no press target or accessible name with an agent
- * row, so this selector needs no `:not()` to stay a pure "how many agent
- * rows are open" count; tests that care about the launcher query
- * `.asr-card__new` directly. A card is OPEN by default since 2026-09-18
- * (window-local `foldedCardKeys`, DL-27.25 amended); `openAllCards()` stays
- * as the explicit "every row visible" step and only presses folded heads.
+ * Every session row in the tree (DL-27.28). The label line's `+`
+ * (`.asr-checkout__add`) shares no class with a row, so this stays a pure
+ * "how many rows are drawn" count.
  */
 function rows(): HTMLElement[] {
   return [...host.querySelectorAll<HTMLElement>(".asr-card__row")];
 }
 
-/** Every checkout's head, whether a full card or a bare (rowless) row. */
+/** Every checkout's label-line name, whether or not it has rows. */
 function branches(): string[] {
-  return [
-    ...host.querySelectorAll(".asr-card__head .asr-card__name, .asr-bare .asr-bare__name"),
-  ].map((name) => name.textContent ?? "");
-}
-
-/** Opens every worktree card currently on screen. Bare rows have no toggle. */
-function openAllCards(): void {
-  act(() => {
-    // Cards open by default since 2026-09-18 (DL-27.25, amended): only a head
-    // the user folded is pressed, so this stays "make every row visible" and
-    // never folds a card that was already open.
-    for (const head of host.querySelectorAll<HTMLElement>(".asr-card__head")) {
-      if (head.getAttribute("aria-expanded") === "false") {
-        head.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      }
-    }
-  });
+  return [...host.querySelectorAll(".asr-checkout__name")].map((name) => name.textContent ?? "");
 }
 
 beforeEach(() => {
@@ -307,13 +285,15 @@ describe("AgentRail attention rows", () => {
     await settle();
 
     expect(host.querySelector(".asr-block")).toBeNull();
-    expect(host.querySelectorAll(".asr-stream .asr-card")).toHaveLength(1);
+    // A remembered project's rowless checkout is a label line too, so count
+    // the checkouts the rows actually sit under.
+    expect(rows()).toHaveLength(3);
+    expect(new Set(rows().map((row) => row.closest(".asr-checkout"))).size).toBe(1);
     // The old tab/leaf vocabulary never renders again.
     expect(host.querySelector(".asr-item")).toBeNull();
     expect(host.querySelector(".asr-row--tab")).toBeNull();
     expect(host.querySelector(".asr-leaf")).toBeNull();
 
-    openAllCards();
     expect(rows()).toHaveLength(3);
   });
 
@@ -330,7 +310,6 @@ describe("AgentRail attention rows", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     const listed = rows();
     expect(listed).toHaveLength(2);
@@ -355,7 +334,6 @@ describe("AgentRail click contract", () => {
     ];
     mount({ onSelectTab, onFocusPane });
     await settle();
-    openAllCards();
 
     click(rows()[1].querySelector(".asr-card__hit"));
     expect(onFocusPane).toHaveBeenCalledWith(1, 21);
@@ -371,7 +349,6 @@ describe("AgentRail click contract", () => {
     ];
     mount({ onFocusPane });
     await settle();
-    openAllCards();
 
     // Every agent in a checkout is a peer row now (design §3/§5) — no more
     // headless item, no leaf tree. Press lands on the row's hit layer, since
@@ -395,7 +372,6 @@ describe("AgentRail click contract", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     // The chip budget, `+N` and the tree all died with the tab tier: every
     // agent is a visible ROW, so there is nothing left to count or disclose.
@@ -418,7 +394,6 @@ describe("AgentRail click contract", () => {
     ];
     mount({ onCloseTab, onClosePane });
     await settle();
-    openAllCards();
 
     click(rows()[1].querySelector(".asr-row__action--close"));
     expect(onClosePane).toHaveBeenCalledWith(1, 21);
@@ -434,11 +409,9 @@ describe("AgentRail click contract", () => {
     mount({ onCloseTab, onClosePane, onSelectTab, cardActions: ACTIONS });
     await settle();
 
-    expect(host.querySelector(".asr-card")).not.toBeNull();
-    // The card is open by default (DL-27.25, amended 2026-09-18), so no head
-    // press happens here and the row is reachable without one; the head's own
+    expect(host.querySelector(".asr-checkout")).not.toBeNull();
+    // The row is reachable without a press on the label line; that line's own
     // press-to-focus contract is `worktree-card.test.tsx`'s.
-    openAllCards();
     expect(onSelectTab).not.toHaveBeenCalled();
     const shell = host.querySelector<HTMLElement>('.asr-card__row[data-kind="shell"]');
     expect(shell).not.toBeNull();
@@ -451,7 +424,7 @@ describe("AgentRail click contract", () => {
     expect(onClosePane).not.toHaveBeenCalled();
   });
 
-  it("updates the active worktree from tab state when its card head is pressed", async () => {
+  it("moves the current mark from tab state when a checkout's label is pressed", async () => {
     tabViews.value = [
       tab({ key: 1, workspacePath: "/r/main" }),
       tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 22 })] }),
@@ -462,14 +435,14 @@ describe("AgentRail click contract", () => {
     });
     mount({ onFocusPane });
     await settle();
-    const cards = host.querySelectorAll<HTMLElement>(".asr-card");
-    expect(cards).toHaveLength(2);
-    expect(cards[0].dataset.active).toBe("true");
-    expect(cards[1].dataset.active).toBe("false");
-    click(cards[1].querySelector(".asr-card__head"));
+    const checkouts = host.querySelectorAll<HTMLElement>(".asr-checkout");
+    expect(checkouts).toHaveLength(2);
+    expect(checkouts[0].dataset.current).toBe("true");
+    expect(checkouts[1].dataset.current).toBe("false");
+    click(checkouts[1].querySelector(".asr-checkout__focus"));
     expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(1, 22);
-    expect(cards[0].dataset.active).toBe("false");
-    expect(cards[1].dataset.active).toBe("true");
+    expect(checkouts[0].dataset.current).toBe("false");
+    expect(checkouts[1].dataset.current).toBe("true");
   });
 
   it("keeps a shell tab reachable beside an agent tab in the same checkout", async () => {
@@ -481,7 +454,6 @@ describe("AgentRail click contract", () => {
     ];
     mount({ onSelectTab, onCloseTab });
     await settle();
-    openAllCards();
 
     const shell = host.querySelector<HTMLElement>('.asr-card__row[data-kind="shell"]');
     expect(shell?.querySelector(".asr-card__name")?.textContent).toBe("logs");
@@ -499,7 +471,6 @@ describe("AgentRail click contract", () => {
     ];
     mount({ onSelectTab });
     await settle();
-    openAllCards();
 
     const shellRows = host.querySelectorAll<HTMLElement>('.asr-card__row[data-kind="shell"]');
     expect([...shellRows].map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
@@ -520,7 +491,6 @@ describe("AgentRail click contract", () => {
     ];
     mount({ onClosePane });
     await settle();
-    openAllCards();
 
     const closes = host.querySelectorAll<HTMLElement>(".asr-card__row .asr-row__action--close");
     expect(closes).toHaveLength(2);
@@ -534,7 +504,6 @@ describe("AgentRail click contract", () => {
     // on 2026-08-16; close is the only hover action a row has now.
     mount();
     await settle();
-    openAllCards();
 
     expect(host.querySelector(".asr-row__action--options")).toBeNull();
     expect(host.querySelector(".tab-popover")).toBeNull();
@@ -556,7 +525,6 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     expect(host.querySelector(".asr-item")).toBeNull();
     expect(host.querySelector("[data-headless]")).toBeNull();
@@ -575,7 +543,6 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     expect(rows().map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
       "Claude",
@@ -591,7 +558,13 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
 
     const listed = rows();
     expect(listed.map((row) => row.dataset.state)).toEqual(["asked", "working"]);
+    // DL-27.28: an unnamed row with no first prompt leads with its agent label
+    // and carries the turn on its second line.
     expect(listed.map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
+      "Claude",
+      "Codex",
+    ]);
+    expect(listed.map((row) => row.querySelector(".asr-card__sentence")?.textContent)).toEqual([
       "Permission needed: prisma migrate dev",
       "Running the suite",
     ]);
@@ -619,7 +592,6 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     const header = host.querySelector<HTMLElement>("button.asr-cluster__toggle");
     expect(header?.getAttribute("aria-expanded")).toBe("true");
@@ -627,7 +599,7 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
 
     click(header);
     expect(header?.getAttribute("aria-expanded")).toBe("false");
-    expect(host.querySelector(".asr-card")).toBeNull();
+    expect(host.querySelector(".asr-checkout")).toBeNull();
 
     // The card's own OPEN state is window-local and independent of the
     // project's collapse (design §11.6/§13.7) — it survives the round trip
@@ -675,7 +647,7 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     const rail = host.querySelector(".wsbar--repos");
     expect(rail?.firstElementChild?.className).toBe("sidebar-launcher");
     expect(rail?.querySelector(".sidebar-new")).not.toBeNull();
-    expect(host.querySelector(".asr-card")).toBeNull();
+    expect(host.querySelector(".asr-checkout")).toBeNull();
   });
 });
 
@@ -723,13 +695,10 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect(heads).toHaveLength(1);
     expect(heads[0].querySelector(".asr-cluster__name")?.textContent).toBe("main");
     // Both tabs belong to one repository (two checkouts, `main` and `side`),
-    // each its own card, named by pane label — DL-27.15's REVERSED row line
-    // (design §9.1): a row spends its word on the agent, capitalised via
-    // `agentDisplayName`, never on the raw agent id.
-    expect(
-      [...host.querySelectorAll(".asr-card__head .asr-card__name")].map((el) => el.textContent),
-    ).toEqual(["main", "side"]);
-    openAllCards();
+    // each its own label line, its rows named by pane label: a row with no
+    // task label spends its word on the agent, capitalised via `displayAgent`,
+    // never on the raw agent id (DL-27.28).
+    expect(branches()).toEqual(["main", "side"]);
     expect([...rows()].map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
       "Claude",
       "Codex",
@@ -743,7 +712,6 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
   it("keeps project → checkout → agent for a project with one tab", async () => {
     mount();
     await settle();
-    openAllCards();
 
     expect(host.querySelector(".asr-cluster__head .asr-cluster__name")?.textContent).toBe("main");
     expect(rows()[0].querySelector(".asr-card__name")?.textContent).toBe("Claude");
@@ -764,7 +732,6 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     // Two tabs of one project, one of them asking: one header, both rows
     // under the same checkout card, and the asking row names its AGENT like
@@ -802,43 +769,39 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     ];
     mount();
     await settle();
-    openAllCards();
 
-    // DOM order is the render order: card head, its rows, next card head.
-    const printed = [...host.querySelectorAll(".asr-card__head, .asr-stream .asr-card__row")].map(
-      (node) =>
-        node.classList.contains("asr-card__head")
-          ? `card:${node.querySelector(".asr-card__name")?.textContent}`
-          : `row:${node.getAttribute("data-pane-id")}`,
+    // DOM order is the render order: label line, its rows, next label line.
+    const printed = [
+      ...host.querySelectorAll(".asr-checkout__line, .asr-stream .asr-card__row"),
+    ].map((node) =>
+      node.classList.contains("asr-checkout__line")
+        ? `checkout:${node.querySelector(".asr-checkout__name")?.textContent}`
+        : `row:${node.getAttribute("data-pane-id")}`,
     );
-    expect(printed).toEqual(["card:main", "row:11", "card:side", "row:21"]);
-    // DL-27.24 amended (design §9.3): the checkout is no longer a bare label
-    // — a card COLLAPSES AND SELECTS, so its head IS a control now, the
-    // opposite of the old sub-header's "no caret, no hit layer" claim.
-    const head = host.querySelector(".asr-card__head");
-    expect(head?.tagName).toBe("BUTTON");
-    expect(head?.getAttribute("aria-expanded")).not.toBeNull();
+    expect(printed).toEqual(["checkout:main", "row:11", "checkout:side", "row:21"]);
+    // DL-27.28: the label line focuses its checkout and folds nothing.
+    const label = host.querySelector(".asr-checkout__focus");
+    expect(label?.tagName).toBe("BUTTON");
+    expect(label?.hasAttribute("aria-expanded")).toBe(false);
   });
 
-  it("keeps a checkout with nothing open in it, and its row opens the agent list", async () => {
+  it("keeps a checkout with nothing open in it, and its `+` opens the agent list", async () => {
     mount({ cardActions: ACTIONS });
     await settle();
 
     // One tab, in `/r/main`; `/r/side` is in Deck's history with nothing
-    // open, so it renders as a BARE row (design §6) rather than a card.
+    // open, so it renders as its label line alone.
     expect(branches()).toEqual(["main", "side"]);
-    openAllCards();
     expect(rows()).toHaveLength(1);
 
-    const bare = host.querySelectorAll<HTMLElement>("button.asr-bare");
-    expect(bare).toHaveLength(1);
-    // `rail-create-consolidation`: the press OPENS the checkout's agent list
-    // and starts nothing — the old `onNewTabIn(path)` spawned a shell here.
-    expect(bare[0].getAttribute("aria-haspopup")).toBe("menu");
-    click(bare[0]);
+    const adds = host.querySelectorAll<HTMLElement>(".asr-checkout__add");
+    expect(adds).toHaveLength(2);
+    // The press OPENS the checkout's agent list and starts nothing.
+    expect(adds[1].getAttribute("aria-haspopup")).toBe("menu");
+    click(adds[1]);
     const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
     expect(menu).not.toBeNull();
-    // Anchored to the row, so no heading: the row 6px away names the checkout.
+    // Anchored to the checkout, so no heading: the label line names it.
     expect(menu?.querySelector(".asr-act__where")).toBeNull();
     // The worktree ROOT, never a tab's cwd.
     expect(menu?.getAttribute("aria-label")).toBe("Actions for main · side");
@@ -846,36 +809,28 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(ACTIONS.onRunAgent).toHaveBeenCalledWith("claude", "/r/side");
   });
 
-  it("names the project, the checkout AND its branch in the bare row's accessible name", async () => {
+  it("names the project, the checkout AND its branch in the `+`'s accessible name", async () => {
     mount({ cardActions: ACTIONS });
     await settle();
 
-    // Review fix (2026-08-26): `project` is threaded down from
-    // `RailStreamGroup.project` at the `agent-rail.tsx` call site, so the
-    // name that was briefly unreachable from `WorktreeCard`'s props is back.
-    //
-    // **Amended 2026-08-30: a segment already said is dropped.** This fixture
-    // is the collision case by construction — `/r/side` is a worktree whose
-    // FOLDER and BRANCH are both `side`, the shape
-    // `git worktree add ../side side` produces — so the old expectation was a
-    // literal record of the repetition the owner reported, one tier down.
-    expect(host.querySelector(".asr-bare")?.getAttribute("aria-label")).toBe(
-      "New agent in main · side",
-    );
+    // A segment already said is dropped (2026-08-30): `/r/side` is a worktree
+    // whose FOLDER and BRANCH are both `side`, the shape
+    // `git worktree add ../side side` produces.
+    expect(
+      [...host.querySelectorAll(".asr-checkout__add")].map((add) => add.getAttribute("aria-label")),
+    ).toEqual(["New agent in main", "New agent in main · side"]);
   });
 
   it("omits the launcher when the host cannot open one", async () => {
     mount();
     await settle();
 
-    expect(host.querySelector("button.asr-bare")).toBeNull();
-    // The labels stand without it (DL-19.7) — the bare row degrades to a
-    // static, non-interactive line rather than disappearing.
-    expect(host.querySelector("div.asr-bare")).not.toBeNull();
+    expect(host.querySelector(".asr-checkout__add")).toBeNull();
+    // The labels stand without it (DL-19.7).
     expect(branches()).toEqual(["main", "side"]);
   });
 
-  it("prints a Folder card for a folder git does not know", async () => {
+  it("tags a folder git does not know `folder`", async () => {
     configureRepositoryClient({
       scan: async () => ({ kind: "plain", reason: "not a git repository" }),
     });
@@ -887,19 +842,19 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     mount({ cardActions: ACTIONS });
     await settle();
 
-    // DL-27.23, amended 2026-09-23: the one implicit group takes the same card
-    // a checkout does, named by the folder and badged `Folder` rather than
-    // `Primary`, so an added folder does not read as a different kind of thing.
-    expect(host.querySelectorAll(".asr-card")).toHaveLength(1);
+    // DL-27.23, amended 2026-09-23: the one implicit group takes the same
+    // shape a checkout does, named by the folder and tagged `folder`, so an
+    // added folder does not read as a different kind of thing.
+    expect(host.querySelectorAll(".asr-checkout")).toHaveLength(1);
     expect(host.querySelector(".asr-cluster__head .asr-cluster__name")?.textContent).toBe("main");
     expect(branches()).toEqual(["main"]);
-    expect(host.querySelector(".asr-card__badge")?.textContent).toBe("Folder");
+    expect(host.querySelector(".asr-checkout__tag")?.textContent).toBe("folder");
     expect(rows()).toHaveLength(1);
-    // Its create control is the open card's own row, and the list it raises
-    // has no branch to fork from.
-    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
+    // Its create control is the label line's `+`, and the list it raises has
+    // no branch to fork from.
+    expect(host.querySelectorAll(".asr-checkout__add")).toHaveLength(1);
     expect(host.querySelector(".asr-cluster__add")).toBeNull();
-    click(host.querySelector(".asr-card__new"));
+    click(host.querySelector(".asr-checkout__add"));
     const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
     expect(menu).not.toBeNull();
     expect(menu?.textContent).not.toContain("Create branch");
@@ -954,7 +909,6 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     tabViews.value = [tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] })];
     mount();
     await settle();
-    openAllCards();
 
     const hit = host.querySelector(".asr-card__hit");
     // Review fix (2026-08-26): the project prefix is back too. Deduplicated
@@ -968,31 +922,21 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
 
 describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", () => {
   it("draws exactly one create control per checkout, and none on any project header", async () => {
-    // `/r/main` has a tab (a card, open by default since 2026-09-18, so its
-    // `New agent` row); `/r/side` is history-only (a bare row, which is
-    // itself the control).
+    // `/r/main` has a tab and `/r/side` is history-only: each label line
+    // carries its own `+` (DL-27.26, amended 2026-10-07).
     mount({ cardActions: ACTIONS });
     await settle();
 
     expect(host.querySelectorAll(".asr-cluster__add")).toHaveLength(0);
-    expect(host.querySelectorAll(".asr-card__seg--add")).toHaveLength(0);
-    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
-    expect(host.querySelectorAll("button.asr-bare")).toHaveLength(1);
+    expect(host.querySelectorAll(".asr-checkout__add")).toHaveLength(2);
+    expect(
+      [...host.querySelectorAll(".asr-checkout")].map(
+        (checkout) => checkout.querySelectorAll(".asr-checkout__add").length,
+      ),
+    ).toEqual([1, 1]);
   });
 
-  it("keeps a project's only card open, its collapse left to the project header", async () => {
-    // DL-27.25 (amended 2026-10-04): one card beside a bare row is still the
-    // project's only disclosure target, so the card head carries no caret.
-    mount({ cardActions: ACTIONS });
-    await settle();
-
-    const head = host.querySelector<HTMLElement>(".asr-card__head");
-    expect(head?.hasAttribute("aria-expanded")).toBe(false);
-    click(head);
-    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
-  });
-
-  it("swaps a folded card's New agent row for the strip's +", async () => {
+  it("gives a checkout no fold of its own, its collapse left to the project header", async () => {
     tabViews.value = [
       tab({ key: 1, panes: [pane({ paneId: 11 })] }),
       tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] }),
@@ -1000,31 +944,35 @@ describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", ()
     mount({ cardActions: ACTIONS });
     await settle();
 
-    // Folded, the card's control is the strip's trailing `+` and the row is
-    // gone — still one per checkout.
-    click(host.querySelector(".asr-card__head"));
-    expect(host.querySelectorAll(".asr-card__seg--add")).toHaveLength(1);
-    expect(host.querySelectorAll(".asr-card__new")).toHaveLength(1);
+    // DL-27.28: the project header's caret is the only fold, even with two
+    // checkouts holding rows.
+    expect(host.querySelectorAll(".asr-checkout [aria-expanded]")).toHaveLength(2);
+    expect(
+      [...host.querySelectorAll(".asr-checkout [aria-expanded]")].every((node) =>
+        node.classList.contains("asr-checkout__add"),
+      ),
+    ).toBe(true);
+    click(host.querySelector(".asr-checkout__focus"));
+    expect(rows()).toHaveLength(2);
   });
 
-  it("opens the checkout's agent list from New agent and starts nothing on the press", async () => {
+  it("opens the checkout's agent list from its `+` and starts nothing on the press", async () => {
     mount({ cardActions: ACTIONS });
     await settle();
-    openAllCards();
 
-    const row = host.querySelector<HTMLElement>(".asr-card__new");
-    expect(row?.getAttribute("aria-haspopup")).toBe("menu");
-    expect(row?.getAttribute("aria-expanded")).toBe("false");
-    click(row);
+    const add = host.querySelector<HTMLElement>(".asr-checkout__add");
+    expect(add?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(add?.getAttribute("aria-expanded")).toBe("false");
+    click(add);
     expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
     expect(ACTIONS.onSplitHere).not.toHaveBeenCalled();
-    expect(row?.getAttribute("aria-expanded")).toBe("true");
-    // Anchored to the card, so no heading and the card's own words as the name.
+    expect(add?.getAttribute("aria-expanded")).toBe("true");
+    // Anchored to the checkout, so no heading and its own words as the name.
     const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
     expect(menu?.getAttribute("aria-label")).toBe("Actions for main");
     expect(menu?.querySelector(".asr-act__where")).toBeNull();
-    // A second press on the row that opened it CLOSES it.
-    click(row);
+    // A second press on the `+` that opened it CLOSES it.
+    click(add);
     expect(host.querySelector(".asr-pop--actions")).toBeNull();
     expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
   });
@@ -1034,9 +982,7 @@ describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", ()
     await settle();
 
     expect(host.querySelector(".asr-cluster__add")).toBeNull();
-    expect(host.querySelector(".asr-card__new")).toBeNull();
-    expect(host.querySelector(".asr-card__seg--add")).toBeNull();
-    expect(host.querySelector("button.asr-bare")).toBeNull();
+    expect(host.querySelector(".asr-checkout__add")).toBeNull();
     // The collapse control is untouched by their absence.
     expect(host.querySelector("button.asr-cluster__toggle")).not.toBeNull();
   });
@@ -1081,7 +1027,6 @@ describe("AgentRail remembered projects (2026-08-20)", () => {
   it("keeps a rowless still header for a workspace with nothing open", async () => {
     mount();
     await settle();
-    openAllCards();
 
     const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
     expect(heads).toHaveLength(2);
@@ -1094,20 +1039,19 @@ describe("AgentRail remembered projects (2026-08-20)", () => {
     expect(rows()).toHaveLength(1);
   });
 
-  it("keeps a remembered project one press from an agent, through its checkout row", async () => {
-    // `rail-create-consolidation`: the header's `+` is gone, so a remembered
-    // project prints its checkouts as rowless groups and THEY are the way back
-    // in — `/w/other` is a plain folder, so it renders the same bare row a
-    // checkout with nothing open does (badged `Folder`), and the list it raises
-    // runs there.
+  it("keeps a remembered project one press from an agent, through its checkout's `+`", async () => {
+    // The header carries no `+`, so a remembered project prints its checkouts
+    // as rowless label lines and THEIR `+` is the way back in — `/w/other` is
+    // a plain folder, so it reads the same as a checkout with nothing open
+    // (tagged `folder`), and the list it raises runs there.
     mount({ cardActions: ACTIONS });
     await settle();
 
     expect(host.querySelector(".asr-cluster__add")).toBeNull();
     const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
     const remembered = heads[1].closest<HTMLElement>(".asr-cluster");
-    const row = remembered?.querySelector<HTMLElement>("button.asr-bare");
-    expect(row?.querySelector(".asr-bare__badge")?.textContent).toBe("Folder");
+    expect(remembered?.querySelector(".asr-checkout__tag")?.textContent).toBe("folder");
+    const row = remembered?.querySelector<HTMLElement>(".asr-checkout__add");
     expect(row).not.toBeNull();
     // The header itself is still a still label — no toggle, no live close.
     expect(heads[1].querySelector(".asr-cluster__toggle")).toBeNull();
@@ -1291,7 +1235,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     const listed = rows();
     expect(listed).toHaveLength(2);
@@ -1313,7 +1256,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     tabViews.value = [tab({ panes: [pane({ attention: "error" })] })];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     expect(row.dataset.state).toBe("failed");
@@ -1333,7 +1275,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     tabViews.value = [tab({ panes: [paneView] })];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     const status = row.querySelector(".asr-card__status");
@@ -1359,7 +1300,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     const dot = row.querySelector(".asr-card__dot");
@@ -1377,7 +1317,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     expect(row.querySelector(".asr-card__dot")?.getAttribute("data-confidence")).toBe("explicit");
@@ -1392,7 +1331,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     ];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     expect(row.dataset.state).toBe("ended");
@@ -1410,7 +1348,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     tabViews.value = [tab({ panes: [pane()] })];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     expect(row.dataset.state).toBe("idle");
@@ -1424,7 +1361,6 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     tabViews.value = [tab({ panes: [pane({ phase: "working" })] })];
     mount();
     await settle();
-    openAllCards();
 
     const row = rows()[0];
     expect(row.querySelector(".asr-row__mark--spinner")).toBeNull();
@@ -1451,8 +1387,7 @@ describe("AgentRail live-only contract", () => {
     mount();
     await settle();
 
-    expect(host.querySelector(".asr-card")).not.toBeNull();
-    openAllCards();
+    expect(host.querySelector(".asr-checkout")).not.toBeNull();
     expect(host.querySelector('.asr-card__row[data-kind="shell"]')).not.toBeNull();
     expect(host.querySelector('.asr-card__row[data-kind="agent"]')).toBeNull();
     expect(host.querySelector(".asr-chip--static")).toBeNull();
@@ -1473,7 +1408,6 @@ describe("AgentRail carried-over jobs", () => {
   it("keeps the row's pane identity dataset on the row element", async () => {
     mount();
     await settle();
-    openAllCards();
 
     expect(rows()[0].dataset.paneId).toBe("11");
   });
@@ -1488,7 +1422,6 @@ describe("AgentRail carried-over jobs", () => {
     tabViews.value = [tab({ panes: [pane({ paneId: 11, focused: true })] })];
     mount();
     await settle();
-    openAllCards();
 
     const hit = () => rows()[0].querySelector(".asr-card__hit");
     expect(hit()?.getAttribute("aria-current")).toBe("true");
@@ -1777,10 +1710,9 @@ describe("AgentRail cluster reorder (DL-27.20)", () => {
     // to eat an unrelated one later. `settle()` only flushes microtasks, so
     // without a real macrotask tick here that listener can survive into the
     // next test — this describe is the only one that ever completes a drag
-    // — and swallow the first `click` it sees. That first click is often
-    // `openAllCards()`'s own dispatch on a `.asr-card__head`, which reads as
-    // the whole card silently failing to open. One real timer tick lets the
-    // listener remove itself before any other test can observe it.
+    // — and swallow the first `click` it sees, which reads as that test's
+    // press silently doing nothing. One real timer tick lets the listener
+    // remove itself before any other test can observe it.
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
   });
 
@@ -1848,7 +1780,6 @@ describe("AgentRail focused pane (DL-27.22, kept unchanged by the card — desig
     activeTabIndex.value = 0;
     mount();
     await settle();
-    openAllCards();
 
     const listed = rows();
     expect(listed).toHaveLength(2);
@@ -1878,7 +1809,6 @@ describe("AgentRail focused pane (DL-27.22, kept unchanged by the card — desig
     activeTabIndex.value = 0;
     mount();
     await settle();
-    openAllCards();
 
     const listed = rows();
     // All four are drawn — otherwise the count below would pass vacuously.
@@ -1898,7 +1828,6 @@ describe("AgentRail paneModels wiring (Task 8)", () => {
     paneModels.value = new Map([[11, "claude-sonnet-5"]]);
     mount();
     await settle();
-    openAllCards();
 
     expect(host.querySelector(".asr-card__pill")).toBeNull();
   });
@@ -1908,7 +1837,6 @@ describe("AgentRail paneModels wiring (Task 8)", () => {
     // paneModels starts empty (set in beforeEach).
     mount();
     await settle();
-    openAllCards();
 
     expect(host.querySelector(".asr-card__pill")).toBeNull();
   });

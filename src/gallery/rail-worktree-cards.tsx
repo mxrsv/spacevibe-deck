@@ -1,4 +1,3 @@
-import { useSignal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import type { PaneAgent } from "../lib/process-info";
 import { type RailCardPane, type RailState, type RailWorktreeGroup } from "../ui/agent-rail-model";
@@ -24,9 +23,9 @@ import { NOOP } from "./chrome-fixtures";
  *
  * Two specimens:
  *
- *  - `railWorktreeCardsSpecimen`: the card closed and open, side by side, at
- *    the rail's real width — a focused, uncluttered view for judging the
- *    card's own states without the rest of the rail around it. The full rail
+ *  - `railWorktreeCardsSpecimen`: the checkout tree (DL-27.28) at the rail's
+ *    real width — a focused, uncluttered view for judging the label lines and
+ *    rows without the rest of the rail around them. The full rail
  *    driven by `seed-data.ts` (`agentStatusRailSpecimen`, below this one in
  *    `navigation-section.tsx`) is the end-to-end picture; this one exists so
  *    a reviewer can look at nothing else.
@@ -37,7 +36,7 @@ import { NOOP } from "./chrome-fixtures";
  *    restating that one custom property under a `[data-busy]` attribute, in
  *    `src/gallery/gallery.css` (see the comment there) rather than in a
  *    stylesheet of this file's own — the production sheet pins the variable
- *    directly on `.asr-card` / `.asr-bare` / `.asr-card__row`, so an ancestor
+ *    directly on `.asr-checkout` / `.asr-card__row`, so an ancestor
  *    override has to target those same classes to win.
  *
  * `ai-terminal`'s five panes are deliberately spread across THREE tabs (a
@@ -227,19 +226,7 @@ const WORKTREES: readonly RailWorktreeGroup[] = [
  * ones the shipped rail nests `WorktreeCard` inside, reused so the spacing
  * around each card matches the app without a line of gallery-only CSS.
  */
-function CardRail({ initialOpenKey }: { readonly initialOpenKey: string | null }) {
-  const openKeys = useSignal<ReadonlySet<string>>(
-    initialOpenKey === null ? new Set() : new Set([initialOpenKey]),
-  );
-
-  function toggle(key: string): void {
-    const next = new Set(openKeys.value);
-    if (!next.delete(key)) {
-      next.add(key);
-    }
-    openKeys.value = next;
-  }
-
+function CardRail() {
   return (
     <nav class="asr-rail asr-rail--mounted" aria-label="Agents (worktree card specimen)">
       <div class="asr-rail__list">
@@ -250,8 +237,6 @@ function CardRail({ initialOpenKey }: { readonly initialOpenKey: string | null }
                 key={group.key}
                 project={PROJECT}
                 group={group}
-                open={openKeys.value.has(group.key)}
-                onToggle={toggle}
                 onFocusPane={NOOP}
                 onClosePane={NOOP}
                 onCloseTab={NOOP}
@@ -272,11 +257,11 @@ function CardRail({ initialOpenKey }: { readonly initialOpenKey: string | null }
  * sidebar column. Reused rather than reinvented for the same reason the rail
  * classes above are.
  */
-function studyRail(initialOpenKey: string | null, dataBusy?: string) {
+function studyRail(dataBusy?: string) {
   return (
     <div class="asr-study" data-busy={dataBusy}>
       <div class="asr-study__stage">
-        <CardRail initialOpenKey={initialOpenKey} />
+        <CardRail />
       </div>
     </div>
   );
@@ -307,16 +292,10 @@ export function railWorktreeCardsSpecimen() {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
       <CardColumn
-        title="closed — every checkout"
-        note="mark · checkout name · branch badge, then the age alone, then the closed agents as one segmented strip capped at three with the rest folded into `+N` (stripSegments, DL-27.3's own precedence). `bench`, the main checkout, has nothing running: the head row alone, no card, no strip. `ai-terminal`'s five panes come from three different tabs, flattened onto one card."
+        title="the tree — every checkout (DL-27.28)"
+        note="each checkout is a label line (branch glyph · branch · `worktree` tag · `+`) and then its session rows, indented one step, with no card around them. `bench`, the main checkout, has nothing running: the label line alone. `ai-terminal`'s five panes come from three different tabs, flattened under one label."
       >
-        {studyRail(null)}
-      </CardColumn>
-      <CardColumn
-        title="open — one checkout, one row per agent"
-        note="`ai-terminal` opened onto its agent list: glyph · name · model pill · loading mark, closed by a `New agent` row. `sidebar-ui` stays closed beside it — its two panes sit in two separate tabs, the same flattening claim on a smaller card."
-      >
-        {studyRail(AI_TERMINAL_KEY)}
+        {studyRail()}
       </CardColumn>
     </div>
   );
@@ -391,7 +370,7 @@ export function railFocusMarkSpecimen() {
     <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
       {FOCUS_MARKS.map((mark) => (
         <CardColumn key={mark.id} title={mark.title} note={mark.note}>
-          <div data-focus={mark.id}>{studyRail(AI_TERMINAL_KEY)}</div>
+          <div data-focus={mark.id}>{studyRail()}</div>
         </CardColumn>
       ))}
     </div>
@@ -436,7 +415,7 @@ export function railColorRuleSpecimen() {
     <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
       {BUSY_HUES.map((hue) => (
         <CardColumn key={hue.id} title={hue.title} note={hue.note}>
-          {studyRail(AI_TERMINAL_KEY, hue.id)}
+          {studyRail(hue.id)}
         </CardColumn>
       ))}
     </div>

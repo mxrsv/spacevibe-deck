@@ -196,28 +196,12 @@ describe("windows weight ledger", () => {
  * (`.asr-wt__name`, `.asr-needs__chip`) constrains nothing anyone sees.
  */
 const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
+  ["project label over a checkout's label", ".asr-cluster__toggle", ".asr-checkout__name"],
   [
-    "card head over its agent rows",
-    ".asr-card__head .asr-card__name",
-    ".asr-card__row .asr-card__name",
+    "the current checkout's label over its siblings (DL-27.28's current mark)",
+    '.asr-checkout[data-current="true"] .asr-checkout__name',
+    ".asr-checkout__name",
   ],
-  [
-    "named tab's row name over an unnamed row's name (its sentence declares no weight)",
-    '.asr-card__row[data-named="true"] .asr-card__name',
-    ".asr-card__row .asr-card__name",
-  ],
-  ["card head over its meta line", ".asr-card__head .asr-card__name", ".asr-card__meta"],
-  [
-    "card head over the project label above it",
-    ".asr-card__head .asr-card__name",
-    ".asr-cluster__toggle",
-  ],
-  [
-    "boxed card head over a bare checkout head",
-    ".asr-card__head .asr-card__name",
-    ".asr-bare__name",
-  ],
-  ["project label over the bare checkout name", ".asr-cluster__toggle", ".asr-bare__name"],
   ["menu row title over its detail (DL-13.8)", ".asr-act__title", ".asr-act__detail"],
   [
     "field caption over the helper text of its field",

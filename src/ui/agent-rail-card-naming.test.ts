@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCardEntries,
-  checkoutBadge,
   checkoutLabel,
+  checkoutLine,
   sessionTitlesFor,
   untitledSessionIds,
 } from "./agent-rail-card-model";
@@ -13,9 +13,7 @@ import type { RailPaneRow, RailTabRow, RailWorktreeGroup } from "./agent-rail-mo
 /**
  * How a checkout names itself, and how that name reaches an accessible name.
  *
- * Pure only, and deliberately in its own file rather than in
- * `agent-rail-card-strip.test.ts`: that file owns the closed strip's fold, and
- * naming is a different concern of the same model (F9). `whereOf` is asserted
+ * Pure only. `whereOf` is asserted
  * here beside the two functions it composes, since the rule they share — no
  * segment says a word an earlier segment already said — is only observable
  * across both.
@@ -62,33 +60,24 @@ describe("checkoutLabel", () => {
   });
 });
 
-describe("checkoutBadge", () => {
-  it("gives the primary checkout its role, since the branch is already the label", () => {
-    expect(checkoutBadge(PRIMARY)).toEqual({ kind: "role", text: "Primary" });
+describe("checkoutLine (DL-27.28)", () => {
+  it("names the primary checkout by its branch, untagged", () => {
+    expect(checkoutLine(PRIMARY)).toEqual({ name: "main", tag: null });
   });
 
-  it("gives an ordinary worktree its branch", () => {
-    expect(checkoutBadge(WORKTREE)).toEqual({ kind: "branch", text: "feat/rail-card" });
+  it("names a linked worktree by its branch and tags it", () => {
+    expect(checkoutLine(WORKTREE)).toEqual({ name: "feat/rail-card", tag: "worktree" });
+    expect(checkoutLine(SELF_NAMED)).toEqual({ name: "fix-login", tag: "worktree" });
   });
 
-  it("gives a worktree named after its branch the role instead of repeating it", () => {
-    expect(checkoutBadge(SELF_NAMED)).toEqual({ kind: "worktree", text: "Worktree" });
-  });
-
-  it("calls a folder git does not know a Folder, not Primary (DL-27.23, amended)", () => {
+  it("keeps a folder git does not know on its folder name, tagged folder (DL-27.23)", () => {
     // The synthetic checkout of a plain folder: primary, basename as branch.
     const folder = {
       ...group({ name: "scratch", branch: "scratch", primary: true }),
       labelled: false,
     };
     expect(checkoutLabel(folder)).toBe("scratch");
-    expect(checkoutBadge(folder)).toEqual({ kind: "role", text: "Folder" });
-  });
-
-  it("never restates the label it sits beside", () => {
-    for (const item of [PRIMARY, WORKTREE, SELF_NAMED]) {
-      expect(checkoutBadge(item).text).not.toBe(checkoutLabel(item));
-    }
+    expect(checkoutLine(folder)).toEqual({ name: "scratch", tag: "folder" });
   });
 });
 
@@ -411,7 +400,11 @@ describe("buildCardEntries task label and second line", () => {
 });
 
 describe("sessionTitlesFor", () => {
-  const entry = (sessionId: string, title: string | null, agent: "claude" | "codex" = "claude") => ({
+  const entry = (
+    sessionId: string,
+    title: string | null,
+    agent: "claude" | "codex" = "claude",
+  ) => ({
     agent,
     sessionId,
     cwd: "/repos/spacevibe-board",

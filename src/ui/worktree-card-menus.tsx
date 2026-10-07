@@ -1,7 +1,6 @@
 import { Fragment } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
-  ArrowElbowDownRight,
   FolderOpen,
   FolderPlus,
   Gear,
@@ -12,16 +11,15 @@ import {
 } from "@phosphor-icons/react";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import { CardAgentRow, whereOf } from "./worktree-card-row";
-import { displayAgent, subjectWhere, type MenuSubject } from "./agent-rail-card-model";
+import { subjectWhere, type MenuSubject } from "./agent-rail-card-model";
 import { railCardMenuOpen } from "../chrome/events";
-import type { RailCardPane, RailWorktreeGroup } from "./agent-rail-model";
 
 /**
- * The two popovers a closed worktree card raises (spec
- * `docs/internals/agent-rail.md`).
+ * The checkout actions menu a rail checkout raises (spec
+ * `docs/internals/agent-rail.md`), and the placement helpers other surfaces
+ * borrow. The closed card's segment menu retired with the card (DL-27.28).
  *
- * Both are anchored to a card that lives inside `.asr-rail__list` — a scroll
+ * The menu is anchored to a checkout that lives inside `.asr-rail__list` — a scroll
  * container with `overflow-x: hidden`. A surface rendered INSIDE it is clipped
  * on the left and scrolls away from its own trigger, which is why everything
  * here is `position: fixed` off the trigger's client rect (spec §5.1). The
@@ -29,9 +27,9 @@ import type { RailCardPane, RailWorktreeGroup } from "./agent-rail-model";
  * `MenuAnchor` (`toolbar/toolbar-overflow-menu.tsx`); the gallery specimen
  * drew them `absolute` and its own header says not to inherit that.
  *
- * PLACEMENT: both surfaces open to the right, 6px away, flipping left when
- * they would pass the viewport. The segment menu starts below its trigger;
- * the anchored actions menu stays top-aligned (spec §8.2).
+ * PLACEMENT: a surface opens to the right, 6px away, flipping left when it
+ * would pass the viewport. The anchored actions menu stays top-aligned
+ * (spec §8.2).
  *
  * DL amendments this carries (spec §11.2): DL-13.1's 12px `--radius-surface`
  * is scoped to stage-level surfaces and these take the card's 6px instead;
@@ -265,112 +263,6 @@ export function useStageOverlayFlag(): void {
       }, OVERLAY_RELEASE_MS);
     };
   }, []);
-}
-
-/* ─────────────────────────────────── the segment menu (spec §5) ───────────── */
-
-export interface SegmentMenuProps {
-  readonly project: string;
-  readonly group: RailWorktreeGroup;
-  /** The panes behind the raised segment, loudest first. */
-  readonly panes: readonly RailCardPane[];
-  /** The raised segment's client rect; null while it is being re-measured. */
-  readonly rect: DOMRect | null;
-  /** The segment itself — exempt from the outside-press close, since its own
-   * press is a focus rather than a dismissal. */
-  readonly trigger: HTMLElement | null;
-  /** `null` for the `+N` tail, an agent id for a segment. */
-  readonly agent: string | null;
-  readonly onFocusPane: (tabIndex: number, paneId: number) => void;
-  readonly onClosePane: (tabIndex: number, paneId: number) => void;
-  readonly onClose: () => void;
-  /** Keeps the menu up while the pointer is inside it (the bridge, spec §5.1). */
-  readonly onPointerEnter: () => void;
-  readonly onPointerLeave: () => void;
-}
-
-/**
- * The panes behind one segment — one shape, three cases (spec §5): a merged
- * a merged Claude segment raises its two panes under a caption, a single-pane segment
- * raises that pane plus an explicit `Focus pane` row, and the `+N` tail raises
- * exactly the panes it hides.
- *
- * The rows are the production `.asr-card__row` (`CardAgentRow`), so press,
- * ✕, the model pill and the hover wash arrive on existing seams. The
- * `Focus pane` row exists because a one-row list IS the segment — without it
- * the menu would say nothing the segment did not. That is this shape's own
- * accepted cost, drawn in the gallery before it was chosen.
- */
-export function SegmentMenu(props: SegmentMenuProps) {
-  const { ref, style } = useSurfacePlacement(props.rect, "bottom-right");
-  useDismiss(props.onClose, ref, props.trigger);
-  useStageOverlayFlag();
-  const only = props.panes.length === 1 ? props.panes[0] : undefined;
-  // "1 Claude agents" until 2026-08-31 (code review): the visible caption was
-  // guarded by `panes.length > 1`, but the label a screen reader actually
-  // speaks was not — and the single-pane case is the COMMON one, since a
-  // checkout with one agent of a kind is the default shape.
-  const count = props.panes.length;
-  const noun = count === 1 ? "agent" : "agents";
-  const where = whereOf(props.project, props.group);
-
-  return (
-    <div
-      ref={ref}
-      class="asr-pop asr-pop--panes"
-      role="dialog"
-      aria-label={
-        props.agent === null
-          ? `${count} more ${noun} in ${where}`
-          : `${count} ${displayAgent(props.agent)} ${noun} in ${where}`
-      }
-      style={style}
-      onPointerEnter={props.onPointerEnter}
-      onPointerLeave={props.onPointerLeave}
-    >
-      {props.panes.length > 1 && (
-        <p class="asr-pop__cap">
-          {props.panes.length}{" "}
-          {props.agent === null ? "more in this checkout" : `${displayAgent(props.agent)} agents`}
-        </p>
-      )}
-      {props.panes.map((pane) => (
-        <CardAgentRow
-          key={pane.paneId}
-          project={props.project}
-          group={props.group}
-          pane={pane}
-          // Open question 1, settled here: a press CLOSES the menu. Focusing a
-          // pane moves the keyboard to it, and a surface that outlives that
-          // would be a menu hovering beside a terminal the user is typing in.
-          onFocusPane={(tabIndex, paneId) => {
-            props.onFocusPane(tabIndex, paneId);
-            props.onClose();
-          }}
-          onClosePane={props.onClosePane}
-        />
-      ))}
-      {only !== undefined && (
-        <Fragment>
-          <div class="asr-pop__sep" />
-          <button
-            type="button"
-            class="asr-card__new"
-            aria-label={`Focus ${only.label} in ${whereOf(props.project, props.group)}`}
-            onClick={() => {
-              props.onFocusPane(only.tabIndex, only.paneId);
-              props.onClose();
-            }}
-          >
-            <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
-              <DeckIcon icon={ArrowElbowDownRight} size={CHROME_ICON} />
-            </span>
-            <span class="asr-card__name">Focus pane</span>
-          </button>
-        </Fragment>
-      )}
-    </div>
-  );
 }
 
 /* ─────────────────────────────────── the actions menu (spec §8) ───────────── */
@@ -805,8 +697,8 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
           that states both, so the menu opened by repeating its own anchor. The
           scope still gets said once — in the footer — and the surface's
           `aria-label` above still names project, checkout and branch for a
-          reader who cannot see the card. The `Primary`/`Worktree` word moved
-          onto the card head's own badge (`checkoutBadge`).
+          reader who cannot see the card. The worktree word now lives on the
+          checkout's label line as its tag (`checkoutLine`, DL-27.28).
 
           The FREE-STANDING placement has no card beside it, so the one thing
           the owner asked of every create control — "I must see which checkout

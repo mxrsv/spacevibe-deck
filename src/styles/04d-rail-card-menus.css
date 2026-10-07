@@ -1,5 +1,6 @@
-/* ── The worktree card's two popovers ──────────────────────────────────────
-   `SegmentMenu` and `CardActionsMenu` (`src/ui/worktree-card-menus.tsx`), per
+/* ── The rail checkout's actions menu ──────────────────────────────────────
+   `CardActionsMenu` (`src/ui/worktree-card-menus.tsx`; the segment menu
+   retired with the card, DL-27.28), per
    `docs/internals/agent-rail.md` Ported
    from the owner-approved gallery specimen (`gxsa-` prefix, removed from the
    gallery 2026-10-03, still in git history) onto the `asr-` vocabulary the
@@ -29,21 +30,10 @@
    `--seam-raised` INSET hairline, never a blurred drop shadow. ── */
 
 .asr-pop {
-  /* The production sheet pins `--asr-card-row-h` on `.asr-card` / `.asr-bare` /
-     `.asr-card__row` only, and a `.asr-card__new` row inside a popover has none
-     of those ancestors — without the variable it collapses from 28px to its
-     13px line box. `--asr-card-radius` is likewise pinned on `.asr-card`, which
-     is not an ancestor of a fixed surface, so all three are restated here.
-
-     `--asr-card-radius` was NOT restated until 2026-08-30, and the omission was
-     load-bearing twice over (code review): a `Focus pane` row is an
-     `.asr-card__new`, whose `border-radius: var(--asr-card-radius)` (04c) then
-     resolved to an undefined property — invalid at computed-value time, so 0 —
-     and that row drew square corners inside a 6px surface while every
-     `.asr-card__row` above it stayed rounded. The surface's own radius was a
-     bare `6px` for the same reason, which is the one bare pixel radius in the
-     partial tree and what `scripts/design-language.test.ts` was failing on. One
-     restatement fixes both: the variable is 6px, so nothing moves visually. */
+  /* The production sheet pins these on `.asr-checkout` / `.asr-card__row`, and a
+     fixed surface has neither ancestor, so they are restated here. The radius
+     is a variable rather than a bare `6px`: `scripts/design-language.test.ts`
+     refuses a bare pixel radius in the partial tree. */
   --asr-card-row-h: 28px;
   --asr-card-row-gap: 2px;
   --asr-card-radius: 6px;
@@ -62,36 +52,10 @@
   overflow-y: auto;
 }
 
-/* Checkout heading and head marks (DL-27.25). */
-.asr-bare-heading {
-  min-width: 0;
-}
-
-.asr-card__mark::before,
-.asr-bare__mark::before {
-  background: color-mix(in srgb, var(--tone) 26%, transparent);
-}
-.asr-card__mark[data-live="true"]::before {
-  background: var(--asr-card-busy);
-}
-
-/* The panes behind one segment (spec §5). Narrower than the actions menu: its
-   rows are the card's own agent rows, which are already sized for rail width. */
-.asr-pop--panes {
-  width: 208px;
-}
-
 .asr-pop__sep {
   height: 1px;
   margin: 3px 2px;
   background: var(--hair);
-}
-
-.asr-pop__cap {
-  margin: 0;
-  padding: 1px 8px 3px;
-  color: var(--text-faint);
-  font: 450 var(--type-micro) / 1.35 var(--ui-font);
 }
 
 /* ------------------------------------------------------------ the actions menu */
@@ -110,9 +74,9 @@
 /* `.asr-act__head`, `__for`, `__scope`, `__branch` and `__badge` were DELETED
    with the menu's heading (owner, 2026-08-30): the card the menu hangs off
    already states the checkout and its branch 6px away, so the head opened the
-   surface by repeating its own anchor. The `Primary`/`Worktree` word survives on
-   the card head's badge (`.asr-card__badge[data-kind="role"]`, 04c), and the
-   scope is still said once by `.asr-act__foot` below. */
+   surface by repeating its own anchor. The worktree word lives on the
+   checkout's label line (`.asr-checkout__tag`, 04c, DL-27.28), and the scope is
+   still said once by `.asr-act__foot` below. */
 
 /* Two lines, so the glyph spans both rows and the text stacks beside it. This
    is the genre DL §13 had no rule for (spec §8.3): `ToolbarOverflowMenu`'s row

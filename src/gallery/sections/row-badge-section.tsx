@@ -125,7 +125,6 @@ function Rail({ panes }: { readonly panes: readonly RailCardPane[] }) {
                 <WorktreeCard
                   project={PROJECT}
                   group={group(panes)}
-                  open
                   onFocusPane={NOOP}
                   onClosePane={NOOP}
                   onCloseTab={NOOP}
