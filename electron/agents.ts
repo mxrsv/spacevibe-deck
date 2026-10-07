@@ -16,8 +16,11 @@ import * as windows from "./platform/windows";
 import { ACTIVE_AGENT_IDS } from "../src/lib/agents/agent-registry";
 
 /** A login shell that hangs (a `.zprofile` waiting on the network) must not
- * wedge the picker forever — degrade to empty after this. */
-export const DETECT_TIMEOUT_MS = 3000;
+ * wedge the picker forever. Not tighter: an idle `zsh -il` measured 1.5–2s on
+ * the owner's machine (2026-10-05), and at boot it competes with every
+ * restored pane's own login shell — eight at once pushed it past 4s, and the
+ * old 3s limit read that as "no agent is installed". */
+export const DETECT_TIMEOUT_MS = 10_000;
 
 export interface AgentInfo {
   readonly name: string;
@@ -178,23 +181,30 @@ export function discoverAgentsWindows(
 }
 
 /**
- * Probe the login shell. Any failure — spawn error, or an rc file still
- * hanging past the timeout — degrades to an empty list rather than leaving the
- * picker waiting forever.
+ * Probe the login shell. Rejects on a spawn error or an rc file still hanging
+ * past the timeout: an empty or cut-off stdout is not an answer, and resolving
+ * it as one let the renderer cache "no agent is installed" as fact. The
+ * renderer's store keeps its last good list on a rejection and retries.
  */
 export function discoverAgents(requested: readonly string[]): Promise<AgentInfo[]> {
   if (process.platform === "win32") {
     return Promise.resolve(discoverAgentsWindows(requested));
   }
   const names = probeNames(requested);
-  const script = names.map((name) => `command -v ${name}`).join("; ");
+  // `command -v` exits 1 for a missing name, so the trailing `true` keeps a
+  // completed probe at exit 0 and leaves any `error` meaning a real failure.
+  const script = [...names.map((name) => `command -v ${name}`), "true"].join("; ");
   const launch = macos.shellLaunch();
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     execFile(
       launch.executable,
       ["-ilc", script],
       { encoding: "utf8", timeout: DETECT_TIMEOUT_MS, env: process.env },
-      (_error, stdout) => {
+      (error, stdout) => {
+        if (error !== null) {
+          reject(error);
+          return;
+        }
         resolve(parseCommandVOutput(String(stdout ?? ""), names));
       },
     );
@@ -212,17 +222,4 @@ export async function dirsExist(paths: readonly string[]): Promise<boolean[]> {
       }
     }),
   );
-}
-
-/**
- * IPC entry point. Never rejects: the picker must degrade to "Shell only"
- * rather than surface an error, which is what the Rust command did by
- * returning an empty vector on every failure path.
- */
-export async function detectAgentsSafely(names: readonly string[]): Promise<AgentInfo[]> {
-  try {
-    return await discoverAgents(names);
-  } catch {
-    return [];
-  }
 }

@@ -7,7 +7,7 @@
 import path from "node:path";
 import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { CHANNELS } from "./channels";
-import { detectAgentsSafely, dirsExist } from "../agents";
+import { discoverAgents, dirsExist } from "../agents";
 import { gitBranch } from "../git";
 import { scanRepository } from "../worktrees";
 import { addWorktree } from "../git/worktree";
@@ -69,7 +69,9 @@ export function registerServices(deps: RegisterServicesDeps): void {
   const claudeRegistry = createClaudeRegistry();
   ipcMain.handle(CHANNELS.agentRegistry, () => claudeRegistry.read());
   ipcMain.handle(CHANNELS.windowLabel, (event) => deps.labelOf(event));
-  ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) => detectAgentsSafely(names ?? []));
+  // Rejects when the probe could not answer; the renderer's agent store keeps
+  // its last good list and retries rather than caching an empty one.
+  ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) => discoverAgents(names ?? []));
   ipcMain.handle(CHANNELS.dirsExist, (_event, { paths }) => dirsExist(paths));
   ipcMain.handle(CHANNELS.desktopEnvironment, () => ({
     isDevelopment: !app.isPackaged,
