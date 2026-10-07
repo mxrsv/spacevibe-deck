@@ -53,8 +53,10 @@ grouping rather than regrouping on its own.
 | `none`                              | other     | true     | `done`     | quiet gray badge       |
 | `none`                              | other     | false    | `idle`     | nothing                |
 
-The words (`failed`, `needs you`, `working`, `done`, `idle`) live only in the row's title and
-accessible name. Where attention and phase come from is in
+The row's accessible name carries the lower-case words (`failed`, `needs you`, `working`, `done`,
+`idle`); its second line carries a capitalised state word only until the agent has a sentence
+(`stateWord` in [`agent-rail-card-model.ts`](../../src/ui/agent-rail-card-model.ts)). Where
+attention and phase come from is in
 [terminal.md](terminal.md#agent-phase-and-attention).
 
 On a session row the badge is drawn on the corner of the row's own logo, never in the
@@ -281,14 +283,21 @@ header's caret is the only fold.
   so the rail asks for a scan itself when an unnamed pane's session is unknown
   ([`requestSessionTitles`](../../src/sessions/sessions-store.ts)), at most once per 30s and
   only when `tabViews` changes. Until it lands the row reads the agent label.
+- **The second line is never empty.** It is the agent label · the status, where the status is
+  the newest sentence or, before one, the state word; with the agent label as the first line it
+  is the status alone. `No signal` means an idle pane the tracker has seen nothing from
+  (`unknown` confidence), which every agent without a contract-layer source stays until it
+  works; the sentence beats a contract `detail`, which beats the `Needs you` word.
 - **The second line carries the ordinal.** Two rows of one CLI in one checkout stay apart on
   their visible lines: the checkout-wide ordinal lands on the sentence, or on the agent label
   of a row that has said nothing yet, never on a task label.
 - **The header counts who needs you** (DL-27.27, amended): the project's `asked` and `failed`
   panes, from the same `RailWorktreeGroup.panes` the rows come from, so it cannot disagree
   with them. Remembered headers carry none.
-- **Model pills are withheld in production.** The available pane → session pairing is
-  heuristic, and a missing pill is more truthful than a guessed model.
+- **The model is a tooltip, not a pill, and is withheld in production.** The available
+  pane → session pairing is heuristic, and a missing model is more truthful than a guessed one.
+- **No frame marks the focused project.** The current checkout's label line and the focused
+  row are the only "you are here" marks; rows have no fill at rest.
 
 ## One create control per checkout
 

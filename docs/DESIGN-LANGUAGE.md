@@ -2274,6 +2274,11 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   accessible name even when no mark is painted, so the visual vocabulary can
   stay sparse without erasing meaning. A second signifier for the same state
   is DL-21.6's mistake in a new place.
+
+  **Amended 2026-10-07 (owner): on the Electron rail tree the status word returns as text.** A
+  session row's second line is the CLI name · the newest turn, or the state word when there is
+  no turn yet (`Working`, `Needs you`, `Failed`, `Finished`, `Ready`, `No signal`, `Ended`).
+  The leading mark stays the only painted state signal; the word is text, not a second mark.
 - **DL-27.3** **The mark palette is exception-first: a dot at rest, a spinner
   while working (amended twice on 2026-08-19, owner).** `failed` is `--red` ·
   `asked` is `--status-unread` · `done` and `idle` share one gray dot,
@@ -2997,6 +3002,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   quiet `--state-hover-bg` band instead of the 2026-10-03 inverted fill.
   [Cluster frame](../src/styles/04c-rail-worktree-card.css).
 
+  **Withdrawn 2026-10-07 (owner):** the focused project carries no outline on the tree
+  (DL-27.28); the current checkout's label line and the focused row mark where you are.
+
   **Amended 2026-10-04 (owner): a project's only card is not a disclosure.**
   With one card under a collapsible project header, the header caret and the
   card chevron hid the same rows, so the rail offered two collapses for one
@@ -3153,11 +3161,15 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   the checkout holding the focused pane carries the current mark on its label line. A session
   row is two lines: the task label (tab name, else the session's first prompt, else the agent
   label) in the row's weight, then the agent label · the newest turn (DL-27.15's sentence) in
-  `--text-muted`. Without a sentence the second line is the agent label alone; when the task
-  label already is the agent label, the second line is the sentence alone, and a row with
-  neither is one line. The state word stays in the tooltip and accessible name (DL-27.2). The
+  `--text-muted`. Without a sentence the second line carries the state word in the sentence's
+  place (DL-27.2, amended); when the task label already is the agent label, the second line is
+  the sentence or state word alone. The state word also stays in the accessible name. The
   row badge, quiet logos and close follow DL-27.21. The project header's caret is the only
   fold.
+
+  **Amended 2026-10-07 (owner): rows are flat.** No fill at rest — hover wash only, and the
+  focused row's DL-27.22 fill. Every session row is two lines (DL-27.2 amended); the model
+  pill leaves the row for its tooltip.
 
 ## 28. The rail's action footer
 
