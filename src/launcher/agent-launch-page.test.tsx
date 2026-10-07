@@ -78,6 +78,23 @@ describe("compact Original launch page", () => {
     expect(host.querySelector(".agent-launch-page__destination")?.textContent).toContain("New tab");
   });
 
+  it("says New space before the press when the focused pane is in another checkout (RAIL4)", () => {
+    const props = mount({
+      target: { kind: "new-space", workspacePath: "/repo" },
+      onRunInNewSpace: vi.fn(),
+    });
+    const destination = host.querySelector(".agent-launch-page__destination")?.textContent;
+    expect(destination).toContain("New space");
+    expect(destination).not.toContain("New tab");
+    // One Run, and it does what the line said: the captured target is a new space.
+    const buttons = host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].getAttribute("aria-label")).toBe("Run Claude Code");
+    act(() => buttons[0].click());
+    expect(props.onRun).toHaveBeenCalledExactlyOnceWith("claude");
+    expect(props.onRunInNewSpace).not.toHaveBeenCalled();
+  });
+
   it("shows a missing agent as disabled, with no New space button", () => {
     mount({
       agents: [{ id: "codex", label: "Codex", missing: true, detail: "codex" }],

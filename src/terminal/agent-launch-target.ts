@@ -9,9 +9,9 @@ export type AgentLaunchTarget =
     }
   | { readonly kind: "first-pane"; readonly workspacePath: string }
   /**
-   * The user asked for a space of its own although the folder already has a
-   * tab. Never captured: `resolveAgentLaunchTarget` only answers `split` or
-   * `first-pane`, and the page derives this from a press on `New space`.
+   * A space of its own although the folder already has a tab: captured when
+   * the focused pane is in another checkout (RAIL4, DL-27.26 amended
+   * 2026-10-07), or derived by the page from a press on `New space`.
    */
   | { readonly kind: "new-space"; readonly workspacePath: string };
 
@@ -65,11 +65,12 @@ export function resolveAgentLaunchTarget(
       .sort((a, b) => b.length - a.length)[0];
     return owner === root;
   });
-  const target =
-    matching.find((tab) => tab.key === activeKey) ??
-    matching.find((tab) => comparisonKey(tab.workspacePath!, platform) === root) ??
-    matching[0];
+  if (matching.length === 0) return { kind: "first-pane", workspacePath: workspace };
+  // RAIL4: split only beside the focused pane, and only when it belongs to
+  // this checkout. A checkout whose tabs sit in the background gets a space
+  // of its own rather than a split into a tab the user is not looking at.
+  const target = matching.find((tab) => tab.key === activeKey);
   return target === undefined
-    ? { kind: "first-pane", workspacePath: workspace }
+    ? { kind: "new-space", workspacePath: workspace }
     : { kind: "split", workspacePath: workspace, tabKey: target.key, paneId: target.paneId! };
 }

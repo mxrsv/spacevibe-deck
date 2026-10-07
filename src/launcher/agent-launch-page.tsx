@@ -81,11 +81,13 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
         <div class="agent-launch-page__destination">
           <span title={props.target.workspacePath}>{folder}</span>
           {/* With a tab to split the buttons say what each press does, so the
-              row would only repeat them; without one it names the one outcome. */}
+              row would only repeat them; without one it names the one outcome
+              (RAIL4): a first tab, or a space beside the folder's others when
+              the focused pane is in another checkout. */}
           {props.target.kind !== "split" && (
             <span title={props.target.workspacePath}>
               <DeckIcon icon={Columns} size={14} />
-              New tab
+              {props.target.kind === "new-space" ? "New space" : "New tab"}
             </span>
           )}
         </div>

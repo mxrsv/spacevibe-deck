@@ -16,11 +16,28 @@ describe("resolveAgentLaunchTarget", () => {
       paneId: 20,
     });
   });
-  it("prefers exact root over nested and excludes sibling worktrees", () => {
+  it("opens a new space when the focused pane is in another checkout (RAIL4)", () => {
     const tabs = [tab(1, "/repo/other"), tab(2, "/repo/pkg"), tab(3, "/repo")];
-    expect(resolveAgentLaunchTarget("/repo", tabs, 1, ["/repo", "/repo/other"])).toMatchObject({
-      tabKey: 3,
+    // The active tab is the sibling worktree: the target checkout's own tabs
+    // sit in the background, so nothing is split into them.
+    expect(resolveAgentLaunchTarget("/repo", tabs, 1, ["/repo", "/repo/other"])).toEqual({
+      kind: "new-space",
+      workspacePath: "/repo",
     });
+    expect(resolveAgentLaunchTarget("/repo", [tab(1, "/repo")], null)).toEqual({
+      kind: "new-space",
+      workspacePath: "/repo",
+    });
+  });
+  it("splits a nested tab of the checkout when it holds the focused pane", () => {
+    const tabs = [tab(1, "/repo/other"), tab(2, "/repo/pkg"), tab(3, "/repo")];
+    expect(resolveAgentLaunchTarget("/repo", tabs, 2, ["/repo", "/repo/other"])).toMatchObject({
+      kind: "split",
+      tabKey: 2,
+    });
+  });
+  it("excludes sibling worktrees from the checkout's tabs", () => {
+    const tabs = [tab(1, "/repo/other")];
     expect(
       resolveAgentLaunchTarget("/repo", [tabs[0], tab(4, "/repo-old")], 1, [
         "/repo",

@@ -1346,9 +1346,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           canCommit,
           roots,
         );
-        // A space the launch created is named for its folder and agent; the
-        // user's own name replaces this one like any other (DL-35.3).
-        if (result.kind === "spawned" && placement === "new-space") {
+        // A space the launch created beside the folder's others — the `New
+        // space` press, or a captured new-space target (RAIL4) — is named
+        // for its folder and agent; the user's own name replaces this one
+        // like any other (DL-35.3).
+        if (
+          result.kind === "spawned" &&
+          (placement === "new-space" || target.kind === "new-space")
+        ) {
           const index = tabViews.value.findIndex((tab) => tab.key === result.receipt.tabKey);
           const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId;
           if (index >= 0)
