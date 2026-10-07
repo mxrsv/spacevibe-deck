@@ -1,0 +1,123 @@
+/* ── The collapsed rail: a column of project avatars (DL-27.29) ─────────────
+   `App` writes `[data-sidebar-collapsed="column"]` onto `:root` on Electron
+   (`sidebar-shell.ts`) and paints the column at `SIDEBAR_COLUMN_WIDTH` — one
+   owner for the figure, so nothing here restates it. Tauri keeps `"true"`,
+   whose rules (02-shell, 04a) hide the rail; none of them match `"column"`. */
+
+/* The frame row's content is the lights' footprint and the hide control, and
+   the control now rides the stage strip (DL-18.9). The row is dropped, and the
+   column takes its rows instead: `.asr-column__drag` stands where the lights
+   are painted, so the OS buttons sit on the column's own surface. */
+[data-sidebar-collapsed="column"] .deck-frame {
+  display: none;
+}
+
+/* The lights are `--frame-lights-w` wide from the window's left edge, and the
+   column covers `--sidebar-w` of that, so the strip only has to clear the rest.
+   `max` because Windows reserves nothing on the left (`--frame-lights-w: 0px`)
+   and a negative inset would pull the strip's content under the column. */
+[data-sidebar-collapsed="column"] .stage__strip {
+  padding-left: calc(max(0px, var(--frame-lights-w) - var(--sidebar-w)) + 8px);
+}
+
+.asr-rail--column {
+  grid-row: 1 / 3;
+  align-items: center;
+  /* No side padding: the column is already narrower than a row, and a percentage
+     beside padding is the one-pixel overflow that moves the window. */
+  padding: 0 0 8px;
+}
+
+.asr-column__drag {
+  flex: none;
+  align-self: stretch;
+  height: var(--frame-h);
+  -webkit-app-region: drag;
+}
+
+.asr-column__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  width: 100%;
+  padding: 4px 0;
+  overflow: hidden auto;
+  scrollbar-width: none;
+}
+
+.asr-avatar {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--tone) 5%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.asr-avatar:hover {
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+  color: var(--text-primary);
+}
+
+.asr-avatar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The project holding the selected tab: the same frame DL-27.22 gives its cluster. */
+.asr-avatar[data-current="true"] {
+  background: var(--tab-active-bg);
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+  color: var(--text-primary);
+}
+
+/* The folder slot is 17px for the header's glyph; initials need their own width. */
+.asr-avatar .asr-cluster__folder {
+  width: auto;
+}
+
+.asr-avatar__initials {
+  font: 600 var(--type-meta) / 1 var(--ui-font);
+}
+
+/* DL-27.29 / DL-27.27: the needs-you count in the header's two inks, cut out of the
+   rail's own surface so it reads as a badge on the corner, not a halo. */
+.asr-avatar__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: var(--radius-control);
+  background: var(--status-unread);
+  box-shadow: 0 0 0 2px var(--asr-cutout);
+  color: var(--sidebar-bg);
+  font: 600 var(--type-micro) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.asr-avatar__badge[data-tone="failed"] {
+  background: var(--red);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .asr-avatar {
+    transition:
+      background var(--duration) var(--ease),
+      color var(--duration) var(--ease);
+  }
+}

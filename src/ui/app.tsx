@@ -203,7 +203,6 @@ import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
 import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
-import { SIDEBAR_HIDDEN_WIDTH } from "./panel-resize";
 import { applySidebarShell } from "./sidebar-shell";
 import { SidebarFrameActions, SidebarToggle } from "./sidebar-toggle";
 import {
@@ -234,6 +233,7 @@ import {
   liveRailAvailable,
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
+  sidebarPaintWidth as sidebarPaintWidthFor,
   stripShowsTabs,
   taskLaunchRecoveryValid,
   toggleSettingsPanel,
@@ -1452,16 +1452,19 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       savedCollapsed: settings.value.sidebarCollapsed,
       dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
     });
-  const sidebarPaintWidth = (): number => {
-    // DL-34.1 hid the column here too, with its own early return because this
-    // function reads `settings.value.sidebarCollapsed` directly rather than
-    // going through `sidebarEffectivelyCollapsed`. REVERSED by DECK-43: the
-    // Board shares the Inbox's frame, so the rail keeps the user's width.
-    return liveRailAvailable(tabViews.value.length)
-      ? (sidebarWidthLive.value ??
-          (settings.value.sidebarCollapsed ? SIDEBAR_HIDDEN_WIDTH : settings.value.sidebarWidth))
-      : SIDEBAR_HIDDEN_WIDTH;
-  };
+  // DL-27.29: on Electron the collapsed sidebar is an avatar column, not an
+  // empty edge. The same runtime host probe as `tauriHost` below, read here
+  // because the paint width needs it first.
+  const avatarColumn = !isTauriHost();
+  const sidebarPaintWidth = (): number =>
+    sidebarPaintWidthFor({
+      liveTabCount: tabViews.value.length,
+      savedCollapsed: settings.value.sidebarCollapsed,
+      dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
+      savedWidth: settings.value.sidebarWidth,
+      liveWidth: sidebarWidthLive.value,
+      avatarColumn,
+    });
   // Written to `:root`, not handed to the shell as props — see
   // `sidebar-shell.ts` for the defect that forces it and the evidence behind
   // it. Reading the signals INSIDE the effect is what subscribes it, so a
@@ -1470,6 +1473,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     applySidebarShell(document.documentElement, {
       width: sidebarPaintWidth(),
       collapsed: effectiveSidebarCollapsed(),
+      column: avatarColumn && railAvailable,
       sidebar,
     });
   });
@@ -2223,6 +2227,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // Hidden on the owner's ask (2026-08-17); `More` carries these rows
             // in both layouts while the flag is on. See `SIDEBAR_TOOLS_HIDDEN`.
             footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
+            collapsed={avatarColumn && effectiveSidebarCollapsed()}
             usageSummary={
               effectiveSidebarCollapsed() ? null : (
                 <RailAgentLimits onOpenUsage={() => openDockTab("usage")} />

@@ -20,6 +20,12 @@ export interface SidebarShellState {
   readonly width: number;
   /** Painted collapsed, which during a drag is the ARMED state, not the setting. */
   readonly collapsed: boolean;
+  /**
+   * Collapsed as DL-27.29's avatar column rather than hidden (Electron). It is
+   * its own attribute value, not `"true"`, so every rule that hides the rail
+   * for the hidden state — Tauri's, still — leaves the column alone.
+   */
+  readonly column?: boolean;
   /** False in top-tab layout, where there is no column to describe. */
   readonly sidebar: boolean;
 }
@@ -36,5 +42,6 @@ export function applySidebarShell(root: HTMLElement, state: SidebarShellState): 
     return;
   }
   root.style.setProperty("--sidebar-w", `${state.width}px`);
-  root.setAttribute(SIDEBAR_COLLAPSED_ATTR, state.collapsed ? "true" : "false");
+  const attr = !state.collapsed ? "false" : state.column === true ? "column" : "true";
+  root.setAttribute(SIDEBAR_COLLAPSED_ATTR, attr);
 }

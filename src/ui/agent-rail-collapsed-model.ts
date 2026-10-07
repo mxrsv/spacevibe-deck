@@ -13,6 +13,8 @@ export interface RailAvatar {
   /** `RailStreamGroup.key` — list identity. */
   readonly key: string;
   readonly project: string;
+  /** Two letters standing in for the icon of a project that has no favicon. */
+  readonly initials: string;
   /** The path the project's identity icon is scanned from; mirrors the header's. */
   readonly iconPath: string | null;
   /** Panes that need the user. Zero prints no badge. */
@@ -25,6 +27,23 @@ export interface RailAvatar {
   readonly needWords: string;
 }
 
+/**
+ * The last word of the project's name, first two letters, first one upper-case
+ * (`spacevibe-deck` → `De`): sibling repositories share a prefix, so the tail
+ * is what tells them apart. A name with no letters or digits yields `?`.
+ */
+export function avatarInitials(project: string): string {
+  const tail = project
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length > 0)
+    .pop();
+  if (tail === undefined) {
+    return "?";
+  }
+  const [first, second = ""] = Array.from(tail);
+  return first.toUpperCase() + second.toLowerCase();
+}
+
 function avatarOf(group: RailStreamGroup): RailAvatar {
   const needing = group.worktrees.flatMap((worktree) =>
     worktree.panes.filter((pane) => needsUser(pane.state)),
@@ -34,14 +53,13 @@ function avatarOf(group: RailStreamGroup): RailAvatar {
   return {
     key: group.key,
     project: group.project,
+    initials: avatarInitials(group.project),
     iconPath: group.worktrees[0]?.repositoryPath ?? group.worktrees[0]?.path ?? group.path,
     needCount,
     failed: failedCount > 0,
     current: group.worktrees.some((worktree) => worktree.active),
     needWords:
-      failedCount > 0
-        ? `${needCount} need you, ${failedCount} failed`
-        : `${needCount} need you`,
+      failedCount > 0 ? `${needCount} need you, ${failedCount} failed` : `${needCount} need you`,
   };
 }
 

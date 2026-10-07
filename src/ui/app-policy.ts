@@ -1,5 +1,6 @@
 import { editorRequest, saveDialogOpen, settingsOpen } from "../chrome/events";
 import type { BootMode } from "../terminal/transfer-client";
+import { SIDEBAR_COLUMN_WIDTH, SIDEBAR_HIDDEN_WIDTH } from "./panel-resize";
 
 interface BrowserPanelObscuredState {
   readonly overlayCoversPane: boolean;
@@ -179,6 +180,31 @@ export function sidebarEffectivelyCollapsed(state: SidebarVisibilityState): bool
   // the Board shares the Inbox's frame, so the rail keeps whatever width the
   // user gave it and the Board is what changed, not the window.
   return state.dragCollapsed ?? state.savedCollapsed;
+}
+
+interface SidebarPaintState extends SidebarVisibilityState {
+  readonly savedWidth: number;
+  /** The width of a resize drag in flight; `null` otherwise. */
+  readonly liveWidth: number | null;
+  /** Electron: a collapsed sidebar is DL-27.29's avatar column, not nothing. */
+  readonly avatarColumn: boolean;
+}
+
+/**
+ * The width the sidebar column is painted at (`--sidebar-w`). Collapsed on
+ * Electron is the avatar column's own width, and that includes a drag that has
+ * armed the collapse: the column snaps under the pointer and the grip keeps the
+ * gesture by pointer capture. Tauri, and a window with no live work, paint
+ * nothing (DL-18.9).
+ */
+export function sidebarPaintWidth(state: SidebarPaintState): number {
+  if (!liveRailAvailable(state.liveTabCount)) {
+    return SIDEBAR_HIDDEN_WIDTH;
+  }
+  if (state.avatarColumn && sidebarEffectivelyCollapsed(state)) {
+    return SIDEBAR_COLUMN_WIDTH;
+  }
+  return state.liveWidth ?? (state.savedCollapsed ? SIDEBAR_HIDDEN_WIDTH : state.savedWidth);
 }
 
 /** The Open Board owns the stage, so the dock waits without losing its state. */

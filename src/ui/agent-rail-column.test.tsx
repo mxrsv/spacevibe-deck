@@ -1,0 +1,295 @@
+// @vitest-environment jsdom
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
+import { render } from "preact";
+import { act } from "preact/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The same host stubs `agent-rail.test.tsx` installs: the rail's import graph
+// reaches the repositories store, the session journal and the favicon scan.
+vi.mock("../host/store-host", () => ({
+  Store: {
+    load: vi.fn(async () => ({
+      get: vi.fn(async () => undefined),
+      set: vi.fn(async () => {}),
+      save: vi.fn(async () => {}),
+    })),
+  },
+}));
+vi.mock("../host/dialog-host", () => ({ open: vi.fn(async () => null) }));
+vi.mock("../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
+vi.mock("../terminal/file-drop", () => ({
+  installFileDrop: vi.fn(async () => () => {}),
+}));
+// Phosphor components are React `forwardRef` objects; see `agent-rail.test.tsx`.
+vi.mock("./controls/deck-icon", () => ({
+  CHROME_ICON: 13,
+  FEATURE_ICON: 15,
+  DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
+}));
+
+import { activeTabIndex, tabViews, type PaneView, type TabView } from "../terminal/tabs-store";
+import { AgentRail } from "./agent-rail";
+import {
+  configureRepositoryClient,
+  invalidateRepositoryScans,
+} from "../repositories/repositories-store";
+import type { RepositoryScan } from "../repositories/repository-client";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import {
+  createFileSurfaceController,
+  type FileSurfaceController,
+} from "../files/file-surface-controller";
+import { resetFileSurfaces } from "../files/file-surface-store";
+import type { FileClient } from "../files/file-client";
+import { workspacesData } from "../open-board/workspaces-store";
+import { WORKSPACES_VERSION } from "../lib/workspace-recents";
+import { sessionArchive } from "../terminal/session-journal";
+import { paneModels, paneTails } from "../terminal/session-tail-store";
+
+const fileClient: FileClient = {
+  listDir: async () => [],
+  readFile: async () => ({ kind: "refused", reason: "unused in this test" }),
+  writeFile: async (_root, path) => ({ path, mtimeMs: 1, size: 1 }),
+  statFiles: async (_root, paths) =>
+    paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
+  watchPaths: async () => {},
+  setDirtyFiles: async () => {},
+  createEntry: async (_root: string, parent: string, name: string) => ({
+    path: `${parent}/${name}`,
+  }),
+  listenFileChanged: async () => () => {},
+};
+
+type RepositoryEntry = Extract<RepositoryScan, { kind: "repository" }>;
+
+function worktree(path: string, branch: string): RepositoryEntry["worktrees"][number] {
+  return {
+    path,
+    head: "a",
+    branch,
+    bare: false,
+    detached: false,
+    locked: null,
+    prunable: null,
+  };
+}
+
+const DECK_SCAN: RepositoryEntry = {
+  kind: "repository",
+  key: "/w/deck/.git",
+  root: "/w/deck",
+  worktrees: [worktree("/w/deck", "main")],
+};
+
+const API_SCAN: RepositoryEntry = {
+  kind: "repository",
+  key: "/w/api/.git",
+  root: "/w/api",
+  worktrees: [worktree("/w/api", "main")],
+};
+
+function pane(overrides: Partial<PaneView> = {}): PaneView {
+  return {
+    paneId: 11,
+    agent: "claude",
+    attention: "none",
+    phase: "idle",
+    hasRun: false,
+    changedAt: 1_000,
+    ...overrides,
+  };
+}
+
+function tab(overrides: Partial<TabView> = {}): TabView {
+  return {
+    key: 1,
+    process: "node",
+    name: null,
+    dotColor: null,
+    workspacePath: "/w/deck",
+    agents: [],
+    agentBusy: false,
+    unread: false,
+    panes: [pane()],
+    ...overrides,
+  };
+}
+
+let host: HTMLDivElement;
+let fileController: FileSurfaceController;
+
+const NOOP = (): void => {};
+
+function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): void {
+  act(() => {
+    render(
+      <AgentRail
+        onSelectTab={NOOP}
+        onCloseTab={NOOP}
+        onClosePane={NOOP}
+        onFocusPane={NOOP}
+        legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
+        fileController={fileController}
+        {...props}
+      />,
+      host,
+    );
+  });
+}
+
+/** Let the scan promise and the signal update it triggers both settle. */
+async function settle(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+function avatars(): HTMLButtonElement[] {
+  return [...host.querySelectorAll<HTMLButtonElement>(".asr-avatar")];
+}
+
+beforeEach(() => {
+  initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
+  host = document.createElement("div");
+  document.body.appendChild(host);
+  invalidateRepositoryScans();
+  configureRepositoryClient({
+    scan: async (path: string) => (path.startsWith("/w/api") ? API_SCAN : DECK_SCAN),
+  });
+  workspacesData.value = {
+    version: WORKSPACES_VERSION,
+    recents: [
+      { path: "/w/deck", lastOpenedAt: 2 },
+      { path: "/w/api", lastOpenedAt: 1 },
+      { path: "/w/idle", lastOpenedAt: 0 },
+    ],
+  };
+  tabViews.value = [
+    tab({ key: 1, workspacePath: "/w/deck", panes: [pane({ paneId: 11 })] }),
+    tab({ key: 2, workspacePath: "/w/api", panes: [pane({ paneId: 21 })] }),
+  ];
+  activeTabIndex.value = 0;
+  resetFileSurfaces();
+  fileController = createFileSurfaceController({ client: fileClient });
+  sessionArchive.value = {};
+  paneTails.value = new Map();
+  paneModels.value = new Map();
+});
+
+afterEach(() => {
+  act(() => render(null, host));
+  host.remove();
+  invalidateRepositoryScans();
+  resetDesktopEnvironmentForTests();
+  workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
+  fileController.dispose();
+  resetFileSurfaces();
+  sessionArchive.value = {};
+  paneTails.value = new Map();
+  paneModels.value = new Map();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("AgentRail collapsed (DL-27.29)", () => {
+  it("draws one avatar per live project and no tree", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    expect(avatars().map((avatar) => avatar.getAttribute("aria-label"))).toEqual(["deck", "api"]);
+    // The remembered `/w/idle` project has no avatar, and nothing of the tree draws.
+    expect(host.querySelector(".asr-checkout")).toBeNull();
+    expect(host.querySelector(".asr-cluster")).toBeNull();
+    expect(host.querySelector(".sidebar-launcher")).toBeNull();
+  });
+
+  it("draws the tree and no avatars when expanded", async () => {
+    mount({ collapsed: false });
+    await settle();
+
+    expect(avatars()).toHaveLength(0);
+    expect(host.querySelectorAll(".asr-checkout").length).toBeGreaterThan(0);
+  });
+
+  it("swaps between the two without losing the project order", async () => {
+    mount({ collapsed: true });
+    await settle();
+    mount({ collapsed: false });
+    await settle();
+    expect(host.querySelector(".asr-avatar")).toBeNull();
+    expect(host.querySelector(".asr-rail__list")).not.toBeNull();
+
+    mount({ collapsed: true });
+    await settle();
+    expect(avatars().map((avatar) => avatar.title)).toEqual(["deck", "api"]);
+  });
+
+  it("badges the count of panes that need the user, in the header's two inks", async () => {
+    tabViews.value = [
+      tab({
+        key: 1,
+        workspacePath: "/w/deck",
+        panes: [
+          pane({ paneId: 11, attention: "requested" }),
+          pane({ paneId: 12, attention: "error", phase: "exited" }),
+        ],
+      }),
+      tab({
+        key: 2,
+        workspacePath: "/w/api",
+        panes: [pane({ paneId: 21, attention: "warning" })],
+      }),
+    ];
+    mount({ collapsed: true });
+    await settle();
+
+    const [deck, api] = avatars();
+    const deckBadge = deck.querySelector<HTMLElement>(".asr-avatar__badge");
+    const apiBadge = api.querySelector<HTMLElement>(".asr-avatar__badge");
+    expect(deckBadge?.textContent).toBe("2");
+    expect(deckBadge?.dataset.tone).toBe("failed");
+    expect(apiBadge?.textContent).toBe("1");
+    expect(apiBadge?.dataset.tone).toBe("asked");
+    // DL-27.2: the badge is paint, so the words reach the accessible name.
+    expect(deck.getAttribute("aria-label")).toBe("deck, 2 need you, 1 failed");
+    expect(api.getAttribute("aria-label")).toBe("api, 1 need you");
+  });
+
+  it("prints no badge at zero", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    expect(host.querySelector(".asr-avatar__badge")).toBeNull();
+  });
+
+  it("carries the current mark on the project that holds the selected tab", async () => {
+    activeTabIndex.value = 1;
+    mount({ collapsed: true });
+    await settle();
+
+    const [deck, api] = avatars();
+    expect(deck.dataset.current).toBe("false");
+    expect(api.dataset.current).toBe("true");
+    expect(api.getAttribute("aria-current")).toBe("true");
+    expect(deck.hasAttribute("aria-current")).toBe(false);
+  });
+
+  it("falls back to initials where the project has no favicon", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    expect(
+      avatars().map((avatar) => avatar.querySelector(".asr-avatar__initials")?.textContent),
+    ).toEqual(["De", "Ap"]);
+  });
+
+  it("keeps Tauri on the legacy repository rail, which hides instead", async () => {
+    vi.stubGlobal("__TAURI_INTERNALS__", {});
+    mount({ collapsed: true });
+    await settle();
+
+    expect(host.querySelector(".asr-avatar")).toBeNull();
+    expect(host.querySelector(".asr-rail--column")).toBeNull();
+  });
+});

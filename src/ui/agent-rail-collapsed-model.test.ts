@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
 import { buildAgentRail, type AgentRailInput } from "./agent-rail-model";
-import { buildRailAvatars } from "./agent-rail-collapsed-model";
+import { avatarInitials, buildRailAvatars } from "./agent-rail-collapsed-model";
 
 const NOW = 1_700_000_000_000;
 
@@ -146,5 +146,19 @@ describe("buildRailAvatars (DL-27.29)", () => {
     );
 
     expect(buildRailAvatars(view)[0].iconPath).toBe("/w/deck");
+  });
+});
+
+describe("avatarInitials", () => {
+  it.each([
+    ["spacevibe-deck", "De"],
+    ["spacevibe-api", "Ap"],
+    ["academy", "Ac"],
+    ["my_cool.app", "Ap"],
+    ["x", "X"],
+    ["---", "?"],
+    ["Đồng-bộ", "Bộ"],
+  ])("reads %s as %s", (project, initials) => {
+    expect(avatarInitials(project)).toBe(initials);
   });
 });

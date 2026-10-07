@@ -68,6 +68,14 @@ export const SIDEBAR_DRAG_BOUNDS: PanelWidthBounds = {
  */
 export const SIDEBAR_HIDDEN_WIDTH = 0;
 
+/**
+ * What the collapsed sidebar is painted at on Electron (DL-27.29, amending
+ * DL-18.9): a column of project avatars instead of no column. Tauri keeps
+ * `SIDEBAR_HIDDEN_WIDTH`. One owner for the figure — `App` writes it to
+ * `--sidebar-w` like every other width, so no stylesheet restates it.
+ */
+export const SIDEBAR_COLUMN_WIDTH = 52;
+
 export function resolvePanelDrag(rawWidth: number, bounds: PanelWidthBounds): PanelDragOutcome {
   return {
     width: Math.min(bounds.max, Math.max(bounds.min, Math.round(rawWidth))),

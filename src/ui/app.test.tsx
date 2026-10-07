@@ -18,12 +18,14 @@ import {
   liveRailAvailable,
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
+  sidebarPaintWidth,
   stripShowsTabs,
   taskLaunchRecoveryValid,
   toggleSettingsPanel,
   workspacesOrphanedByClose,
 } from "./app-policy";
 import { DesktopChrome } from "./desktop-chrome";
+import { SIDEBAR_COLUMN_WIDTH, SIDEBAR_HIDDEN_WIDTH } from "./panel-resize";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
 import {
   initializeDesktopEnvironment,
@@ -881,5 +883,47 @@ describe("workspacesOrphanedByClose — the project close's file sweep (close mo
 
   it("ignores a tab with no workspace", () => {
     expect(workspacesOrphanedByClose([{ workspacePath: null }, ...tabs], [0])).toEqual([]);
+  });
+});
+
+// DL-27.29, amending DL-18.9: collapsed on Electron paints the avatar column.
+describe("the sidebar's painted width", () => {
+  const open = {
+    liveTabCount: 2,
+    savedCollapsed: false,
+    dragCollapsed: null,
+    savedWidth: 275,
+    liveWidth: null,
+    avatarColumn: true,
+  } as const;
+
+  it("paints the user's width while open", () => {
+    expect(sidebarPaintWidth(open)).toBe(275);
+    expect(sidebarPaintWidth({ ...open, liveWidth: 310, dragCollapsed: false })).toBe(310);
+  });
+
+  it("paints the avatar column when the setting is collapsed, on Electron only", () => {
+    const collapsed = { ...open, savedCollapsed: true };
+    expect(sidebarPaintWidth(collapsed)).toBe(SIDEBAR_COLUMN_WIDTH);
+    expect(sidebarPaintWidth({ ...collapsed, avatarColumn: false })).toBe(SIDEBAR_HIDDEN_WIDTH);
+  });
+
+  it("lands a drag past the floor on the column, and leaves the pointer free to come back", () => {
+    const armed = { ...open, liveWidth: 200, dragCollapsed: true };
+    expect(sidebarPaintWidth(armed)).toBe(SIDEBAR_COLUMN_WIDTH);
+    expect(sidebarPaintWidth({ ...armed, dragCollapsed: false })).toBe(200);
+    expect(sidebarPaintWidth({ ...armed, avatarColumn: false })).toBe(200);
+  });
+
+  it("opens a collapsed column by dragging it back out", () => {
+    const widening = { ...open, savedCollapsed: true, liveWidth: 240, dragCollapsed: false };
+    expect(sidebarPaintWidth(widening)).toBe(240);
+  });
+
+  it("paints no column for a window with no live work", () => {
+    expect(sidebarPaintWidth({ ...open, liveTabCount: 0 })).toBe(SIDEBAR_HIDDEN_WIDTH);
+    expect(sidebarPaintWidth({ ...open, liveTabCount: 0, savedCollapsed: true })).toBe(
+      SIDEBAR_HIDDEN_WIDTH,
+    );
   });
 });

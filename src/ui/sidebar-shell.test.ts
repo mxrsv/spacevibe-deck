@@ -19,6 +19,16 @@ describe("applySidebarShell", () => {
     expect(root.getAttribute(SIDEBAR_COLLAPSED_ATTR)).toBe("true");
   });
 
+  it("writes its own value for the avatar column, so the hidden state's rules skip it", () => {
+    applySidebarShell(root, { width: 52, collapsed: true, column: true, sidebar: true });
+    expect(root.style.getPropertyValue("--sidebar-w")).toBe("52px");
+    expect(root.getAttribute(SIDEBAR_COLLAPSED_ATTR)).toBe("column");
+
+    // Expanded is never the column, whatever the caller says about it.
+    applySidebarShell(root, { width: 275, collapsed: false, column: true, sidebar: true });
+    expect(root.getAttribute(SIDEBAR_COLLAPSED_ATTR)).toBe("false");
+  });
+
   it("clears both in top-tab layout, so the stylesheet answers instead", () => {
     applySidebarShell(root, { width: 124, collapsed: true, sidebar: true });
     applySidebarShell(root, { width: 124, collapsed: true, sidebar: false });

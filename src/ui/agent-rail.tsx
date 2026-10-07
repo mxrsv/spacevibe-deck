@@ -1,9 +1,9 @@
-import { CaretRight, Folder, X } from "@phosphor-icons/react";
+import { CaretRight, X } from "@phosphor-icons/react";
 import { untracked, useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import { CHROME_ICON, DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
+import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import {
   ensureRepositoriesScanned,
   installRepositoryRescanOnFocus,
@@ -25,8 +25,9 @@ import { RepositoryRail } from "./repository-rail";
 import { SidebarNewButton } from "./sidebar-toggle";
 import type { NewPaneDropDeps } from "./new-pane-drag";
 import { isTauriHost } from "../updater/migration-notice";
-import { invoke } from "../host/bridge";
-import { validateLogoDataUrl } from "../settings/logo-store";
+import { WorkspaceIcon } from "./workspace-icon";
+import { buildRailAvatars } from "./agent-rail-collapsed-model";
+import { RailAvatarColumn } from "./agent-rail-column";
 
 /**
  * The agent status rail.
@@ -135,6 +136,12 @@ export interface AgentRailProps {
    */
   footer?: ComponentChildren;
   /**
+   * The sidebar is collapsed (DL-27.29): the rail draws a column of project
+   * avatars instead of the tree. Electron only — Tauri's `RepositoryRail`
+   * ignores it and the column is hidden there (DL-18.9).
+   */
+  readonly collapsed?: boolean;
+  /**
    * Content-sized usage summary below the project scrollport. The Usage feature
    * owns its data and navigation; the rail only places the supplied surface.
    */
@@ -150,49 +157,6 @@ export interface AgentRailProps {
    * passes it to both; the rail lists no file tabs and opens none regardless.
    */
   fileController: FileSurfaceController;
-}
-
-/** Keep the project identity in the existing DL-27.17 icon slot. */
-function WorkspaceIcon({ path }: { readonly path: string | null }) {
-  const favicon = useSignal("");
-  useEffect(() => {
-    if (!path) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const result = await invoke<unknown>("scan_workspace_favicon", { dir: path });
-        if (!cancelled) favicon.value = validateLogoDataUrl(result);
-      } catch (error) {
-        console.warn("Failed to load workspace favicon:", path, error);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // `favicon` is a signal whose identity never changes, so listing it would
-    // add a dependency that cannot vary. The path is the whole input.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path]);
-
-  return (
-    <span class="asr-cluster__folder" aria-hidden="true">
-      {favicon.value ? (
-        <img
-          src={favicon.value}
-          alt=""
-          width={FEATURE_ICON}
-          height={FEATURE_ICON}
-          draggable={false}
-          style={{ objectFit: "contain" }}
-          onError={() => {
-            favicon.value = "";
-          }}
-        />
-      ) : (
-        <DeckIcon icon={Folder} size={FEATURE_ICON} filled />
-      )}
-    </span>
-  );
 }
 
 function WorktreeCardRail(props: AgentRailProps) {
@@ -270,7 +234,9 @@ function WorktreeCardRail(props: AgentRailProps) {
     return () => {
       controller.dispose();
     };
-  }, []);
+    // The list element is not mounted while the rail is collapsed (DL-27.29),
+    // so the controller is rebound each time it comes back.
+  }, [props.collapsed]);
 
   // Repository scans: on demand for every open workspace, and again whenever
   // the window comes back. Without them every row degrades to a bare project
@@ -304,6 +270,10 @@ function WorktreeCardRail(props: AgentRailProps) {
       next.add(key);
     }
     collapsedGroupKeys.value = next;
+  }
+
+  if (props.collapsed === true) {
+    return <RailAvatarColumn avatars={buildRailAvatars(view)} />;
   }
 
   return (
