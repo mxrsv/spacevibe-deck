@@ -5,6 +5,20 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+- **See every agent that needs you from the strip.** A
+  [chip](src/ui/attention/attention-chip.tsx) at the strip's trailing end counts
+  the agents waiting on you; it opens a list of them, failures first, and
+  choosing one takes you to its pane.
+- **A row's state sits on its logo.** The rail's agent rows carry their state
+  [badge](src/ui/worktree-card-row.tsx) on the logo's corner, and rows that do
+  not need you show a quieter logo. On the strip, a space with a question is
+  marked yellow and a space with a failure red.
+- **Agents are found on a busy start.** When Deck opened with many restored
+  panes, a slow login shell could make the launcher say no agent is installed;
+  the [probe](electron/agents.ts) now waits longer and retries instead.
+
 ## 2.5.0
 
 This update keeps Deck responsive while agents in other spaces are printing,
