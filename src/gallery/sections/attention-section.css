@@ -1,0 +1,78 @@
+/*
+ * The needs-you chip's specimens (DL-27.26). The two theme columns paint with
+ * the APP's tokens on purpose — `ThemeScope` publishes a whole theme to the
+ * subtree, so everything inside is the shipping surface under that theme. Only
+ * the frame around them is gallery chrome (`gx-`).
+ */
+
+.gx-attn-themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.gx-attn-scope {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gx-attn-scope__name {
+  color: var(--text-faint);
+  font: var(--type-meta) / 1 var(--ui-font);
+}
+
+.gx-attn-case {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+/* One frame row, as the strip draws it: `--frame-h` tall on `--chrome-1`,
+   closed by the strip's own seam, the chip at the trailing end. */
+.gx-attn-strip {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  height: var(--frame-h);
+  padding: 0 8px;
+  background: var(--chrome-1);
+  border-bottom: 1px solid var(--seam-divider);
+}
+
+/* A scoped column's chip cannot be pressed: its popover portals to `<body>`,
+   which is outside the scope and would draw in the gallery's own theme. The
+   live specimen below is the one that opens. */
+.gx-attn-scope .gx-attn-strip {
+  pointer-events: none;
+}
+
+.gx-attn-none {
+  margin: 0;
+  color: var(--text-faint);
+  font: var(--type-meta) / 1.4 var(--ui-font);
+}
+
+/* The real strip is `position: absolute` in the app; a specimen gives it a
+   frame-row box to fill. */
+.gx-attn-strips {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  justify-items: start;
+}
+
+.gx-attn-stripframe {
+  position: relative;
+  height: var(--frame-h);
+  background: var(--chrome-1);
+}

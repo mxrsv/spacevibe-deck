@@ -409,6 +409,28 @@ describe("recent agent activity wiring", () => {
   });
 });
 
+describe("needs-you chip wiring", () => {
+  const source = readFileSync("src/ui/app.tsx", "utf8");
+
+  it("rides the shared toolbar, so both layouts mount it, with the rail's pane-exact focus", () => {
+    // `chromeActions` is the one element sidebar mode puts at the strip's
+    // trailing end and top-tab mode hands to `TabBar`.
+    const toolbar = source.slice(
+      source.indexOf("<DeckToolbar"),
+      source.indexOf("/>\n  );", source.indexOf("<DeckToolbar")),
+    );
+    expect(toolbar).toContain("attention={<AttentionStripChip onFocusPane={focusRailPane} />}");
+    // `focusRailPane` is the preflighted `activateForAttention` — never the
+    // global `focusNextAttention`, which would pick the loudest pane instead.
+    const focus = source.slice(
+      source.indexOf("const focusRailPane"),
+      source.indexOf("const restoreFocusAfterSettings"),
+    );
+    expect(focus).toContain("activateForAttention(index, paneId)");
+    expect(focus).not.toContain("focusNextAttention");
+  });
+});
+
 // DL-18.6/18.9: in sidebar mode the stage's first `--frame-h` IS the frame row
 // — it carries the traffic-light inset, the sidebar's only way back out while
 // the column is hidden, the feature toolbar and the dock's control. A

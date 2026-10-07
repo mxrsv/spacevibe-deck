@@ -9,6 +9,9 @@ import { lazy } from "preact/compat";
 const AgentBoardSection = lazy(() =>
   import("./sections/agent-board-section").then((m) => m.AgentBoardSection),
 );
+const AttentionSection = lazy(() =>
+  import("./sections/attention-section").then((m) => m.AttentionSection),
+);
 const BoardSection = lazy(() => import("./sections/board-section").then((m) => m.BoardSection));
 const ChromeSection = lazy(() => import("./sections/chrome-section").then((m) => m.ChromeSection));
 const ExplorerTreeSection = lazy(() =>
@@ -75,6 +78,7 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "navigation", label: "navigation", Section: NavigationSection },
   { id: "agent-usage", label: "agent usage", Section: AgentUsageSection },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
+  { id: "attention", label: "needs-you chip", Section: AttentionSection },
   { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
