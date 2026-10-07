@@ -2645,6 +2645,13 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   the whole stage becomes the zoomed pane's own drop zone, with its four
   edges, since the grid behind it is not on screen to be aimed at.
 
+  **Amended 2026-10-07 (owner): `New Workspace` becomes a small `+ New` at the rail top's
+  trailing end**, beside the identity/traffic-light row, in `--type-meta` muted ink with a hover
+  wash (mock D). The full-width bordered button goes. Same action, same chord, same drag
+  behaviour where it applied. Electron's
+  [`App`](../src/ui/app.tsx) hands it to `SidebarFrameActions`; Tauri's legacy rail keeps its
+  pinned launcher. The accessible name stays `New Workspace`.
+
 - **DL-27.15** **Every row carries the agent's newest turn at equal
   legibility (2026-08-17; dimming withdrawn 2026-08-19).** The message stops being
   exceptional: whenever a row has a turn to show, it shows it, in every state
@@ -2923,6 +2930,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
 
   **Amended 2026-10-07 (owner):** the card head's inverted fill retires with the card
   (DL-27.28); the focused session row keeps this selection, still at most one in the rail.
+
+  **Amended 2026-10-07 (owner):** on the tree the focused row is a true inversion —
+  `--text-primary` fill with `--bg` ink — as in mock D.
 - **DL-27.23** **The rail has three tiers: project, worktree, agent row
   (2026-08-25, owner).** Every tab of a project is printed under the worktree
   it runs in, and a worktree group is **always labelled** — including when a
@@ -2933,9 +2943,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   worktrees of one project the flat list interleaved two checkouts' runs with
   nothing on screen saying which rows shared one, and the branch word — a row
   suffix under DL-27.9 — was printed once per agent. **The folder owns the
-  outer column (owner, 2026-09-11):** boxed and bare checkout content is inset
-  so each 9px checkout dot starts at the project name's 30px left edge.
-  The 14px mark slot therefore starts at 27.5px in
+  outer column (owner, 2026-09-11):** boxed and bare checkout content was inset
+  so each checkout mark started at the project name's 30px left edge. DL-27.28's
+  mock D indents (2026-10-07) replace those figures: the 14px mark slot now starts at 13.5px in
   [the card stylesheet](../src/styles/04c-rail-worktree-card.css).
   The branch takes the row suffix's own treatment
   (`--text-faint`, `--type-meta`, 450), one step quieter than the project and
@@ -3179,14 +3189,20 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   row is two lines: the task label (tab name, else the session's first prompt, else the agent
   label) in the row's weight, then the agent label · the newest turn (DL-27.15's sentence) in
   `--text-muted`. Without a sentence the second line carries the state word in the sentence's
-  place (DL-27.2, amended); when the task label already is the agent label, the second line is
-  the sentence or state word alone. The state word also stays in the accessible name. The
+  place (DL-27.2, amended). The state word also stays in the accessible name. The
   row badge and close follow DL-27.21; the logo keeps its full colour. The project header's caret is the only
   fold.
 
   **Amended 2026-10-07 (owner): rows are flat.** No fill at rest — hover wash only, and the
   focused row's DL-27.22 fill. Every session row is two lines (DL-27.2 amended); the model
   pill leaves the row for its tooltip.
+
+  **Amended 2026-10-07 (owner): indents match mock D.** The project icon sits 14px from the
+  sidebar edge, a checkout's branch icon 22px, a session row's edge 26px. The project name is
+  `--text-primary` at weight 600; `N need you` is micro weight 400. The current checkout's own
+  mark is withdrawn (owner, the same day, commit `0127500b`): it is drawn like any other
+  checkout, so the focused row is the only "you are here". An unnamed row's second line keeps the CLI prefix
+  (`Claude Code · …`) — the second line always opens with the agent label.
 
 - **DL-27.29** **Collapsed, the rail is a column of project avatars (2026-10-07, owner).**
   On Electron the sidebar's collapse (DL-18.9's control, setting and drag) narrows the rail to
@@ -3660,6 +3676,13 @@ still follows DL-33.2–33.5 below when reused; it is no longer the sidebar foot
   never inferred from token counts. Selecting a badge opens
   the Usage dock. A collapsed sidebar hides the summary. This does not change
   DL-27's project → worktree → agent hierarchy.
+
+  **Amended 2026-10-07 (owner): the summary is one line of micro text** under the tools row —
+  each agent's name and its current window percentage (`Claude 42% · 5h`), faint ink, the
+  number in muted ink, tabular figures — instead of pills. The limit colours keep their
+  meaning on the number only. This replaces the badge, logo and 28px height above. The window
+  shown is the one closest to its limit; the tooltip and accessible label list every window.
+  The summary draws no limit colour today, so the number stays muted.
 - **DL-33.2** **Every row is a verified session summary.** The store pins each
   tail request to the listed session id and accepts a sentence only when the
   returned id matches exactly; otherwise the summary falls back to title, then

@@ -74,12 +74,11 @@ OSC and lifecycle reports remain authoritative.
 ## Agent usage and session re-entry
 
 The [sidebar summary](../../src/ui/usage/agent-usage-summary.tsx) replaces Unread
-below the project scrollport. Its [single badge row](../../src/styles/15-rail-footer.css)
-fits its content and separator padding, with horizontal overflow in narrow sidebars.
-Each agent badge shows only the logo and adjacent limit value; the name and unavailable
-state are available through its tooltip and accessible label. A dash means missing,
-expired or failed data, never zero quota. Selecting a badge opens the existing
-[Usage dock](../../src/ui/usage/usage-dock-tab.tsx).
+below the project scrollport. It is [one line of micro text](../../src/styles/15-rail-footer.css)
+(`Claude 42% · 7d  Codex 18% · 5h`), with horizontal overflow in narrow sidebars. Each agent
+shows the one window closest to its limit; the tooltip and accessible label list every window and
+carry the unavailable state. A dash means missing, expired or failed data, never zero quota.
+Selecting an agent opens the existing [Usage dock](../../src/ui/usage/usage-dock-tab.tsx).
 
 [Electron's limit service](../../electron/agent-limits/service.ts) reads Codex's
 `account/rateLimits/read` using the installed CLI and its default login profile,
@@ -284,9 +283,9 @@ header's caret is the only fold.
   so the rail asks for a scan itself when an unnamed pane's session is unknown
   ([`requestSessionTitles`](../../src/sessions/sessions-store.ts)), at most once per 30s and
   only when `tabViews` changes. Until it lands the row reads the agent label.
-- **The second line is never empty.** It is the agent label · the status, where the status is
-  the newest sentence or, before one, the state word; with the agent label as the first line it
-  is the status alone. `No signal` means an idle pane the tracker has seen nothing from
+- **The second line is never empty, and always opens with the agent label.** It is the agent
+  label · the status, where the status is the newest sentence or, before one, the state word —
+  even when the first line is the agent label too. `No signal` means an idle pane the tracker has seen nothing from
   (`unknown` confidence), which every agent without a contract-layer source stays until it
   works; the sentence beats a contract `detail`, which beats the `Needs you` word.
 - **The second line carries the ordinal.** Two rows of one CLI in one checkout stay apart on
@@ -385,7 +384,8 @@ uses defaults, an explicit empty selection stays empty, and unavailable choices 
 without replacement.
 
 Cmd/Ctrl+T opens or dismisses the page for the active workspace; without a workspace it
-opens the Open board. Frame New, dragging New onto a pane, and the Tauri menu fallback
+opens the Open board. Frame New (Electron's small `+ New` on the sidebar identity row, which
+[`App`](../../src/ui/app.tsx) mounts through `SidebarFrameActions`, not the rail), dragging New onto a pane, and the Tauri menu fallback
 retain their existing paths ([entry routing](../../src/ui/app.tsx)). The project header
 carries no create button.
 

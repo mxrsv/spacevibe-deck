@@ -63,6 +63,12 @@ C slim shell) and a fifth, D, built from the review's recommendation:
     outline goes. Slice 3b.
 13. **Quiet logos withdrawn** (owner, 2026-10-07): ROW2 is reversed; logos keep full colour, the
     corner badge (ROW1) stays.
+14. **The rail's spacing, type, top and foot match mock D** (owner, 2026-10-07: the padding is
+    "quá lớn và không cần thiết"; both the small `+ New` and the one-line usage were agreed):
+    indents are the mock's 14 / 22 / 26px, the project name is `--text-primary` at 600, the
+    current checkout stops being bold, the focused row is a true inversion, a row's second line
+    always opens with the CLI name, `New Workspace` becomes a small `+ New` on the identity row,
+    and the sidebar's usage pills become one line of micro text. Slice 3c.
 
 ## Requirements and acceptance criteria
 
@@ -153,6 +159,7 @@ session starts from that plan without asking again what it decides.
 | 2. Needs attention popover | ATT-D1, D2, D4 | [attention-popover](../plans/2026-10-06-attention-popover.md) | Done — PR #40, 2026-10-07 |
 | 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | Done — 2026-10-07, `d81b9404` `4496da97` `d4933cae` `32a2ccf1` `a1b1ede4` `a963727a` `70413a4f` and the CHANGELOG commit; native walk (REVIEW1) owed |
 | 3b. Tree matches mock D | RAIL1–3, decision 12 | [rail-tree-visual](../plans/2026-10-07-rail-tree-visual.md) | **Done** — 2026-10-07, `6068bdef` `e4e0e2b3` `9b0c9eb3` `51626709` `137540e1` |
+| 3c. Rail matches mock D: spacing, type, top, foot | decision 14 | [rail-mock-parity](../plans/2026-10-07-rail-mock-parity.md) | **Done** — 2026-10-07, `55949f3b` `15ec8bb9` `e006ce05` `fc4c3b68` and the docs commit |
 | 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | **Done** — 2026-10-07, `d394086b` `1815b510` `9e8966ec` `9b9656a4` `7b7402ab` `0f811400` `7c08001c`; native walk owed (ledger row in DL) |
 | 5. Tools and pane actions | TOOLS1–2 | [rail-tools](../plans/2026-10-07-rail-tools.md) | **Done** — 2026-10-07, `bd7d8781` `ce9fa078` `7c8b8665` `9576fb6e` `40be8e30` `90355cab` `7f1cb447` `a9f81237`; native walk owed (ledger row in DL) |
 
