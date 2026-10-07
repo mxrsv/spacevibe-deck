@@ -2680,6 +2680,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   [`CardAgentRow`](../src/ui/worktree-card-row.tsx). **Electron only:** the
   Tauri `RepositoryRail` keeps its own rows and already prints the name.
 
+  **Amended 2026-10-07 (owner):** on Electron every session row is two lines (DL-27.28); the
+  first line is the task label, never an invented name.
+
 - **DL-27.16** **The Agent Rail is live work only (2026-08-19, owner).** A row
   must originate from a live tab; persisted workspace history and archived
   sessions never produce rail output. Resume belongs to the Sessions surface,
@@ -2895,6 +2898,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   draws a hairline, and the loading bars alone say it is busy. The gallery's
   eight other candidates are kept as a historical comparison. The Tauri
   legacy rail's `.asr-leaf` keeps the wash.
+
+  **Amended 2026-10-07 (owner):** the card head's inverted fill retires with the card
+  (DL-27.28); the focused session row keeps this selection, still at most one in the rail.
 - **DL-27.23** **The rail has three tiers: project, worktree, agent row
   (2026-08-25, owner).** Every tab of a project is printed under the worktree
   it runs in, and a worktree group is **always labelled** — including when a
@@ -3110,6 +3116,11 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   otherwise ([entry routing](../src/ui/app.tsx)). The legacy free-standing menu
   still states its destination through [MenuSubject](../src/ui/agent-rail-card-model.ts).
 
+  **Amended 2026-10-07 (owner):** a checkout label's `+` replaces the `New agent` row, the
+  strip `+` and the bare checkout row. `Run` splits only when the focused pane belongs to that
+  checkout; otherwise it opens a new space there, and the destination line says which before
+  the press (RAIL4). Right-click and ⌘T are unchanged.
+
 - **DL-27.27** **A live project header counts its running agents (2026-09-28).**
   The owner asked for a folded project to still say how much is running in it.
   A live cluster header prints the number of agent panes that have not exited,
@@ -3128,6 +3139,11 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   rest, so folded still reads differently from empty. The header's last track
   is now the live close's alone, and the toggle stops 23px short of the edge so
   the count did not move ([header styles](../src/styles/04a-agent-rail.css)).
+
+  **Amended 2026-10-07 (owner): the header counts who needs you, not who is running.** The
+  slot prints the number of the project's panes that are `asked` or `failed` as `N need you`
+  in `--status-unread`, `--red` when any failed, and nothing at zero. The running count
+  leaves the header.
 
 - **DL-27.28** **The Electron rail is a flat tree: project › checkout › session (2026-10-07,
   owner).** Supersedes DL-27.25's card on Electron; DL-27.25 stays as the record. A project
@@ -3905,6 +3921,11 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   pointer crossing the marks raises nothing. Keyboard focus still raises it at
   once. Many marks
   scroll inside their own row, keeping the current one in view.
+
+  **Amended 2026-10-07 (owner): marks show the current project's spaces only**, reversing
+  2026-09-28's every-workspace marks; other projects are reached through the rail. The strip's
+  identity line is a breadcrumb project › branch › space › session for the focused pane,
+  truncating from the project end first.
 - **DL-35.4** **Reduced motion is honoured by scope.** WAAPI motion checks
   `prefers-reduced-motion` before it plays and skips the zoom, the slide and
   every fade; the mark's pill transition exists only under `no-preference`.
@@ -3914,7 +3935,7 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-**Two open claims, in the table below.** The only prior standing entry —
+**The open claims are in the table below.** The only prior standing entry —
 `DL-16`'s text being cited from nine places in `src/` but never written — was
 closed on 2026-08-12 when the rule was transcribed from its call sites as §18
 and the citations moved with it. `scripts/design-language.test.ts` now fails
@@ -3927,6 +3948,7 @@ section therefore means naming DL, or the gate does not see the citation.
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
 | The needs-you chip is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-06 on `feat/attention-popover` (DL-27.26 amended): the chip, its popover and the strip mount. Drawn in the gallery's `needs-you chip` section in both themes; no `electron:dev` walk, no `electron:smoke`. The walk must cover a failed and an asked pane in different spaces, Enter and Esc by keyboard, the popover over the browser tab's native view, and the strip at a 480px window beside the sidebar, where the chip costs the marks row about one mark |
+| The rail tree and the strip breadcrumb are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-07 on `main` (DL-27.28, DL-27.27 and DL-35.3 amended): label lines, two-line rows, the needs-you header count, the breadcrumb and current-project marks. The gallery's `navigation` tree specimen was screenshotted; no `electron:dev` walk. The walk must cover sparse and dense lists, a narrow window, ⌘1–9 within one project, a checkout `+` from another checkout's pane (New space) and from its own (Split), and a first prompt arriving after launch |
 | Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
 | Space workflow refinements are a shipping surface | `building` | built, unrun and unwalked; owner eye review owed | 2026-10-03 on `main` (4478840, 664edc5, 0fab403, 0c743a2): launch cards (DL-32.6), auto-named spaces and project capsules and the edge marker (DL-35.3). No `tsc`, `npm test` or `electron:dev` run yet. The walk must cover five agents on one card row, the New space tip by keyboard, a worktree inside its repository's capsule, and a red edge dot with enough spaces to scroll |
 | Space names are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-09-29 on `feat/space-names`: the strip (DL-35.3), the shelf (DL-35.1) and the rail row (DL-27.15's amendment) rename and render a name. The walk must cover the floating strip field over a short name and a 40-character one, the shelf field inside a 96px thumbnail, and a named and an unnamed space in one folder |

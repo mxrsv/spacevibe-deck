@@ -34,6 +34,13 @@ comes before every surface chip, each half in the merged open/manual order.
 ⌘1–9, cycling and the marks cannot disagree. Pins still order surfaces among themselves; a
 mark cannot be pinned or dragged.
 
+**The strip and the keymap scope to the current project together** (DL-35.3, amended
+2026-10-07). The marks draw only the active repository's spaces, and
+[`currentProjectSpaceOrder`](../../src/ui/spaces/space-order.ts) is the tab manager's
+`visibleTabIndexes`, so ⌘1–9, cycling and the swipe count the same spaces. Scoping one
+without the other sends ⌘3 to a space nothing on screen draws. Mission Control's shelf is
+unscoped: it is where every project's spaces are seen at once.
+
 ## Only the current space holds a live terminal
 
 This is the Board's rule carried over, and the reason nothing here reparents an xterm:

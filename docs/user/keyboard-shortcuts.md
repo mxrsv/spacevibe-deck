@@ -21,9 +21,10 @@ program as usual.
 | Select the last chip         | ⌘9         | Ctrl+9               |
 | Reopen the last closed tab   | ⌘⇧T        | Ctrl+Alt+Shift+T     |
 
-Each terminal tab is a space, shown in the strip as a mark after the current folder's name.
-The numbers count the spaces first, then open documents and the browser tab. A sideways
-two-finger swipe over the terminals also moves one space.
+Each terminal tab is a space, shown in the strip as a mark after the current project, branch,
+space and session. The strip shows the current project's spaces; reach another project from
+the Agent Rail. The numbers count those spaces first, then open documents and the browser tab.
+A sideways two-finger swipe over the terminals also moves one space.
 
 The **Overview** button on the toolbar opens Mission Control, as ⌘⇧O does. Hover a space at
 the top to see its panes, click a pane to go straight to it, or press Esc to go back

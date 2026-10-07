@@ -2,8 +2,8 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
-The rail is the left column: one cluster per project, one row per agent pane, each row
-saying what its agent last said and in what state. This page states the invariants of the
+The rail is the left column: a flat tree of project, checkout and session row, each row
+saying what it is about, what its agent last said and in what state. This page states the invariants of the
 model, the state derivation, the pairing that reads a sentence off the agent's own session
 log, and the close and order rules. Visual rules are in
 [`DESIGN-LANGUAGE.md` §27](../DESIGN-LANGUAGE.md).
@@ -33,8 +33,8 @@ grouping rather than regrouping on its own.
   remembered tier.
 - **Rows are in open order, not recency.** `sortByOpenOrder` sorts by `openedAt` then index.
 - **A tab row's sentence and state are its loudest pane's:** highest `STATE_RANK`
-  (`failed` 4, `asked` 3, `working` 2, `done` 1, `idle` 0), then newest `changedAt`, then pane
-  order. `tabTail` exports the same fold for the tab strip's chips, so the two surfaces
+  (`failed` 5, `asked` 4, `ended` 3, `working` 2, `done` 1, `idle` 0), then newest
+  `changedAt`, then pane order. `tabTail` exports the same fold for the tab strip's chips, so the two surfaces
   cannot disagree.
 - **At most one row in the whole rail is focused.** `RailPaneRow.focused` is
   `PaneView.focused` ANDed with the tab's `active`, in the model where it is assertable.
@@ -57,8 +57,8 @@ The words (`failed`, `needs you`, `working`, `done`, `idle`) live only in the ro
 accessible name. Where attention and phase come from is in
 [terminal.md](terminal.md#agent-phase-and-attention).
 
-On a checkout card the badge is drawn on the corner of the row's own logo, the strip's badge at
-a larger row size, never in the trailing cell, which keeps only the working bars and close.
+On a session row the badge is drawn on the corner of the row's own logo, never in the
+trailing cell, which keeps only the working bars and close.
 The same row quiets its logo unless `needsUser` holds (`asked` or `failed`), so the badge is
 not what keeps a needs-you logo at full ink: a row's logo kind (colour image, ink mark, letter
 avatar) decides how it goes quiet, and it never uses `filter`.
@@ -262,83 +262,66 @@ A project cluster goes where the user drags it and stays there
 - Settings are app-level, so a drag reorders every window's rail. There is no keyboard
   equivalent.
 
-## The checkout card, and its strip
+## The checkout tree
 
-On Electron a cluster's checkouts are drawn as disclosure cards
-([`agent-rail-card-model.ts`](../../src/ui/agent-rail-card-model.ts),
-[`worktree-card.tsx`](../../src/ui/worktree-card.tsx)); Tauri stays on `RepositoryRail`
-rather than inheriting a surface whose git and session sources it lacks.
+On Electron a cluster's checkouts are label lines with their session rows beneath
+([`worktree-card.tsx`](../../src/ui/worktree-card.tsx), DL-27.28); Tauri stays on
+[`RepositoryRail`](../../src/ui/repository-rail.tsx), whose git and session sources it lacks.
+The checkout card, its disclosure and its folded strip retired on 2026-10-07; the project
+header's caret is the only fold.
 
-- **The head names the checkout once.** The primary checkout is named by its **branch**,
-  every other by its folder, and the badge takes whichever fact the label did not
-  (`Primary`, `Worktree`, or the branch). The primary sits at the repository root, so its
-  basename is the word the cluster header already printed above it — and
-  `git worktree add ../fix-login fix-login` makes folder and branch one word one tier down.
-  `RailWorktreeGroup.name` stays a **fact**; the label is display.
+- **The label line names the checkout by its branch** (`checkoutLine`), tagged `worktree` for a
+  linked worktree and `folder` for a folder git does not know. Accessible names, the actions
+  menu and the Agent Board still name a checkout through `checkoutLabel` — a linked worktree
+  there is its folder — so the line and the accessible name can differ by design.
+- **A row's first line is its task label:** the tab name, else the session's first prompt,
+  else the agent label (`buildCardEntries`). The first prompt is `SessionEntry.title`, Claude
+  Code and Codex only, joined on the pane's contract `sessionId` (`sessionTitlesFor`), never
+  on a tail pairing. The session list is scanned only when Sessions or the Open board opens,
+  so the rail asks for a scan itself when an unnamed pane's session is unknown
+  ([`requestSessionTitles`](../../src/sessions/sessions-store.ts)), at most once per 30s and
+  only when `tabViews` changes. Until it lands the row reads the agent label.
+- **The second line carries the ordinal.** Two rows of one CLI in one checkout stay apart on
+  their visible lines: the checkout-wide ordinal lands on the sentence, or on the agent label
+  of a row that has said nothing yet, never on a task label.
+- **The header counts who needs you** (DL-27.27, amended): the project's `asked` and `failed`
+  panes, from the same `RailWorktreeGroup.panes` the rows come from, so it cannot disagree
+  with them. Remembered headers carry none.
 - **Model pills are withheld in production.** The available pane → session pairing is
   heuristic, and a missing pill is more truthful than a guessed model.
-- **A closed card's strip segment is one agent KIND**, ranked by `STATE_RANK`'s own
-  `outranks`, with `×N` beside the glyph when several panes share it. The cost is stated
-  rather than argued: a merged segment wears **one** state mark, its loudest pane's, which
-  is why the hover menu is not a convenience.
-- **Every segment is a `<button>`.** A single-pane segment focuses its pane. A merged `×N`
-  segment and the `+N` tail **pin the menu open** on press instead of guessing a pane —
-  pressing the loudest pane closed the hover menu under a pointer that could not re-raise
-  it, which reads as "click only blinks". Hover or keyboard focus raises the panes behind a
-  segment as ordinary rows.
-- **The fold is by measured width.** `useStripMetrics` reads the stylesheet's own
-  `max-width` back as the budget and the real segment boxes as their widths, so the room a
-  strip has has one source of truth. The `+` is never what folds: a launcher that vanishes
-  when a checkout gets busy is missing exactly when it is wanted.
-- **A segment shape's width is learned once per session, never re-learned.** Two cards read
-  the same shape one pixel apart — 47px behind a `×5` segment, 46px when it sits first — and a
-  cache that let the second card overwrite the first re-rendered both cards forever inside one
-  Preact `process()` call, which has no update-depth guard; the 1.1.0 build froze on exactly
-  this. The shared cache in
-  [`worktree-card-strip.tsx`](../../src/ui/worktree-card-strip.tsx) therefore keeps the first
-  reading, keys a merged segment by its count's digits, drops everything on a
-  `devicePixelRatio` change, and stops learning for the session past a bump ceiling. A fix
-  that lets a strip re-learn a width has to explain why it terminates.
 
 ## One create control per checkout
 
-The checkout create controls open the Electron
-[agent launch page](../../src/launcher/agent-launch-page.tsx): the expanded `New agent`
-row, collapsed `+` and bare checkout share this route; a folder git does not know renders
-the same card and bare row, badged `Folder`. A press creates
-nothing. `Run` splits right beside a captured pane in that checkout, or opens one first
-pane when it has no live tab. The page adds no task-strip item; Back and Escape restore
-the previous surface ([page state](../../src/launcher/agent-launch-page-store.ts)).
+A checkout's `+` on its label line opens the Electron
+[agent launch page](../../src/launcher/agent-launch-page.tsx) on that checkout; a checkout with
+nothing open is its label line alone, and the `+` is its way in. A press creates nothing.
+[`resolveAgentLaunchTarget`](../../src/terminal/agent-launch-target.ts) captures `split` only
+when the active tab belongs to that checkout, `new-space` when its tabs sit in the background,
+and `first-pane` when it has none; the page's destination line says which before `Run`
+(RAIL4). A captured new space is named for its folder and agent, as the `New space` button's
+is. The page adds no task-strip item; Back and Escape restore the previous surface
+([page state](../../src/launcher/agent-launch-page-store.ts)).
 
 Right-click still raises the [checkout actions menu](../../src/ui/worktree-card-menus.tsx).
 Its quick agents open new tabs, `Open shell` opens a new shell tab and `New split here`
-creates a shell split, materializing one pane when no matching tab exists. The two menu
-groups and single separator remain. The page and menu use the same up-to-five
-[Quick agents selection](../../src/settings/quick-agents.ts): unset uses defaults, an
-explicit empty selection stays empty, and unavailable choices are omitted without
-replacement.
+creates a shell split, materializing one pane when no matching tab exists. The page and menu
+use the same up-to-five [Quick agents selection](../../src/settings/quick-agents.ts): unset
+uses defaults, an explicit empty selection stays empty, and unavailable choices are omitted
+without replacement.
 
 Cmd/Ctrl+T opens or dismisses the page for the active workspace; without a workspace it
 opens the Open board. Frame New, dragging New onto a pane, and the Tauri menu fallback
-retain their existing paths ([entry routing](../../src/ui/app.tsx)). The project-header
-and task-strip create buttons remain absent.
+retain their existing paths ([entry routing](../../src/ui/app.tsx)). The project header
+carries no create button.
 
 The native browser is obscured while the page or a rail menu covers its stage.
 [App](../../src/ui/app.tsx) retains the underlying terminal DOM and makes covered stage
-content inert, so opening the launcher neither resizes nor stops a terminal. Right-click
-menus keep their fixed placement beside the rail card.
+content inert, so opening the launcher neither resizes nor stops a terminal.
 
 ## Other surfaces in the column
 
-- Each project header carries `+`, which opens the quick picker with
-  `quickPickerWorkspace` pinned to that project; `newTab()` clears the signal so the next ⌘T
-  does not inherit the rail's target.
-- `PANE_TREE_HIDDEN` in [`agent-rail.tsx`](../../src/ui/agent-rail.tsx) renders a
-  multi-agent tab as flat agent rows inside a hairline frame (the `data-headless` CSS seam in
-  [`04b-agent-rail-rows.css`](../../src/styles/04b-agent-rail-rows.css)) instead of a parent
-  row with elbow guides. Flipping the constant restores the tree.
-- [`repository-rail.tsx`](../../src/ui/repository-rail.tsx) is the rail this one replaced.
-  It still builds and is mounted only in the gallery.
+- [`repository-rail.tsx`](../../src/ui/repository-rail.tsx) is the rail the tree replaced on
+  Electron. It is still what `AgentRail` mounts on Tauri.
 - Repository scans come from `git_repository` (Electron only) through
   [`repositories-store.ts`](../../src/repositories/repositories-store.ts): derived git facts
   are never persisted, only collapse state is, a scan failure degrades to a `plain` cluster,

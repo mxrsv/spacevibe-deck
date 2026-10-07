@@ -21,7 +21,7 @@ tense; anything about the frozen Tauri host says so.
   materialization and launch, phase and attention, actions and menu, close, quit and
   transfer.
 - [Agent Rail](internals/agent-rail.md) — the rail model, state, the session-tail pairing,
-  focus, the checkout card and its strip, close and order.
+  focus, the checkout tree and its first-prompt labels, close and order.
 - [Spaces and Mission Control](internals/mission-control.md) — tabs as spaces, the slide,
   the overview, and why only the current space holds a live terminal.
 - [Agent Board](internals/agent-board.md) — retired behind a live switch; the grid of agent
