@@ -209,7 +209,7 @@
   padding: 0 23px 0 0;
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-primary);
   font: 560 var(--type-project) / 1.2 var(--ui-font);
   text-align: left;
   cursor: pointer;
@@ -242,7 +242,7 @@
   grid-column: 1;
   align-items: center;
   gap: 6px;
-  color: var(--text-muted);
+  color: var(--text-primary);
   font: 560 var(--type-project) / 1.2 var(--ui-font);
   white-space: nowrap;
   overflow: hidden;

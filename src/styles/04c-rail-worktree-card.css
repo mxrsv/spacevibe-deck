@@ -135,17 +135,9 @@ button.asr-checkout__focus:focus-visible,
   white-space: nowrap;
 }
 
-/* DL-27.28's current mark: the checkout holding the focused pane reads in full ink at a heavier
-   weight, glyph included. With the project frame withdrawn, this and the focused row are the whole
-   "you are here" mark. */
-.asr-checkout[data-current="true"] .asr-checkout__name {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.asr-checkout[data-current="true"] .asr-checkout__glyph {
-  color: var(--text-primary);
-}
+/* The checkout holding the focused pane (`data-current`) is drawn like any other: owner,
+   2026-10-07, withdrew its full-ink, heavier-weight mark because it read as a second project name.
+   The focused row is now the rail's only "you are here" mark (DL-27.28). */
 
 /* The `worktree` tag (and DL-27.23's `folder` word): a quiet outlined pill, so it reads as a
    kind beside the name rather than as a second name. */
