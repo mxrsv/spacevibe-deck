@@ -36,9 +36,11 @@ export interface RailCardPane extends RailPaneRow {
    */
   readonly taskLabel?: string;
   /**
-   * The row's second line (DL-27.28): the agent label · the newest turn, the
-   * agent label alone without a turn, the turn alone when the task label is
-   * already the agent label, and empty when there is neither.
+   * The row's second line (DL-27.28, amended 2026-10-07): the agent label ·
+   * the status, where the status is the newest turn or, before one, the state
+   * word (`stateWord`). When the task label already is the agent label it is
+   * the status alone. Never empty on a built entry; absent on a hand-made
+   * fixture, which the row then reads as the state word.
    */
   readonly secondLine?: string;
 }
@@ -119,6 +121,34 @@ export function sessionTitlesFor(
     }
   }
   return titles;
+}
+
+const STATE_WORD: Readonly<Record<RailState, string>> = {
+  failed: "Failed",
+  asked: "Needs you",
+  ended: "Ended",
+  working: "Working",
+  done: "Finished",
+  idle: "Ready",
+};
+
+/**
+ * The state as a word for a row's second line (DL-27.2, amended 2026-10-07),
+ * used when the agent has no turn to quote. A contract `detail` replaces the
+ * `asked` word, a non-zero exit code names itself, and an idle pane the
+ * tracker has seen nothing from (`unknown`) says so rather than `Ready`.
+ */
+export function stateWord(
+  pane: Pick<RailPaneRow, "state" | "confidence" | "detail" | "exitCode">,
+): string {
+  const { state, detail, exitCode } = pane;
+  if (state === "asked" && typeof detail === "string" && detail !== "") {
+    return detail.charAt(0).toUpperCase() + detail.slice(1);
+  }
+  if (state === "ended" && typeof exitCode === "number" && exitCode !== 0) {
+    return `Exited ${exitCode}`;
+  }
+  return state === "idle" && pane.confidence === "unknown" ? "No signal" : STATE_WORD[state];
 }
 
 /**
@@ -209,11 +239,14 @@ export function buildCardEntries(
     const agent = displayAgent(pane.agent);
     // DL-27.28's two lines. Without a task the first line is the agent label —
     // or, before the agent has spoken, the claimed sentence, which is that
-    // label with the ordinal that keeps two silent rows apart.
+    // label with the ordinal that keeps two silent rows apart — and the second
+    // is the status alone. With a task the second is `agent · status`; a silent
+    // row's agent word is the claimed sentence for the same ordinal reason.
+    const word = stateWord(pane);
     const lines =
       task === null
-        ? { taskLabel: said ? agent : sentence, secondLine: said ? sentence : "" }
-        : { taskLabel: task, secondLine: said ? `${agent} · ${sentence}` : sentence };
+        ? { taskLabel: said ? agent : sentence, secondLine: said ? sentence : word }
+        : { taskLabel: task, secondLine: `${said ? agent : sentence} · ${said ? sentence : word}` };
     return { ...pane, sentence, label: prefix + sentence, ...lines };
   });
 }

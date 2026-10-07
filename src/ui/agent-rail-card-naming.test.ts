@@ -4,6 +4,7 @@ import {
   checkoutLabel,
   checkoutLine,
   sessionTitlesFor,
+  stateWord,
   untitledSessionIds,
 } from "./agent-rail-card-model";
 import type { PaneView, TabView } from "../terminal/tabs-store";
@@ -313,7 +314,7 @@ describe("buildCardEntries task label and second line", () => {
     });
     expect(lines(buildCardEntries([row], undefined))).toEqual([
       ["auth", "Claude · Fixing login"],
-      ["auth", "Codex"],
+      ["auth", "Codex · Ready"],
     ]);
   });
 
@@ -332,7 +333,7 @@ describe("buildCardEntries task label and second line", () => {
     const entries = buildCardEntries([row], undefined, titles);
     expect(lines(entries)).toEqual([
       ["Make the rail a tree", "Claude · Reading the source"],
-      ["Make the rail a tree", "Claude"],
+      ["Make the rail a tree", "Claude · Ready"],
     ]);
     expect(entries.map((entry) => entry.label)).toEqual([
       "Make the rail a tree · Reading the source",
@@ -349,10 +350,10 @@ describe("buildCardEntries task label and second line", () => {
       panes: [paneRow("claude", 1)],
     });
     const [entry] = buildCardEntries([row], undefined, new Map([[1, "A prompt"]]));
-    expect(entry).toMatchObject({ taskLabel: "auth", secondLine: "Claude" });
+    expect(entry).toMatchObject({ taskLabel: "auth", secondLine: "Claude · Ready" });
   });
 
-  it("falls back to the agent label, with the turn alone beneath it", () => {
+  it("falls back to the agent label, with the turn or the state word alone beneath it", () => {
     const row = tabRow({
       key: 1,
       index: 0,
@@ -362,7 +363,41 @@ describe("buildCardEntries task label and second line", () => {
     });
     expect(lines(buildCardEntries([row], undefined))).toEqual([
       ["Claude", "Running the tests"],
-      ["Codex", ""],
+      ["Codex", "Ready"],
+    ]);
+  });
+
+  it("lets a turn beat the state word, on a named tab and an unnamed one", () => {
+    const working = (message: string) => ({
+      ...paneRow("claude", 1),
+      state: "working" as const,
+      message,
+    });
+    const named = tabRow({ key: 1, index: 0, title: "auth", named: true, panes: [working("")] });
+    const spoken = tabRow({
+      key: 2,
+      index: 1,
+      title: "",
+      named: false,
+      panes: [{ ...working("Editing the rail"), paneId: 2 }],
+    });
+    expect(lines(buildCardEntries([named, spoken], undefined))).toEqual([
+      ["auth", "Claude · Working"],
+      ["Claude", "Editing the rail"],
+    ]);
+  });
+
+  it("puts the checkout ordinal on a silent row's agent word, beside its state word", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "auth",
+      named: true,
+      panes: [paneRow("claude", 1), paneRow("claude", 2)],
+    });
+    expect(lines(buildCardEntries([row], undefined))).toEqual([
+      ["auth", "Claude · Ready"],
+      ["auth", "Claude 2 · Ready"],
     ]);
   });
 
@@ -395,7 +430,37 @@ describe("buildCardEntries task label and second line", () => {
       pair.join("\n"),
     );
     expect(new Set(visible).size).toBe(visible.length);
-    expect(visible.slice(0, 2)).toEqual(["Claude\n", "Claude 2\n"]);
+    expect(visible.slice(0, 2)).toEqual(["Claude\nReady", "Claude 2\nReady"]);
+  });
+});
+
+describe("stateWord (DL-27.2, amended 2026-10-07)", () => {
+  const word = (fields: Partial<RailPaneRow>) => stateWord({ state: "idle", ...fields });
+
+  it("names every state", () => {
+    expect(
+      (["failed", "asked", "ended", "working", "done", "idle"] as const).map((state) =>
+        word({ state }),
+      ),
+    ).toEqual(["Failed", "Needs you", "Ended", "Working", "Finished", "Ready"]);
+  });
+
+  it("lets a contract detail replace the asked word", () => {
+    expect(word({ state: "asked", detail: "approve command" })).toBe("Approve command");
+    expect(word({ state: "asked", detail: "" })).toBe("Needs you");
+    expect(word({ state: "working", detail: "approve command" })).toBe("Working");
+  });
+
+  it("names a non-zero exit, and nothing for a clean one", () => {
+    expect(word({ state: "ended", exitCode: 1 })).toBe("Exited 1");
+    expect(word({ state: "ended", exitCode: 0 })).toBe("Ended");
+    expect(word({ state: "ended", exitCode: null })).toBe("Ended");
+  });
+
+  it("says No signal only for an idle pane nothing has been seen from", () => {
+    expect(word({ confidence: "unknown" })).toBe("No signal");
+    expect(word({ confidence: "inferred" })).toBe("Ready");
+    expect(word({ state: "done", confidence: "unknown" })).toBe("Finished");
   });
 });
 

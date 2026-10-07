@@ -96,6 +96,11 @@ export interface RailPaneRow {
    */
   readonly detail?: string | null;
   /**
+   * The PTY's exit status once the pane has ended through it, else null. Only
+   * the row's second line reads it (`Exited 1`, DL-27.2 amended 2026-10-07).
+   */
+  readonly exitCode?: number | null;
+  /**
    * Head of this pane's newest turn when `AgentRailInput.tails` carries one,
    * else empty.
    *
@@ -393,6 +398,7 @@ function paneRows(
             message: tails?.get(pane.paneId) ?? "",
             ...paneSignal(pane),
             detail: pane.detail ?? null,
+            exitCode: pane.exitCode ?? null,
             age: formatShortAge(pane.changedAt, now),
             changedAt: pane.changedAt,
             // DL-27.22: the tab's focused pane is only the WINDOW's focused
