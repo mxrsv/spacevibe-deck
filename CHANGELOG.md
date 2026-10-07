@@ -31,6 +31,16 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   when one failed. Press an avatar to open that project's sessions beside the
   column, and arrow keys walk the avatars. Switching never moves the pane you
   are typing in.
+- **Your tools sit at the foot of the rail.** Session history, Token usage,
+  Explorer, Prompts, Browser and Settings are
+  [one row of icons](src/ui/sidebar-actions.tsx) above the usage line, each with
+  its name and shortcut on hover or focus. Collapsed, they fold into a single
+  Tools button that opens them beside the column. `More` keeps only the pane
+  actions.
+- **Split, expand and close from the pane itself.** An agent pane's header shows
+  [Split, Focus expand and Close](src/terminal/pane-agent-header.tsx) when you
+  hover or focus the pane, and each acts on that pane — not on whichever one has
+  focus.
 
 ## 2.6.0
 
