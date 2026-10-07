@@ -109,6 +109,26 @@ describe("buildSpaces", () => {
     tab(13, FIX, [pane(5)]),
   ];
 
+  it("names the session crumb by the focused agent pane's first prompt, else its agent (DL-35.3)", () => {
+    const withFocus = [
+      tab(10, DECK, [pane(1), pane(2, { agent: "codex", focused: true })]),
+      { ...tab(11, DECK, [pane(3)]), name: "auth" },
+      tab(12, DECK, [pane(4, { agent: null })]),
+    ];
+    const titles = new Map([
+      [2, "Fix the login page"],
+      [3, "A prompt the named space does not need"],
+    ]);
+    const spaces = buildSpaces({
+      tabs: withFocus,
+      order: [0, 1, 2],
+      activeIndex: 0,
+      scans: SCANS,
+      titles,
+    });
+    expect(spaces.map((space) => space.session)).toEqual(["Fix the login page", "Claude", null]);
+  });
+
   it("follows the caller's order and skips indexes with no tab", () => {
     const spaces = buildSpaces({ tabs, order: [3, 0, 9, 2], activeIndex: 0, scans: SCANS });
     expect(spaces.map((space) => space.tabIndex)).toEqual([3, 0, 2]);

@@ -1,5 +1,8 @@
+import { CaretRight } from "@phosphor-icons/react";
+import { Fragment } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 import { useStageOverlayFlag, useSurfacePlacement } from "../worktree-card-menus";
 import {
   needsTone,
@@ -13,8 +16,9 @@ import { useEdgeNeeds } from "./space-edge";
 import { SpaceRenameField } from "./space-rename-field";
 
 /**
- * The terminal half of the strip (DL-35.3): the current space's name (its
- * folder while unnamed), then one mark per space in strip order. Documents and
+ * The terminal half of the strip (DL-35.3): the focused pane's breadcrumb —
+ * project, branch, the space's name (its folder while unnamed), session —
+ * then one mark per space in strip order. Documents and
  * the browser keep their own chips after it (DL-18.10). A mark says where,
  * never what the agent said — that stays with the rail. A double-click on the
  * name renames the space in place.
@@ -41,6 +45,34 @@ export interface SpaceBarProps {
 interface Hover {
   readonly key: number;
   readonly rect: DOMRect;
+}
+
+interface Crumb {
+  readonly part: "project" | "branch";
+  readonly text: string;
+}
+
+/**
+ * The breadcrumb ahead of the space's own name (DL-35.3, amended 2026-10-07):
+ * project, then branch when a scan knows one. The space name stays the
+ * rename target, so it is drawn by the caller, not here.
+ */
+function crumbsBefore(space: Space): readonly Crumb[] {
+  const project: Crumb = { part: "project", text: space.groupLabel };
+  return space.branch === null ? [project] : [project, { part: "branch", text: space.branch }];
+}
+
+/** The last crumb, dropped when it would only repeat the space's name. */
+function sessionCrumb(space: Space): string | null {
+  return space.session === spaceLabel(space) ? null : space.session;
+}
+
+function Separator() {
+  return (
+    <span class="space-bar__sep" aria-hidden="true">
+      <DeckIcon icon={CaretRight} size={CHROME_ICON} />
+    </span>
+  );
 }
 
 /** Name and counts only (owner, 2026-09-29): the miniature and path were noise at a glance. */
@@ -147,18 +179,36 @@ export function SpaceBar({ spaces, menuKey, onGo, onMenu, onRename }: SpaceBarPr
               aria-hidden={space.current ? undefined : "true"}
               onDblClick={space.current ? () => setEditingKey(space.key) : undefined}
             >
-              <span class="space-bar__label">{spaceLabel(space)}</span>
-              {editing && (
-                <SpaceRenameField
-                  class="space-bar__rename"
-                  initial={space.name ?? ""}
-                  placeholder={spaceAddress(space)}
-                  onCommit={(name) => {
-                    setEditingKey(null);
-                    onRename(space, name);
-                  }}
-                  onCancel={() => setEditingKey(null)}
-                />
+              {crumbsBefore(space).map((crumb) => (
+                <Fragment key={crumb.part}>
+                  <span class="space-bar__part" data-part={crumb.part}>
+                    {crumb.text}
+                  </span>
+                  <Separator />
+                </Fragment>
+              ))}
+              <span class="space-bar__space">
+                <span class="space-bar__label">{spaceLabel(space)}</span>
+                {editing && (
+                  <SpaceRenameField
+                    class="space-bar__rename"
+                    initial={space.name ?? ""}
+                    placeholder={spaceAddress(space)}
+                    onCommit={(name) => {
+                      setEditingKey(null);
+                      onRename(space, name);
+                    }}
+                    onCancel={() => setEditingKey(null)}
+                  />
+                )}
+              </span>
+              {sessionCrumb(space) !== null && (
+                <>
+                  <Separator />
+                  <span class="space-bar__part" data-part="session">
+                    {sessionCrumb(space)}
+                  </span>
+                </>
               )}
             </span>
           );

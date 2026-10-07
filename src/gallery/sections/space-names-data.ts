@@ -59,6 +59,7 @@ function fixture(
     agentCount: states.filter((state) => state !== "shell").length,
     needsCount: asked + failed,
     failedCount: failed,
+    session: null,
     current: false,
   };
 }

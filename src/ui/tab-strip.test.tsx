@@ -475,7 +475,9 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     ];
     mount({ scopeToActiveRepository: false });
 
-    const shown = host.querySelector('.space-bar__name-slot[data-current="true"]');
+    const shown = host.querySelector(
+      '.space-bar__name-slot[data-current="true"] .space-bar__label',
+    );
     expect(shown?.textContent).toBe("spacevibe-deck");
     expect(mark(1).getAttribute("aria-selected")).toBe("true");
     expect(mark(1).getAttribute("aria-label")).toBe("spacevibe-deck · 1 agent");
@@ -500,9 +502,10 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     tabViews.value = [tab({ key: 1 }), tab({ key: 2 })];
     mount({ scopeToActiveRepository: false });
 
-    expect(host.querySelector('.space-bar__name-slot[data-current="true"]')?.textContent).toBe(
-      "repo 1",
-    );
+    expect(
+      host.querySelector('.space-bar__name-slot[data-current="true"] .space-bar__label')
+        ?.textContent,
+    ).toBe("repo 1");
     expect(mark(1).getAttribute("aria-label")).toBe("repo 1 · 0 agents");
     expect(mark(2).getAttribute("aria-label")).toBe("repo 2 · 0 agents");
   });
@@ -535,9 +538,10 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     ]);
     mount({ scopeToActiveRepository: false });
 
-    expect(host.querySelector('.space-bar__name-slot[data-current="true"]')?.textContent).toBe(
-      "auth",
-    );
+    expect(
+      host.querySelector('.space-bar__name-slot[data-current="true"] .space-bar__label')
+        ?.textContent,
+    ).toBe("auth");
     expect(mark(1).getAttribute("aria-label")).toBe("auth · 1 agent");
     // The name never renumbers a neighbour: the unnamed one is still `repo 2`.
     expect(mark(2).getAttribute("aria-label")).toBe("repo 2 · 1 agent");

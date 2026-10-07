@@ -31,6 +31,7 @@ function space(key: number, panes: readonly SpacePane[], current = false): Space
     agentCount: panes.length,
     needsCount: panes.filter((p) => p.state === "asked" || p.state === "failed").length,
     failedCount: panes.filter((p) => p.state === "failed").length,
+    session: null,
     current,
   };
 }
@@ -97,6 +98,63 @@ describe("SpaceBar needs-you marks (DL-35.3, two inks 2026-10-06)", () => {
     mount([space(1, [pane(1, "asked"), pane(2, "failed")])]);
 
     expect(marks()[0].getAttribute("aria-label")).toBe("project-1 · 2 agents · 2 need you");
+  });
+});
+
+describe("SpaceBar breadcrumb (DL-35.3, amended 2026-10-07)", () => {
+  const crumb = (): string[] =>
+    [
+      ...host.querySelectorAll<HTMLElement>(
+        '.space-bar__name-slot[data-current="true"] :is(.space-bar__part, .space-bar__label)',
+      ),
+    ].map((part) => part.textContent ?? "");
+
+  it("prints project › branch › space › session for the current space", () => {
+    mount([
+      {
+        ...space(1, [pane(1, "working")], true),
+        groupLabel: "spacevibe-deck",
+        branch: "main",
+        name: "rail tree",
+        session: "Claude",
+      },
+      space(2, [pane(2, "idle")]),
+    ]);
+
+    expect(crumb()).toEqual(["spacevibe-deck", "main", "rail tree", "Claude"]);
+    // One separator between each pair, drawn as an icon, never a glyph.
+    const current = host.querySelector('.space-bar__name-slot[data-current="true"]');
+    expect(current?.querySelectorAll(".space-bar__sep")).toHaveLength(3);
+    expect(current?.textContent).not.toContain("›");
+  });
+
+  it("skips the branch when no scan knows one, and a session that repeats the name", () => {
+    mount([{ ...space(1, [pane(1, "idle")], true), session: "project-1" }]);
+
+    expect(crumb()).toEqual(["project-1", "project-1"]);
+    expect(host.querySelectorAll('[data-current="true"] .space-bar__sep')).toHaveLength(1);
+  });
+
+  it("gives way from the project end first at narrow widths", () => {
+    const css = readFileSync("src/styles/20-mission-control.css", "utf8");
+    const shrink = (selector: string): number => {
+      // The selector opens several blocks; the weight lives in one of them.
+      const blocks = css.split(`${selector} {`).slice(1);
+      const weights = blocks.flatMap((block) => {
+        const match = block.split("}")[0]?.match(/flex:\s*0\s+(\d+)\s+auto/);
+        return match ? [Number(match[1])] : [];
+      });
+      return weights[0] ?? 0;
+    };
+
+    const order = [
+      shrink('.space-bar__part[data-part="project"]'),
+      shrink('.space-bar__part[data-part="branch"]'),
+      shrink(".space-bar__space"),
+      shrink('.space-bar__part[data-part="session"]'),
+    ];
+    expect(order.every((weight) => weight > 0)).toBe(true);
+    expect([...order].sort((a, b) => b - a)).toEqual(order);
   });
 });
 

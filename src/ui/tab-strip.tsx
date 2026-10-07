@@ -24,6 +24,8 @@ import { repositoryScans } from "../repositories/repositories-store";
 import { activeRepositoryTabIndexes } from "../repositories/repository-model";
 import { paneTails } from "../terminal/session-tail-store";
 import { tabTail } from "./agent-rail-model";
+import { sessionTitlesFor } from "./agent-rail-card-model";
+import { sessionEntries } from "../sessions/sessions-store";
 import { TabStripMenu, type StripMenuAction, type StripMenuAnchor } from "./tab-strip-menu";
 import { createTabStripDrag } from "./tab-strip-drag";
 import { closeChips, closeTargets, type TabCloseTarget } from "./tab-strip-close";
@@ -194,6 +196,8 @@ export function TabStrip(props: TabStripProps) {
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
     groups: layout.groups,
+    // The breadcrumb's session crumb reads the rail's first prompts (DL-27.28).
+    titles: sessionTitlesFor(tabViews.value, sessionEntries.value),
   });
   const chipFor = (space: Space): Chip | undefined =>
     chips.find((chip) => chip.kind === "terminal" && chip.terminalKey === space.key);

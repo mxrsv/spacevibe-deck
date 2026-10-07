@@ -63,7 +63,8 @@ export function TabBar(props: TabBarProps) {
         onCloseBrowser={props.onCloseBrowser}
         onSelectAgentBoard={props.onSelectAgentBoard}
         onCloseAgentBoard={props.onCloseAgentBoard}
-        scopeToActiveRepository={false}
+        // DL-35.3 (amended 2026-10-07): the current project's spaces only.
+        scopeToActiveRepository
       />
       <div class="tabbar__spacer" data-tauri-drag-region />
       {props.trailing}

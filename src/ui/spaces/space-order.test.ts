@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import type { TabView } from "../../terminal/tabs-store";
-import { spaceLayoutFromRail, spaceOrderFromRail } from "./space-order";
+import { repositoryScans } from "../../repositories/repositories-store";
+import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
+import { currentProjectSpaceOrder, spaceLayoutFromRail, spaceOrderFromRail } from "./space-order";
 
 function tab(key: number, workspacePath: string, openedAt: number): TabView {
   return {
@@ -79,5 +81,34 @@ describe("spaceLayoutFromRail", () => {
     expect(groups.get(0)?.key).toBe(groups.get(2)?.key);
     expect(groups.get(1)?.key).not.toBe(groups.get(0)?.key);
     expect(groups.get(1)?.label).toBe("other");
+  });
+});
+
+describe("currentProjectSpaceOrder (DL-35.3, amended 2026-10-07)", () => {
+  it("counts only the current project's spaces, in rail order, so ⌘1–9 matches the marks", () => {
+    const repository: RepositoryScan = {
+      kind: "repository",
+      key: "/w/deck/.git",
+      root: "/w/deck",
+      worktrees: ["/w/deck", "/w/deck-side"].map((path) => ({
+        path,
+        head: "0".repeat(40),
+        branch: path.endsWith("side") ? "side" : "main",
+        bare: false,
+        detached: false,
+        locked: null,
+        prunable: null,
+      })),
+    };
+    tabViews.value = [tab(1, "/w/deck", 1), tab(2, "/w/other", 2), tab(3, "/w/deck-side", 3)];
+    repositoryScans.value = new Map([
+      ["/w/deck", repository],
+      ["/w/deck-side", repository],
+    ]);
+
+    activeTabIndex.value = 2;
+    expect(currentProjectSpaceOrder()).toEqual([0, 2]);
+    activeTabIndex.value = 1;
+    expect(currentProjectSpaceOrder()).toEqual([1]);
   });
 });

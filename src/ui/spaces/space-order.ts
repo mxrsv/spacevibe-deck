@@ -7,6 +7,7 @@
  */
 import { workspacesData } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
+import { activeRepositoryTabIndexes } from "../../repositories/repository-model";
 import { settings } from "../../settings/settings-store";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { buildAgentRail, type AgentRailInput } from "../agent-rail-model";
@@ -69,4 +70,17 @@ export function currentSpaceLayout(): SpaceLayout {
 /** The order alone, for callers that draw nothing by project. */
 export function currentSpaceOrder(): readonly number[] {
   return currentSpaceLayout().order;
+}
+
+/**
+ * The current project's spaces in rail order (DL-35.3, amended 2026-10-07):
+ * the marks the strip draws once scoped to the active repository, so ⌘1–9,
+ * cycling and the swipe keep counting what is drawn. Other projects are
+ * reached through the rail.
+ */
+export function currentProjectSpaceOrder(): readonly number[] {
+  const scoped = new Set(
+    activeRepositoryTabIndexes(tabViews.value, activeTabIndex.value, repositoryScans.value),
+  );
+  return currentSpaceOrder().filter((index) => scoped.has(index));
 }

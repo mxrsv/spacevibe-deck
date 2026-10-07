@@ -13,6 +13,7 @@ import type { PaneAgent } from "../../lib/process-info";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { worktreeForPath } from "../../repositories/repository-model";
 import { MAX_TAB_NAME_LENGTH, NO_PANES, type TabView } from "../../terminal/tabs-store";
+import { displayAgent } from "../agent-rail-card-model";
 import { paneState, type RailState } from "../agent-rail-model";
 import type { SpaceGroup } from "./space-order";
 
@@ -55,6 +56,12 @@ export interface Space {
   readonly needsCount: number;
   /** The `failed` share of `needsCount`, which is red, not yellow (DL-3.2). */
   readonly failedCount: number;
+  /**
+   * The strip breadcrumb's last crumb (DL-35.3, amended 2026-10-07): what the
+   * space's focused agent pane is about — its session's first prompt in an
+   * unnamed space, else its agent label. Null without an agent pane.
+   */
+  readonly session: string | null;
   readonly current: boolean;
 }
 
@@ -69,6 +76,8 @@ export interface SpaceInput {
    * is its own folder's project, which is how a plain folder reads anyway.
    */
   readonly groups?: ReadonlyMap<number, SpaceGroup>;
+  /** First prompt per pane id (`sessionTitlesFor`), for `Space.session`. */
+  readonly titles?: ReadonlyMap<number, string>;
 }
 
 /** The folder a space is called by: the last segment of its path. */
@@ -113,6 +122,19 @@ function spacePanes(tab: TabView): readonly SpacePane[] {
   });
 }
 
+/**
+ * The focused agent pane's task label (DL-27.28's source, minus the tab name
+ * the space crumb already prints): the first prompt in an unnamed space, else
+ * the agent label. A shell has no session, so its space ends the crumb early.
+ */
+function sessionOf(tab: TabView, titles: ReadonlyMap<number, string> | undefined): string | null {
+  const agents = (tab.panes ?? NO_PANES).filter((pane) => pane.agent !== null);
+  const pane = agents.find((candidate) => candidate.focused) ?? agents[0];
+  if (pane === undefined || pane.agent === null) return null;
+  const title = tab.name === null ? titles?.get(pane.paneId) : undefined;
+  return title ?? displayAgent(pane.agent);
+}
+
 /** Every space in `order`, named, indexed, counted. */
 export function buildSpaces(input: SpaceInput): readonly Space[] {
   const tabs = input.order.flatMap((tabIndex) => {
@@ -143,6 +165,7 @@ export function buildSpaces(input: SpaceInput): readonly Space[] {
       agentCount: panes.filter((pane) => pane.agent !== null).length,
       needsCount: panes.filter((pane) => pane.state === "asked" || pane.state === "failed").length,
       failedCount: panes.filter((pane) => pane.state === "failed").length,
+      session: sessionOf(tab, input.titles),
       current: tabIndex === input.activeIndex,
     };
   });

@@ -22,24 +22,28 @@
   min-width: 0;
 }
 
-/* Every space's folder stacks in one grid cell and only the current one is
-   visible, so the cell is as wide as the longest name and the marks beside it
+/* Every space's breadcrumb stacks in one grid cell and only the current one is
+   visible, so the cell is as wide as the longest crumb and the marks beside it
    never move on a switch. */
 .space-bar__name {
   display: grid;
   justify-self: start;
   min-width: 0;
-  max-width: 180px;
+  max-width: 420px;
   color: var(--text-primary);
   font-size: var(--type-meta);
   font-weight: 600;
 }
 
+/* DL-35.3 (amended 2026-10-07): project › branch › space › session. At narrow
+   widths the least specific crumb gives way first — the shrink weights run
+   from the project down to the session, which keeps its words longest. */
 .space-bar__name-slot {
+  display: flex;
   grid-area: 1 / 1;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   visibility: hidden;
 }
@@ -48,19 +52,51 @@
   visibility: visible;
 }
 
+.space-bar__part,
+.space-bar__space {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.space-bar__part[data-part="project"] {
+  flex: 0 1000 auto;
+  color: var(--text-muted);
+}
+
+.space-bar__part[data-part="branch"] {
+  flex: 0 100 auto;
+  color: var(--text-muted);
+}
+
+.space-bar__space {
+  flex: 0 10 auto;
+}
+
+.space-bar__part[data-part="session"] {
+  flex: 0 1 auto;
+}
+
+.space-bar__sep {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--text-faint);
+}
+
 /* A double-click renames the space in place, so the name must not be the
    frame's drag region — that double-click would maximise the window. The field
-   floats over the cell instead of resizing it, so the marks never shift while
-   a name is typed; the label stays laid out beneath it, hidden. */
+   floats over the space's crumb instead of resizing it, so the marks never
+   shift while a name is typed; the label stays laid out beneath it, hidden. */
 .space-bar__name {
   -webkit-app-region: no-drag;
 }
 
-.space-bar__name-slot {
+.space-bar__space {
   position: relative;
 }
 
-.space-bar__name-slot[data-editing="true"] {
+.space-bar__name-slot[data-editing="true"] .space-bar__space {
   overflow: visible;
 }
 

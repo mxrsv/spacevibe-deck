@@ -117,7 +117,7 @@ import {
 import { installSessionTailSync } from "../terminal/session-tail-store";
 import { toFontStack } from "../terminal/pane";
 import { useMissionControl } from "./mission-control/use-mission-control";
-import { currentSpaceOrder } from "./spaces/space-order";
+import { currentProjectSpaceOrder } from "./spaces/space-order";
 import { autoSpaceName, folderName } from "./spaces/space-model";
 import { missionControlOpen } from "./mission-control/mission-control-store";
 import { composeSurfaceStrip, takeStageForSurface } from "./stage-surface-strip";
@@ -618,10 +618,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     const manager = createTabManager(host, undefined, {
-      // Every space, in the rail's order — the order the strip draws its marks
-      // in both layouts (DL-35.3), so digits, cycling and the swipe count them
-      // the same way.
-      visibleTabIndexes: currentSpaceOrder,
+      // The current project's spaces, in the rail's order — the marks the
+      // strip draws in both layouts (DL-35.3, amended 2026-10-07), so digits,
+      // cycling and the swipe count them the same way.
+      visibleTabIndexes: currentProjectSpaceOrder,
       onOpenTaskLauncher: openTaskLauncher,
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
@@ -2341,11 +2341,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   onCloseBrowser={closeBrowserTab}
                   onSelectAgentBoard={selectAgentBoardTab}
                   onCloseAgentBoard={closeAgentBoardTab}
-                  // DL-35.3 (owner, 2026-09-28): one mark per space in EVERY
-                  // workspace, so the bar is how you move between them. It
-                  // was scoped to the active repository, which left the other
-                  // workspaces with no mark at all.
-                  scopeToActiveRepository={false}
+                  // DL-35.3 (amended 2026-10-07, owner): marks show the
+                  // current project's spaces only, reversing 2026-09-28's
+                  // every-workspace marks; other projects are reached
+                  // through the rail.
+                  scopeToActiveRepository
                 />
               ) : null}
               {/* The feature toolbar's sidebar-mode mount (2026-08-16). It

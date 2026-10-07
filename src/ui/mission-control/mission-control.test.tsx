@@ -25,6 +25,7 @@ function space(key: number, overrides: Partial<Space> = {}): Space {
     agentCount: 1,
     needsCount: 0,
     failedCount: 0,
+    session: "Claude",
     current: false,
     ...overrides,
   };
