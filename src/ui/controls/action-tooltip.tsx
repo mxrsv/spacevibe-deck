@@ -20,24 +20,42 @@ import { useEffect, useState } from "preact/hooks";
  * tooltip.
  */
 
-/** Viewport coordinates of the tooltip's top-centre point. */
+/** Which side of its trigger the tooltip opens on. `below` is every trigger's default. */
+export type TooltipPlacement = "below" | "above";
+
+/**
+ * Viewport coordinates of the tooltip's centre point: its top edge when it
+ * opens below, its bottom edge when it opens above (DL-23.4, amended 2026-10-07).
+ * `placement` is absent for the default, so a below anchor keeps its old shape.
+ */
 export interface TooltipAnchor {
   readonly left: number;
   readonly top: number;
+  readonly placement?: "above";
 }
 
-/** Below the trigger, centred on it, and never off the side of the window. */
+/**
+ * Centred on the trigger, and never off the side of the window. The margin is
+ * half the widest tooltip the toolbar draws for `below` (a name and a chord);
+ * `above` serves the rail's foot, a trigger about 20px from the window's edge,
+ * so it clears half of `.action-tip`'s 240px cap instead and a reason line
+ * cannot clip.
+ */
 const TOOLTIP_OFFSET = 6;
 const TOOLTIP_EDGE_MARGIN = 90;
+const TOOLTIP_EDGE_MARGIN_ABOVE = 124;
 
-export function tooltipAnchor(element: HTMLElement): TooltipAnchor {
+export function tooltipAnchor(
+  element: HTMLElement,
+  placement: TooltipPlacement = "below",
+): TooltipAnchor {
   const rect = element.getBoundingClientRect();
   const centre = rect.left + rect.width / 2;
-  const limit = Math.max(TOOLTIP_EDGE_MARGIN, window.innerWidth - TOOLTIP_EDGE_MARGIN);
-  return {
-    left: Math.min(Math.max(centre, TOOLTIP_EDGE_MARGIN), limit),
-    top: rect.bottom + TOOLTIP_OFFSET,
-  };
+  const margin = placement === "above" ? TOOLTIP_EDGE_MARGIN_ABOVE : TOOLTIP_EDGE_MARGIN;
+  const left = Math.min(Math.max(centre, margin), Math.max(margin, window.innerWidth - margin));
+  return placement === "above"
+    ? { left, top: rect.top - TOOLTIP_OFFSET, placement }
+    : { left, top: rect.bottom + TOOLTIP_OFFSET };
 }
 
 /**
@@ -51,7 +69,7 @@ export interface TooltipVisibility {
   readonly close: () => void;
 }
 
-export function useTooltipVisibility(): TooltipVisibility {
+export function useTooltipVisibility(placement: TooltipPlacement = "below"): TooltipVisibility {
   const [anchor, setAnchor] = useState<TooltipAnchor | null>(null);
 
   useEffect(() => {
@@ -76,7 +94,7 @@ export function useTooltipVisibility(): TooltipVisibility {
 
   return {
     anchor,
-    open: (element: HTMLElement) => setAnchor(tooltipAnchor(element)),
+    open: (element: HTMLElement) => setAnchor(tooltipAnchor(element, placement)),
     close: () => setAnchor(null),
   };
 }
@@ -126,7 +144,7 @@ export function ActionTooltip({ id, label, shortcut, reason, anchor }: ActionToo
   return (
     <div
       id={id}
-      class="action-tip"
+      class={anchor.placement === "above" ? "action-tip action-tip--above" : "action-tip"}
       role="tooltip"
       style={{ left: `${anchor.left}px`, top: `${anchor.top}px` }}
     >

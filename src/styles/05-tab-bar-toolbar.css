@@ -395,6 +395,12 @@
   animation: action-tip-in var(--duration) var(--ease);
 }
 
+/* DL-23.4 (amended 2026-10-07): a trigger in the window's bottom edge opens
+   upward; `top` is then the tooltip's bottom edge. */
+.action-tip--above {
+  transform: translate(-50%, -100%);
+}
+
 .action-tip__line {
   display: flex;
   align-items: baseline;
