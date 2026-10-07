@@ -7,6 +7,22 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **The rail is a tree.** Each project lists its checkouts by branch, worktrees
+  tagged, and each checkout its agents beneath it — no cards to open or fold.
+  An agent's row leads with what it is working on: the space's name, else your
+  [first prompt](src/ui/agent-rail-card-model.ts) to it (Claude Code and Codex),
+  then the agent and what it last said.
+- **A project says how many agents need you.** Its header shows `N need you`,
+  red when one of them failed, instead of how many are running.
+- **Start an agent from the checkout you mean.** The `+` beside a checkout's
+  branch opens the launcher there. It splits beside your pane when you are
+  working in that checkout and otherwise
+  [opens a new space](src/terminal/agent-launch-target.ts), and the launcher
+  says which before you press Run.
+- **The strip shows where you are.** It reads project › branch › space › session
+  for the focused pane, and its marks — with ⌘1–9 and switching between spaces —
+  cover the current project; other projects are a click away in the rail.
+
 ## 2.6.0
 
 This update shows which agents need you from the strip, moves each agent's state
