@@ -246,6 +246,20 @@ button.asr-checkout__focus:focus-visible,
   background: var(--state-hover-bg);
 }
 
+/* The tree's guide (mock `.indent::before`): one hairline down the left of a checkout's rows,
+   centred under its label line's branch glyph. Drawn per row and reaching up across the 2px
+   gap so the rows join into one line; outside the row's box, so no row state paints over it. */
+.asr-checkout > .asr-card__row::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--asr-card-row-gap));
+  bottom: 0;
+  left: calc(-1 * var(--asr-tree-step) + 7px);
+  width: 1px;
+  background: var(--hair);
+  pointer-events: none;
+}
+
 /* The full-bleed hit layer, DL-27.1's own shape (`.asr-row__hit`/`.asr-leaf__hit`'s precedent):
    sits behind every other child in stacking order (it is the row's FIRST child in the DOM,
    and nothing above it carries a `z-index`), so it paints under the text while still catching
@@ -525,7 +539,7 @@ button.asr-checkout__focus:focus-visible,
 .asr-card__row .asr-card__name {
   overflow: hidden;
   color: var(--text-primary);
-  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+  font: 500 var(--type-body) / 1.2 var(--ui-font);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -542,7 +556,7 @@ button.asr-checkout__focus:focus-visible,
 .asr-card__sentence {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
