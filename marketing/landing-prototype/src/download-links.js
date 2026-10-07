@@ -90,6 +90,10 @@ export async function upgradeReleaseLinks(root) {
     for (const label of root.querySelectorAll("[data-release-version]")) {
       label.textContent = stableTag;
     }
+
+    for (const label of root.querySelectorAll("[data-release-label]")) {
+      label.textContent = `Deck ${stableTag.replace(/^v/, "")}`;
+    }
   }
 
   return releases;

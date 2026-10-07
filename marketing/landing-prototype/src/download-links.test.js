@@ -115,6 +115,18 @@ describe("upgradeReleaseLinks", () => {
     expect(root.querySelector("[data-download-count]").textContent).toBe("23");
   });
 
+  it("writes the newest stable tag into the hero release label", async () => {
+    stubFetch(RELEASES);
+    const root = renderFixture();
+    root.insertAdjacentHTML("beforeend", "<span data-release-label>Deck 1.1</span>");
+
+    await upgradeReleaseLinks(root);
+
+    expect(root.querySelector("[data-release-label]").textContent).toBe(
+      "Deck 0.9.0",
+    );
+  });
+
   it("leaves non-download anchors alone", async () => {
     stubFetch(RELEASES);
     const root = renderFixture();

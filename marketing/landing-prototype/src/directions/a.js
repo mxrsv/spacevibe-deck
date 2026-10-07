@@ -179,13 +179,13 @@ export function renderDirectionA(copy) {
           </header>
 
           <div class="a-hero">
-            <!-- A launch marker, not a package-version readout: the exact
-                 build remains in the changelog this links to, while the hero
-                 announces the product milestone visitors need to remember. -->
+            <!-- Follows the newest stable tag: upgradeReleaseLinks rewrites
+                 the label from the releases API; the copy value is the
+                 offline fallback. -->
             <div class="a-hero__pills">
               <a class="a-hero__pill" href="${CHANGELOG_URL}">
                 <span class="a-cta-tag a-cta-new__tag" data-copy="newBadge">${copy.newBadge}</span>
-                <span class="a-hero__pill-text" data-copy="releaseLabel">${copy.releaseLabel}</span>
+                <span class="a-hero__pill-text" data-copy="releaseLabel" data-release-label>${copy.releaseLabel}</span>
                 <span class="a-hero__pill-arrow" aria-hidden="true">→</span>
               </a>
               ${renderHeroFeedbackPill(copy)}
