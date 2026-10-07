@@ -1,8 +1,8 @@
 # Launch actions: one launcher and one create row
 
 Date: 2026-10-08
-Status: Active — the owner chose every drawn option on 2026-10-08; four
-[open decisions](#open-decisions) remain; no slice has started and no plan exists yet.
+Status: Active — every decision taken 2026-10-08 (1–9 from the mock, 10–13 as recommended);
+slice 1's plan is drafted and awaits approval ([Delivery slices](#delivery-slices)).
 Owner checkout: `/Users/kyantran/Documents/Development/spacevibe-workspace/spacevibe-deck`
 Baseline: written against `main` at `0127500b` (2026-10-08).
 Host: Electron. Tauri is feature-frozen and keeps today's rail and Open board (see
@@ -64,6 +64,30 @@ alternatives the owner turned down.
    footer with its gear (P4).** Adding a custom agent stays in Settings → Agents.
 9. **Kept:** a card press means Split and ⊕ means New space (2026-10-03, option D).
 
+The owner took the agent's recommendation on the four questions the mock could not draw
+(2026-10-08, "follow your rec"):
+
+10. **Retire the legacy pieces (Q4).** These go:
+    - the Quick Launch popover (`QuickLaunch`);
+    - its `quickLaunchOpen` state and DL-32.4;
+    - the `Create worktree…` option in `launcher-fields`;
+    - the unwired `Create branch from here` row.
+
+    Nothing in the app reaches them. Turned down: keeping them as dormant code.
+11. **Work happens in a worktree (Q5)**, at `../../spacevibe-deck-worktrees/launch-actions`,
+    because the primary checkout carries another session's uncommitted rail changes. Plans
+    stay in the primary checkout's `docs/plans/`.
+12. **The Open board's own features get new homes (EMPTY2):**
+    - the last-session offer, folder drop and recent removal move onto the no-tab launch
+      page;
+    - Resume stays in the Sessions tool (TOOLS1);
+    - the staged-prompt composer stays behind its flag on the Open board, which remains in
+      code for Tauri.
+
+    Turned down: dropping any of them.
+13. **The collapsed rail shows the three verbs as stacked icons** above the avatar column,
+    with tooltips. Turned down: one `+` into the page; hiding them while collapsed.
+
 ## Requirements and acceptance criteria
 
 IDs map to the parent's LAUNCH1–2 where noted. LAUNCH3 (prompt delivery) is out of scope.
@@ -123,34 +147,44 @@ IDs map to the parent's LAUNCH1–2 where noted. LAUNCH3 (prompt delivery) is ou
   and recent workspaces listed below the cards. Cards stay disabled until a workspace is
   chosen. Choosing a recent row or `Open folder…` sets the context and never launches. There
   is no Back control, because there is nothing to return to.
-- **EMPTY2**: Whatever the Open board offers only there today keeps a home or is dropped by
-  an explicit owner decision ([open decision 3](#open-decisions)) before the board stops
-  appearing on Electron.
+- **EMPTY2** (decision 12): Before the Open board stops appearing on Electron, the no-tab
+  launch page carries three things from it:
+  - the last-session offer, with Reopen and Dismiss;
+  - folder drop, with the same validation (one existing folder, never a launch);
+  - recent-workspace removal.
+
+  Resume a past session is reached through the Sessions tool. The Open board stays in code
+  for Tauri and for the flag-gated staged-prompt composer.
+
+### Collapsed rail and retirement
+
+- **ROW-C7** (decision 13): In the collapsed avatar column, `Agent`, `Worktree` and `Folder`
+  are three stacked icon buttons above the avatars, with the same targets and tooltips as
+  ROW-C1. `Agent` keeps its drag.
+- **RETIRE1** (decision 10): The `QuickLaunch` popover, `quickLaunchOpen` and its readers,
+  the `launcher-fields` `Create worktree…` option and the `Create branch from here` row are
+  deleted with their tests and gallery specimens. DL-32.4 is withdrawn. No user-visible
+  behaviour changes.
+
+## Delivery slices
+
+The slices run in order, one plan and one session each. The first row not `Done` is the next
+work. Its plan carries an Operating contract: once the owner approves that plan, the contract
+is the agent's authorization. A session that finishes a slice sets its row to `Done` with the
+date and commits, then drafts the next slice's plan for approval. It does not start that
+slice's code in the same session.
+
+| Slice | Requirements | Plan | Status |
+| --- | --- | --- | --- |
+| 1. Sidebar create row and entry routing | ROW-C1–C7 | [launch-create-row](../plans/2026-10-08-launch-create-row.md) | Plan drafted 2026-10-08, awaiting approval |
+| 2. Launch page context row | PAGE1, PAGE2, PAGE7 | — | Not started |
+| 3. Launch page details | PAGE3–PAGE6 | — | Not started |
+| 4. No tab open → launcher | EMPTY1, EMPTY2 (R4 seam) | — | Not started |
+| 5. Retire the legacy pieces | RETIRE1 | — | Not started |
 
 ## Open decisions
 
-1. **Retire the legacy pieces (Q4).** The candidates are the Quick Launch popover, the
-   `quickLaunchOpen` state and DL-32.4, the `Create worktree…` option in `launcher-fields`,
-   and the unwired `Create branch from here` row. Recommended: retire them all, since nothing
-   in the app reaches them.
-2. **Where the work happens (Q5).** Recommended: a worktree at
-   `../../spacevibe-deck-worktrees/launch-actions`, because the primary checkout carries
-   another session's uncommitted changes. The plan would live in the primary checkout's
-   `docs/plans/`.
-3. **What the Open board alone offers today** goes once EMPTY1 replaces it:
-   - the last-session offer at boot (`lastSession`);
-   - Resume a session;
-   - the staged-prompt composer (flag-gated);
-   - removing a recent workspace;
-   - folder drop.
-
-   Recommended:
-   - the last-session offer, folder drop and recent removal move onto the no-tab launch
-     page;
-   - Resume stays in the Sessions tool (TOOLS1);
-   - the composer stays behind its flag on the Open board, which remains in code for Tauri.
-4. **The create row in the collapsed rail** (COLLAPSE1 draws only avatars). Recommended: the
-   three verbs as stacked icons above the avatar column, with tooltips.
+None. Questions 1–4 were answered on 2026-10-08 as decisions 10–13.
 
 ## Forks and constraints
 
@@ -158,7 +192,7 @@ IDs map to the parent's LAUNCH1–2 where noted. LAUNCH3 (prompt delivery) is ou
   - DL-27.14 (`New Workspace` becomes the create row);
   - DL-27.26 as amended 2026-10-07 (the per-checkout `+` goes);
   - DL-32.1 (the Open board loses its no-tab role on Electron);
-  - DL-32.4 (if open decision 1 retires it);
+  - DL-32.4 (withdrawn by decision 10);
   - DL-32.6 (the page composition: context row, no heading, no `Add agent`);
   - DL-4.1 (the monospace exception for the command preview).
 
