@@ -420,13 +420,10 @@ describe("WorktreeCard session rows", () => {
     expect(host.querySelector(".asr-leaf")).toBeNull();
   });
 
-  it("reserves the loading track on an idle row so the pills share one right edge", () => {
+  it("reserves the loading track on an idle row so every row keeps one trailing cell", () => {
     mount({
       group: group({
-        panes: [
-          pane({ paneId: 1, state: "idle", model: "Sonnet 4.5" }),
-          pane({ paneId: 2, state: "working", model: "GPT-5.1" }),
-        ],
+        panes: [pane({ paneId: 1, state: "idle" }), pane({ paneId: 2, state: "working" })],
       }),
     });
 
@@ -448,17 +445,26 @@ describe("WorktreeCard session rows", () => {
     expect(host.querySelector('[aria-label*="done (inferred)"]')).not.toBeNull();
   });
 
-  it("puts busy state after the model in the trailing state/close slot", () => {
+  it("puts busy state after the text in the trailing state/close slot, with no model pill", () => {
     mount({ group: group({ panes: [pane({ paneId: 1, state: "working", model: "GPT-5.1" })] }) });
 
     const row = host.querySelector(".asr-card__row");
     const children = [...(row?.children ?? [])];
     const statusAt = children.findIndex((node) => node.classList.contains("asr-card__status"));
-    const pillAt = children.findIndex((node) => node.classList.contains("asr-card__pill"));
-    expect(pillAt).toBeGreaterThan(-1);
-    expect(statusAt).toBeGreaterThan(pillAt);
+    const textAt = children.findIndex((node) => node.classList.contains("asr-card__text"));
+    expect(textAt).toBeGreaterThan(-1);
+    expect(statusAt).toBeGreaterThan(textAt);
     expect(children[statusAt].querySelectorAll(".asr-card__load > i").length).toBeGreaterThan(0);
     expect(row?.querySelector(".asr-card__glyph .asr-card__dot")).toBeNull();
+    expect(row?.querySelector(".asr-card__pill")).toBeNull();
+  });
+
+  it("moves the model into the row's tooltip, after the agent's name", () => {
+    mount({ group: group({ panes: [pane({ paneId: 1, state: "working", model: "GPT-5.1" })] }) });
+    expect(host.querySelector(".asr-card__hit")?.getAttribute("title")).toBe(
+      "Claude — Claude · GPT-5.1 — working",
+    );
+    expect(host.querySelector(".asr-card__row")?.textContent).not.toContain("GPT-5.1");
   });
 
   // RAIL5's pin: a tree row's press is `onFocusPane(tabIndex, paneId)` for that
@@ -536,18 +542,16 @@ describe("WorktreeCard two-line rows (DL-27.28)", () => {
     });
   };
 
-  it("is one line when there is no second line", () => {
-    mount({ group: group({ panes: [pane({ taskLabel: "Codex", secondLine: "" })] }) });
+  it("is always two lines — a hand-made row with no second line reads its state word", () => {
+    mount({ group: group({ panes: [pane({ taskLabel: "Codex", state: "working" })] }) });
     const row = host.querySelector(".asr-card__row")!;
     expect(row.querySelector(".asr-card__name")?.textContent).toBe("Codex");
-    expect(row.querySelector(".asr-card__sentence")).toBeNull();
-    expect(row.hasAttribute("data-lines")).toBe(false);
+    expect(row.querySelector(".asr-card__sentence")?.textContent).toBe("Working");
   });
 
   it("puts the task label on top and the agent · turn beneath, naming the row by both", () => {
     mount({ group: group({ panes: [named] }) });
     const row = host.querySelector(".asr-card__row")!;
-    expect(row.getAttribute("data-lines")).toBe("2");
     expect(row.querySelector(".asr-card__name")?.textContent).toBe("auth");
     expect(row.querySelector(".asr-card__sentence")?.textContent).toBe("Claude · Fixing login");
     expect(hit().getAttribute("aria-label")).toContain("Focus auth · Fixing login in");

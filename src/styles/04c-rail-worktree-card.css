@@ -34,15 +34,19 @@
      `border-radius` in this file is this variable, the pill variable below, or an actual `50%`
      circle (the corner dots) — never a bare number. */
   --asr-card-radius: 6px;
-  /* The tag and the model pill, both ~17px tall: 3px, proportional to the smaller box. */
+  /* The tag, ~17px tall: 3px, proportional to the smaller box. */
   --asr-card-pill-radius: 3px;
   /* THE COLOUR RULE (owner, 2026-08-25): one hue for "the machine is working", on the row's
      corner badge and the loading bars and nowhere else. `--status-unread` stays `asked` and
      `--red` stays `failed`. A variable so a later pick is one edit. */
   --asr-card-busy: color-mix(in srgb, var(--tone) 62%, transparent);
-  /* The session list's own rhythm: one row's height and the gap between rows. */
-  --asr-card-row-h: 28px;
+  /* The session list's own rhythm: one row's height and the gap between rows. A session row is
+     two lines (DL-27.28), so its height is the text's plus this padding; the logo-to-text gap is
+     the mock's 11px. */
+  --asr-card-row-h: 30px;
   --asr-card-row-gap: 2px;
+  --asr-card-row-pad-y: 5px;
+  --asr-card-row-gap-x: 11px;
   --asr-card-action-size: 16px;
 }
 
@@ -218,24 +222,26 @@ button.asr-checkout__focus:focus-visible,
      `minmax(0, 1fr)`, the row is itself an item of `.asr-checkout`'s grid and keeps
      `min-width: auto` unless told otherwise — declared explicitly rather than assumed. */
   min-width: 0;
-  grid-template-columns: 14px minmax(0, 1fr) auto var(--asr-card-action-size);
+  grid-template-columns: 14px minmax(0, 1fr) var(--asr-card-action-size);
   align-items: center;
-  column-gap: 7px;
+  column-gap: var(--asr-card-row-gap-x);
   width: 100%;
   min-height: var(--asr-card-row-h);
   /* The gap between one row and the next: the checkout's base `gap: 1px` plus this margin
      totals `--asr-card-row-gap` (2px). Declared on every row rather than only
      `+ .asr-card__row` so the first row under the label line gets the same room as the rest. */
   margin-top: calc(var(--asr-card-row-gap) - 1px);
-  padding: 0 6px 0 8px;
+  padding: var(--asr-card-row-pad-y) 6px var(--asr-card-row-pad-y) 8px;
   border: 0;
   border-radius: var(--asr-card-radius);
-  background: color-mix(in srgb, var(--tone) 5%, transparent);
-  /* The ground the state badge's ring is painted in (DL-27.21): this row's own wash over
-     what it sits on, restated for the hover wash and the focused fill below, so the ring
-     reads as a cut-out of the row instead of a halo. `--asr-row-base` is the surface the row
-     sits on where that is not the sidebar. */
-  --asr-badge-ground: color-mix(in srgb, var(--tone) 5%, var(--asr-row-base, var(--sidebar-bg)));
+  /* DL-27.28, amended 2026-10-07: rows are flat — no fill at rest, so the tree reads as text and
+     only the hovered and the focused row take a surface. */
+  background: transparent;
+  /* The ground the state badge's ring is painted in (DL-27.21): the surface the row sits on,
+     restated for the hover wash and the focused fill below, so the ring reads as a cut-out of
+     the row instead of a halo. `--asr-row-base` is the surface the row sits on where that is not
+     the sidebar. */
+  --asr-badge-ground: var(--asr-row-base, var(--sidebar-bg));
   color: inherit;
   font: inherit;
   text-align: left;
@@ -243,8 +249,8 @@ button.asr-checkout__focus:focus-visible,
 }
 
 .asr-card__row:hover {
-  --asr-badge-ground: color-mix(in srgb, var(--tone) 9%, var(--asr-row-base, var(--sidebar-bg)));
-  background: color-mix(in srgb, var(--tone) 9%, transparent);
+  --asr-badge-ground: color-mix(in srgb, var(--tone) 6%, var(--asr-row-base, var(--sidebar-bg)));
+  background: var(--state-hover-bg);
 }
 
 /* The full-bleed hit layer, DL-27.1's own shape (`.asr-row__hit`/`.asr-leaf__hit`'s precedent):
@@ -271,7 +277,6 @@ button.asr-checkout__focus:focus-visible,
 .asr-card__row > .asr-card__glyph,
 .asr-card__row > .asr-card__name,
 .asr-card__row > .asr-card__text,
-.asr-card__row > .asr-card__pill,
 .asr-card__row > .asr-card__status,
 .asr-card__row > .asr-card__load {
   position: relative;
@@ -285,20 +290,17 @@ button.asr-checkout__focus:focus-visible,
   pointer-events: auto;
 }
 
-/* Explicit placement keeps the shared controls on one row even when the model is absent.
+/* Explicit placement keeps the working bars and the close in the one trailing track, overlapping
+   (04a pins `.asr-row__actions` to column 4, the tab row's; this grid has three columns).
    Shell rows retain an empty CardLoad in the same trailing slot. */
 .asr-card__row > .asr-card__status,
-.asr-card__row > .asr-card__load {
-  grid-row: 1;
-  grid-column: 4;
-}
-
-.asr-card__row > .asr-card__pill {
+.asr-card__row > .asr-card__load,
+.asr-card__row > .asr-row__actions {
   grid-row: 1;
   grid-column: 3;
 }
 
-/* DL-27.21: state yields to close on hover or keyboard focus; the model stays visible. */
+/* DL-27.21: state yields to close on hover or keyboard focus. */
 .asr-card__row:hover .asr-row__actions,
 .asr-card__row:focus-within .asr-row__actions {
   opacity: 1;
@@ -333,7 +335,7 @@ button.asr-checkout__focus:focus-visible,
  * sibling rows' own washes, so the row now fills with `--text-primary` over the chrome and its
  * ink flips to `--sidebar-bg`: the one light block in the column. The ink is a variable so a
  * theme or a candidate restates one line, and every mark that would vanish on that fill (name,
- * sentence, pill, loading bars, the neutral dots, the close) reads it below.
+ * sentence, loading bars, the neutral dots, the close) reads it below.
  *
  * The working rim is gone with it: a hairline on every busy row was the noise this had to
  * outshout, and the loading bars still say a row is busy.
@@ -354,11 +356,6 @@ button.asr-checkout__focus:focus-visible,
 
 .asr-card__row[data-focused="true"] .asr-card__sentence {
   color: color-mix(in srgb, var(--asr-card-focus-ink) 72%, transparent);
-}
-
-.asr-card__row[data-focused="true"] .asr-card__pill {
-  background: color-mix(in srgb, var(--asr-card-focus-ink) 14%, transparent);
-  color: var(--asr-card-focus-ink);
 }
 
 .asr-card__row[data-focused="true"] .asr-card__load > i,
@@ -530,7 +527,7 @@ button.asr-checkout__focus:focus-visible,
   }
 }
 
-/* -------------------------------------------------------------------------- name + pill */
+/* ---------------------------------------------------------------------- name + status line */
 
 .asr-card__row .asr-card__name {
   overflow: hidden;
@@ -540,17 +537,13 @@ button.asr-checkout__focus:focus-visible,
   white-space: nowrap;
 }
 
-/* DL-27.28: a session row is two lines — the task label in the row's weight above, then the
-   agent label · the newest turn in `--text-muted`. A row with no second line keeps the one
-   line above and never reaches this block. */
+/* DL-27.28 (amended 2026-10-07): a session row is always two lines — the task label in the
+   row's weight above, then the agent label · the newest turn or state word in `--text-muted`
+   (DL-27.2, amended). A shell row has no agent and keeps the one line above. */
 .asr-card__text {
   display: grid;
   gap: 1px;
   min-width: 0;
-}
-
-.asr-card__row[data-lines="2"] {
-  padding-block: 5px;
 }
 
 .asr-card__sentence {
@@ -568,18 +561,4 @@ button.asr-checkout__focus:focus-visible,
   height: 20px;
   font-size: var(--type-meta);
   font-weight: 400;
-}
-
-/* The model pill — state lives in the shared state/close slot and the row's
-   `title`/accessible name (DL-27.2), never spelled out in words on the row itself. */
-.asr-card__pill {
-  box-sizing: border-box;
-  padding: 1px 5px;
-  /* The same radius the branch badge takes: one pill object at two sizes, not two unrelated
-     numbers. */
-  border-radius: var(--asr-card-pill-radius);
-  background: color-mix(in srgb, var(--tone) 8%, transparent);
-  color: var(--text-muted);
-  font: 500 var(--type-micro) / 1.5 var(--ui-font);
-  white-space: nowrap;
 }

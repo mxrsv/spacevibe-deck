@@ -1862,10 +1862,9 @@ describe("AgentRail focused pane (DL-27.22, kept unchanged by the card — desig
 });
 
 describe("AgentRail paneModels wiring (Task 8)", () => {
-  // Proves that a model string written to `paneModels` reaches the card row's
-  // model pill. `buildAgentRail` passes `models: paneModels.value` alongside
-  // `tails: paneTails.value`; the card component reads `pane.model` and
-  // renders `.asr-card__pill` when it is non-empty.
+  // The model no longer has a pill (DL-27.28, amended 2026-10-07); it rides in the row's
+  // tooltip when the production rail passes one. Production passes none, because the
+  // pane → session pairing is heuristic.
   it("withholds a heuristic model pairing from the production rail", async () => {
     tabViews.value = [tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] })];
     // Write the model BEFORE mount so the first render already has it.
@@ -1874,9 +1873,12 @@ describe("AgentRail paneModels wiring (Task 8)", () => {
     await settle();
 
     expect(host.querySelector(".asr-card__pill")).toBeNull();
+    expect(host.querySelector(".asr-card__hit")?.getAttribute("title")).not.toContain(
+      "claude-sonnet-5",
+    );
   });
 
-  it("shows no pill for a pane not present in paneModels", async () => {
+  it("shows no model for a pane not present in paneModels", async () => {
     tabViews.value = [tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] })];
     // paneModels starts empty (set in beforeEach).
     mount();

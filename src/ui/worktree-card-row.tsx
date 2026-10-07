@@ -3,7 +3,7 @@ import { AgentGlyph } from "./controls/agent-glyph";
 import { SpaceRenameField } from "./spaces/space-rename-field";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { X } from "@phosphor-icons/react";
-import { subjectOf, subjectWhere } from "./agent-rail-card-model";
+import { displayAgent, stateWord, subjectOf, subjectWhere } from "./agent-rail-card-model";
 import type { RailCardPane, RailState, RailWorktreeGroup } from "./agent-rail-model";
 import type { SignalConfidence } from "../terminal/agent-attention";
 
@@ -148,10 +148,11 @@ export interface CardAgentRowProps {
 }
 
 /**
- * The row's text (DL-27.28): the task label, then the agent label · the newest
- * turn beneath it. `buildCardEntries` decides both lines; a row whose second
- * line is empty is one line. While the field is open it takes the first line
- * and the second stays beneath, so the row does not change height.
+ * The row's text (DL-27.28, amended 2026-10-07): always two lines — the task
+ * label, then the agent label · the newest turn or state word beneath it.
+ * `buildCardEntries` decides both; a hand-made fixture without a second line
+ * reads the state word. While the field is open it takes the first line and
+ * the second stays beneath, so the row does not change height.
  */
 function CardRowText({
   pane,
@@ -165,10 +166,7 @@ function CardRowText({
   readonly onCancel: () => void;
 }) {
   const first = pane.taskLabel ?? pane.label;
-  const second = pane.secondLine ?? "";
-  if (!editing && second === "") {
-    return <span class="asr-card__name">{first}</span>;
-  }
+  const second = pane.secondLine ?? stateWord(pane);
   return (
     <span class="asr-card__text" data-editing={editing ? "true" : undefined}>
       {editing ? (
@@ -182,13 +180,24 @@ function CardRowText({
       ) : (
         <span class="asr-card__name">{first}</span>
       )}
-      {second !== "" && <span class="asr-card__sentence">{second}</span>}
+      <span class="asr-card__sentence">{second}</span>
     </span>
   );
 }
 
 /**
- * One agent, as a list row (DL-27.21): `glyph + state badge · name · model pill · bars/close`.
+ * The row's tooltip (DL-27.28, amended 2026-10-07): the model left the row for
+ * here, after the agent's name. It stays conditional — production withholds the
+ * model wherever the pane/session pairing is heuristic, and a tooltip that
+ * invented one would be the guess the row refuses.
+ */
+function rowTitle(pane: RailCardPane, signal: string): string {
+  const agent = pane.model === "" ? [] : [`${displayAgent(pane.agent)} · ${pane.model}`];
+  return [pane.label, ...agent, signal].join(" — ");
+}
+
+/**
+ * One agent, as a list row (DL-27.21, DL-27.28): `glyph + state badge · two lines · bars/close`.
  * The whole row is the button — DL-27.21 still requires its own
  * close, so the row is a container with a full-bleed hit layer (DL-27.1's
  * shape) rather than a literal `<button>`, which could not also hold a real
@@ -224,7 +233,6 @@ export function CardAgentRow({
       data-state={pane.state}
       data-confidence={pane.confidence}
       data-focused={pane.focused}
-      data-lines={pane.secondLine ? "2" : undefined}
       data-quiet={needsUser(pane.state) ? undefined : "true"}
       data-pane-id={pane.paneId}
     >
@@ -234,7 +242,7 @@ export function CardAgentRow({
         class="asr-card__hit"
         aria-current={pane.focused ? "true" : undefined}
         aria-label={`Focus ${pane.label} in ${where}, ${label}`}
-        title={`${pane.label} — ${label}`}
+        title={rowTitle(pane, label)}
         onClick={() => {
           onFocusPane(pane.tabIndex, pane.paneId);
         }}
@@ -256,11 +264,6 @@ export function CardAgentRow({
         }}
         onCancel={() => setEditing(false)}
       />
-      {/* Conditional, and it stays conditional inside the segment menu too
-          (spec §5): production withholds the model wherever the pane/session
-          pairing is heuristic, and a menu that invented one would be the guess
-          the row refuses. */}
-      {pane.model !== "" && <span class="asr-card__pill">{pane.model}</span>}
       {/* DL-27.21: the working bars and close share one trailing cell without moving the label. */}
       <span class="asr-card__status" aria-hidden="true">
         <CardLoad state={pane.state} />
