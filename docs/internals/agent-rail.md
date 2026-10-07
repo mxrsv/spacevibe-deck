@@ -331,6 +331,39 @@ past the floor and the `toggle-sidebar` chord alike, so the four routes cannot d
   cursor-back and tmux's prefix, so Deck cannot consume it. The chord is performable only while
   a tab is open, and it returns focus to the stage because the control that held it unmounts.
 
+## The tools row
+
+The rail's foot is an icon row above the usage summary (DL-28), and the agent pane header
+carries its pane's own actions (DL-32.8). What a maintainer would get wrong:
+
+- **The row is Electron's, and `More` is its fallback.** [`App`](../../src/ui/app.tsx) mounts the
+  [row](../../src/ui/sidebar-actions.tsx) only for `sidebar && railAvailable && !isTauriHost()`
+  and tells [`DeckToolbar`](../../src/ui/toolbar/deck-toolbar.tsx) the same fact. Where it is
+  false (top-tab mode, Tauri, a window with no tab) `More` keeps the global group, which is also
+  the Prompt Board popover's only anchor there. Drop the `railAvailable` term and an empty
+  Electron window loses its only pointer route to Settings.
+- **The popover has exactly one anchor.** Expanded: the row's slot. Collapsed: the `Tools`
+  button's slot. `More`: only when it holds the global group. Two at once would double-render it.
+- **Collapsed, the footer rides the avatar column.** `AgentRail` hands `footer` to
+  [`RailAvatarColumn`](../../src/ui/agent-rail-column.tsx) because the column returns before the
+  tree's own footer slot; `SidebarActions` switches to one `Tools` button and a
+  [popover of rows](../../src/ui/rail-tools-menu.tsx) on `collapsed`.
+- **The icons open and report nothing** (DL-28.5). `ToolbarControl` is deliberately not reused:
+  it emits `aria-expanded` for a dialog trigger, which a button that never reverses would be
+  lying about.
+- **Tooltips open above** (`placement: "above"`, [`action-tooltip.tsx`](../../src/ui/controls/action-tooltip.tsx)):
+  a tooltip below a bottom-edge trigger is off the window. They are suppressed while the Prompt
+  Board is open, since it flies up over the same space.
+- **Header actions reach `App` through a registry.** The header renders in its own Preact root
+  inside the pane bar, so [`pane-header-actions.ts`](../../src/terminal/pane-header-actions.ts)
+  carries the handlers. A split and Focus expand act on the *active* pane, so they focus the
+  pressed pane first and continue only if it took the focus; a refused focus (a preset draft is
+  open) must not split whichever pane was active. Close is already pane-exact. No file on the
+  PTY, layout or close seam changed for this (R4).
+- **The narrow rule is measured, not a container query.** `container-type` is layout containment,
+  which would make the pane bar the containing block of the actions' `fixed` tooltips and move
+  them.
+
 ## One create control per checkout
 
 A checkout's `+` on its label line opens the Electron
