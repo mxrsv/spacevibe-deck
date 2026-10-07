@@ -151,7 +151,7 @@ session starts from that plan without asking again what it decides.
 | 2. Needs attention popover | ATT-D1, D2, D4 | [attention-popover](../plans/2026-10-06-attention-popover.md) | Done — PR #40, 2026-10-07 |
 | 3. Rail tree, breadcrumb, per-checkout launch | RAIL1–5, STRIP1, STRIP3 | [rail-tree](../plans/2026-10-07-rail-tree.md) | Done — 2026-10-07, `d81b9404` `4496da97` `d4933cae` `32a2ccf1` `a1b1ede4` `a963727a` `70413a4f` and the CHANGELOG commit; native walk (REVIEW1) owed |
 | 3b. Tree matches mock D | RAIL1–3, decision 12 | [rail-tree-visual](../plans/2026-10-07-rail-tree-visual.md) | **Next** — approved 2026-10-07, running |
-| 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | Queued — plan proposed, awaiting owner approval |
+| 4. Collapsed mode | COLLAPSE1–2 | [rail-collapsed](../plans/2026-10-07-rail-collapsed.md) | Running — approved 2026-10-07, in worktree `feat/rail-collapsed` beside 3b |
 | 5. Tools and pane actions | TOOLS1–2 | written when slice 4 is Done | Queued |
 
 A session that finishes a slice sets its row to `Done` with the date and commits, then drafts
