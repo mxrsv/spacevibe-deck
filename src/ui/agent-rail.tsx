@@ -19,6 +19,7 @@ import { buildAgentRail, type RailStreamGroup } from "./agent-rail-model";
 import { sessionTitlesFor, untitledSessionIds } from "./agent-rail-card-model";
 import { requestSessionTitles, sessionEntries } from "../sessions/sessions-store";
 import { focusCheckout, WorktreeCard } from "./worktree-card";
+import { needsUser } from "./worktree-card-row";
 import type { CardActions } from "./worktree-card-menus";
 import { RepositoryRail } from "./repository-rail";
 import { SidebarNewButton } from "./sidebar-toggle";
@@ -330,14 +331,18 @@ function WorktreeCardRail(props: AgentRailProps) {
             // carries its checkouts as rowless groups too, so that its way back
             // in is the same bare row a history-only sibling already had.
             const live = group.tabIndexes.length > 0;
-            // DL-27.27: how many agents are still running in this project, so
-            // a folded cluster still says what it holds. Shell-only tabs and
-            // exited agents are not counted.
-            const agentCount = group.worktrees.reduce(
-              (total, worktree) =>
-                total + worktree.panes.filter((pane) => pane.state !== "ended").length,
-              0,
+            // DL-27.27 (amended 2026-10-07): how many of the project's panes
+            // need the user — `asked` or `failed` — so a folded cluster still
+            // says where to look. Red when any of them failed.
+            const needing = group.worktrees.flatMap((worktree) =>
+              worktree.panes.filter((pane) => needsUser(pane.state)),
             );
+            const needCount = needing.length;
+            const failedCount = needing.filter((pane) => pane.state === "failed").length;
+            const needWords =
+              failedCount > 0
+                ? `${needCount} need you, ${failedCount} failed`
+                : `${needCount} need you`;
             const activeCheckout = group.worktrees.find((worktree) => worktree.active);
             // Like a checkout's label line (DL-27.28): the project's active
             // checkout, else its first with rows. A rowless one has nothing to focus.
@@ -401,7 +406,8 @@ function WorktreeCardRail(props: AgentRailProps) {
                         type="button"
                         class="asr-cluster__toggle"
                         aria-expanded={!collapsed}
-                        aria-label={`${collapsed ? "Expand" : "Collapse"} project ${group.project}`}
+                        // DL-27.2: the count's words reach the accessible name too.
+                        aria-label={`${collapsed ? "Expand" : "Collapse"} project ${group.project}${needCount > 0 ? `, ${needWords}` : ""}`}
                         onClick={() => {
                           focusProject();
                           toggleGroup(group.key);
@@ -413,12 +419,13 @@ function WorktreeCardRail(props: AgentRailProps) {
                             caret share ONE slot — the count at rest, the
                             caret on hover or keyboard focus. */}
                         <span class="asr-cluster__tail">
-                          {agentCount > 0 && (
+                          {needCount > 0 && (
                             <span
                               class="asr-cluster__count"
-                              title={`${agentCount} ${agentCount === 1 ? "agent" : "agents"} running`}
+                              data-tone={failedCount > 0 ? "failed" : "asked"}
+                              title={needWords}
                             >
-                              {agentCount}
+                              {needCount} need you
                             </span>
                           )}
                           <span class="asr-cluster__caret" aria-hidden="true">

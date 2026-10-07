@@ -609,28 +609,60 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     expect(rows()).toHaveLength(2);
   });
 
-  it("counts the project's running agents on its header, open or folded (DL-27.27)", async () => {
+  it("counts who needs you on the header, open or folded (DL-27.27, amended 2026-10-07)", async () => {
     tabViews.value = [
-      tab({ key: 1, panes: [pane({ paneId: 11 }), pane({ paneId: 12, agent: "codex" })] }),
-      tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] }),
-      tab({ key: 3, panes: [pane({ paneId: 31, phase: "exited" })] }),
-      tab({ key: 4, panes: [pane({ paneId: 41, agent: null })] }),
+      tab({
+        key: 1,
+        panes: [
+          pane({ paneId: 11, attention: "requested" }),
+          pane({ paneId: 12, agent: "codex", phase: "working" }),
+        ],
+      }),
+      tab({
+        key: 2,
+        workspacePath: "/r/side",
+        panes: [pane({ paneId: 21, attention: "warning" })],
+      }),
+      tab({ key: 3, panes: [pane({ paneId: 31, hasRun: true })] }),
     ];
     mount();
     await settle();
 
     const header = host.querySelector<HTMLElement>("button.asr-cluster__toggle");
-    const count = (): string | null | undefined =>
-      header?.querySelector(".asr-cluster__count")?.textContent;
-    expect(count()).toBe("3");
+    const count = (): HTMLElement | null | undefined =>
+      header?.querySelector<HTMLElement>(".asr-cluster__count");
+    expect(count()?.textContent).toBe("2 need you");
+    // Asked only: the yellow ink.
+    expect(count()?.dataset.tone).toBe("asked");
+    expect(header?.getAttribute("aria-label")).toBe("Collapse project main, 2 need you");
 
     click(header);
     expect(header?.getAttribute("aria-expanded")).toBe("false");
-    expect(count()).toBe("3");
+    expect(count()?.textContent).toBe("2 need you");
   });
 
-  it("omits the count when a project runs no agent", async () => {
-    tabViews.value = [tab({ panes: [pane({ agent: null })] })];
+  it("turns the count red when any of them failed", async () => {
+    tabViews.value = [
+      tab({
+        panes: [
+          pane({ paneId: 11, attention: "requested" }),
+          pane({ paneId: 12, attention: "error" }),
+        ],
+      }),
+    ];
+    mount();
+    await settle();
+
+    const count = host.querySelector<HTMLElement>(".asr-cluster__count");
+    expect(count?.textContent).toBe("2 need you");
+    expect(count?.dataset.tone).toBe("failed");
+    expect(count?.getAttribute("title")).toBe("2 need you, 1 failed");
+  });
+
+  it("omits the count when nothing needs the user, however much is running", async () => {
+    tabViews.value = [
+      tab({ panes: [pane({ paneId: 11, phase: "working" }), pane({ paneId: 12, agent: null })] }),
+    ];
     mount();
     await settle();
 
@@ -653,6 +685,7 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
 
 describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
   it("puts a folder before the project name and the caret at the far edge", async () => {
+    tabViews.value = [tab({ panes: [pane({ attention: "requested" })] })];
     mount();
     await settle();
 
@@ -1022,6 +1055,17 @@ describe("AgentRail remembered projects (2026-08-20)", () => {
         { path: "/w/other", lastOpenedAt: 1 },
       ],
     };
+  });
+
+  it("puts no needs-you count on a remembered project's header (DL-27.27)", async () => {
+    tabViews.value = [tab({ panes: [pane({ attention: "requested" })] })];
+    mount();
+    await settle();
+
+    const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
+    expect(heads).toHaveLength(2);
+    expect(heads[0].querySelector(".asr-cluster__count")?.textContent).toBe("1 need you");
+    expect(heads[1].querySelector(".asr-cluster__count")).toBeNull();
   });
 
   it("keeps a rowless still header for a workspace with nothing open", async () => {

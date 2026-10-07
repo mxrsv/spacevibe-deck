@@ -111,11 +111,10 @@
 /* ── 600: names, labels and emphasis (authored 540-590) ─────────────────
    Group labels, cluster and section heads, count numerals, button labels
    that state an action, the eyebrows above a heading. Each is one rung
-   above the 400 text it heads. The running-agent count chip on a project
-   header (`.asr-cluster__count`) takes its label's rung: macOS authors both
-   at 560, so there is no weight step between them to keep, and a 10.5px
-   numeral at 400 in a tinted circle would read thinner than every other
-   count numeral here. */
+   above the 400 text it heads. The needs-you count on a project header
+   (`.asr-cluster__count`) takes its label's rung: macOS authors both at 560,
+   so there is no weight step between them to keep, and 10.5px coloured text
+   at 400 would read thinner than every other count here. */
 .window--windows .sidebar-new,
 .window--windows .nt-composer__prompt-head label,
 .window--windows .agent-launch-page h1,

@@ -313,32 +313,30 @@
   text-overflow: ellipsis;
 }
 
-/* DL-27.27: the running-agent count before the caret, as a circular chip.
-   The fill is the checkout badges' 8% wash (04c) so the two chips read as one
-   family; a two-digit count stretches the circle into a pill. `border-box`
-   because the repo has no global reset (Known traps). */
+/* DL-27.27 (amended 2026-10-07): the header counts who needs you, not who is
+   running — `N need you` in `--status-unread`, `--red` when any of them failed,
+   and nothing at zero. Words, not a chip: the colour already says which kind. */
 .asr-cluster__count {
-  display: grid;
   flex: none;
-  box-sizing: border-box;
-  place-items: center;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-  color: var(--text-muted);
+  color: var(--status-unread);
   font: 560 var(--type-micro) / 1 var(--ui-font);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   transition: opacity var(--duration) var(--ease);
 }
 
+.asr-cluster__count[data-tone="failed"] {
+  color: var(--red);
+}
+
 /* DL-27.27 (amended 2026-10-04): the count and the caret stack in ONE slot, so
-   the header carries one trailing mark, not two side by side. */
+   the header carries one trailing mark, not two side by side. Both sit on the
+   slot's right edge, so the caret stands where it does without a count. */
 .asr-cluster__tail {
   display: grid;
   flex: none;
-  place-items: center;
+  align-items: center;
+  justify-items: end;
   min-width: 17px;
 }
 
