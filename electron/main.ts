@@ -4,6 +4,12 @@
 import { initCrashReporting } from "./crash-reporting/init";
 initCrashReporting();
 
+// Logging must never be the crash. A dev run whose terminal is gone (or a
+// build started from one) gets EIO/EPIPE on every console write, and an
+// unhandled stream error turns that into the "JavaScript error occurred in the
+// main process" dialog.
+for (const stream of [process.stdout, process.stderr]) stream.on("error", () => {});
+
 import { createCodexIntegration } from "./agent-hooks/codex-integration";
 /**
  * Electron main process — the host.
