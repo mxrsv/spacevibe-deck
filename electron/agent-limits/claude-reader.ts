@@ -43,11 +43,22 @@ const WRAPPER_FALLBACK = /; else sh -c ((?:'[^']*'|\\')+); fi$/;
  * status line, `undefined` when `command` is not a Deck wrapper. Read from
  * the wrapper itself rather than a manifest because the wrapper may belong to
  * another Deck install (a dev build, an older release keyed to its own
- * userData) whose manifest this one cannot find.
+ * userData) whose manifest this one cannot find. Every Deck layer is peeled:
+ * each one repeats its inner command twice, so a stacked wrapper doubles in
+ * size per layer and would eventually exceed the OS argument limit.
  */
 function wrappedCommand(command: unknown): string | null | undefined {
-  if (typeof command !== "string" || !command.startsWith("if [ -x ") || !command.includes(SCRIPT))
-    return undefined;
+  let result: string | null | undefined;
+  for (let current = command; typeof current === "string";) {
+    const inner = unwrapOnce(current);
+    if (inner === undefined) break;
+    result = current = inner;
+  }
+  return result;
+}
+
+function unwrapOnce(command: string): string | null | undefined {
+  if (!command.startsWith("if [ -x ") || !command.includes(SCRIPT)) return undefined;
   const quoted = WRAPPER_FALLBACK.exec(command)?.[1];
   if (quoted === undefined) return undefined;
   const unquoted = quoted.replace(/'([^']*)'|\\'/g, (_match, inner?: string) => inner ?? "'");

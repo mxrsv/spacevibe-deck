@@ -127,6 +127,30 @@ describe.skipIf(process.platform === "win32")("Claude status-line collector", ()
     await restoreClaudeLimitCollector(options());
     expect((await document()).statusLine).toEqual(original);
   });
+  it("flattens a stack of Deck wrappers back to one layer", async () => {
+    const original = { type: "command", command: `cat; printf %s "mine"`, refreshInterval: 1 };
+    await fs.writeFile(options().settingsPath, JSON.stringify({ statusLine: original }));
+    await installClaudeLimitCollector(options());
+    // Older builds peeled one layer and added one, so another install's layers piled up.
+    const quote = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
+    let stacked: string = (await document()).statusLine.command;
+    for (let layer = 0; layer < 4; layer += 1) {
+      const script = quote(path.join(options().directory, "claude-statusline.cjs"));
+      const executable = quote(`/gone/${layer}/Electron`);
+      stacked = `if [ -x ${executable} ] && [ -f ${script} ]; then ELECTRON_RUN_AS_NODE=1 ${executable} ${script} ${quote(stacked)}; else sh -c ${quote(stacked)}; fi`;
+    }
+    await fs.writeFile(
+      options().settingsPath,
+      JSON.stringify({ statusLine: { ...original, command: stacked } }),
+    );
+    await installClaudeLimitCollector(options());
+    const command = (await document()).statusLine.command;
+    expect(command.split("claude-statusline.cjs")).toHaveLength(3);
+    expect(command.length).toBeLessThan(stacked.length / 8);
+    expect(await run(command, "x")).toBe("xmine");
+    await restoreClaudeLimitCollector(options());
+    expect((await document()).statusLine).toEqual(original);
+  });
   it("refuses malformed settings without overwriting them", async () => {
     await fs.writeFile(options().settingsPath, "broken json");
     await expect(installClaudeLimitCollector(options())).rejects.toThrow(SyntaxError);
