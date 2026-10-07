@@ -130,9 +130,9 @@ export interface AgentRailProps {
    */
   readonly cardActions?: CardActions;
   /**
-   * Pinned under the scrolling list and above the banner: the rail's own
-   * footer of window actions (`SidebarActions`, DL §28). `App` builds it,
-   * the same way it builds the toolbar once for both layouts.
+   * Pinned under the scrolling list: the rail's tools row (`SidebarActions`,
+   * DL §28). `App` builds it, the same way it builds the toolbar once for both
+   * layouts. Electron only — Tauri's `RepositoryRail` is handed none.
    */
   footer?: ComponentChildren;
   /**
@@ -533,7 +533,6 @@ export function AgentRail(props: AgentRailProps) {
         onFocusAttention={props.legacy.onFocusAttention}
         onResumeWorktree={props.legacy.onResumeWorktree}
         showAgentPresence={false}
-        footer={props.footer}
         fileController={props.fileController}
       />
     );

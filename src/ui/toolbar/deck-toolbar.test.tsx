@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeckToolbar, toolbarLabel } from "./deck-toolbar";
 
 /**
@@ -17,6 +17,13 @@ describe("DeckToolbar", () => {
   beforeEach(() => {
     host = document.createElement("div");
     document.body.appendChild(host);
+  });
+
+  // An open `More` menu is a document-level surface; leaving it mounted would
+  // let the next test read this test's rows.
+  afterEach(() => {
+    act(() => render(null, host));
+    host.remove();
   });
 
   const handlers = () => ({
@@ -110,6 +117,45 @@ describe("DeckToolbar", () => {
     expect(host.querySelector(".agent-view-switch")).toBeNull();
   });
 
+  const menuLabels = (): (string | null | undefined)[] =>
+    Array.from(document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')).map(
+      (row) => row.querySelector(".toolbar-menu__label")?.textContent,
+    );
+
+  // DL-23.8 (amended 2026-10-07): with the rail's tools row on screen `More`
+  // keeps the pane group only; the global group and the Prompt Board's anchor
+  // moved to the rail.
+  it("carries the pane group only while the rail's tools row is mounted", () => {
+    mount({ railToolsMounted: true, promptsOpen: true, promptPopover: <div class="pp" /> });
+    act(() => button("More actions").click());
+
+    expect(menuLabels()).toEqual([
+      "Split vertically",
+      "Split horizontally",
+      "Focus expand",
+      "Close pane",
+    ]);
+    // One anchor at a time: the popover is the rail's, so `More` renders none.
+    expect(document.querySelector(".pp")).toBeNull();
+  });
+
+  it.each([{ compact: true }, { railToolsMounted: false }])(
+    "keeps all seven rows in More when nothing holds the global group (%o)",
+    (overrides) => {
+      mount(overrides);
+      act(() => button("More actions").click());
+
+      expect(menuLabels()).toHaveLength(7);
+    },
+  );
+
+  it("never trusts the rail in compact mode, even when it is flagged mounted", () => {
+    mount({ compact: true, railToolsMounted: true });
+    act(() => button("More actions").click());
+
+    expect(menuLabels()).toHaveLength(7);
+  });
+
   it("carries the whole pane group as named rows inside More", () => {
     const on = mount();
     act(() => button("More actions").click());
@@ -117,10 +163,8 @@ describe("DeckToolbar", () => {
     const rows = Array.from(
       document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]'),
     );
-    // The pane group leads, and the global group follows it in BOTH layouts
-    // since 2026-08-17: `SIDEBAR_TOOLS_HIDDEN` took the rail's footer away, so
-    // `More` is the only place left for those rows — and the only anchor the
-    // Prompt Board popover has. Restoring the footer drops the last three.
+    // The pane group leads, and the global group follows it wherever no rail
+    // holds that group: top-tab mode, Tauri and a window with no live rail.
     expect(rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent)).toEqual([
       "Split vertically",
       "Split horizontally",

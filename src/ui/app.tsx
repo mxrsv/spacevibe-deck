@@ -195,7 +195,7 @@ import { available as fileCreateAvailable } from "../host/file-create-host";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { RailAgentLimits } from "./usage/agent-usage-summary";
 import { DockPanel } from "./dock/dock-panel";
-import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "./sidebar-actions";
+import { SidebarActions } from "./sidebar-actions";
 import { DockToggle } from "./dock/dock-toggle";
 import { useDockPresence } from "./dock/dock-presence";
 import { useTitleBarOverlaySync } from "./title-bar-overlay-sync";
@@ -1456,6 +1456,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // empty edge. The same runtime host probe as `tauriHost` below, read here
   // because the paint width needs it first.
   const avatarColumn = !isTauriHost();
+  // DL-28 (restored 2026-10-07): the rail's tools row is Electron's, and only
+  // while a live rail exists to hold it. Everywhere else — top-tab mode, Tauri,
+  // an empty window — `More` keeps the global group, so Settings and the Prompt
+  // Board never lose their only pointer route.
+  const railToolsMounted = sidebar && railAvailable && avatarColumn;
   const sidebarPaintWidth = (): number =>
     sidebarPaintWidthFor({
       liveTabCount: tabViews.value.length,
@@ -1895,10 +1900,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   ) : null;
 
   /**
-   * The rail's footer of window actions (DL §28). Built here beside
-   * `chromeActions` because it is the same job: `App` owns Prompts and
-   * Settings, and both layouts must show the same state for them — the rail
-   * in sidebar mode, the toolbar's `More` menu in top-tab mode.
+   * The rail's tools row (DL §28). Built here beside `chromeActions` because
+   * it is the same job: `App` owns Prompts and Settings, and every layout must
+   * show the same state for them — the rail on Electron's sidebar, the
+   * toolbar's `More` menu in top-tab mode and on Tauri.
    */
   const railActions = (
     <SidebarActions
@@ -2011,6 +2016,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // `activateForAttention`, which acknowledges that pane and no other.
       attention={<AttentionStripChip onFocusPane={focusRailPane} />}
       compact={!sidebar}
+      railToolsMounted={railToolsMounted}
       browserActive={browserSurfaceActive.value}
       settingsOpen={settingsOpen.value}
       expandActive={settings.value.focusExpand}
@@ -2224,9 +2230,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 void tabsRef.current?.dropAgentPane(paneId, edge);
               },
             }}
-            // Hidden on the owner's ask (2026-08-17); `More` carries these rows
-            // in both layouts while the flag is on. See `SIDEBAR_TOOLS_HIDDEN`.
-            footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
+            footer={railToolsMounted ? railActions : undefined}
             collapsed={avatarColumn && effectiveSidebarCollapsed()}
             usageSummary={
               effectiveSidebarCollapsed() ? null : (

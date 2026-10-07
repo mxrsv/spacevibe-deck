@@ -11,7 +11,7 @@ import { IDLE_ATTENTION_SUMMARY, activeTabIndex } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
 import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 import { TabStrip } from "../ui/tab-strip";
-import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
+import { SidebarActions } from "../ui/sidebar-actions";
 import { SidebarFrameActions } from "../ui/sidebar-toggle";
 import { AgentUsageSummary } from "../ui/usage/agent-usage-summary";
 import type { AgentLimitsSnapshot } from "../lib/agent-limits";
@@ -174,10 +174,9 @@ const GALLERY_CARD_ACTIONS: CardActions = {
 export function agentRailNavigationSpecimen({
   onSelectTab = selectGalleryTab,
   onFocusPane = (index) => selectGalleryTab(index),
-  // Follows the shipped rail: while `SIDEBAR_TOOLS_HIDDEN` is on, the target
-  // shell has no footer, and a specimen that kept drawing one would be drift.
-  // A specimen that wants the footer as a DL §28 record still passes `true`.
-  showFooter = !SIDEBAR_TOOLS_HIDDEN,
+  // The tools row is Electron's (DL §28); `AgentRail` hands none to the Tauri
+  // rail, so a specimen drawn with the legacy rail shows no footer either.
+  showFooter = true,
   promptsDisabled = false,
   collapsed = false,
 }: AgentRailSpecimenOptions = {}) {

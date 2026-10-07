@@ -10,7 +10,6 @@ import {
 import type { ComponentChildren } from "preact";
 import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
 import { shortcutLabel } from "../../lib/shortcut-label";
-import { SIDEBAR_TOOLS_HIDDEN } from "../sidebar-actions";
 import { FeatureToolbar } from "./feature-toolbar";
 import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
 
@@ -61,7 +60,7 @@ export function toolbarLabel(id: ActionId): string {
  * Mission Control itself stays: ⌘⇧O and View ▸ Mission Control still open it
  * (DL-35.1). `App` reads this flag and passes no `missionControl`, so the
  * component and its tests stand — restoring the button is flipping this one
- * constant, the revert seam `SIDEBAR_TOOLS_HIDDEN` established.
+ * constant, the revert seam the rail's old hidden-tools flag established.
  */
 export const MISSION_CONTROL_BUTTON_HIDDEN = true;
 
@@ -79,11 +78,18 @@ interface DeckToolbarProps {
     onToggle(): void;
   };
   /**
-   * Top-tab mode. Prompts and Settings then ride in the `More` menu instead
-   * of the bar: sidebar mode carries them in the rail's own footer, and this
-   * layout has no rail, so one menu stands in for that footer.
+   * Top-tab mode. The global group then rides in the `More` menu instead of
+   * the bar: the sidebar carries it in the rail's own tools row, and this
+   * layout has no rail, so one menu stands in for that row.
    */
   readonly compact?: boolean;
+  /**
+   * The rail's tools row is on screen (DL-28, restored 2026-10-07): Electron's
+   * sidebar with a live rail. `More` then carries the pane group only, and the
+   * Prompt Board popover anchors to the rail instead (DL-23.8). Absent on Tauri
+   * and with no live rail, where nothing else holds the global group.
+   */
+  readonly railToolsMounted?: boolean;
   /** The browser surface holds the stage — the chip may be open without it. */
   readonly browserActive: boolean;
   readonly settingsOpen: boolean;
@@ -167,6 +173,11 @@ export function DeckToolbar(props: DeckToolbarProps) {
     },
   ];
 
+  // Where the global group stands: in the rail's tools row when one is mounted,
+  // in `More` otherwise — which is also the only anchor the Prompt Board
+  // popover then has, so exactly one of the two ever renders it.
+  const globalInMore = props.compact === true || props.railToolsMounted !== true;
+
   const globalItems: ToolbarItem[] = [
     {
       id: "toggle-browser",
@@ -229,25 +240,19 @@ export function DeckToolbar(props: DeckToolbarProps) {
       ) : null}
       <FeatureToolbar
         // Nothing is drawn as an icon on the bar any more (DL-23.8): the pane
-        // group lives in `More`, and the global pair never rode here in the
-        // first place — sidebar mode shows those as rows in the rail's footer
-        // (DL-28.3) and top-tab mode stands the same rows up in `More`, which
-        // is what keeps a second Prompt Board popover off the screen.
+        // group lives in `More`, and the global group never rode here in the
+        // first place — the Electron sidebar shows it as the rail's icon row
+        // (DL-28.3) and top-tab mode and Tauri stand the same rows up in
+        // `More`, which is what keeps a second Prompt Board popover off the
+        // screen.
         items={[]}
         externalApp={props.externalApp}
         attention={props.attention}
         updateAction={props.updateAction}
-        pinnedMenu={
-          props.compact || SIDEBAR_TOOLS_HIDDEN ? [...paneItems, ...globalItems] : paneItems
-        }
-        // Only while the popover's own row lives in the menu. That is top-tab
-        // mode always, and sidebar mode too while the rail's footer is hidden —
-        // with no footer there is no other row to anchor the Prompt Board to.
-        pinnedMenuAnchored={
-          (props.compact || SIDEBAR_TOOLS_HIDDEN) && props.promptsOpen
-            ? props.promptPopover
-            : undefined
-        }
+        pinnedMenu={globalInMore ? [...paneItems, ...globalItems] : paneItems}
+        // Only while the popover's own row lives in the menu; with the rail's
+        // tools mounted, its row or collapsed button is the anchor instead.
+        pinnedMenuAnchored={globalInMore && props.promptsOpen ? props.promptPopover : undefined}
       />
     </>
   );
