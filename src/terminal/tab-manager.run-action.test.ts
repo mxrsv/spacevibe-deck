@@ -5,7 +5,7 @@ import type { CreatePaneFn } from "./pane-lifecycle";
 import type { ShortcutAction } from "./keymap";
 import type { TabManager } from "./tab-manager";
 import { boardOpen, saveDialogOpen } from "../chrome/events";
-import { quickLaunchOpen, resetLauncherStore } from "../launcher/launcher-store";
+import { resetLauncherStore } from "../launcher/launcher-store";
 import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -84,11 +84,14 @@ afterEach(() => {
 });
 
 describe("runAction — the macOS menu bridge", () => {
-  // `new-tab` raises Quick Launch rather than spawning a tab directly, so its
-  // visibility signal is the observable, not `tabViews.length`.
+  // `new-tab` hands the workspace to the launcher rather than spawning a tab
+  // directly, so the launcher stub is the observable, not `tabViews.length`.
+  const onOpenTaskLauncher = vi.fn();
+
   async function ready(): Promise<TabManager> {
     boardOpen.value = false;
-    const { tm } = setup({});
+    onOpenTaskLauncher.mockClear();
+    const { tm } = setup({ deps: { onOpenTaskLauncher } });
     await tm.init();
     await flush();
     boardOpen.value = false;
@@ -105,7 +108,7 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(quickLaunchOpen.value).toBe(true);
+    expect(onOpenTaskLauncher).toHaveBeenCalledTimes(1);
     tm.dispose();
   });
 
@@ -181,7 +184,7 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(quickLaunchOpen.value).toBe(true);
+    expect(onOpenTaskLauncher).toHaveBeenCalledTimes(1);
     input.remove();
     tm.dispose();
   });

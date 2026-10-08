@@ -154,8 +154,14 @@ export function wire(
   // `promptStaging` defaults to TRUE here and FALSE in production
   // (`TASK_PROMPT_STAGING_ENABLED`), so the delivery path keeps its coverage
   // while the shipped surfaces hide it — the `deliverGrab(…, pasteDisabled)`
-  // precedent. `extraDeps` comes last, so a test can still pass false.
-  const tm = createTabManager(host, pty, { createPane, promptStaging: true, ...extraDeps });
+  // precedent. `extraDeps` comes last, so a test can still pass false, and a test
+  // that cares which workspace ⌘T reports passes its own `onOpenTaskLauncher`.
+  const tm = createTabManager(host, pty, {
+    createPane,
+    promptStaging: true,
+    onOpenTaskLauncher: vi.fn(),
+    ...extraDeps,
+  });
   const emitSignal: EmitSignal = (id, signal) => {
     eventsById.get(id)?.onAttentionSignal?.(id, signal);
   };

@@ -100,21 +100,23 @@ afterEach(() => {
 // snapshot from a real transition routes through ONE choke point
 // (`maybeNotify`); the notifier itself owns the enabled/focus/dedupe policy.
 describe("createTabManager notifier deps (Task 23)", () => {
-  it("compiles and constructs with the 3rd arg omitted", () => {
+  it("compiles and constructs with only the required launcher seam", () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const host = document.createElement("div");
     document.body.appendChild(host);
 
-    expect(() => createTabManager(host, pty)).not.toThrow();
+    expect(() => createTabManager(host, pty, { onOpenTaskLauncher: vi.fn() })).not.toThrow();
   });
 
-  it("compiles and constructs with only { createPane }", () => {
+  it("compiles and constructs with { createPane }", () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const host = document.createElement("div");
     document.body.appendChild(host);
     const createPane: CreatePaneFn = (id, _settings, events) => fakePane(id, events);
 
-    expect(() => createTabManager(host, pty, { createPane })).not.toThrow();
+    expect(() =>
+      createTabManager(host, pty, { createPane, onOpenTaskLauncher: vi.fn() }),
+    ).not.toThrow();
   });
 
   it("compiles and constructs with { createPane, notifier }", () => {
@@ -124,7 +126,9 @@ describe("createTabManager notifier deps (Task 23)", () => {
     const createPane: CreatePaneFn = (id, _settings, events) => fakePane(id, events);
     const { notifier } = fakeNotifierSpy();
 
-    expect(() => createTabManager(host, pty, { createPane, notifier })).not.toThrow();
+    expect(() =>
+      createTabManager(host, pty, { createPane, notifier, onOpenTaskLauncher: vi.fn() }),
+    ).not.toThrow();
   });
 });
 

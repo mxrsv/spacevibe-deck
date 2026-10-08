@@ -53,8 +53,8 @@ export interface OpenFromPresetOptions {
 }
 
 /**
- * Optional seams for TabManager, layered flat over TerminalManagerDeps so
- * every existing `{ createPane }` (or omitted) caller keeps compiling.
+ * Seams for TabManager, layered flat over TerminalManagerDeps. Every seam is
+ * optional except `onOpenTaskLauncher`, which `new-tab` has no other route without.
  */
 export interface TabManagerDeps extends TerminalManagerDeps {
   /**
@@ -106,10 +106,9 @@ export interface TabManagerDeps extends TerminalManagerDeps {
   onToggleMissionControl?: () => void;
   /**
    * Route `new-tab` through App, which owns the shared task-launcher flight.
-   * Missing keeps the standalone/test behaviour of opening Quick Launch
-   * directly.
+   * Required: a missing route would make ⌘T a silent no-op (DL-19.7).
    */
-  onOpenTaskLauncher?: (workspacePath: string | null) => void;
+  onOpenTaskLauncher: (workspacePath: string | null) => void;
   /**
    * Test seam — defaults to a real `createAgentNotifier` wired to the live
    * settings store, live window focus, and the Task 20 Tauri adapter.

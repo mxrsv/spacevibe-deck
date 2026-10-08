@@ -12,7 +12,7 @@ import {
   settingsOpen,
   shortcutCaptureActive,
 } from "../chrome/events";
-import { quickLaunchOpen, resetLauncherStore } from "../launcher/launcher-store";
+import { resetLauncherStore } from "../launcher/launcher-store";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -303,17 +303,17 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it("new-tab still raises Quick Launch while Settings is open — App closes the unavailable tool", async () => {
-    const { tm } = setup({});
+  it("new-tab still reaches the launcher while Settings is open — App closes the unavailable tool", async () => {
+    const onOpenTaskLauncher = vi.fn();
+    const { tm } = setup({ deps: { onOpenTaskLauncher } });
     await tm.init();
     await flush();
-    quickLaunchOpen.value = false;
     settingsOpen.value = true;
 
     tm.runAction("new-tab");
     await flush();
 
-    expect(quickLaunchOpen.value).toBe(true);
+    expect(onOpenTaskLauncher).toHaveBeenCalledTimes(1);
 
     tm.dispose();
   });
@@ -323,35 +323,35 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   // SavePresetDialog draft was up. That let Cmd+T (or the menu's "New Tab")
   // mount an overlay underneath the modal scrim (z-40 > board's z-30): its
   // own mount-focus effect then stole DOM focus away from the live draft, so
-  // a later Enter could silently act on something behind it. Quick Launch is
+  // a later Enter could silently act on something behind it. The launcher is
   // non-modal, but the "board" scope still blocks raising it under that draft.
   it("new-tab is now blocked while a PresetEditor draft is open (F2 — 'always' used to bypass every overlay, not just the board)", async () => {
-    const { tm } = setup({});
+    const onOpenTaskLauncher = vi.fn();
+    const { tm } = setup({ deps: { onOpenTaskLauncher } });
     await tm.init();
     await flush();
-    quickLaunchOpen.value = false;
 
     editorRequest.value = { source: "live" };
     tm.runAction("new-tab");
     await flush();
 
-    expect(quickLaunchOpen.value).toBe(false);
+    expect(onOpenTaskLauncher).not.toHaveBeenCalled();
 
     editorRequest.value = null;
     tm.dispose();
   });
 
   it("new-tab is blocked while the SavePresetDialog is open too (F2)", async () => {
-    const { tm } = setup({});
+    const onOpenTaskLauncher = vi.fn();
+    const { tm } = setup({ deps: { onOpenTaskLauncher } });
     await tm.init();
     await flush();
-    quickLaunchOpen.value = false;
 
     saveDialogOpen.value = true;
     tm.runAction("new-tab");
     await flush();
 
-    expect(quickLaunchOpen.value).toBe(false);
+    expect(onOpenTaskLauncher).not.toHaveBeenCalled();
 
     saveDialogOpen.value = false;
     tm.dispose();

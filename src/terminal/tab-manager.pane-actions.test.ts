@@ -344,7 +344,9 @@ describe("toggle-prompts", () => {
   });
 
   it("says so instead of opening with no pane to paste into", () => {
-    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient());
+    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient(), {
+      onOpenTaskLauncher: vi.fn(),
+    });
     manager.runAction("toggle-prompts");
     expect(promptsOpen.value).toBe(false);
     expect(persistError.value).toBe("No pane to paste into.");
@@ -370,7 +372,9 @@ describe("toggle-explorer", () => {
   });
 
   it("flips dockOpen on each call, with no pane required", () => {
-    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient());
+    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient(), {
+      onOpenTaskLauncher: vi.fn(),
+    });
     expect(settings.value.dockOpen).toBe(false);
     manager.runAction("toggle-explorer");
     expect(settings.value.dockOpen).toBe(true);

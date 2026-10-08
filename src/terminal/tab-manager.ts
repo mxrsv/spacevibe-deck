@@ -131,7 +131,6 @@ import {
   settingsOpen,
   shortcutCaptureActive,
 } from "../chrome/events";
-import { toggleQuickLaunch } from "../launcher/launcher-store";
 import { INERT_SURFACES, type SurfaceEditCommand } from "./surface-strip";
 import {
   type TabEntry,
@@ -176,7 +175,7 @@ class LaunchPageMessage extends Error {}
 export function createTabManager(
   host: HTMLElement,
   pty: PtyClient = defaultPtyClient,
-  deps: TabManagerDeps = {},
+  deps: TabManagerDeps,
 ): TabManager {
   const tabs: TabEntry[] = [];
   const unlisteners: UnlistenFn[] = [];
@@ -1200,8 +1199,8 @@ export function createTabManager(
     // ⌘T hands the app the active tab's workspace and materializes nothing:
     // since `rail-create-consolidation` (2026-09-02) the app answers with the
     // rail card's agent list, free-standing, and a row of THAT list is what
-    // starts a process. The Quick Launch fallback stays as the revert seam.
-    (deps.onOpenTaskLauncher ?? toggleQuickLaunch)(activeWorkspacePath());
+    // starts a process.
+    deps.onOpenTaskLauncher(activeWorkspacePath());
   }
 
   /**

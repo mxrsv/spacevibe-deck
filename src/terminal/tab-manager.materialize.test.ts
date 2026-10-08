@@ -3,11 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { MACOS_KEYMAP } from "./keymap";
 import { agentQuickPickerOpen } from "../chrome/events";
-import {
-  quickLaunchOpen,
-  quickLaunchWorkspace,
-  resetLauncherStore,
-} from "../launcher/launcher-store";
+import { resetLauncherStore } from "../launcher/launcher-store";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -502,19 +498,18 @@ describe("createTabManager openQuickAgent (legacy picker confirm)", () => {
 
     expect(onOpenTaskLauncher).toHaveBeenCalledWith("/repo");
     expect(onOpenTaskLauncher).toHaveBeenCalledTimes(1);
-    expect(quickLaunchOpen.value).toBe(false);
     tm.dispose();
   });
 
-  it("newTab() opens Quick Launch with the active workspace rather than materializing", async () => {
-    const { tm } = setup({});
+  it("newTab() hands the active workspace to the launcher rather than materializing", async () => {
+    const onOpenTaskLauncher = vi.fn();
+    const { tm } = setup({ deps: { onOpenTaskLauncher } });
     agentQuickPickerOpen.value = false;
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], { workspacePath: "/repo" });
 
     await tm.newTab();
 
-    expect(quickLaunchOpen.value).toBe(true);
-    expect(quickLaunchWorkspace.value).toBe("/repo");
+    expect(onOpenTaskLauncher).toHaveBeenCalledExactlyOnceWith("/repo");
     expect(agentQuickPickerOpen.value).toBe(false);
     expect(tabViews.value).toHaveLength(1); // no new tab spawned — the launcher owns that
     tm.dispose();
