@@ -9,6 +9,7 @@ import {
 } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
+import { TERMINAL_LAUNCH_ID } from "../terminal/agent-launch-target";
 import type { DetectedAgent } from "../terminal/pty-client";
 import {
   agentsProbed,
@@ -550,15 +551,25 @@ export function OpenBoard({
     ) {
       return;
     }
+    // The Terminal card is a shell, not an agent: it needs a folder and nothing
+    // the agent probe or the saved draft would say about it.
+    const shell = agentId === TERMINAL_LAUNCH_ID;
     const next =
       agentId === undefined
         ? newTaskDraft.value
         : withAgent(
             newTaskDraft.value,
             agentId,
-            mergeRuntimeDefaults(runtimeFor(agentId), settings.value.agentRuntimeDefaults[agentId]),
+            shell
+              ? null
+              : mergeRuntimeDefaults(
+                  runtimeFor(agentId),
+                  settings.value.agentRuntimeDefaults[agentId],
+                ),
           );
-    if (agentId !== undefined) {
+    if (shell) {
+      if (next.workspacePath === null) return;
+    } else if (agentId !== undefined) {
       if (!agentsProbed.value || openAgentProblem(next, draftContext) !== null) return;
       updateDraft(next);
     }

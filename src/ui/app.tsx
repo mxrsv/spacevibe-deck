@@ -1143,7 +1143,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     result: LaunchTaskResult,
     draft: NewTaskDraft,
     workspacePath: string,
-    agentId: string,
+    agentId: string | null,
     sendPrompt: boolean,
   ): LaunchTaskOutcome {
     if (result.tabKey !== null) {
@@ -1152,7 +1152,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // the next selection reads — with no failing test to say so.
       recordWorkspaceOpen(workspacePath, undefined, agentId);
     }
-    if (sendPrompt && result.tabKey !== null && draft.prompt.trim() !== "") {
+    if (agentId !== null && sendPrompt && result.tabKey !== null && draft.prompt.trim() !== "") {
       launchAttempt.value = {
         tabKey: result.tabKey,
         prompt: draft.prompt.trim(),
@@ -1177,6 +1177,20 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     const agentId = draft.agentId;
     if (workspace === null || agentId === null) {
       return "spawn-failed";
+    }
+    if (agentId === TERMINAL_LAUNCH_ID) {
+      // The board's Terminal card: a bare shell tab, no command and no prompt.
+      const result = (await tabsRef.current?.launchTask(
+        {
+          layout: BUILT_IN_PRESET.layout,
+          cwds: [workspace],
+          agent: null,
+          workspacePath: workspace,
+          launchCommand: null,
+        },
+        null,
+      )) ?? { outcome: "spawn-failed" as const, tabKey: null };
+      return applyTaskLaunchResult(result, draft, workspace, null, false);
     }
     const composed = composeLaunchCommand({
       agentId,

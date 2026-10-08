@@ -6,6 +6,8 @@ import type { AgentOption } from "../lib/agent-catalog";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import { EMPTY_DRAFT, withAgent, withWorkspace } from "../launcher/new-task-draft";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { settings } from "../settings/settings-store";
 import { BoardComposer, type BoardComposerProps } from "./board-composer";
 
 const AGENTS: readonly AgentOption[] = [
@@ -217,6 +219,24 @@ describe("BoardComposer", () => {
     expect(run.disabled).toBe(true);
     run.click();
     expect(onRunAgent).not.toHaveBeenCalled();
+  });
+
+  it("shows the pinned quick agents in saved order, then Terminal", () => {
+    const agents: readonly AgentOption[] = [
+      ...AGENTS,
+      { id: "codex", label: "Codex", detail: "/usr/bin/codex", missing: false },
+      { id: "gemini", label: "Gemini CLI", detail: "/usr/bin/gemini", missing: false },
+    ];
+    settings.value = { ...DEFAULT_SETTINGS, quickAgentIds: ["gemini", "claude"] };
+    try {
+      mount({ promptStaging: false, agents });
+      const labels = [...host.querySelectorAll(".agent-launch-page__main strong")].map(
+        (name) => name.textContent,
+      );
+      expect(labels).toEqual(["Gemini CLI", "Claude Code", "Terminal"]);
+    } finally {
+      settings.value = DEFAULT_SETTINGS;
+    }
   });
 
   it("offers the folder picker even with no recents or selected folder", () => {

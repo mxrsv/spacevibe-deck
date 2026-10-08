@@ -668,6 +668,23 @@ describe("OpenBoard home view", () => {
     ]);
   });
 
+  it("opens a shell from the Terminal card without needing an agent or touching the draft", async () => {
+    seed(["/w/alpha"]);
+    detected = [];
+    newTaskDraft.value = { ...EMPTY_DRAFT, workspacePath: "/w/alpha", agentId: "claude" };
+    const launch = vi.fn(async (): Promise<LaunchTaskOutcome> => "started");
+    const start = vi.fn(async (): Promise<LaunchTaskOutcome> => "sent");
+    await mount(start, { promptStaging: false, onOpenAgent: launch });
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[aria-label="Run Terminal"]')!.click();
+    });
+    expect(launch).toHaveBeenCalledTimes(1);
+    expect(launch.mock.calls[0]).toEqual([
+      expect.objectContaining({ workspacePath: "/w/alpha", agentId: "deck:terminal" }),
+    ]);
+    expect(newTaskDraft.value.agentId).toBe("claude");
+  });
+
   it("selects a dropped folder without launching, then runs in that folder", async () => {
     seed([]);
     detected = [{ name: "claude", path: "/usr/bin/claude" }];
