@@ -1,5 +1,4 @@
-import { FolderPlus, GitFork, Robot } from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+import { FolderPlus, GitFork, Robot, type Icon } from "@phosphor-icons/react";
 import { useEffect, useRef } from "preact/hooks";
 import {
   ActionTooltip,

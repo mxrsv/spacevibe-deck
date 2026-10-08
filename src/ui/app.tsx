@@ -2244,10 +2244,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       sidebarToggle={
         railAvailable && !effectiveSidebarCollapsed() ? (
-          <SidebarFrameActions
-            collapsed={false}
-            onToggle={toggleSidebarCollapsed}
-          />
+          <SidebarFrameActions collapsed={false} onToggle={toggleSidebarCollapsed} />
         ) : null
       }
       // Sidebar layout keeps the frame row for the traffic lights and the
