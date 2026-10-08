@@ -20,7 +20,7 @@ afterEach(() => {
   host.remove();
 });
 
-export function contextRow(
+function contextRow(
   overrides: Partial<AgentLaunchPageProps["contextRow"]["context"]> = {},
 ): AgentLaunchPageProps["contextRow"] {
   return {
