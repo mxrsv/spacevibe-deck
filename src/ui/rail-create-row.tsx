@@ -1,4 +1,4 @@
-import { FolderPlus, GitFork, Robot, type Icon } from "@phosphor-icons/react";
+import { FolderPlus, GitFork, Plus, type Icon } from "@phosphor-icons/react";
 import { useEffect, useRef } from "preact/hooks";
 import {
   ActionTooltip,
@@ -9,11 +9,12 @@ import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { createNewPaneDragController, type NewPaneDropDeps } from "./new-pane-drag";
 
 /**
- * The create row (DL-27.14, amended 2026-10-08): `Agent`, `Worktree` and `Folder`,
+ * The create row (DL-27.14, amended 2026-10-09): `Agent`, `Worktree` and `Folder`,
  * the rail's only create controls.
  *
- * `row` is the expanded rail's three equal labelled buttons, with DL-23 tooltips
- * that name the target. `column` is the collapsed rail's stack of icon buttons
+ * `row` is the expanded rail's three labelled buttons, with DL-23 tooltips that
+ * name the target. `Agent` is the primary verb: it closes the row on the right,
+ * where the eye ends, and wears the filled skin the stylesheet gives it. `column` is the collapsed rail's stack of icon buttons
  * (DL-27.29), which uses native `title`s like the avatars: a tooltip opening to
  * the right would paint over the browser's native view.
  *
@@ -120,17 +121,22 @@ function CreateButton({
 
 export function RailCreateRow(props: RailCreateRowProps) {
   const { variant, newPaneDrop } = props;
+  // DOM order, not CSS `order`, so focus moves in the order the eye reads.
+  const agent = (
+    <CreateButton
+      verb="Agent"
+      icon={Plus}
+      title={props.agentTitle}
+      variant={variant}
+      disabled={props.disabled}
+      newPaneDrop={newPaneDrop}
+      onPress={props.onAgent}
+    />
+  );
+  const row = variant === "row";
   return (
     <div class="rail-create" data-variant={variant} role="group" aria-label="Create">
-      <CreateButton
-        verb="Agent"
-        icon={Robot}
-        title={props.agentTitle}
-        variant={variant}
-        disabled={props.disabled}
-        newPaneDrop={newPaneDrop}
-        onPress={props.onAgent}
-      />
+      {!row && agent}
       {props.onWorktree !== undefined && (
         <CreateButton
           verb="Worktree"
@@ -150,6 +156,7 @@ export function RailCreateRow(props: RailCreateRowProps) {
           onPress={props.onFolder}
         />
       )}
+      {row && agent}
     </div>
   );
 }

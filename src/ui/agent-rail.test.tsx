@@ -1876,11 +1876,11 @@ describe("AgentRail create row (DL-27.14, amended 2026-10-08)", () => {
     launcher.mockClear();
   });
 
-  it("draws Agent first, in a row of equal buttons outside the list", async () => {
+  it("draws Agent last, closing the row outside the list", async () => {
     mount({ cardActions: withLauncher });
     await settle();
 
-    expect(verbs()[0]).toBe("Agent");
+    expect(verbs().at(-1)).toBe("Agent");
     expect(host.querySelector(".asr-rail__list .rail-create")).toBeNull();
   });
 

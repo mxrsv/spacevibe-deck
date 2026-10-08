@@ -47,6 +47,20 @@
   color: var(--text-primary);
 }
 
+/* The primary verb (DL-27.14, amended 2026-10-09): the launcher's filled skin
+   (`.nt-primary-action`) at the row's scale, so `Agent` reads first among three. */
+.rail-create__button[data-verb="agent"] {
+  box-shadow: none;
+  background: var(--text-primary);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.rail-create__button[data-verb="agent"]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 86%, var(--bg));
+  color: var(--bg);
+}
+
 /* The drag source: the pointer says so, as `+ New` did. */
 .rail-create__button[data-verb="agent"]:hover:not(:disabled) {
   cursor: grab;

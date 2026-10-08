@@ -2687,6 +2687,11 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   creates a checkout and starts nothing; `Folder` adds a folder to the rail and starts
   nothing ([`rail-create-row.tsx`](../src/ui/rail-create-row.tsx)). Tauri's legacy rail keeps
   its pinned `New Workspace`.
+  **Amended 2026-10-09 (owner): `Agent` is the primary verb.** The expanded row reads
+  `Worktree`, `Folder`, `Agent`: the primary closes the row on the right, in DOM order so
+  focus follows the eye, and draws `Plus` on the launcher's filled skin (`--text-primary`
+  ground, `--bg` label) instead of an outline; the other two keep the `--hair` outline. The
+  collapsed column keeps `Agent`, filled the same way, at the top of its stack.
 
 - **DL-27.15** **Every row carries the agent's newest turn at equal
   legibility (2026-08-17; dimming withdrawn 2026-08-19).** The message stops being
