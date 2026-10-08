@@ -9,9 +9,19 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## 2.8.0
 
-This update lifts the five-agent cap on quick launch, adds a plain Terminal to
-it, and gives the interface bolder icons and softer corners.
+This update lets a split terminal start an agent from its header, lifts the
+five-agent cap on quick launch, adds a plain Terminal to it, and gives the
+interface bolder icons, softer corners and fewer divider lines.
 
+- **A split terminal can start an agent from its header.** A plain shell pane
+  opened with ⌘D or ⌘⇧D now has a header with your pinned agents' logos, so one
+  press runs [that agent](src/terminal/pane-quick-agents.tsx) in the pane. The
+  header also carries the split, expand and close buttons.
+- **Folders under an open folder stay on the rail.** With a space open on a
+  folder such as your home directory, a folder inside it you added or opened
+  before used to vanish from the rail; it now
+  [keeps its own entry](src/repositories/repository-model.ts) unless the project
+  above it really includes it.
 - **Quick launch has no limit on agents.** The quick launch page and a
   checkout's menu show every available agent, and you can
   [pin](src/settings/quick-agents.ts) as many as you like.
@@ -24,6 +34,12 @@ it, and gives the interface bolder icons and softer corners.
   they no longer read thinner than the label beside them, and icons with a body
   are [drawn filled](src/ui/controls/deck-icon.tsx). Arrows, carets and layout
   pictures stay outlines.
+- **The new-task board matches quick launch.** It shows your pinned agents and
+  the Terminal card, the same as the launch page.
+- **Fewer lines, one project name.** The hairlines under the Deck name and under
+  the space strip are gone, the launch page sits inside the same margin as a
+  pane, and the strip prints a space's folder once instead of twice when the
+  space has no name of its own.
 - **Short buttons are no longer pills.** Labelled controls 28px tall or less take
   the tab's corner radius, so they stop looking fully rounded; square icon buttons
   keep theirs.
