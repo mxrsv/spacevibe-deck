@@ -364,11 +364,21 @@ carries its pane's own actions (DL-32.8). What a maintainer would get wrong:
   which would make the pane bar the containing block of the actions' `fixed` tooltips and move
   them.
 
-## One create control per checkout
+## One create row, no create control on a tree row
 
-A checkout's `+` on its label line opens the Electron
-[agent launch page](../../src/launcher/agent-launch-page.tsx) on that checkout; a checkout with
-nothing open is its label line alone, and the `+` is its way in. A press creates nothing.
+The three verbs live in the [create row](../../src/ui/rail-create.tsx) that
+[`AgentRail`](../../src/ui/agent-rail.tsx) mounts above the scrolling list on Electron, and as
+stacked icons at the top of the collapsed column (DL-27.14, DL-27.29). `Agent` opens the Electron
+[agent launch page](../../src/launcher/agent-launch-page.tsx) on the focused checkout (the
+group `AgentRail` marks `active`, else the active tab's workspace; with neither, the Open
+board) and is the only drag source onto a pane. `Worktree` opens a
+[popover form](../../src/ui/rail-worktree-form.tsx) built on `useWorktreeForm`; `Folder`
+([`addFolderToRail`](../../src/ui/rail-add-folder.ts)) picks a directory. Both record the new path
+in workspace history and rescan it, which is how the rail prints it without a tab, and neither
+starts anything.
+
+A checkout with nothing open is its label line alone; when a launcher is wired, pressing the
+label opens the launch page on that checkout. A press creates nothing.
 [`resolveAgentLaunchTarget`](../../src/terminal/agent-launch-target.ts) captures `split` only
 when the active tab belongs to that checkout, `new-space` when its tabs sit in the background,
 and `first-pane` when it has none; the page's destination line says which before `Run`
@@ -384,10 +394,8 @@ uses defaults, an explicit empty selection stays empty, and unavailable choices 
 without replacement.
 
 Cmd/Ctrl+T opens or dismisses the page for the active workspace; without a workspace it
-opens the Open board. Frame New (Electron's small `+ New` on the sidebar identity row, which
-[`App`](../../src/ui/app.tsx) mounts through `SidebarFrameActions`, not the rail), dragging New onto a pane, and the Tauri menu fallback
-retain their existing paths ([entry routing](../../src/ui/app.tsx)). The project header
-carries no create button.
+opens the Open board. The Tauri rail keeps its pinned `New Workspace` and menu fallback
+([entry routing](../../src/ui/app.tsx)). The project header carries no create button.
 
 The native browser is obscured while the page or a rail menu covers its stage.
 [App](../../src/ui/app.tsx) retains the underlying terminal DOM and makes covered stage

@@ -2652,6 +2652,15 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   [`App`](../src/ui/app.tsx) hands it to `SidebarFrameActions`; Tauri's legacy rail keeps its
   pinned launcher. The accessible name stays `New Workspace`.
 
+  **Amended 2026-10-08 (owner, launch actions decision 3): one create row.** On Electron the
+  identity row's `+ New` gives way to a row of three equal buttons beneath it — `Agent`,
+  `Worktree`, `Folder` — outside the scrolling list, at this rule's scale with a `--hair`
+  outline and DL-23 tooltips that name the target. `Agent` opens the launch page on the
+  focused checkout and keeps the drag onto a pane; `Worktree` opens a sidebar form that
+  creates a checkout and starts nothing; `Folder` adds a folder to the rail and starts
+  nothing ([`rail-create-row.tsx`](../src/ui/rail-create-row.tsx)). Tauri's legacy rail keeps
+  its pinned `New Workspace`.
+
 - **DL-27.15** **Every row carries the agent's newest turn at equal
   legibility (2026-08-17; dimming withdrawn 2026-08-19).** The message stops being
   exceptional: whenever a row has a turn to show, it shows it, in every state
@@ -3156,6 +3165,10 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   checkout; otherwise it opens a new space there, and the destination line says which before
   the press (RAIL4). Right-click and ⌘T are unchanged.
 
+  **Amended 2026-10-08 (owner):** tree rows carry no create control. The checkout `+` goes; a
+  checkout with nothing open is entered by pressing its label, which opens the launch page on
+  it. The create verbs live in DL-27.14's row.
+
 - **DL-27.27** **A live project header counts its running agents (2026-09-28).**
   The owner asked for a folded project to still say how much is running in it.
   A live cluster header prints the number of agent panes that have not exited,
@@ -3204,6 +3217,8 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   checkout, so the focused row is the only "you are here". An unnamed row's second line keeps the CLI prefix
   (`Claude Code · …`) — the second line always opens with the agent label.
 
+  **Amended 2026-10-08 (owner):** the checkout line ends without a `+` (DL-27.26 amended).
+
 - **DL-27.29** **Collapsed, the rail is a column of project avatars (2026-10-07, owner).**
   On Electron the sidebar's collapse (DL-18.9's control, setting and drag) narrows the rail to
   one avatar per live project, in rail order, instead of hiding it. An avatar is the project's
@@ -3214,6 +3229,9 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   closes the popover, Esc closes it. Collapse and expand never move the focused pane, and the
   strip's breadcrumb (DL-35.3) keeps the identity the column cannot print. The state word stays
   in each avatar's accessible name (DL-27.2).
+
+  **Amended 2026-10-08 (owner):** the column opens with DL-27.14's three verbs as stacked
+  icon buttons above the avatars, a hairline between, native `title`s like the avatars.
 
 ## 28. The rail's action footer
 
@@ -4085,3 +4103,4 @@ The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).
 
 | Settings Studio is an accepted shipping surface | `building` | integrated and browser-reviewed; owner acceptance pending | 2026-10-04: [Appearance](../src/ui/settings/sections/appearance-section.tsx) and [Agents](../src/ui/settings/sections/agents-section.tsx); 102 targeted tests and TypeScript passed, Chromium wide/480px interactions checked; full-window contracts retained, native acceptance unrun |
+| The create row is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-08 on `feat/launch-create-row` (DL-27.14, DL-27.26, DL-27.28 and DL-27.29 amended): the `Agent`, `Worktree` and `Folder` row, the sidebar worktree form, the collapsed column's stacked icons and a bare checkout's label press. No `electron:dev` walk. The walk must cover the three buttons by pointer and keyboard, `Agent` from the expanded and the collapsed rail, the drag onto a pane, creating a worktree and seeing its row, opening a folder, pressing a bare checkout's label, and Tauri unchanged |

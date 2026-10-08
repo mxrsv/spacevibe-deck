@@ -48,8 +48,8 @@ not restored.
 
 ## Launch an agent
 
-Press **⌘T** (Windows: **Ctrl+Shift+T**) for the active checkout, or the `+` beside a
-checkout's branch in the Agent Rail. If you are working in that checkout, the new agent opens
+Press **⌘T** (Windows: **Ctrl+Shift+T**) for the active checkout, or **Agent** above the
+Agent Rail (to start one in a checkout that has nothing open, press its name). If you are working in that checkout, the new agent opens
 beside your current pane; otherwise it opens in a new space there, and the launcher says which
 before you press Run. Right-click a checkout for the menu, which lists your
 [quick agents](agents.md#quick-agents), up to five; choose one to launch it in that checkout
