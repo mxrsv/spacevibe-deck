@@ -100,6 +100,7 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
           onRunInNewSpace={props.target.kind === "split" ? props.onRunInNewSpace : undefined}
           onEditAgents={canEdit ? () => setEditing((open) => !open) : undefined}
           editing={editing}
+          terminal
         />
         {canEdit && editing ? (
           <QuickAgentEditor choices={choices} onToggle={onToggleChoice} />

@@ -1,7 +1,8 @@
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { ArrowRight, Plus, PlusCircle } from "@phosphor-icons/react";
+import { ArrowRight, Plus, PlusCircle, Terminal } from "@phosphor-icons/react";
 import type { AgentOption } from "../lib/agent-catalog";
+import { TERMINAL_LAUNCH_ID } from "../terminal/agent-launch-target";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
 import { useStageOverlayFlag, useSurfacePlacement } from "../ui/worktree-card-menus";
@@ -10,6 +11,14 @@ import "./agent-launch-page.css";
 /** A pointer resting on the icon raises the tip; keyboard focus raises it at once. */
 const TIP_OPEN_MS = 400;
 const NEW_SPACE_TIP = "New space";
+
+/** The `Terminal` card: a plain shell, offered beside the agents and never missing. */
+const TERMINAL_OPTION: AgentOption = {
+  id: TERMINAL_LAUNCH_ID,
+  label: "Terminal",
+  detail: "",
+  missing: false,
+};
 
 interface AgentLaunchCardsProps {
   readonly agents: readonly AgentOption[];
@@ -30,6 +39,12 @@ interface AgentLaunchCardsProps {
    */
   readonly onEditAgents?: () => void;
   readonly editing?: boolean;
+  /**
+   * When set, the grid gains a `Terminal` card after the agents: the same
+   * press and `New space` button, but it starts a bare shell. `onRun` and
+   * `onRunInNewSpace` receive `TERMINAL_LAUNCH_ID` for it.
+   */
+  readonly terminal?: boolean;
 }
 
 function NewSpaceTip({ rect, id }: { rect: DOMRect; id: string }) {
@@ -91,13 +106,18 @@ function NewSpaceButton(props: { agent: AgentOption; disabled: boolean; onPress:
 
 /** DL-32.1 / DL-32.6: one card treatment on both launch surfaces. */
 export function AgentLaunchCards(props: AgentLaunchCardsProps) {
+  const cards = props.terminal === true ? [...props.agents, TERMINAL_OPTION] : props.agents;
   return (
     <div class="agent-launch-page__grid" aria-busy={props.pending}>
-      {props.agents.map((agent) => {
+      {cards.map((agent) => {
         const blocked = props.pending || props.disabled || agent.missing;
         const withSpace = props.onRunInNewSpace !== undefined && !agent.missing;
         return (
-          <article class="agent-launch-page__card" key={agent.id}>
+          <article
+            class="agent-launch-page__card"
+            key={agent.id}
+            data-launch-terminal={agent.id === TERMINAL_LAUNCH_ID ? "" : undefined}
+          >
             <button
               type="button"
               class="agent-launch-page__main"
@@ -108,10 +128,14 @@ export function AgentLaunchCards(props: AgentLaunchCardsProps) {
               }
               onClick={() => props.onRun(agent.id)}
             >
-              <AgentGlyph
-                agent={agent.id.startsWith("custom:") ? agent.label : agent.id}
-                className="agent-launch-page__logo"
-              />
+              {agent.id === TERMINAL_LAUNCH_ID ? (
+                <DeckIcon icon={Terminal} class="agent-launch-page__logo" />
+              ) : (
+                <AgentGlyph
+                  agent={agent.id.startsWith("custom:") ? agent.label : agent.id}
+                  className="agent-launch-page__logo"
+                />
+              )}
               <strong>{agent.label}</strong>
               {agent.missing ? (
                 <span class="agent-launch-page__missing">Not installed</span>

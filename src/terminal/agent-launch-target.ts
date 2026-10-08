@@ -1,5 +1,12 @@
 import type { DesktopPlatform } from "../lib/platform";
 
+/**
+ * The launch page's `Terminal` card: a plain shell pane with no command armed.
+ * The `deck:` prefix cannot collide with a built-in (a bare binary name) or a
+ * declared agent (`custom:<slug>`).
+ */
+export const TERMINAL_LAUNCH_ID = "deck:terminal";
+
 export type AgentLaunchTarget =
   | {
       readonly kind: "split";

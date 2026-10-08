@@ -5,6 +5,7 @@ import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { activeTabIndex, tabViews } from "./tabs-store";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { TERMINAL_LAUNCH_ID } from "./agent-launch-target";
 import { freshWindowFocusController, wire, processInfo } from "./tab-manager.fixtures";
 
 vi.mock("../lib/native-notification", () => ({
@@ -61,6 +62,23 @@ describe("explicit agent launch target", () => {
     await vi.advanceTimersByTimeAsync(3000);
     expect(pty.writes).toHaveLength(1);
     expect(pty.writes[0].id).toBe(2);
+    tm.dispose();
+  });
+
+  it("opens a bare shell for the Terminal card without arming a command", async () => {
+    detectedAgents.value = [];
+    const pty = createMemoryPtyClient({
+      nextId: 1,
+      infos: new Map([[1, processInfo(1, "/repo", "zsh", "idle-shell", null)]]),
+    });
+    const { tm } = wire(pty);
+    await tm.openQuickAgent(null, "/repo");
+    const target = tm.captureAgentLaunchTarget("/repo");
+    const result = await tm.launchAgentAtTarget(target!, TERMINAL_LAUNCH_ID, () => true);
+    expect(result.kind).toBe("spawned");
+    expect(tm.allPaneIds()).toEqual([1, 2]);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(pty.writes).toHaveLength(0);
     tm.dispose();
   });
 

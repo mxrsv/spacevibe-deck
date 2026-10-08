@@ -1,6 +1,7 @@
 import { agentLaunchPage, eventInOpenLaunchPopover } from "../launcher/agent-launch-page-store";
 import {
   resolveAgentLaunchTarget,
+  TERMINAL_LAUNCH_ID,
   type AgentLaunchTarget,
   type AgentLaunchResult,
   type AgentLaunchReceipt,
@@ -1516,13 +1517,16 @@ export function createTabManager(
     checkoutRoots: () => readonly string[] = () => [],
   ): Promise<AgentLaunchResult> {
     if (!canCommit() || disposed) return { kind: "cancelled" };
-    const command = pageAgentCommand(agentId);
-    if (command === null)
+    // The Terminal card runs no command: the pane stays a bare shell.
+    const shell = agentId === TERMINAL_LAUNCH_ID;
+    const command = shell ? null : pageAgentCommand(agentId);
+    if (!shell && command === null)
       return {
         kind: "failed",
         message: "This agent is no longer available. Choose another agent.",
       };
-    const valid = () => !disposed && canCommit() && pageAgentCommand(agentId) === command;
+    const valid = () =>
+      !disposed && canCommit() && (shell || pageAgentCommand(agentId) === command);
     const finishStartupSpawn = beginWindowsStartupSpawn();
     try {
       const created = await createPageLaunchPane(target, valid, checkoutRoots);
@@ -1537,25 +1541,27 @@ export function createTabManager(
       const { owner, paneId } = created;
       const owned = () =>
         !disposed && ownerOf(paneId) === owner && owner.manager.isPaneLaunchable(paneId);
-      launchCommandByPane.set(paneId, command);
-      pageLaunchOwners.set(paneId, owner);
       // Materializing a tab (first pane or new space) already registered
       // startup readiness; only a split into a live tab still has to.
       const pollDeferred = target.kind !== "split" || deferWindowsStartupPoll([paneId]);
-      void armLaunch([{ id: paneId, command }], owned)
-        .then((armed) => {
-          if (!armed && !disposed) {
+      if (command !== null) {
+        launchCommandByPane.set(paneId, command);
+        pageLaunchOwners.set(paneId, owner);
+        void armLaunch([{ id: paneId, command }], owned)
+          .then((armed) => {
+            if (!armed && !disposed) {
+              pageLaunchOwners.delete(paneId);
+              reportChromeMessage("The agent did not start because its pane moved or closed.");
+            }
+          })
+          .catch((error) => {
+            console.error("Agent page command preparation failed:", error);
             pageLaunchOwners.delete(paneId);
-            reportChromeMessage("The agent did not start because its pane moved or closed.");
-          }
-        })
-        .catch((error) => {
-          console.error("Agent page command preparation failed:", error);
-          pageLaunchOwners.delete(paneId);
-          if (!disposed)
-            reportChromeMessage("Could not start the agent. Its terminal pane is still open.");
-        });
-      countAgentLaunch(agentId);
+            if (!disposed)
+              reportChromeMessage("Could not start the agent. Its terminal pane is still open.");
+          });
+        countAgentLaunch(agentId);
+      }
       if (!pollDeferred) void poller.poll();
       syncViews();
       return {

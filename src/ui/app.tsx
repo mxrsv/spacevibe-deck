@@ -1,6 +1,6 @@
 import { AgentLaunchPage } from "../launcher/agent-launch-page";
 import type { AgentLaunchContextProps } from "../launcher/agent-launch-context";
-import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
+import { TERMINAL_LAUNCH_ID, type AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-launch-page-store";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
@@ -1365,7 +1365,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           (placement === "new-space" || current.kind === "new-space")
         ) {
           const index = tabViews.value.findIndex((tab) => tab.key === result.receipt.tabKey);
-          const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId;
+          const label =
+            agentId === TERMINAL_LAUNCH_ID
+              ? "Terminal"
+              : (launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId);
           if (index >= 0)
             manager.renameTab(index, autoSpaceName(folderName(current.workspacePath), label));
         }

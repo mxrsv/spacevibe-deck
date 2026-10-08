@@ -10,6 +10,9 @@ vi.mock("../ui/controls/deck-icon", async (importOriginal) => ({
   DeckIcon: () => <span />,
 }));
 
+/** The agents' own buttons: the Terminal card is exercised separately. */
+const AGENT_BUTTONS = ".agent-launch-page__card:not([data-launch-terminal]) button";
+
 let host: HTMLDivElement;
 beforeEach(() => {
   host = document.createElement("div");
@@ -70,9 +73,7 @@ describe("compact Original launch page", () => {
   });
   it("makes the card Split and offers New space as an icon beside it when the folder has a tab", () => {
     const props = mount({ onRunInNewSpace: vi.fn() });
-    const buttons = [
-      ...host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button"),
-    ];
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>(AGENT_BUTTONS)];
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       "Split Claude Code into the current tab",
       "Run Claude Code in a new space",
@@ -94,7 +95,7 @@ describe("compact Original launch page", () => {
       contextRow: contextRow({ chip: "New space" }),
       onRunInNewSpace: vi.fn(),
     });
-    const buttons = host.querySelectorAll(".agent-launch-page__card button");
+    const buttons = host.querySelectorAll(AGENT_BUTTONS);
     expect(buttons).toHaveLength(1);
     expect(buttons[0].getAttribute("aria-label")).toBe("Run Claude Code");
     expect(host.querySelector(".agent-launch-page__chip")?.textContent).toBe("New space");
@@ -108,7 +109,7 @@ describe("compact Original launch page", () => {
     });
     expect(host.querySelector(".agent-launch-page__chip")?.textContent).toBe("New space");
     // One Run, and it does what the line said: the captured target is a new space.
-    const buttons = host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button");
+    const buttons = host.querySelectorAll<HTMLButtonElement>(AGENT_BUTTONS);
     expect(buttons).toHaveLength(1);
     expect(buttons[0].getAttribute("aria-label")).toBe("Run Claude Code");
     act(() => buttons[0].click());
@@ -121,7 +122,7 @@ describe("compact Original launch page", () => {
       agents: [{ id: "codex", label: "Codex", missing: true, detail: "codex" }],
       onRunInNewSpace: vi.fn(),
     });
-    const buttons = host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button");
+    const buttons = host.querySelectorAll<HTMLButtonElement>(AGENT_BUTTONS);
     expect(buttons).toHaveLength(1);
     expect(buttons[0].disabled).toBe(true);
     expect(buttons[0].textContent).toContain("Not installed");
@@ -129,7 +130,30 @@ describe("compact Original launch page", () => {
 
   it("never offers the second button to a page that cannot open a space", () => {
     mount();
-    expect(host.querySelectorAll(".agent-launch-page__card button")).toHaveLength(1);
+    expect(host.querySelectorAll(AGENT_BUTTONS)).toHaveLength(1);
+  });
+
+  it("offers a Terminal card after the agents that runs a bare shell", () => {
+    const props = mount({ onRunInNewSpace: vi.fn() });
+    const terminal = [...host.querySelectorAll<HTMLButtonElement>("[data-launch-terminal] button")];
+    expect(terminal.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Split Terminal into the current tab",
+      "Run Terminal in a new space",
+    ]);
+    expect(
+      host
+        .querySelector(".agent-launch-page__card:last-of-type")
+        ?.hasAttribute("data-launch-terminal"),
+    ).toBe(true);
+    act(() => terminal[0].click());
+    expect(props.onRun).toHaveBeenCalledExactlyOnceWith("deck:terminal");
+    act(() => terminal[1].click());
+    expect(props.onRunInNewSpace).toHaveBeenCalledExactlyOnceWith("deck:terminal");
+  });
+
+  it("keeps the Terminal card when no agent is installed", () => {
+    mount({ agents: [] });
+    expect(host.querySelector("[data-launch-terminal] button")?.textContent).toContain("Terminal");
   });
 
   it("prevents repeated Run while pending and displays a recoverable error", () => {
