@@ -31,10 +31,10 @@ export const messages = {
     heroFeedbackBoard: "Feedback board",
     feedbackTitle: "Feedback",
     feedbackIntro:
-      "Hit a bug, or wish Deck did something new? Tell us. Accepted requests show up on the board and move along as we work on them.",
+      "Hit a bug, or wish Deck did something new? Tell us. Your feedback appears on the board and move along as we work on them.",
     feedbackTitleHint: "At least 3 characters",
     feedbackSentBody:
-      "Saved for review. Once approved, your feedback and screenshots will appear on the board.",
+      "Your feedback and screenshots are now public on the board. Thank you for helping improve Deck.",
     feedbackSendAnother: "Send another",
     feedbackEmptyPending: "Nothing waiting right now.",
     feedbackEmptyReview: "Nothing in progress yet.",
@@ -51,14 +51,15 @@ export const messages = {
     feedbackSubmit: "Send feedback",
     feedbackSending: "Sending…",
     feedbackSent: "Thank you — it is in!",
-    feedbackErrorInvalid: "Check the title (3–120 characters), details (up to 2,000), and images (up to 3, 5 MB each).",
+    feedbackErrorInvalid:
+      "Check the title (3–120 characters), details (up to 2,000), and images (up to 3, 5 MB each).",
     feedbackErrorAuth: "Sign in with Google again. Your draft has been kept.",
     feedbackErrorConflict:
       "This draft was already received with different details. Copy your edits before starting another report.",
     feedbackErrorRate: "Too many submissions right now. Try again in a minute.",
     feedbackErrorServer: "Could not send your feedback. Try again later.",
     feedbackNotice:
-      "No sign-in needed. After approval, your title, details and screenshots are public. Keep personal information out of your report.",
+      "No sign-in needed. Your title, details and screenshots become public when you send. Keep personal information out of your report.",
     feedbackBoardTitle: "Board",
     feedbackColumnPending: "Pending",
     feedbackColumnReview: "In progress",
@@ -167,7 +168,7 @@ export const messages = {
       "Gặp lỗi, hay muốn Deck làm thêm điều gì? Cứ kể cho chúng tôi. Góp ý được duyệt sẽ lên bảng và đi dần qua các cột theo tiến độ.",
     feedbackTitleHint: "Tối thiểu 3 ký tự",
     feedbackSentBody:
-      "Saved for review. Once approved, your feedback and screenshots will appear on the board.",
+      "Your feedback and screenshots are now public on the board. Thank you for helping improve Deck.",
     feedbackSendAnother: "Gửi thêm góp ý",
     feedbackEmptyPending: "Hiện chưa có gì đang chờ.",
     feedbackEmptyReview: "Nothing in progress yet.",
@@ -193,7 +194,7 @@ export const messages = {
     feedbackErrorRate: "Đang có quá nhiều lượt gửi. Thử lại sau một phút.",
     feedbackErrorServer: "Không gửi được góp ý. Thử lại sau nhé.",
     feedbackNotice:
-      "No sign-in needed. After approval, your title, details and screenshots are public. Keep personal information out of your report.",
+      "No sign-in needed. Your title, details and screenshots become public when you send. Keep personal information out of your report.",
     feedbackBoardTitle: "Bảng tiến độ",
     feedbackColumnPending: "Đang chờ",
     feedbackColumnReview: "In progress",

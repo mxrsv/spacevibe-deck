@@ -116,7 +116,7 @@ export async function submitFeedback(input, fetchImpl = fetch) {
   }
 
   try {
-    response = await fetchImpl(FEEDBACK_API_URL, {
+    response = await fetchImpl(`${FEEDBACK_API_URL}?receipt=state`, {
       method: "POST",
       headers: {
         ...(!multipart ? { "content-type": "application/json" } : {}),
@@ -131,7 +131,10 @@ export async function submitFeedback(input, fetchImpl = fetch) {
 
   if (response.status === 201) {
     const receipt = await response.json();
-    if (typeof receipt.id !== "string" || receipt.status !== "private") {
+    if (
+      typeof receipt.id !== "string" ||
+      !["private", "hidden", ...FEEDBACK_STATUSES].includes(receipt.status)
+    ) {
       throw new FeedbackSubmitError("server");
     }
     return;

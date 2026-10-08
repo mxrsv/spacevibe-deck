@@ -68,13 +68,14 @@ async function reserve(env, feedback, images) {
       title: feedback.title,
       body: feedback.body,
       category: feedback.category,
+      status: "pending",
       images: metadata,
     }),
   });
   const inserted = await response.json();
   const row =
     inserted[0] ??
-    (await rows(env, `draft_id=eq.${feedback.id}&select=id,request_hash,ready&limit=1`))[0];
+    (await rows(env, `draft_id=eq.${feedback.id}&select=id,request_hash,ready,status&limit=1`))[0];
   if (!row) throw new Error("Feedback receipt missing");
   if (row.request_hash !== requestHash) throw new PayloadError(409);
   return row;
@@ -103,7 +104,9 @@ export async function submitSupabaseFeedback(request, env) {
     });
     if (!(await receipt.json())[0]?.ready) throw new Error("Feedback finalization failed");
   }
-  return { id: row.id, status: "private" };
+  // Already-open pages only accept the original receipt; new pages opt into live state.
+  const liveState = new URL(request.url).searchParams.get("receipt") === "state";
+  return { id: row.id, status: liveState ? row.status : "private" };
 }
 
 export async function listSupabaseFeedback(url, env) {

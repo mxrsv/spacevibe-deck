@@ -59,6 +59,15 @@ describe("durable submission", () => {
     id: "draft-uuid",
     credential: "google-credential",
   };
+  it("accepts public submission receipts and later-state retries", async () => {
+    for (const status of ["pending", "review", "done", "hidden"])
+      await expect(
+        submitFeedback(input, async (url) => {
+          expect(new URL(url).searchParams.get("receipt")).toBe("state");
+          return json({ id: "stored-id", status }, 201);
+        }),
+      ).resolves.toBeUndefined();
+  });
   it("sends attached images as multipart without forcing a content-type boundary", async () => {
     const file = new File(["image"], "shot.png", { type: "image/png" });
     let sent;

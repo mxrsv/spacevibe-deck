@@ -86,8 +86,8 @@ if (!form || !shortcut) {
 
 shortcut.textContent = IS_MAC ? "⌘ ↵" : "Ctrl ↵";
 
-async function loadBoard(cursor = null) {
-  if (loadingBoard) return;
+async function loadBoard(cursor = null, refresh = false) {
+  if (loadingBoard && !refresh) return;
   loadingBoard = true;
   const currentRequest = ++requestId;
   const more = root.querySelector("[data-board-more]");
@@ -110,11 +110,15 @@ async function loadBoard(cursor = null) {
       more.hidden = !nextCursor;
     }
   } catch {
-    if (cursor) pageStatus.textContent = "Could not load older feedback. Try again.";
-    else renderBoardError(root, messages[locale]);
+    if (currentRequest === requestId) {
+      if (cursor) pageStatus.textContent = "Could not load older feedback. Try again.";
+      else renderBoardError(root, messages[locale]);
+    }
   } finally {
-    more.disabled = false;
-    loadingBoard = false;
+    if (currentRequest === requestId) {
+      more.disabled = false;
+      loadingBoard = false;
+    }
   }
 }
 
@@ -178,6 +182,8 @@ async function handleSubmit() {
     renderDraftStatus(root, "empty", messages[locale]);
     updateFormMeters(form);
     setComposerState(root, "sent", null, messages[locale]);
+    selectBoardColumn(root, "pending");
+    void loadBoard(null, true);
     root.querySelector("[data-send-another]")?.focus();
   } catch (error) {
     const reason = error instanceof FeedbackSubmitError ? error.reason : "server";

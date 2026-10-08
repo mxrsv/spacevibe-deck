@@ -164,3 +164,38 @@ it("keeps category and id after a lost acknowledgment and reload, then clears on
   expect(api.submit.mock.calls[1][0]).toEqual(first);
   await vi.waitFor(() => expect(localStorage.getItem("deck.landing.feedbackDraft.v1")).toBeNull());
 });
+
+it("refreshes Pending after submission even when an older board read is still in flight", async () => {
+  const form = await mount({ googleClientId: null, authMode: "anonymous", submissionsOpen: true });
+  await vi.waitFor(() => expect(api.board).toHaveBeenCalledTimes(1));
+  let rejectOld;
+  api.board.mockImplementationOnce(
+    () =>
+      new Promise((_, reject) => {
+        rejectOld = reject;
+      }),
+  );
+  document.querySelector("[data-board-more]").click();
+  await vi.waitFor(() => expect(api.board).toHaveBeenCalledTimes(2));
+  const report = {
+    id: "fresh",
+    title: "Visible immediately",
+    description: "Details",
+    category: "bug",
+    status: "pending",
+    updatedAt: new Date().toISOString(),
+  };
+  api.board.mockResolvedValueOnce({
+    board: { pending: [report], review: [], done: [] },
+    nextCursor: null,
+  });
+  api.submit.mockResolvedValueOnce(undefined);
+  form.querySelector('[name="title"]').value = report.title;
+  form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  await vi.waitFor(() =>
+    expect(document.querySelector(".feedback-card__title")?.textContent).toBe(report.title),
+  );
+  rejectOld(new Error("old read failed"));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(document.querySelector(".feedback-card__title")?.textContent).toBe(report.title);
+});

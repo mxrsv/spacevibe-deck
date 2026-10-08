@@ -62,11 +62,12 @@ Linear issue or notification email is required in this mode. Google sign-in can 
 introduced later without replacing Supabase Postgres or Storage. The older D1/Linear
 implementation remains dormant with `FEEDBACK_SYNC_ENABLED=false`.
 
-[Supabase persistence](src/feedback-supabase.mjs) stores each report privately in
+[Supabase persistence](src/feedback-supabase.mjs) stores each report in
 `public.feedback_reports`. It reserves the draft before uploading screenshots and
-sets `ready=true` only after all uploads succeed. A 201 means the complete submission
+sets `ready=true` only after all uploads succeed. New reports start in public Pending
+under the [public-intake migration](supabase/migrations/20261008000200_public_feedback.sql). A 201 means the complete submission
 is stored; retrying the same draft and content returns the same receipt. Changed
-content returns 409. Incomplete uploads never appear publicly, even if approved.
+content returns 409. Incomplete uploads never appear publicly.
 
 [Image validation](src/feedback-images.mjs) accepts at most three PNG, JPEG or WebP
 files of 5 MB each and caps the streamed request at 16 MB. The
@@ -105,9 +106,10 @@ Analytics continues using the existing D1 database and its separate migrations.
 
 Open the project's Table Editor and select `feedback_reports`. Review only rows
 with `ready=true`; screenshots are under `feedback-images/<report id>/` in Storage.
-Change `status` from `private` to `pending` to publish, `review` for work in progress,
-`done` when completed, or `hidden` to withdraw it. The public board reads current
-status on reload. Original draft IDs and request hashes are never public.
+New complete reports appear immediately in `pending`; no approval is required. Change
+`status` to `review` for work in progress, `done` when completed, or `hidden` to withdraw
+a report later. The form refreshes the board after sending; other status changes appear
+on reload. Original draft IDs and request hashes are never public.
 
 The [intake trigger](supabase/migrations/20261008000100_feedback.sql) limits new drafts
 to 100 per rolling 24 hours across all locations. The Worker adds the existing

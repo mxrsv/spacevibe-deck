@@ -40,7 +40,7 @@ function setup(t) {
         ...JSON.parse(options.body),
         id: ID,
         ready: false,
-        status: "private",
+        status: JSON.parse(options.body).status ?? "private",
         created_at: 1000,
         updated_at: 1000,
       };
@@ -60,7 +60,12 @@ function setup(t) {
     const visible =
       !path.searchParams.has("ready") ||
       (row?.ready && path.searchParams.get("status").includes(row.status));
-    return json(row && visible ? [row] : []);
+    const selected = path.searchParams.get("select")?.split(",");
+    return json(
+      row && visible
+        ? [selected ? Object.fromEntries(selected.map((key) => [key, row[key]])) : row]
+        : [],
+    );
   });
   const env = {
     FEEDBACK_STORAGE: "supabase",
@@ -95,17 +100,17 @@ function post(data = input, image = false, origin = ORIGIN) {
     body.append("images", new File([png], "shot.png", { type: "image/png" }));
     delete headers["content-type"];
   }
-  return new Request(API, { method: "POST", headers, body });
+  return new Request(`${API}?receipt=state`, { method: "POST", headers, body });
 }
 
-test("anonymous receipt requires a persisted and finalized private record", async (t) => {
+test("anonymous receipt publishes a complete report immediately in Pending", async (t) => {
   const db = setup(t);
   const result = await worker.fetch(post(), db.env);
   assert.equal(result.status, 201);
-  assert.deepEqual(await result.json(), { id: ID, status: "private" });
+  assert.deepEqual(await result.json(), { id: ID, status: "pending" });
   assert.equal(db.row().ready, true);
   const board = await worker.fetch(new Request(API), db.env);
-  assert.deepEqual(await board.json(), { items: [], nextCursor: null });
+  assert.equal((await board.json()).items[0].id, ID);
   const config = await worker.fetch(new Request(`${API}/config`), db.env);
   assert.equal((await config.json()).authMode, "anonymous");
 });
@@ -117,10 +122,25 @@ test("Supabase mode never runs legacy Linear or email jobs", async (t) => {
   assert.equal(db.calls.length, 0);
 });
 
+test("already-open clients keep their original receipt while reports become public", async (t) => {
+  const db = setup(t);
+  const request = new Request(API, post());
+  const response = await worker.fetch(request, db.env);
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), { id: ID, status: "private" });
+  assert.equal(db.row().status, "pending");
+  assert.equal(db.row().ready, true);
+});
+
 test("same draft retries once and changed content conflicts without replacing data", async (t) => {
   const db = setup(t);
   assert.equal((await worker.fetch(post(input, true), db.env)).status, 201);
-  assert.equal((await worker.fetch(post(input, true), db.env)).status, 201);
+  for (const status of ["pending", "review", "done", "private", "hidden"]) {
+    db.moderate(status);
+    const retry = await worker.fetch(post(input, true), db.env);
+    assert.equal(retry.status, 201);
+    assert.deepEqual(await retry.json(), { id: ID, status });
+  }
   assert.equal(db.uploads(), 1);
   assert.equal(
     (await worker.fetch(post({ ...input, title: "Different" }, true), db.env)).status,
@@ -151,9 +171,10 @@ test("storage and finalization failures never acknowledge success", async (t) =>
   }
 });
 
-test("approval exposes only public fields; hiding immediately revokes image access", async (t) => {
+test("manual privacy overrides remain respected; hiding revokes image access", async (t) => {
   const db = setup(t);
   await worker.fetch(post(input, true), db.env);
+  db.moderate("private");
   assert.equal((await worker.fetch(new Request(`${API}/images/${ID}/0`), db.env)).status, 404);
   db.moderate("pending");
   const board = await (await worker.fetch(new Request(API), db.env)).json();
