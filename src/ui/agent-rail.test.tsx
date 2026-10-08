@@ -1888,7 +1888,7 @@ describe("AgentRail create row (DL-27.14, amended 2026-10-08)", () => {
     mount({ cardActions: withLauncher });
     await settle();
 
-    expect(verbs()).toEqual(["Agent", "Folder"]);
+    expect(verbs()).toEqual(["Folder", "Agent"]);
   });
 
   it("opens the launch page on the focused checkout", async () => {
