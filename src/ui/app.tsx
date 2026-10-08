@@ -77,11 +77,7 @@ import { UsageConsentModal } from "./usage-consent-modal";
 import { ensureTelemetryStateLoaded, usageConsentOpen } from "../telemetry/consent-store";
 import { installUsageCounterEffects } from "../telemetry/usage-counters";
 import { OpenBoard } from "../open-board/open-board";
-import {
-  clearDraft,
-  newTaskDraft,
-  taskDraftTouched,
-} from "../launcher/launcher-store";
+import { clearDraft, newTaskDraft, taskDraftTouched } from "../launcher/launcher-store";
 import { agentLaunchCommand } from "../lib/launch-command";
 import type { NewTaskDraft } from "../launcher/new-task-draft";
 import { composeLaunchCommand } from "../launcher/compose-launch-command";
