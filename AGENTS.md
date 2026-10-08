@@ -93,6 +93,22 @@ Manual native acceptance, real-device upgrade checks, and Windows install/update
 only when explicitly requested; they are not prerequisites for release completion or issue
 closure. Report checks actually performed without treating omitted checks as successful.
 
+**E2E gate for large features (owner, 2026-10-08).** The one exception to "only when asked": a
+new user-facing feature or a change to a UI flow — a new surface, command or interaction, or a
+spec slice — is not reported done until an agent has driven the affected flows in the running
+Electron app with `playwright-core`, already a dev dependency. Bug fixes, styling, copy,
+refactors, tests and docs skip it. How to run it:
+
+- Write a scratch wrapper that calls `app.setPath("userData", <scratch dir>)` before requiring
+  `dist-electron/electron/main.cjs`, and drive it from a scratch script with
+  `_electron.launch({ executablePath: <node_modules/electron/dist/Electron.app/Contents/MacOS/Electron>, args: [<wrapper>] })`,
+  then `app.firstWindow()`. A plain `electron:dev` writes the owner's real `workspaces.json`
+  and `session.json`.
+- Do not test through Playwright MCP or a browser tab on `npm run dev`: those reach only the
+  browser preview and prove nothing about IPC, PTYs or persistence.
+- Report each flow walked and its result; screenshots go to scratch, not the repo. The gate
+  covers Electron only — say so for a change that also reaches Tauri.
+
 ## Layout
 
 Both hosts are installed in this checkout, so Electron and its native dependencies belong
