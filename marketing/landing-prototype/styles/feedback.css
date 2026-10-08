@@ -47,15 +47,22 @@
 
 /* ---------- intro ---------- */
 
-.feedback-image-input {
+/* Chrome draws the file control's text larger than its computed size, so it
+   takes a smaller size to sit level with the other inputs. */
+.feedback-input.feedback-image-input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  padding: 0.35rem;
+  font-size: 0.66rem;
 }
 
+/* The selector button ignores the global `button { font: inherit }`, so it
+   would otherwise render at the user-agent size, larger than the form. */
 .feedback-image-input::file-selector-button {
-  margin-right: 0.75rem;
-  padding: 0.4rem 0.75rem;
+  margin-right: 0.6rem;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
   border: 1px solid var(--fb-border-strong);
   border-radius: var(--fb-radius-sm);
   color: var(--log-ink);
@@ -76,8 +83,8 @@
 }
 
 .feedback-image-preview img {
-  width: 88px;
-  height: 72px;
+  width: 72px;
+  height: 58px;
   object-fit: cover;
   border: 1px solid var(--fb-border);
   border-radius: var(--fb-radius-sm);
@@ -107,7 +114,7 @@
 .feedback-heading {
   margin: 0;
   color: var(--log-ink);
-  font: 680 0.98rem/1.2 var(--font-display);
+  font: 680 0.88rem/1.2 var(--font-display);
   letter-spacing: -0.02em;
 }
 
@@ -121,14 +128,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.65rem 1.05rem;
+  padding: 0.55rem 0.9rem;
   border: 0;
   border-radius: 999px;
   color: var(--fb-on-light);
   background: #ffffff;
   box-shadow: 0 10px 28px -12px rgb(255 255 255 / 45%);
   cursor: pointer;
-  font: 650 0.8rem/1 var(--font-display);
+  font: 650 0.74rem/1 var(--font-display);
   transition:
     transform 320ms var(--fb-spring),
     box-shadow 260ms var(--fb-ease),
@@ -137,8 +144,8 @@
 }
 
 .feedback-pill svg {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.85rem;
+  height: 0.85rem;
   transition: transform 360ms var(--fb-spring);
 }
 
@@ -179,8 +186,8 @@
 }
 
 .feedback-pill--small {
-  padding: 0.42rem 0.75rem;
-  font-size: 0.72rem;
+  padding: 0.38rem 0.65rem;
+  font-size: 0.68rem;
 }
 
 /* ---------- composer ---------- */
@@ -212,7 +219,7 @@
 
 .feedback-composer__card {
   position: relative;
-  padding: clamp(1rem, 1.6vw, 1.35rem);
+  padding: clamp(0.9rem, 1.4vw, 1.15rem);
   border-radius: var(--fb-radius-xl);
   background: linear-gradient(180deg, rgb(255 255 255 / 6.5%), rgb(255 255 255 / 2.5%));
   box-shadow:
@@ -226,12 +233,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.75rem;
 }
 
 .feedback-form {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.75rem;
 }
 
 .feedback-form[hidden] {
@@ -250,7 +257,15 @@
 .feedback-label {
   padding: 0;
   color: var(--log-ink-soft);
-  font: 600 0.74rem/1.2 var(--font-display);
+  font: 600 0.68rem/1.2 var(--font-display);
+}
+
+/* "(optional)" is an inline aside to the label, not a notice box. */
+.feedback-label .feedback-notice {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  font-weight: 450;
 }
 
 /* A legend is not a grid item, so the fieldset's gap never reaches it. */
@@ -291,13 +306,13 @@ legend.feedback-label {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.65rem 0.4rem 0.55rem;
+  gap: 0.3rem;
+  padding: 0.5rem 0.4rem 0.45rem;
   border-radius: var(--fb-radius-md);
   color: var(--log-ink-soft);
   background: var(--fb-surface);
   box-shadow: inset 0 0 0 1px var(--fb-border);
-  font: 600 0.74rem/1 var(--font-display);
+  font: 600 0.68rem/1 var(--font-display);
   transition:
     color 220ms var(--fb-ease),
     background 220ms var(--fb-ease),
@@ -306,8 +321,8 @@ legend.feedback-label {
 }
 
 .feedback-type__body svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 0.95rem;
+  height: 0.95rem;
   color: var(--type-color);
   transition: transform 380ms var(--fb-spring);
 }
@@ -341,13 +356,13 @@ legend.feedback-label {
 .feedback-input {
   box-sizing: border-box;
   width: 100%;
-  padding: 0.6rem 0.8rem;
+  padding: 0.5rem 0.7rem;
   border: 0;
   border-radius: var(--fb-radius-md);
   color: var(--log-ink);
   background: rgb(0 0 0 / 28%);
   box-shadow: inset 0 0 0 1px var(--fb-border-strong);
-  font: 450 0.86rem/1.5 var(--font-display);
+  font: 450 0.78rem/1.5 var(--font-display);
   transition:
     background 220ms var(--fb-ease),
     box-shadow 220ms var(--fb-ease);
@@ -370,7 +385,7 @@ legend.feedback-label {
 }
 
 .feedback-input--area {
-  min-height: 6rem;
+  min-height: 5rem;
   max-height: 18rem;
   resize: none;
 }
@@ -380,7 +395,7 @@ legend.feedback-label {
   justify-content: space-between;
   gap: 1rem;
   color: var(--log-ink-faint);
-  font: 500 0.7rem/1.3 var(--font-display);
+  font: 500 0.64rem/1.3 var(--font-display);
 }
 
 .feedback-hint--end {
@@ -426,20 +441,33 @@ legend.feedback-label {
 
 .feedback-notice {
   margin: 0;
-  padding: 0.55rem 0.75rem;
+  padding: 0.45rem 0.65rem;
   border-radius: var(--fb-radius-sm);
   color: var(--log-ink-faint);
   background: var(--fb-surface);
-  font: 450 0.72rem/1.5 var(--font-display);
+  font: 450 0.66rem/1.5 var(--font-display);
+}
+
+/* The privacy link is a plain text link, not a full-width notice box. */
+a.feedback-notice {
+  justify-self: start;
+  padding: 0;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.feedback-notice:hover {
+  color: var(--log-ink-soft);
 }
 
 .feedback-result {
   margin: 0;
-  padding: 0.6rem 0.75rem;
+  padding: 0.5rem 0.65rem;
   border-radius: var(--fb-radius-sm);
   color: #ffc4ba;
   background: color-mix(in srgb, var(--fb-bug) 12%, transparent);
-  font: 520 0.78rem/1.45 var(--font-display);
+  font: 520 0.72rem/1.45 var(--font-display);
   animation: fb-pop-in 360ms var(--fb-ease);
 }
 
@@ -459,18 +487,18 @@ legend.feedback-label {
   border-radius: 6px;
   color: var(--log-ink-faint);
   box-shadow: inset 0 0 0 1px var(--fb-border-strong);
-  font: 500 0.68rem/1 var(--font-mono);
+  font: 500 0.62rem/1 var(--font-mono);
 }
 
 /* Holding mode (DECK-101): sending is closed, the draft stays on the device. */
 .feedback-closed {
   margin: 0;
-  padding: 0.6rem 0.8rem;
+  padding: 0.5rem 0.7rem;
   border-radius: var(--fb-radius-md);
   color: var(--log-ink);
   background: color-mix(in srgb, var(--fb-review) 12%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fb-review) 30%, transparent);
-  font: 500 0.78rem/1.5 var(--font-display);
+  font: 500 0.72rem/1.5 var(--font-display);
 }
 
 .feedback-closed[hidden] {
@@ -487,7 +515,7 @@ legend.feedback-label {
 
 .feedback-draft {
   color: var(--log-ink-faint);
-  font: 500 0.72rem/1.3 var(--font-display);
+  font: 500 0.66rem/1.3 var(--font-display);
 }
 
 .feedback-draft[data-state="saved"]::before {

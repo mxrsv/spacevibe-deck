@@ -83,7 +83,7 @@
 .feedback-column__head h3 {
   margin: 0;
   color: var(--log-ink);
-  font: 650 0.82rem/1 var(--font-display);
+  font: 650 0.76rem/1 var(--font-display);
 }
 
 .feedback-column__count {
@@ -179,7 +179,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--log-ink);
-  font: 560 0.86rem/1.45 var(--font-display);
+  font: 560 0.8rem/1.45 var(--font-display);
   letter-spacing: -0.005em;
 }
 
@@ -235,7 +235,7 @@
   border: 1.5px dashed rgb(255 255 255 / 10%);
   border-radius: var(--fb-radius-md);
   color: var(--log-ink-faint);
-  font: 500 0.78rem/1.45 var(--font-display);
+  font: 500 0.72rem/1.45 var(--font-display);
   text-align: center;
 }
 
@@ -309,7 +309,7 @@
 .feedback-card__description {
   margin: 0;
   color: var(--log-ink-soft);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
