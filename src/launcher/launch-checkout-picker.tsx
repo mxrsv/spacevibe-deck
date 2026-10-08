@@ -44,6 +44,14 @@ export function LaunchCheckoutPicker(props: LaunchCheckoutPickerProps) {
     return () => document.removeEventListener("pointerdown", dismiss, true);
   }, [open.value, open]);
 
+  // A busy page unmounts the menu under the focused row; close it so it does
+  // not reappear when the page is idle again.
+  /* oxlint-disable react-hooks/exhaustive-deps -- `close` only touches the stable signal and ref */
+  useEffect(() => {
+    if (props.disabled && open.peek()) close();
+  }, [props.disabled, open]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
+
   function close(): void {
     open.value = false;
     trigger.current?.focus();

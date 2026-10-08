@@ -100,4 +100,33 @@ describe("launch page context row", () => {
     await act(async () => row("Open folder").click());
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("folder picker");
   });
+
+  it("clears a failed folder dialog once the page is re-targeted", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const props = mount(
+      repo,
+      vi.fn(async () => {
+        throw new Error("no dialog");
+      }),
+    );
+    act(() => triggers()[0].click());
+    await act(async () => row("Open folder").click());
+    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    act(() =>
+      render(
+        <AgentLaunchContext {...props} context={{ ...repo, checkoutPath: "/work/deck-wt" }} />,
+        host,
+      ),
+    );
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("closes the checkout menu when the row becomes disabled", () => {
+    const props = mount();
+    act(() => triggers()[1].click());
+    expect(host.querySelector('[role="menu"]')).not.toBeNull();
+    act(() => render(<AgentLaunchContext {...props} disabled />, host));
+    act(() => render(<AgentLaunchContext {...props} disabled={false} />, host));
+    expect(host.querySelector('[role="menu"]')).toBeNull();
+  });
 });

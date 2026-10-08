@@ -1,5 +1,5 @@
 import { Columns } from "@phosphor-icons/react";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { WorkspacePicker } from "../open-board/workspace-picker";
 import { DeckIcon } from "../ui/controls/deck-icon";
 import type { LaunchContextView } from "./agent-launch-context-model";
@@ -24,6 +24,8 @@ export interface AgentLaunchContextProps {
 export function AgentLaunchContext(props: AgentLaunchContextProps) {
   const { context } = props;
   const [failure, setFailure] = useState<string | null>(null);
+  // Any re-target means the page moved on; the old dialog failure no longer applies.
+  useEffect(() => setFailure(null), [context.checkoutPath]);
   const labels = new Map(context.workspaces.map((row) => [row.path, row.label]));
   const pickFolder = async (): Promise<void> => {
     try {
