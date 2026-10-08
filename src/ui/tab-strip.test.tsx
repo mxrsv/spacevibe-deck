@@ -475,8 +475,9 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     ];
     mount({ scopeToActiveRepository: false });
 
+    // An unnamed space of its own folder prints the folder once, as the project crumb.
     const shown = host.querySelector(
-      '.space-bar__name-slot[data-current="true"] .space-bar__label',
+      '.space-bar__name-slot[data-current="true"] .space-bar__part[data-part="project"]',
     );
     expect(shown?.textContent).toBe("spacevibe-deck");
     expect(mark(1).getAttribute("aria-selected")).toBe("true");

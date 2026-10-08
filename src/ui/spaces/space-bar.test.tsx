@@ -129,10 +129,24 @@ describe("SpaceBar breadcrumb (DL-35.3, amended 2026-10-07)", () => {
   });
 
   it("skips the branch when no scan knows one, and a session that repeats the name", () => {
-    mount([{ ...space(1, [pane(1, "idle")], true), session: "project-1" }]);
+    mount([{ ...space(1, [pane(1, "idle")], true), name: "rail tree", session: "rail tree" }]);
 
-    expect(crumb()).toEqual(["project-1", "project-1"]);
+    expect(crumb()).toEqual(["project-1", "rail tree"]);
     expect(host.querySelectorAll('[data-current="true"] .space-bar__sep')).toHaveLength(1);
+  });
+
+  it("prints an unnamed space's folder once when it is the project", () => {
+    mount([
+      {
+        ...space(1, [pane(1, "idle")], true),
+        groupLabel: "project-1",
+        branch: "main",
+        session: "Codex",
+      },
+    ]);
+
+    expect(crumb()).toEqual(["project-1", "main", "Codex"]);
+    expect(host.querySelectorAll('[data-current="true"] .space-bar__sep')).toHaveLength(2);
   });
 
   it("gives way from the project end first at narrow widths", () => {

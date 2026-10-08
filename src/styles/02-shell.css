@@ -43,10 +43,9 @@
   height: var(--frame-h);
   /* DL-18.3: in sidebar mode the frame is the TOP OF THE NAVIGATION COLUMN, not
      a band across the window. It shares `--sidebar-bg` with the rail below
-     (DL-18.7). DL-18.9 adds a bottom hairline separating
-     the identity row from workspace navigation. */
+     (DL-18.7). No hairline under it (owner, 2026-10-09): the identity row and
+     the workspace navigation read as one surface. */
   background: var(--sidebar-bg);
-  border-bottom: 1px solid var(--hair-strong);
   grid-column: 1;
   grid-row: 1;
   display: flex;

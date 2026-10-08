@@ -3094,7 +3094,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   never restates the scope the surface states once" still has its one
   statement, the footer. The menu's first group therefore carries no leading
   separator, or the hairline would draw across the surface's own top edge.
-  **The menu has two groups:** up to five quick agents, selected in Settings → Agents,
+  **The menu has two groups:** the quick agents, selected in Settings → Agents,
   then all other actions, starting with **Open shell**, which opens a new terminal tab
   at the checkout. One separator divides the groups; Worktree color and the footer
   add no separators. The menu does
@@ -4068,6 +4068,9 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   move while a name is typed, and the name is not a window-drag region for the
   same double-click's sake. The name belongs to the tab: it is journaled and
   restored with it, and the rail, the shelf and the card read the same one.
+  **The breadcrumb never prints the project twice** (2026-10-09, owner): an
+  unnamed space whose folder is its project drops the name crumb, and the
+  rename field returns in its place while editing.
   This amends DL-18.10's one-chip-shape rule for terminals only: a
   terminal tab is no longer a chip, so it carries no label, glyph, close
   control, drag or pin; its context menu (Close, Close Others, Close to the

@@ -1,8 +1,13 @@
 /* DL-32.6: approved compact Original, within the stage's existing geometry. */
 .agent-launch-page {
   position: absolute;
-  inset: 0;
+  /* Same card geometry as `.pane` (06-stage-panes.css): the launcher covers
+     `.stage__tabs`, so without the gutter it butted straight against the
+     strip's hairline. `.stage__tabs` underneath paints the gutter surface. */
+  inset: var(--stage-gutter);
   z-index: 25;
+  border: 1px solid var(--seam-split);
+  border-radius: var(--radius-tab);
   box-sizing: border-box;
   overflow: auto;
   overscroll-behavior: contain;
@@ -12,10 +17,10 @@
   container-type: inline-size;
 }
 .stage--strip > .agent-launch-page {
-  top: var(--frame-h);
+  top: calc(var(--frame-h) + var(--stage-gutter));
 }
 .stage--dock > .agent-launch-page {
-  right: var(--dock-w);
+  right: calc(var(--dock-w) + var(--stage-gutter));
 }
 .agent-launch-page:focus {
   outline: none;
