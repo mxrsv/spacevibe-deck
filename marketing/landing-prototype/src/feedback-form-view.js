@@ -73,6 +73,14 @@ function renderForm(copy) {
         </span>
       </label>
 
+      <div class="feedback-field">
+        <label class="feedback-label" for="feedback-images">Screenshots <span class="feedback-notice">(optional)</span></label>
+        <input id="feedback-images" class="feedback-input feedback-image-input" type="file" accept="image/png,image/jpeg,image/webp" multiple data-feedback-images aria-describedby="feedback-images-hint" />
+        <p class="feedback-notice" id="feedback-images-hint">Up to 3 images, 5 MB each. Images are not saved with your draft. Remove personal information before uploading.</p>
+        <div class="feedback-image-previews" data-image-previews></div>
+        <p class="feedback-result" data-image-status role="status" aria-live="polite"></p>
+      </div>
+
       <!-- Honeypot. display:none keeps it from people and from browser autofill,
            which skips fields it cannot focus; the odd name, the unknown
            autocomplete token and the ignore attributes keep password managers

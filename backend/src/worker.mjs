@@ -15,7 +15,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === FEEDBACK_WEBHOOK_PATH) return handleFeedbackWebhook(request, env);
-    if (url.pathname === FEEDBACK_PATH || url.pathname === FEEDBACK_CONFIG_PATH)
+    if (
+      url.pathname === FEEDBACK_PATH ||
+      url.pathname === FEEDBACK_CONFIG_PATH ||
+      url.pathname.startsWith(`${FEEDBACK_PATH}/images/`)
+    )
       return handleFeedback(request, env);
     if (url.pathname !== "/v1/ping") return new Response(null, { status: 404, headers: HEADERS });
     if (request.method !== "POST")
@@ -43,6 +47,12 @@ export default {
     }
   },
   async scheduled(controller, env) {
+    // Supabase intake is moderated in Studio; the legacy Linear jobs stay dormant.
+    if (
+      env.FEEDBACK_STORAGE === "supabase" &&
+      [FEEDBACK_SYNC_CRON, FEEDBACK_PROBE_CRON].includes(controller.cron)
+    )
+      return;
     if (controller.cron === FEEDBACK_SYNC_CRON) {
       await syncFeedback(env);
       return;

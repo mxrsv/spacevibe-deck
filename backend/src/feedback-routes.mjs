@@ -2,6 +2,12 @@ import { authenticateFeedback } from "./feedback-auth.mjs";
 import { readFeedback } from "./feedback-payload.mjs";
 import { createFeedbackRepository, parseBoardCursor } from "./feedback-repository.mjs";
 import { PayloadError } from "./payload.mjs";
+import {
+  supabaseFeedbackConfigured,
+  submitSupabaseFeedback,
+  listSupabaseFeedback,
+  readSupabaseFeedbackImage,
+} from "./feedback-supabase.mjs";
 
 export const FEEDBACK_PATH = "/v1/feedback";
 export const FEEDBACK_CONFIG_PATH = `${FEEDBACK_PATH}/config`;
@@ -30,6 +36,7 @@ function json(body, headers, status = 200) {
 }
 
 export function feedbackConfigured(env) {
+  if (env.FEEDBACK_STORAGE === "supabase") return supabaseFeedbackConfigured(env);
   return Boolean(
     env.FEEDBACK_SYNC_ENABLED === "true" &&
     env.GOOGLE_CLIENT_ID &&
@@ -60,10 +67,26 @@ export async function handleFeedback(request, env) {
       return json(
         {
           googleClientId: env.GOOGLE_CLIENT_ID || null,
+          authMode: env.FEEDBACK_STORAGE === "supabase" ? "anonymous" : "google",
           submissionsOpen: env.FEEDBACK_SUBMISSIONS_OPEN === "true" && feedbackConfigured(env),
         },
         headers,
       );
+    }
+    if (env.FEEDBACK_STORAGE === "supabase") {
+      if (!supabaseFeedbackConfigured(env)) throw new PayloadError(503);
+      if (request.method === "GET") {
+        const limit = await env.FEEDBACK_READ_LIMITER.limit({ key: "feedback-public-read" });
+        if (!limit.success) throw new PayloadError(429);
+      }
+      if (request.method === "GET" && url.pathname.startsWith(`${FEEDBACK_PATH}/images/`))
+        return await readSupabaseFeedbackImage(url, env, headers);
+      if (url.pathname !== FEEDBACK_PATH) throw new PayloadError(404);
+      if (request.method === "GET") return json(await listSupabaseFeedback(url, env), headers);
+      if (request.method !== "POST") return new Response(null, { status: 405, headers });
+      if (!ALLOWED_ORIGINS.includes(request.headers.get("origin"))) throw new PayloadError(403);
+      if (env.FEEDBACK_SUBMISSIONS_OPEN !== "true") throw new PayloadError(503);
+      return json(await submitSupabaseFeedback(request, env), headers, 201);
     }
     if (url.pathname !== FEEDBACK_PATH) return new Response(null, { status: 405, headers });
     const repository = createFeedbackRepository(env.DB);

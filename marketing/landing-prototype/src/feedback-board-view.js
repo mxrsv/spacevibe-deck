@@ -1,4 +1,4 @@
-import { FEEDBACK_STATUSES } from "./feedback-api.js";
+import { FEEDBACK_API_URL, FEEDBACK_STATUSES } from "./feedback-api.js";
 import { CATEGORY_COPY } from "./feedback-form-view.js";
 import { CATEGORY_ICONS, STATUS_ICONS } from "./feedback-icons.js";
 
@@ -109,6 +109,24 @@ function createCard(item, copy, locale, index) {
   description.className = "feedback-card__description";
   description.textContent = item.description;
   card.append(top, title, description, time);
+  if (item.images?.length) {
+    const attachments = document.createElement("div");
+    attachments.className = "feedback-image-previews";
+    item.images.forEach((path, imageIndex) => {
+      const link = document.createElement("a");
+      link.href = new URL(path, FEEDBACK_API_URL).href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "feedback-image-preview";
+      const image = document.createElement("img");
+      image.src = link.href;
+      image.alt = `Screenshot ${imageIndex + 1} for ${item.title}`;
+      image.loading = "lazy";
+      link.append(image);
+      attachments.append(link);
+    });
+    card.append(attachments);
+  }
   return card;
 }
 

@@ -1,28 +1,23 @@
 /**
  * The landing's side of the feedback contract served by `backend/`
- * (DECK-101). The Worker owns authentication and durable storage; this
+ * The Worker owns intake policy and durable storage; this
  * module only shapes the request and refuses to trust the response.
  */
 
 export const FEEDBACK_API_URL = "https://api.deck.spacevibe.dev/v1/feedback";
 
-/**
- * Closed until the Worker's feedback routes ship with their Linear key
- * (DECK-101): until then the page keeps a draft on the device and never calls
- * the API. Flip to true in the same change that deploys the Worker.
- */
-export const SUBMISSIONS_OPEN = false;
+// The Worker configuration remains the authoritative intake switch.
+export const SUBMISSIONS_OPEN = true;
 // Keep public reads enabled when closing intake after the initial rollout.
-export const FEEDBACK_BOARD_OPEN = false;
+export const FEEDBACK_BOARD_OPEN = true;
 
 /** Board columns, left to right. */
 export const FEEDBACK_STATUSES = ["pending", "review", "done"];
 
 export const FEEDBACK_CATEGORIES = ["bug", "idea", "other"];
 
-// The Worker gives Linear 10 s; past these the visitor gets an answer and a
-// kept draft instead of a button stuck on "Sending…".
-const SUBMIT_TIMEOUT_MS = 15_000;
+// Allow time for screenshots; failed requests keep the draft for an idempotent retry.
+const SUBMIT_TIMEOUT_MS = 60_000;
 const BOARD_TIMEOUT_MS = 12_000;
 
 export const TITLE_MIN = 3;
@@ -50,7 +45,11 @@ function isCard(item) {
     FEEDBACK_STATUSES.includes(item.status) &&
     FEEDBACK_CATEGORIES.includes(item.category) &&
     typeof item.updatedAt === "string" &&
-    !Number.isNaN(Date.parse(item.updatedAt))
+    !Number.isNaN(Date.parse(item.updatedAt)) &&
+    (item.images === undefined ||
+      (Array.isArray(item.images) &&
+        item.images.length <= 3 &&
+        item.images.every((path, index) => path === `/v1/feedback/images/${item.id}/${index}`)))
   );
 }
 
@@ -102,21 +101,28 @@ export async function fetchFeedbackBoard(cursor = null, fetchImpl = fetch) {
  */
 export async function submitFeedback(input, fetchImpl = fetch) {
   let response;
+  const payload = JSON.stringify({
+    title: input.title,
+    body: input.body,
+    category: input.category,
+    website: input.website,
+    ...(input.id ? { id: input.id } : {}),
+  });
+  const multipart = Boolean(input.images?.length);
+  const body = multipart ? new FormData() : payload;
+  if (multipart) {
+    body.set("feedback", payload);
+    for (const image of input.images) body.append("images", image);
+  }
 
   try {
     response = await fetchImpl(FEEDBACK_API_URL, {
       method: "POST",
       headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${input.credential ?? ""}`,
+        ...(!multipart ? { "content-type": "application/json" } : {}),
+        ...(input.credential ? { authorization: `Bearer ${input.credential}` } : {}),
       },
-      body: JSON.stringify({
-        title: input.title,
-        body: input.body,
-        category: input.category,
-        website: input.website,
-        ...(input.id ? { id: input.id } : {}),
-      }),
+      body,
       signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
     });
   } catch {
@@ -148,7 +154,8 @@ export async function fetchFeedbackConfig(fetchImpl = fetch) {
   const config = await response.json();
   if (
     typeof config.submissionsOpen !== "boolean" ||
-    (config.googleClientId !== null && typeof config.googleClientId !== "string")
+    (config.googleClientId !== null && typeof config.googleClientId !== "string") ||
+    (config.authMode !== undefined && !["anonymous", "google"].includes(config.authMode))
   ) {
     throw new Error("Invalid feedback configuration");
   }

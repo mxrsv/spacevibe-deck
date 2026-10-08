@@ -59,6 +59,18 @@ describe("durable submission", () => {
     id: "draft-uuid",
     credential: "google-credential",
   };
+  it("sends attached images as multipart without forcing a content-type boundary", async () => {
+    const file = new File(["image"], "shot.png", { type: "image/png" });
+    let sent;
+    await submitFeedback({ ...input, images: [file] }, async (_url, init) => {
+      sent = init;
+      return json({ id: "stored-id", status: "private" }, 201);
+    });
+    expect(sent.body).toBeInstanceOf(FormData);
+    expect(sent.headers["content-type"]).toBeUndefined();
+    expect(sent.body.getAll("images")).toHaveLength(1);
+    expect(JSON.parse(sent.body.get("feedback")).id).toBe(input.id);
+  });
   it("sends auth only in the header and accepts a persisted receipt", async () => {
     let sent;
     await submitFeedback(input, async (_url, init) => {

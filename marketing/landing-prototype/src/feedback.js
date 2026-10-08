@@ -1,4 +1,5 @@
 import { createFeedbackAuth } from "./feedback-auth.js";
+import { createFeedbackImages } from "./feedback-images.js";
 import "../styles/tokens.css";
 import "../styles/frame.css";
 import "../styles/changelog.css";
@@ -52,6 +53,7 @@ const params = new URLSearchParams(window.location.search);
 const demo = import.meta.env.DEV && params.has("demo");
 let submissionsOpen = false;
 let auth = null;
+let authMode = "google";
 let nextCursor = null;
 let loadingBoard = false;
 let loadedBoard = Object.fromEntries(FEEDBACK_STATUSES.map((status) => [status, []]));
@@ -72,6 +74,7 @@ let sending = false;
 let draftId = newDraftId();
 
 renderFeedbackShell(root, messages[locale], locale);
+const images = createFeedbackImages(root);
 document.documentElement.lang = locale;
 
 const form = root.querySelector(".feedback-form");
@@ -143,7 +146,7 @@ function saveDraft() {
 async function handleSubmit() {
   // Cmd/Ctrl+Enter calls requestSubmit(), which a disabled button cannot stop:
   // without this guard a double press sends the same report twice.
-  if (!submissionsOpen || sending || (!demo && !auth?.token())) {
+  if (!submissionsOpen || sending || (!demo && authMode === "google" && !auth?.token())) {
     return;
   }
 
@@ -163,10 +166,12 @@ async function handleSubmit() {
   // FormData omits disabled radios, so save before locking the fields.
   saveDraft();
   sending = true;
+  images.lock(true);
   setComposerState(root, "sending", null, messages[locale]);
 
   try {
-    await api.submit({ ...input, credential: auth?.token() });
+    await api.submit({ ...input, credential: auth?.token(), images: images.files() });
+    images.clear();
     form.reset();
     clearDraft(storage);
     draftId = newDraftId();
@@ -180,6 +185,7 @@ async function handleSubmit() {
     setComposerState(root, "error", SUBMIT_ERROR_COPY[reason], messages[locale]);
   } finally {
     sending = false;
+    images.lock(false);
   }
 }
 
@@ -274,8 +280,12 @@ async function start() {
     setComposerState(root, "idle", null, messages[locale]);
     try {
       const config = await fetchFeedbackConfig();
+      authMode = config.authMode ?? "google";
       submissionsOpen = SUBMISSIONS_OPEN && config.submissionsOpen;
-      if (submissionsOpen && config.googleClientId) {
+      if (submissionsOpen && authMode === "anonymous") {
+        root.dataset.authReady = "true";
+        setComposerState(root, "idle", null, messages[locale]);
+      } else if (submissionsOpen && config.googleClientId) {
         auth = createFeedbackAuth(root, config.googleClientId, (ready) => {
           root.dataset.authReady = String(ready);
           if (!sending) setComposerState(root, "idle", null, messages[locale]);

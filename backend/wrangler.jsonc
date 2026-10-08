@@ -25,6 +25,11 @@
   ],
   "ratelimits": [
     {
+      "name": "FEEDBACK_READ_LIMITER",
+      "namespace_id": "34203",
+      "simple": { "limit": 120, "period": 60 }
+    },
+    {
       "name": "INGEST_LIMITER",
       "namespace_id": "34201",
       "simple": {
@@ -42,10 +47,12 @@
     }
   ],
   "vars": {
+    "FEEDBACK_STORAGE": "supabase",
+    "SUPABASE_URL": "https://calkpkscykzmvyayfxih.supabase.co",
     "FEEDBACK_TEAM_ID": "cb65f88e-7252-4bcf-b4c7-30030b26ecea",
     "FEEDBACK_LABEL_ID": "d67dc808-53f9-4fde-9483-2cffe14c0169",
     "FEEDBACK_BACKLOG_STATE_ID": "cd3a4095-d1d6-48a3-8d10-82231ff5f521",
-    "FEEDBACK_SUBMISSIONS_OPEN": "false",
+    "FEEDBACK_SUBMISSIONS_OPEN": "true",
     "FEEDBACK_SYNC_ENABLED": "false",
     "FEEDBACK_PROGRESS_STATE_ID": "dc9f6de9-3d8a-45e5-a7c4-ea2bcec5cace"
   },

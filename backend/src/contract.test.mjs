@@ -76,7 +76,14 @@ test("deployment disables logs, traces, public preview URLs and exposes only the
   assert.equal(config.workers_dev, false);
   assert.equal(config.preview_urls, false);
   assert.deepEqual(config.routes, [{ pattern: "api.deck.spacevibe.dev", custom_domain: true }]);
-  assert.equal(config.ratelimits[0].name, "INGEST_LIMITER");
+  assert.deepEqual(config.ratelimits.find((item) => item.name === "INGEST_LIMITER").simple, {
+    limit: 1000,
+    period: 60,
+  });
+  assert.deepEqual(config.ratelimits.find((item) => item.name === "FEEDBACK_READ_LIMITER").simple, {
+    limit: 120,
+    period: 60,
+  });
   // The 35-day retention ceiling is only held by the sweep running DAILY; a
   // drifted schedule would keep raw rows past it and nothing else would notice,
   // because logs and traces are off by design.
@@ -88,7 +95,8 @@ test("privacy routes publish the dated notice and include its source in the depl
   const config = JSON.parse(await readFile(new URL("../../vercel.json", import.meta.url), "utf8"));
   // `/privacy` serves the newest notice; every earlier dated copy stays reachable.
   for (const [source, notice] of [
-    ["/privacy", "2026-09-18"],
+    ["/privacy", "2026-10-08"],
+    ["/privacy/2026-10-08", "2026-10-08"],
     ["/privacy/2026-09-18", "2026-09-18"],
     ["/privacy/2026-09-12", "2026-09-12"],
     ["/privacy/2026-09-07", "2026-09-07"],
