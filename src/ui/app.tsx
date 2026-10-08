@@ -2187,9 +2187,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     // design D1): ⌘T's list has to reach the Open board on its own, because the
     // tab strip's `+` is gone and top-tab mode has no sidebar `+ New`.
     onOpenBoard: openTaskBoard,
-    // `Create branch from here` is deliberately unwired while Quick Launch is
-    // deferred: the row's only create surface was that popover's worktree
-    // subview. DL-19.7 — a control nothing answers is omitted, not drawn.
     ...(externalAppsAvailable && filesApp !== undefined
       ? {
           onOpenFolder: (path: string) => {
