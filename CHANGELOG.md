@@ -7,6 +7,27 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+## 2.8.0
+
+This update lifts the five-agent cap on quick launch, adds a plain Terminal to
+it, and gives the interface bolder icons and softer corners.
+
+- **Quick launch has no limit on agents.** The quick launch page and a
+  checkout's menu show every available agent, and you can
+  [pin](src/settings/quick-agents.ts) as many as you like.
+- **A Terminal card sits beside the agents.** It opens a plain shell pane, with
+  the same **Split** and **New space** presses, and starts nothing.
+- **Agent is the rail's main button.** In the row under the Deck name, **Agent**
+  is now the filled button on the right, after Worktree and Folder. Collapsed,
+  it stays on top of the column.
+- **Icons are bolder and more solid.** Outlines are about half again as thick, so
+  they no longer read thinner than the label beside them, and icons with a body
+  are [drawn filled](src/ui/controls/deck-icon.tsx). Arrows, carets and layout
+  pictures stay outlines.
+- **Short buttons are no longer pills.** Labelled controls 28px tall or less take
+  the tab's corner radius, so they stop looking fully rounded; square icon buttons
+  keep theirs.
+
 ## 2.7.0
 
 This update turns the rail into a tree of projects, checkouts and agents, puts
