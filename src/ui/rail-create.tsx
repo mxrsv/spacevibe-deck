@@ -1,8 +1,12 @@
+import { useState } from "preact/hooks";
+import { available as worktreeHostAvailable } from "../host/worktree-host";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { workspaceLabel } from "../lib/workspace-label";
 import type { RailStreamGroup, RailWorktreeGroup } from "./agent-rail-model";
 import type { NewPaneDropDeps } from "./new-pane-drag";
 import { RailCreateRow, type RailCreateVariant } from "./rail-create-row";
+import { addFolderToRail } from "./rail-add-folder";
+import { RailWorktreeForm, type RailRepository } from "./rail-worktree-form";
 import { whereOf } from "./worktree-card-row";
 import type { CardActions } from "./worktree-card-menus";
 
@@ -47,6 +51,20 @@ function activeTabWorkspace(): string | null {
   return tabViews.value[activeTabIndex.value]?.workspacePath ?? null;
 }
 
+/** The git repositories the rail shows, each once, by the path the form branches from. */
+function railRepositories(stream: readonly RailStreamGroup[]): RailRepository[] {
+  const seen = new Set<string>();
+  const repositories: RailRepository[] = [];
+  for (const cluster of stream) {
+    const checkout = cluster.worktrees.find((worktree) => worktree.labelled);
+    if (checkout !== undefined && !seen.has(checkout.repositoryPath)) {
+      seen.add(checkout.repositoryPath);
+      repositories.push({ path: checkout.repositoryPath, label: cluster.project });
+    }
+  }
+  return repositories;
+}
+
 export function RailCreate({
   variant,
   stream,
@@ -55,6 +73,8 @@ export function RailCreate({
   disabled,
   newPaneDrop,
 }: RailCreateProps) {
+  const [form, setForm] = useState<HTMLElement | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const focused = focusedCheckout(stream);
   const workspace = focused === null ? activeTabWorkspace() : null;
   const agentPath = focused?.group.path ?? workspace;
@@ -73,17 +93,54 @@ export function RailCreate({
     onOpenBoard();
   };
 
+  const repositories = railRepositories(stream);
+  const initialRepo =
+    focused?.group.labelled === true
+      ? focused.group.repositoryPath
+      : (repositories[0]?.path ?? null);
+
+  const pickFolder = (): void => {
+    setNotice(null);
+    void addFolderToRail().then(setNotice);
+  };
+
   return (
-    <RailCreateRow
-      variant={variant}
-      agentTitle={
-        agentWhere === null
-          ? "Open a workspace — or drag onto a pane to add an agent there"
-          : `New agent in ${agentWhere} — or drag onto a pane`
-      }
-      disabled={disabled}
-      newPaneDrop={newPaneDrop}
-      onAgent={openAgent}
-    />
+    <>
+      <RailCreateRow
+        variant={variant}
+        agentTitle={
+          agentWhere === null
+            ? "Open a workspace — or drag onto a pane to add an agent there"
+            : `New agent in ${agentWhere} — or drag onto a pane`
+        }
+        disabled={disabled}
+        newPaneDrop={newPaneDrop}
+        worktreeOpen={form !== null}
+        onAgent={openAgent}
+        onWorktree={
+          worktreeHostAvailable
+            ? (trigger) => {
+                setNotice(null);
+                setForm((open) => (open === null ? trigger : null));
+              }
+            : undefined
+        }
+        onFolder={pickFolder}
+      />
+      {notice !== null && (
+        <p class="rail-create__notice" role="alert">
+          {notice}
+        </p>
+      )}
+      {form !== null && (
+        <RailWorktreeForm
+          anchor={form}
+          side={variant === "column" ? "right" : "below"}
+          repositories={repositories}
+          initialRepo={initialRepo}
+          onClose={() => setForm(null)}
+        />
+      )}
+    </>
   );
 }
