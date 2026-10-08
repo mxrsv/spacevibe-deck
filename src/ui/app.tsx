@@ -1,4 +1,6 @@
 import { AgentLaunchPage } from "../launcher/agent-launch-page";
+import type { AgentLaunchContextProps } from "../launcher/agent-launch-context";
+import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-launch-page-store";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
@@ -7,7 +9,7 @@ import { quickAgentOptions } from "../settings/quick-agents";
 import { activeCategory } from "./settings/active-category-store";
 import { listen, type UnlistenFn } from "../host/bridge";
 import { getCurrentWindow, currentWindowLabel } from "../host/window-host";
-import { ask, message } from "../host/dialog-host";
+import { ask, message, open as openDialog } from "../host/dialog-host";
 import { installQuitGuard } from "../lib/quit-guard";
 import {
   confirmClose,
@@ -42,7 +44,11 @@ import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { presetsData, savePreset } from "../presets/presets-store";
-import { recordWorkspaceOpen, removeWorkspaceRecents } from "../open-board/workspaces-store";
+import {
+  recordWorkspaceOpen,
+  removeWorkspaceRecents,
+  workspacesData,
+} from "../open-board/workspaces-store";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -151,7 +157,8 @@ import { AttentionStripChip } from "./attention/attention-strip-chip";
 // prop to `requestAttentionFocus`.
 import { AgentRail } from "./agent-rail";
 import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
-import { subjectForWorkspace } from "./agent-rail-model";
+import { buildAgentRail, subjectForWorkspace } from "./agent-rail-model";
+import { buildLaunchContext } from "../launcher/agent-launch-context-model";
 import { ensureRepositoriesScanned, repositoryScans } from "../repositories/repositories-store";
 import { StatusBar } from "./status-bar";
 import { SettingsScreen } from "./settings/settings-screen";
@@ -1323,7 +1330,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     const returnToBoard = boardOpen.value || agentLaunchPage.request.value?.returnToBoard === true;
     boardOpen.value = false;
     railKeyboardMenuFor.value = null;
-    ensureRepositoriesScanned([workspacePath]);
+    // The page lists every project the rail does, so it needs their scans even
+    // where no rail is mounted (top-tab mode).
+    ensureRepositoriesScanned([
+      workspacePath,
+      ...tabViews.value.flatMap((tab) => (tab.workspacePath === null ? [] : [tab.workspacePath])),
+      ...workspacesData.value.recents.map((recent) => recent.path),
+    ]);
     agentLaunchPage.open({
       target,
       returnToBoard,
@@ -1374,6 +1387,45 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           else manager.focusActive();
         }),
     });
+  }
+
+  /** The launch page's context row, derived from the rail so both name projects alike. */
+  function launchContextRow(target: AgentLaunchTarget): AgentLaunchContextProps {
+    const tabs = tabViews.value;
+    const recents = workspacesData.value.recents.map((recent) => recent.path);
+    const stream = buildAgentRail({
+      tabs,
+      activeIndex: activeTabIndex.value,
+      scans: repositoryScans.value,
+      workspaceHistoryPaths: recents,
+      railOrder: settings.value.railOrder,
+      now: Date.now(),
+    }).stream;
+    const agentId =
+      target.kind === "split"
+        ? tabs
+            .find((tab) => tab.key === target.tabKey)
+            ?.panes?.find((pane) => pane.paneId === target.paneId)?.agent
+        : null;
+    const agentLabel =
+      agentId == null
+        ? null
+        : (launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId);
+    const retarget = (path: string): void => {
+      ensureRepositoriesScanned([path]);
+      agentLaunchPage.retarget(path);
+    };
+    return {
+      context: buildLaunchContext({ stream, scans: repositoryScans.value, target, agentLabel }),
+      homeDir: getDesktopEnvironment().homeDir,
+      disabled: agentLaunchPage.pending.value,
+      onSelectWorkspace: retarget,
+      onSelectCheckout: retarget,
+      onPickFolder: async () => {
+        const picked = await openDialog({ directory: true, multiple: false });
+        if (typeof picked === "string") retarget(picked);
+      },
+    };
   }
 
   /** The live agent choices shared by both launcher surfaces. */
@@ -2426,6 +2478,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           {agentLaunchPage.request.value !== null && (
             <AgentLaunchPage
               target={agentLaunchPage.request.value.target}
+              contextRow={launchContextRow(agentLaunchPage.request.value.target)}
               agents={quickAgentOptions(launcherAgents(), settings.value.quickAgentIds)}
               resolved={agentsProbed.value}
               pending={agentLaunchPage.pending.value}

@@ -20,9 +20,30 @@ afterEach(() => {
   host.remove();
 });
 
+export function contextRow(
+  overrides: Partial<AgentLaunchPageProps["contextRow"]["context"]> = {},
+): AgentLaunchPageProps["contextRow"] {
+  return {
+    context: {
+      workspaces: [{ path: "/repo", label: "repo" }],
+      workspacePath: "/repo",
+      checkouts: [],
+      checkoutPath: "/repo",
+      chip: "Split beside Claude Code",
+      ...overrides,
+    },
+    homeDir: "/Users/dev",
+    disabled: false,
+    onSelectWorkspace: vi.fn(),
+    onSelectCheckout: vi.fn(),
+    onPickFolder: vi.fn(async () => {}),
+  };
+}
+
 function mount(overrides: Partial<AgentLaunchPageProps> = {}) {
   const props: AgentLaunchPageProps = {
     target: { kind: "split", tabKey: 1, paneId: 2, workspacePath: "/repo" },
+    contextRow: contextRow(),
     agents: [{ id: "claude", label: "Claude Code", missing: false, detail: "claude" }],
     resolved: true,
     pending: false,
@@ -63,29 +84,29 @@ describe("compact Original launch page", () => {
     expect(props.onRun).not.toHaveBeenCalled();
     act(() => buttons[0].click());
     expect(props.onRun).toHaveBeenCalledExactlyOnceWith("claude");
-    // The buttons say what will happen, so the destination row does not repeat it.
+    // The buttons say what will happen, so the context row does not repeat it.
     expect(host.textContent).not.toContain("Split · same tab");
   });
 
-  it("keeps one Run, and the New tab destination, when nothing exists to split", () => {
+  it("keeps one Run, and a New space chip, when nothing exists to split", () => {
     mount({
       target: { kind: "first-pane", workspacePath: "/repo" },
+      contextRow: contextRow({ chip: "New space" }),
       onRunInNewSpace: vi.fn(),
     });
     const buttons = host.querySelectorAll(".agent-launch-page__card button");
     expect(buttons).toHaveLength(1);
     expect(buttons[0].getAttribute("aria-label")).toBe("Run Claude Code");
-    expect(host.querySelector(".agent-launch-page__destination")?.textContent).toContain("New tab");
+    expect(host.querySelector(".agent-launch-page__chip")?.textContent).toBe("New space");
   });
 
   it("says New space before the press when the focused pane is in another checkout (RAIL4)", () => {
     const props = mount({
       target: { kind: "new-space", workspacePath: "/repo" },
+      contextRow: contextRow({ chip: "New space" }),
       onRunInNewSpace: vi.fn(),
     });
-    const destination = host.querySelector(".agent-launch-page__destination")?.textContent;
-    expect(destination).toContain("New space");
-    expect(destination).not.toContain("New tab");
+    expect(host.querySelector(".agent-launch-page__chip")?.textContent).toBe("New space");
     // One Run, and it does what the line said: the captured target is a new space.
     const buttons = host.querySelectorAll<HTMLButtonElement>(".agent-launch-page__card button");
     expect(buttons).toHaveLength(1);
@@ -182,5 +203,28 @@ describe("compact Original launch page", () => {
   it("offers no Add agent card when the page cannot edit the list", () => {
     mount();
     expect(host.querySelector("[data-launch-add]")).toBeNull();
+  });
+
+  it("lets an open popover take Escape before the page does", () => {
+    const props = mount({
+      contextRow: contextRow({
+        checkouts: [
+          { path: "/repo", label: "main", linked: false },
+          { path: "/wt", label: "feat", linked: true },
+        ],
+      }),
+    });
+    const triggers = host.querySelectorAll<HTMLButtonElement>(".nt-workspace-picker__trigger");
+    expect(triggers).toHaveLength(2);
+    act(() => triggers[1].click());
+    const checked = host.querySelector<HTMLButtonElement>('[aria-checked="true"]')!;
+    expect(document.activeElement).toBe(checked);
+    act(() => {
+      checked.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(host.querySelector('[role="menu"]')).toBeNull();
+    expect(props.onBack).not.toHaveBeenCalled();
   });
 });

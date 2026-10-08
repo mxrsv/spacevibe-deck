@@ -11,6 +11,8 @@ interface WorkspacePickerProps {
   /** Recent folders, newest first. */
   readonly paths: readonly string[];
   readonly homeDir: string;
+  /** Row names that differ from the folder's own (a project row names its project). */
+  readonly labels?: ReadonlyMap<string, string>;
   readonly disabled: boolean;
   /** Fills the Workspace field. NEVER launches. */
   readonly onSelect: (path: string) => void | Promise<void>;
@@ -35,8 +37,9 @@ export function WorkspacePicker(props: WorkspacePickerProps) {
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const paths = pickerPaths(props.value, props.paths);
-  const labels = paths.map(workspaceLabel);
-  const current = props.value === null ? "Choose a folder" : workspaceLabel(props.value);
+  const labelOf = (path: string): string => props.labels?.get(path) ?? workspaceLabel(path);
+  const labels = paths.map(labelOf);
+  const current = props.value === null ? "Choose a folder" : labelOf(props.value);
   const menuRows = (): HTMLButtonElement[] =>
     Array.from(root.current?.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]') ?? []);
 

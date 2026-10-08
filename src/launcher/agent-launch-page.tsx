@@ -1,15 +1,18 @@
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
-import { ArrowLeft, Columns, Gear } from "@phosphor-icons/react";
+import { ArrowLeft, Gear } from "@phosphor-icons/react";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { QuickAgentChoice } from "../settings/quick-agent-choices";
 import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { AgentLaunchCards } from "./agent-launch-cards";
+import { AgentLaunchContext, type AgentLaunchContextProps } from "./agent-launch-context";
 import { QuickAgentEditor } from "./quick-agent-editor";
 import { DeckIcon } from "../ui/controls/deck-icon";
 import "./agent-launch-page.css";
 
 export interface AgentLaunchPageProps {
   readonly target: AgentLaunchTarget;
+  /** The context row: workspace, checkout and placement chip (DL-32.6). */
+  readonly contextRow: AgentLaunchContextProps;
   readonly agents: readonly AgentOption[];
   readonly resolved: boolean;
   readonly pending: boolean;
@@ -45,11 +48,6 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
     );
     (control ?? root.current)?.focus();
   }, [active, props.resolved]);
-  const folder =
-    props.target.workspacePath
-      .replace(/[\\/]+$/, "")
-      .split(/[\\/]/)
-      .pop() || props.target.workspacePath;
   return (
     <section
       class="agent-launch-page"
@@ -57,7 +55,13 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
       tabIndex={-1}
       aria-label="Quick agent launcher"
       onKeyDownCapture={(event) => {
-        if (active && event.key === "Escape" && !event.isComposing) {
+        // An open popover answers its own Escape before the page does.
+        if (
+          active &&
+          event.key === "Escape" &&
+          !event.isComposing &&
+          !(event.target instanceof Element && event.target.closest('[role="menu"]'))
+        ) {
           event.preventDefault();
           event.stopPropagation();
           if (editing) {
@@ -78,19 +82,7 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
           <h1>A little more horsepower.</h1>
           <p>Pick an agent. Keep building, side by side.</p>
         </header>
-        <div class="agent-launch-page__destination">
-          <span title={props.target.workspacePath}>{folder}</span>
-          {/* With a tab to split the buttons say what each press does, so the
-              row would only repeat them; without one it names the one outcome
-              (RAIL4): a first tab, or a space beside the folder's others when
-              the focused pane is in another checkout. */}
-          {props.target.kind !== "split" && (
-            <span title={props.target.workspacePath}>
-              <DeckIcon icon={Columns} size={14} />
-              {props.target.kind === "new-space" ? "New space" : "New tab"}
-            </span>
-          )}
-        </div>
+        <AgentLaunchContext {...props.contextRow} />
         {!props.resolved ? <p role="status">Looking for installed agents…</p> : null}
         {props.resolved && props.agents.length === 0 ? (
           <div class="agent-launch-page__empty">
