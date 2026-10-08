@@ -55,7 +55,6 @@
 .window--windows .nt-composer__textarea,
 .window--windows .nt-composer__prompt-collapsed,
 .window--windows .nt-board__shortcuts button,
-.window--windows .nt-quick-launch__retarget p,
 .window--windows .nt-quick-launch__foot,
 .window--windows .nt-create-workspace__folder,
 .window--windows .nt-create-workspace__body input,
@@ -87,7 +86,6 @@
 .window--windows .pane-agent-header__message,
 .window--windows .nt-composer__notice,
 .window--windows .nt-composer__recovery button,
-.window--windows .nt-quick-launch__retarget button,
 .window--windows .nt-quick-launch__head span {
   font-weight: 400;
 }
@@ -152,7 +150,6 @@
    gallery-only, like its chip above.) */
 .window--windows .asr-needs__count,
 .window--windows .nt-quick-launch__head strong,
-.window--windows .nt-quick-launch__retarget strong,
 .window--windows .board-home__title,
 .window--windows .board-sessions__head h1,
 .window--windows .settings-screen__title,

@@ -214,11 +214,6 @@ const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
     ".nt-quick-launch__head strong",
     ".nt-quick-launch__head span",
   ],
-  [
-    "inline emphasis over its sentence",
-    ".nt-quick-launch__retarget strong",
-    ".nt-quick-launch__retarget p",
-  ],
   ["launcher heading over its eyebrow", ".nt-board__head h2", ".nt-board__head > span"],
   ["composer label over the prompt", ".nt-composer__prompt-head label", ".nt-composer__textarea"],
   [

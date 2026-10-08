@@ -159,7 +159,7 @@ export function wire(
   const tm = createTabManager(host, pty, {
     createPane,
     promptStaging: true,
-    onOpenTaskLauncher: vi.fn(),
+    onOpenTaskLauncher: vi.fn<(workspacePath: string | null) => void>(),
     ...extraDeps,
   });
   const emitSignal: EmitSignal = (id, signal) => {

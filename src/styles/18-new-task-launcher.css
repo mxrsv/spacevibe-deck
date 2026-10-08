@@ -448,8 +448,7 @@ img.nt-agent-mark {
   background: color-mix(in srgb, var(--bg) 18%, transparent);
 }
 
-.nt-composer__recovery button,
-.nt-quick-launch__retarget button {
+.nt-composer__recovery button {
   min-height: 27px;
   padding: 0 8px;
   border: 1px solid var(--hair);
@@ -460,21 +459,18 @@ img.nt-agent-mark {
   cursor: pointer;
 }
 
-.nt-composer__recovery button:hover:not(:disabled),
-.nt-quick-launch__retarget button:hover:not(:disabled) {
+.nt-composer__recovery button:hover:not(:disabled) {
   border-color: var(--hair-strong);
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
-.nt-composer__recovery button:disabled,
-.nt-quick-launch__retarget button:disabled {
+.nt-composer__recovery button:disabled {
   cursor: default;
   opacity: 0.45;
 }
 
-.nt-composer__recovery button:focus-visible,
-.nt-quick-launch__retarget button:focus-visible {
+.nt-composer__recovery button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -527,30 +523,6 @@ img.nt-agent-mark {
 
 .nt-quick-launch__head > .nt-icon-action:last-child {
   margin-left: auto;
-}
-
-.nt-quick-launch__retarget {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--hair);
-  background: var(--input-bg);
-}
-
-.nt-quick-launch__retarget p {
-  margin: 0;
-  color: var(--text-muted);
-  font: 450 var(--type-meta) / 1.45 var(--ui-font);
-}
-
-.nt-quick-launch__retarget strong {
-  color: var(--text-primary);
-  font-weight: 620;
-}
-
-.nt-quick-launch__retarget > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 8px;
 }
 
 .nt-quick-launch .nt-composer {
@@ -749,8 +721,7 @@ img.nt-agent-mark {
     justify-content: flex-end;
   }
 
-  .nt-composer__recovery,
-  .nt-quick-launch__retarget > div {
+  .nt-composer__recovery {
     align-items: stretch;
   }
 }
