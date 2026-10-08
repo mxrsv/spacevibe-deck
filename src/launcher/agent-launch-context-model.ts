@@ -76,9 +76,7 @@ export function buildLaunchContext(input: {
       scan.worktrees.some((item) => !item.bare && item.path === target.workspacePath),
   );
   const owner =
-    stream.find(
-      (group) => ownerScan?.kind === "repository" && group.orderKey === ownerScan.key,
-    ) ??
+    stream.find((group) => ownerScan?.kind === "repository" && group.orderKey === ownerScan.key) ??
     stream.find((group) => group.worktrees.some((entry) => entry.path === target.workspacePath));
   const row = owner === undefined ? undefined : rowFor(owner);
   return {
