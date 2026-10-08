@@ -12,7 +12,7 @@ import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
 import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 import { TabStrip } from "../ui/tab-strip";
 import { SidebarActions } from "../ui/sidebar-actions";
-import { SidebarFrameActions, SidebarNewButton } from "../ui/sidebar-toggle";
+import { SidebarFrameActions } from "../ui/sidebar-toggle";
 import { AgentUsageSummary } from "../ui/usage/agent-usage-summary";
 import type { AgentLimitsSnapshot } from "../lib/agent-limits";
 import type { CardActions } from "../ui/worktree-card-menus";
@@ -59,13 +59,7 @@ export function agentLimitsFixture(now = Date.now()): AgentLimitsSnapshot {
 
 /** The shipping leading frame cluster, with drag disabled in the gallery. */
 export function sidebarFrameActionsSpecimen(onToggle = NOOP) {
-  return (
-    <SidebarFrameActions
-      collapsed={false}
-      onToggle={onToggle}
-      newButton={<SidebarNewButton onOpenWorkspace={NOOP} />}
-    />
-  );
+  return <SidebarFrameActions collapsed={false} onToggle={onToggle} />;
 }
 
 /**
