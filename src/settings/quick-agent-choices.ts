@@ -1,6 +1,6 @@
 import { agentOptions, BUILTIN_AGENTS } from "../lib/agent-catalog";
 import { agentsProbed, detectedAgents } from "../terminal/agent-detection-store";
-import { MAX_QUICK_AGENTS, quickAgentOptions } from "./quick-agents";
+import { quickAgentOptions } from "./quick-agents";
 import { settings, updateSettings } from "./settings-store";
 
 /** One agent as the quick-list editors show it: pinned or not, and why not toggleable. */
@@ -38,9 +38,7 @@ export function quickAgentChoices(): readonly QuickAgentChoice[] {
         ? "Disabled in agent settings"
         : !available
           ? "Not installed"
-          : !pinned && selected.length >= MAX_QUICK_AGENTS
-            ? "Deselect an agent to add this one"
-            : null;
+          : null;
     return {
       id: agent.id,
       label: agent.label,

@@ -92,7 +92,7 @@ export interface Settings {
    * an agent out of the pickers.
    */
   disabledAgents: readonly string[];
-  /** Pinned agents, shared by quick launch and the checkout menu. Null uses the first five available agents; [] selects none. */
+  /** Pinned agents, shared by quick launch and the checkout menu. Null uses every available agent; [] selects none. */
   quickAgentIds: readonly string[] | null;
   /**
    * Project order the user dragged in the agent rail, by

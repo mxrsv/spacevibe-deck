@@ -38,7 +38,7 @@ lists, so it offers no flag, model or effort controls for them (Droid's autonomy
 mode are the exception) and relaunches them bare on resume.
 
 Until you choose [quick agents](#quick-agents), quick launch and the checkout menu offer the
-first five installed agents: these in this order, then your custom agents
+installed agents: these in this order, then your custom agents
 ([quick agent defaults](../../src/settings/quick-agents.ts)).
 
 ## Settings → Agents

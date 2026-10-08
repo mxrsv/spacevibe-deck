@@ -3076,7 +3076,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   never restates the scope the surface states once" still has its one
   statement, the footer. The menu's first group therefore carries no leading
   separator, or the hairline would draw across the surface's own top edge.
-  **The menu has two groups:** up to five quick agents, selected in Settings → Agents,
+  **The menu has two groups:** the quick agents, selected in Settings → Agents,
   then all other actions, starting with **Open shell**, which opens a new terminal tab
   at the checkout. One separator divides the groups; Worktree color and the footer
   add no separators. The menu does

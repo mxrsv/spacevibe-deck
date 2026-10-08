@@ -1,5 +1,4 @@
 import { quickAgentChoices, toggleQuickAgent } from "../../settings/quick-agent-choices";
-import { MAX_QUICK_AGENTS } from "../../settings/quick-agents";
 import { ConfigGroup, ConfigRow, ToggleRow } from "../controls/config-row";
 
 export function QuickAgentsSection() {
@@ -9,13 +8,8 @@ export function QuickAgentsSection() {
   return (
     <section aria-label="Quick agents">
       <ConfigGroup label="Quick agents" />
-      <ConfigRow
-        label="Pinned agents"
-        desc={`Up to ${MAX_QUICK_AGENTS}, in quick launch and the checkout menu`}
-      >
-        <span class="cfg-row__desc">
-          {pinned}/{MAX_QUICK_AGENTS}
-        </span>
+      <ConfigRow label="Pinned agents" desc="In quick launch and the checkout menu">
+        <span class="cfg-row__desc">{pinned}</span>
       </ConfigRow>
       <div data-quick-agent-choices>
         {choices.map((choice) => (

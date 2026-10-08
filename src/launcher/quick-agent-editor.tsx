@@ -1,5 +1,4 @@
 import type { QuickAgentChoice } from "../settings/quick-agent-choices";
-import { MAX_QUICK_AGENTS } from "../settings/quick-agents";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import "./agent-launch-page.css";
 
@@ -15,9 +14,7 @@ export function QuickAgentEditor({ choices, onToggle }: QuickAgentEditorProps) {
     <section class="agent-launch-page__editor" aria-label="Choose quick agents">
       <header>
         <strong>Show in quick launch</strong>
-        <span>
-          {pinned}/{MAX_QUICK_AGENTS}
-        </span>
+        <span>{pinned}</span>
       </header>
       <ul>
         {choices.map((choice) => (

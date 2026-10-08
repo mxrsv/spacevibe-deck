@@ -52,7 +52,7 @@ Press **⌘T** (Windows: **Ctrl+Shift+T**) for the active checkout, or **Agent**
 Agent Rail (to start one in a checkout that has nothing open, press its name). If you are working in that checkout, the new agent opens
 beside your current pane; otherwise it opens in a new space there, and the launcher says which
 before you press Run. Right-click a checkout for the menu, which lists your
-[quick agents](agents.md#quick-agents), up to five; choose one to launch it in that checkout
+[quick agents](agents.md#quick-agents); choose one to launch it in that checkout
 using the command shown in [Settings → Agents](agents.md#settings--agents). **Open shell**
 opens a plain shell in a new tab, and **New split here** opens one beside the current tab.
 The ⌘T menu also offers **Open another project…** to choose another workspace

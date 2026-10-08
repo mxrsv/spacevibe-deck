@@ -38,22 +38,19 @@ function click(label: string) {
 }
 
 describe("QuickAgentsSection", () => {
-  it("limits the automatic selection to five and allows swapping the sixth in", () => {
-    // Five built-ins ship, so an installed declared agent is the sixth.
-    const sixth = { id: "custom:aider", label: "Aider", command: "aider" };
-    settings.value = { ...DEFAULT_SETTINGS, customAgents: [sixth] };
+  it("pins every available agent by default, with no cap, and lets one be dropped", () => {
+    const extra = { id: "custom:aider", label: "Aider", command: "aider" };
+    settings.value = { ...DEFAULT_SETTINGS, customAgents: [extra] };
     detectedAgents.value = [...detectedAgents.value, { name: "aider", path: "/bin/aider" }];
     mount();
-    expect(host.querySelectorAll('[aria-checked="true"]')).toHaveLength(5);
-    expect(button(sixth.label).disabled).toBe(true);
+    const total = BUILTIN_AGENTS.length + 1;
+    expect(host.querySelectorAll('[aria-checked="true"]')).toHaveLength(total);
+    expect(button(extra.label).disabled).toBe(false);
     click(BUILTIN_AGENTS[0].label);
-    expect(button(sixth.label).disabled).toBe(false);
-    click(sixth.label);
     expect(settings.value.quickAgentIds).toEqual([
-      ...BUILTIN_AGENTS.slice(1, 5).map((agent) => agent.id),
-      sixth.id,
+      ...BUILTIN_AGENTS.slice(1).map((agent) => agent.id),
+      extra.id,
     ]);
-    expect(button(BUILTIN_AGENTS[0].label).disabled).toBe(true);
   });
 
   it("remembers an empty selection across remounts", () => {

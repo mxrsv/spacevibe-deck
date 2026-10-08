@@ -6,12 +6,12 @@ import { validateSettings } from "./settings-schema";
 const detected = BUILTIN_AGENTS.map((agent) => ({ name: agent.id, path: `/bin/${agent.id}` }));
 
 describe("quick agents", () => {
-  it("uses at most five available agents for older settings", () => {
+  it("uses every available agent for older settings", () => {
     const settings = validateSettings({});
     expect(settings.quickAgentIds).toBeNull();
     const options = agentOptions(detected, [], [BUILTIN_AGENTS[0].id]);
     expect(quickAgentOptions(options, settings.quickAgentIds).map((agent) => agent.id)).toEqual(
-      BUILTIN_AGENTS.slice(1, 6).map((agent) => agent.id),
+      BUILTIN_AGENTS.slice(1).map((agent) => agent.id),
     );
   });
 
@@ -20,7 +20,7 @@ describe("quick agents", () => {
     expect(quickAgentOptions(agentOptions(detected, []), settings.quickAgentIds)).toEqual([]);
   });
 
-  it("drops invalid and duplicate entries and caps persisted picks at five", () => {
+  it("drops invalid and duplicate entries but keeps every persisted pick", () => {
     const settings = validateSettings({
       quickAgentIds: [
         null,
@@ -36,7 +36,14 @@ describe("quick agents", () => {
         "cursor-agent",
       ],
     });
-    expect(settings.quickAgentIds).toEqual(["claude", "codex", "opencode", "agy", "gemini"]);
+    expect(settings.quickAgentIds).toEqual([
+      "claude",
+      "codex",
+      "opencode",
+      "agy",
+      "gemini",
+      "cursor-agent",
+    ]);
     expect(validateSettings({ quickAgentIds: "claude" }).quickAgentIds).toBeNull();
   });
 
