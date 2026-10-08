@@ -1,4 +1,4 @@
-import { agentLaunchPage } from "../launcher/agent-launch-page-store";
+import { agentLaunchPage, eventInOpenLaunchPopover } from "../launcher/agent-launch-page-store";
 import {
   resolveAgentLaunchTarget,
   type AgentLaunchTarget,
@@ -3131,7 +3131,12 @@ export function createTabManager(
     if (shortcutCaptureActive.value) {
       return;
     }
-    if (event.key === "Escape" && agentLaunchPageIsTop()) {
+    // An open popover on the launch page answers its own Escape first.
+    if (
+      event.key === "Escape" &&
+      agentLaunchPageIsTop() &&
+      !eventInOpenLaunchPopover(event.target)
+    ) {
       event.preventDefault();
       event.stopPropagation();
       agentLaunchPage.close(true);

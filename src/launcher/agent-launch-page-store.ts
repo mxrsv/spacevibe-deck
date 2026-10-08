@@ -30,6 +30,17 @@ export interface AgentLaunchPageRequest {
   readonly returnToBoard?: boolean;
 }
 
+/**
+ * True when a key event comes from inside a launch-page popover that is open
+ * (its menu or its trigger). That popover answers Escape itself; the page and
+ * the window-level shortcut handler must leave the key alone.
+ */
+export function eventInOpenLaunchPopover(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  const picker = target.closest(".agent-launch-page .nt-workspace-picker");
+  return picker?.querySelector('[role="menu"]') != null;
+}
+
 /** A page request owns navigation until another explicit navigation supersedes it. */
 export function createAgentLaunchPageStore() {
   const request = signal<AgentLaunchPageRequest | null>(null);

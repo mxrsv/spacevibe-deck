@@ -4,6 +4,7 @@ import type { AgentOption } from "../lib/agent-catalog";
 import type { QuickAgentChoice } from "../settings/quick-agent-choices";
 import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { AgentLaunchCards } from "./agent-launch-cards";
+import { eventInOpenLaunchPopover } from "./agent-launch-page-store";
 import { AgentLaunchContext, type AgentLaunchContextProps } from "./agent-launch-context";
 import { QuickAgentEditor } from "./quick-agent-editor";
 import { DeckIcon } from "../ui/controls/deck-icon";
@@ -60,7 +61,7 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
           active &&
           event.key === "Escape" &&
           !event.isComposing &&
-          !(event.target instanceof Element && event.target.closest('[role="menu"]'))
+          !eventInOpenLaunchPopover(event.target)
         ) {
           event.preventDefault();
           event.stopPropagation();
