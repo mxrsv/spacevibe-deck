@@ -211,9 +211,7 @@ function click(element: Element | null | undefined): void {
 }
 
 /**
- * Every session row in the tree (DL-27.28). The label line's `+`
- * (`.asr-checkout__add`) shares no class with a row, so this stays a pure
- * "how many rows are drawn" count.
+ * Every session row in the tree (DL-27.28): a pure "how many rows are drawn" count.
  */
 function rows(): HTMLElement[] {
   return [...host.querySelectorAll<HTMLElement>(".asr-card__row")];
@@ -830,8 +828,9 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(label?.hasAttribute("aria-expanded")).toBe(false);
   });
 
-  it("keeps a checkout with nothing open in it, and its `+` opens the agent list", async () => {
-    mount({ cardActions: ACTIONS });
+  it("keeps a checkout with nothing open in it, its label opening the launch page", async () => {
+    const onOpenAgentLauncher = vi.fn();
+    mount({ cardActions: { ...ACTIONS, onOpenAgentLauncher } });
     await settle();
 
     // One tab, in `/r/main`; `/r/side` is in Deck's history with nothing
@@ -839,38 +838,22 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(branches()).toEqual(["main", "side"]);
     expect(rows()).toHaveLength(1);
 
-    const adds = host.querySelectorAll<HTMLElement>(".asr-checkout__add");
-    expect(adds).toHaveLength(2);
-    // The press OPENS the checkout's agent list and starts nothing.
-    expect(adds[1].getAttribute("aria-haspopup")).toBe("menu");
-    click(adds[1]);
-    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
-    expect(menu).not.toBeNull();
-    // Anchored to the checkout, so no heading: the label line names it.
-    expect(menu?.querySelector(".asr-act__where")).toBeNull();
-    // The worktree ROOT, never a tab's cwd.
-    expect(menu?.getAttribute("aria-label")).toBe("Actions for main · side");
-    click(menu?.querySelector<HTMLElement>('[role="menuitem"]'));
-    expect(ACTIONS.onRunAgent).toHaveBeenCalledWith("claude", "/r/side");
+    // No `+` on any line (DL-27.26, amended 2026-10-08): the bare checkout's
+    // label is the way in, and names the project, the checkout AND its branch.
+    expect(host.querySelector(".asr-checkout__add")).toBeNull();
+    const bare = host.querySelectorAll<HTMLElement>(".asr-checkout__focus")[1];
+    expect(bare.getAttribute("aria-label")).toBe("New agent in main · side");
+    click(bare);
+    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/r/side");
+    expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
   });
 
-  it("names the project, the checkout AND its branch in the `+`'s accessible name", async () => {
+  it("keeps the bare checkout's label as text when the host cannot open a launcher", async () => {
     mount({ cardActions: ACTIONS });
     await settle();
 
-    // A segment already said is dropped (2026-08-30): `/r/side` is a worktree
-    // whose FOLDER and BRANCH are both `side`, the shape
-    // `git worktree add ../side side` produces.
-    expect(
-      [...host.querySelectorAll(".asr-checkout__add")].map((add) => add.getAttribute("aria-label")),
-    ).toEqual(["New agent in main", "New agent in main · side"]);
-  });
-
-  it("omits the launcher when the host cannot open one", async () => {
-    mount();
-    await settle();
-
     expect(host.querySelector(".asr-checkout__add")).toBeNull();
+    expect(host.querySelectorAll("span.asr-checkout__focus")).toHaveLength(1);
     // The labels stand without it (DL-19.7).
     expect(branches()).toEqual(["main", "side"]);
   });
@@ -895,11 +878,14 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(branches()).toEqual(["main"]);
     expect(host.querySelector(".asr-checkout__tag")?.textContent).toBe("folder");
     expect(rows()).toHaveLength(1);
-    // Its create control is the label line's `+`, and the list it raises has
-    // no branch to fork from.
-    expect(host.querySelectorAll(".asr-checkout__add")).toHaveLength(1);
+    // No `+` on the line; the checkout's right-click menu has no branch to fork from.
+    expect(host.querySelector(".asr-checkout__add")).toBeNull();
     expect(host.querySelector(".asr-cluster__add")).toBeNull();
-    click(host.querySelector(".asr-checkout__add"));
+    act(() => {
+      host
+        .querySelector(".asr-checkout")
+        ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    });
     const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
     expect(menu).not.toBeNull();
     expect(menu?.textContent).not.toContain("Create branch");
@@ -966,19 +952,13 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
 });
 
 describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", () => {
-  it("draws exactly one create control per checkout, and none on any project header", async () => {
-    // `/r/main` has a tab and `/r/side` is history-only: each label line
-    // carries its own `+` (DL-27.26, amended 2026-10-07).
+  it("draws no create control on any checkout or project header", async () => {
+    // DL-27.26, amended 2026-10-08: the create verbs live in the create row.
     mount({ cardActions: ACTIONS });
     await settle();
 
     expect(host.querySelectorAll(".asr-cluster__add")).toHaveLength(0);
-    expect(host.querySelectorAll(".asr-checkout__add")).toHaveLength(2);
-    expect(
-      [...host.querySelectorAll(".asr-checkout")].map(
-        (checkout) => checkout.querySelectorAll(".asr-checkout__add").length,
-      ),
-    ).toEqual([1, 1]);
+    expect(host.querySelectorAll(".asr-checkout__add")).toHaveLength(0);
   });
 
   it("gives a checkout no fold of its own, its collapse left to the project header", async () => {
@@ -991,35 +971,9 @@ describe("AgentRail create controls (rail-create-consolidation, 2026-09-02)", ()
 
     // DL-27.28: the project header's caret is the only fold, even with two
     // checkouts holding rows.
-    expect(host.querySelectorAll(".asr-checkout [aria-expanded]")).toHaveLength(2);
-    expect(
-      [...host.querySelectorAll(".asr-checkout [aria-expanded]")].every((node) =>
-        node.classList.contains("asr-checkout__add"),
-      ),
-    ).toBe(true);
+    expect(host.querySelectorAll(".asr-checkout [aria-expanded]")).toHaveLength(0);
     click(host.querySelector(".asr-checkout__focus"));
     expect(rows()).toHaveLength(2);
-  });
-
-  it("opens the checkout's agent list from its `+` and starts nothing on the press", async () => {
-    mount({ cardActions: ACTIONS });
-    await settle();
-
-    const add = host.querySelector<HTMLElement>(".asr-checkout__add");
-    expect(add?.getAttribute("aria-haspopup")).toBe("menu");
-    expect(add?.getAttribute("aria-expanded")).toBe("false");
-    click(add);
-    expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
-    expect(ACTIONS.onSplitHere).not.toHaveBeenCalled();
-    expect(add?.getAttribute("aria-expanded")).toBe("true");
-    // Anchored to the checkout, so no heading and its own words as the name.
-    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
-    expect(menu?.getAttribute("aria-label")).toBe("Actions for main");
-    expect(menu?.querySelector(".asr-act__where")).toBeNull();
-    // A second press on the `+` that opened it CLOSES it.
-    click(add);
-    expect(host.querySelector(".asr-pop--actions")).toBeNull();
-    expect(ACTIONS.onRunAgent).not.toHaveBeenCalled();
   });
 
   it("omits every create control when nothing wires the menu (DL-19.7)", async () => {
@@ -1095,26 +1049,26 @@ describe("AgentRail remembered projects (2026-08-20)", () => {
     expect(rows()).toHaveLength(1);
   });
 
-  it("keeps a remembered project one press from an agent, through its checkout's `+`", async () => {
+  it("keeps a remembered project one press from an agent, through its checkout's label", async () => {
     // The header carries no `+`, so a remembered project prints its checkouts
-    // as rowless label lines and THEIR `+` is the way back in — `/w/other` is
+    // as rowless label lines and THEIR label is the way back in — `/w/other` is
     // a plain folder, so it reads the same as a checkout with nothing open
-    // (tagged `folder`), and the list it raises runs there.
-    mount({ cardActions: ACTIONS });
+    // (tagged `folder`), and the launch page opens there.
+    const onOpenAgentLauncher = vi.fn();
+    mount({ cardActions: { ...ACTIONS, onOpenAgentLauncher } });
     await settle();
 
     expect(host.querySelector(".asr-cluster__add")).toBeNull();
     const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
     const remembered = heads[1].closest<HTMLElement>(".asr-cluster");
     expect(remembered?.querySelector(".asr-checkout__tag")?.textContent).toBe("folder");
-    const row = remembered?.querySelector<HTMLElement>(".asr-checkout__add");
+    const row = remembered?.querySelector<HTMLElement>("button.asr-checkout__focus");
     expect(row).not.toBeNull();
     // The header itself is still a still label — no toggle, no live close.
     expect(heads[1].querySelector(".asr-cluster__toggle")).toBeNull();
     expect(heads[1].querySelector(".asr-cluster__remove--live")).toBeNull();
     click(row);
-    click(host.querySelector<HTMLElement>('.asr-pop--actions [role="menuitem"]'));
-    expect(ACTIONS.onRunAgent).toHaveBeenCalledWith("claude", "/w/other");
+    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/w/other");
   });
 
   it("keeps a close on the rowless header that removes the folder", async () => {
@@ -1928,6 +1882,13 @@ describe("AgentRail create row (DL-27.14, amended 2026-10-08)", () => {
 
     expect(verbs()[0]).toBe("Agent");
     expect(host.querySelector(".asr-rail__list .rail-create")).toBeNull();
+  });
+
+  it("draws Folder, and omits Worktree when the host cannot create one (DL-19.7)", async () => {
+    mount({ cardActions: withLauncher });
+    await settle();
+
+    expect(verbs()).toEqual(["Agent", "Folder"]);
   });
 
   it("opens the launch page on the focused checkout", async () => {

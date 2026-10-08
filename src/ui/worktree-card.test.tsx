@@ -226,8 +226,8 @@ describe("WorktreeCard label line (DL-27.28)", () => {
     expect(host.querySelector(".asr-card__head")).toBeNull();
     expect(host.querySelector(".asr-card__strip")).toBeNull();
     expect(host.querySelector(".asr-card__new")).toBeNull();
-    // Only the `+`'s menu is a disclosure; the checkout itself has none.
-    expect([...host.querySelectorAll("[aria-expanded]")]).toEqual([add()]);
+    // The checkout has no disclosure; its menu is the right-click one.
+    expect(host.querySelectorAll("[aria-expanded]")).toHaveLength(0);
     expect(host.textContent).not.toContain("5m");
     // The rows are the checkout's own children, after its label line.
     const children = [...(host.querySelector(".asr-checkout")?.children ?? [])];
@@ -235,7 +235,7 @@ describe("WorktreeCard label line (DL-27.28)", () => {
     expect(children.filter((child) => child.classList.contains("asr-card__row"))).toHaveLength(2);
   });
 
-  it("does not redirect row, close or `+` presses to the first pane", () => {
+  it("does not redirect row or close presses to the first pane", () => {
     const onFocusPane = vi.fn();
     const onClosePane = vi.fn();
     mount({
@@ -247,75 +247,52 @@ describe("WorktreeCard label line (DL-27.28)", () => {
     click(host.querySelectorAll(".asr-card__hit")[1]);
     expect(onFocusPane).toHaveBeenCalledExactlyOnceWith(8, 22);
     click(host.querySelector(".asr-row__action--close"));
-    click(add());
     expect(onFocusPane).toHaveBeenCalledTimes(1);
     expect(onClosePane).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("WorktreeCard `+` (DL-27.26, amended 2026-10-07)", () => {
-  it("is omitted when the host cannot open anything (DL-19.7)", () => {
-    mount({ group: group({ panes: [pane()] }) });
+describe("WorktreeCard create control (DL-27.26, amended 2026-10-08)", () => {
+  const label = (): HTMLElement | null => host.querySelector(".asr-checkout__focus");
+
+  it("draws no `+` on the line, with or without a launcher", () => {
+    mount({ actions: cardActions(), group: group({ panes: [pane()] }) });
+    expect(add()).toBeNull();
+    mount({
+      actions: { ...cardActions(), onOpenAgentLauncher: vi.fn() },
+      group: group({ panes: [] }),
+    });
     expect(add()).toBeNull();
   });
 
-  it("opens the checkout's agent list, starting nothing on the press", () => {
-    const actions = cardActions();
-    mount({ actions, group: group({ path: "/repo/ai-terminal", panes: [pane()] }) });
-
-    expect(add()?.getAttribute("aria-label")).toBe(`New agent in ${WHERE}`);
-    // No `title`: one never appears on focus (DL-23.10).
-    expect(add()?.hasAttribute("title")).toBe(false);
-    expect(add()?.getAttribute("aria-haspopup")).toBe("menu");
-    expect(add()?.getAttribute("aria-expanded")).toBe("false");
-    click(add());
-    expect(actions.onRunAgent).not.toHaveBeenCalled();
-    expect(actions.onSplitHere).not.toHaveBeenCalled();
-    expect(add()?.getAttribute("aria-expanded")).toBe("true");
-    const menu = host.querySelector<HTMLElement>(".asr-pop--actions");
-    expect(menu).not.toBeNull();
-    click(menu?.querySelector<HTMLElement>('[role="menuitem"]'));
-    expect(actions.onRunAgent).toHaveBeenCalledExactlyOnceWith("claude", "/repo/ai-terminal");
-    // A choice closes it.
-    expect(host.querySelector(".asr-pop--actions")).toBeNull();
-  });
-
-  it("closes the list on a second press of the `+` that opened it", () => {
-    mount({ actions: cardActions(), group: group({ panes: [pane()] }) });
-
-    click(add());
-    expect(host.querySelector(".asr-pop--actions")).not.toBeNull();
-    click(add());
-    expect(host.querySelector(".asr-pop--actions")).toBeNull();
-    expect(add()?.getAttribute("aria-expanded")).toBe("false");
-  });
-
-  it.each([true, false])(
-    "opens the launch page on the checkout (has rows=%s), right-click still raising the menu",
-    (rows) => {
-      const onOpenAgentLauncher = vi.fn();
-      const actions = { ...cardActions(), onOpenAgentLauncher };
-      mount({ group: group({ panes: rows ? [pane()] : [] }), actions });
-
-      expect(add()?.hasAttribute("aria-haspopup")).toBe(false);
-      click(add());
-      expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/repo/ai-terminal");
-      expect(actions.onRunAgent).not.toHaveBeenCalled();
-      expect(host.querySelector('[role="menu"]')).toBeNull();
-      contextMenu(line());
-      expect(host.querySelector('[role="menu"]')).not.toBeNull();
-    },
-  );
-
-  it("keeps the actions menu reachable for a folder git does not know", () => {
+  it("opens the launch page when a bare checkout's label is pressed", () => {
     const onOpenAgentLauncher = vi.fn();
     const actions = { ...cardActions(), onOpenAgentLauncher };
-    mount({ group: group({ labelled: false, panes: [pane()] }), actions });
-    click(add());
-    expect(onOpenAgentLauncher).toHaveBeenCalledOnce();
-    contextMenu(host.querySelector(".asr-card__row"));
+    mount({ group: group({ panes: [] }), actions });
+
+    expect(label()?.tagName).toBe("BUTTON");
+    expect(label()?.getAttribute("aria-label")).toBe(`New agent in ${WHERE}`);
+    click(label());
+    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/repo/ai-terminal");
+    expect(actions.onRunAgent).not.toHaveBeenCalled();
+    expect(host.querySelector('[role="menu"]')).toBeNull();
+    contextMenu(line());
     expect(host.querySelector('[role="menu"]')).not.toBeNull();
-    expect(onOpenAgentLauncher).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a bare checkout's label as text without a launcher", () => {
+    mount({ group: group({ panes: [] }), actions: cardActions() });
+    expect(label()?.tagName).toBe("SPAN");
+  });
+
+  it("focuses the checkout instead when it has rows", () => {
+    const onOpenAgentLauncher = vi.fn();
+    mount({
+      group: group({ panes: [pane()] }),
+      actions: { ...cardActions(), onOpenAgentLauncher },
+    });
+    click(label());
+    expect(onOpenAgentLauncher).not.toHaveBeenCalled();
   });
 });
 
@@ -337,7 +314,7 @@ describe("WorktreeCard actions menu", () => {
         ...actions,
       },
     });
-    click(add());
+    contextMenu(line());
     return host.querySelector<HTMLElement>(".asr-pop--actions");
   }
 
@@ -617,11 +594,11 @@ describe("WorktreeCard checkout with nothing open", () => {
     expect(label?.querySelector(".asr-checkout__name")?.textContent).toBe("main");
   });
 
-  it("keeps the checkout reachable through its `+`", () => {
+  it("keeps the checkout reachable through its right-click menu", () => {
     const actions = cardActions();
     mount({ actions, group: group({ path: "/repo/docs", panes: [] }) });
 
-    click(add());
+    contextMenu(line());
     expect(actions.onRunAgent).not.toHaveBeenCalled();
     click(host.querySelector<HTMLElement>('.asr-pop--actions [role="menuitem"]'));
     expect(actions.onRunAgent).toHaveBeenCalledWith("claude", "/repo/docs");

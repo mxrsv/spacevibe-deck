@@ -1,5 +1,5 @@
 import { useRef, useState } from "preact/hooks";
-import { Folder, GitBranch, Plus, TerminalWindow, X } from "@phosphor-icons/react";
+import { Folder, GitBranch, TerminalWindow, X } from "@phosphor-icons/react";
 import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
 import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
 import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
@@ -269,8 +269,9 @@ export function WorktreeCard(props: WorktreeCardProps) {
       }}
     >
       <div class="asr-checkout__line">
-        {/* A checkout with nothing open has nothing to focus, so its label is
-            text; the `+` beside it is the way in (DL-27.26, amended). */}
+        {/* A checkout with nothing open has nothing to focus, so pressing its
+            label opens the launch page on it (DL-27.26, amended 2026-10-08).
+            Without a launcher the label is plain text. */}
         {group.entries.length > 0 ? (
           <button
             type="button"
@@ -284,31 +285,22 @@ export function WorktreeCard(props: WorktreeCardProps) {
           >
             <LineLabel group={group} />
           </button>
+        ) : actions?.onOpenAgentLauncher !== undefined ? (
+          <button
+            type="button"
+            class="asr-checkout__focus"
+            aria-label={`New agent in ${where}`}
+            title={where}
+            onClick={() => {
+              actions.onOpenAgentLauncher?.(group.path);
+            }}
+          >
+            <LineLabel group={group} />
+          </button>
         ) : (
           <span class="asr-checkout__focus" title={where}>
             <LineLabel group={group} />
           </span>
-        )}
-        {actions !== undefined && (
-          // DL-27.26 (amended 2026-10-07): the one create control per
-          // checkout. No `title` — one never appears on focus (DL-23.10) and
-          // the accessible name already says it all.
-          <button
-            type="button"
-            class="asr-checkout__add"
-            aria-haspopup={actions.onOpenAgentLauncher ? undefined : "menu"}
-            aria-expanded={actions.onOpenAgentLauncher ? undefined : menu.rect !== null}
-            aria-label={`New agent in ${where}`}
-            onClick={(event) => {
-              if (actions.onOpenAgentLauncher) {
-                actions.onOpenAgentLauncher(group.path);
-                return;
-              }
-              menu.toggleAt(anchor(event.currentTarget), event.currentTarget);
-            }}
-          >
-            <DeckIcon icon={Plus} size={CHROME_ICON} />
-          </button>
         )}
       </div>
       {group.entries.map((entry) => (

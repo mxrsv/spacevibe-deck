@@ -439,7 +439,7 @@ describe("AgentRail collapsed flyout (DL-27.29)", () => {
     expect(railCardMenuOpen.value).toBe(false);
   });
 
-  it("closes the flyout when a checkout's `+` opens the launcher", async () => {
+  it("closes the flyout when a bare checkout's label opens the launcher", async () => {
     const onOpenAgentLauncher = vi.fn();
     const cardActions: CardActions = {
       agents: [],
@@ -448,13 +448,28 @@ describe("AgentRail collapsed flyout (DL-27.29)", () => {
       onSplitHere: vi.fn(),
       onOpenAgentLauncher,
     };
+    // `/w/deck-side` is a second checkout of the project with nothing open, so its label is
+    // the launcher's way in.
+    const twoCheckouts: RepositoryEntry = {
+      ...DECK_SCAN,
+      worktrees: [worktree("/w/deck", "main"), worktree("/w/deck-side", "side")],
+    };
+    configureRepositoryClient({ scan: async () => twoCheckouts });
+    invalidateRepositoryScans();
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/w/deck", lastOpenedAt: 2 },
+        { path: "/w/deck-side", lastOpenedAt: 1 },
+      ],
+    };
     mount({ collapsed: true, cardActions });
     await settle();
     press(avatars()[0]);
 
-    press(flyout()?.querySelector(".asr-checkout__add"));
+    press(flyout()?.querySelector('button.asr-checkout__focus[aria-label^="New agent in"]'));
 
-    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/w/deck");
+    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/w/deck-side");
     expect(flyout()).toBeNull();
   });
 

@@ -105,8 +105,8 @@
   text-align: left;
 }
 
-/* A checkout with nothing open renders its label as text (`span`), so only a real button
-   takes the pointer and the wash. */
+/* A checkout with nothing open and no launcher renders its label as text (`span`), so only a
+   real button takes the pointer and the wash. */
 button.asr-checkout__focus {
   cursor: pointer;
 }
@@ -116,8 +116,7 @@ button.asr-checkout__focus:hover {
   color: var(--text-primary);
 }
 
-button.asr-checkout__focus:focus-visible,
-.asr-checkout__add:focus-visible {
+button.asr-checkout__focus:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -149,36 +148,6 @@ button.asr-checkout__focus:focus-visible,
   color: var(--text-faint);
   font: 500 var(--type-micro) / 1.5 var(--ui-font);
   white-space: nowrap;
-}
-
-/* The checkout's one create control (DL-27.26, amended 2026-10-07), the size of a row's close
-   so the two trailing controls share one right edge. Revealed on hover or focus of its label
-   line, as the mock's `.co-add` is (DL-27.28, amended): by `opacity`, never `display`, so it
-   stays in the tab order and its own focus reveals it for a keyboard. */
-.asr-checkout__add {
-  display: grid;
-  opacity: 0;
-  transition: opacity var(--duration) var(--ease);
-  box-sizing: border-box;
-  width: var(--asr-card-action-size);
-  height: var(--asr-card-action-size);
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--asr-card-pill-radius);
-  background: none;
-  color: var(--text-faint);
-  cursor: pointer;
-}
-
-.asr-checkout__line:hover .asr-checkout__add,
-.asr-checkout__line:focus-within .asr-checkout__add {
-  opacity: 1;
-}
-
-.asr-checkout__add:hover {
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
 }
 
 /* The project cluster (folder header + checkouts) carries no frame, fill or outline, focused or
