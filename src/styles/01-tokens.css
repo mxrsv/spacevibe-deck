@@ -172,7 +172,9 @@
      --radius-flat is the fourth role (owner, 2026-08-17): a control packed
      into a DENSE row, where a 10px corner forces horizontal padding to keep
      text off the curve and the padding is width the text needed. The tab
-     strip's chips now use --radius-tab, keeping compact details at 2px. */
+     strip's chips now use --radius-tab, keeping compact details at 2px.
+     Since 2026-10-09 --radius-tab is also every labelled control 28px tall
+     or less (DL-20.1's height cap): 10px on a 24px box reads as a pill. */
   --radius-tight: 8px;
   --radius-control: 10px;
   --radius-surface: 12px;

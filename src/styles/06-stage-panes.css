@@ -159,7 +159,7 @@
   height: 24px;
   padding: 0 10px;
   border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-primary);
   font-size: var(--type-meta);
@@ -306,7 +306,7 @@
   height: 22px;
   padding: 0 8px;
   border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: var(--input-bg);
   color: var(--text-primary);
   font-family: var(--ui-font);
@@ -627,7 +627,7 @@
   width: 160px;
   padding: 2px 6px;
   border: none;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: var(--input-bg);
   color: var(--text-primary);
   font: inherit;

@@ -477,7 +477,8 @@ cfg-row
   app-wide, and this rule now points there rather than restating a second copy
   of the signifier that would drift from it.
 - **DL-5.2** The pill (`.cfg-btn`): the value inside a 1px `--hair` border, at
-  `--radius-control` (DL-20.1 — 6px until 2026-08-14). Hover → `--hair-strong`
+  `--radius-tab` (DL-20.1's height cap, 2026-10-09; 10px from 2026-08-14,
+  6px before that). Hover → `--hair-strong`
   border. Focus-visible → 2px `--accent` outline (app-wide convention, DL-21.3).
   Disabled → `--text-faint` (DL-21.4).
 - **DL-5.3** Affordance glyphs (`↹` cycle, `▾` menu, `…` picker, `↺` reset)
@@ -1548,7 +1549,7 @@ window's identity and its actions at the same time.
   had two segments until this rule: every terminal tab, a `.tabbar__sep`
   hairline, then every non-terminal surface. Both are gone. A chip is a
   terminal tab, a document or the browser and looks identical either way —
-  same height, same `--radius-control`, same `--type-body` label, same close
+  same height, same `--radius-tab`, same `--type-body` label, same close
   control, DL-21.1's wash for the selected one — and what it opened is said by
   its **glyph**, never by its shape, its position or a divider. That glyph
   slot is a fixed 15px box holding exactly ONE mark: an agent's brand mark for
@@ -1851,6 +1852,19 @@ direction token rebuild §9.4
   8/10/12. A value chosen by feel at a use site is not part of this scale;
   `border-radius: 50%` and the 999px capsule stay shapes rather than scale
   values.
+  **Amended 2026-10-09 (owner): height caps the control role.** A control that
+  carries a text label — wider than it is tall, a row, a field or a labelled
+  button — and stands **28px tall or less** takes `--radius-tab`, not
+  `--radius-control`: on a 24px box a 10px corner is most of the half-height
+  and the control reads as a pill. Square icon-only buttons keep
+  `--radius-control`, where 10px reads as a soft square, and badges and counts
+  that are not controls are outside this clause. It generalises four fixes made
+  one at a time — the strip's chips (DECK-39), the rail card's 6px, the
+  worktree card, and the rail's create row that prompted it — so the next small
+  labelled control does not fall back to 10px. The design-language test fails
+  a block that declares a height of 28px or less at `--radius-control` without
+  a matching width; a control whose height comes from its padding is held by
+  review, not by that scan.
 - **DL-20.2** One motion pair for chrome state change: `--duration` (150ms) and
   `--ease` (`cubic-bezier(0.4, 0, 0.2, 1)`). §7's 0.13s figure was this rule
   before it had a token; it is now spelled `--duration`. The panel slide-over's
@@ -2198,7 +2212,7 @@ next free number above §24, not the gap
   saying so.
 - **DL-25.5** **The row's action wears the quiet bordered pill (2026-08-16).**
   It takes DL-5.2's skin — transparent fill, a 1px `--hair` border at
-  `--radius-control`, hover moving `border-color` to `--hair-strong` and
+  `--radius-tab`, hover moving `border-color` to `--hair-strong` and
   nothing else — and none of that pill's value affordances: it sets nothing and
   reads nothing back, so it carries no readout, no chevron and no state. The
   skin is borrowed rather than reinvented for the reason DL-17.3 already

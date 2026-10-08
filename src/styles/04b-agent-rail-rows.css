@@ -163,7 +163,7 @@
      slot; the leading status mark follows the same row rhythm. */
   padding: 3px 8px 3px 8px;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -206,7 +206,7 @@
   inset: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   cursor: pointer;
 }

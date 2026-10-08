@@ -241,7 +241,7 @@
   /* A line inside this surface, not a boundary between two — `--hair` is
      correct here (DL-2.3's re-read, §10's migration table). */
   border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
 }
 
 .sessions-list__project:focus-visible {
@@ -335,7 +335,7 @@
   color: var(--text-primary);
   background: transparent;
   border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   cursor: pointer;
   transition:
     color var(--duration) var(--ease),

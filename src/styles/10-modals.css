@@ -52,7 +52,7 @@
   font: inherit;
   font-size: var(--type-meta);
   padding: 4px 10px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -150,7 +150,7 @@
   background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
 }
 .preset-editor__meta {
   flex: 1;
@@ -165,7 +165,7 @@
   font: inherit;
   font-size: var(--type-body);
   padding: 6px 14px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -217,7 +217,7 @@
   background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
 }
 .save-preset__toggle {
   display: flex;
@@ -235,7 +235,7 @@
   font: inherit;
   font-size: var(--type-body);
   padding: 6px 14px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -283,7 +283,7 @@
   background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
 }
 /* DL-3.2: a refusal is red. This is the field's own reason, not the panel's
    status line — that one lives under the dock's header and reports what main
@@ -302,7 +302,7 @@
   font: inherit;
   font-size: var(--type-body);
   padding: 6px 14px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -355,7 +355,7 @@
   font: inherit;
   font-size: var(--type-body);
   padding: 6px 14px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -494,7 +494,7 @@
   font: inherit;
   font-size: var(--type-meta);
   padding: 3px 10px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);

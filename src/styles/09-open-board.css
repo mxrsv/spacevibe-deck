@@ -156,7 +156,7 @@
   margin-top: 12px;
   padding: 4px 6px;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: none;
   color: var(--text-faint);
   font: inherit;
@@ -181,7 +181,7 @@
   margin-top: 14px;
   padding: 6px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--text-primary);
   font: inherit;

@@ -186,6 +186,37 @@ function offScaleRadii(): string[] {
   return violations;
 }
 
+/**
+ * DL-20.1's height cap (2026-10-09): a labelled control 28px tall or less takes
+ * `--radius-tab`. The scan sees only blocks that declare their height; a
+ * matching `width` marks a square icon button, which keeps the control role.
+ * The two exemptions are not labelled controls: `.extapp` is an icon and a
+ * caret, `.asr-avatar__badge` is a count.
+ */
+const RADIUS_CAP_HEIGHT = 28;
+const RADIUS_CAP_EXEMPT = new Set([".extapp", ".asr-avatar__badge"]);
+
+function pillShapedControls(): string[] {
+  const css = readStylesheet().replace(CSS_COMMENT, "");
+  const violations: string[] = [];
+  for (const [, prelude, body] of css.matchAll(CSS_BLOCK)) {
+    const selector = prelude.trim().replace(/\s+/g, " ");
+    if (RADIUS_CAP_EXEMPT.has(selector)) continue;
+    const declarations = body.split(";").map((raw) => raw.trim().replace(/\s+/g, " "));
+    if (!declarations.includes("border-radius: var(--radius-control)")) continue;
+    const px = (pattern: RegExp): number | undefined => {
+      const match = declarations.map((declaration) => declaration.match(pattern)).find(Boolean);
+      return match ? Number(match[1]) : undefined;
+    };
+    const height = px(/^(?:min-)?height: (\d+(?:\.\d+)?)px$/);
+    const width = px(/^width: (\d+(?:\.\d+)?)px$/);
+    if (height !== undefined && height <= RADIUS_CAP_HEIGHT && width !== height) {
+      violations.push(`${selector}: ${height}px tall at --radius-control`);
+    }
+  }
+  return violations;
+}
+
 describe("design-language radius scale", () => {
   it("declares the DL-20.1 roles at 2/6/8/10/12", () => {
     const css = readStylesheet().replace(CSS_COMMENT, "");
@@ -211,6 +242,10 @@ describe("design-language radius scale", () => {
 
   it("rejects a radius picked by feel at a use site", () => {
     expect(offScaleRadii()).toEqual([]);
+  });
+
+  it("caps a short labelled control at --radius-tab", () => {
+    expect(pillShapedControls()).toEqual([]);
   });
 
   it("keeps the rulebook synchronized with the 2/6/8/10/12 token contract", () => {

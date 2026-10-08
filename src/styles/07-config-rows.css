@@ -76,7 +76,7 @@
   color: var(--text-primary);
   background: transparent;
   border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   padding: 3px 8px;
   cursor: pointer;
   transition:
@@ -373,7 +373,7 @@
   font-size: 12px;
   color: var(--accent);
   padding: 3px 8px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   cursor: pointer;
 }
 
@@ -482,7 +482,7 @@
 .cfg-row__label--edit:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
 }
 
 .cfg-row__remove {

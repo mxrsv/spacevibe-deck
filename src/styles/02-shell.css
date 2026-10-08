@@ -149,7 +149,7 @@
   gap: 4px;
   padding: 0 6px;
   border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-muted);
   font: 540 var(--type-body) / 1 var(--ui-font);
@@ -460,7 +460,7 @@
   margin-top: 2px;
   padding: 7px 6px 7px 9px;
   border: none;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-faint);
   font-family: inherit;

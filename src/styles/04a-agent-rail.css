@@ -224,7 +224,7 @@
 }
 
 .asr-cluster__toggle:focus-visible {
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -1014,7 +1014,7 @@
   height: 22px;
   padding: 0 8px;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: color-mix(in srgb, var(--status-unread) 10%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--status-unread) 28%, transparent);
   color: var(--text-muted);

@@ -89,7 +89,7 @@
   padding: 0 8px;
   box-sizing: border-box;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
@@ -168,7 +168,7 @@
   padding: 0 8px;
   box-sizing: border-box;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -691,7 +691,7 @@
 
 .board-panel__action {
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: var(--state-hover-bg);
   color: var(--text-primary);
   font: inherit;

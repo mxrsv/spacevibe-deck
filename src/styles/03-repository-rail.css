@@ -37,7 +37,7 @@
   min-width: 0;
   padding: 5px 6px;
   border: none;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-primary);
   font-family: inherit;
