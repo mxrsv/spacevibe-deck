@@ -94,7 +94,9 @@ forward.
 
 - Verify the sending domain in Resend; set `RESEND_API_KEY` as a Worker secret and choose the
   `FEEDBACK_EMAIL_FROM` address.
-- Create or reuse the Google OAuth web client; add `https://deck.spacevibe.dev`,
+- Create a Deck-only Google OAuth web client (owner, 2026-10-08: reusing GiffCoffee's client
+  was turned down — it shares infrastructure across repos and brands the consent screen as
+  GiffCoffee). Deck needs only the client ID, no client secret. Add `https://deck.spacevibe.dev`,
   `http://localhost:5173` and `http://127.0.0.1:5173` as authorized JavaScript origins; supply
   `GOOGLE_CLIENT_ID`.
 - Run the new Supabase migration (`db push`) before deploying the Worker.
