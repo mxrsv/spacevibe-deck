@@ -159,15 +159,19 @@ export function RailWorktreeForm({
             placeholder="feature/my-branch"
             onInput={(event) => form.setBranch(event.currentTarget.value)}
           />
-          <label class="rail-wt__label" for="rail-wt-dest">
-            Location
-          </label>
-          <input
-            id="rail-wt-dest"
-            class="rail-wt__field rail-wt__field--quiet"
-            value={state.destPath}
-            onInput={(event) => form.setDest(event.currentTarget.value)}
-          />
+          {state.destPath !== "" && (
+            <>
+              <label class="rail-wt__label" for="rail-wt-dest">
+                Location
+              </label>
+              <input
+                id="rail-wt-dest"
+                class="rail-wt__field rail-wt__field--quiet"
+                value={state.destPath}
+                onInput={(event) => form.setDest(event.currentTarget.value)}
+              />
+            </>
+          )}
           {state.error !== null && (
             <p class="rail-wt__error" role="alert">
               {worktreeErrorCopy(state.error)}

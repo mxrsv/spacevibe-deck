@@ -95,6 +95,16 @@ describe("RailWorktreeForm (DL-27.14, amended 2026-10-08)", () => {
     expect(host.querySelector<HTMLInputElement>("#rail-wt-dest")?.value).toContain("feat/x");
   });
 
+  it("hides the location until there is a destination", async () => {
+    mount();
+    await settle();
+    expect(host.querySelector("#rail-wt-dest")).toBeNull();
+
+    type("#rail-wt-branch", "feat/x");
+
+    expect(host.querySelector("#rail-wt-dest")).not.toBeNull();
+  });
+
   it("creates on Enter, records the path and starts nothing", async () => {
     addWorktree.mockResolvedValue({ ok: true, path: "/r/main-worktrees/feat-x" });
     mount();
@@ -110,7 +120,9 @@ describe("RailWorktreeForm (DL-27.14, amended 2026-10-08)", () => {
       destPath: expect.stringContaining("feat/x"),
     });
     expect(remember).toHaveBeenCalledExactlyOnceWith("/r/main-worktrees/feat-x");
-    expect(host.querySelector('[role="status"]')?.textContent).toContain("Created feat/x. Nothing was started");
+    expect(host.querySelector('[role="status"]')?.textContent).toContain(
+      "Created feat/x. Nothing was started",
+    );
     expect(onClose).not.toHaveBeenCalled();
   });
 
