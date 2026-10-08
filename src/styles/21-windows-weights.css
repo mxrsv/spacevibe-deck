@@ -165,12 +165,6 @@
    stylesheets; naming the refinement again, one class heavier, keeps its
    answer. */
 
-/* The identity row's small `New` is a quiet 400 control where Tauri's pinned launcher is a 600
-   button (`.sidebar-new`). */
-.window--windows .sidebar-frame-actions .sidebar-new {
-  font-weight: 400;
-}
-
 /* The Agent Board's star is a quiet 400 link where the home screen's is a 600
    button (`.nt-board--agents .board-home__star`). */
 .window--windows .nt-board--agents .board-home__star {

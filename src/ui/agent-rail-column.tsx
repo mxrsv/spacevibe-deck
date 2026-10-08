@@ -35,6 +35,8 @@ export interface RailAvatarColumnProps {
   /** The tree's own stream: the flyout reads its project's checkouts from here, live. */
   readonly stream: readonly RailStreamGroup[];
   readonly cards: FlyoutCardProps;
+  /** The create verbs as a stack of icon buttons above the avatars (DL-27.14, DL-27.29). */
+  readonly create?: ComponentChildren;
   /** The rail's tools, collapsed to one button at the column's foot (DL-28.6). */
   readonly footer?: ComponentChildren;
 }
@@ -200,7 +202,13 @@ interface OpenFlyout {
   readonly rect: DOMRect;
 }
 
-export function RailAvatarColumn({ avatars, stream, cards, footer }: RailAvatarColumnProps) {
+export function RailAvatarColumn({
+  avatars,
+  stream,
+  cards,
+  create,
+  footer,
+}: RailAvatarColumnProps) {
   // One flyout at a time: a single slot, so pressing another avatar replaces it.
   const [open, setOpen] = useState<OpenFlyout | null>(null);
   const [stopKey, setStopKey] = useState<string | null>(null);
@@ -228,6 +236,7 @@ export function RailAvatarColumn({ avatars, stream, cards, footer }: RailAvatarC
   return (
     <nav class="asr-rail asr-rail--mounted asr-rail--column" aria-label="Agents">
       <div class="asr-column__drag" data-tauri-drag-region aria-hidden="true" />
+      {create}
       <div
         class="asr-column__list"
         onKeyDown={(event) => {

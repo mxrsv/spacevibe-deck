@@ -202,7 +202,7 @@ import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { applySidebarShell } from "./sidebar-shell";
-import { SidebarFrameActions, SidebarNewButton, SidebarToggle } from "./sidebar-toggle";
+import { SidebarFrameActions, SidebarToggle } from "./sidebar-toggle";
 import type { NewPaneDropDeps } from "./new-pane-drag";
 import {
   clearWindowRecord,
@@ -2212,8 +2212,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     launchCanRetryPrompt(currentLaunchAttempt.outcome) &&
     tabsRef.current?.canRetryTaskPrompt(currentLaunchAttempt.tabKey) === true;
 
-  // Dragging `New` onto a pane adds an agent there. Shared by the Electron frame row's `+ New`
-  // and Tauri's launcher inside the legacy rail.
+  // Dragging `Agent` (the rail's create row) onto a pane adds an agent there. Shared with
+  // Tauri's `New` launcher inside the legacy rail.
   const newPaneDrop: NewPaneDropDeps = {
     // Read at pointer time, so the rects belong to whatever tab is on
     // the stage right now rather than to the one that was there when
@@ -2247,17 +2247,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           <SidebarFrameActions
             collapsed={false}
             onToggle={toggleSidebarCollapsed}
-            // DL-27.14 (amended 2026-10-07): Electron's `+ New` sits on this row; Tauri's
-            // legacy rail keeps its own launcher.
-            newButton={
-              avatarColumn ? (
-                <SidebarNewButton
-                  disabled={taskOperationPending.value !== null}
-                  onOpenWorkspace={openTaskBoard}
-                  newPaneDrop={newPaneDrop}
-                />
-              ) : undefined
-            }
           />
         ) : null
       }

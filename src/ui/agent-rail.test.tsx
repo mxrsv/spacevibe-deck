@@ -1488,17 +1488,22 @@ describe("AgentRail carried-over jobs", () => {
     expect(hit()?.getAttribute("aria-current")).toBe("true");
   });
 
-  // DL-27.14 (amended 2026-10-07): Electron's `New` lives on the sidebar identity row, which
-  // `App` mounts; the tree itself draws no launcher.
-  it("starts the Electron rail with the project scrollport, not a launcher", async () => {
+  // DL-27.14 (amended 2026-10-08): the identity row carries no `+ New`; the rail's create row
+  // is its own, and the tree draws no launcher.
+  it("starts the Electron rail with the create row, then the project scrollport", async () => {
     mount();
     await settle();
 
     expect(host.querySelector(".sidebar-launcher")).toBeNull();
     expect(host.querySelector(".sidebar-new")).toBeNull();
+    // The create row (DL-27.14, amended 2026-10-08) stands above the list, outside it.
     expect(host.querySelector(".asr-rail")?.firstElementChild).toBe(
+      host.querySelector(".rail-create"),
+    );
+    expect(host.querySelector(".rail-create")?.nextElementSibling).toBe(
       host.querySelector(".asr-rail__list"),
     );
+    expect(host.querySelector(".asr-rail__list .rail-create")).toBeNull();
     expect(host.querySelector(".asr-stream")?.firstElementChild).not.toBeNull();
   });
 
@@ -1902,5 +1907,97 @@ describe("AgentRail paneModels wiring (Task 8)", () => {
     await settle();
 
     expect(host.querySelector(".asr-card__pill")).toBeNull();
+  });
+});
+
+describe("AgentRail create row (DL-27.14, amended 2026-10-08)", () => {
+  const verbs = (): string[] =>
+    [...host.querySelectorAll(".rail-create__button")].map((button) => button.textContent ?? "");
+  const verb = (name: string): HTMLButtonElement | null =>
+    host.querySelector(`.rail-create__button[data-verb="${name}"]`);
+  const launcher = vi.fn();
+  const withLauncher: CardActions = { ...ACTIONS, onOpenAgentLauncher: launcher };
+
+  beforeEach(() => {
+    launcher.mockClear();
+  });
+
+  it("draws Agent first, in a row of equal buttons outside the list", async () => {
+    mount({ cardActions: withLauncher });
+    await settle();
+
+    expect(verbs()[0]).toBe("Agent");
+    expect(host.querySelector(".asr-rail__list .rail-create")).toBeNull();
+  });
+
+  it("opens the launch page on the focused checkout", async () => {
+    mount({ cardActions: withLauncher });
+    await settle();
+
+    click(verb("agent"));
+
+    expect(launcher).toHaveBeenCalledExactlyOnceWith("/r/main");
+  });
+
+  it("falls back to the active tab's workspace when no checkout is focused", async () => {
+    tabViews.value = [tab({ workspacePath: "/r/side", panes: [pane({ focused: false })] })];
+    activeTabIndex.value = 0;
+    mount({ cardActions: withLauncher });
+    await settle();
+
+    click(verb("agent"));
+
+    expect(launcher).toHaveBeenCalledExactlyOnceWith("/r/side");
+  });
+
+  it("opens the board with no workspace at all", async () => {
+    const onOpenWorkspace = vi.fn();
+    tabViews.value = [];
+    mount({
+      cardActions: withLauncher,
+      legacy: { onOpenWorkspace, onResumeWorktree: NOOP },
+    });
+    await settle();
+
+    click(verb("agent"));
+
+    expect(launcher).not.toHaveBeenCalled();
+    expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Agent while a task operation is in flight", async () => {
+    mount({
+      cardActions: withLauncher,
+      legacy: { onOpenWorkspace: NOOP, onResumeWorktree: NOOP, openWorkspaceDisabled: true },
+    });
+    await settle();
+
+    expect(verb("agent")?.disabled).toBe(true);
+  });
+
+  it("starts the drag from Agent and from nothing else", async () => {
+    const slotRects = vi.fn(() => []);
+    const onDragStart = vi.fn();
+    mount({ cardActions: withLauncher, newPaneDrop: { slotRects, onDragStart, onDrop: vi.fn() } });
+    await settle();
+    const pointer = (type: string, x: number): PointerEvent => {
+      const event = new MouseEvent(type, { bubbles: true, clientX: x, button: 0 });
+      Object.defineProperty(event, "pointerId", { value: 1 });
+      return event as unknown as PointerEvent;
+    };
+    const drag = (button: HTMLButtonElement | null): void => {
+      act(() => {
+        button?.dispatchEvent(pointer("pointerdown", 0));
+        window.dispatchEvent(pointer("pointermove", 40));
+        window.dispatchEvent(pointer("pointerup", 40));
+      });
+    };
+
+    drag(verb("agent"));
+    expect(onDragStart).toHaveBeenCalledTimes(1);
+
+    drag(verb("worktree"));
+    drag(verb("folder"));
+    expect(onDragStart).toHaveBeenCalledTimes(1);
   });
 });

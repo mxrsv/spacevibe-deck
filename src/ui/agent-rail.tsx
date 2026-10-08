@@ -28,6 +28,7 @@ import { isTauriHost } from "../updater/migration-notice";
 import { WorkspaceIcon } from "./workspace-icon";
 import { buildRailAvatars } from "./agent-rail-collapsed-model";
 import { RailAvatarColumn } from "./agent-rail-column";
+import { RailCreate } from "./rail-create";
 
 /**
  * The agent status rail.
@@ -273,9 +274,21 @@ function WorktreeCardRail(props: AgentRailProps) {
     collapsedGroupKeys.value = next;
   }
 
+  const create = (variant: "row" | "column") => (
+    <RailCreate
+      variant={variant}
+      stream={view.stream}
+      actions={props.cardActions}
+      onOpenBoard={props.legacy.onOpenWorkspace}
+      disabled={props.legacy.openWorkspaceDisabled}
+      newPaneDrop={props.newPaneDrop}
+    />
+  );
+
   if (props.collapsed === true) {
     return (
       <RailAvatarColumn
+        create={create("column")}
         avatars={buildRailAvatars(view)}
         stream={view.stream}
         footer={props.footer}
@@ -293,6 +306,9 @@ function WorktreeCardRail(props: AgentRailProps) {
 
   return (
     <nav class="asr-rail asr-rail--mounted" aria-label="Agents">
+      {/* DL-27.14 (amended 2026-10-08): the create row stands above the
+          scrolling list, always visible. */}
+      {create("row")}
       {/* The scrolling half: the rows. The footer and the banner below stay
           pinned to the bottom of the column, which is the split `.wsbar__list`
           drew before this rail replaced it. */}

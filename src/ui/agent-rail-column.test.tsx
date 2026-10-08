@@ -196,6 +196,19 @@ afterEach(() => {
 });
 
 describe("AgentRail collapsed (DL-27.29)", () => {
+  it("stacks the create verbs above the avatars as icon buttons with native titles", async () => {
+    mount({ collapsed: true });
+    await settle();
+
+    const stack = host.querySelector(".rail-create");
+    expect(stack?.getAttribute("data-variant")).toBe("column");
+    expect(stack?.nextElementSibling).toBe(host.querySelector(".asr-column__list"));
+    const buttons = [...(stack?.querySelectorAll<HTMLButtonElement>(".rail-create__button") ?? [])];
+    expect(buttons[0]?.getAttribute("data-verb")).toBe("agent");
+    expect(buttons[0]?.getAttribute("title")).toBe(buttons[0]?.getAttribute("aria-label"));
+    expect(buttons[0]?.textContent).toBe("");
+  });
+
   it("draws one avatar per live project and no tree", async () => {
     mount({ collapsed: true });
     await settle();
