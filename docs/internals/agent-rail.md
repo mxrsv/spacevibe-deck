@@ -27,8 +27,11 @@ grouping rather than regrouping on its own.
   `RailStreamGroup.orderKey` is produced, never derived by stripping a prefix off `key`: it is
   the repository key or `plain:<path>`, and it is what the stored order is written against.
 - **Clusters sit where their oldest tab put them,** then remembered clusters follow: a
-  workspace-history folder with nothing open keeps a rowless header, deduplicated against
-  every live worktree path and folded per repository. `historyPaths` is populated for live
+  workspace-history folder with nothing open keeps a rowless header, folded per repository
+  and dropped only when a live cluster already draws it
+  ([`groupCoversHistoryPath`](../../src/repositories/repository-model.ts)): its own path, or
+  a path below a live repository checkout that git places in that same repository. A prefix
+  alone is not enough — a tab on the home folder would otherwise hide every project under it. `historyPaths` is populated for live
   clusters too, so a header's ✕ can remove the project instead of demoting it to the
   remembered tier.
 - **Rows are in open order, not recency.** `sortByOpenOrder` sorts by `openedAt` then index.

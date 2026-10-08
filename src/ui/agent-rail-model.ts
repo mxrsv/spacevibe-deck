@@ -25,6 +25,7 @@ import {
   buildRail,
   filterRailToWorkspaceHistory,
   type RailTab,
+  groupCoversHistoryPath,
   type RepositoryGroup,
   worktreeForPath,
 } from "../repositories/repository-model";
@@ -253,7 +254,7 @@ export interface RailStreamGroup {
    * remembered tier — the header would stay put and the X would read as
    * broken. These are the history entries `rememberedClusters` currently
    * SUPPRESSES because this cluster already covers them: same repository key,
-   * or prefix-attached to one of its worktrees.
+   * or covered by it (`groupCoversHistoryPath`).
    */
   readonly historyPaths: readonly string[];
   /**
@@ -593,7 +594,7 @@ const NO_RAIL_ORDER: readonly string[] = [];
  */
 function rememberedClusters(
   input: AgentRailInput,
-  livePaths: readonly string[],
+  liveGroups: readonly RepositoryGroup[],
 ): RailStreamGroup[] {
   interface Folded {
     readonly key: string;
@@ -608,10 +609,10 @@ function rememberedClusters(
   const folded: Folded[] = [];
   const byKey = new Map<string, Folded>();
   for (const path of input.workspaceHistoryPaths) {
-    // A history workspace some live cluster already covers is not repeated:
-    // longest-prefix, the same attachment rule tabs use, so a remembered
-    // subdirectory of a live worktree stays under the live header.
-    if (worktreeForPath(livePaths, path) !== null) {
+    // A history workspace some live cluster already covers is not repeated,
+    // so a remembered subdirectory of a live worktree stays under the live
+    // header. Covered means that header stands for it, not merely a prefix.
+    if (liveGroups.some((group) => groupCoversHistoryPath(group, path, input.scans))) {
       continue;
     }
     const scan = input.scans.get(path);
@@ -740,9 +741,9 @@ const NO_ROWS: readonly RailTabRow[] = [];
  * Two rules, because `rememberedClusters` uses two and the header's ✕ has to
  * clear whatever either of them would have re-derived:
  *
- * - **Prefix attach.** A history entry under one of this cluster's open
- *   worktrees is suppressed from the remembered tier today by exactly this
- *   test, so it is this cluster's to forget.
+ * - **Covered.** A history entry `groupCoversHistoryPath` says this cluster
+ *   stands for is suppressed from the remembered tier by exactly that test,
+ *   so it is this cluster's to forget.
  * - **Same project key.** A worktree of this repository that is in history but
  *   has nothing open in it is NOT prefix-attached to any live path, so it
  *   would build its own remembered cluster carrying this project's own
@@ -753,12 +754,11 @@ const NO_ROWS: readonly RailTabRow[] = [];
  * arise: one pass, one entry each.
  */
 function coveredHistoryPaths(group: RepositoryGroup, input: AgentRailInput): readonly string[] {
-  const worktreePaths = group.worktrees.map((worktree) => worktree.path).filter((p) => p !== "");
   const covered: string[] = [];
   for (const path of input.workspaceHistoryPaths) {
     const scan = input.scans.get(path);
     const key = scan?.kind === "repository" ? scan.key : `plain:${path}`;
-    if (key === group.key || worktreeForPath(worktreePaths, path) !== null) {
+    if (key === group.key || groupCoversHistoryPath(group, path, input.scans)) {
       covered.push(path);
     }
   }
@@ -869,18 +869,14 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
   }
 
   // Live work first, in open order; the remembered tier is deduplicated
-  // against every live worktree path, so a project never prints twice.
-  const livePaths = groups
-    .flatMap((group) => group.worktrees.map((worktree) => worktree.path))
-    .filter((path) => path !== "");
-
+  // against every live group, so a project never prints twice.
   return {
     // The manual order is the LAST step over the assembled stream (spec §4):
     // a cluster the user dragged holds its slot across the live/remembered
     // boundary, and everything nobody has dragged keeps the order it always
     // had.
     stream: applyRailOrder(
-      [...sortClusters(clusters), ...rememberedClusters(input, livePaths)],
+      [...sortClusters(clusters), ...rememberedClusters(input, groups)],
       input.railOrder ?? NO_RAIL_ORDER,
       input.scans,
     ),

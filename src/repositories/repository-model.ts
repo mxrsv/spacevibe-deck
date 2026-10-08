@@ -145,6 +145,38 @@ export function worktreeForPath(paths: readonly string[], workspacePath: string)
 }
 
 /**
+ * Whether a live group already stands for a workspace-history path, so the
+ * rail must not print that path as a remembered cluster of its own.
+ *
+ * A prefix alone is not enough: a tab open on a plain parent folder (the home
+ * directory) or on a repository that holds other repositories would otherwise
+ * swallow every folder under it, and the live header draws none of them
+ * (2026-10-08). The path itself always counts; below it, only a repository
+ * group covers, and only a path git places in that same repository. A path
+ * not scanned yet is assumed to belong, so a subdirectory of a live worktree
+ * does not flash up as its own cluster while its scan is in flight.
+ */
+export function groupCoversHistoryPath(
+  group: RepositoryGroup,
+  path: string,
+  scans: ReadonlyMap<string, RepositoryScan>,
+): boolean {
+  const worktreePaths = group.worktrees.map((worktree) => worktree.path).filter((p) => p !== "");
+  const owner = worktreeForPath(worktreePaths, path);
+  if (owner === null) {
+    return false;
+  }
+  if (owner === path) {
+    return true;
+  }
+  if (group.kind !== "repository") {
+    return false;
+  }
+  const scan = scans.get(path);
+  return scan === undefined || (scan.kind === "repository" && scan.key === group.key);
+}
+
+/**
  * Which of `worktreePaths` an archived session lights up.
  *
  * Archive keys (`session-journal.ts`'s `sessionArchive`) are workspace

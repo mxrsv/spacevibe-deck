@@ -1383,6 +1383,41 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
     // Longest-prefix, the same attachment rule tabs use: no second cluster.
     expect(view.stream.map((group) => group.project)).toEqual(["deck"]);
   });
+
+  it("keeps folders under a live plain folder on the rail (2026-10-08)", () => {
+    // A shell tab on the home directory used to swallow every remembered
+    // folder under it, so `Folder` saved a pick the rail never drew.
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/home/me", { panes: [pane(1)] })],
+        scans: new Map([
+          ...DECK_SCANS,
+          ["/home/me/deck", repo("/home/me/deck/.git", [{ path: "/home/me/deck" }])],
+        ]),
+        workspaceHistoryPaths: ["/home/me/scratch", "/home/me/deck", "/home/me"],
+      }),
+    );
+
+    expect(view.stream.map((group) => group.project)).toEqual(["me", "scratch", "deck"]);
+    // The live header forgets only itself; the folders under it are not its own.
+    expect(view.stream[0].historyPaths).toEqual(["/home/me"]);
+  });
+
+  it("keeps a repository nested in a live repository on the rail", () => {
+    const outer = repo("/w/.git", [{ path: "/w", branch: "main" }]);
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w", { panes: [pane(1)] })],
+        scans: new Map([...DECK_SCANS, ["/w", outer]]),
+        workspaceHistoryPaths: ["/w/deck"],
+      }),
+    );
+
+    // `/w/deck` sits under the live `/w` checkout but git puts it in its own
+    // repository, which the `w` header does not draw.
+    expect(view.stream.map((group) => group.project)).toEqual(["w", "deck"]);
+    expect(view.stream[0].historyPaths).toEqual([]);
+  });
 });
 
 describe("buildAgentRail manual order (2026-08-22)", () => {
