@@ -99,6 +99,8 @@ export function RailCreate({
       ? focused.group.repositoryPath
       : (repositories[0]?.path ?? null);
 
+  const worktreeProject = repositories.find((repository) => repository.path === initialRepo)?.label;
+
   const pickFolder = (): void => {
     setNotice(null);
     void addFolderToRail().then(setNotice);
@@ -112,6 +114,9 @@ export function RailCreate({
           agentWhere === null
             ? "Open a workspace — or drag onto a pane to add an agent there"
             : `New agent in ${agentWhere} — or drag onto a pane`
+        }
+        worktreeTitle={
+          worktreeProject === undefined ? undefined : `New worktree in ${worktreeProject}`
         }
         disabled={disabled}
         newPaneDrop={newPaneDrop}
