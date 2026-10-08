@@ -5,7 +5,6 @@ import { SIDEBAR_COLUMN_WIDTH, SIDEBAR_HIDDEN_WIDTH } from "./panel-resize";
 interface BrowserPanelObscuredState {
   readonly overlayCoversPane: boolean;
   readonly agentQuickPickerOpen: boolean;
-  readonly quickLaunchOpen: boolean;
   readonly usageConsentOpen: boolean;
   /** A worktree card's segment or actions menu, both placed over the stage. */
   readonly railCardMenuOpen: boolean;
@@ -26,7 +25,6 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
   return (
     state.overlayCoversPane ||
     state.agentQuickPickerOpen ||
-    state.quickLaunchOpen ||
     state.usageConsentOpen ||
     state.railCardMenuOpen ||
     state.agentBoardActive ||

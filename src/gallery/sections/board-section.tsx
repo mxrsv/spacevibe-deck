@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   ArrowUp,
-  ArrowsOutSimple,
   CaretDown,
   Folder,
   FolderPlus,
@@ -95,7 +94,6 @@ interface LauncherFieldsProps {
   readonly id: string;
   readonly compact?: boolean;
   readonly initialPromptExpanded?: boolean;
-  readonly showFullComposerAction?: boolean;
 }
 
 function AgentMark({ id }: { readonly id: string }) {
@@ -262,26 +260,12 @@ function RuntimeSummary({
   );
 }
 
-function ComposerActions({
-  expanded,
-  prompt,
-  showFullComposerAction,
-}: {
-  expanded: boolean;
-  prompt: string;
-  showFullComposerAction: boolean;
-}) {
+function ComposerActions({ expanded, prompt }: { expanded: boolean; prompt: string }) {
   return (
     <div class="nt-composer__actions">
-      {showFullComposerAction ? (
-        <button type="button" class="nt-icon-action" aria-label="Open full composer">
-          <DeckIcon icon={ArrowsOutSimple} size={ROW_ICON} />
-        </button>
-      ) : (
-        <button type="button" class="nt-secondary-action">
-          Open agent first
-        </button>
-      )}
+      <button type="button" class="nt-secondary-action">
+        Open agent first
+      </button>
       <button type="button" class="nt-primary-action" disabled={expanded && prompt.trim() === ""}>
         {expanded ? "Start task" : "Open agent"}
         <DeckIcon icon={ArrowUp} size={ROW_ICON} />
@@ -294,7 +278,6 @@ function LauncherFields({
   id,
   compact = false,
   initialPromptExpanded = true,
-  showFullComposerAction = false,
 }: LauncherFieldsProps) {
   const promptExpanded = useSignal(initialPromptExpanded);
   const runtimeExpanded = useSignal(!compact);
@@ -362,11 +345,7 @@ function LauncherFields({
             }}
           />
         )}
-        <ComposerActions
-          expanded={promptExpanded.value}
-          prompt={prompt.value}
-          showFullComposerAction={showFullComposerAction}
-        />
+        <ComposerActions expanded={promptExpanded.value} prompt={prompt.value} />
       </div>
     </div>
   );
@@ -421,36 +400,6 @@ function OpenBoardComposer({ id }: { readonly id: string }) {
         <RecentWorkspaces />
       </div>
     </main>
-  );
-}
-
-function QuickLaunch({
-  id,
-  collapsed = false,
-}: {
-  readonly id: string;
-  readonly collapsed?: boolean;
-}) {
-  return (
-    <aside class="nt-quick-launch" aria-label="Quick launch mock">
-      <header class="nt-quick-launch__head">
-        <div>
-          <span>Quick launch</span>
-          <strong>New task</strong>
-        </div>
-        <button type="button" class="nt-icon-action" aria-label="Close">
-          <DeckIcon icon={X} size={ROW_ICON} />
-        </button>
-      </header>
-      <LauncherFields id={id} compact initialPromptExpanded={!collapsed} showFullComposerAction />
-      <footer class="nt-quick-launch__foot">
-        <span>
-          <kbd>⌘</kbd>
-          <kbd>↵</kbd> start
-        </span>
-        <button type="button">Manage agents…</button>
-      </footer>
-    </aside>
   );
 }
 
@@ -588,40 +537,6 @@ function CompactComposerSpecimen() {
   );
 }
 
-function QuickPromptSpecimen() {
-  return (
-    <Specimen
-      name="Quick Launch · prompt first"
-      note="no scrim · no blur · terminal remains readable and interactive"
-      surface="none"
-      tall
-    >
-      <DeckShell>
-        <TerminalReviewSurface>
-          <QuickLaunch id="quick-task-prompt-expanded" />
-        </TerminalReviewSurface>
-      </DeckShell>
-    </Specimen>
-  );
-}
-
-function QuickAgentSpecimen() {
-  return (
-    <Specimen
-      name="Quick Launch · agent first"
-      note="remembered collapsed state · the same panel becomes a fast Open agent path"
-      surface="none"
-      tall
-    >
-      <DeckShell>
-        <TerminalReviewSurface>
-          <QuickLaunch id="quick-task-prompt-collapsed" collapsed />
-        </TerminalReviewSurface>
-      </DeckShell>
-    </Specimen>
-  );
-}
-
 function CreateWorkspaceSpecimen() {
   return (
     <Specimen
@@ -752,13 +667,11 @@ export function BoardSection() {
     <>
       <SectionHead
         title="New task launcher"
-        blurb="One launch contract in two surfaces: Open Board for deliberate composition, Quick Launch for contextual work without losing the live agent behind it."
+        blurb="The Open Board composer, in full and compact shapes, with the create-workspace subview."
       />
       <LiveComposerSpecimen />
       <FullComposerSpecimen />
       <CompactComposerSpecimen />
-      <QuickPromptSpecimen />
-      <QuickAgentSpecimen />
       <CreateWorkspaceSpecimen />
     </>
   );

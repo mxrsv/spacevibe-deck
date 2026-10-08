@@ -79,9 +79,7 @@ import { installUsageCounterEffects } from "../telemetry/usage-counters";
 import { OpenBoard } from "../open-board/open-board";
 import {
   clearDraft,
-  closeQuickLaunch,
   newTaskDraft,
-  quickLaunchOpen,
   taskDraftTouched,
 } from "../launcher/launcher-store";
 import { agentLaunchCommand } from "../lib/launch-command";
@@ -277,7 +275,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const noticeDismissed = useSignal(false);
   const taskOperationPending = useSignal<LauncherPending | null>(null);
   const taskOperationFlight = useRef<Promise<LaunchTaskOutcome> | null>(null);
-  const quickLaunchNotice = useSignal<string | null>(null);
   const launchAttempt = useSignal<TaskLaunchAttempt | null>(null);
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
@@ -816,7 +813,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       })
     ) {
       launchAttempt.value = null;
-      quickLaunchNotice.value = null;
     }
   });
 
@@ -1120,7 +1116,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     launchAttempt.value = null;
     clearDraft();
     boardOpen.value = false;
-    closeQuickLaunch();
   }
 
   function runTaskOperation(
@@ -1865,7 +1860,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // until 2026-08-16, which meant ⌘T over an open browser tab drew the
       // picker underneath the `WebContentsView`.
       agentQuickPickerOpen: agentQuickPickerOpen.value,
-      quickLaunchOpen: quickLaunchOpen.value,
       promptsOpen: promptsOpen.value,
       // The explorer's naming dialog (design §5.2): the dock stays visible
       // while a browser tab covers the stage, so without this the modal draws

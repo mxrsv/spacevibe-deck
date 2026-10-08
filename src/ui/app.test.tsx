@@ -183,7 +183,6 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
-        quickLaunchOpen: false,
         usageConsentOpen: false,
         promptsOpen: false,
         createEntryOpen: false,
@@ -203,7 +202,6 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
-        quickLaunchOpen: false,
         usageConsentOpen: true,
         promptsOpen: false,
         createEntryOpen: false,
@@ -224,27 +222,9 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
-        quickLaunchOpen: false,
         usageConsentOpen: false,
         promptsOpen: false,
         createEntryOpen: true,
-        railCardMenuOpen: false,
-        agentBoardActive: false,
-        persistErrorVisible: false,
-        settingsLoadError: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("hides the native browser view under Quick Launch", () => {
-    expect(
-      browserPanelObscured({
-        overlayCoversPane: false,
-        agentQuickPickerOpen: false,
-        quickLaunchOpen: true,
-        usageConsentOpen: false,
-        promptsOpen: false,
-        createEntryOpen: false,
         railCardMenuOpen: false,
         agentBoardActive: false,
         persistErrorVisible: false,
@@ -261,7 +241,6 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
-        quickLaunchOpen: false,
         usageConsentOpen: false,
         promptsOpen: false,
         createEntryOpen: false,
@@ -300,14 +279,14 @@ describe("task launcher mount", () => {
   const source = readFileSync("src/ui/app.tsx", "utf8");
 
   // Inverted, not deleted: it pinned the surface Quick Launch replaced, and it
-  // now pins the release that defers Quick Launch itself. BOTH launcher
-  // popovers stay compiled and neither is mounted — the Open Board is the one
-  // composer this build ships. Since `rail-create-consolidation` (2026-09-02)
+  // now pins that the Quick Launch popover is gone (deleted 2026-10-08, launch
+  // actions decision 10) and the agent picker stays unmounted — the Open Board
+  // is the one composer this build ships. Since `rail-create-consolidation` (2026-09-02)
   // ⌘T raises the rail card's actions menu FREE-STANDING for the active
   // workspace (`openTaskLauncher` → `railKeyboardMenuFor`), the strip `+` and
   // the rail project `+` are gone. Only the explicit Open shell action opens
   // a shell tab; opening the menu itself still starts no process.
-  it("keeps both launcher popovers compiled but unmounted, and ⌘T raises the card menu", () => {
+  it("keeps the retired popovers unmounted, and ⌘T raises the card menu", () => {
     expect(source).not.toContain("<QuickLaunch");
     expect(source).not.toContain("<AgentQuickPicker");
     expect(source).toContain('placement="free-standing"');
@@ -322,6 +301,18 @@ describe("task launcher mount", () => {
     expect(source).not.toContain("tabsRef.current?.newTab()");
   });
 
+  it("routes ⌘T through the one required launcher seam into the launch page", () => {
+    // `TabManager.newTab` has no fallback route (launch actions decision 10), so
+    // this wiring is the whole path: the chord reaches `openTaskLauncher` with the
+    // active workspace, which opens (or toggles shut) the launch page for it.
+    expect(source).toContain("onOpenTaskLauncher: openTaskLauncher,");
+    const start = source.indexOf("function openTaskLauncher(");
+    expect(start).toBeGreaterThan(-1);
+    const body = source.slice(start, source.indexOf("\n  }\n", start));
+    expect(body).toContain("agentLaunchPageAvailable && workspacePath !== null");
+    expect(body).toContain("openAgentLaunchPage(workspacePath)");
+  });
+
   it("clears the shared draft only after a completed handoff", () => {
     expect(source).toContain("launchClearsDraft(result.outcome)");
     expect(source).not.toContain("launchSucceeded(outcome)");
@@ -332,10 +323,6 @@ describe("task launcher mount", () => {
     expect(source).toContain("attempt.tabKey");
     expect(source).toContain("attempt.prompt");
     expect(source).not.toContain("launchTask(attempt");
-  });
-
-  it("withdraws Quick Launch recovery copy when the stored attempt is invalidated", () => {
-    expect(source).toContain("launchAttempt.value = null;\n      quickLaunchNotice.value = null;");
   });
 
   it("binds recovery to the model and effort that launched the target tab", () => {
