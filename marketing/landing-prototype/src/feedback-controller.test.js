@@ -34,6 +34,60 @@ async function mount(config = { googleClientId: "client", submissionsOpen: true 
   return document.querySelector(".feedback-form");
 }
 
+function paste(target, files = []) {
+  const event = new Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clipboardData", { value: { files } });
+  target.dispatchEvent(event);
+  return event;
+}
+
+function imageUrls() {
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL() {
+        return "blob:test-image";
+      }
+      static revokeObjectURL() {}
+    },
+  );
+}
+
+it("pastes screenshots from the details field, preserves text paste, and submits the pasted file", async () => {
+  imageUrls();
+  const form = await mount({ googleClientId: null, authMode: "anonymous", submissionsOpen: true });
+  const details = form.querySelector('[name="body"]');
+  expect(paste(details).defaultPrevented).toBe(false);
+  const image = new File(["clipboard image"], "image.png", { type: "image/png" });
+  expect(paste(details, [image]).defaultPrevented).toBe(true);
+  expect(form.querySelectorAll("[data-image-previews] img")).toHaveLength(1);
+  form.querySelector('[name="title"]').value = "Pasted screenshot";
+  api.submit.mockResolvedValueOnce(undefined);
+  form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(api.submit).toHaveBeenCalledTimes(1));
+  expect(api.submit.mock.calls[0][0].images).toEqual([image]);
+});
+
+it("applies the same image type, size and count limits to pasted files", async () => {
+  imageUrls();
+  const form = await mount({ googleClientId: null, authMode: "anonymous", submissionsOpen: true });
+  const details = form.querySelector('[name="body"]');
+  for (const file of [
+    new File(["gif"], "image.gif", { type: "image/gif" }),
+    new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.png", { type: "image/png" }),
+  ]) {
+    expect(paste(details, [file]).defaultPrevented).toBe(true);
+    expect(form.querySelectorAll("[data-image-previews] img")).toHaveLength(0);
+    expect(form.querySelector("[data-image-status]").textContent).toContain("5 MB");
+  }
+  const file = new File(["png"], "image.png", { type: "image/png" });
+  paste(details, [file, file, file]);
+  expect(form.querySelectorAll("[data-image-previews] img")).toHaveLength(3);
+  paste(details, [file]);
+  expect(form.querySelectorAll("[data-image-previews] img")).toHaveLength(3);
+  expect(form.querySelector("[data-image-status]").textContent).toContain("up to 3");
+});
+
 it("submits anonymously when the server explicitly enables anonymous intake", async () => {
   const form = await mount({ googleClientId: null, authMode: "anonymous", submissionsOpen: true });
   form.querySelector('[name="title"]').value = "No login needed";
@@ -75,6 +129,8 @@ it("keeps selected images after failure, locks edits during send, and clears onl
   expect(api.submit.mock.calls[0][0].images).toEqual([second]);
   expect(picker.disabled).toBe(true);
   expect(form.querySelector('[aria-label="Remove second.png"]').disabled).toBe(true);
+  paste(form.querySelector('[name="body"]'), [first]);
+  expect(form.querySelectorAll("[data-image-previews] img")).toHaveLength(1);
   reject(new Error("response lost"));
   await vi.waitFor(() => expect(picker.disabled).toBe(false));
   expect(form.querySelectorAll("[data-image-previews] img")).toHaveLength(1);

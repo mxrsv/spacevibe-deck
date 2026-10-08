@@ -69,7 +69,10 @@ is stored; retrying the same draft and content returns the same receipt. Changed
 content returns 409. Incomplete uploads never appear publicly, even if approved.
 
 [Image validation](src/feedback-images.mjs) accepts at most three PNG, JPEG or WebP
-files of 5 MB each and caps the streamed request at 16 MB. The private
+files of 5 MB each and caps the streamed request at 16 MB. The
+[feedback form](../marketing/landing-prototype/src/feedback-images.js) accepts images
+from the file picker or a paste within the form (Command-V / Ctrl-V); ordinary text
+paste remains unchanged. The private
 `feedback-images` Storage bucket uses server-generated paths, not uploaded filenames.
 The Worker serves images only while their parent report is ready and public, with
 `Cache-Control: no-store`; hiding the report revokes subsequent image requests.

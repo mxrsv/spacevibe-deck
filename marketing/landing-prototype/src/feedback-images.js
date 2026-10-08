@@ -40,10 +40,8 @@ export function createFeedbackImages(root) {
     input.disabled = locked || files.length >= IMAGE_MAX_COUNT;
   }
 
-  input.addEventListener("change", () => {
+  function addImages(selected) {
     if (locked) return;
-    const selected = Array.from(input.files ?? []);
-    input.value = "";
     if (
       files.length + selected.length > IMAGE_MAX_COUNT ||
       selected.some(
@@ -56,6 +54,22 @@ export function createFeedbackImages(root) {
     files = [...files, ...selected];
     status.textContent = "";
     render();
+  }
+
+  input.addEventListener("change", () => {
+    const selected = Array.from(input.files ?? []);
+    input.value = "";
+    addImages(selected);
+  });
+
+  root.querySelector(".feedback-form").addEventListener("paste", (event) => {
+    const images = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    // Leave ordinary text paste alone; images use the same validation and preview as files.
+    if (!images.length) return;
+    event.preventDefault();
+    addImages(images);
   });
 
   return {
