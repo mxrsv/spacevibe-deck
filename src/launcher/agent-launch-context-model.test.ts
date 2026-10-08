@@ -73,6 +73,23 @@ describe("buildLaunchContext", () => {
     expect(view.chip).toBe("Split beside Claude Code");
   });
 
+  it("keeps the project row for a checkout with no tab and no history", () => {
+    const view = buildLaunchContext({
+      stream: [
+        {
+          ...group("deck", [wt("/w/deck", true, true)]),
+          orderKey: "/w/deck/.git",
+        } as RailStreamGroup,
+      ],
+      scans,
+      target: { kind: "new-space", workspacePath: "/w/deck-wt" },
+      agentLabel: null,
+    });
+    expect(view.workspacePath).toBe("/w/deck");
+    expect(view.workspaces.map((row) => row.path)).toEqual(["/w/deck"]);
+    expect(view.checkoutPath).toBe("/w/deck-wt");
+  });
+
   it("gives a plain or unlisted folder no checkouts and names the folder itself", () => {
     const plain = buildLaunchContext({
       stream,

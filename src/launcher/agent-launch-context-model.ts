@@ -68,9 +68,18 @@ export function buildLaunchContext(input: {
 }): LaunchContextView {
   const { stream, scans, target } = input;
   const workspaces = stream.flatMap((group) => rowFor(group) ?? []);
-  const owner = stream.find((group) =>
-    group.worktrees.some((entry) => entry.path === target.workspacePath),
+  // A checkout with no tab and no history is absent from the stream's worktrees,
+  // so the repository scan names the project and `orderKey` finds its group.
+  const ownerScan = [...scans.values()].find(
+    (scan) =>
+      scan.kind === "repository" &&
+      scan.worktrees.some((item) => !item.bare && item.path === target.workspacePath),
   );
+  const owner =
+    stream.find(
+      (group) => ownerScan?.kind === "repository" && group.orderKey === ownerScan.key,
+    ) ??
+    stream.find((group) => group.worktrees.some((entry) => entry.path === target.workspacePath));
   const row = owner === undefined ? undefined : rowFor(owner);
   return {
     workspaces,
