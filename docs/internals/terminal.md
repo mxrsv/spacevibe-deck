@@ -141,7 +141,10 @@ Ids are process-local integers from 1, never reused.
 ## Transient agent launch targets
 
 The [agent launch page](../../src/launcher/agent-launch-page-store.ts) captures stable
-terminal tab/pane identity before covering the stage. Its
+terminal tab/pane identity before covering the stage. The page's context row can replace
+that target in place: `retarget` re-captures through `captureAgentLaunchTarget` and bumps the
+store's epoch, so a launch begun under the old checkout cannot commit; it starts nothing and
+is refused while a launch is pending. Its
 [target resolver](../../src/terminal/agent-launch-target.ts) prefers the active matching
 checkout tab, then an exact root, then a matching nested tab; another worktree is not a
 fallback. Windows path keys are comparison-only. Split launches require a fresh known

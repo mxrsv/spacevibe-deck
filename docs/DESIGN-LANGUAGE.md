@@ -3635,6 +3635,18 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
   split there is one outcome, so the destination row says `New tab`. The same
   card serves the Open board (DL-32.1).
 
+  **Amended 2026-10-08 (owner, launch actions decision 1): the page chooses its
+  own context.** The destination line becomes a context row without field
+  labels (DL-32.2): a workspace popover (DL-13.1, `Open folder…` first), a
+  checkout popover (the repository's checkouts by branch; absent for a folder
+  git does not know) and a placement chip that reads `Split beside <agent>`
+  when the focused pane belongs to the chosen checkout and `New space`
+  otherwise. Changing the workspace or checkout re-targets the page in place
+  and starts nothing; the launch does what the chip says. The chip is
+  identity, not a control
+  ([row](../src/launcher/agent-launch-context.tsx),
+  [model](../src/launcher/agent-launch-context-model.ts)).
+
 - **DL-32.7** **Agent panes carry one compact identity header.** On Electron,
   the [pane header](../src/terminal/pane-agent-header.tsx) uses the sidebar's
   latest message, an agent logo and a trailing Claude-only effort control. The message
@@ -4094,6 +4106,7 @@ section therefore means naming DL, or the gate does not see the citation.
 | The rail tree and the strip breadcrumb are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-07 on `main` (DL-27.28, DL-27.27 and DL-35.3 amended): label lines, two-line rows, the needs-you header count, the breadcrumb and current-project marks. The gallery's `navigation` tree specimen was screenshotted; no `electron:dev` walk. The walk must cover sparse and dense lists, a narrow window, ⌘1–9 within one project, a checkout `+` from another checkout's pane (New space) and from its own (Split), and a first prompt arriving after launch |
 | Spaces and Mission Control are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | §35 landed 2026-09-28 on `feat/mission-control`: `tsc`, `npm test`, `npm run build` and `generate:menu:check` green; no `electron:dev` walk yet. It replaced this row's previous claim, "the Agent Board is a shipping surface", closed the same day when the Board was retired behind `AGENT_BOARD_RETIRED` (§34's retirement note) |
 | Space workflow refinements are a shipping surface | `building` | built, unrun and unwalked; owner eye review owed | 2026-10-03 on `main` (4478840, 664edc5, 0fab403, 0c743a2): launch cards (DL-32.6), auto-named spaces and project capsules and the edge marker (DL-35.3). No `tsc`, `npm test` or `electron:dev` run yet. The walk must cover five agents on one card row, the New space tip by keyboard, a worktree inside its repository's capsule, and a red edge dot with enough spaces to scroll |
+| The launch page's context row is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-08 on `feat/launch-page-context` (DL-32.6 amended): the workspace and checkout popovers, the placement chip and `Open folder…`. No gallery specimen exists for the launch page. The walk must cover changing the workspace and the checkout, seeing the chip follow, `Open folder…`, and launching from a re-targeted page |
 | Space names are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-09-29 on `feat/space-names`: the strip (DL-35.3), the shelf (DL-35.1) and the rail row (DL-27.15's amendment) rename and render a name. The walk must cover the floating strip field over a short name and a 40-character one, the shelf field inside a 96px thumbnail, and a named and an unnamed space in one folder |
 | Every needs-you surface of a space wears the rail's two inks | `building` | the strip's marks do; the rest stay single red, owner decision owed | 2026-10-06 on `feat/rail-row-badge`: the marks and the current space's under-dot paint `--status-unread` for a question and `--red` for a failure (DL-35.3). DL-35.3 also says the shelf counts wear the same two colours, but `.mc-space__needs` paints `--red` for both (its `data-tone` is emitted and the stylesheet never reads it); the miniature's cells and the hidden-needs edge dot are single red too. Unwalked in `electron:dev` |
 | The collapsed rail is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-07 on `feat/rail-collapsed` (DL-27.29, DL-18.9 amended): the avatar column, its needs-you badge and current mark, the flyout and `toggle-sidebar` (⌘B, Ctrl+Shift+L). No `electron:dev` walk. The walk must cover the traffic lights over a 52px column on macOS, a drag past the floor and back out, an avatar flyout over the browser tab, Esc returning focus to the avatar, and ⌘B from a terminal, a document and the tree |
