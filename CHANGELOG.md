@@ -7,6 +7,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+## 2.7.0
+
+This update turns the rail into a tree of projects, checkouts and agents, puts
+Agent, Worktree and Folder one press away, and lets you collapse the rail to a
+column of projects.
+
 - **Agent logos in the rail keep their colour again.** The faded logos 2.6.0
   showed on rows that do not need you are gone; every row keeps its full-colour
   logo, and the badge on its corner still tells the state.
