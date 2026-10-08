@@ -1,41 +1,95 @@
-import { SidebarSimple, type Icon } from "@phosphor-icons/react";
+import {
+  Article,
+  ChatText,
+  ClipboardText,
+  File,
+  FileCode,
+  FileImage,
+  FilePlus,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  FolderSimple,
+  Gauge,
+  Gear,
+  GithubLogo,
+  PaperPlaneTilt,
+  Play,
+  PushPin,
+  PushPinSlash,
+  Robot,
+  SidebarSimple,
+  Stop,
+  TerminalWindow,
+  Trash,
+  type Icon,
+} from "@phosphor-icons/react";
 
 /**
  * The one place Phosphor's presentation defaults are set (`DL-14.1`). Surfaces
  * choose *which* icon means what and own the accessible name on the button
  * around it; this component owns only how every icon is drawn.
  *
- * Phosphor has no `strokeWidth`: weight is a discrete family, and the family is
- * `regular` for every icon except the named few in `SOLID_ICONS` below and
- * the surface-scoped `filled` treatment requested by a caller.
+ * Phosphor has no `strokeWidth`: weight is a discrete family. Since 2026-10-09
+ * (owner) the family is `bold` for every icon except the bodies in
+ * `SOLID_ICONS` below and the surface-scoped `filled` treatment requested by a
+ * caller. `regular` draws a 16/256 stroke, about 0.8px at the 13px chrome size
+ * and thinner than the 11px label beside it; `bold` draws 24/256, about 1.2px.
  *
  * The app spent 2026-08-19 at `fill` for everything, and the owner reversed it
- * the same day after seeing it run: solid suits a panel toggle, whose icon is a
- * PICTURE OF A LAYOUT and reads better as filled area. A later owner decision
- * added the three dock tabs as a scoped exception, not a return to uniform
- * fill. The reason is in the shapes. Phosphor's `fill` does three
- * different things depending on the icon — a body goes solid (folder, trash,
- * globe), a stroke figure merely thickens (`ArrowLeft`, `TreeView`), and a bare
- * glyph CHANGES SHAPE: `X`, `Plus`, `Minus` and `Check` become a solid square
- * with the mark knocked out, and a caret becomes a solid triangle. A close
- * control turning into a filled tile is what killed the uniform version.
- * (All 53 icons the app imports do change at `fill`, measured one by one
- * against `@phosphor-icons/react/dist/defs` — the question was never whether
- * they change, only whether the change is wanted.)
+ * the same day after seeing it run. The reason is in the shapes. Phosphor's
+ * `fill` does three different things depending on the icon — a body goes solid
+ * (folder, trash, robot), a stroke figure merely thickens (`ArrowLeft`,
+ * `GitBranch`), and a bare glyph CHANGES SHAPE: `X`, `Plus`, `Minus` and
+ * `Check` become a solid square with the mark knocked out, a caret becomes a
+ * solid triangle, and a split layout reads as a pause button. So only bodies
+ * go solid; everything else takes the heavier outline.
  */
 
 /**
- * The icons that draw solid everywhere. Kept here as a SET OF COMPONENTS
- * rather than an open `weight` prop on `DeckIcon`: the separate `filled`
- * boolean is reserved for owner-approved, surface-scoped treatments and
- * cannot introduce a third weight. Identity, not `displayName`: a minifier may
- * drop the name (see `iconModifier`), and a silently-empty match here would
- * quietly restore the uniform outline set.
+ * The icons that draw solid everywhere: objects with a body, whose silhouette
+ * survives filling — the project folder in the rail is the reference. Kept as
+ * a SET OF COMPONENTS rather than an open `weight` prop on `DeckIcon`: the
+ * separate `filled` boolean is reserved for owner-approved, surface-scoped
+ * treatments and cannot introduce a third weight. Identity, not `displayName`:
+ * a minifier may drop the name (see `iconModifier`), and a silently-empty match
+ * here would quietly turn every body back into an outline.
+ *
+ * Left out on purpose: glyphs, arrows, carets and layout pictures (they change
+ * shape, see above), stroke figures (`GitBranch`, `TreeView`), `Globe` and
+ * `Info` (fill leaves a half-solid disc), and `Star`, whose solid form reads as
+ * "already starred" on the GitHub star button.
  *
  * `SidebarSimple` covers BOTH panel toggles — the navigation sidebar's and the
  * dock's, which draws the same icon mirrored (DL-14.1's `mirrored` clause).
  */
-const SOLID_ICONS: ReadonlySet<Icon> = new Set<Icon>([SidebarSimple]);
+const SOLID_ICONS: ReadonlySet<Icon> = new Set<Icon>([
+  Article,
+  ChatText,
+  ClipboardText,
+  File,
+  FileCode,
+  FileImage,
+  FilePlus,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  FolderSimple,
+  Gauge,
+  Gear,
+  GithubLogo,
+  PaperPlaneTilt,
+  Play,
+  PushPin,
+  PushPinSlash,
+  Robot,
+  SidebarSimple,
+  Stop,
+  TerminalWindow,
+  Trash,
+]);
 
 /** The component type every surface passes in — one import, not the library's. */
 export type DeckIconComponent = Icon;
@@ -101,7 +155,7 @@ export function DeckIcon({
     <Icon
       size={size}
       color="currentColor"
-      weight={filled || SOLID_ICONS.has(Icon) ? "fill" : "regular"}
+      weight={filled || SOLID_ICONS.has(Icon) ? "fill" : "bold"}
       mirrored={mirrored}
       aria-hidden="true"
       focusable="false"

@@ -996,8 +996,21 @@ answered here rather than re-argued per button.
   [both live and remembered headers](../src/ui/agent-rail.tsx) (DL-27.17).
   Nothing else authors an `<svg>`, and no glyph character stands in for an
   action — `scripts/icon-system.test.ts` enforces both.
+  **Amended 2026-10-09 (owner): `bold` for every icon, `fill` for bodies.**
+  `regular` draws a 16/256 stroke — about 0.8px at the 13px chrome size, thinner
+  than the 11px label beside it — so icons read as fragile next to their text
+  and next to the rail's solid project `Folder`. `bold` (24/256, about 1.2px)
+  is now the default. The global solid set in `deck-icon.tsx` grew from
+  `SidebarSimple` alone to every imported icon with a body whose silhouette
+  survives filling — folders, files, `Robot`, `Gear`, `Trash`,
+  `TerminalWindow`, `ChatText`, `ClipboardText`, `PaperPlaneTilt`, the pins,
+  `Play`, `Stop`, `Gauge`, `GithubLogo` — chosen from a specimen of all 66
+  imports at `regular`, `bold` and `fill`. Glyphs, arrows, carets, layout
+  pictures and stroke figures stay outlines for the reason below; `Globe` and
+  `Info` fill to a half-solid disc, and a solid `Star` reads as "already
+  starred". The 2026-08-19 text below is history for the weight it names.
   **Amended 2026-08-19: `regular` for every icon, `fill` for named exceptions.**
-  The global exception list is a set of components in `deck-icon.tsx` — today
+  The global exception list is a set of components in `deck-icon.tsx` — then
   exactly `SidebarSimple`, which is BOTH panel toggles (the dock draws it
   mirrored). **One surface-scoped exception was added later that day (owner):**
   the three icon-only dock tabs pass `filled`, so `TreeView`, `Gauge` and
@@ -1041,8 +1054,8 @@ answered here rather than re-argued per button.
 
   **The weight is not readable from an attribute** — Phosphor expresses it in
   path data — so `deck-icon.test.tsx` compares what `DeckIcon` drew against the
-  library's own output: the default against `regular`, `SidebarSimple` against
-  `fill`, and a scoped `filled` call against `fill`. `dock-tabs.test.tsx` pins
+  library's own output: the default against `bold`, `Folder` and
+  `SidebarSimple` against `fill`, and a scoped `filled` call against `fill`. `dock-tabs.test.tsx` pins
   the actual three surface icons the same way.
   **Amended 2026-08-16, replacing `lucide-preact`.** Phosphor is fill-based
   and has no `strokeWidth`: weight is a discrete family, and the weight it
@@ -3076,7 +3089,7 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   never restates the scope the surface states once" still has its one
   statement, the footer. The menu's first group therefore carries no leading
   separator, or the hairline would draw across the surface's own top edge.
-  **The menu has two groups:** the quick agents, selected in Settings → Agents,
+  **The menu has two groups:** up to five quick agents, selected in Settings → Agents,
   then all other actions, starting with **Open shell**, which opens a new terminal tab
   at the checkout. One separator divides the groups; Worktree color and the footer
   add no separators. The menu does

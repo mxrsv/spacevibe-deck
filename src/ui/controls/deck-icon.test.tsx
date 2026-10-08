@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { Gear, SidebarSimple, Trash } from "@phosphor-icons/react";
+import { Folder, Gear, Plus, SidebarSimple, Trash } from "@phosphor-icons/react";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -32,26 +32,32 @@ describe("DeckIcon", () => {
   // Phosphor expresses weight in the path data, so there is no attribute to
   // read: the only way to pin the choice is to compare what was drawn against
   // the library's own output at each weight. Without these checks, DL-14.1's
-  // 2026-08-19 split between the outline default and the solid exceptions
-  // default, global exception and scoped exception would be unguarded.
+  // 2026-10-09 split between the bold default, the solid bodies and the
+  // scoped exception would be unguarded.
   const pathData = (node: ParentNode): string =>
     Array.from(node.querySelectorAll("path"))
       .map((path) => path.getAttribute("d"))
       .join("|");
 
-  const reference = (Icon: typeof Gear, weight: "regular" | "fill"): string => {
+  const reference = (Icon: typeof Gear, weight: "regular" | "bold" | "fill"): string => {
     const node = document.createElement("div");
     document.body.appendChild(node);
     act(() => render(<Icon size={16} weight={weight} />, node));
     return pathData(node);
   };
 
-  it("draws the outline weight by default", () => {
-    act(() => render(<DeckIcon icon={Gear} />, host));
+  it("draws the bold outline by default", () => {
+    act(() => render(<DeckIcon icon={Plus} />, host));
     const drawn = pathData(host);
 
-    expect(drawn).toBe(reference(Gear, "regular"));
-    expect(drawn).not.toBe(reference(Gear, "fill"));
+    expect(drawn).toBe(reference(Plus, "bold"));
+    expect(drawn).not.toBe(reference(Plus, "regular"));
+    expect(drawn).not.toBe(reference(Plus, "fill"));
+  });
+
+  it("draws an icon with a body solid", () => {
+    act(() => render(<DeckIcon icon={Folder} />, host));
+    expect(pathData(host)).toBe(reference(Folder, "fill"));
   });
 
   it("draws the panel toggle solid — the one documented exception", () => {
@@ -66,11 +72,11 @@ describe("DeckIcon", () => {
   });
 
   it("allows a surface-scoped solid treatment without changing the default", () => {
-    act(() => render(<DeckIcon icon={Gear} filled />, host));
-    expect(pathData(host)).toBe(reference(Gear, "fill"));
+    act(() => render(<DeckIcon icon={Plus} filled />, host));
+    expect(pathData(host)).toBe(reference(Plus, "fill"));
 
-    act(() => render(<DeckIcon icon={Gear} />, host));
-    expect(pathData(host)).toBe(reference(Gear, "regular"));
+    act(() => render(<DeckIcon icon={Plus} />, host));
+    expect(pathData(host)).toBe(reference(Plus, "bold"));
   });
 
   it("carries the layout class the stylesheet targets", () => {
