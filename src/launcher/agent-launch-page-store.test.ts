@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAgentLaunchPageStore } from "./agent-launch-page-store";
+import {
+  createAgentLaunchPageStore,
+  type AgentLaunchPageRequest as AgentLaunchRequest,
+} from "./agent-launch-page-store";
 import type { AgentLaunchPlacement, AgentLaunchResult } from "../terminal/agent-launch-target";
 
 const target = { kind: "first-pane", workspacePath: "/repo" } as const;
@@ -166,5 +169,104 @@ describe("agent launch page state", () => {
     resolve({ kind: "cancelled" });
     await Promise.resolve();
     expect(page.pending.value).toBe(false);
+  });
+
+  describe("re-target", () => {
+    const other = { kind: "split", workspacePath: "/other", tabKey: 3, paneId: 4 } as const;
+    const cancelled: AgentLaunchRequest["launch"] = async () => ({ kind: "cancelled" });
+
+    it("replaces the target in place, starts nothing and bumps the epoch", () => {
+      const page = createAgentLaunchPageStore();
+      const launch = vi.fn();
+      const retarget = vi.fn((_path: string) => other);
+      const restoreFocus = vi.fn();
+      page.open({ target, launch, retarget, restoreFocus, reveal: vi.fn() });
+      page.close(true);
+      const canRestore = restoreFocus.mock.calls[0][0];
+      page.open({ target, launch, retarget, restoreFocus, reveal: vi.fn() });
+      expect(page.retarget("/other")).toBe(true);
+      expect(retarget).toHaveBeenCalledWith("/other");
+      expect(page.request.value?.target).toBe(other);
+      expect(launch).not.toHaveBeenCalled();
+      // The deferred focus of the earlier close is stale either way; the new
+      // request is a different object, so a launch bound to the old one is too.
+      expect(canRestore()).toBe(false);
+    });
+
+    it("keeps the request's other fields", () => {
+      const page = createAgentLaunchPageStore();
+      const releaseStage = vi.fn();
+      page.open({
+        target,
+        launch: vi.fn(),
+        retarget: () => other,
+        restoreFocus: vi.fn(),
+        reveal: vi.fn(),
+        releaseStage,
+        returnToBoard: true,
+      });
+      page.retarget("/other");
+      expect(page.request.value?.returnToBoard).toBe(true);
+      page.close();
+      expect(releaseStage).toHaveBeenCalledOnce();
+    });
+
+    it("stops a launch that began before it from committing", async () => {
+      const page = createAgentLaunchPageStore();
+      const launch = vi.fn(cancelled);
+      page.open({ target, launch, retarget: () => other, restoreFocus: vi.fn(), reveal: vi.fn() });
+      await page.run("claude");
+      const canCommit = launch.mock.calls[0][1];
+      expect(canCommit()).toBe(true);
+      page.retarget("/other");
+      expect(canCommit()).toBe(false);
+    });
+
+    it("is refused while a launch is pending", async () => {
+      const page = createAgentLaunchPageStore();
+      let resolve!: (result: AgentLaunchResult) => void;
+      const retarget = vi.fn(() => other);
+      page.open({
+        target,
+        launch: () =>
+          new Promise<AgentLaunchResult>((done) => {
+            resolve = done;
+          }),
+        retarget,
+        restoreFocus: vi.fn(),
+        reveal: vi.fn(),
+      });
+      const running = page.run("claude");
+      expect(page.retarget("/other")).toBe(false);
+      expect(retarget).not.toHaveBeenCalled();
+      expect(page.request.value?.target).toBe(target);
+      resolve({ kind: "cancelled" });
+      await running;
+    });
+
+    it("changes nothing when no target can be made, or the request has no retarget", () => {
+      const page = createAgentLaunchPageStore();
+      page.open({
+        target,
+        launch: vi.fn(),
+        retarget: () => null,
+        restoreFocus: vi.fn(),
+        reveal: vi.fn(),
+      });
+      const before = page.request.value;
+      expect(page.retarget("/nowhere")).toBe(false);
+      expect(page.request.value).toBe(before);
+      page.open({ target, launch: vi.fn(), restoreFocus: vi.fn(), reveal: vi.fn() });
+      expect(page.retarget("/other")).toBe(false);
+    });
+
+    it("makes run launch at the new target", async () => {
+      const page = createAgentLaunchPageStore();
+      const launch = vi.fn(cancelled);
+      page.open({ target, launch, retarget: () => other, restoreFocus: vi.fn(), reveal: vi.fn() });
+      page.retarget("/other");
+      await page.run("claude");
+      expect(launch.mock.calls[0][3]).toBe(other);
+    });
   });
 });

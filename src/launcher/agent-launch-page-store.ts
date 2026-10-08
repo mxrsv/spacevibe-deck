@@ -12,7 +12,15 @@ export interface AgentLaunchPageRequest {
     agentId: string,
     canCommit: () => boolean,
     placement: AgentLaunchPlacement,
+    /** The target as it stands when the press runs: a re-target may have replaced the opened one. */
+    target: AgentLaunchTarget,
   ) => Promise<AgentLaunchResult>;
+  /**
+   * Re-captures the target for another workspace path; null when none can be
+   * made. A read: it starts nothing. Absent on a request that cannot change
+   * its context.
+   */
+  readonly retarget?: (path: string) => AgentLaunchTarget | null;
   readonly reveal: (receipt: AgentLaunchReceipt, canFocus: () => boolean) => void;
   readonly restoreFocus: (canRestore: () => boolean) => void;
   readonly releaseStage?: () => void;
@@ -49,6 +57,23 @@ export function createAgentLaunchPageStore() {
     if (restore) previous?.restoreFocus(() => epoch === closeEpoch && request.value === null);
   }
 
+  /**
+   * Replaces the target in place and starts nothing. A new request object and
+   * a new epoch mean a launch that began under the old target can no longer
+   * commit. Refused while a launch is pending, so the page never names one
+   * checkout while another is being opened.
+   */
+  function retarget(path: string): boolean {
+    const current = request.value;
+    if (current?.retarget === undefined || pending.value) return false;
+    const target = current.retarget(path);
+    if (target === null) return false;
+    epoch += 1;
+    error.value = null;
+    request.value = { ...current, target };
+    return true;
+  }
+
   async function run(agentId: string, placement: AgentLaunchPlacement = "target"): Promise<void> {
     const current = request.value;
     if (current === null || pending.value) return;
@@ -57,7 +82,7 @@ export function createAgentLaunchPageStore() {
     pending.value = true;
     error.value = null;
     try {
-      const result = await current.launch(agentId, isCurrent, placement);
+      const result = await current.launch(agentId, isCurrent, placement, current.target);
       if (!isCurrent()) return;
       if (result.kind === "spawned") {
         request.value = null;
@@ -76,7 +101,7 @@ export function createAgentLaunchPageStore() {
     }
   }
 
-  return { request, pending, error, open, close, run };
+  return { request, pending, error, open, close, retarget, run };
 }
 
 export const agentLaunchPage = createAgentLaunchPageStore();

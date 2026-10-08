@@ -1333,11 +1333,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         ))
           element.inert = false;
       },
-      launch: async (agentId, canCommit, placement) => {
+      retarget: (path) => manager.captureAgentLaunchTarget(path, roots()),
+      launch: async (agentId, canCommit, placement, current) => {
         const result = await manager.launchAgentAtTarget(
           placement === "new-space"
-            ? { kind: "new-space", workspacePath: target.workspacePath }
-            : target,
+            ? { kind: "new-space", workspacePath: current.workspacePath }
+            : current,
           agentId,
           canCommit,
           roots,
@@ -1348,12 +1349,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         // like any other (DL-35.3).
         if (
           result.kind === "spawned" &&
-          (placement === "new-space" || target.kind === "new-space")
+          (placement === "new-space" || current.kind === "new-space")
         ) {
           const index = tabViews.value.findIndex((tab) => tab.key === result.receipt.tabKey);
           const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId;
           if (index >= 0)
-            manager.renameTab(index, autoSpaceName(folderName(target.workspacePath), label));
+            manager.renameTab(index, autoSpaceName(folderName(current.workspacePath), label));
         }
         return result;
       },
