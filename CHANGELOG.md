@@ -35,6 +35,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   **Folder** adds a folder to the rail; neither starts anything. A checkout with
   nothing open is one press on its name away from the launcher. Collapsed, the
   three stack above the project avatars.
+- **Pick where an agent starts without leaving the launcher.** Its
+  [top row](src/launcher/agent-launch-context.tsx) shows the project, the
+  branch and whether the agent splits beside your pane or opens a new space.
+  Change the project or the checkout right there, or choose **Open folder…**;
+  nothing starts until you press an agent.
 - **The strip shows where you are.** It reads project › branch › space › session
   for the focused pane, and its marks — with ⌘1–9 and switching between spaces —
   cover the current project; other projects are a click away in the rail.
