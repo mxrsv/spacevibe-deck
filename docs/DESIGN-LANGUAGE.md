@@ -3552,7 +3552,7 @@ new task launcher spec `decided`.
 The production surface is split between the shared
 [launcher fields](../src/launcher/launcher-fields.tsx) `current`, the
 [Open Board composer](../src/open-board/board-composer.tsx) `current`, and the
-[Quick Launch popover](../src/launcher/quick-launch.tsx) `current`; their
+[compact launch page](../src/launcher/agent-launch-page.tsx) `current`; their
 treatment lives in
 [18-new-task-launcher.css](../src/styles/18-new-task-launcher.css) `current`.
 Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
@@ -3580,6 +3580,10 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
   and interactive behind it; dismissal is explicit through Escape, its close
   control, the active trigger, a full-composer transfer, or a successful
   launch.
+
+  **Withdrawn 2026-10-08 (owner, launch actions decision 10).** The Quick Launch
+  popover and its state are deleted; the compact launch page (DL-32.6) is the
+  only launcher. The rule stays as the record of the popover's behaviour.
 - **DL-32.5** **A launcher control with nothing to offer is omitted, never
   shown inert.** This applies DL-19.7 to host-only workspace actions and to the
   runtime selector: capability absence is not presented as a disabled feature.
@@ -3590,8 +3594,7 @@ Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
   badges. The sidebar and strip keep their existing places; the page owns no
   strip item. Covered content remains mounted but inert, and the native browser
   is hidden. Back/Escape return without creating a process; Settings returns
-  focus to the page. This is separate from the legacy Quick Launch popover
-  in DL-32.4 ([page](../src/launcher/agent-launch-page.tsx),
+  focus to the page. The Quick Launch popover of DL-32.4 is withdrawn ([page](../src/launcher/agent-launch-page.tsx),
   [treatment](../src/launcher/agent-launch-page.css), [integration](../src/ui/app.tsx)).
 
   **AMENDED 2026-09-30, reshaped 2026-10-03 (owner): a card is one press, and
