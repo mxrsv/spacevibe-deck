@@ -85,6 +85,8 @@ expands it again.
 
 - Split with **⌘D** (side by side) or **⌘⇧D** (stacked). Move between panes with **⌘⌥ arrows**;
   swap two panes with **⌘⌥⇧ arrows**.
+- A plain shell pane in a split tab has a header with your pinned agents' logos. Press one to run
+  that agent in the pane's shell. The header also holds the split, expand and close buttons.
 - **⌘E** expands the focused pane; **⌘⇧Enter** zooms it over the whole tab.
 - **⌘W** closes the focused pane; **⌘⇧W** closes the whole tab. Deck asks first if a process
   other than an idle shell is running there.

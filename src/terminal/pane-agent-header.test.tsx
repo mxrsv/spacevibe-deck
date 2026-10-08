@@ -8,6 +8,7 @@ import { registerPaneHeaderActions } from "./pane-header-actions";
 import { persistError } from "../chrome/events";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { settings } from "../settings/settings-store";
+import { detectedAgents } from "./agent-detection-store";
 vi.mock("../ui/controls/deck-icon", () => ({ DeckIcon: () => null }));
 
 const pane: PaneView = {
@@ -288,5 +289,44 @@ describe("pane header actions (DL-32.8)", () => {
 
     resize(400);
     expect(actions()).toHaveLength(4);
+  });
+});
+describe("shell pane header in a split tab", () => {
+  const shell: PaneView = { ...pane, agent: null, sessionId: null };
+  const sibling: PaneView = { ...shell, paneId: 2 };
+  function publishPanes(panes: readonly PaneView[]) {
+    tabViews.value = [{ ...tabViews.value[0], panes }];
+  }
+  beforeEach(() => {
+    detectedAgents.value = [{ name: "claude", path: "/bin/claude" }];
+    settings.value = { ...DEFAULT_SETTINGS, quickAgentIds: ["claude"] };
+  });
+  afterEach(() => {
+    detectedAgents.value = [];
+  });
+
+  it("stays bare while the shell is alone in its tab", () => {
+    act(() => publishPanes([shell]));
+    expect(element.querySelector(".pane-quick-agents")).toBeNull();
+    expect(element.classList.contains("pane--agent-header")).toBe(false);
+  });
+
+  it("offers the pinned agents once the tab holds two panes", () => {
+    act(() => publishPanes([shell, sibling]));
+    expect(element.classList.contains("pane--agent-header")).toBe(true);
+    expect(
+      [...element.querySelectorAll(".pane-quick-agents button")].map((button) =>
+        button.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Run Claude Code here"]);
+  });
+
+  it("types the agent's command into this pane's shell", async () => {
+    act(() => publishPanes([shell, sibling]));
+    await act(async () => {
+      (element.querySelector(".pane-quick-agents button") as HTMLButtonElement).click();
+    });
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith(expect.stringMatching(/^claude\b.*\r$/));
   });
 });

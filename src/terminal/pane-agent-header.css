@@ -133,3 +133,16 @@
     transition: opacity var(--duration) var(--ease);
   }
 }
+/* A shell pane's header in a split tab: the pinned agents' logos, always visible,
+   so a bare terminal is one press from an agent. The spacer message keeps the
+   actions at the right edge. */
+.pane-quick-agents {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+}
+.pane-quick-agents__logo {
+  width: 14px;
+  height: 14px;
+  display: block;
+}

@@ -25,6 +25,7 @@ import { paneTails } from "./session-tail-store";
 import { CLAUDE_EFFORT_PICKER_KEY, CLAUDE_EFFORT_PICKER_HINT } from "../lib/agent-effort";
 import { reportChromeMessage } from "../chrome/events";
 import { displayAgent } from "../ui/agent-rail-card-model";
+import { PaneQuickAgents } from "./pane-quick-agents";
 import "./pane-agent-header.css";
 
 interface PaneHeaderInput {
@@ -151,12 +152,15 @@ export function PaneAgentHeader({
   message,
   input,
   expandActive = false,
+  shell = false,
 }: {
   pane: PaneView;
   message: string;
   input: PaneHeaderInput;
   /** `settings.focusExpand`, read by the mount's effect like `pane` and `message`. */
   expandActive?: boolean;
+  /** A shell pane in a split tab: the header offers the quick agents instead of a message. */
+  shell?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const generation = useRef(0);
@@ -219,7 +223,16 @@ export function PaneAgentHeader({
       }
     }
   }
-  if (!pane.agent) return null;
+  if (!pane.agent) {
+    if (!shell) return null;
+    return (
+      <div ref={root} class="pane-agent-header">
+        <PaneQuickAgents paneId={pane.paneId} input={input} />
+        <span class="pane-agent-header__message" />
+        <HeaderActions paneId={pane.paneId} expandActive={expandActive} narrow={narrow} />
+      </div>
+    );
+  }
   const label = message.trim() || displayAgent(pane.agent);
   return (
     <div ref={root} class="pane-agent-header">
@@ -265,15 +278,24 @@ export function mountPaneAgentHeader(
   host.className = "pane-agent-header-host";
   bar.append(host);
   const stop = effect(() => {
-    const pane = tabViews.value
-      .flatMap((tab) => tab.panes ?? [])
-      .find((candidate) => candidate.paneId === id);
+    const tab = tabViews.value.find((candidate) =>
+      candidate.panes?.some((pane) => pane.paneId === id),
+    );
+    const pane = tab?.panes?.find((candidate) => candidate.paneId === id);
+    // A lone shell keeps the bare terminal; the header arrives with the first split.
+    const shell = !pane?.agent && (tab?.panes?.length ?? 0) >= 2;
     const message = paneTails.value.get(id) ?? "";
     const expandActive = settings.value.focusExpand;
-    element.classList.toggle("pane--agent-header", Boolean(pane?.agent));
+    element.classList.toggle("pane--agent-header", Boolean(pane?.agent) || shell);
     render(
-      pane?.agent ? (
-        <PaneAgentHeader pane={pane} message={message} input={input} expandActive={expandActive} />
+      pane && (pane.agent || shell) ? (
+        <PaneAgentHeader
+          pane={pane}
+          message={message}
+          input={input}
+          expandActive={expandActive}
+          shell={shell}
+        />
       ) : null,
       host,
     );
