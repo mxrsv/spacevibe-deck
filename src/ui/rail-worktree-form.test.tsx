@@ -149,6 +149,16 @@ describe("RailWorktreeForm (DL-27.14, amended 2026-10-08)", () => {
     expect(remember).not.toHaveBeenCalled();
   });
 
+  it("returns focus to the Worktree button when it unmounts (DL-13.2)", async () => {
+    mount();
+    await settle();
+    expect(document.activeElement).toBe(host.querySelector("#rail-wt-branch"));
+
+    act(() => render(null, host));
+
+    expect(document.activeElement).toBe(anchor);
+  });
+
   it("closes on Cancel", async () => {
     mount();
     await settle();

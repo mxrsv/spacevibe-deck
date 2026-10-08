@@ -57,6 +57,16 @@ export function RailWorktreeForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // DL-13.2: on dismiss, focus returns to the control that had it — the `Worktree`
+  // button. Guarded on still being connected, as the card menu's own return is.
+  useEffect(
+    () => () => {
+      if (anchor.isConnected) {
+        anchor.focus();
+      }
+    },
+    [anchor],
+  );
   useEffect(() => {
     if (placed) {
       branchRef.current?.focus();
