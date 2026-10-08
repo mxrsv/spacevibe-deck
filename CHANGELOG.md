@@ -21,16 +21,20 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 - **The rail is tighter and plainer.** The tree starts closer to the edge, the
   project name is bright and bold with its count in light text, the agent you are
   in is a solid inverted row, and a row's second line always starts with the
-  agent's name. `New Workspace` is now a small [`+ New`](src/ui/sidebar-toggle.tsx)
-  beside the Deck name, and the usage pills at the foot are one quiet line such
-  as `Claude 42% · 7d`.
+  agent's name, and the usage pills at the foot are one quiet line such as
+  `Claude 42% · 7d`.
 - **A project says how many agents need you.** Its header shows `N need you`,
   red when one of them failed, instead of how many are running.
-- **Start an agent from the checkout you mean.** The `+` beside a checkout's
-  branch opens the launcher there. It splits beside your pane when you are
-  working in that checkout and otherwise
-  [opens a new space](src/terminal/agent-launch-target.ts), and the launcher
-  says which before you press Run.
+- **Agent, Worktree and Folder, side by side.** One
+  [row of three buttons](src/ui/rail-create-row.tsx) under the Deck name
+  replaces `New Workspace`. **Agent** opens the launcher on the checkout you are
+  working in — it splits beside your pane, or
+  [opens a new space](src/terminal/agent-launch-target.ts) when you are
+  elsewhere, and says which before you press Run — and you can still drag it
+  onto a pane. **Worktree** creates a worktree right in the sidebar and
+  **Folder** adds a folder to the rail; neither starts anything. A checkout with
+  nothing open is one press on its name away from the launcher. Collapsed, the
+  three stack above the project avatars.
 - **The strip shows where you are.** It reads project › branch › space › session
   for the focused pane, and its marks — with ⌘1–9 and switching between spaces —
   cover the current project; other projects are a click away in the rail.
