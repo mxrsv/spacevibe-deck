@@ -110,7 +110,7 @@ describe("RailWorktreeForm (DL-27.14, amended 2026-10-08)", () => {
       destPath: expect.stringContaining("feat/x"),
     });
     expect(remember).toHaveBeenCalledExactlyOnceWith("/r/main-worktrees/feat-x");
-    expect(host.querySelector('[role="status"]')?.textContent).toContain("Nothing was started");
+    expect(host.querySelector('[role="status"]')?.textContent).toContain("Created feat/x. Nothing was started");
     expect(onClose).not.toHaveBeenCalled();
   });
 

@@ -42,6 +42,7 @@ export function RailWorktreeForm({
 }: RailWorktreeFormProps) {
   const form = useWorktreeForm();
   const [created, setCreated] = useState<string | null>(null);
+  const [createdBranch, setCreatedBranch] = useState("");
   const [rect] = useState<AnchorRect>(() => anchor.getBoundingClientRect());
   const { ref, style, placed } = useSurfacePlacement(rect, side);
   const branchRef = useRef<HTMLInputElement>(null);
@@ -85,8 +86,10 @@ export function RailWorktreeForm({
     if (!canSubmit) {
       return;
     }
+    const branch = state.branch.trim();
     void form.submit((path) => {
       rememberOnRail(path);
+      setCreatedBranch(branch);
       setCreated(path);
     });
   }
@@ -108,7 +111,7 @@ export function RailWorktreeForm({
       {created !== null ? (
         <>
           <p class="rail-wt__done" role="status">
-            Created {workspaceLabel(created)}. Nothing was started.
+            Created {createdBranch}. Nothing was started.
           </p>
           <div class="rail-wt__actions">
             <button type="button" class="rail-wt__button" onClick={onClose}>
