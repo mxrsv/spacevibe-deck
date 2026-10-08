@@ -43,7 +43,6 @@ function mount(overrides: Partial<LauncherFieldsProps> = {}): {
     declaredModels: {},
     agentRuntimeDefaults: {},
     canCreateWorkspace: true,
-    canCreateWorktree: true,
     pending: null,
     problem: null,
     openProblem: null,
@@ -55,7 +54,6 @@ function mount(overrides: Partial<LauncherFieldsProps> = {}): {
     onDraftChange,
     onPickFolder,
     onCreateWorkspace: vi.fn(),
-    onCreateWorktree: vi.fn(),
     onManageAgents,
     onStartTask,
     onOpenAgent: vi.fn(),
@@ -148,7 +146,7 @@ describe("LauncherFields", () => {
   });
 
   it("hides host-only workspace actions rather than disabling them", () => {
-    mount({ draft: ready(), canCreateWorkspace: false, canCreateWorktree: false });
+    mount({ draft: ready(), canCreateWorkspace: false });
     const values = Array.from(
       host.querySelectorAll<HTMLOptionElement>('select[aria-label="Workspace"] option'),
     ).map((option) => option.value);

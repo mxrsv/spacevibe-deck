@@ -148,7 +148,7 @@ describe("CardActionsMenu placements", () => {
   });
 
   it("names a folder git does not know by its name alone, and says folder", () => {
-    const menu = mount("free-standing", FOLDER, actions({ onCreateBranch: vi.fn() }));
+    const menu = mount("free-standing", FOLDER, actions());
 
     expect(menu?.querySelector(".asr-act__where")?.textContent).toBe("notes");
     expect(menu?.textContent).not.toContain("Create branch");

@@ -15,23 +15,12 @@ import type { MenuSubject } from "./agent-rail-card-model";
 
 const CHECKOUT: MenuSubject = {
   project: "repo",
-  // A LINKED worktree, so its repository is a different path — which is the
-  // whole point of the `Create branch from here` case below.
+  // A LINKED worktree, so its repository is a different path from the checkout.
   path: "/repo/wt",
   repositoryPath: "/repo",
   branch: "feat/strip-actions",
   label: "wt",
   labelled: true,
-};
-
-/** A folder git does not know — every path under Tauri, and a plain folder on Electron. */
-const FOLDER: MenuSubject = {
-  project: "notes",
-  path: "/w/notes",
-  repositoryPath: "/w/notes",
-  branch: null,
-  label: "notes",
-  labelled: false,
 };
 
 function actions(extra: Partial<CardActions> = {}): CardActions {
@@ -54,15 +43,14 @@ describe("actionGroups", () => {
     expect(ids(actionGroups(actions(), CHECKOUT))).toEqual(["run:claude", "split"]);
   });
 
-  it("adds the branch and OS rows only where the host can answer them", () => {
+  it("adds the OS rows only where the host can answer them", () => {
     const full = actions({
-      onCreateBranch: () => {},
       onOpenFolder: () => {},
       onOpenShell: () => {},
     });
     expect(actionGroups(full, CHECKOUT).map((group) => group.map((row) => row.id))).toEqual([
       ["run:claude"],
-      ["shell", "split", "branch", "finder"],
+      ["shell", "split", "finder"],
     ]);
   });
 
@@ -106,27 +94,6 @@ describe("actionGroups", () => {
     expect(groups.flat()[0]?.kind).toBe("note");
   });
 
-  it("names the branch it will fork from, not the words the footer already says", () => {
-    const groups = actionGroups(actions({ onCreateBranch: () => {} }), CHECKOUT);
-    const branch = groups.flat().find((row) => row.id === "branch");
-    expect(branch?.kind === "action" ? branch.detail : null).toBe("Branch off feat/strip-actions");
-  });
-
-  it("forks from the REPOSITORY, not from the linked worktree it was raised on", () => {
-    // `worktree_add` runs against a repository. Passing `group.path` made the
-    // create form suggest a destination beside the WORKTREE (code review,
-    // 2026-08-31) — the branch word above is still this checkout's, which is
-    // what "from here" means.
-    const seen: string[] = [];
-    const groups = actionGroups(actions({ onCreateBranch: (path) => seen.push(path) }), CHECKOUT);
-    const branch = groups.flat().find((row) => row.id === "branch");
-    if (branch?.kind === "action") {
-      branch.run();
-    }
-    expect(seen).toEqual(["/repo"]);
-    expect(seen).not.toContain(CHECKOUT.path);
-  });
-
   it("routes every row at THIS checkout's path", () => {
     const seen: string[] = [];
     const groups = actionGroups(
@@ -142,13 +109,6 @@ describe("actionGroups", () => {
       }
     }
     expect(seen).toEqual(["run:/repo/wt", "split:/repo/wt"]);
-  });
-
-  it("drops the branch row for a folder git does not know, even when wired (DL-19.7)", () => {
-    // `rail-create-consolidation` design D5: a plain folder has no branch to
-    // fork from, so the row goes rather than promising `Branch off null`.
-    const groups = actionGroups(actions({ onCreateBranch: () => {} }), FOLDER);
-    expect(ids(groups)).toEqual(["run:claude", "split"]);
   });
 
   it("carries the board row ONLY in the free-standing placement", () => {

@@ -316,8 +316,6 @@ export interface CardActions {
   onManageAgents?(): void;
   /** `TabManager.splitInWorkspace` — materialize-then-split (spec §11.1). */
   onSplitHere(workspacePath: string): void;
-  /** Quick Launch's create-worktree subview, prefilled with this repository. */
-  onCreateBranch?(repoPath: string): void;
   /** `open_in_app` with the catalog's `finder` entry. */
   onOpenFolder?(path: string): void;
   /** The installed app each OS row will actually launch, for its detail line. */
@@ -478,30 +476,6 @@ export function actionGroups(
       },
     },
   ];
-  const createBranch = actions.onCreateBranch;
-  // Dropped, not disabled, for a checkout git does not know (DL-19.7): a
-  // plain folder has no branch to fork from, and `subject.branch` is null
-  // there — the row would have promised `Branch off null`.
-  if (createBranch !== undefined && subject.labelled && subject.branch !== null) {
-    const branch = subject.branch;
-    work.push({
-      kind: "action",
-      id: "branch",
-      title: "Create branch from here",
-      detail: `Branch off ${branch}`,
-      glyph: "branch",
-      run: () => {
-        // The REPOSITORY, not this checkout (code review, 2026-08-31):
-        // `worktree_add` runs against a repository, and passing a linked
-        // worktree made `suggestWorktreeDest` propose a destination beside
-        // that worktree instead of beside the repository. `Branch off
-        // <branch>` above is still this checkout's branch — that half was
-        // always right, and it is what "from here" means.
-        createBranch(subject.repositoryPath);
-      },
-    });
-  }
-
   const os: ActionRow[] = [];
   const openFolder = actions.onOpenFolder;
   if (openFolder !== undefined) {

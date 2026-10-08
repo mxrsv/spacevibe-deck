@@ -42,7 +42,6 @@ import {
 /** Sentinel option values — a workspace action rather than a workspace. */
 const PICK_FOLDER = "__pick-folder";
 const CREATE_WORKSPACE = "__create-workspace";
-const CREATE_WORKTREE = "__create-worktree";
 
 export type LauncherPending =
   | "picking-folder"
@@ -99,7 +98,6 @@ export interface LauncherFieldsProps {
   readonly agentRuntimeDefaults: Readonly<Record<string, AgentRuntimeDefault>>;
   /** Electron-only host capabilities; omitted, never shown inert (DL-19.7). */
   readonly canCreateWorkspace: boolean;
-  readonly canCreateWorktree: boolean;
   readonly pending: LauncherPending | null;
   /** What blocks `Start task` — the full chain, prompt included. */
   readonly problem: DraftProblem | null;
@@ -127,7 +125,6 @@ export interface LauncherFieldsProps {
   onDraftChange(next: NewTaskDraft): void;
   onPickFolder(): void;
   onCreateWorkspace(): void;
-  onCreateWorktree(): void;
   onManageAgents(): void;
   onStartTask(): void;
   onOpenAgent(): void;
@@ -238,10 +235,6 @@ export function LauncherFields(props: LauncherFieldsProps) {
       props.onCreateWorkspace();
       return;
     }
-    if (value === CREATE_WORKTREE) {
-      props.onCreateWorktree();
-      return;
-    }
     props.onDraftChange({ ...draft, workspacePath: value });
   }
 
@@ -315,9 +308,6 @@ export function LauncherFields(props: LauncherFieldsProps) {
             <option value={PICK_FOLDER}>Open folder…</option>
             {props.canCreateWorkspace ? (
               <option value={CREATE_WORKSPACE}>Create workspace…</option>
-            ) : null}
-            {props.canCreateWorktree ? (
-              <option value={CREATE_WORKTREE}>Create worktree…</option>
             ) : null}
           </select>
         </label>

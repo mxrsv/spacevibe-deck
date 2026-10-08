@@ -29,6 +29,9 @@ export interface BoardComposerProps extends Omit<
   "idPrefix" | "compact" | "onOpenFullComposer" | "recents"
 > {
   readonly homeDir: string;
+  /** Electron-only; omitted, never shown inert (DL-19.7). */
+  readonly canCreateWorktree: boolean;
+  onCreateWorktree(): void;
   /** Folders that still exist, newest first. */
   readonly alive: readonly RecentWorkspace[];
   /** Folders `dirs_exist` could not find — collapsed behind a count. */
