@@ -92,7 +92,9 @@ turned down and why — a fork nobody can reconstruct is a decision that will be
 the files you changed, lint them, and run `scripts/` and `src/styles/` — the policy suites that
 read stylesheets and docs and fail when a ledger falls behind. The
 [`pre-push`](.githooks/pre-push) hook runs exactly that set, installed by `npm install`; do not
-bypass it with `--no-verify` to land a red change. A test your change breaks gets updated in
+bypass it with `--no-verify` to land a red change. The policy suites read the working tree, so in a
+checkout holding another session's uncommitted files they can fail on that work: push from a
+clean worktree instead. A test your change breaks gets updated in
 the same commit. The full suite, `npm run build` and `electron:build` stay CI's job and run
 locally only when asked; a change reported without them says so. Manual native acceptance, real-device upgrade checks, and Windows install/update checks run
 only when explicitly requested; they are not prerequisites for release completion or issue
