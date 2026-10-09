@@ -113,7 +113,7 @@ const HIDDEN_VIEW = Object.freeze<UpdateView>({
 });
 
 /**
- * Phases a check may run from and replace.
+ * Phases the timer may check from.
  *
  * The three it excludes are an update the user is acting on — downloading,
  * downloaded, or installing — where a check could replace the very version
@@ -167,6 +167,13 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
   let consecutiveCheckFailures = 0;
   let operation: Promise<void> | null = null;
   let checkOperation: Promise<UpdateCheckResult> | null = null;
+  /**
+   * Bumped whenever the user starts acting on an update. A check begun before
+   * the bump answers a question nobody is asking any more: applied late, it
+   * would pull a download back to `available`, or — landing after the download
+   * failed — take the banner and its retry away.
+   */
+  let checkEpoch = 0;
 
   const singleFlight = (work: () => Promise<void>): Promise<void> => {
     if (operation !== null) {
@@ -186,15 +193,14 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       return Promise.resolve("unsupported");
     }
 
+    const epoch = checkEpoch;
     checkOperation = (async () => {
       try {
         const result = await deps.check();
-        consecutiveCheckFailures = 0;
-        if (!RECHECKABLE_PHASES.has(view.value.phase)) {
-          // The user pressed Update while this check was in flight. Applying
-          // it now would pull the banner back to `available` mid-download.
+        if (epoch !== checkEpoch) {
           return checkResultOf(result);
         }
+        consecutiveCheckFailures = 0;
         if (result === UPDATE_UNSUPPORTED) {
           update = null;
           view.value = HIDDEN_VIEW;
@@ -205,8 +211,11 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
         return update === null ? "current" : "available";
       } catch (error: unknown) {
         deps.report("Update check failed", error);
+        if (epoch !== checkEpoch) {
+          return "failed";
+        }
         consecutiveCheckFailures += 1;
-        if (view.value.phase === "available" || !RECHECKABLE_PHASES.has(view.value.phase)) {
+        if (update !== null) {
           // A dropped connection says nothing about the update already found;
           // keep it on screen rather than take it back.
           return "failed";
@@ -311,23 +320,39 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       ? Promise.resolve("failed")
       : view.value.phase === "hidden" ||
           view.value.phase === "check-failed" ||
-          view.value.phase === "available"
+          view.value.phase === "available" ||
+          view.value.phase === "install-failed"
         ? checkForAvailableUpdate()
         : Promise.resolve("available");
 
   /**
-   * The newest update at the moment of the press. The check that surfaced the
-   * banner can be hours old; downloading its answer installs a release that is
-   * already superseded. Anything but a fresh find keeps the surfaced update:
-   * the download itself is the honest place for a broken feed to fail.
+   * The newest update right now. The check that surfaced the banner can be
+   * hours old; acting on its answer installs a release that is already
+   * superseded. Anything but a fresh find keeps the surfaced update: the
+   * download or install itself is the honest place for a broken feed to fail.
    */
   const latestUpdate = async (surfaced: PendingUpdate): Promise<PendingUpdate> => {
     try {
       const result = await deps.check();
       return result === null || result === UPDATE_UNSUPPORTED ? surfaced : result;
     } catch (error: unknown) {
-      deps.report("Update recheck before download failed", error);
+      deps.report("Update recheck failed", error);
       return surfaced;
+    }
+  };
+
+  /**
+   * After a retryable install refusal, move the banner to a newer release if
+   * one exists. The Electron host refuses to install a file once any window's
+   * check has found something newer, so Retry Install would refuse forever;
+   * offering the newer build turns that dead end into one more download. With
+   * nothing newer, the failure and its Retry stay on screen.
+   */
+  const offerSupersedingUpdate = async (failed: PendingUpdate): Promise<void> => {
+    const newest = await latestUpdate(failed);
+    if (newest.version !== failed.version) {
+      update = newest;
+      view.value = updateView(newest, "available");
     }
   };
 
@@ -339,6 +364,7 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       ) {
         return;
       }
+      checkEpoch += 1;
       view.value = updateView(update, "downloading");
       const target = await latestUpdate(update);
       update = target;
@@ -357,6 +383,7 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       if (update === null || view.value.phase !== "relaunch-failed") {
         return;
       }
+      checkEpoch += 1;
       view.value = updateView(update, "installing");
       try {
         await deps.relaunch();
@@ -379,6 +406,7 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
         view.value = updateView(update, "downloaded");
         return;
       }
+      checkEpoch += 1;
       view.value = updateView(update, "installing");
       try {
         await deps.flush();
@@ -399,10 +427,11 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
         await update.install();
       } catch (error: unknown) {
         deps.report("Update install failed", error);
-        view.value = {
-          ...updateView(update, "install-failed"),
-          installRetryable: !(error instanceof UpdateInstallError) || error.retryable,
-        };
+        const installRetryable = !(error instanceof UpdateInstallError) || error.retryable;
+        view.value = { ...updateView(update, "install-failed"), installRetryable };
+        if (installRetryable) {
+          await offerSupersedingUpdate(update);
+        }
         return;
       }
       try {

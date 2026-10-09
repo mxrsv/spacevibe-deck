@@ -308,10 +308,89 @@ describe("createUpdateController", () => {
 
     expect(found.download).toHaveBeenCalledOnce();
     expect(controller.view.value.phase).toBe("downloaded");
-    expect(deps.report).toHaveBeenCalledWith(
-      "Update recheck before download failed",
-      expect.any(Error),
-    );
+    expect(deps.report).toHaveBeenCalledWith("Update recheck failed", expect.any(Error));
+  });
+
+  it("offers the newer release when a retryable install refusal would loop", async () => {
+    // Electron's main refuses this install once another window's check found
+    // something newer; Retry Install would refuse the same way forever.
+    const found = pending({
+      install: vi.fn().mockRejectedValue(new Error("The update has not finished downloading yet.")),
+    });
+    const newest = pending({ version: "0.11.0" });
+    const check = vi
+      .fn()
+      .mockResolvedValueOnce(found)
+      .mockResolvedValueOnce(found)
+      .mockResolvedValue(newest);
+    const { controller } = setup(null, { check });
+    await controller.start();
+    await controller.download();
+
+    await controller.installAndRelaunch();
+
+    expect(found.install).toHaveBeenCalledOnce();
+    expect(controller.view.value).toMatchObject({ phase: "available", availableVersion: "0.11.0" });
+    await controller.download();
+    expect(newest.download).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a retryable install failure on screen until a check finds something newer", async () => {
+    const found = pending({ install: vi.fn().mockRejectedValue(new Error("disk full")) });
+    const check = vi.fn().mockResolvedValue(found);
+    const { controller } = setup(null, { check });
+    await controller.start();
+    await controller.download();
+
+    await controller.installAndRelaunch();
+    expect(controller.view.value).toMatchObject({
+      phase: "install-failed",
+      availableVersion: "0.10.0",
+      installRetryable: true,
+    });
+
+    // A flaky manual check must not take Retry Install away.
+    check.mockRejectedValueOnce(new Error("offline"));
+    await expect(controller.checkNow()).resolves.toBe("failed");
+    expect(controller.view.value).toMatchObject({
+      phase: "install-failed",
+      availableVersion: "0.10.0",
+      installRetryable: true,
+    });
+
+    check.mockResolvedValue(pending({ version: "0.11.0" }));
+    await expect(controller.checkNow()).resolves.toBe("available");
+    expect(controller.view.value).toMatchObject({ phase: "available", availableVersion: "0.11.0" });
+  });
+
+  it("does not let a check begun before the press take the banner after a failed download", async () => {
+    let failStaleCheck!: (error: Error) => void;
+    const newest = pending({
+      version: "0.11.0",
+      download: vi.fn().mockRejectedValue(new Error("connection reset")),
+    });
+    const check = vi
+      .fn()
+      .mockResolvedValueOnce(pending())
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => (failStaleCheck = reject)))
+      .mockResolvedValueOnce(newest);
+    const { controller } = setup(null, { check });
+    await controller.start();
+
+    const stale = controller.checkNow();
+    await controller.download();
+    expect(controller.view.value).toMatchObject({
+      phase: "download-failed",
+      availableVersion: "0.11.0",
+    });
+
+    failStaleCheck(new Error("timed out"));
+    await expect(stale).resolves.toBe("failed");
+
+    expect(controller.view.value).toMatchObject({
+      phase: "download-failed",
+      availableVersion: "0.11.0",
+    });
   });
 
   it("keeps a surfaced update on screen when a manual recheck fails", async () => {
@@ -528,7 +607,11 @@ describe("the background recheck", () => {
     vi.useFakeTimers();
     try {
       let landTimerCheck!: (update: PendingUpdate) => void;
-      const newest = pending({ version: "0.11.0" });
+      let finishDownload!: () => void;
+      const newest = pending({
+        version: "0.11.0",
+        download: vi.fn(() => new Promise<void>((resolve) => (finishDownload = resolve))),
+      });
       const check = vi
         .fn()
         .mockResolvedValueOnce(pending({ version: "0.10.0" }))
@@ -540,16 +623,24 @@ describe("the background recheck", () => {
       await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS);
       expect(check).toHaveBeenCalledTimes(2);
 
-      await controller.download();
+      const downloading = controller.download();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(newest.download).toHaveBeenCalledOnce();
+
+      // Lands while the download is still running.
+      landTimerCheck(pending({ version: "0.12.0" }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(controller.view.value).toMatchObject({
+        phase: "downloading",
+        availableVersion: "0.11.0",
+      });
+
+      finishDownload();
+      await downloading;
       expect(controller.view.value).toMatchObject({
         phase: "downloaded",
         availableVersion: "0.11.0",
       });
-
-      landTimerCheck(newest);
-      await vi.advanceTimersByTimeAsync(0);
-
-      expect(controller.view.value.phase).toBe("downloaded");
     } finally {
       vi.useRealTimers();
     }
