@@ -1,0 +1,405 @@
+/* ── DL-36: the strip's dev servers chip and its popover ──────────────────
+   `DevServersChip`, `DevServersPopover` and `DevServersPanel`
+   (`src/ui/dev-servers/`). The chip prints how many servers run in the active
+   checkout and wears a dot that is live only while that number is above zero
+   (DL-36.1, DL-1.2's third scoped exception). The popover is a DL-13.1 surface
+   of DL-36.2 rows.
+
+   Green is "on" (DL-3.2); red only for a reading that cannot be trusted or an
+   action that failed; Unknown is faint, never yellow, because nobody has to act
+   on it. Weights are 400 and 600 only, the two static Windows faces, so nothing
+   here needs a `.window--windows` line (21-windows-weights.css). Transitions
+   are declared under `no-preference` or on the two properties DL-1.2 allows,
+   and the one loop exists only under `no-preference` (DL-1.5). ── */
+
+/* ── the chip: `.attn-chip` supplies the frame (24-high, hover, focus ring) ── */
+
+.dsv-chip {
+  -webkit-app-region: no-drag;
+}
+
+.dsv-chip__dot {
+  position: relative;
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.dsv-chip__dot[data-tone="failed"] {
+  background: var(--red);
+}
+
+/* DL-1.2's third scoped exception: one ring radiating from the dot on a 1.8s
+   loop. One element, `transform` and `opacity` only, and it exists only while a
+   server is running in the active checkout — a scan that failed paints the dot
+   red and still. Reduced motion gets the still green dot. */
+@media (prefers-reduced-motion: no-preference) {
+  .dsv-chip__dot[data-tone="running"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--green);
+    opacity: 0;
+    animation: dsv-live 1.8s ease-out infinite;
+  }
+}
+
+@keyframes dsv-live {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+/* ── the popover (DL-13.1: a `--chrome-2` surface, a 1px `--seam-raised` hairline) ── */
+
+/* The portal's holder: it exists to be asked `contains`, and lays nothing out. */
+.dsv-holder {
+  display: contents;
+}
+
+.dsv-pop {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 4px 0 0;
+  overflow-y: auto;
+  border-radius: var(--radius-surface);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  -webkit-app-region: no-drag;
+}
+
+.dsv-pop__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px 0;
+  font: 600 var(--type-body) / 1.2 var(--ui-font);
+  color: var(--text-primary);
+}
+
+/* ── the body ── */
+
+.dsv {
+  container-type: inline-size;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0 0 12px;
+  font-family: var(--ui-font);
+  color: var(--text-primary);
+}
+
+.dsv-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--chrome-2);
+}
+
+.dsv-scope {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 8px 4px 12px;
+}
+
+.dsv-scope__ico {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.dsv-scope__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-body);
+  font-weight: 600;
+}
+
+.dsv-scope__branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* DL-1.4: a native select behind a styled pill. */
+.dsv-select {
+  position: relative;
+  flex: none;
+  margin-left: auto;
+}
+
+.dsv-select select {
+  appearance: none;
+  box-sizing: border-box;
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-tab);
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--type-meta) / 1.2 var(--ui-font);
+  cursor: pointer;
+}
+
+.dsv-select select:hover {
+  border-color: var(--hair-strong);
+}
+
+.dsv-select select:focus-visible,
+.dsv-link:focus-visible,
+.dsv-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.dsv-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* DL-19.5: the one status line — faint, red when it reports a failure. */
+.dsv-status {
+  margin: 0;
+  padding: 0 12px 6px;
+  min-height: 16px;
+  border-bottom: 1px solid var(--hair);
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+}
+
+.dsv-status[data-tone="error"] {
+  color: var(--red);
+}
+
+.dsv .load-error {
+  margin: 6px 8px 0;
+}
+
+.dsv-rows {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 4px 4px 0;
+  list-style: none;
+}
+
+/* ── a row (DL-36.2) ── */
+
+.dsv-row {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-control);
+}
+
+.dsv-row:hover {
+  background: var(--state-hover-bg);
+}
+
+/* DL-36.3: shape carries the state as well as colour — filled, hollow, dashed. */
+.dsv-mark {
+  box-sizing: border-box;
+  align-self: start;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border: 1.5px solid var(--text-faint);
+  border-radius: 50%;
+}
+
+.dsv-mark[data-state="running"] {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.dsv-mark[data-state="unknown"] {
+  border-style: dashed;
+}
+
+.dsv-row__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dsv-row__line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dsv-row__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-body);
+  font-weight: 600;
+}
+
+.dsv-row__state {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+}
+
+.dsv-row__url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
+.dsv-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  min-width: 0;
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+}
+
+.dsv-row__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsv-row[data-state="stopped"] .dsv-row__title,
+.dsv-row[data-state="stopped"] .dsv-row__url,
+.dsv-row[data-state="unknown"] .dsv-row__url {
+  color: var(--text-faint);
+}
+
+/* ── the actions: one pill and a quiet icon cluster (DL-36.2) ── */
+
+.dsv-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.dsv-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* DL-25.5's skin: the quiet bordered pill. */
+.dsv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 2px;
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-tab);
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--type-meta) / 1.2 var(--ui-font);
+  cursor: pointer;
+}
+
+.dsv-pill:hover {
+  border-color: var(--hair-strong);
+  color: var(--accent);
+}
+
+/* DL-23.6: unavailable, not disabled — still focusable, quiet, no hover. */
+.dsv-pill.is-unavailable,
+.dsv-pill.is-unavailable:hover {
+  border-color: var(--hair);
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* A narrow popover: the actions drop under the text instead of squeezing it. */
+@container (max-width: 330px) {
+  .dsv-row {
+    grid-template-columns: 10px minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .dsv-row__actions {
+    grid-column: 2;
+  }
+}
+
+/* ── empty ── */
+
+.dsv-empty {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 14px 12px;
+}
+
+.dsv-empty__title,
+.dsv-empty__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body);
+}
+
+.dsv-empty__hint {
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.dsv-link {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: var(--type-meta) / 1.2 var(--ui-font);
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dsv-pill {
+    transition:
+      color var(--duration) var(--ease),
+      border-color var(--duration) var(--ease);
+  }
+
+  .dsv-select select {
+    transition: border-color var(--duration) var(--ease);
+  }
+}

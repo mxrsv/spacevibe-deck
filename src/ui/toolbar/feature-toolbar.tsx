@@ -153,6 +153,11 @@ interface FeatureToolbarProps {
    * nothing needs the user.
    */
   readonly attention?: ComponentChildren;
+  /**
+   * The dev servers chip (DL-36.1), which owns its own count, dot and popover.
+   * It follows the needs-you chip and is absent where servers cannot be found.
+   */
+  readonly devServers?: ComponentChildren;
 }
 
 export function FeatureToolbar({
@@ -162,6 +167,7 @@ export function FeatureToolbar({
   pinnedMenuAnchored,
   externalApp,
   attention,
+  devServers,
 }: FeatureToolbarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const updateRef = useRef<HTMLSpanElement>(null);
@@ -247,6 +253,7 @@ export function FeatureToolbar({
   const trailingExtras = (
     <>
       {attention}
+      {devServers}
       {externalApp}
       {updateAction !== undefined && (
         <span ref={updateRef} class="ftoolbar__update">

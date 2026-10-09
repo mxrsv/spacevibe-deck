@@ -236,6 +236,26 @@ describe("DeckToolbar", () => {
     ).toBe("2 need you");
   });
 
+  // DL-36.1: the dev servers chip follows the needs-you chip, ahead of the
+  // external-app button.
+  it("seats the dev servers chip after the needs-you chip", () => {
+    mount({
+      attention: <button type="button" aria-label="2 need you" />,
+      devServers: <button type="button" aria-label="Dev servers — 1 running" />,
+      externalApp: <button type="button" aria-label="Open in editor" />,
+    });
+
+    const labels = Array.from(host.querySelectorAll(".ftoolbar button")).map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual([
+      "2 need you",
+      "Dev servers — 1 running",
+      "Open in editor",
+      "More actions",
+    ]);
+  });
+
   it("draws no chip slot when nothing is handed in", () => {
     mount();
 

@@ -93,6 +93,12 @@ interface DeckToolbarProps {
    * node, like `externalApp`: it owns its own count, colour and popover.
    */
   readonly attention?: ComponentChildren;
+  /**
+   * The dev servers chip (DL-36.1), built by `App` for the same reason: it
+   * owns its own count, dot and popover, and its Open in Deck needs the app's
+   * stage rule. Absent where the host cannot discover servers.
+   */
+  readonly devServers?: ComponentChildren;
   onToggleBrowser(): void;
   onSplitRow(): void;
   onSplitColumn(): void;
@@ -228,6 +234,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
         items={[]}
         externalApp={props.externalApp}
         attention={props.attention}
+        devServers={props.devServers}
         updateAction={props.updateAction}
         pinnedMenu={globalInMore ? [...paneItems, ...globalItems] : paneItems}
         // Only while the popover's own row lives in the menu; with the rail's

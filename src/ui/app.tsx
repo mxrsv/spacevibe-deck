@@ -113,6 +113,7 @@ import {
   closeBrowser,
   deactivateBrowserSurface,
   initBrowserBridge,
+  openBrowserAt,
 } from "../browser/browser-store";
 import { installSessionTailSync } from "../terminal/session-tail-store";
 import {
@@ -147,6 +148,7 @@ import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
 import { DeckToolbar, MISSION_CONTROL_BUTTON_HIDDEN } from "./toolbar/deck-toolbar";
 import { AttentionStripChip } from "./attention/attention-strip-chip";
+import { DevServersStripChip } from "./dev-servers/dev-servers-strip-chip";
 // The sidebar slot's occupant. `RepositoryRail` and `WorkspaceSidebar` are
 // deliberately still in the tree with their tests: each successive rail keeps
 // its predecessor's callback contract, so swapping back is this one import and
@@ -1689,6 +1691,22 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       tabsRef.current?.notifySurfacesChanged();
     }
   };
+  /**
+   * A dev server's Open in Deck: navigate the browser to exactly that URL.
+   * `openBrowserAt` runs `takeStageForSurface` BEFORE it flips its own flags, so
+   * the launch page, the file surface and the Board are off the stage by the
+   * time the browser claims it — unlike `toggle-browser`, which restores the
+   * old page and swallows a failed open.
+   */
+  const openDevServerInDeck = (url: string) =>
+    openBrowserAt(url, {
+      client: defaultBrowserClient,
+      prepareStage: () => {
+        agentLaunchPage.close();
+        takeStageForSurface("browser", { files: fileController, client: defaultBrowserClient });
+      },
+      onChanged: () => tabsRef.current?.notifySurfacesChanged(),
+    });
   /** The browser chip's ✕: the chip leaves the strip, the page is kept. */
   const closeBrowserTab = (): void => {
     void closeBrowser(defaultBrowserClient);
@@ -2124,6 +2142,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // a choice walks the same overlay preflight a rail row does and then
       // `activateForAttention`, which acknowledges that pane and no other.
       attention={<AttentionStripChip onFocusPane={focusRailPane} />}
+      // DL-36.1: the dev servers chip rides the same trailing end, after it.
+      devServers={<DevServersStripChip openInDeck={openDevServerInDeck} />}
       compact={!sidebar}
       railToolsMounted={railToolsMounted}
       browserActive={browserSurfaceActive.value}

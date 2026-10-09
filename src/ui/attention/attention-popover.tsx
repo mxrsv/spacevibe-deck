@@ -1,5 +1,6 @@
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { usePressedPopoverDismiss } from "../controls/pressed-popover-dismiss";
 import { useStageOverlayFlag } from "../worktree-card-menus";
 import type { AttentionEntry, AttentionList } from "../attention-list-model";
 import { AttentionPanel } from "./attention-panel";
@@ -9,10 +10,8 @@ import { placePopover } from "./attention-placement";
  * The needs-you panel, hung from its chip (DL-13.1, DL-13.2).
  *
  * Dismissal is `ToolbarOverflowMenu`'s: Escape, a press outside, or completing
- * the action. It deliberately does NOT close on scroll, as the hover-raised
- * rail popovers do (DL-13.7): this one is raised by a press, a terminal's own
- * viewport scrolls whenever an agent prints, and a capture-phase scroll
- * listener would take the list away from under the pointer on every line.
+ * the action (`usePressedPopoverDismiss`, which says why it does not close on
+ * scroll).
  *
  * Portalled to `<body>`, like the space card: it is placed over the stage, so
  * it must sit above whatever clips or transforms the strip it hangs from, and
@@ -60,46 +59,7 @@ export function AttentionPopover({
     }
   });
 
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent): void => {
-      const target = event.target as Node;
-      if (holder.current?.contains(target) !== true && trigger?.contains(target) !== true) {
-        onDismiss(false);
-      }
-    };
-    // Capture phase and stopped, as every other dismissible surface does it
-    // (`useDismiss`): a terminal is one element away and reads raw keys, so an
-    // Escape that only closed this and kept travelling would reach the agent.
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onDismiss(true);
-      }
-    };
-    // Focus leaving for somewhere that is neither the surface nor the chip —
-    // a chord such as ⌘⇧A sending it to a pane — ends the popover. A null
-    // `relatedTarget` (a press on a scrollbar, the window losing focus) does
-    // not: nothing was chosen.
-    const onFocusIn = (event: FocusEvent): void => {
-      const target = event.target as Node;
-      if (holder.current?.contains(target) !== true && trigger?.contains(target) !== true) {
-        onDismiss(false);
-      }
-    };
-    // The anchor is a viewport coordinate; a resize moves the chip from under it.
-    const onResize = (): void => onDismiss(false);
-    document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    document.addEventListener("focusin", onFocusIn);
-    window.addEventListener("resize", onResize);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("keydown", onKeyDown, true);
-      document.removeEventListener("focusin", onFocusIn);
-      window.removeEventListener("resize", onResize);
-    };
-  }, [trigger, onDismiss]);
+  usePressedPopoverDismiss(holder, trigger, onDismiss);
 
   const placed = placePopover(anchor, { width: window.innerWidth, height: window.innerHeight });
 

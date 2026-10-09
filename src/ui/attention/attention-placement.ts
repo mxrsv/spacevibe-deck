@@ -9,7 +9,10 @@
  * the same way, by its `right` and `top` (DL-13.1).
  */
 
-/** The surface's width, and the same figure `.attn-pop` declares. */
+/**
+ * The needs-you surface's width, and the same figure `.attn-pop` declares. A
+ * wider popover (the dev servers one) passes its own as `surfaceWidth`.
+ */
 export const POPOVER_WIDTH = 288;
 /** Between the chip and the surface — the toolbar menu's own offset. */
 export const POPOVER_GAP = 6;
@@ -27,8 +30,9 @@ export interface PopoverPlacement {
 export function placePopover(
   anchor: Pick<DOMRect, "right" | "bottom">,
   viewport: { readonly width: number; readonly height: number },
+  surfaceWidth: number = POPOVER_WIDTH,
 ): PopoverPlacement {
-  const width = Math.min(POPOVER_WIDTH, Math.max(0, viewport.width - 2 * POPOVER_EDGE));
+  const width = Math.min(surfaceWidth, Math.max(0, viewport.width - 2 * POPOVER_EDGE));
   const wanted = viewport.width - anchor.right;
   const right = Math.min(Math.max(wanted, POPOVER_EDGE), viewport.width - POPOVER_EDGE - width);
   const top = anchor.bottom + POPOVER_GAP;

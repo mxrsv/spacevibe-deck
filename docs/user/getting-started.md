@@ -74,6 +74,10 @@ The ⌘T menu also offers **Open another project…** to choose another workspac
   (**⌘⇧U**) and **Session history** (**⌘⇧Y**).
 - **Browser tab** (**⌘⇧I**). A page beside your terminals, opening on the home address from
   Settings → Browser.
+- **Dev servers** (macOS, at the end of the tab strip). A chip counts the servers running in the
+  project you are on; press it for the list. It finds servers started from Deck or from any other
+  terminal or editor. Each one can be opened in Deck or in your browser, or copied. The chip
+  does not appear where Deck cannot look for servers.
 
 Drag the seam between the rail and the stage to resize it. Drag it past its floor, press
 **⌘B** or use the toggle beside the traffic lights to collapse the rail to a column of project

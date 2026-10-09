@@ -34,4 +34,10 @@ describe("placePopover", () => {
     );
     expect(placePopover({ right: 940, bottom: 800 }, WINDOW).maxHeight).toBe(0);
   });
+
+  it("places a wider surface by its own width", () => {
+    const placed = placePopover({ right: 200, bottom: 29 }, WINDOW, 360);
+
+    expect(WINDOW.width - placed.right - 360).toBe(POPOVER_EDGE);
+  });
 });

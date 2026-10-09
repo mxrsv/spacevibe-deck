@@ -398,6 +398,31 @@ describe("recent agent activity wiring", () => {
   });
 });
 
+describe("dev servers chip wiring", () => {
+  const source = readFileSync("src/ui/app.tsx", "utf8");
+
+  it("rides the toolbar beside the needs-you chip, with a stage-taking Open in Deck", () => {
+    const toolbar = source.slice(
+      source.indexOf("<DeckToolbar"),
+      source.indexOf("/>\n  );", source.indexOf("<DeckToolbar")),
+    );
+    expect(toolbar).toContain(
+      "devServers={<DevServersStripChip openInDeck={openDevServerInDeck} />}",
+    );
+    // The explicit-URL operation, not `openBrowser`, which keeps the loaded page
+    // and swallows a failed open; the stage rule runs inside `prepareStage`.
+    const open = source.slice(
+      source.indexOf("const openDevServerInDeck"),
+      source.indexOf("const closeBrowserTab"),
+    );
+    expect(open).toContain("openBrowserAt(url");
+    expect(open).toContain("agentLaunchPage.close()");
+    expect(open).toContain('takeStageForSurface("browser"');
+    expect(open).toContain("notifySurfacesChanged()");
+    expect(open).not.toContain("openBrowser(");
+  });
+});
+
 describe("needs-you chip wiring", () => {
   const source = readFileSync("src/ui/app.tsx", "utf8");
 

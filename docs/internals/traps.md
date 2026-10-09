@@ -100,6 +100,17 @@ constants that currently switch behaviour off and are meant to be flipped back.
 - **IPC payloads are typed separately on each side.** A key the handler destructures and the
   renderer never sends is green everywhere but the running app; the contract test is the
   only early signal. Keep flat keys where the contract is flat.
+- **Dev server rows are matched to the active tab by `displayRoot`, never `workspacePath`.**
+  The core's `workspacePath` is the realpath'd root, so it differs from the tab's own path
+  wherever a symlink sits above the folder (`/var` against `/private/var`) and a
+  [scope filter](../../src/ui/dev-servers/dev-server-model.ts) on it silently shows nothing.
+  The chip also watches from the moment it mounts, not when its popover opens, so the
+  [store](../../src/dev-servers/dev-server-store.ts) must be re-registered only when the root
+  set changes: `tabViews` republishes every two seconds.
+- **Open in Deck from the dev servers popover uses
+  [`openBrowserAt`](../../src/browser/browser-store.ts), not `openBrowser`.** `openBrowser`
+  keeps a page that is already loaded and swallows a failed open; an explicit destination must
+  always move the page and report failure, and the stage rule runs before the flags flip.
 - **`open_pane_window`, `prepare_transfer` and `offer_transfer` have frozen shapes:** flat
   arguments, a string `paneId`, and `targetLabel`. Two of the three shipped broken once.
 - **`node-pty` delivers strings on Windows** whatever encoding you ask for, and it ignores

@@ -52,7 +52,19 @@ constraint: **consume as few machine resources as possible.**
   worktree-card row or strip carries three `transform: scaleY` bars while its
   agent is working (DECK-30, amended 2026-09-09). The 6/10/8px bars share a
   900ms alternate cycle with a 150ms stagger; there is no beam. Leaving working
-  removes all three bars. Reduced motion keeps their static heights. No other
+  removes all three bars. Reduced motion keeps their static heights.
+  **A third scoped exception was added 2026-10-09 by DL-36.1 (owner):** the dev
+  servers chip's 6px dot radiates on a 1.8s loop — one ring that scales out of
+  the dot and fades — for as long as at least one server is running in the
+  active checkout. The ring is one pseudo-element and uses only `transform` and
+  `opacity`; it exists only while that count is above zero, so a chip reading
+  zero, or a scan that failed (a still red dot), draws nothing that moves. The
+  needs-you chip beside it stays still. "Nothing animates while the user is
+  idle" does NOT hold for it, because a running server is exactly what the user
+  walked away from and the dot's job is to say it is still live without being
+  asked. That is the whole cost of the exception; it was taken knowingly, over a
+  still dot that reads as a status light rather than a live one. Reduced motion
+  gets the still green dot. No other
   surface inherits these exceptions. The Agent Board adds no motion of its
   own: a `working` card wears the rail's ring (DL-27.3), and the rail's
   `asked` ripple does not cross to the Board, where the yellow frame carries
@@ -4121,6 +4133,77 @@ Built by [`space-model.ts`](../src/ui/spaces/space-model.ts),
   every fade; the mark's pill transition exists only under `no-preference`.
   No class allowlist.
 
+## 36. Dev servers
+
+Added 2026-10-09 from the dev server discovery spec, where the owner chose a
+popover from a strip chip over a side-panel tab after comparing both in the
+gallery. Numbered 36 because §35 was the highest. A chip on the stage strip
+counts the servers running in the active checkout; its popover lists what the
+host found listening in the folders Deck knows, whoever started it. §13 and
+§25 cover the surface and a row that carries an action; these rules say only
+what they do not.
+Built by [`DevServersChip`](../src/ui/dev-servers/dev-servers-chip.tsx),
+[`DevServersPopover`](../src/ui/dev-servers/dev-servers-popover.tsx),
+[`DevServersPanel`](../src/ui/dev-servers/dev-servers-panel.tsx),
+[`DevServerRow`](../src/ui/dev-servers/dev-server-row.tsx) and
+[`24-dev-servers.css`](../src/styles/24-dev-servers.css).
+
+- **DL-36.1** **The chip counts the active checkout and says whether to trust the
+  count.** It sits at the strip's trailing end after the needs-you chip, wears
+  the `HardDrives` glyph and the number of servers whose state is `Running` in
+  the checkout the rail's active tab belongs to, and — unlike the needs-you chip
+  — stays at zero, because "nothing is running" is the answer the user came for.
+  Its dot is `--green` and radiates only while that number is above zero (the
+  loop DL-1.2 records), `--red` and still when the last scan failed so the count
+  may be stale, and absent otherwise. The chip is **absent** — not empty — until
+  the host has said it can discover servers, and wherever it cannot: a chip
+  offering an empty list there would claim "no servers" about a question nobody
+  asked. The popover is a DL-13.1 surface (360px) raised by a press, dismissed
+  as DL-13.2 says (Escape returns focus to the chip; completing `Open in Deck`
+  closes it and leaves focus where the stage put it), and hides the browser
+  tab's native view while open. A scope `<select>` (DL-1.4) offers `This
+  worktree`, `This project` and `All projects`; it opens on the active checkout
+  every time (DL-13.6). A project row shows its project and branch as detail; a
+  worktree row does not, because the scope row says it once (DL-13.8).
+- **DL-36.2** **A server row is a DL-25.1 row with one named action and two icon
+  buttons.** This is the documented extension of DL-25.1's "content plus one
+  named action": the row's one outcome is still opening the server, and the
+  `Open` pill (DL-25.5, `Open in Deck`) is still the only control that carries a
+  word. Beside it sit two icon buttons that move the same outcome somewhere else
+  or take it away with you — `Open in your browser` and `Copy URL` (`Copy
+  address` when there is no web address) — each a `.iconbtn` with an
+  `ActionTooltip` (DL-23.1). A fourth control, or a second word, needs a
+  different genre. Row content is fixed in order: state mark, endpoint, state
+  word, address, then one line of facts (detail, protocol, age). A long address
+  truncates with an ellipsis and never pushes the actions. The controls are cells
+  of one keyboard grid with a single tab stop: ←/→ walk a row, ↑/↓ the same
+  column of the next. An action that cannot run is **unavailable, not disabled**
+  (DL-25.3, DL-23.6): focusable, `--text-faint`, no hover, its reason in the
+  tooltip and the accessible description.
+- **DL-36.3** **State is a word and a shape; the protocol is a separate token.**
+  The mark is filled `--green` for `Running`, a hollow ring for `Stopped` and a
+  dashed ring for `Unknown`, and the state word is always printed — colour and
+  shape are never the only carrier (DL-27.2). `Running` means a listener was
+  seen in a fresh reading, not that the page works, so what was learned about
+  the protocol (`HTTP`, `HTTPS`, or why it is not identified) is a second token
+  on the facts line and never changes the state word: a server that answers with
+  an error, or presents an untrusted certificate, is still `Running`. `Stopped`
+  and `Unknown` carry an age (`stopped 2 minutes ago`, `last seen 2 minutes
+  ago`) instead of a protocol, which would describe a process that is gone or
+  unconfirmed. `Unknown` is `--text-faint`, never yellow: nobody has to act on it.
+- **DL-36.4** **One status line, and it tells the truth about the last scan or the
+  last action.** DL-19.5's line reads `Scanned just now · 2 running` (counts over
+  what is listed, `partial scan` when the host said so) until an action has
+  something to report, then says what happened — in `--red` when it failed — and
+  keeps saying it until the next action or the popover closes. A scan that failed
+  adds a `LoadError` with `retry` rather than emptying the list. Opening or
+  copying a URL is gated by the host's recheck of that exact instance
+  immediately before; a refusal (stale, no longer running, not identified as a
+  web server) is said in that line, and no URL is ever used without the recheck.
+  The empty list says why it is empty — still scanning, scan failed, or none
+  found for the scope — and offers `Show all projects (N)` when the other scopes
+  hold servers.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
@@ -4152,3 +4235,4 @@ that do not match the tree. Do not remove this section (D7).
 
 | Settings Studio is an accepted shipping surface | `building` | integrated and browser-reviewed; owner acceptance pending | 2026-10-04: [Appearance](../src/ui/settings/sections/appearance-section.tsx) and [Agents](../src/ui/settings/sections/agents-section.tsx); 102 targeted tests and TypeScript passed, Chromium wide/480px interactions checked; full-window contracts retained, native acceptance unrun |
 | The create row is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-08 on `feat/launch-create-row` (DL-27.14, DL-27.26, DL-27.28 and DL-27.29 amended): the `Agent`, `Worktree` and `Folder` row, the sidebar worktree form, the collapsed column's stacked icons and a bare checkout's label press. No `electron:dev` walk. The walk must cover the three buttons by pointer and keyboard, `Agent` from the expanded and the collapsed rail, the drag onto a pane, creating a worktree and seeing its row, opening a folder, pressing a bare checkout's label, and Tauri unchanged |
+| The dev servers chip is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-09 on `feat/dev-servers` (DL-1.2 amended; DL-36 added): the strip chip, its live dot, the popover and its rows over the verified discovery core. Drawn only in the gallery mock (`dev-servers-mock`, variant B); no `electron:dev` walk, no `electron:smoke`, macOS only (Windows and Linux omit the chip, and no Windows device has run it). The walk must cover a server started from an external terminal before and after Deck opens, stop and restart, the three scopes following the rail, Open in Deck from a terminal, a file and the Board, the popover over the browser tab's native view, Escape and arrows by keyboard, a failed scan, and the chip absent on Tauri |
