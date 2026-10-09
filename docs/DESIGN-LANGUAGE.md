@@ -757,6 +757,12 @@ covering it; the file explorer is the resident instance.
   cluster of icon-only controls, visible at rest, sized to the row rather than to chrome:
   `.iconbtn`'s 24px box would overflow the 22px data row, whose height every virtual-list
   index is computed from ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)).
+  The explorer's cluster is New file and New folder (omitted when the host cannot create),
+  Show hidden files, Refresh and Collapse all: 89px at DL-19.4's floor, and the root's name
+  truncates first. Show hidden files is a toggle: `aria-pressed` carries its state and its
+  glyph shows it (`EyeSlash` hidden, `Eye` shown), with no wash; its tooltip is the name
+  alone.
+  Why: the wash is DL-21.1's selection signifier, and a filter is not a selection.
 
 ## 23. Action tooltips and the `More` menu
 

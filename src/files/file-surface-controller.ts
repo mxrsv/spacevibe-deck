@@ -507,8 +507,8 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       }
       // Design §5.3.4: a hidden name under a hidden filter would create
       // something invisible. Turning the filter on is the honest answer, and
-      // it is said out loud. There is no control to turn it back off — a known
-      // gap, recorded in the spec's §15.
+      // it is said out loud. The root row's Show hidden files control turns
+      // it back off.
       if (isHidden(name) && !surfaceFor(workspacePath).showHidden) {
         setShowHidden(workspacePath, true);
         setExplorerStatus(workspacePath, `Showing hidden files so ${name} is visible.`, false);

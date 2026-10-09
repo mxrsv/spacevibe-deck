@@ -68,8 +68,10 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   deliberately not persisted, so it never becomes the only restored explorer state.
 - **Focus is a path, not an index** ([`tree-focus.ts`](../../src/files/tree-focus.ts)): a
   create re-sorts the rows, and focus must land on the created *entry*, which is an identity.
-- The root row carries four always-visible controls, each a 17px square rather than
-  `.iconbtn`'s 24px box, which would overflow a 22px row. **Refresh re-lists every visible
+- The root row carries five always-visible controls, each a 17px square rather than
+  `.iconbtn`'s 24px box, which would overflow a 22px row. **Show hidden files** flips the
+  per-workspace, in-memory `showHidden` and then calls `refreshTree`: the filter is part of
+  the watch scope, and only the controller restates that. **Refresh re-lists every visible
   directory without clearing the cache** — clearing destroys the map `visibleDirectories`
   reads, so only the root would reload. **Collapse All** empties `expanded`, leaves the root
   open, and is a controller operation because only the controller may call `refreshWatch()`.

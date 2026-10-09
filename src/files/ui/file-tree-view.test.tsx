@@ -10,6 +10,7 @@ import {
   setListing,
   setListingError,
   setRootExpanded,
+  surfaceFor,
   toggleDirectory,
 } from "../file-surface-store";
 import type { FileSurfaceController } from "../file-surface-controller";
@@ -628,5 +629,69 @@ describe("the root row's action cluster (DL-19.9)", () => {
       parent: `${WS}/src`,
       kind: "file",
     });
+  });
+});
+
+describe("the Show hidden files toggle (DL-19.9)", () => {
+  const SEEDED: DirEntry[] = [
+    { name: ".env", path: `${WS}/.env`, directory: false, outOfRoot: false },
+    { name: ".git", path: `${WS}/.git`, directory: true, outOfRoot: false },
+    { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
+  ];
+  const toggle = (): HTMLButtonElement =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Show hidden files"]')!;
+  const names = (): (string | null | undefined)[] =>
+    rows().map((row) => row.querySelector(".file-tree__name")?.textContent);
+
+  it("lists dot-entries when on and hides them again when off, never .git", async () => {
+    await mountTree(fakeController(), { listing: SEEDED });
+    expect(names()).toEqual(["r", "src"]);
+
+    act(() => toggle().click());
+    await frame();
+    expect(surfaceFor(WS).showHidden).toBe(true);
+    expect(toggle().getAttribute("aria-pressed")).toBe("true");
+    // `.git` stays out: the fixed exclusion list beats the filter.
+    expect(names()).toEqual(["r", "src", ".env"]);
+
+    act(() => toggle().click());
+    await frame();
+    expect(surfaceFor(WS).showHidden).toBe(false);
+    expect(toggle().getAttribute("aria-pressed")).toBe("false");
+    expect(names()).toEqual(["r", "src"]);
+  });
+
+  it("restates the watch scope once per flip through refreshTree", async () => {
+    const controller = fakeController();
+    await mountTree(controller, { listing: SEEDED });
+
+    act(() => toggle().click());
+    expect(controller.refreshTree).toHaveBeenCalledTimes(1);
+    expect(controller.refreshTree).toHaveBeenCalledWith(WS);
+    act(() => toggle().click());
+    expect(controller.refreshTree).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not toggle the root on Enter, and flips the filter once", async () => {
+    const controller = fakeController();
+    await mountTree(controller, { listing: SEEDED });
+
+    act(() => {
+      toggle().focus();
+      toggle().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      // A real Enter on a button also fires its click.
+      toggle().click();
+    });
+
+    expect(controller.toggleRoot).not.toHaveBeenCalled();
+    expect(surfaceFor(WS).showHidden).toBe(true);
+    expect(controller.refreshTree).toHaveBeenCalledTimes(1);
+  });
+
+  it("is present when the host cannot create", async () => {
+    await mountTree(fakeController(), { listing: SEEDED, canCreate: false });
+
+    expect(toggle()).not.toBeNull();
+    expect(host.querySelector('[aria-label="New file"]')).toBeNull();
   });
 });

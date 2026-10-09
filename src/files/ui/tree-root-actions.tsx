@@ -1,6 +1,6 @@
 /**
- * The four actions of the explorer tab, hanging off the row that names what
- * the tab is showing (DL-19.9, design §4).
+ * The actions of the explorer tab, hanging off the row that names what the
+ * tab is showing (DL-19.9, design §4).
  *
  * This is the rail's own arrangement — `.asr-cluster__add` hangs a launcher off
  * a project header (DL-27.18) — with the one difference the owner asked for:
@@ -18,7 +18,14 @@
  * declare it locally.
  */
 import { useRef } from "preact/hooks";
-import { ArrowClockwise, ArrowsInLineVertical, FilePlus, FolderPlus } from "@phosphor-icons/react";
+import {
+  ArrowClockwise,
+  ArrowsInLineVertical,
+  Eye,
+  EyeSlash,
+  FilePlus,
+  FolderPlus,
+} from "@phosphor-icons/react";
 import { CHROME_ICON, DeckIcon, type DeckIconComponent } from "../../ui/controls/deck-icon";
 import {
   ActionTooltip,
@@ -29,14 +36,17 @@ import {
 export interface TreeRootActionsProps {
   /** Whether the running host can answer `create_entry` (design §6.4, §10). */
   readonly canCreate: boolean;
+  /** Whether dot-entries are listed. Carried by `aria-pressed` and the glyph. */
+  readonly showHidden: boolean;
   /**
    * The root row's roving tab stop, mirrored (design §4.3). Tab enters the
-   * tree once, lands on the root row and walks into these four; it never
+   * tree once, lands on the root row and walks into these controls; it never
    * offers eight tab stops inside a list that is meant to be one.
    */
   readonly tabIndex: 0 | -1;
   onNewFile(): void;
   onNewFolder(): void;
+  onToggleHidden(): void;
   onRefresh(): void;
   onCollapseAll(): void;
 }
@@ -46,14 +56,16 @@ interface ClusterButtonProps {
   readonly label: string;
   readonly icon: DeckIconComponent;
   readonly tabIndex: 0 | -1;
+  /** Set only on a toggle; a plain action leaves `aria-pressed` off. */
+  readonly pressed?: boolean;
   onPress(): void;
 }
 
-function ClusterButton({ id, label, icon, tabIndex, onPress }: ClusterButtonProps) {
+function ClusterButton({ id, label, icon, tabIndex, pressed, onPress }: ClusterButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   // DL-23.10: an icon-only chrome control with an action draws the §23
-  // tooltip and drops its native `title`. The name only — none of the four is
-  // a keymap action, so there is no chord to show (DL-23.1's content rule).
+  // tooltip and drops its native `title`. The name only — none of them is a
+  // keymap action, so there is no chord to show (DL-23.1's content rule).
   const tooltip = useTooltipVisibility();
   return (
     <>
@@ -62,6 +74,7 @@ function ClusterButton({ id, label, icon, tabIndex, onPress }: ClusterButtonProp
         type="button"
         class="file-tree__action"
         aria-label={label}
+        aria-pressed={pressed}
         aria-describedby={tooltip.anchor === null ? undefined : id}
         tabIndex={tabIndex}
         onClick={(event) => {
@@ -111,6 +124,14 @@ export function TreeRootActions(props: TreeRootActionsProps) {
           />
         </>
       )}
+      <ClusterButton
+        id="file-tree-show-hidden"
+        label="Show hidden files"
+        icon={props.showHidden ? Eye : EyeSlash}
+        tabIndex={props.tabIndex}
+        pressed={props.showHidden}
+        onPress={props.onToggleHidden}
+      />
       <ClusterButton
         id="file-tree-refresh"
         label="Refresh"

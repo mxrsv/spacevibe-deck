@@ -74,7 +74,7 @@ export function ExplorerTreeSection() {
       <h2>explorer tree</h2>
       <p class="gx-note">
         The shipping <code>FileTreeView</code> at the docked column&rsquo;s 360px floor: the root as
-        row 0 with a caret and no type glyph, and DL-19.9&rsquo;s four actions riding that row.
+        row 0 with a caret and no type glyph, and DL-19.9&rsquo;s five actions riding that row.
       </p>
       <div
         class="gx-explorer-tree"

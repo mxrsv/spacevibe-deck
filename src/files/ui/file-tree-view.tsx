@@ -21,6 +21,7 @@ import {
   clearTreeFocus,
   listingErrorsFor,
   pendingTreeFocus,
+  setShowHidden,
   surfaceFor,
   treeRows,
 } from "../file-surface-store";
@@ -191,6 +192,14 @@ export function FileTreeView(props: FileTreeViewProps) {
     };
   }
 
+  // The filter is part of the watch scope: it changes `visibleDirectories`.
+  // Only the controller may restate that scope, and `refreshTree` already
+  // does, through every successful listing it triggers.
+  function toggleHidden(): void {
+    setShowHidden(workspacePath, !surfaceFor(workspacePath).showHidden);
+    controller.refreshTree(workspacePath);
+  }
+
   function handleRowClick(row: TreeRow, target: HTMLDivElement): void {
     setFocusedPath(row.path);
     target.focus();
@@ -341,11 +350,13 @@ export function FileTreeView(props: FileTreeViewProps) {
             {isRoot && (
               <TreeRootActions
                 canCreate={canCreate}
+                showHidden={surface.showHidden}
                 // Design §4.3: keyboard reach follows the roving tabindex
                 // rather than fighting it.
                 tabIndex={index === focusedIndex ? 0 : -1}
                 onNewFile={() => requestCreate("file")}
                 onNewFolder={() => requestCreate("directory")}
+                onToggleHidden={toggleHidden}
                 onRefresh={() => controller.refreshTree(workspacePath)}
                 onCollapseAll={() => controller.collapseAll(workspacePath)}
               />
