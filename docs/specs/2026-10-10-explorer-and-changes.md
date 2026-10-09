@@ -2,7 +2,7 @@
 
 Date: 2026-10-10
 Status: Draft — direction set in the owner interview of 2026-10-09/10; the
-[open decisions](#open-decisions) gate the first slice's plan.
+[open decisions](#open-decisions) gate the slices that need them.
 Owner checkout: `/Users/kyantran/Documents/Development/spacevibe-workspace/spacevibe-deck`
 Baseline: `main` at `f1fa8fb1` (2026-10-10). Plans under `docs/plans/` are gitignored and exist
 only in the primary checkout.
@@ -36,6 +36,17 @@ read-only towards git and never types into a pane on the user's behalf.
    covering the stage like a file tab (it hides the agent terminal being checked).
 5. **Every Explorer gap from the 2026-10-09 research goes into this one spec** as ordered
    slices (owner, 2026-10-10).
+6. **Deck may run `git status`** (owner, 2026-10-10), bounded and with visible errors (CHG2).
+   Slice 1 rewrites the "no `git status` anywhere" line in
+   [internals/agent-rail.md](../internals/agent-rail.md) in the same change.
+7. **The list updates in near real time** (owner, 2026-10-10, asking "có thể làm realtime
+   không?"): a file change in the checkout reaches the list within about a second, not only at
+   turn end (CHG3).
+8. **The list's form is chosen from three gallery specimens** (owner, 2026-10-10), built before
+   slice 1's code: (A) a Files / Changes switch in the Explorer's header, (B) a collapsible
+   Changes section above the tree, (C) a "changed only" filter on the tree itself.
+9. **Delivery runs as two lanes in parallel** (owner, 2026-10-10); see
+   [Delivery slices](#delivery-slices).
 
 ## Requirements and acceptance criteria
 
@@ -53,11 +64,15 @@ read-only towards git and never types into a pane on the user's behalf.
   git missing and a timeout each produce a distinct message on the Explorer's status line
   (DL-19.5): never a dialog, never a silently empty list. A repository with no commit compares
   against the empty tree.
-- **CHG3**: The list refreshes when a pane in that checkout stops working (the attention
-  tracker leaves `working`), when the window regains focus, and from a Refresh control. Window
-  focus and Refresh are the floor for agent CLIs that give Deck no turn signal. Nothing polls,
-  and no git read runs while the window is hidden or the list is not shown. Acceptance: a test
-  proves no read while hidden. The trigger set is [open decision 1](#open-decisions).
+- **CHG3** (decision 7): While the list is shown and the window is visible, a file change
+  anywhere in the checkout, or a change to its index or `HEAD`, reaches the list within about a
+  second. A burst of writes coalesces into one read, and at most one read runs at a time.
+  Because file watching drops events on every platform, the list also refreshes when a pane in
+  that checkout leaves `working`, when the window regains focus, and from a Refresh control.
+  Nothing polls, and no git read runs while the window is hidden or the list is not shown.
+  Acceptance: on a fixture repository, an edit appears in the list within one second of the
+  write; a burst of 500 writes causes a bounded number of reads, not one per write; a test
+  proves no read while hidden.
 - **CHG4**: A clean checkout shows an explicit empty state, not a blank list. A folder git does
   not know hides the Changes entry point, or disables it with a tooltip saying why.
 - **CHG5** (CHANGES3): Nothing stages, commits, pushes, merges, reverts or discards, and nothing
@@ -100,7 +115,7 @@ read-only towards git and never types into a pane on the user's behalf.
   open tabs and their unsaved edits attached to the renamed file, and leaves ⌘Q still asking
   about them. Both stay inside the workspace root. Acceptance: renaming an open dirty file
   keeps its edits, and quitting still asks about it.
-- **EXP6**: Entries git ignores are hidden or dimmed ([open decision 6](#open-decisions)), using
+- **EXP6**: Entries git ignores are hidden or dimmed ([open decision 5](#open-decisions)), using
   git's own answer rather than a matcher library. The fixed hidden list stays for folders git
   does not know.
 - **EXP7**: Dragging a row onto a terminal pane inserts its path, quoted when needed, without
@@ -108,10 +123,17 @@ read-only towards git and never types into a pane on the user's behalf.
 
 ## Delivery slices
 
-The slices run in order, one plan and one session each; the first row not `Done` is the next
-work. Each slice's plan is approved by the owner before its code starts. Every slice adds a
+Two lanes run in parallel, each in its own worktree; inside a lane the slices run in order,
+one plan and one session each. **Lane A** is the specimens of decision 8, then slices 1 and 2.
+**Lane B** is slices 3 and 4. Slices 5, 7, 6 and 8 follow, in that order, once both lanes have
+merged. Each slice's plan is approved by the owner before its code starts. Every slice adds a
 surface, command or interaction, so each falls under the E2E gate in
 [AGENTS.md](../../AGENTS.md).
+
+The lanes share files: lanes A and B both edit the Explorer's view, and slices 1 and 5 both add
+IPC channels to the same registry and contract test. Lane B's slice 3 is the smaller change and
+merges first; lane A rebases on it. The file-surface controller has 32 lines left under the
+800-line cap, so neither lane adds to it.
 
 | Slice                                | Requirements | Host                          | Plan | Status      |
 | ------------------------------------ | ------------ | ----------------------------- | ---- | ----------- |
@@ -130,33 +152,36 @@ seams and needs its own cross-boundary verification.
 
 ## Open decisions
 
-1. **Refresh trigger (CHG3).** Recommended: a pane leaving `working`, window focus and manual
-   Refresh, with no polling. The owner had not answered when this record was written.
-2. **The list's form inside the Explorer.** Build 2–3 gallery specimens before choosing:
-   (A) a Files / Changes switch in the Explorer's header, (B) a collapsible Changes section
-   above the tree, (C) a "changed only" filter on the tree itself.
-3. **Running `git status`.** [internals/agent-rail.md](../internals/agent-rail.md) says no
-   `git status` runs anywhere. Slice 1 reverses that for a bounded, user-visible read and
-   rewrites the line in the same change. Needs the owner's yes.
-4. **Diff colours.** DL-3.2 reserves `--green` for success and `--red` for danger. Recommended:
+Answered 2026-10-10: the refresh trigger (decision 7), running `git status` (decision 6) and
+how the list's form is chosen (decision 8).
+
+1. **The list's form (decision 8).** Picked from the three specimens at eye review.
+2. **Watching the checkout recursively (CHG3).** The current watcher is non-recursive by design
+   ([watch.ts](../../electron/fs/watch.ts): "nothing here needs it"). Near-real-time Changes
+   needs one recursive watch on the checkout's root, held only while the list is shown and the
+   window is visible, with Node's built-in `fs.watch` and no watcher library. Recommended: yes,
+   confirmed with slice 1's plan.
+3. **Diff colours.** DL-3.2 reserves `--green` for success and `--red` for danger. Recommended:
    a scoped amendment that lets added and removed lines and counts use them. Every tool surveyed
    colours a diff, and a diff without colour is slow to read.
-5. **A second docked column.** DL §19 describes one docked column holding tabs. The diff column
+4. **A second docked column.** DL §19 describes one docked column holding tabs. The diff column
    is a second, transient one with its own seam, header and width, and it shrinks the grid
    exactly as the dock does. It needs a §19 rule and is a layout fork under
    [AGENTS.md](../../AGENTS.md).
-6. **Ignored entries (EXP6): hide or dim.** Recommended: hide them, and let EXP1's control
+5. **Ignored entries (EXP6): hide or dim.** Recommended: hide them, and let EXP1's control
    reveal them as well. Seven of the top-level folders in the owner's 2026-10-09 screenshot
    (`dist-electron`, `dist-electron-app`, `dist-gate-m`, …) are ignored build output.
-7. **Move to Trash confirmation (EXP5).** Recommended: no dialog, because the Trash is
+6. **Move to Trash confirmation (EXP5).** Recommended: no dialog, because the Trash is
    recoverable; the status line names what was moved.
-8. **The quick-open chord on Windows and Linux (EXP4).** ⌘P is free on macOS; `Ctrl+P` is
+7. **The quick-open chord on Windows and Linux (EXP4).** ⌘P is free on macOS; `Ctrl+P` is
    readline's history key in a terminal.
 
 ## Forks and constraints
 
-- Layout: the diff column narrows the terminal grid and resizes PTYs (open decision 5).
-- Design language: DL-3.2 (open decision 4) and §19 (open decision 5). EXP2 reuses DL-21.1's
+- Layout: the diff column narrows the terminal grid and resizes PTYs (open decision 4).
+- Watching: CHG3's recursive watch reverses the watcher's non-recursive design for one root
+  (open decision 2). A watcher library stays a fork, and none is proposed.
+- Design language: DL-3.2 (open decision 3) and §19 (open decision 4). EXP2 reuses DL-21.1's
   selection wash and needs no new rule.
 - No new dependency. A fuzzy-matching or ignore-matching library would be a fork; none is
   proposed.
