@@ -5,6 +5,7 @@ import {
   browserOpen,
   browserSurfaceActive,
   EMPTY_STATE,
+  openBrowserAt,
   resetBrowserStore,
 } from "../browser/browser-store";
 import {
@@ -388,5 +389,52 @@ describe("a chip press keeps exactly one surface on the stage", () => {
     const files = fakeFiles();
     expect(takeStageForSurface("agent-board", { files, client: fakeClient() })).toBe(false);
     expect(files.deactivate).not.toHaveBeenCalled();
+  });
+});
+
+describe("openBrowserAt with the real stage rule", () => {
+  // The order the dev-servers popover relies on: competing surfaces step back
+  // through `takeStageForSurface` BEFORE the browser flags flip, so the file
+  // surface and the board never share the stage with the page.
+  const prepare = (files: SurfaceStrip, client: BrowserClient) => () => {
+    takeStageForSurface("browser", { files, client });
+  };
+
+  it("takes the stage from the board and the file surface for a closed browser", async () => {
+    openAgentBoard();
+    const files = fakeFiles();
+    const client = fakeClient();
+    const onChanged = vi.fn();
+
+    const result = await openBrowserAt("http://127.0.0.1:5173/", {
+      client,
+      prepareStage: prepare(files, client),
+      onChanged,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(files.deactivate).toHaveBeenCalledTimes(1);
+    expect(agentBoardSurfaceActive.value).toBe(false);
+    expect(agentBoardOpen.value).toBe(true);
+    expect(browserOpen.value).toBe(true);
+    expect(browserSurfaceActive.value).toBe(true);
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("brings an open browser from behind the board and loads the address", async () => {
+    browserOpen.value = true;
+    openAgentBoard();
+    const files = fakeFiles();
+    const client = fakeClient();
+
+    await openBrowserAt("http://127.0.0.1:5174/", {
+      client,
+      prepareStage: prepare(files, client),
+      onChanged: vi.fn(),
+    });
+
+    expect(agentBoardSurfaceActive.value).toBe(false);
+    expect(browserSurfaceActive.value).toBe(true);
+    expect(client.navigate).toHaveBeenCalledWith("http://127.0.0.1:5174/");
   });
 });

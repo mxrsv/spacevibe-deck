@@ -4,6 +4,7 @@ import {
   activateBrowserSurface,
   browserNotice,
   browserOpen,
+  browserOpenedAt,
   browserState,
   browserSurfaceActive,
   closeBrowser,
@@ -12,8 +13,10 @@ import {
   EMPTY_STATE,
   initBrowserBridge,
   openBrowser,
+  openBrowserAt,
   resetBrowserStore,
   type GrabTarget,
+  type OpenBrowserAtDeps,
 } from "./browser-store";
 
 const GRAB: BrowserGrab = {
@@ -289,5 +292,119 @@ describe("closeBrowser", () => {
     await closeBrowser(client);
     expect(browserOpen.value).toBe(false);
     expect(browserNotice.value).toBeNull();
+  });
+});
+
+describe("openBrowserAt", () => {
+  const URL_B = "http://127.0.0.1:5174/";
+  const deps = (
+    client: BrowserClient,
+    over: Partial<OpenBrowserAtDeps> = {},
+  ): OpenBrowserAtDeps => ({
+    client,
+    prepareStage: vi.fn(),
+    onChanged: vi.fn(),
+    ...over,
+  });
+
+  it("opens a closed browser, puts it on the stage and loads the address", async () => {
+    const client = fakeClient({ open: vi.fn(async () => state({ url: "" })) });
+    const d = deps(client);
+
+    const result = await openBrowserAt(URL_B, d);
+
+    expect(result).toEqual({ ok: true, url: URL_B });
+    expect(client.open).toHaveBeenCalledWith(null);
+    expect(client.navigate).toHaveBeenCalledWith(URL_B);
+    expect(browserOpen.value).toBe(true);
+    expect(browserSurfaceActive.value).toBe(true);
+    expect(browserOpenedAt.value).not.toBe(0);
+    expect(d.onChanged).toHaveBeenCalled();
+  });
+
+  it("moves a browser that is open at A to B, keeping its place on the strip", async () => {
+    browserOpen.value = true;
+    browserOpenedAt.value = 7;
+    browserState.value = state({ url: "http://localhost:3000/" });
+    const client = fakeClient();
+
+    const result = await openBrowserAt(URL_B, deps(client));
+
+    expect(result).toEqual({ ok: true, url: URL_B });
+    // Unlike openBrowser, an explicit destination is never replaced by the old page.
+    expect(client.navigate).toHaveBeenCalledWith(URL_B);
+    expect(browserOpenedAt.value).toBe(7);
+    expect(browserSurfaceActive.value).toBe(true);
+  });
+
+  it("clears competing surfaces before it activates the browser", async () => {
+    let activeWhenPrepared: boolean | null = null;
+    const d = deps(fakeClient(), {
+      prepareStage: () => {
+        activeWhenPrepared = browserSurfaceActive.value;
+      },
+    });
+
+    await openBrowserAt(URL_B, d);
+
+    expect(activeWhenPrepared).toBe(false);
+    expect(browserSurfaceActive.value).toBe(true);
+  });
+
+  it("refuses an address that is not http(s) without touching the stage", async () => {
+    const client = fakeClient();
+    const d = deps(client);
+
+    const bad = ["javascript:alert(1)", "localhost:5173", "file:///etc/hosts", ""];
+    const results = await Promise.all(bad.map((url) => openBrowserAt(url, d)));
+    expect(results.every((result) => !result.ok)).toBe(true);
+
+    expect(d.prepareStage).not.toHaveBeenCalled();
+    expect(client.open).not.toHaveBeenCalled();
+    expect(browserOpen.value).toBe(false);
+  });
+
+  it("reports a host that refuses the address and takes a browser it opened back down", async () => {
+    const client = fakeClient({ navigate: vi.fn(async () => null) });
+
+    const result = await openBrowserAt(URL_B, deps(client));
+
+    expect(result).toEqual({ ok: false, message: "The Deck browser could not load that address." });
+    expect(browserOpen.value).toBe(false);
+    expect(browserOpenedAt.value).toBe(0);
+    expect(browserSurfaceActive.value).toBe(false);
+    expect(client.setVisible).toHaveBeenCalledWith(false);
+  });
+
+  it("reports a rejected open, and leaves a chip that was already there alone", async () => {
+    browserOpen.value = true;
+    browserOpenedAt.value = 4;
+    browserSurfaceActive.value = true;
+    const client = fakeClient({
+      open: vi.fn(async () => {
+        throw new Error("no window");
+      }),
+    });
+    const d = deps(client);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const result = await openBrowserAt(URL_B, d);
+
+    expect(result).toEqual({ ok: false, message: "The Deck browser could not open." });
+    expect(browserOpen.value).toBe(true);
+    expect(browserOpenedAt.value).toBe(4);
+    expect(browserSurfaceActive.value).toBe(true);
+    expect(client.navigate).not.toHaveBeenCalled();
+  });
+
+  it("hides a view it had to show when a browser that was behind a terminal fails", async () => {
+    browserOpen.value = true;
+    const client = fakeClient({ navigate: vi.fn(async () => null) });
+
+    await openBrowserAt(URL_B, deps(client));
+
+    expect(browserOpen.value).toBe(true);
+    expect(browserSurfaceActive.value).toBe(false);
+    expect(client.setVisible).toHaveBeenCalledWith(false);
   });
 });

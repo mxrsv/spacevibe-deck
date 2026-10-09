@@ -196,6 +196,90 @@ export async function openBrowser(client: BrowserClient, restore: string): Promi
   }
 }
 
+export interface OpenBrowserAtDeps {
+  readonly client: BrowserClient;
+  /**
+   * Take the stage from every other surface: close the launch page and step
+   * the file and board surfaces back. Runs BEFORE this store flips its own
+   * flags, so the browser is never "active" while another surface still holds
+   * the stage. Injected because `stage-surface-strip.ts` imports this module.
+   */
+  prepareStage(): void;
+  /** The surface set changed; TabManager re-derives its views. */
+  onChanged(): void;
+}
+
+export type OpenBrowserAtResult =
+  { readonly ok: true; readonly url: string } | { readonly ok: false; readonly message: string };
+
+function isWebUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Navigate the Deck browser to one explicit URL and say how it went.
+ *
+ * Unlike `openBrowser`, which keeps whatever page is loaded and swallows a
+ * transport failure, this is for a caller that was handed a destination (a
+ * dev server the user pressed Open on): it always moves the page, and a
+ * failure comes back as a message the caller can show. A page that later fails
+ * to load surfaces through `BrowserState.error`, which the panel already draws.
+ *
+ * `open(null)` first guarantees the panel exists — the host's `navigate` is a
+ * silent no-op without one — and `navigate` returning null is the host
+ * refusing the address.
+ */
+export async function openBrowserAt(
+  url: string,
+  deps: OpenBrowserAtDeps,
+): Promise<OpenBrowserAtResult> {
+  if (!isWebUrl(url)) {
+    return { ok: false, message: "That address is not a web page Deck can open." };
+  }
+  const wasOpen = browserOpen.value;
+  const wasActive = browserSurfaceActive.value;
+  deps.prepareStage();
+  if (!wasOpen) {
+    // Stamped only on a real open, so a chip already on the strip keeps its place.
+    browserOpenedAt.value = nextOpenSequence();
+  }
+  browserOpen.value = true;
+  browserSurfaceActive.value = true;
+  browserNotice.value = null;
+  deps.onChanged();
+
+  const undo = (message: string): OpenBrowserAtResult => {
+    if (!wasOpen) {
+      browserOpen.value = false;
+      browserOpenedAt.value = UNSEQUENCED;
+    }
+    if (!wasActive) {
+      browserSurfaceActive.value = false;
+      void deps.client.setVisible(false).catch((error: unknown) => {
+        console.warn("Deck: the browser surface could not be hidden:", error);
+      });
+    }
+    deps.onChanged();
+    return { ok: false, message };
+  };
+
+  try {
+    browserState.value = await deps.client.open(null);
+    const loaded = await deps.client.navigate(url);
+    return loaded === null
+      ? undo("The Deck browser could not load that address.")
+      : { ok: true, url: loaded };
+  } catch (error) {
+    console.warn("Deck: the browser could not open a dev server:", error);
+    return undo("The Deck browser could not open.");
+  }
+}
+
 /**
  * Put an already-open browser tab back on the stage. The surface mount's own
  * visibility effect tells the host to show the view, so no client call is
