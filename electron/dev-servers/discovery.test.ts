@@ -584,3 +584,44 @@ describe("snapshots", () => {
     expect(h.discovery.findRow("w2", row?.id ?? "", row?.instanceToken ?? "")).toBeNull();
   });
 });
+
+describe("reset and visible rows", () => {
+  it("lists each instance once across senders and omits rows nobody sees", async () => {
+    const h = await watching(["/a"]);
+    await h.discovery.setRoots("w2", ["/a/sub"]);
+    await h.scan(
+      makeScan([
+        { pid: 10, port: 3000, cwd: "/a/sub/x" },
+        { pid: 11, port: 4000, cwd: "/elsewhere" },
+      ]),
+    );
+    const visible = h.discovery.visibleRows();
+    expect(visible).toHaveLength(1);
+    expect(visible[0]?.port).toBe(3000);
+  });
+
+  it("forgets every instance but keeps counting, and drops a scan still in flight", async () => {
+    const h = await watching(["/p"]);
+    await h.scan(makeScan([{ pid: 10, port: 3000, cwd: "/p" }]));
+    const before = h.discovery.snapshotFor("w1");
+    let release: (scan: NativeScan) => void = () => {};
+    h.collect.mockImplementationOnce(
+      () =>
+        new Promise<NativeScan>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const late = h.discovery.scanOnce();
+    h.discovery.reset();
+    release(makeScan([{ pid: 10, port: 3000, cwd: "/p" }]));
+    expect(await late).toEqual({ status: "discarded" });
+    const after = h.discovery.snapshotFor("w1");
+    expect(after.rows).toEqual([]);
+    expect(after.completeness).toBe("pending");
+    expect(after.sequence).toBe(before.sequence);
+    expect(after.generation).toBe(before.generation);
+    // A new scan right after the reset is not swallowed by the discarded one.
+    expect((await h.scan(makeScan([{ pid: 10, port: 3000, cwd: "/p" }]))).status).toBe("scanned");
+    expect(rowsOf(h)).toHaveLength(1);
+  });
+});

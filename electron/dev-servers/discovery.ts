@@ -443,6 +443,7 @@ export class DevServerDiscovery {
   private requestCounter = 0;
   private idCounter = 0;
   private inFlight: Promise<ScanResult> | null = null;
+  private epoch = 0;
   private disposed = false;
 
   constructor(options: DiscoveryOptions = {}) {
@@ -504,8 +505,10 @@ export class DevServerDiscovery {
     if (this.inFlight !== null) {
       return this.inFlight;
     }
-    const run = this.runScan().finally(() => {
-      this.inFlight = null;
+    const run: Promise<ScanResult> = this.runScan().finally(() => {
+      if (this.inFlight === run) {
+        this.inFlight = null;
+      }
     });
     this.inFlight = run;
     return run;
@@ -518,8 +521,9 @@ export class DevServerDiscovery {
     if (!this.hasInterest()) {
       return { status: "skipped", reason: "no-interest" };
     }
+    const epoch = this.epoch;
     const scan = await this.collectSafely();
-    if (this.disposed) {
+    if (this.disposed || epoch !== this.epoch) {
       return { status: "discarded" };
     }
     const now = this.clock();
@@ -641,6 +645,33 @@ export class DevServerDiscovery {
 
   private tokenFor(id: string): string {
     return createHash("sha256").update(`${this.salt}|${id}`).digest("hex").slice(0, 16);
+  }
+
+  getCapability(): DevServerCapability {
+    return this.capability;
+  }
+
+  /** Rows at least one sender can see, once per instance. Used to pick probe candidates. */
+  visibleRows(): readonly DevServerRow[] {
+    const byId = new Map<string, DevServerRow>();
+    for (const senderId of this.senders.keys()) {
+      for (const row of this.snapshotFor(senderId).rows) {
+        byId.set(row.id, row);
+      }
+    }
+    return [...byId.values()];
+  }
+
+  /**
+   * Forget every observed instance (the last sender left). A scan still in flight is
+   * discarded when it returns, so old evidence cannot reappear after a restart. Sequence
+   * and generation keep counting so a late reply is still recognisably old.
+   */
+  reset(): void {
+    this.epoch += 1;
+    this.inFlight = null;
+    this.instances = new Map();
+    this.lastScan = null;
   }
 
   /** Stop serving. A scan still in flight is discarded when it returns. */

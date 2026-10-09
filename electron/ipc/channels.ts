@@ -171,6 +171,15 @@ export const CHANNELS = {
   telemetryCount: "telemetry_count",
   telemetryState: "telemetry_state",
   telemetrySetEnabled: "telemetry_set_enabled",
+  // Dev server discovery (docs/specs/2026-10-09-dev-server-discovery.md).
+  // Electron-only like the blocks above, macOS-first: elsewhere `set_roots` and
+  // `snapshot` report capability `unavailable`. Flat payloads per R6 —
+  // `{ roots }`, none, none, `{ id, instanceToken }`. `register-dev-servers.ts`
+  // owns validation; interest is per sender and is released when it goes away.
+  devServersSetRoots: "dev_servers_set_roots",
+  devServersSnapshot: "dev_servers_snapshot",
+  devServersRelease: "dev_servers_release",
+  devServersResolve: "dev_servers_resolve",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
