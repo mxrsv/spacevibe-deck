@@ -7,6 +7,15 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **See your dev servers from the strip (macOS).** A **Dev servers** chip
+  [beside the tabs](src/ui/dev-servers/dev-servers-strip-chip.tsx) counts the
+  servers running for the project you are in and opens a popover listing them,
+  including ones you started in Terminal or VS Code, before or after Deck
+  opened. Open one in Deck or your browser, or copy its address. A server
+  shows as Running only while something is listening on its port, so a page
+  that errors still reads Running, and one that stops reads Unknown, then
+  Stopped. Windows does not list dev servers yet.
+
 ## 2.9.0
 
 This update lets you send feedback from inside Deck and makes Update go
