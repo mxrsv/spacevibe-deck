@@ -39,6 +39,7 @@ import {
   stepAgentBoardBack as stepBoardOffStage,
 } from "./agent-board-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
+import { dismissMissionControl } from "./mission-control/mission-control-store";
 
 /** One slot in the SurfaceStrip index space, described rather than named. */
 export interface StageSlotDescriptor {
@@ -264,4 +265,19 @@ export function takeStageForSurface(kind: "browser" | "agent-board", deps: Stage
     activateAgentBoard();
   }
   return true;
+}
+
+/**
+ * `prepareStage` for a page the user asked to SEE (a dev server's Open in Deck).
+ *
+ * A chip press leaves Mission Control up with the native view hidden under it
+ * (`overlayCoversPane`), which is right for a press that only picks a surface.
+ * Opening an address is a request to look at that page, and `open` shows the
+ * view host-side: left up, Mission Control would sit over a visible native
+ * view that paints above it. So it is dismissed first, without a zoom, as a
+ * strip or rail press does (docs/internals/mission-control.md).
+ */
+export function takeStageForOpenedPage(deps: StageChipDeps): void {
+  dismissMissionControl();
+  takeStageForSurface("browser", deps);
 }

@@ -76,6 +76,26 @@ describe("subjectFor", () => {
     });
   });
 
+  it("names the project after the primary checkout, not the folder the scan ran in", () => {
+    const entries = [worktree("/w/alpha", "master"), worktree("/w/alpha-wt", "wt")];
+    // A scan taken from the linked worktree reports that worktree as its root.
+    const fromLinked: RepositoryScan = {
+      kind: "repository",
+      key: "/w/alpha/.git",
+      root: "/w/alpha-wt",
+      worktrees: entries,
+    };
+
+    const linked = subjectFor("/w/alpha-wt", new Map([["/w/alpha-wt", fromLinked]]));
+    expect(linked).toMatchObject({ name: "alpha", branch: "wt", worktree: "/w/alpha-wt" });
+
+    // The main checkout's tab read through that same scan keeps its own branch.
+    const main = subjectFor("/w/alpha", new Map([["/w/alpha", fromLinked]]));
+    expect(main).toMatchObject({ name: "alpha", branch: "master", worktree: "/w/alpha" });
+    expect(inScope(row({ displayRoot: "/w/alpha" }), "worktree", main, new Map())).toBe(true);
+    expect(inScope(row({ displayRoot: "/w/alpha-wt" }), "worktree", main, new Map())).toBe(false);
+  });
+
   it("falls back to the folder when git has not scanned it", () => {
     expect(subjectFor("/w/notes", new Map())).toMatchObject({
       name: "notes",

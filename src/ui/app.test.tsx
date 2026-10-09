@@ -417,7 +417,7 @@ describe("dev servers chip wiring", () => {
     );
     expect(open).toContain("openBrowserAt(url");
     expect(open).toContain("agentLaunchPage.close()");
-    expect(open).toContain('takeStageForSurface("browser"');
+    expect(open).toContain("takeStageForOpenedPage(");
     expect(open).toContain("notifySurfacesChanged()");
     expect(open).not.toContain("openBrowser(");
   });

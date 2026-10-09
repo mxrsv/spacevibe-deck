@@ -33,6 +33,20 @@ describe("buildView", () => {
     expect(view.items[0].detail).toBe("deck · redesign");
   });
 
+  it("names the project after the primary checkout when the scan ran in a linked worktree", () => {
+    const [primaryScan] = [...scans.values()];
+    const linked = new Map([["/w/deck-redesign", { ...primaryScan, root: "/w/deck-redesign" }]]);
+    const view = buildView(
+      snapshot([row({ id: "r", displayRoot: "/w/deck-redesign" })]),
+      "project",
+      subject,
+      linked,
+      NOW,
+    );
+
+    expect(view.items[0].detail).toBe("deck · redesign");
+  });
+
   it("brackets an IPv6 endpoint and never invents localhost", () => {
     const view = buildView(
       snapshot([

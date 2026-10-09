@@ -125,7 +125,11 @@ import { useMissionControl } from "./mission-control/use-mission-control";
 import { currentProjectSpaceOrder } from "./spaces/space-order";
 import { autoSpaceName, folderName } from "./spaces/space-model";
 import { missionControlOpen } from "./mission-control/mission-control-store";
-import { composeSurfaceStrip, takeStageForSurface } from "./stage-surface-strip";
+import {
+  composeSurfaceStrip,
+  takeStageForOpenedPage,
+  takeStageForSurface,
+} from "./stage-surface-strip";
 import {
   agentBoardOpen,
   agentBoardSurfaceActive,
@@ -1693,17 +1697,17 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   };
   /**
    * A dev server's Open in Deck: navigate the browser to exactly that URL.
-   * `openBrowserAt` runs `takeStageForSurface` BEFORE it flips its own flags, so
-   * the launch page, the file surface and the Board are off the stage by the
-   * time the browser claims it — unlike `toggle-browser`, which restores the
-   * old page and swallows a failed open.
+   * `openBrowserAt` runs `takeStageForOpenedPage` BEFORE it flips its own flags,
+   * so the launch page, the file surface, the Board and Mission Control are off
+   * the stage by the time the browser claims it — unlike `toggle-browser`, which
+   * restores the old page and swallows a failed open.
    */
   const openDevServerInDeck = (url: string) =>
     openBrowserAt(url, {
       client: defaultBrowserClient,
       prepareStage: () => {
         agentLaunchPage.close();
-        takeStageForSurface("browser", { files: fileController, client: defaultBrowserClient });
+        takeStageForOpenedPage({ files: fileController, client: defaultBrowserClient });
       },
       onChanged: () => tabsRef.current?.notifySurfacesChanged(),
     });

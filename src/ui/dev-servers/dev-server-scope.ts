@@ -92,9 +92,13 @@ export function subjectFor(activePath: string | null, scans: ScanMap): DevServer
   const scan = repositoryScan(scans, path);
   const worktree = scan === null ? path : (worktreeForPath(worktreePaths(scan), path) ?? path);
   const entry = scan?.worktrees.find((item) => normalizeWorkspacePath(item.path) === worktree);
+  // The project is the repository's primary checkout, as the rail names it. `scan.root`
+  // is only the folder the scan ran in, so a scan taken from a linked worktree would
+  // otherwise name the project after that worktree.
+  const primary = scan?.worktrees.find((item) => !item.bare);
   return {
     path,
-    name: workspaceLabel(scan === null ? path : scan.root),
+    name: workspaceLabel(scan === null ? path : (primary?.path ?? scan.root)),
     branch: entry?.branch ?? null,
     worktree,
     scan,

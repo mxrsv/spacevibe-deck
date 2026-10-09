@@ -76,6 +76,8 @@ answer — whether another overlay covers the stage.
 - A tab switch by chord dismisses it without a zoom (`dispatchAction`), as does a strip or
   rail press and the last tab closing.
 - It covers the stage, so it is in `overlayCoversPane` and the browser's native view hides.
+  Dev servers' Open in Deck is the exception that dismisses it (`takeStageForOpenedPage`): the host
+  shows the view on open, so leaving Mission Control up would put a visible view above it.
   The mark's hover card raises the stage overlay flag for the same reason.
 
 ## Host scope

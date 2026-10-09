@@ -133,7 +133,10 @@ function detailFor(row: DevServerRow, scope: DevServerScope, scans: ScanMap): st
   const root = normalizeWorkspacePath(row.displayRoot) ?? row.displayRoot;
   const scan = repositoryScan(scans, root);
   const entry = scan?.worktrees.find((item) => normalizeWorkspacePath(item.path) === root);
-  const name = workspaceLabel(scan === null ? root : scan.root);
+  // The project is the primary checkout, as the rail names it; `scan.root` is only the
+  // folder the scan ran in (same rule as `subjectFor`).
+  const primary = scan?.worktrees.find((item) => !item.bare);
+  const name = workspaceLabel(scan === null ? root : (primary?.path ?? scan.root));
   return entry?.branch ? `${name} · ${entry.branch}` : name;
 }
 

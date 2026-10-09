@@ -19,8 +19,10 @@ import {
 import {
   composeSurfaceStrip,
   stageSurfaceDescriptors,
+  takeStageForOpenedPage,
   takeStageForSurface,
 } from "./stage-surface-strip";
+import { missionControlOpen } from "./mission-control/mission-control-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 
 function state(overrides: Partial<BrowserState> = {}): BrowserState {
@@ -62,6 +64,7 @@ function fakeFiles(overrides: Partial<SurfaceStrip> = {}): SurfaceStrip {
 
 beforeEach(() => {
   resetBrowserStore();
+  missionControlOpen.value = false;
   // Both surface stores are window-scoped singletons, so a board left open by
   // one case would change every count in the next one.
   resetAgentBoardStore();
@@ -397,7 +400,7 @@ describe("openBrowserAt with the real stage rule", () => {
   // through `takeStageForSurface` BEFORE the browser flags flip, so the file
   // surface and the board never share the stage with the page.
   const prepare = (files: SurfaceStrip, client: BrowserClient) => () => {
-    takeStageForSurface("browser", { files, client });
+    takeStageForOpenedPage({ files, client });
   };
 
   it("takes the stage from the board and the file surface for a closed browser", async () => {
@@ -436,5 +439,20 @@ describe("openBrowserAt with the real stage rule", () => {
     expect(agentBoardSurfaceActive.value).toBe(false);
     expect(browserSurfaceActive.value).toBe(true);
     expect(client.navigate).toHaveBeenCalledWith("http://127.0.0.1:5174/");
+  });
+
+  it("dismisses Mission Control, which would otherwise cover the page it just showed", async () => {
+    browserOpen.value = true;
+    missionControlOpen.value = true;
+    const client = fakeClient();
+
+    await openBrowserAt("http://127.0.0.1:5173/", {
+      client,
+      prepareStage: prepare(fakeFiles(), client),
+      onChanged: vi.fn(),
+    });
+
+    expect(missionControlOpen.value).toBe(false);
+    expect(browserSurfaceActive.value).toBe(true);
   });
 });
