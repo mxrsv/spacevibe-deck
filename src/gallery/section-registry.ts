@@ -45,6 +45,9 @@ const TokensSection = lazy(() => import("./sections/tokens-section").then((m) =>
 const LaunchProfilesSection = lazy(() =>
   import("./sections/launch-profiles-section").then((m) => m.LaunchProfilesSection),
 );
+const ChangesSpecimensSection = lazy(() =>
+  import("./sections/changes-specimens-section").then((m) => m.ChangesSpecimensSection),
+);
 
 export interface GallerySection {
   readonly id: string;
@@ -94,4 +97,5 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     label: "launch profiles",
     Section: LaunchProfilesSection,
   },
+  { id: "changes-specimens", label: "changes specimens", Section: ChangesSpecimensSection },
 ];
