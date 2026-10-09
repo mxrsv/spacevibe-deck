@@ -1254,8 +1254,8 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
       expect(row.firstElementChild?.classList.contains("asr-card__hit")).toBe(true);
       expect(row.querySelector(".asr-card__glyph")).not.toBeNull();
       expect(row.querySelector(".asr-card__glyph .asr-card__logo")).not.toBeNull();
-      // DL-27.21, amended 2026-10-06: the state is the corner badge on the logo;
-      // the trailing cell keeps only the working bars and, on hover, close.
+      // DL-27.21, amended 2026-10-09: the state is the corner badge on the logo;
+      // the trailing cell keeps only, on hover, close.
       expect(row.querySelector(".asr-card__glyph .asr-card__dot")).not.toBeNull();
       expect(row.querySelector(".asr-card__status .asr-card__dot")).toBeNull();
       expect(row.querySelector(".asr-row__actions")).not.toBeNull();
@@ -1288,16 +1288,11 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
 
     const row = rows()[0];
     const status = row.querySelector(".asr-card__status");
-    if (mark === "working") {
-      // Working keeps its trailing bars and carries no dot anywhere on the row.
-      expect(status?.querySelectorAll(".asr-card__load > i").length).toBeGreaterThan(0);
-      expect(row.querySelector(".asr-card__dot")).toBeNull();
-    } else {
-      expect(row.querySelector(".asr-card__glyph .asr-card__dot")?.getAttribute("data-state")).toBe(
-        mark,
-      );
-      expect(status?.querySelector(".asr-card__dot")).toBeNull();
-    }
+    expect(row.querySelector(".asr-card__glyph .asr-card__dot")?.getAttribute("data-state")).toBe(
+      mark,
+    );
+    expect(status?.querySelector(".asr-card__dot")).toBeNull();
+    expect(status?.querySelector("i")).toBeNull();
   });
 
   // Agent-signal contract layer, stage 0 (2026-09-03; DL-27.3 amended): the
@@ -1347,8 +1342,8 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     expect(row.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe("ended");
     const hit = row.querySelector<HTMLElement>(".asr-card__hit");
     expect(hit?.getAttribute("aria-label")).toMatch(/, ended$/);
-    // Not busy: the loading track stays empty for a dead agent.
-    expect(row.querySelector(".asr-card__load")?.getAttribute("data-busy")).toBe("false");
+    // Not busy: a dead agent draws the stop square, not the spinner's frames.
+    expect(row.querySelectorAll(".asr-card__dot > i")).toHaveLength(0);
   });
 
   it("paints no dot at all for idle (design §9.4 point 2 — amends DL-27.3)", async () => {
@@ -1364,9 +1359,9 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     expect(row.querySelector(".asr-card__dot")).toBeNull();
   });
 
-  it("draws a busy row with the loading track's bars, never the shared working spinner", async () => {
-    // DL-27.3 point 1 (design §9.4): `working` is bars in the trailing
-    // track, not `WorkspaceSpinner` — the spinner stays the CLUSTER/head
+  it("draws a busy row as the braille spinner on the logo, never the shared working ring", async () => {
+    // DL-27.21, amended 2026-10-09: `working` is a braille terminal spinner on
+    // the logo's corner, not `WorkspaceSpinner` — the ring stays the CLUSTER/head
     // vocabulary and is never reused on a card row.
     tabViews.value = [tab({ panes: [pane({ phase: "working" })] })];
     mount();
@@ -1375,11 +1370,10 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     const row = rows()[0];
     expect(row.querySelector(".asr-row__mark--spinner")).toBeNull();
     expect(row.querySelector("svg.wsitem__spinner")).toBeNull();
-    const load = row.querySelector(".asr-card__load");
-    expect(load?.getAttribute("data-busy")).toBe("true");
-    expect(load?.children).toHaveLength(3);
-    expect(load?.parentElement?.classList.contains("asr-card__status")).toBe(true);
-    expect(row.querySelector(".asr-card__dot")).toBeNull();
+    const spinner = row.querySelector(".asr-card__glyph > .asr-card__dot");
+    expect(spinner?.getAttribute("data-state")).toBe("working");
+    expect(spinner?.children).toHaveLength(10);
+    expect(row.querySelector(".asr-card__load")?.children).toHaveLength(0);
   });
 });
 

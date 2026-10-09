@@ -48,11 +48,14 @@ constraint: **consume as few machine resources as possible.**
   over a still ring that separates the mark in a screenshot but not in the
   corner of an eye. The still ring is what `prefers-reduced-motion: reduce`
   gets.
-  **Another scoped exception was added 2026-08-27 by DL-27.25:** an Electron
-  worktree-card row or strip carries three `transform: scaleY` bars while its
-  agent is working (DECK-30, amended 2026-09-09). The 6/10/8px bars share a
-  900ms alternate cycle with a 150ms stagger; there is no beam. Leaving working
-  removes all three bars. Reduced motion keeps their static heights.
+  **Another scoped exception was added 2026-08-27 by DL-27.25, and replaced
+  2026-10-09 (owner, DL-27.21):** an Electron worktree-card row carries a braille
+  terminal spinner on its logo's corner while its agent is working (DECK-30,
+  amended 2026-09-09). It was three `transform: scaleY` bars in the trailing
+  cell until then. Ten frames are stacked in one cell and shown one at a time by
+  `opacity` alone, 80ms each, so the loop is 800ms; it runs only while
+  `[data-state="working"]` is on the element, and leaving working removes the
+  frames. Reduced motion keeps the first frame still.
   **A third scoped exception was added 2026-10-09 by DL-36.1 (owner):** the dev
   servers chip's 6px dot radiates on a 1.8s loop — one ring that scales out of
   the dot and fades — for as long as at least one server is running in the
@@ -2943,6 +2946,17 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   **Amended 2026-10-07 (owner): quiet logos are withdrawn.** Every row's logo
   keeps its full colour or ink in every state; the corner badge alone carries
   the state.
+  **Amended 2026-10-09 (owner): a wider gap, and working moves onto the logo.**
+  The ring around a dot is 3px (was 2px) and the dot sits 5.5px outside the logo's
+  box (was 3px), so its centre is 1px in from the corner and the cut-out takes the
+  logo's rim rather than its body; 7.5px was tried and notches the tree's guide
+  line. **Working is a braille terminal spinner** (`⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`, 16px in
+  `--text-primary` full ink) on the same corner, replacing the trailing bars: it is
+  sparse, so its gap is a 2px text stroke in the row's ground hugging the dots
+  instead of a disc, which kept the logo's body. The trailing cell now keeps only
+  close. Loop and reduced-motion terms are DL-1.2's. The gallery's "Row badge"
+  section drew the gap and spinner candidates; its older size columns predate the
+  wider gap.
 - **DL-27.22** **The row whose pane holds the keyboard carries the selection
   wash (2026-08-23, owner).** Until this rule the rail could show NOTHING as
   selected: DL-27.8 puts the wash on `.asr-row--tab`, and a multi-agent tab
@@ -2970,14 +2984,14 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   rim, and the owner reported the focused agent unreadable a second time. The
   row now fills with `--text-primary` at 74% over `--sidebar-bg` and every mark
   on it reads `--asr-card-focus-ink` (`--sidebar-bg`): name, sentence, model
-  pill, loading bars, the neutral `working`/`done`/`ended` dots and the close.
+  pill, the working spinner, the neutral `done`/`ended` dots and the close.
   `asked` and `failed` keep `--yellow` and `--red`, which read on that fill.
   Contrast is 8.5:1 on `deck-dark` and 5.75:1 on `deck-light` (measured in the
   gallery). **This is a scoped exception to DL-21.1's "wash and nothing else"**
   — an inverted fill is the one selection mark in the app that is not
   `--tab-active-bg` — and it stays one signifier: no bar, no frame, no accent
   (DL-21.6 holds). **The working rim is retired with it:** a busy row no longer
-  draws a hairline, and the loading bars alone say it is busy. The gallery's
+  draws a hairline, and the working spinner alone says it is busy. The gallery's
   eight other candidates are kept as a historical comparison. The Tauri
   legacy rail's `.asr-leaf` keeps the wash.
 
@@ -3145,15 +3159,14 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   A selected shell tab marks the card active just as a selected agent tab does.
   Model pills render only from an authoritative pane/session pairing; the
   production rail currently withholds its heuristic pairing, so absence is the
-  truthful state. **An agent row shares one trailing 16px cell between its
-  working bars and close (2026-09-09, amended 2026-10-06 by DL-27.21).** Hover
-  or keyboard focus anywhere in the row hides the bars and shows close in that
-  same cell; the model pill stays visible and the label keeps its width.
-  Working shows the three staggered loading bars recorded in DL-1.2 and no dot;
-  every other state is a corner badge on the row's own logo, and idle stays
-  empty. The logo keeps its full colour in every state (DL-27.21, amended
-  2026-10-07). Closed-strip glyphs keep their smaller badge.
-  A working row paints no rim and no animation but the loading bars (the rim
+  truthful state. **An agent row's trailing 16px cell shows close on hover or
+  keyboard focus (2026-09-09, amended 2026-10-06 and 2026-10-09 by DL-27.21).**
+  The model pill stays visible and the label keeps its width. Every state,
+  working included, is a corner badge on the row's own logo; working is the
+  braille spinner recorded in DL-1.2, and idle stays empty. The logo keeps its
+  full colour in every state (DL-27.21, amended 2026-10-07). Closed-strip glyphs
+  keep their smaller badge.
+  A working row paints no rim and no animation but the spinner (the rim
   hairline was retired 2026-10-03, DL-27.22) — no blur, gradient beam or
   rasterized custom-property animation. The card is
   Electron-only; [`AgentRail`](../src/ui/agent-rail.tsx) `current` routes Tauri

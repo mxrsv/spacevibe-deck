@@ -83,14 +83,17 @@ export function whereOf(project: string, group: RailWorktreeGroup): string {
   return subjectWhere(subjectOf(project, group));
 }
 
+/** The terminal spinner's ten frames, one per `<i>`; CSS stacks them and shows one at a time (`04c`). */
+const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
+
 /**
  * The per-pane state badge, drawn on the corner of the agent logo in both
  * places a logo appears — the row's (larger, row-scoped size) and the closed
  * strip's glyph (DL-27.21, amended 2026-10-06).
  * Diverges from the rail's shared `RailStatusMark` on purpose: `idle` paints
- * NOTHING here rather than a gray dot, and `working` never draws the spinner —
- * busy motion is `CardLoad`'s trailing track, not this dot. A row therefore
- * does not call this for a working pane: one state signal per row.
+ * NOTHING here rather than a gray dot, and `working` is a braille terminal
+ * spinner (owner, 2026-10-09) rather than the rail's dot-ring — the row's one
+ * state signal, so the trailing cell no longer draws bars for it.
  */
 export function CardMark({
   state,
@@ -105,33 +108,18 @@ export function CardMark({
   // Keep confidence available to callers; card dots use solid state colors.
   // The row/segment label carries the inferred qualifier (DL-27.3).
   return (
-    <span
-      class="asr-card__dot"
-      data-state={state}
-      data-confidence={confidence}
-      aria-hidden="true"
-    />
+    <span class="asr-card__dot" data-state={state} data-confidence={confidence} aria-hidden="true">
+      {state === BUSY_STATE && BRAILLE_FRAMES.map((frame) => <i key={frame}>{frame}</i>)}
+    </span>
   );
 }
 
 /**
- * The trailing loading track: three staggered bars while the pane is working,
- * nothing otherwise — but the ELEMENT always renders, so an idle
- * row's model pill lands on the same right edge a busy row's does.
+ * The trailing spacer: it draws nothing since the working mark moved onto the logo, but the
+ * ELEMENT always renders so every row's model pill lands on the same right edge.
  */
-export function CardLoad({ state }: { readonly state: RailState }) {
-  const busy = state === BUSY_STATE;
-  return (
-    <span class="asr-card__load" data-busy={busy} aria-hidden="true">
-      {busy && (
-        <>
-          <i />
-          <i />
-          <i />
-        </>
-      )}
-    </span>
-  );
+export function CardLoad() {
+  return <span class="asr-card__load" aria-hidden="true" />;
 }
 
 export interface CardAgentRowProps {
@@ -250,10 +238,10 @@ export function CardAgentRow({
       />
       <span class="asr-card__glyph">
         <AgentGlyph agent={pane.agent} className="asr-card__logo" />
-        {/* DL-27.21, amended 2026-10-06: the state is the strip's corner badge on the
-            row's own logo. A working row draws its bars in the trailing cell instead,
-            so it carries no dot — one state signal per row. */}
-        {pane.state !== BUSY_STATE && <CardMark state={pane.state} confidence={pane.confidence} />}
+        {/* DL-27.21, amended 2026-10-06 and 2026-10-09: the state is the strip's corner badge
+            on the row's own logo; a working row's badge is the braille spinner. One state
+            signal per row, and the trailing cell keeps only close. */}
+        <CardMark state={pane.state} confidence={pane.confidence} />
       </span>
       <CardRowText
         pane={pane}
@@ -266,7 +254,7 @@ export function CardAgentRow({
       />
       {/* DL-27.21: the working bars and close share one trailing cell without moving the label. */}
       <span class="asr-card__status" aria-hidden="true">
-        <CardLoad state={pane.state} />
+        <CardLoad />
       </span>
       {/* DL-27.21, kept: every agent row closes its own pane — the same
           `asr-row__actions` / `asr-row__action--close` vocabulary the old tab

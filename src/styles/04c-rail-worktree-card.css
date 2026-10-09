@@ -5,7 +5,7 @@
    Electron with DL-27.28. Design: `docs/internals/agent-rail.md`.
 
    `worktree-card.tsx` emits `.asr-checkout` and its `__line` parts, and the session rows keep
-   the `.asr-card__row` family — hit layer, logo badge, bars and close (DL-27.21) —
+   the `.asr-card__row` family — hit layer, logo badge and close (DL-27.21) —
    plus the rail's existing `.asr-row__actions` / `.asr-row__action--close` vocabulary.
 
    `box-sizing: border-box` is declared on everything here that takes a percentage or a fixed
@@ -36,10 +36,9 @@
   --asr-card-radius: 6px;
   /* The tag, ~17px tall: 3px, proportional to the smaller box. */
   --asr-card-pill-radius: 3px;
-  /* THE COLOUR RULE (owner, 2026-08-25): one hue for "the machine is working", on the row's
-     corner badge and the loading bars and nowhere else. `--status-unread` stays `asked` and
-     `--red` stays `failed`. A variable so a later pick is one edit. */
-  --asr-card-busy: color-mix(in srgb, var(--tone) 62%, transparent);
+  /* THE COLOUR RULE (amended 2026-10-09, owner): "the machine is working" has no hue of its own
+     — the spinner is full ink (`--text-primary`), so `--status-unread` stays `asked` and `--red`
+     stays `failed`. */
   /* The session list's own rhythm: one row's height and the gap between rows. A session row is
      two lines (DL-27.28), so its height is the text's plus this padding; the logo-to-text gap is
      the mock's 11px. */
@@ -328,10 +327,12 @@ button.asr-checkout__focus:focus-visible {
   color: color-mix(in srgb, var(--asr-card-focus-ink) 72%, transparent);
 }
 
-.asr-card__row[data-focused="true"] .asr-card__load > i,
-.asr-card__row[data-focused="true"]
-  .asr-card__dot:is([data-state="working"], [data-state="done"], [data-state="ended"]) {
+.asr-card__row[data-focused="true"] .asr-card__dot:is([data-state="done"], [data-state="ended"]) {
   background: var(--asr-card-focus-ink);
+}
+
+.asr-card__row[data-focused="true"] .asr-card__dot[data-state="working"] {
+  color: var(--asr-card-focus-ink);
 }
 
 .asr-card__row[data-focused="true"] .asr-row__action {
@@ -356,12 +357,17 @@ button.asr-checkout__focus:focus-visible {
 /* The row's own badge (DL-27.21, amended 2026-10-06): the same mechanism at a larger size, so
    the mark sits beside the name the eye is reading and a 5px dot is not the thing that gets
    skipped. Starting values; the gallery's "Row badge" section draws 6, 7 and 8px for the
-   owner's eye review. The outset grows with the badge so its centre stays on the logo's
-   corner rather than moving inward over the mark. */
+   owner's eye review. Amended 2026-10-09 (owner): the gap widens to 3px and the dot moves out
+   with it — centre 1px in from the logo's corner — so the cut-out takes the logo's rim, not
+   its body. The outset stops at 5.5px: the tree's guide line sits just left of the logo, and a
+   7.5px outset (tried) notches it. */
 .asr-card__row .asr-card__glyph {
   --asr-badge-size: 7px;
-  --asr-badge-ring: 2px;
-  --asr-badge-outset: 3px;
+  --asr-badge-ring: 3px;
+  --asr-badge-outset: 5.5px;
+  --asr-work-size: 13px;
+  --asr-work-ring: 2px;
+  --asr-work-font: 16px;
 }
 
 /* The corner badge sits outside the logo's box, so the glyph keeps its overflow visible. */
@@ -400,8 +406,92 @@ button.asr-checkout__focus:focus-visible {
   border-radius: 50%;
 }
 
+/* working — a braille terminal spinner on the logo's corner (owner, 2026-10-09), in place of the
+   trailing bars. The ten frames are stacked in one grid cell and shown one at a time by
+   `opacity`, so no `content` animation is needed (WebKit does not animate it) and the glyphs are
+   real braille in the host's monospace font. Braille is sparse, so the gap is a text stroke in
+   the row's ground hugging the dots instead of a disc: the logo keeps everything the dots do not
+   touch. Reduced motion keeps the first frame still. This is DL-1.2's third scoped loop. */
 .asr-card__dot[data-state="working"] {
-  background: var(--asr-card-busy);
+  display: grid;
+  place-items: center;
+  width: var(--asr-work-size);
+  height: var(--asr-work-size);
+  border-color: transparent;
+  border-width: var(--asr-work-ring);
+  bottom: calc(-1 * var(--asr-badge-outset));
+  left: calc(-1 * var(--asr-badge-outset));
+  background: transparent;
+  color: var(--text-primary);
+  -webkit-text-stroke: calc(2 * var(--asr-work-ring)) var(--asr-badge-ground, var(--sidebar-bg));
+  paint-order: stroke fill;
+  font:
+    400 var(--asr-work-font) / 1 ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+}
+
+.asr-card__dot[data-state="working"] > i {
+  grid-area: 1 / 1;
+  font-style: normal;
+  opacity: 0;
+}
+
+.asr-card__dot[data-state="working"] > i:first-child {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .asr-card__dot[data-state="working"] > i {
+    animation: asr-card-frame 800ms steps(1, end) infinite;
+  }
+
+  .asr-card__dot[data-state="working"] > i:nth-child(1) {
+    animation-delay: -800ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(2) {
+    animation-delay: -720ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(3) {
+    animation-delay: -640ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(4) {
+    animation-delay: -560ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(5) {
+    animation-delay: -480ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(6) {
+    animation-delay: -400ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(7) {
+    animation-delay: -320ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(8) {
+    animation-delay: -240ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(9) {
+    animation-delay: -160ms;
+  }
+  .asr-card__dot[data-state="working"] > i:nth-child(10) {
+    animation-delay: -80ms;
+  }
+}
+
+/* Each frame owns a tenth of the 800ms cycle; the negative delays stagger them so exactly one
+   is visible at any moment. */
+@keyframes asr-card-frame {
+  0% {
+    opacity: 1;
+  }
+
+  10%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .asr-card__dot[data-state="asked"] {
@@ -429,51 +519,12 @@ button.asr-checkout__focus:focus-visible {
   border-radius: var(--radius-flat);
 }
 
-/* -------------------------------------------------------------------- the loading track */
+/* -------------------------------------------------------------------- the trailing spacer */
 
-/* Three staggered bars share the row's loading slot and stay legible without motion. */
+/* The trailing cell draws nothing at rest (the working mark is on the logo); it keeps its width
+   so the model pill lands on one right edge in every row. */
 .asr-card__load {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
   min-width: 10px;
-}
-
-.asr-card__load > i {
-  width: 2px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--asr-card-busy);
-}
-
-.asr-card__load > i:nth-child(2) {
-  --asr-load-delay: -150ms;
-  height: 10px;
-}
-
-.asr-card__load > i:nth-child(3) {
-  --asr-load-delay: -300ms;
-  height: 8px;
-}
-
-/* Only working panes render bars. Reduced motion keeps the three static heights. */
-@media (prefers-reduced-motion: no-preference) {
-  .asr-card__load[data-busy="true"] > i {
-    transform-origin: center;
-    animation: asr-card-bar 900ms var(--ease) infinite alternate;
-    animation-delay: var(--asr-load-delay, 0ms);
-  }
-}
-
-@keyframes asr-card-bar {
-  from {
-    transform: scaleY(0.4);
-  }
-
-  to {
-    transform: scaleY(1);
-  }
 }
 
 /* ---------------------------------------------------------------------- name + status line */

@@ -52,7 +52,7 @@ grouping rather than regrouping on its own.
 | ----------------------------------- | --------- | -------- | ---------- | ---------------------- |
 | `error`                             | any       | any      | `failed`   | red badge              |
 | `requested`, `warning`, `completed` | any       | any      | `asked`    | yellow badge           |
-| `none`                              | `working` | any      | `working`  | loading bars, no badge |
+| `none`                              | `working` | any      | `working`  | braille spinner badge  |
 | `none`                              | other     | true     | `done`     | quiet gray badge       |
 | `none`                              | other     | false    | `idle`     | nothing                |
 
@@ -63,7 +63,7 @@ attention and phase come from is in
 [terminal.md](terminal.md#agent-phase-and-attention).
 
 On a session row the badge is drawn on the corner of the row's own logo, never in the
-trailing cell, which keeps only the working bars and close.
+trailing cell, which keeps only close. A working row's badge is the braille spinner.
 A row's logo keeps its full colour or ink in every state (quiet logos were withdrawn
 2026-10-07, DL-27.21): the badge alone carries the state. `needsUser` (`asked` or `failed`)
 still feeds the attention list, the project header's count and the collapsed rail, but it no

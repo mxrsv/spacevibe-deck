@@ -15,6 +15,10 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   shows as Running only while something is listening on its port, so a page
   that errors still reads Running, and one that stops reads Unknown, then
   Stopped. Windows does not list dev servers yet.
+- **A working agent spins on its logo.** The three moving bars at the right edge of an
+  agent row are gone: a working agent now shows a small terminal-style spinner on its
+  logo's corner, beside the dots that mark the other states, and those dots sit a little
+  further out so they cover less of the logo.
 
 ## 2.9.0
 

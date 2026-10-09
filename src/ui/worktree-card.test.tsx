@@ -397,7 +397,7 @@ describe("WorktreeCard session rows", () => {
     expect(host.querySelector(".asr-leaf")).toBeNull();
   });
 
-  it("reserves the loading track on an idle row so every row keeps one trailing cell", () => {
+  it("reserves the trailing spacer on every row so each keeps one trailing cell", () => {
     mount({
       group: group({
         panes: [pane({ paneId: 1, state: "idle" }), pane({ paneId: 2, state: "working" })],
@@ -407,22 +407,20 @@ describe("WorktreeCard session rows", () => {
     const loads = host.querySelectorAll(".asr-card__load");
     expect(loads).toHaveLength(2);
     expect(loads[0].children).toHaveLength(0);
-    expect(loads[0].getAttribute("data-busy")).toBe("false");
-    expect(loads[1].children).toHaveLength(3);
-    expect(loads[1].getAttribute("data-busy")).toBe("true");
+    expect(loads[1].children).toHaveLength(0);
   });
 
-  it("stops all loading bars when work finishes", () => {
+  it("swaps the working spinner for the finished badge when work finishes", () => {
     mount({ group: group({ panes: [pane({ state: "working" })] }) });
-    expect(host.querySelectorAll(".asr-card__load > i")).toHaveLength(3);
+    expect(host.querySelectorAll(".asr-card__dot[data-state='working'] > i")).toHaveLength(10);
 
     mount({ group: group({ panes: [pane({ state: "done", confidence: "inferred" })] }) });
-    expect(host.querySelectorAll(".asr-card__load > i")).toHaveLength(0);
+    expect(host.querySelectorAll(".asr-card__dot > i")).toHaveLength(0);
     expect(host.querySelector(".asr-card__dot")?.getAttribute("data-state")).toBe("done");
     expect(host.querySelector('[aria-label*="done (inferred)"]')).not.toBeNull();
   });
 
-  it("puts busy state after the text in the trailing state/close slot, with no model pill", () => {
+  it("puts the busy spinner on the logo, not in the trailing cell, with no model pill", () => {
     mount({ group: group({ panes: [pane({ paneId: 1, state: "working", model: "GPT-5.1" })] }) });
 
     const row = host.querySelector(".asr-card__row");
@@ -431,8 +429,10 @@ describe("WorktreeCard session rows", () => {
     const textAt = children.findIndex((node) => node.classList.contains("asr-card__text"));
     expect(textAt).toBeGreaterThan(-1);
     expect(statusAt).toBeGreaterThan(textAt);
-    expect(children[statusAt].querySelectorAll(".asr-card__load > i").length).toBeGreaterThan(0);
-    expect(row?.querySelector(".asr-card__glyph .asr-card__dot")).toBeNull();
+    expect(children[statusAt].querySelectorAll("i")).toHaveLength(0);
+    expect(
+      row?.querySelector(".asr-card__glyph > .asr-card__dot")?.getAttribute("data-state"),
+    ).toBe("working");
     expect(row?.querySelector(".asr-card__pill")).toBeNull();
   });
 
@@ -675,9 +675,9 @@ describe("WorktreeCard folder git does not know (DL-27.23, amended 2026-09-23)",
   });
 });
 
-describe("WorktreeCard row badge (DL-27.21, amended 2026-10-06)", () => {
+describe("WorktreeCard row badge (DL-27.21, amended 2026-10-09)", () => {
   // The state sits on the logo's corner: the mark is beside the name the eye
-  // is reading, and the trailing cell keeps only the working bars and close.
+  // is reading, and the trailing cell keeps only close.
   it.each(["asked", "failed", "done", "ended"] as const)(
     "draws %s as the badge on the row's own logo and nothing in the trailing cell",
     (state) => {
@@ -693,14 +693,33 @@ describe("WorktreeCard row badge (DL-27.21, amended 2026-10-06)", () => {
     },
   );
 
-  it.each(["working", "idle"] as const)("carries no badge on a %s row", (state) => {
-    mount({ group: group({ panes: [pane({ state })] }) });
+  it("draws a working row as the braille spinner on the logo", () => {
+    mount({ group: group({ panes: [pane({ state: "working" })] }) });
 
     const row = host.querySelector(".asr-card__row")!;
-    expect(row.querySelector(".asr-card__dot")).toBeNull();
-    expect(row.querySelectorAll(".asr-card__status .asr-card__load > i")).toHaveLength(
-      state === "working" ? 3 : 0,
-    );
+    const frames = [
+      ...row.querySelectorAll(".asr-card__glyph > .asr-card__dot[data-state='working'] > i"),
+    ];
+    expect(frames.map((frame) => frame.textContent)).toEqual([
+      "⠋",
+      "⠙",
+      "⠹",
+      "⠸",
+      "⠼",
+      "⠴",
+      "⠦",
+      "⠧",
+      "⠇",
+      "⠏",
+    ]);
+    expect(row.querySelector(".asr-card__status .asr-card__dot")).toBeNull();
+    expect(row.querySelector(".asr-card__status i")).toBeNull();
+  });
+
+  it("carries no badge on an idle row", () => {
+    mount({ group: group({ panes: [pane({ state: "idle" })] }) });
+
+    expect(host.querySelector(".asr-card__row .asr-card__dot")).toBeNull();
   });
 
   it("keeps the agent label and the state word in the name and tooltip", () => {

@@ -63,7 +63,7 @@ The ⌘T menu also offers **Open another project…** to choose another workspac
 - **Agent Rail** (left column). One cluster per project, one row per agent pane. The row
   shows what the agent last said, or its name if it has said nothing yet. A dot on the agent's
   logo marks state: red for failed, yellow for asking you, grey once a run is done; a working
-  agent shows moving bars instead. Only the agents that need you keep their logo in full
+  agent shows a small spinning dot pattern instead. Only the agents that need you keep their logo in full
   colour, so those rows stand out as you scan the column. Clicking a row focuses that
   pane. Each row's ✕ closes the thing it names: an agent row closes that pane, a project
   header closes every tab of that repository. Drag a project header to reorder clusters.

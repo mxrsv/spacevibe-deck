@@ -84,13 +84,14 @@ IDs map to the parent's NAV1–3 and ATT1–3 where noted.
   agent is doing or asking. Several sessions of one CLI in one checkout remain distinguishable
   at the dense setting without hovering.
   Today's row ([`CardAgentRow`](../../src/ui/worktree-card-row.tsx)) is logo · text · model
-  pill · trailing status cell (`CardLoad` bars while working, `CardMark` dot otherwise) · close.
+  pill · trailing spacer (`CardLoad`) · close, with the state mark (`CardMark`) on the logo's corner.
   The folded card's strip already badges `CardMark` on the logo's corner at 5px (DL-27.21).
 - **ROW1**: The row's state dot moves from the trailing cell onto the logo's corner, reusing
   the strip's badge mechanism at a larger, row-specific size (final size set at eye review;
   the 5px strip size is what the owner judged easy to skip). The ring stays legible on hover
-  and on the focused row. Working keeps its trailing bars (DL-27.25's motion exception),
-  so a working row carries no dot — one state signal per row, as today.
+  and on the focused row. Amended 2026-10-09 (owner): working is a braille terminal spinner on the
+  same corner instead of the trailing bars (DL-1.2's scoped exception moved with it), and the
+  badge's gap widens to 3px with the dot 5.5px outside the logo — one state signal per row.
 - **ROW2** (withdrawn by decision 13, 2026-10-07; every logo keeps its full colour): Rows needing the user (`asked`, `failed`) keep the logo's full ink; every other
   row's logo goes quiet. Colour images quiet by `opacity`, single-colour ink marks (Codex,
   Copilot, Grok, Kimi, Droid) by `--text-faint` ink, letter avatars stay as they are — no

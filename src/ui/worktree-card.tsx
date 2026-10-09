@@ -129,7 +129,7 @@ function CardShellRow({
         <DeckIcon icon={TerminalWindow} size={CHROME_ICON} />
       </span>
       <span class="asr-card__name">{shell.label}</span>
-      <CardLoad state="idle" />
+      <CardLoad />
       <div class="asr-row__actions">
         <button
           type="button"

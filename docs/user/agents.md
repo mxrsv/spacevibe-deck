@@ -26,7 +26,7 @@ is shown on screen in Settings → Agents rather than hidden behind a label.
 
 Codex's `-c tui.animations=false` turns off its idle animations. Codex keeps repainting its
 prompt while it waits, and Deck would read that as an agent still working, so the row would
-show the busy bars before you have typed anything and after the reply has landed. If you
+show the working spinner before you have typed anything and after the reply has landed. If you
 write your own Codex command, keep that flag, or set `animations = false` under `[tui]` in
 `~/.codex/config.toml` to turn the animations off in every terminal.
 
