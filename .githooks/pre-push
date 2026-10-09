@@ -47,6 +47,11 @@ for file in $code; do
 done
 
 echo "pre-push: lint, policy suites and tests beside the changed files"
+# Git exports GIT_DIR and friends to a hook. Suites that `git init` a scratch
+# repo inherit them and rewrite THIS repo instead — on 2026-10-09 that set
+# core.bare and a test user.name here. Drop them before anything spawns git.
+# shellcheck disable=SC2046
+unset $(git rev-parse --local-env-vars)
 # shellcheck disable=SC2086 # word splitting is the point: one argument per path
 [ -z "$sources" ] || npx oxlint --quiet $sources
 # shellcheck disable=SC2086
