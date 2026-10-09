@@ -129,6 +129,16 @@ describe("DevServersChip", () => {
       expect(chip().getAttribute("aria-label")).toBe("Dev servers — 1 running, last scan failed");
     });
 
+    it("keeps an unavailable icon quiet on hover, like the toolbar's", () => {
+      const css = readFileSync("src/styles/05-tab-bar-toolbar.css", "utf8");
+      expect(css).toMatch(
+        /\.iconbtn\.is-unavailable:hover\s*{[^}]*background:\s*transparent[^}]*cursor:\s*default/,
+      );
+      expect(readFileSync("src/ui/dev-servers/dev-server-row.tsx", "utf8")).toContain(
+        '"iconbtn dsv-icon"',
+      );
+    });
+
     it("loops only under no-preference, on transform and opacity, and only for a running dot", () => {
       const css = readFileSync("src/styles/24-dev-servers.css", "utf8");
       // A media block closes on a line of its own; the rules inside it are indented.
@@ -452,6 +462,71 @@ describe("DevServersChip", () => {
       act(() => cells()[2].click());
       await flush();
       expect(status()).toBe("Could not copy — the clipboard is not available.");
+    });
+
+    it("ignores a second press while an action is still being checked", async () => {
+      let finish: (value: DevServerResolveResult) => void = () => {};
+      const pending = new Promise<DevServerResolveResult>((resolve) => {
+        finish = resolve;
+      });
+      const d = deps({ resolve: vi.fn(() => pending) });
+      mount({ rows: [row()], deps: d });
+      open();
+
+      act(() => cells()[1].click());
+      act(() => cells()[1].click());
+      act(() => cells()[2].click());
+      expect(d.resolve).toHaveBeenCalledTimes(1);
+      expect(status()).toBe("Checking…");
+
+      finish({ status: "ready", id: "a", url: "http://127.0.0.1:5173/", protocol: "http" });
+      await flush();
+      expect(d.openExternal).toHaveBeenCalledTimes(1);
+      expect(status()).toBe("Opened 127.0.0.1:5173 in your browser");
+
+      act(() => cells()[2].click());
+      await flush();
+      expect(d.copy).toHaveBeenCalledTimes(1);
+    });
+
+    it("lets go of the busy state when an action throws", async () => {
+      const d = deps({
+        openInDeck: vi.fn(async () => {
+          throw new Error("boom");
+        }),
+      });
+      mount({ rows: [row()], deps: d });
+      open();
+
+      act(() => cells()[0].click());
+      await flush();
+      expect(status()).toBe("Could not finish that — try again.");
+
+      act(() => cells()[2].click());
+      await flush();
+      expect(d.copy).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops a result that arrives after the popover closed", async () => {
+      let finish: (value: DevServerResolveResult) => void = () => {};
+      const first = new Promise<DevServerResolveResult>((resolve) => {
+        finish = resolve;
+      });
+      const d = deps({ resolve: vi.fn(() => first) });
+      mount({ rows: [row()], deps: d });
+      open();
+      act(() => cells()[0].click());
+      act(() => chip().click());
+      expect(dialog()).toBeNull();
+
+      open();
+      expect(status()).not.toBe("Checking…");
+      finish({ status: "ready", id: "a", url: "http://127.0.0.1:5173/", protocol: "http" });
+      await flush();
+
+      // The late completion neither closes the reopened popover nor writes into it.
+      expect(dialog()).not.toBeNull();
+      expect(status()).not.toContain("Opened");
     });
 
     it("reports an external browser that would not open", async () => {

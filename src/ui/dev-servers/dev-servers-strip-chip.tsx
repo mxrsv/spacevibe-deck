@@ -19,9 +19,9 @@ import { DevServersChip } from "./dev-servers-chip";
  *
  * The chip needs a live count, so this starts observing when it mounts rather
  * than when the popover opens, and stops when it unmounts. The roots are the
- * open tabs' workspaces plus the retained recents (`devServerRoots`) — nothing
- * new is catalogued here — and are re-registered only when that set actually
- * changes: `tabViews` republishes on the process poll, and every re-registration
+ * open tabs' workspaces, the worktrees of their scanned repositories and the
+ * retained recents (`devServerRoots`) — nothing new is catalogued here — and
+ * are re-registered only when that set actually changes: `tabViews` republishes on the process poll, and every re-registration
  * queues a snapshot read.
  */
 
@@ -46,6 +46,7 @@ export function DevServersStripChip({
   const roots = devServerRoots(
     tabViews.value.map((tab) => tab.workspacePath),
     workspacesData.value.recents.map((recent) => recent.path),
+    repositoryScans.value,
   );
   const key = JSON.stringify(roots);
   const rootsRef = useRef(roots);

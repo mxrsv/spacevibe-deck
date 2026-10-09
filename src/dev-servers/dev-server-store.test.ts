@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_ROOT_LENGTH, MAX_ROOTS } from "../../electron/dev-servers/roots";
+import { MAX_SENDABLE_ROOT_LENGTH, MAX_SENDABLE_ROOTS } from "./dev-server-roots";
 import { createDevServerStore, SNAPSHOT_POLL_INTERVAL_MS } from "./dev-server-store";
 import type {
   DevServerCapability,
@@ -102,6 +104,35 @@ afterEach(() => {
 });
 
 describe("dev-server-store registration", () => {
+  it("never sends main a root it would reject, nor more than it accepts", async () => {
+    expect([MAX_SENDABLE_ROOTS, MAX_SENDABLE_ROOT_LENGTH]).toEqual([MAX_ROOTS, MAX_ROOT_LENGTH]);
+    const host = fakeHost();
+    const store = createDevServerStore(host);
+    const valid = Array.from(
+      { length: MAX_ROOTS + 5 },
+      (_, i) => `/ok/${String(i).padStart(3, "0")}`,
+    );
+
+    store.start(["relative", "/bad\0nul", `/${"a".repeat(MAX_ROOT_LENGTH)}`, "", ...valid]);
+    await settle();
+
+    const sent = host.setRoots.mock.calls[0]?.[0] ?? [];
+    expect(sent).toHaveLength(MAX_ROOTS);
+    expect(sent).toEqual(valid.slice(0, MAX_ROOTS));
+    expect(store.error.value).toBeNull();
+  });
+
+  it("releases instead of registering when none of the roots are sendable", async () => {
+    const host = fakeHost();
+    const store = createDevServerStore(host);
+
+    store.start(["relative", ""]);
+    await settle();
+
+    expect(host.setRoots).not.toHaveBeenCalled();
+    expect(store.snapshot.value).toBeNull();
+  });
+
   it("registers the sorted, deduplicated union of consumer roots and reads a snapshot", async () => {
     const host = fakeHost();
     host.snapshot.mockResolvedValue(snap(1, 1, [row("a")]));

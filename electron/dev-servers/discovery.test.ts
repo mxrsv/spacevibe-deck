@@ -266,7 +266,7 @@ describe("lifecycle", () => {
     expect(h.discovery.snapshotFor("w1").completeness).toBe("failed");
   });
 
-  it("goes stale after twice the interval and honours the background cadence", async () => {
+  it("goes stale after twice the interval it was last seen under", async () => {
     const h = await watching(["/p"]);
     await h.scan(makeScan([{ pid: 10, port: 3000, cwd: "/p" }]));
     h.advance(ACTIVE_SCAN_INTERVAL_MS - 1);
@@ -276,9 +276,25 @@ describe("lifecycle", () => {
     expect(h.discovery.snapshotFor("w1").diagnostics.map((note) => note.code)).toContain(
       "scan-stale",
     );
+    // A later, slower cadence does not revive a row that was already stale when it was seen.
     h.discovery.setCadence("background");
     expect(h.discovery.intervalMs()).toBe(BACKGROUND_SCAN_INTERVAL_MS);
+    expect(rowsOf(h)[0]?.liveness).toBe("unknown");
+  });
+
+  it("keeps a background-observed row running when a refocus shortens the cadence", async () => {
+    const h = await watching(["/p"]);
+    h.discovery.setCadence("background");
+    await h.scan(makeScan([{ pid: 10, port: 3000, cwd: "/p" }]));
+    h.advance(10_000);
+    h.discovery.setCadence("active");
     expect(rowsOf(h)[0]?.liveness).toBe("running");
+    expect(h.discovery.snapshotFor("w1").diagnostics.map((note) => note.code)).not.toContain(
+      "scan-stale",
+    );
+    // Only a scan that fails to refresh it past twice the interval it was seen under ages it.
+    h.advance(2 * BACKGROUND_SCAN_INTERVAL_MS);
+    expect(rowsOf(h)[0]?.liveness).toBe("unknown");
   });
 
   it("recovers to running when a missed server is seen again", async () => {

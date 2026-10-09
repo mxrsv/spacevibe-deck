@@ -1,5 +1,5 @@
 import { FolderSimple, GitBranch } from "@phosphor-icons/react";
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { DevServerSnapshot } from "../../dev-servers/dev-server-types";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
@@ -88,14 +88,45 @@ export function DevServersPanel(props: DevServersPanelProps) {
   const firstCell = view.items[0] === undefined ? "" : `${view.items[0].id}:0`;
   const tabStop = view.items.some((item) => stop.startsWith(`${item.id}:`)) ? stop : firstCell;
 
+  // `resolve` forces a scan and a probe, which can take seconds. A ref, not state, so a
+  // second press in the same frame is already refused; `alive` drops a completion that
+  // arrives after the popover closed, which must not close a reopened one.
+  const pending = useRef(false);
+  const alive = useRef(true);
+  const [checking, setChecking] = useState(false);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
+
+  const execute = async (item: DevServerItem, action: DevServerAction): Promise<void> => {
+    let result: DevServerFeedback;
+    try {
+      result = await runDevServerAction(action, item, deps);
+    } catch {
+      result = { tone: "error", text: "Could not finish that — try again." };
+    }
+    pending.current = false;
+    if (!alive.current) {
+      return;
+    }
+    setChecking(false);
+    setFeedback(result);
+    if (result.tone === "ok" && action === "open-deck") {
+      props.onDone();
+    }
+  };
+
   const run = (item: DevServerItem, action: DevServerAction): void => {
+    if (pending.current) {
+      return;
+    }
+    pending.current = true;
+    setChecking(true);
     setFeedback(null);
-    void runDevServerAction(action, item, deps).then((result) => {
-      setFeedback(result);
-      if (result.tone === "ok" && action === "open-deck") {
-        props.onDone();
-      }
-    });
+    void execute(item, action);
   };
 
   return (
@@ -125,8 +156,16 @@ export function DevServersPanel(props: DevServersPanelProps) {
             </select>
           </label>
         </div>
-        <p class="dsv-status" role="status" data-tone={feedback?.tone ?? "idle"}>
-          {feedback !== null ? feedback.text : scanLine(snapshot, view, Date.now())}
+        <p
+          class="dsv-status"
+          role="status"
+          data-tone={checking ? "idle" : (feedback?.tone ?? "idle")}
+        >
+          {checking
+            ? "Checking…"
+            : feedback !== null
+              ? feedback.text
+              : scanLine(snapshot, view, Date.now())}
         </p>
         {failed && (
           <LoadError message="Scan failed — readings may be out of date." onRetry={props.onRetry} />

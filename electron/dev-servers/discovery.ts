@@ -15,7 +15,9 @@
  * - A scan that sees the listener but misses its start time or cwd is NOT an absence. The
  *   instance is kept, but continuity is unverified so cached protocol/url are dropped.
  *   Only a different start time for the same pid and port makes a new instance.
- * - Rows go stale to `unknown` after twice the current scan interval.
+ * - Rows go stale to `unknown` after twice the scan interval in force when they were last
+ *   seen, not the one at read time: a refocus that shortens the cadence must not age rows
+ *   that were fresh under the slower one.
  * - Stopped rows live 60 s and at most 100; a server never observed is never invented as
  *   stopped, and a process outside every root is dropped when it exits.
  * - Attribution is per sender: each window's own deepest root decides, and a more specific
@@ -149,6 +151,8 @@ interface Instance {
   readonly bindings: readonly Binding[];
   readonly cwd: string | null;
   readonly lastSeenAt: number;
+  /** Scan interval in force when `lastSeenAt` was recorded; staleness is judged against it. */
+  readonly seenIntervalMs: number;
   /** Consecutive complete scans that omitted it. */
   readonly missRun: number;
   /** A partial or failed scan interrupted a run of misses. */
@@ -213,7 +217,12 @@ function sameProcess(instance: Instance, seen: Observation): boolean {
   );
 }
 
-function refreshed(instance: Instance, seen: Observation, now: number): Instance {
+function refreshed(
+  instance: Instance,
+  seen: Observation,
+  now: number,
+  intervalMs: number,
+): Instance {
   const continuous = instance.startTime !== null && instance.startTime === seen.startTime;
   return {
     ...instance,
@@ -221,6 +230,7 @@ function refreshed(instance: Instance, seen: Observation, now: number): Instance
     cwd: seen.cwd ?? instance.cwd,
     startTime: seen.startTime ?? instance.startTime,
     lastSeenAt: now,
+    seenIntervalMs: intervalMs,
     missRun: 0,
     uncertain: false,
     stoppedAt: null,
@@ -262,6 +272,8 @@ function pruneStopped(instances: Map<string, Instance>, now: number): void {
 
 interface ReconcileContext {
   readonly now: number;
+  /** Scan interval in force for this scan. */
+  readonly intervalMs: number;
   readonly nextId: () => string;
   /** Whether any sender's roots hold this cwd; decides if a stopped entry is worth keeping. */
   readonly interesting: (cwd: string | null) => boolean;
@@ -285,8 +297,8 @@ function reconcile(
     next.set(
       id,
       match === undefined
-        ? freshInstance(id, seen, context.now)
-        : refreshed(match, seen, context.now),
+        ? freshInstance(id, seen, context.now, context.intervalMs)
+        : refreshed(match, seen, context.now, context.intervalMs),
     );
   }
   const complete = scan.completeness === "complete";
@@ -310,7 +322,7 @@ function reconcile(
   return next;
 }
 
-function freshInstance(id: string, seen: Observation, now: number): Instance {
+function freshInstance(id: string, seen: Observation, now: number, intervalMs: number): Instance {
   return {
     id,
     pid: seen.pid,
@@ -319,6 +331,7 @@ function freshInstance(id: string, seen: Observation, now: number): Instance {
     bindings: seen.bindings,
     cwd: seen.cwd,
     lastSeenAt: now,
+    seenIntervalMs: intervalMs,
     missRun: 0,
     uncertain: false,
     stoppedAt: null,
@@ -334,10 +347,11 @@ interface SenderState {
   readonly rootDiagnostics: readonly RootDiagnostic[];
 }
 
-function livenessOf(instance: Instance, now: number, staleMs: number): DevServerLiveness {
+function livenessOf(instance: Instance, now: number): DevServerLiveness {
   if (instance.stoppedAt !== null) {
     return "stopped";
   }
+  const staleMs = STALE_INTERVAL_FACTOR * instance.seenIntervalMs;
   if (instance.missRun > 0 || instance.uncertain || now - instance.lastSeenAt > staleMs) {
     return "unknown";
   }
@@ -367,7 +381,6 @@ function project(
   instances: readonly Instance[],
   roots: readonly CanonicalRoot[],
   now: number,
-  staleMs: number,
 ): Projection {
   const owner = new Map<string, CanonicalRoot | null>();
   for (const instance of instances) {
@@ -402,7 +415,7 @@ function project(
       bindings: instance.bindings,
       sharedEndpoint: rivals.length > 0,
       observedAt: instance.lastSeenAt,
-      liveness: livenessOf(instance, now, staleMs),
+      liveness: livenessOf(instance, now),
       stoppedAt: instance.stoppedAt,
       protocol: instance.enrichment.protocol,
       url: instance.enrichment.url,
@@ -422,6 +435,8 @@ function compareRows(a: Pick<DevServerRow, "workspacePath" | "port" | "id">, b: 
 
 interface LastScan {
   readonly at: number;
+  /** Scan interval in force when it committed. */
+  readonly intervalMs: number;
   readonly completeness: ScanCompleteness;
   readonly metadata: ScanCompleteness;
   readonly diagnostics: readonly NativeDiagnostic[];
@@ -527,13 +542,16 @@ export class DevServerDiscovery {
       return { status: "discarded" };
     }
     const now = this.clock();
+    const intervalMs = this.intervalMs();
     this.instances = reconcile(this.instances, scan, {
       now,
+      intervalMs,
       nextId: () => `srv-${(++this.idCounter).toString(36)}`,
       interesting: (cwd) => this.isInteresting(cwd),
     });
     this.lastScan = {
       at: now,
+      intervalMs,
       completeness: scan.completeness,
       metadata: scan.metadata,
       diagnostics: scan.diagnostics,
@@ -593,14 +611,8 @@ export class DevServerDiscovery {
   snapshotFor(senderId: string): DevServerSnapshot {
     const now = this.clock();
     const state = this.senders.get(senderId);
-    const staleMs = STALE_INTERVAL_FACTOR * this.intervalMs();
-    const { rows, ambiguous } = project(
-      [...this.instances.values()],
-      state?.roots ?? [],
-      now,
-      staleMs,
-    );
-    const diagnostics = this.diagnosticsFor(now, staleMs, ambiguous);
+    const { rows, ambiguous } = project([...this.instances.values()], state?.roots ?? [], now);
+    const diagnostics = this.diagnosticsFor(now, ambiguous);
     return Object.freeze({
       generation: state?.generation ?? 0,
       sequence: this.sequence,
@@ -618,7 +630,7 @@ export class DevServerDiscovery {
     });
   }
 
-  private diagnosticsFor(now: number, staleMs: number, ambiguous: number): SnapshotDiagnostic[] {
+  private diagnosticsFor(now: number, ambiguous: number): SnapshotDiagnostic[] {
     if (!this.capability.available) {
       return [
         {
@@ -631,7 +643,7 @@ export class DevServerDiscovery {
       return [{ code: "scan-pending", message: "No scan has completed yet" }];
     }
     const notes: SnapshotDiagnostic[] = [...this.lastScan.diagnostics];
-    if (now - this.lastScan.at > staleMs) {
+    if (now - this.lastScan.at > STALE_INTERVAL_FACTOR * this.lastScan.intervalMs) {
       notes.push({ code: "scan-stale", message: "The latest scan is older than expected" });
     }
     if (ambiguous > 0) {

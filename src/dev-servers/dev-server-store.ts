@@ -18,6 +18,7 @@
  */
 import { batch, signal, type ReadonlySignal } from "@preact/signals";
 import { devServerHost } from "../host/dev-server-host";
+import { sendableRoots } from "./dev-server-roots";
 import type {
   DevServerCapability,
   DevServerHost,
@@ -89,7 +90,8 @@ export function createDevServerStore(
     for (const consumer of consumers) {
       consumer.roots.forEach((root) => union.add(root));
     }
-    return [...union].sort();
+    // Main rejects a whole call for one bad root or more than 64; never send those.
+    return sendableRoots(union).sort();
   }
 
   function enqueue(task: () => Promise<void>): Promise<void> {

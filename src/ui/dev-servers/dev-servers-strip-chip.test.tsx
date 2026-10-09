@@ -25,9 +25,10 @@ import type {
 import { WORKSPACES_VERSION } from "../../lib/workspace-recents";
 import { workspacesData } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
+import type { RepositoryScan } from "../../repositories/repository-client";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { NOW, tab } from "../attention-list-fixtures";
-import { row, snapshot } from "./dev-server-fixtures";
+import { row, snapshot, worktree } from "./dev-server-fixtures";
 import { DevServersStripChip } from "./dev-servers-strip-chip";
 
 const AVAILABLE: DevServerCapability = { available: true };
@@ -93,6 +94,21 @@ describe("DevServersStripChip", () => {
     expect(fake.setRoots).toHaveBeenCalledTimes(1);
     expect(fake.setRoots).toHaveBeenCalledWith(["/w/api", "/w/deck", "/w/old"]);
     expect(chip()?.getAttribute("aria-label")).toBe("Dev servers — 0 running");
+  });
+
+  it("also watches the worktrees of a scanned repository, opened or not", async () => {
+    const nested = "/w/deck/.claude/worktrees/x";
+    const scan: RepositoryScan = {
+      kind: "repository",
+      key: "/w/deck/.git",
+      root: "/w/deck",
+      worktrees: [worktree("/w/deck", "main"), worktree(nested, "x")],
+    };
+    repositoryScans.value = new Map([["/w/deck", scan]]);
+    const fake = fakeHost(AVAILABLE);
+    await mount(fake);
+
+    expect(fake.setRoots).toHaveBeenCalledWith(["/w/api", "/w/deck", nested, "/w/old"]);
   });
 
   it("counts the active tab's running servers from the store's snapshot", async () => {

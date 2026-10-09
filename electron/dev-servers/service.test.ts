@@ -149,6 +149,23 @@ describe("lifecycle and cadence", () => {
     expect(h.collect).toHaveBeenCalledTimes(4);
   });
 
+  it("keeps a row seen in the background running while a refocus scan is pending", async () => {
+    const h = setup();
+    h.setScan(makeScan([proc(10, 3000, "/p/app")]));
+    await h.service.setRoots("w1", ["/p"]);
+    await flush();
+    h.setActive(false);
+    await vi.advanceTimersByTimeAsync(3_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(h.rows()[0]?.liveness).toBe("running");
+    // Focus restores the 3 s cadence before the immediate scan has committed.
+    h.setActive(true);
+    expect(h.rows()[0]?.liveness).toBe("running");
+    expect(h.service.snapshot("w1").diagnostics.map((note) => note.code)).not.toContain(
+      "scan-stale",
+    );
+  });
+
   it("does not scan with no roots and stops on an empty root list", async () => {
     const h = setup();
     await h.service.setRoots("w1", []);
