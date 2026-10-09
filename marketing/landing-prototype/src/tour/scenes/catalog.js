@@ -40,16 +40,15 @@ const DEFAULT_COMMANDS = {
   codex: "codex --dangerously-bypass-approvals-and-sandbox",
   agy: "agy --dangerously-skip-permissions",
   gemini: "gemini --yolo",
-  "cursor-agent": "cursor-agent --force",
 };
 
 /**
  * Which agents this drawing's probe found on `$PATH`.
  *
- * A `Set` filtered over `AGENT_MARKS` — which is `BUILTIN_AGENTS`' order —
+ * A `Set` filtered over `AGENT_MARKS` — which is the registry's order —
  * exactly as `LaunchProfileEditor` filters the catalog (`:162-168`). That is
- * what keeps BOTH groups in catalog order without either being re-sorted, and
- * it is why `cursor-agent` stays last: the order is the digit-key contract.
+ * what keeps BOTH groups in catalog order without either being re-sorted: the
+ * order is the digit-key contract.
  *
  * Exported for panel 3, whose ⌘T list offers these same three agents with
  * these same commands: two panels describing one imaginary machine must not
@@ -97,8 +96,8 @@ export function launchCommand(agent) {
  * The flags span is emitted even when it is EMPTY, which is the one place the
  * mock parts company with `CommandLine` (`launch-profile-editor.tsx:67-75`):
  * the app skips the span entirely for a bare command, and a scene that did the
- * same would let opencode's row measure differently from the five around it.
- * An empty span costs nothing and keeps the six rows one shape.
+ * same would let opencode's row measure differently from its neighbours.
+ * An empty span costs nothing and keeps the rows one shape.
  *
  * The separating space lives INSIDE the flags span, as it does in the app, so
  * that a bare command carries no trailing space of its own. It is ordinary

@@ -989,6 +989,8 @@ html[lang="vi"] .a-hero h1 {
   border-top: 1px solid var(--a-line);
 }
 
+/* Two centred rows, static: the list is split in half by the markup, and each
+   row wraps on its own where six chips do not fit the width. */
 .agent-strip__row {
   display: flex;
   flex-wrap: wrap;
@@ -1000,7 +1002,11 @@ html[lang="vi"] .a-hero h1 {
   list-style: none;
 }
 
-/* Chip, not bare text: six marks in a row with nothing around them read as a
+.agent-strip__row + .agent-strip__row {
+  margin-top: 0.6rem;
+}
+
+/* Chip, not bare text: a row of marks with nothing around them reads as a
    sentence of icons. The wash is the same 5% the release pill wears. */
 .agent-strip__chip {
   display: inline-flex;
@@ -1023,15 +1029,16 @@ html[lang="vi"] .a-hero h1 {
   object-fit: contain;
 }
 
-/* Cursor is the one built-in agent that ships no brand file, so its mark is a
-   monogram — the app's own fallback (`letterAvatar`), not a logo the vendor
-   never drew. `renderAgentMark` emits a <span> here instead of an <img>.
+/* An agent with no brand file wears a monogram — the app's own fallback
+   (`letterAvatar`), not a logo the vendor never drew. `renderAgentMark` emits a
+   <span> here instead of an <img>; every active agent has a file today, so this
+   only shows for an id the logo map does not know yet.
 
    It deliberately declares NO BOX. The rule above already sizes it: the chip
    is an inline-flex container, so the span is a flex item and is blockified,
    which is what makes `width`/`height` apply to it at all. Sharing that one
-   declaration is what keeps the sixth chip on the other five's rhythm at every
-   width — including the narrow override below, which it inherits for free.
+   declaration keeps it on the other chips' rhythm at every width — including
+   the narrow override below, which it inherits for free.
 
    Neutral on purpose, and this is the whole reason the treatment is written
    down. The app tints this disc with a per-agent colour hashed from the id;
@@ -1055,14 +1062,25 @@ html[lang="vi"] .a-hero h1 {
   user-select: none;
 }
 
-/* The seventh slot is a sentence, not a chip: a custom agent is any binary at
-   all, so there is no one mark — not even a letter — that could stand for it,
-   and inventing a logo would be the only fake one on the page. (A NAMED agent
-   with no brand file gets the monogram above instead.) */
+/* The note is a sentence, not a chip: a custom agent is any binary at all, so
+   there is no one mark — not even a letter — that could stand for it, and
+   inventing a logo would be the only fake one on the page. It sits on its own
+   line under the two rows. */
 .agent-strip__any {
+  margin: 0.9rem 0 0;
   color: var(--a-ink-faint);
   font: 400 0.78rem/1.4 var(--a-font-mono);
   letter-spacing: 0.01em;
+  text-align: center;
+}
+
+/* Tablet: six chips are just too wide for one line, which leaves a lone chip
+   on a second line. Capping the row splits it 4 + 2 instead, still centred. */
+@media (max-width: 62rem) {
+  .agent-strip__row {
+    max-width: 36rem;
+    margin-inline: auto;
+  }
 }
 
 @media (max-width: 47.5rem) {
@@ -1081,8 +1099,6 @@ html[lang="vi"] .a-hero h1 {
   }
 
   .agent-strip__any {
-    flex-basis: 100%;
     font-size: 0.7rem;
-    text-align: center;
   }
 }

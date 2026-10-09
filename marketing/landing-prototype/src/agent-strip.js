@@ -6,42 +6,32 @@
  * CLIs it launches, which is the first question the product raises. This is
  * that answer, in the shape a SaaS logo wall usually takes.
  *
- * The marks are the app's OWN files (`src/assets/agent-*`), imported rather
- * than copied — the landing already reaches the repo root for `package.json`,
- * and a second copy of them would drift the moment the catalog moves. The list
- * mirrors `src/lib/agent-catalog.ts`'s `BUILTIN_AGENTS`, including its order,
- * which is reach rather than history — and, since 2026-08-19, including one
- * agent that ships no brand file at all.
+ * The list is the app's OWN data, imported rather than copied: `ACTIVE_AGENTS`
+ * (every built-in agent not withdrawn, in the registry's order) and
+ * `AGENT_LOGOS` (id -> brand file). A hand-written list drifted once already —
+ * it kept advertising Cursor after the app withdrew it and missed seven agents
+ * the app gained. Both modules are pure data (the registry imports only
+ * `src/lib/agents/`, the logo map only `src/assets/`), so they cost this
+ * bundle nothing beyond the data itself.
  */
 
-import agyMark from "../../../src/assets/agent-agy.png";
-import claudeMark from "../../../src/assets/agent-claude.svg";
-import codexMark from "../../../src/assets/agent-codex.svg";
-import geminiMark from "../../../src/assets/agent-gemini.svg";
-import opencodeMark from "../../../src/assets/agent-opencode.svg";
+import { AGENT_LOGOS } from "../../../src/lib/agent-logos.ts";
+import { ACTIVE_AGENTS } from "../../../src/lib/agents/agent-registry.ts";
 
 /**
  * Exported because the panel scenes draw the same marks — the catalog scene
- * lists all six, the ⌘T menu scene leads each agent row with one. Two copies of
- * this table would let the strip and the scenes disagree about what `codex`
- * looks like.
+ * lists every agent, the ⌘T menu scene leads each agent row with one. Two
+ * copies of this table would let the strip and the scenes disagree about what
+ * `codex` looks like.
+ *
+ * `mark` is `null` for an active agent the logo map has no file for, which the
+ * app draws as a letter avatar; `renderAgentMark` does the same.
  */
-export const AGENT_MARKS = [
-  { id: "claude", label: "Claude Code", mark: claudeMark },
-  { id: "codex", label: "Codex", mark: codexMark },
-  { id: "opencode", label: "OpenCode", mark: opencodeMark },
-  { id: "agy", label: "Antigravity", mark: agyMark },
-  { id: "gemini", label: "Gemini CLI", mark: geminiMark },
-  // `cursor-agent`, not `cursor`: the id is the binary name, as it is for
-  // every built-in. Last for the reason the catalog appends it last — the
-  // order is the digit-key contract, so a new agent never moves the key an
-  // existing one already answered to. `mark: null` because `src/assets/`
-  // holds five brand files and none of them is this one; drawing a logo the
-  // vendor never shipped would be a brand claim, so the monogram stands in.
-  { id: "cursor-agent", label: "Cursor", mark: null },
-];
-
-const AGENTS = AGENT_MARKS;
+export const AGENT_MARKS = ACTIVE_AGENTS.map(({ id, label }) => ({
+  id,
+  label,
+  mark: AGENT_LOGOS[id] ?? null,
+}));
 
 /** First alphanumeric character of a string, uppercased; `?` when it has none. */
 function monogramLetter(id) {
@@ -60,11 +50,13 @@ function monogramLetter(id) {
  * Three renderers wrote `<img src="${agent.mark}">` by hand — this strip, the
  * tour's `agentMark`, and the retired quick-picker scene's row map — and every one
  * of them prints the literal string `src="null"` for an agent with no file.
- * This is the single branch they collapse onto.
+ * This is the single branch they collapse onto. Every active agent has a file
+ * today; the branch serves an id a scene fixture names that the registry does
+ * not know, and the day a new agent lands before its logo does.
  *
  * The fallback is the app's own: `letterAvatar` takes the first alphanumeric
- * of the id and uppercases it (`src/lib/letter-avatar.ts:11-18`), which makes
- * `cursor-agent` a "C". The app also tints that disc with a `TAB_DOT_COLORS`
+ * of the id and uppercases it (`src/lib/letter-avatar.ts:11-18`), so an id
+ * `foo-bar` becomes an "F". The app also tints that disc with a `TAB_DOT_COLORS`
  * token hashed from the id — but nothing under `marketing/` carries that
  * table, and choosing a colour for a vendor here would be a brand claim in its
  * own right. The monogram is therefore neutral ink on a neutral disc: a
@@ -87,22 +79,29 @@ export function renderAgentMark(agent, className, size) {
   return `<img class="${className}" src="${agent.mark}" alt="" width="${size}" height="${size}" loading="lazy" />`;
 }
 
+/**
+ * Two centred rows of chips, the note on its own line under them. The rows are
+ * separate lists so the split is the same at every width; each wraps by itself
+ * where the viewport is too narrow for six chips.
+ */
 export function renderAgentStrip(copy) {
-  const chips = AGENTS.map(
+  const chips = AGENT_MARKS.map(
     (agent) => `
       <li class="agent-strip__chip">
         ${renderAgentMark(agent, "agent-strip__mark", 20)}
         <span>${agent.label}</span>
       </li>
     `,
-  ).join("");
+  );
+  const split = Math.ceil(chips.length / 2);
+  const rows = [chips.slice(0, split), chips.slice(split)]
+    .map((row) => `<ul class="agent-strip__row">${row.join("")}</ul>`)
+    .join("");
 
   return `
     <div class="agent-strip">
-      <ul class="agent-strip__row">
-        ${chips}
-        <li class="agent-strip__any" data-copy="agentStripTail">${copy.agentStripTail}</li>
-      </ul>
+      ${rows}
+      <p class="agent-strip__any" data-copy="agentStripTail">${copy.agentStripTail}</p>
     </div>
   `;
 }

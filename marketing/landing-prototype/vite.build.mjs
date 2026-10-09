@@ -81,13 +81,15 @@ function copyRuntimeAssets() {
 //     URL fails the build rather than shipping a 404 into the markup.
 const PRERENDER_ROOT = '<main id="specimen-root">';
 
-/** `agent-claude-BXqk1t.svg` -> `agent-claude.svg`. */
+/**
+ * `agent-claude-BXqk1t.svg` -> `agent-claude.svg`.
+ *
+ * The hash is exactly eight characters of `[A-Za-z0-9_-]`, so it can hold a
+ * dash of its own (`agent-droid-Cnuk-5BD.svg`): cutting at the last dash would
+ * leave `agent-droid-Cnuk.svg` and the asset would fail to map.
+ */
 function sourceName(file) {
-  const dot = file.lastIndexOf(".");
-  const stem = file.slice(0, dot);
-  const dash = stem.lastIndexOf("-");
-
-  return dash === -1 ? file : `${stem.slice(0, dash)}${file.slice(dot)}`;
+  return file.replace(/-[\w-]{8}(\.[^.]+)$/, "$1");
 }
 
 const DATA_MIME = {

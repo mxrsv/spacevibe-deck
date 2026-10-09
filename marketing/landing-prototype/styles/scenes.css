@@ -986,9 +986,13 @@
 
 /* ---------- catalog: every agent Deck knows, and its command ---------- */
 
+/* The agent list is longer than the window: the app scrolls it, this drawing
+   clips it. The fade says "more below" instead of leaving a hard edge that
+   reads as a list that simply ends. */
 .scene-catalog {
   min-height: 0;
   overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - max(4cqw, 14px)), transparent);
 }
 
 .scene-catalog__list {

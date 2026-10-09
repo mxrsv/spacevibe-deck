@@ -1333,7 +1333,8 @@
    same fallback the app's rail rows and chips use. Untinted: the strip's own
    monogram (`.agent-strip__mark--mono`, direction-a.css) made the same call,
    and a per-agent tint would invent an identity the catalog does not have.
-   No hero fixture reaches this branch; a fixture passing `cursor-agent` does. */
+   No hero fixture reaches this branch; a fixture passing an id outside the
+   stage's five marks does. */
 .a-appwin__cardlogo--mono,
 .a-appwin__chiplogo--mono {
   display: grid;
