@@ -271,6 +271,7 @@ export function TabStrip(props: TabStripProps) {
       {spaces.length > 0 && (
         <SpaceBar
           spaces={spaces}
+          hideMarks
           menuKey={owner?.kind === "terminal" ? (owner.terminalKey ?? null) : null}
           onGo={(space) => {
             props.onBeforeSelect?.();
