@@ -73,8 +73,12 @@
   flex: 0 10 auto;
 }
 
+/* The session is a first prompt up to 160 characters; uncapped, its width
+   outweighs the shrink weights and squeezes the project and branch down to
+   bare carets. The cap leaves them room while the order above still holds. */
 .space-bar__part[data-part="session"] {
   flex: 0 1 auto;
+  max-width: 32ch;
 }
 
 .space-bar__sep {
