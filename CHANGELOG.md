@@ -11,6 +11,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   the Feedback row in Settings → About, opens the
   [feedback page](src/lib/feedback-url.ts) in your browser with your Deck
   version and system already filled in.
+- **Update installs the newest release in one step.** When several releases
+  ship while Deck is open, **Update** now
+  [checks again](src/updater/update-controller.ts) and downloads the latest one,
+  and the update notice moves to the newest version on its own, so you no
+  longer step through each release in turn. This takes effect from the update
+  after this one.
 
 ## 2.8.0
 
