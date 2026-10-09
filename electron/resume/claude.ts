@@ -99,7 +99,9 @@ export function readClaudeRecord(entry: FileCandidate, options: ScanOptions): Se
     }
     if (options.withTitle && title === null) {
       const text = claudeUserText(node);
-      if (text !== null) {
+      // A slash command records its caveat, `<command-name>` and
+      // `<local-command-stdout>` as user turns; none is a prompt the user typed.
+      if (text !== null && !text.trimStart().startsWith("<")) {
         title = normalizeTitle(text);
       }
     }

@@ -175,6 +175,11 @@ describe("scanClaude", () => {
             content: [{ type: "tool_result", content: "not a prompt" }],
           },
         }),
+        ...[
+          "<local-command-caveat>The command below was run directly</local-command-caveat>",
+          "<command-name>/model</command-name>",
+          "<local-command-stdout>Set model</local-command-stdout>",
+        ].map((content) => JSON.stringify({ type: "user", message: { role: "user", content } })),
         JSON.stringify({
           type: "user",
           message: { role: "user", content: "ship the feature" },
@@ -198,7 +203,7 @@ describe("scanClaude", () => {
     expect(record.sourcePath.endsWith(`sid${TRANSCRIPT_EXTENSION}`)).toBe(true);
   });
 
-  it("skips tool_result user lines when picking a title", () => {
+  it("skips tool_result and slash-command user lines when picking a title", () => {
     const [record] = scanClaude(home, {
       maxFiles: 10,
       headBytes: 64 * 1024,
