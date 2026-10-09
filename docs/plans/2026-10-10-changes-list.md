@@ -254,7 +254,7 @@ Each item has one recommendation; the owner ticks or overrides once.
 ## Tasks
 
 ### 0. Three specimens and the eye-review gate (feat(gallery), then docs(specs))
-- [ ] One lazy section `changes-specimens`, registered last in the worktree's
+- [x] One lazy section `changes-specimens`, registered last in the worktree's
   `section-registry.ts` (the primary checkout's copy holds another session's uncommitted rows;
   never touch it), never imported by shipping code (R7). Fake data in its own module: a
   checkout on `feat/changes-list` with 8 entries (3 modified, 1 added, 1 renamed with old path,
@@ -275,7 +275,7 @@ Each item has one recommendation; the owner ticks or overrides once.
     360px); painting its on state would break the DL-21.8 invariant (a fork). **It contradicts the
     spec:** decision 1 (no git markers on tree rows) and Out of scope ("filter-in-tree") need
     rewording if C wins.
-- [ ] Headless playwright-core screenshots of the worktree's gallery: each variant populated at
+- [x] Headless playwright-core screenshots of the worktree's gallery: each variant populated at
   360px and 520px column width, plus clean and error states at 360px, to session scratch. Send
   them with one line per variant, then **stop** (hard stop 1).
 - [ ] After the reply: spec decision 8 answered and open decision 1 closed, with the approved DL
@@ -361,3 +361,12 @@ Each item has one recommendation; the owner ticks or overrides once.
 ## Handoff
 - 2026-10-10: plan drafted at `8d96f827`, DL citations re-mapped to `da657e63`; no code, no
   worktree. Waiting on the owner: the C1–C12 batch. Task 0 starts once it is approved.
+- 2026-10-10 (cloud session, branch `claude/project-thread-c8jw1q`): Task 0 specimens built and
+  pushed; screenshots (A/B/C at 360 and 520, plus A files side, B collapsed, clean and error at
+  360) sent to the owner. No horizontal overflow in any frame. **Waiting on the owner:** pick A, B
+  or C and approve its DL text (hard stop 1). Decided alone: B's collapsed form and A's Files side
+  are extra frames; C draws its own pruned rows because the real tree cannot prune. Gates: tsc and
+  oxlint clean; `scripts/` + `src/styles/` + `src/gallery/` run: 5 files fail from the cloud
+  environment, not this change (electron binary not installed, two `.mjs` files are not vitest
+  suites, `ipc-contract.test.ts` and `spawn-helper-permissions.test.ts` read Rust and node-pty
+  state). E2E gate not applicable yet. `npm install` ran with `--ignore-scripts`.
