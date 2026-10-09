@@ -278,13 +278,13 @@ Each item has one recommendation; the owner ticks or overrides once.
 - [x] Headless playwright-core screenshots of the worktree's gallery: each variant populated at
   360px and 520px column width, plus clean and error states at 360px, to session scratch. Send
   them with one line per variant, then **stop** (hard stop 1).
-- [ ] After the reply: spec decision 8 answered and open decision 1 closed, with the approved DL
+- [x] After the reply: spec decision 8 answered and open decision 1 closed, with the approved DL
   text; remove or park (out of `GALLERY_SECTIONS`) the unchosen specimens as told.
 - Acceptance: three variants render at both widths without horizontal overflow; the owner has the
   screenshots; the pick is in the spec.
 
 ### 1. Read channel (feat(git))
-- [ ] `electron/git/changes.ts` `readChanges(root)`, never rejecting: `resolveRoot`; one
+- [x] `electron/git/changes.ts` `readChanges(root)`, never rejecting: `resolveRoot`; one
   `rev-parse --show-toplevel --absolute-git-dir --show-prefix` (also the not-a-repository probe);
   `status --porcelain=v2 -z --branch --untracked-files=all -- .`;
   `diff --numstat -z --no-ext-diff --no-textconv <HEAD | computed empty tree> -- .`; bounds per
@@ -293,10 +293,10 @@ Each item has one recommendation; the owner ticks or overrides once.
   hooks) is not overridden, as in the user's prompt. Total parser: an unknown record costs itself.
   Reply `changes` (branch, detached, initial, entries, omitted, totals) or one of
   `not-repository` / `git-missing` / `timeout` / `overflow` / `failed` with a message.
-- [ ] `CHANNELS.gitChanges = "git_changes"` with an Electron-only comment like `channels.ts:30-37`,
+- [x] `CHANNELS.gitChanges = "git_changes"` with an Electron-only comment like `channels.ts:30-37`,
   `{ root }` in the new `register-changes.ts`; contract test pins `["root"]`. Rewrite the three
   "no `git status`" claims: the rail still runs none; the Changes list runs a bounded, read-only one.
-- [ ] `changes.test.ts` on temp repositories with an explicit env free of `GIT_*`: every CHG1
+- [x] `changes.test.ts` on temp repositories with an explicit env free of `GIT_*`: every CHG1
   status, staged plus unstaged on one file, unborn, subdirectory root, non-repository, git
   missing / timeout / overflow via an injected runner, odd paths (spaces, newlines, non-ASCII),
   and the index's mtime unchanged by a read.
@@ -304,44 +304,44 @@ Each item has one recommendation; the owner ticks or overrides once.
   `diff` and `hash-object` without `-w`.
 
 ### 2. Watch channel (feat(git))
-- [ ] `electron/git/changes-watch.ts`: a registry keyed by sender id, `replace(sender, root|null)`,
+- [x] `electron/git/changes-watch.ts`: a registry keyed by sender id, `replace(sender, root|null)`,
   C3's watches, filters and throttle, an injected watch function and clock (the `WatchFs` shape);
   `fs.watch` failures (EMFILE, ENOSPC, vanished root) degrade to no watch, logged once. Windows is
   unverified: a recursive handle on a worktree root may block `git worktree remove` while shown.
-- [ ] `CHANNELS.gitChangesWatch = "git_changes_watch"` `{ root }`, `EVENTS.gitChanged =
+- [x] `CHANNELS.gitChangesWatch = "git_changes_watch"` `{ root }`, `EVENTS.gitChanged =
   "git:changed"` `{ root }` to that sender only; released as `register-dev-servers.ts:81-95`
   does; contract test pins both.
-- [ ] Tests: replace closes old watches, `null` and a destroyed sender release; each C3 keep/drop
+- [x] Tests: replace closes old watches, `null` and a destroyed sender release; each C3 keep/drop
   path; 5,000 events within 100 ms emit once; an out-of-root git-dir `index` event emits; an
   unresolvable root throws `PathOutsideWorkspaceError` like `watch_paths`.
 - Acceptance: `git diff --stat main -- electron/ scripts/` shows only the new modules, their tests
   and hard stop 2's files.
 
 ### 3. Renderer facade, scheduler and triggers (feat(changes))
-- [ ] `src/host/git-changes-host.ts` (`available`, `readChanges`, `watchChanges`,
+- [x] `src/host/git-changes-host.ts` (`available`, `readChanges`, `watchChanges`,
   `listenChanged`; precedents `file-create-host.ts`, `file-client.ts:99-101`) and
   `src/files/changes/`: the C4 scheduler, a store per root (last good reply, message, reading
   flag), and the C4/C5 triggers — the turn-end `effect` on `tabViews` (a pane of a tab whose
   `workspacePath` is the shown root leaves `working`; panes in other windows are left to the
   watch and focus), `visibilitychange` / `focus`, and the show/hide lifecycle.
-- [ ] Fake-timer tests for every C4 and C5 rule, including 500 triggers over 1 s → ≤ 3 reads,
+- [x] Fake-timer tests for every C4 and C5 rule, including 500 triggers over 1 s → ≤ 3 reads,
   hidden → zero reads with the watch released (CHG3's test), and a `working → idle` pane in
   another workspace → no read. Signal effects land a frame late; tests wait a frame.
 - Acceptance: CHG3's numbers hold under fake timers.
 
 ### 4. The list in the Explorer (feat(explorer))
-- [ ] The chosen variant as shipping UI, `src/files/ui/changes-list.tsx`: header (branch, totals,
+- [x] The chosen variant as shipping UI, `src/files/ui/changes-list.tsx`: header (branch, totals,
   comparison in the tooltip), rows (name, directory, status, counts or "binary"), `omitted`
   footer, CHG4's empty state, Refresh (DL-23.10), keyboard reach, and C6, C8, C9, C10 as ticked.
   Wired through `ExplorerTab`, `App` passing the facade's `available` as it does `canCreate`;
   controller untouched. Apply the approved DL text; `scripts/design-language.test.ts` passes.
-- [ ] Tests beside for each state above, create-failure precedence on the status line, and the
+- [x] Tests beside for each state above, create-failure precedence on the status line, and the
   press (preview tab; deleted entry not pressable).
 - Acceptance: a gallery shot of the shipping list at 360px shows no overflow; it replaces the
   specimen.
 
 ### 5. E2E, docs, spec and merge (docs(file-surface), docs(specs), docs(changelog))
-- [ ] `npm run electron:build` in the worktree; a scratch wrapper calls
+- [x] `npm run electron:build` in the worktree; a scratch wrapper calls
   `app.setPath("userData", <scratch>)` before requiring `dist-electron/electron/main.cjs`;
   `_electron.launch({ env })` puts a scratch `git` shim first on `PATH` that logs each call and
   sleeps past the timeout while a marker file exists (main never rewrites `PATH` — only PTY
@@ -353,7 +353,7 @@ Each item has one recommendation; the owner ticks or overrides once.
   entry disabled with tooltip; (7) `.git` renamed while shown → "Not a git repository" on the
   status line; (8) timeout → red line, last list kept; (9) `PATH` without git → git-missing
   message; (10) clean → empty state. Screenshots to scratch.
-- [ ] A short "Changes list" section in [`file-surface.md`](../internals/file-surface.md) (the two
+- [x] A short "Changes list" section in [`file-surface.md`](../internals/file-surface.md) (the two
   watches and why, the lock loop, the scheduler's bounds, status-line precedence); one sentence in
   [`getting-started.md:104`](../user/getting-started.md) (D12); the spec per Done.
 - [ ] Merge per C12 after lane B; handoff; draft slice 2's plan.
@@ -370,3 +370,48 @@ Each item has one recommendation; the owner ticks or overrides once.
   environment, not this change (electron binary not installed, two `.mjs` files are not vitest
   suites, `ipc-contract.test.ts` and `spawn-helper-permissions.test.ts` read Rust and node-pty
   state). E2E gate not applicable yet. `npm install` ran with `--ignore-scripts`.
+- 2026-10-09 (cloud session, branch `claude/project-thread-c8jw1q`, draft PR #42): the owner picked
+  A and said to do every remaining task and review afterwards. Tasks 1–4 and the docs of Task 5
+  are built and pushed; the specimens are gone, replaced by the `explorer changes` gallery
+  section (the shipping list in six states, no overflow at 360px or 520px).
+  **E2E, in the real Electron app under Xvfb with `playwright-core`** (scratch `userData`, a
+  scratch `git` shim first on `PATH`, a scripted fixture with every CHG1 status plus a linked
+  worktree; node-pty built against the local Node headers because it is N-API):
+  (1) list and totals equal `git diff --numstat HEAD` + untracked, rename shown as `+0 −0`, a
+  row opens the preview tab and a deleted row does not; (4) a commit in the linked worktree
+  emptied its list in 316 ms with zero focus events; (6) non-repository: chip disabled with
+  "Not a git repository", no `status` call; (7) `.git` renamed: red "Not a git repository" and
+  an empty list, recovered after restoring it; (8) shim sleeping past the timeout: red "git took
+  longer than 10 s to answer" after 10.1 s, six rows kept, cleared on recovery; (10) clean:
+  "No changes against HEAD."; extra: no commit yet shows "No commits yet" and the untracked file.
+  **Substitutes, because Linux has no recursive watch:** (2) a staged edit appeared 328 ms after
+  the index write through the git-dir watch, and a plain working-tree write was unseen until
+  Refresh; (3) 500 index events in 308 ms gave 1 `status` call. (5) Xvfb has no window manager,
+  so `minimize()` and `hide()` leave `visibilityState` at "visible" (measured); the real
+  `visibilitychange` handler was driven with a synthetic hidden state: zero shim calls while
+  hidden, one read on show. (9) a fresh start without git on `PATH` disables the chip as
+  "Not a git repository" (see below); the git-missing message appeared when git vanished while
+  the list was shown. **Owed on macOS before merge:** walks 2 and 3 as written (working-tree
+  writes through the recursive watch), walk 5 with a really minimized window, and Windows.
+  **Decided alone:** file names as proposed (`electron/git/changes{,-watch}.ts`,
+  `register-changes.ts`, `src/host/git-changes-host.ts`, `src/files/changes/`,
+  `explorer-switch.tsx`, `changes-list.tsx`); `rev-parse`, `status` and `numstat` run in
+  sequence (each is bounded, and numstat needs to know from status whether HEAD exists); roving
+  tabindex over the rows, Enter and Space open the row the event came from; an unchanged reply
+  does not publish; detached HEAD prints "Detached at <oid>"; other failures print git's
+  first stderr line; the E2E fixture is a seeded `workspaces.json` recent opened with the board's
+  Terminal button; the gallery section replaced the specimens rather than joining them.
+  **Written with the owner's go-ahead, to review:** DL-19.9's new text.
+  **Flagged, not decided:** (a) the rail's repository scan calls a subfolder of a repository
+  `plain` ("inside a repository rooted above it"), so a workspace opened at a subfolder gets the
+  Changes chip disabled with "Not a git repository", although `readChanges` reads such a root
+  correctly; the same scan cannot tell a missing git from a plain folder. Recommended: enable
+  the chip for that one reason. (b) Commits `c04000b`, `808ab19`, `7511af9`, `402df9c` are `feat`
+  without a `Release-Note:` trailer; a squash merge with one trailer settles it, otherwise they
+  need rewording. (c) `src/ui/tab-strip.test.tsx` is red on `main` too (hard stop 7); not touched.
+  **Gates:** `tsc` and `oxlint` clean; tests beside the changes, `scripts/`, `src/styles/`,
+  `src/gallery/`, `src/files/`, `src/host/` pass except `scripts/ipc-contract.test.ts` (reads the
+  Rust commands), `spawn-helper-permissions.test.ts` (node-pty prebuilds) and two `.mjs` files
+  that are not vitest suites, all failing from the cloud environment. The full suite did not run here;
+  `npm run build` and `electron:build` ran once and succeeded. **Remaining:** merge per C12
+  after lane B (#43) — rebase then, the owner merges — and draft slice 2's plan.
