@@ -133,12 +133,13 @@ describe("ACTION_REGISTRY", () => {
   // renderer because their native Cocoa roles cannot reach Monaco.
   // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
   // copy-selection — see docs/internals/terminal.md.
-  it("has exactly the 56 action ids including updater menu actions", () => {
+  it("has exactly the 57 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
         "check-for-updates",
         "open-release-notes",
+        "send-feedback",
         "select-all",
         "undo",
         "redo",

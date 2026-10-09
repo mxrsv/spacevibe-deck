@@ -328,7 +328,12 @@ mod tests {
         let ids: Vec<&str> = APP_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();
         assert_eq!(
             ids,
-            ["check-for-updates", "open-release-notes", "toggle-settings"]
+            [
+                "check-for-updates",
+                "open-release-notes",
+                "send-feedback",
+                "toggle-settings"
+            ]
         );
     }
 

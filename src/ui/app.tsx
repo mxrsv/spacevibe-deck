@@ -167,7 +167,8 @@ import { runAttentionFocus } from "./attention-focus-coordinator";
 import { getDesktopEnvironment } from "../lib/platform";
 import { createUpdateController, type UpdateController } from "../updater/update-controller";
 import { activeUpdateController } from "../updater/active-update-controller";
-import { loadAppVersion } from "../updater/app-version";
+import { appVersion, loadAppVersion } from "../updater/app-version";
+import { feedbackUrl, SEND_FEEDBACK_ACTION } from "../lib/feedback-url";
 import { UpdateAction } from "../updater/update-action";
 // Host-agnostic by construction: it answers the Electron host, delegates to
 // `tauri-updater-adapter.ts` under Tauri, and fails soft in a browser preview.
@@ -944,6 +945,20 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           },
           report: (diagnostic, error) => console.error(`${diagnostic}:`, error),
         });
+        return;
+      }
+      if (event.payload === SEND_FEEDBACK_ACTION) {
+        defaultLinkClient
+          .openUrl(feedbackUrl(appVersion.value, getDesktopEnvironment().platform))
+          .catch(async (error: unknown) => {
+            console.error("Opening the feedback page failed:", error);
+            await message("Couldn't open the feedback page in your browser.", {
+              title: "SpaceVibe Deck",
+              kind: "error",
+            }).catch((dialogError: unknown) => {
+              console.error("Feedback error dialog failed:", dialogError);
+            });
+          });
         return;
       }
       if (isShortcutAction(event.payload)) {

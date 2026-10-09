@@ -159,6 +159,7 @@ pub fn build_view_menu<R: Runtime>(
 pub const APP_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[
     ("check-for-updates", "Check for Updates…", None),
     ("open-release-notes", "Release Notes…", None),
+    ("send-feedback", "Send Feedback…", None),
     ("toggle-settings", "Settings…", Some("CmdOrCtrl+,")),
 ];
 

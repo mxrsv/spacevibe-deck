@@ -148,6 +148,14 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "App" },
   },
   {
+    // Opens the landing's feedback page; intercepted by App like the two
+    // updater rows above, so it never reaches TabManager.
+    id: "send-feedback",
+    label: "Send Feedback…",
+    scope: "always",
+    menu: { submenu: "App" },
+  },
+  {
     id: "toggle-settings",
     label: "Settings…",
     // Bypasses the overlay guard: gating it would strand Settings open with

@@ -536,6 +536,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
         "check-for-updates",
         "focus-next-attention",
         "open-release-notes",
+        "send-feedback",
         // The Edit menu's three (2026-08-19). "always" for a third reason
         // beyond this list's other two: they act on whatever holds the caret
         // and never on the pane, so the "pane" tier — which blocks the moment

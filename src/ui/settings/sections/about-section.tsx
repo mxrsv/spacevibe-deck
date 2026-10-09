@@ -3,6 +3,8 @@ import { openUrl } from "../../../host/shell-host";
 import { appVersion } from "../../../updater/app-version";
 import { activeUpdateController } from "../../../updater/active-update-controller";
 import { RELEASE_NOTES_URL } from "../../../updater/update-menu-actions";
+import { feedbackUrl } from "../../../lib/feedback-url";
+import { getDesktopEnvironment } from "../../../lib/platform";
 import { ConfigRow } from "../../controls/config-row";
 import { reportPersistError } from "../../../chrome/events";
 import type { UpdateCheckResult, UpdatePhase } from "../../../updater/update-controller";
@@ -84,6 +86,14 @@ export function AboutSection() {
     }
   };
 
+  const handleFeedback = async (): Promise<void> => {
+    try {
+      await openUrl(feedbackUrl(appVersion.value, getDesktopEnvironment().platform));
+    } catch {
+      reportPersistError("Couldn't open the feedback page in your browser.");
+    }
+  };
+
   const working = phase === "downloading" || phase === "installing";
   const version = appVersion.value;
   // The outcome of the last check wins over the version line: pressing the
@@ -115,6 +125,11 @@ export function AboutSection() {
       </ConfigRow>
       <ConfigRow label="Release notes" desc="What changed in each version">
         <button type="button" class="cfg-btn" onClick={() => void handleReleaseNotes()}>
+          open …
+        </button>
+      </ConfigRow>
+      <ConfigRow label="Feedback" desc="Report a bug or suggest an idea">
+        <button type="button" class="cfg-btn" onClick={() => void handleFeedback()}>
           open …
         </button>
       </ConfigRow>

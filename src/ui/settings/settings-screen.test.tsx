@@ -371,6 +371,7 @@ const EXPECTED_ROWS = [
   // about
   "Check for updates",
   "Release notes",
+  "Feedback",
   // privacy — NO row. The category is still in the rail and still carries the
   // whole disclosure, but its one switch went when analytics became mandatory
   // (2026-09-06, `USAGE_ANALYTICS_MANDATORY`). Its paragraphs are

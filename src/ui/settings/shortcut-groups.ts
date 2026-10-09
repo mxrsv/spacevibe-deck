@@ -118,15 +118,15 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
 /**
  * Registry actions that get NO row, because no keyboard chord could run them.
  *
- * `check-for-updates` and `open-release-notes` are handled by `app.tsx`'s
- * `menu:action` listener via `isUpdateMenuAction`, not by `dispatchAction`'s
+ * `check-for-updates`, `open-release-notes` and `send-feedback` are handled by
+ * `app.tsx`'s `menu:action` listener before `isShortcutAction`, not by `dispatchAction`'s
  * command table — so a chord matched by `handleShortcut` reaches
  * `dispatchAction` and falls off the end as a silent no-op. Offering an
  * editable pill for them meant the row could display ⌘⇧U while ⌘⇧U did
  * nothing, forever.
  *
- * Removing the row loses nothing: both are still on the macOS App menu, and
- * both have their own button in the Settings about section.
+ * Removing the row loses nothing: all three are still on the macOS App menu,
+ * and each has its own button in the Settings about section.
  *
  * `shortcut-groups.test.ts` asserts this set is exactly the registry actions
  * `DISPATCHABLE_ACTIONS` does not contain, so an action that becomes
@@ -135,6 +135,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
 export const NOT_REBINDABLE: ReadonlySet<string> = new Set([
   "check-for-updates",
   "open-release-notes",
+  "send-feedback",
 ]);
 
 /**
