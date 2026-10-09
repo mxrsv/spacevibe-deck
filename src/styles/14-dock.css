@@ -441,3 +441,198 @@
 .sessions-body--dock .session-row__time {
   margin-left: 0;
 }
+
+/* ── Explorer: the Files / Changes switch and the Changes list ─────────
+   Variant A of spec decision 8. The switch is a chip row like DL-19.8's: the
+   active chip takes DL-21.1's wash, the idle one none, both at --radius-tab
+   (a labelled control 28px tall or less, DL-20.1). The list's rows are the
+   tree's 22px data rows (DL-19) in --ui-font, so the two views read as one
+   panel. */
+.explorer-switch {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+.explorer-switch__chip {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-tab);
+  background: transparent;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  cursor: pointer;
+  transition:
+    color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.explorer-switch__chip:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.explorer-switch__chip.is-active {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+/* DL-21.4: disabled is --text-faint on the unchanged surface. */
+.explorer-switch__chip[aria-disabled="true"],
+.explorer-switch__chip[aria-disabled="true"]:hover {
+  background: transparent;
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.explorer-switch__chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.explorer-switch__totals {
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.changes-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  white-space: nowrap;
+}
+
+.changes-head__branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.changes-head__note {
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.changes-head__right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.changes-head__totals {
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-list__note {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  line-height: 1.4;
+}
+
+.changes-list__rows {
+  outline: none;
+}
+
+.changes-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration) var(--ease);
+}
+
+.changes-row:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.changes-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* A deleted file is shown, not pressable (plan C8). */
+.changes-row.is-deleted {
+  cursor: default;
+}
+
+.changes-row.is-deleted .changes-row__name {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+
+.changes-row.is-deleted:hover {
+  background: transparent;
+}
+
+.changes-row__mark {
+  width: 12px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+  text-align: center;
+}
+
+.changes-row__name {
+  flex-shrink: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.changes-row__dir {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+  text-overflow: ellipsis;
+}
+
+.changes-row__counts {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}

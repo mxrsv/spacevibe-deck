@@ -17,6 +17,12 @@ import { useEffect } from "preact/hooks";
 import type { FileSurfaceController } from "../file-surface-controller";
 import { clearExplorerStatus, explorerStatus } from "../file-surface-store";
 import { FileTreeView } from "./file-tree-view";
+import { ChangesList } from "./changes-list";
+import { ExplorerSwitch } from "./explorer-switch";
+import { changesController, type ChangesController } from "../changes/changes-controller";
+import { explorerView } from "../changes/explorer-view";
+import { absolutePath, failureLine, totalsLabel } from "../changes/changes-model";
+import { ensureRepositoriesScanned, repositoryScans } from "../../repositories/repositories-store";
 
 export interface ExplorerTabProps {
   readonly controller: FileSurfaceController;
@@ -25,10 +31,21 @@ export interface ExplorerTabProps {
   /** Whether the running host can answer `create_entry` (design §6.4, §10).
    * Passed explicitly — `App` reads it off the host facade. */
   readonly canCreate: boolean;
+  /** Whether the running host can answer `git_changes`. The Changes view is
+   * omitted where it cannot, as `canCreate` omits the create controls
+   * (DL-19.7). Absent means unavailable. */
+  readonly changesAvailable?: boolean;
+  /** Test seam; the window's own controller otherwise. */
+  readonly changes?: ChangesController;
 }
+
+const NOT_A_REPOSITORY = "Not a git repository";
 
 export function ExplorerTab(props: ExplorerTabProps) {
   const { workspacePath } = props;
+  const changesAvailable = props.changesAvailable === true;
+  const changes = props.changes ?? (changesAvailable ? changesController() : null);
+
   // DL-19.5: the panel's ONE place for transient text, directly under the
   // header. It is the only place a failed create is ever reported — the naming
   // modal closes either way (design §5.4), and a second dialog would be
@@ -39,6 +56,27 @@ export function ExplorerTab(props: ExplorerTabProps) {
     return () => clearExplorerStatus();
   }, [workspacePath]);
 
+  // The repository scan the rail already runs answers "is this a repository"
+  // without a `git status` (plan C6).
+  useEffect(() => {
+    if (changesAvailable && workspacePath !== null) {
+      ensureRepositoriesScanned([workspacePath]);
+    }
+  }, [changesAvailable, workspacePath]);
+
+  const scan = workspacePath === null ? undefined : repositoryScans.value.get(workspacePath);
+  const changesDisabledReason = scan?.kind === "plain" ? NOT_A_REPOSITORY : null;
+  const view = changesAvailable && changesDisabledReason === null ? explorerView.value : "files";
+  const showChanges = workspacePath !== null && view === "changes";
+
+  // The list is "shown" only while its view is up: leaving it (or the tab, or
+  // the dock) releases the watch and stops every read (plan C5).
+  useEffect(() => {
+    changes?.setShown(showChanges ? workspacePath : null);
+  }, [changes, showChanges, workspacePath]);
+  // Unmounting (another dock tab, a closed dock) hides the list for good.
+  useEffect(() => () => changes?.setShown(null), [changes]);
+
   if (workspacePath === null) {
     return (
       <p class="explorer-tab__empty" role="status">
@@ -46,20 +84,56 @@ export function ExplorerTab(props: ExplorerTabProps) {
       </p>
     );
   }
+  const changesState = changes?.state.value ?? null;
+  const live = changesState !== null && changesState.root === workspacePath ? changesState : null;
   const status = explorerStatus.value;
-  const line = status !== null && status.workspacePath === workspacePath ? status : null;
+  const createLine = status !== null && status.workspacePath === workspacePath ? status : null;
+  // One message at a time: a transient create failure wins while it is up, then
+  // the git message returns (plan C6).
+  const gitLine = showChanges && live?.failure ? failureLine(live.failure) : null;
   return (
     <div class="explorer-tab">
-      {line !== null && (
-        <p class={`file-tree-shell__status${line.failed ? " is-failure" : ""}`} role="status">
-          {line.text}
+      {createLine !== null && (
+        <p class={`file-tree-shell__status${createLine.failed ? " is-failure" : ""}`} role="status">
+          {createLine.text}
         </p>
       )}
-      <FileTreeView
-        controller={props.controller}
-        workspacePath={workspacePath}
-        canCreate={props.canCreate}
-      />
+      {createLine === null && gitLine !== null && (
+        <p class="file-tree-shell__status is-failure" role="status">
+          {gitLine}
+        </p>
+      )}
+      {changesAvailable && (
+        <ExplorerSwitch
+          view={view}
+          changesTotals={
+            live?.snapshot && live.snapshot.entries.length > 0 ? totalsLabel(live.snapshot) : null
+          }
+          changesDisabledReason={changesDisabledReason}
+          onSelect={(next) => {
+            explorerView.value = next;
+          }}
+        />
+      )}
+      {showChanges && changes !== null && live !== null ? (
+        <ChangesList
+          state={live}
+          onRefresh={() => changes.trigger("refresh")}
+          onOpen={(entry) => {
+            void props.controller.openFile(
+              workspacePath,
+              absolutePath(workspacePath, entry.path),
+              false,
+            );
+          }}
+        />
+      ) : (
+        <FileTreeView
+          controller={props.controller}
+          workspacePath={workspacePath}
+          canCreate={props.canCreate}
+        />
+      )}
     </div>
   );
 }

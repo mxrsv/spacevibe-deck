@@ -204,6 +204,8 @@ import {
 import { ExplorerTab } from "../files/ui/explorer-tab";
 import { CreateEntryDialog } from "../files/ui/create-entry-dialog";
 import { available as fileCreateAvailable } from "../host/file-create-host";
+import { available as gitChangesAvailable } from "../host/git-changes-host";
+import { installChangesTriggers } from "../files/changes/changes-controller";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { RailAgentLimits } from "./usage/agent-usage-summary";
 import { DockPanel } from "./dock/dock-panel";
@@ -611,6 +613,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // when that pane's state actually moved. Inert off Electron, and the install
   // returns its own disposer, so this is the whole wiring.
   useEffect(() => installSessionTailSync(), []);
+  // The Changes list's window-level triggers: visibility, focus and a pane
+  // leaving `working`. Inert on a host with no `git_changes` channel.
+  useEffect(() => (gitChangesAvailable ? installChangesTriggers() : () => {}), []);
 
   // The Open board's Sessions view reads the same store as the dock, so it
   // needs a scan even when the dock has never opened. Keyed on the board
@@ -2617,6 +2622,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   controller={fileController}
                   workspacePath={activeWorkspace.value}
                   canCreate={fileCreateAvailable}
+                  changesAvailable={gitChangesAvailable}
                 />
               ) : dockTab() === "usage" ? (
                 <UsageDockTab />
