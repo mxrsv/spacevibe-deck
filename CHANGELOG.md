@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+## 2.9.0
+
+This update lets you send feedback from inside Deck and makes Update go
+straight to the newest release.
+
 - **Send feedback from inside Deck.** **Send Feedback…** in the app menu, or
   the Feedback row in Settings → About, opens the
   [feedback page](src/lib/feedback-url.ts) in your browser with your Deck
@@ -15,8 +20,8 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   ship while Deck is open, **Update** now
   [checks again](src/updater/update-controller.ts) and downloads the latest one,
   and the update notice moves to the newest version on its own, so you no
-  longer step through each release in turn. This takes effect from the update
-  after this one.
+  longer step through each release in turn. It applies to updates after 2.9.0;
+  reaching 2.9.0 itself may still take a step per release.
 
 ## 2.8.0
 
