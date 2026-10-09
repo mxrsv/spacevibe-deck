@@ -7,8 +7,9 @@ Owner checkout: `/Users/kyantran/Documents/Development/spacevibe-workspace/space
 Baseline: `main` at `f1fa8fb1` (2026-10-10). Plans under `docs/plans/` are gitignored and exist
 only in the primary checkout.
 Host: every new host channel (git, file list, trash, rename) is Electron only and degrades on
-the frozen Tauri host through an `available` flag, never a second implementation.
-Renderer-only slices reach both hosts.
+the frozen Tauri host through an `available` flag, never a second implementation. The
+Explorer itself is Electron only — its file channels have no Tauri counterpart
+([file-surface.md](../internals/file-surface.md)) — so every slice is effectively Electron only.
 Parent: [Deck product improvements](2026-10-06-deck-product-improvements.md), rank 9
 (Read-only Changes). That record keeps the cross-surface priority order; this one owns the
 requirements of Changes and of the Explorer improvements, and carries CHANGES1–3 forward.
@@ -37,14 +38,17 @@ read-only towards git and never types into a pane on the user's behalf.
 5. **Every Explorer gap from the 2026-10-09 research goes into this one spec** as ordered
    slices (owner, 2026-10-10).
 6. **Deck may run `git status`** (owner, 2026-10-10), bounded and with visible errors (CHG2).
-   Slice 1 rewrites the "no `git status` anywhere" line in
-   [internals/agent-rail.md](../internals/agent-rail.md) in the same change.
+   Slice 1 rewrites the three places that say no `git status` runs —
+   [internals/agent-rail.md](../internals/agent-rail.md) and two comments in
+   [worktrees.ts](../../electron/worktrees.ts) — in the same change.
 7. **The list updates in near real time** (owner, 2026-10-10, asking "có thể làm realtime
    không?"): a file change in the checkout reaches the list within about a second, not only at
    turn end (CHG3).
 8. **The list's form is chosen from three gallery specimens** (owner, 2026-10-10), built before
    slice 1's code: (A) a Files / Changes switch in the Explorer's header, (B) a collapsible
-   Changes section above the tree, (C) a "changed only" filter on the tree itself.
+   Changes section above the tree, (C) a "changed only" filter on the tree itself. Picking C
+   rewords decision 1 (no git markers on tree rows) and the "filter-in-tree" exclusion under
+   [Out of scope](#out-of-scope).
 9. **Delivery runs as two lanes in parallel** (owner, 2026-10-10); see
    [Delivery slices](#delivery-slices).
 
@@ -137,9 +141,9 @@ merges first; lane A rebases on it. The file-surface controller has 32 lines lef
 
 | Slice                                | Requirements | Host                          | Plan | Status      |
 | ------------------------------------ | ------------ | ----------------------------- | ---- | ----------- |
-| 1. Git status channel + Changes list | CHG1–5       | Electron; hidden on Tauri     | —    | Not started |
+| 1. Git status channel + Changes list | CHG1–5       | Electron; hidden on Tauri     | [changes-list](../plans/2026-10-10-changes-list.md) | Draft plan |
 | 2. Diff column                       | DIFF1–5      | Electron                      | —    | Not started |
-| 3. Hidden-files toggle + reveal      | EXP1–2       | Both hosts                    | —    | Not started |
+| 3. Hidden-files toggle + reveal      | EXP1–2       | Electron                      | [explorer-hidden-and-reveal](../plans/2026-10-10-explorer-hidden-and-reveal.md) | Draft plan |
 | 4. Row context menu                  | EXP3         | Electron                      | —    | Not started |
 | 5. Quick open                        | EXP4         | Electron                      | —    | Not started |
 | 6. Move to Trash and Rename          | EXP5         | Electron                      | —    | Not started |
@@ -166,8 +170,10 @@ how the list's form is chosen (decision 8).
    colours a diff, and a diff without colour is slow to read.
 4. **A second docked column.** DL §19 describes one docked column holding tabs. The diff column
    is a second, transient one with its own seam, header and width, and it shrinks the grid
-   exactly as the dock does. It needs a §19 rule and is a layout fork under
-   [AGENTS.md](../../AGENTS.md).
+   exactly as the dock does. Since 2026-10-10 §19 is a DL _pattern_, rewritten with the code
+   after the owner's eye review rather than a fork. It stays a fork under
+   [AGENTS.md](../../AGENTS.md) only if slice 2 has to change pane layout modules; slice 2's
+   plan settles which.
 5. **Ignored entries (EXP6): hide or dim.** Recommended: hide them, and let EXP1's control
    reveal them as well. Seven of the top-level folders in the owner's 2026-10-09 screenshot
    (`dist-electron`, `dist-electron-app`, `dist-gate-m`, …) are ignored build output.
@@ -181,8 +187,10 @@ how the list's form is chosen (decision 8).
 - Layout: the diff column narrows the terminal grid and resizes PTYs (open decision 4).
 - Watching: CHG3's recursive watch reverses the watcher's non-recursive design for one root
   (open decision 2). A watcher library stays a fork, and none is proposed.
-- Design language: DL-3.2 (open decision 3) and §19 (open decision 4). EXP2 reuses DL-21.1's
-  selection wash and needs no new rule.
+- Design language (two tiers since 2026-10-10): DL-3.2 is an invariant, so open decision 3 is
+  a fork. §19 is a pattern (open decision 4). EXP2's selection mark falls under §21's
+  invariants: matching the tree row's corner may conflict with DL-21.1 and DL-20.1, and slice
+  3's plan poses that choice.
 - No new dependency. A fuzzy-matching or ignore-matching library would be a fork; none is
   proposed.
 - IPC payloads are a contract (R6): new channels join the contract test, and a change to the
