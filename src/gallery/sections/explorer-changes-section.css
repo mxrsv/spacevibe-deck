@@ -1,0 +1,26 @@
+/* Frame layout for the explorer-changes gallery section. Prefixed gx-changes
+   so nothing here can be mistaken for shipping CSS (R7). */
+.gx-changes-frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.gx-changes-frame {
+  margin: 0;
+  min-width: 0;
+}
+
+.gx-changes-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.gx-changes-column {
+  box-sizing: border-box;
+  height: 300px;
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+}

@@ -42,8 +42,8 @@ const ToolbarSection = lazy(() =>
   import("./sections/toolbar-section").then((m) => m.ToolbarSection),
 );
 const TokensSection = lazy(() => import("./sections/tokens-section").then((m) => m.TokensSection));
-const ChangesSpecimensSection = lazy(() =>
-  import("./sections/changes-specimens-section").then((m) => m.ChangesSpecimensSection),
+const ExplorerChangesSection = lazy(() =>
+  import("./sections/explorer-changes-section").then((m) => m.ExplorerChangesSection),
 );
 const LaunchProfilesSection = lazy(() =>
   import("./sections/launch-profiles-section").then((m) => m.LaunchProfilesSection),
@@ -97,5 +97,5 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     label: "launch profiles",
     Section: LaunchProfilesSection,
   },
-  { id: "changes-specimens", label: "changes specimens", Section: ChangesSpecimensSection },
+  { id: "explorer-changes", label: "explorer changes", Section: ExplorerChangesSection },
 ];
