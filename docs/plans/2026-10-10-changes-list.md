@@ -254,7 +254,7 @@ Each item has one recommendation; the owner ticks or overrides once.
 ## Tasks
 
 ### 0. Three specimens and the eye-review gate (feat(gallery), then docs(specs))
-- [ ] One lazy section `changes-specimens`, registered last in the worktree's
+- [x] One lazy section `changes-specimens`, registered last in the worktree's
   `section-registry.ts` (the primary checkout's copy holds another session's uncommitted rows;
   never touch it), never imported by shipping code (R7). Fake data in its own module: a
   checkout on `feat/changes-list` with 8 entries (3 modified, 1 added, 1 renamed with old path,
@@ -275,7 +275,7 @@ Each item has one recommendation; the owner ticks or overrides once.
     360px); painting its on state would break the DL-21.8 invariant (a fork). **It contradicts the
     spec:** decision 1 (no git markers on tree rows) and Out of scope ("filter-in-tree") need
     rewording if C wins.
-- [ ] Headless playwright-core screenshots of the worktree's gallery: each variant populated at
+- [x] Headless playwright-core screenshots of the worktree's gallery: each variant populated at
   360px and 520px column width, plus clean and error states at 360px, to session scratch. Send
   them with one line per variant, then **stop** (hard stop 1).
 - [ ] After the reply: spec decision 8 answered and open decision 1 closed, with the approved DL
@@ -361,3 +361,41 @@ Each item has one recommendation; the owner ticks or overrides once.
 ## Handoff
 - 2026-10-10: plan drafted at `8d96f827`, DL citations re-mapped to `da657e63`; no code, no
   worktree. Waiting on the owner: the C1–C12 batch. Task 0 starts once it is approved.
+- Cloud session 1 (Task 0, first half; branch `feat/changes-list`, commit `8a8a32c`). Specimens built and
+  sent; the session ends here at hard stop 1.
+  - **Built:** gallery section `changes-specimens` (last in `GALLERY_SECTIONS`, `?section=changes-specimens`
+    on `prototype:gallery`) in `src/gallery/sections/changes-specimens-*.ts(x)` + `.css`; fixture in
+    `changes-specimens-data.ts` (8 entries, `+42 −7`) with a test. Each variant: 360px and 520px populated,
+    360px clean, 360px git-failed (red status line over the last list), plus one extra frame — A the Files
+    side, B collapsed, C filter off. The tree is the real `ExplorerTab` over an inert client in A and B; C
+    draws its pruned tree on the shipping row classes because the real tree cannot be pruned. Nothing in
+    shipping code changed.
+  - **Eye-review result in the spec still owed:** spec decision 8 and open decision 1 are unanswered.
+  - **Waiting on the owner (hard stop 1):** name a variant **and** approve the DL text listed for it —
+    A: DL-19.9 "the first row names one of two views" (DL-19.7 too if the switch moves into the dock
+    header); B: DL-19.9 "a second action-bearing row" and the root-is-row-0 model in `file-surface.md`;
+    C: DL-19.9 "five controls at 360px", a **DL-21.8 fork** (painted on state) and spec rewording of
+    decision 1 and Out of scope. Then the next session continues on this branch from Task 0's third
+    bullet. Branch stays open: "waiting on the owner's specimen pick".
+  - **Decided alone:**
+    - Commit type `chore(gallery)`, not the plan's `feat(gallery)`: a `feat` commit needs a
+      `Release-Note:` trailer (`scripts/generate-release-notes.mjs`), and a gallery page is not user-facing.
+      Tasks 1–3 are plumbing and Task 4 is the user-facing change — type them by that rule, trailer on the
+      one that ships the list.
+    - Trailers use this session's `Claude-Session:` URL, not the plan's (it names the planning session), plus
+      the `Co-Authored-By` line the harness requires.
+    - Status mark is git's letter (`M A D R`), `U` for untracked, grey for every status (C9 a); a binary
+      entry reads `binary` instead of counts; a rename shows `← old-name` where the directory goes, full
+      old path in the tooltip; a deleted entry is struck through and not pressable (C8).
+    - Branch label is the text-primary "root" of A's Changes side and of C's filtered root row; B puts a
+      faint branch label beside the word "Changes". Comparison ("Uncommitted changes against HEAD") is a
+      tooltip in all three.
+    - Frames are 460px tall (a laptop dock); B's list region caps at six rows (132px) so the two scroll
+      regions show.
+  - **Gates:** `tsc --noEmit` passed; `oxlint --quiet` and `prettier --check` on the 7 changed files passed;
+    `npm test -- scripts/ src/styles/ src/gallery/` passed (24 files, 315 passed, 1 skipped), including
+    `design-language.test.ts` and `gallery-entry.test.ts`. Overflow audit in headless Chromium (playwright-core
+    1.62, `/opt/pw-browsers/chromium`): 0 spills in all 15 frames. Unrun: full `npm test`, `npm run build`,
+    `electron:build`, E2E (nothing user-facing shipped yet).
+  - **Environment notes:** Linux cloud container; Electron was not launched. `npm install` rewrote
+    `package-lock.json` (24 lines of optional-package entries); it was restored and not committed.
