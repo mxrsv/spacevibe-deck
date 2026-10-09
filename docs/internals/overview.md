@@ -156,8 +156,9 @@ Each is described in [terminal.md](terminal.md), [file-surface.md](file-surface.
 - The macOS menu is derived from [`action-registry.ts`](../../src/terminal/action-registry.ts)
   at runtime on Electron and generated into `src-tauri/src/menu_registry.rs` for Tauri; the
   registry is edited, never the output (R3).
-- Chrome styling follows the numbered rules in [`DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md),
-  cited from code and parsed by a test (R2). That file does not move.
+- Chrome styling is held to the invariants in [`DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md);
+  its patterns describe today's surfaces and change with a redesign (R2). The numbers are cited
+  from code and parsed by a test, so the file does not move.
 - Every icon comes from `@phosphor-icons/react` through one `DeckIcon` primitive; CSS never
   sets an icon's geometry.
 - Everything in the repository is English (R1).

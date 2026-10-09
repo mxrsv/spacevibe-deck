@@ -47,7 +47,7 @@ Where the current behaviour of a surface is written down:
 | Usage analytics                                         | [internals/telemetry.md](docs/internals/telemetry.md)             |
 | Traps, live switches, accepted limitations              | [internals/traps.md](docs/internals/traps.md)                     |
 | Vocabulary this repo uses precisely                     | [internals/glossary.md](docs/internals/glossary.md)               |
-| Visual rules, cited from code and read by a test        | [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md)                |
+| Visual invariants and current surface patterns          | [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md)                |
 
 Closed decisions, measurements and long rationale live in git history and in the issue that
 owned the work — not in this file.
@@ -59,13 +59,20 @@ Stop and ask before writing code when a task touches:
 - PTY ownership, process classification, the window coordinator, tab materialization, layout
   or close/quit coordination, on either host;
 - bundle, dependency, signing, release channel, updater or version configuration;
-- a rule in [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md);
+- an **invariant** in [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md) (§1–4, §7, §20,
+  §21: tokens, color roles, typography, motion and resource budget, scales, interaction
+  states);
 - Electron/Tauri cutover scope;
 - any sibling repo.
 
-Not a fork: internal renames, tests, styling within current DL rules, and editing the menu
-registry. Record a resolved fork on the issue that owns the work, with the alternative you
-turned down and why — a fork nobody can reconstruct is a decision that will be re-litigated.
+Not a fork: internal renames, tests, editing the menu registry, and replacing a DL
+**pattern**. A pattern describes how a surface looks today; a redesign rewrites it in the
+same change as the code once the owner has reviewed the result by eye. Gallery specimens,
+prototypes and design proposals are not bound by patterns at all: propose the strongest
+design and list the patterns it would replace, rather than shrinking the idea to fit.
+
+Record a resolved fork on the issue that owns the work, with the alternative you turned down
+and why — a fork nobody can reconstruct is a decision that will be re-litigated.
 
 ## Verification and commands
 
@@ -141,8 +148,9 @@ Several agent sessions run against this repo at once. The owner's standing rule 
 ## Repo rules
 
 - **R1. English only** for strings, comments, docs and commit messages.
-- **R2. Design language is executable policy.** Chrome styling follows numbered DL rules; code
-  comments cite them. Fixing a violation also updates the ledger in that document.
+- **R2. Design language has two tiers.** Tests enforce the DL invariants. The DL patterns
+  describe shipped surfaces, and a redesign may replace them. Cite a rule in a comment only
+  when the code would look wrong without the reason. A cited number must stay declared.
 - **R3. Menu output is generated.** Edit the registry, then run `generate:menu`; never edit
   generated menu code manually.
 - **R4. Load-bearing seams stay explicit.** PTY/window/tab/layout/close modules require a plan

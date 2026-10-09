@@ -46,9 +46,9 @@ tense; anything about the frozen Tauri host says so.
 
 - [Public user documentation website](https://linear.app/mxrsv/issue/DECK-126) — feature plan
   and acceptance criteria.
-- [`DESIGN-LANGUAGE.md`](DESIGN-LANGUAGE.md) — the numbered visual rules cited from code and
-  enforced by `scripts/design-language.test.ts`. It stays at this path because the test
-  reads it.
+- [`DESIGN-LANGUAGE.md`](DESIGN-LANGUAGE.md) — visual invariants (a fork to change) and
+  current surface patterns (replaced by a redesign). Code cites its numbers, and
+  `scripts/design-language.test.ts` resolves them, so it stays at this path.
 - [`../AGENTS.md`](../AGENTS.md) — repository rules for contributors and agents.
 - [`../CHANGELOG.md`](../CHANGELOG.md) — user-facing release notes, read by the release
   workflow.

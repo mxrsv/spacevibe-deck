@@ -1,12 +1,24 @@
-# DESIGN-LANGUAGE — Stackgrid chrome
+# DESIGN-LANGUAGE — Deck chrome
 
-Canonical rulebook for all **chrome UI** (settings panel, and — as they are
-reworked — tab bar, status bar, pane bar, search bar, overlays). The settings
-panel is the reference implementation. This is the single source of truth for
-the app's visual language — tokens, color roles, typography, motion, copy.
+How Deck's chrome looks, in two tiers with different authority. Rules are numbered so code
+can cite them (`DL-3.2`); the numbers stay stable because
+[`design-language.test.ts`](../scripts/design-language.test.ts) resolves every citation.
 
-Rules are numbered so they can be cited (`DL-3.2`). An agent editing chrome UI
-must run the checklist in §9 before calling the work done.
+**Invariants** — §1 resource budget, §2 tokens, §3 color roles, §4 typography, §7 motion
+budget, §20 numeric scales, §21 interaction states. These hold the system together: the
+token scales, accessibility (visible focus, contrast, reduced motion, roles) and the
+resource budget. Tests enforce most of them. Changing one is a fork: ask the owner first.
+
+**Patterns** — every other section. Each describes how a surface looks today, not how it
+must look. A redesign may replace any of them. A pattern changes in a design pass, not
+rule by rule: build the new design, the owner reviews it by eye, and the pattern text is
+rewritten in the same change as the code. No per-rule permission is needed.
+
+**Exploration is unbound.** Gallery specimens, prototypes and design proposals do not have
+to follow the patterns. Propose the strongest design, then list the patterns it would
+replace. Only two tests reach `src/gallery/`: a DL citation written there must resolve, and
+`chatgpt-direction.css` stays on the radius scale. The casing, radius and weight scans read
+only the shipping stylesheet.
 
 ## 0. Identity
 
@@ -579,30 +591,18 @@ and [mode selector](../src/ui/settings/theme-mode-selector.tsx).
 
 ## 9. Agent checklist (anti-drift)
 
-Before shipping any chrome UI change:
+Before shipping a chrome UI change, check the invariants; patterns are not on this list.
 
-1. Is it expressible as a config row (§5) using an existing value kind (§6)?
-   If not — propose an edit to this document first, then implement. (This has
-   already been violated once: a segmented control was added for "Tab bar
-   position" and had to be rewritten as a `cycle`. Note what the fix was — the
-   control was removed because it had no rule, not because the shape was
-   wrong. It returned on 2026-08-19 as DL-6.5's `binary`, through this step,
-   which is the process working rather than an exception to it.)
-2. Every color maps to a role in §3; no hardcoded hex (DL-2.1).
-3. Any animation fits the budget in §7 and the constraints in §1. Reduced-motion
-   is handled **by scope** (`.settings-screen *`, `.usage-screen *`), never by
-   an allowlist of class names — an allowlist silently misses the next class.
-   A new full-window screen adds its own scope to that list; it does not add
-   the individual classes inside it.
-4. No uppercase and no `letter-spacing` on copy (DL-4.3); text size comes from
-   a `--type-*` variable, not a px literal (DL-4.5). No monospace anywhere in
-   chrome — if a rule reaches for it, the answer is `--ui-font` (DL-4.1); the
-   Board and Mission Control's window bodies are DL-4.1's named exceptions.
-5. Text fields go through `CommitInput`, multi-line ones through
-   `CommitTextarea` (DL-6.3, DL-13.5). Never bind a store value straight into
-   an `<input value=…>` / `<textarea value=…>` inside a surface that does not
-   unmount.
-6. Eye-review on a rendered screenshot before calling it done — a green build
+1. Every color maps to a role in §3; no hardcoded hex (DL-2.1).
+2. Any animation fits §7 and §1. Reduced motion is handled **by scope**
+   (`.settings-screen *`, `.usage-screen *`), never by an allowlist of class
+   names, which silently misses the next class.
+3. No uppercase and no `letter-spacing` on copy (DL-4.3); text size comes from
+   a `--type-*` variable (DL-4.5); chrome text uses `--ui-font` (DL-4.1).
+4. Text fields go through `CommitInput`, multi-line ones through
+   `CommitTextarea` (DL-6.3, DL-13.5): a store value bound straight into an
+   input inside a surface that does not unmount wipes what the user types.
+5. Eye-review on a rendered screenshot before calling it done — a green build
    proves nothing about design.
 
 ## 10. Migration status (what does NOT comply yet)

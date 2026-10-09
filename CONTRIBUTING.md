@@ -8,8 +8,9 @@
   overview and the [glossary](docs/internals/glossary.md).
 - Repository rules for contributors and agents, including the
   [documentation rules](AGENTS.md#documentation): [AGENTS.md](AGENTS.md).
-- Visual rules: [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md). They are numbered,
-  cited from code comments, and parsed by a test.
+- Visual rules: [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md). Invariants hold the
+  system together. Patterns describe today's surfaces, and a redesign can replace them. Every
+  rule is numbered, cited from code comments, and parsed by a test.
 
 ## Where the project is
 
