@@ -1,0 +1,233 @@
+/* Specimen-only styles for the changes list variants. Prefixed gx-chg so
+   nothing here can be mistaken for shipping CSS (R7). Bold on purpose:
+   specimens are not bound by DL patterns. */
+.gx-chg-frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.gx-chg-frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  background: var(--sidebar-bg);
+  font-family: var(--ui-font);
+}
+
+.gx-chg-frame__tree {
+  height: 150px;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+.gx-chg-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.gx-chg-cap {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gx-chg-card {
+  margin: 0 0 10px;
+  padding: 0;
+  max-width: 720px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.gx-chg-card b {
+  color: var(--text-primary);
+}
+
+.gx-chg-card .is-fork {
+  color: var(--red);
+}
+
+/* ── shared pieces ───────────────────────────────────────────── */
+.gx-chg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: var(--type-body);
+  white-space: nowrap;
+}
+
+.gx-chg-row:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.gx-chg-row.is-deleted .gx-chg-row__name {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+
+.gx-chg-mark {
+  width: 12px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: var(--type-meta);
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.gx-chg-row__name {
+  flex-shrink: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gx-chg-row__dir {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.gx-chg-counts {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.gx-chg-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  font-size: var(--type-body);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.gx-chg-head__branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gx-chg-head__right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.gx-chg-btn {
+  display: flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.gx-chg-btn:hover {
+  color: var(--text-primary);
+}
+
+.gx-chg-btn.is-on {
+  color: var(--accent);
+}
+
+.gx-chg-faint {
+  color: var(--text-faint);
+}
+
+.gx-chg-status {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: var(--type-meta);
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
+.gx-chg-status.is-failure {
+  color: var(--red);
+}
+
+.gx-chg-empty {
+  margin: 0;
+  padding: 10px 8px;
+  font-size: var(--type-body);
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
+.gx-chg-list {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* A — the switch */
+.gx-chg-switch {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 6px;
+}
+
+.gx-chg-switch__seg {
+  display: flex;
+  height: 20px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-tab);
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: var(--type-body);
+  cursor: pointer;
+}
+
+.gx-chg-switch__seg.is-active {
+  background: var(--state-selected-bg, var(--state-hover-bg));
+  color: var(--text-primary);
+}
+
+/* B — the section */
+.gx-chg-section {
+  border-bottom: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+}
+
+/* C — the filter rows */
+.gx-chg-tree {
+  position: relative;
+}
+
+.gx-chg-tree .gx-chg-counts {
+  min-width: 56px;
+  text-align: right;
+}
