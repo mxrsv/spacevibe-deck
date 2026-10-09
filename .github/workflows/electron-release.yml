@@ -135,6 +135,7 @@ jobs:
       - name: Validate source
         run: |
           npm run generate:menu:check
+          npm run lint
           npm test
           npm run build
 

@@ -49,7 +49,8 @@ Report the checks actually performed; omitted checks are not successful test res
 
 1. Full-history checkout, then refuse a tag whose commit is not an ancestor of `origin/main`.
 2. Validate the tag against `package.json`'s version and derive the channel.
-3. Validate source: `npm run generate:menu:check`, `npm test`, `npm run build`.
+3. Validate source: `npm run generate:menu:check`, `npm run lint`, `npm test`,
+   `npm run build` — the same gates as CI's `check` job, so a red commit cannot ship.
 4. Create the draft release with `gh release create "$TAG" --draft --target "$GITHUB_SHA"`.
    Creating it upstream of both platform jobs is what stops the two electron-builder
    publishers from each creating their own release. `--target` is required because the
@@ -126,8 +127,8 @@ section is empty**. Consequences:
 
 Require an ordinary [CI run](../../.github/workflows/ci.yml) on the exact integrated
 `main` commit to reach and pass Ubuntu **Test** and **Build frontend** before tagging.
-`prepare` runs tests and build but does not run lint; it must not be the first evidence
-that the source works on Ubuntu. A local macOS pass is not that evidence. If CI is still
+`prepare` repeats lint, tests and build, but it must not be the first evidence that the
+source works on Ubuntu: a red `prepare` costs a cleanup of the trigger tag. A local macOS pass is not that evidence. If CI is still
 red, stop for an explicit owner decision rather than treating a tag as a test run.
 
 If [`src/telemetry/payload.ts`](../../src/telemetry/payload.ts) changed since the last
