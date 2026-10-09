@@ -18,7 +18,7 @@ rewritten in the same change as the code. No per-rule permission is needed.
 
 **Exploration is unbound.** Gallery specimens, prototypes and design proposals do not have
 to follow the patterns. Propose the strongest design, then list the patterns it would
-replace. Only two tests reach `src/gallery/`: a DL citation written there must resolve, and
+replace. Only two DL checks reach `src/gallery/`: a DL citation written there must resolve, and
 `chatgpt-direction.css` stays on the radius scale. The casing, radius and weight scans read
 only the shipping stylesheet.
 
@@ -1155,7 +1155,7 @@ mode do not mount the row ([`SidebarActions`](../src/ui/sidebar-actions.tsx)).
   it and closes the popover; Esc closes it and returns focus to the button; the stage
   overlay flag is raised while it is open so the browser's native view steps aside. The
   Prompt Board popover anchors to this button while the rail is collapsed. The button
-  carries a native `title`, because a tooltip centred above a 36px column would hang far
+  carries a native `title`, because a tooltip centred above the narrow column would hang far
   from it ([`RailToolsMenu`](../src/ui/rail-tools-menu.tsx)).
 
 ## 29. Modals

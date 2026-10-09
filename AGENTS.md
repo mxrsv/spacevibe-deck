@@ -61,7 +61,7 @@ Stop and ask before writing code when a task touches:
 - bundle, dependency, signing, release channel, updater or version configuration;
 - an **invariant** in [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md) (§1–4, §7, §20,
   §21: tokens, color roles, typography, motion and resource budget, scales, interaction
-  states);
+  states; a rule marked _(pattern)_ there is not one);
 - Electron/Tauri cutover scope;
 - any sibling repo.
 
