@@ -752,11 +752,18 @@ covering it; the file explorer is the resident instance.
   would take a third of a 360px panel, so it becomes a compact chip row above the content,
   with the same `role="tablist"` and DL-21.1/21.2 selection language, walked with ←/→. A
   chip may print a shorter label if its full name stays the accessible name (WCAG 2.5.3).
-- **DL-19.9** A panel tab hangs its own actions off its first row, the one naming what it
-  shows; the shared header carries no control belonging to one tab. They are a trailing
-  cluster of icon-only controls, visible at rest, sized to the row rather than to chrome:
-  `.iconbtn`'s 24px box would overflow the 22px data row, whose height every virtual-list
-  index is computed from ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)).
+- **DL-19.9** A panel tab hangs its own actions off the row that names what it shows; the
+  shared header carries no control belonging to one tab. They are a trailing cluster of
+  icon-only controls, visible at rest, sized to the row rather than to chrome: `.iconbtn`'s
+  24px box would overflow the 22px data row, whose height every virtual-list index is computed
+  from ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)). The Explorer has two
+  views and shows its switch above that row: a `role="tablist"` of two chips, Files and
+  Changes, in a 28px row with DL-21.1's wash on the active chip at `--radius-tab`, walked with
+  ←/→ ([`ExplorerSwitch`](../src/files/ui/explorer-switch.tsx)). The row below names the view
+  showing: the tree root for Files, the branch for Changes, where the totals and Refresh sit
+  ([`ChangesList`](../src/files/ui/changes-list.tsx)). A Changes chip the folder cannot serve
+  is disabled with its reason, because a hidden entry cannot say why (DL-21.4); on a host that
+  cannot serve the read the switch is omitted (DL-19.7).
 
 ## 23. Action tooltips and the `More` menu
 
