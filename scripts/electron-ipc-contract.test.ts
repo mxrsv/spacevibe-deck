@@ -231,6 +231,21 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("git_changes carries the flat { root } payload on both sides", () => {
+    // The Changes list's snapshot read, pinned like `create_entry` above so the
+    // generic scanner provably reaches it.
+    const sites = callSites.filter((site) => site.channel === "git_changes");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["root"]);
+    }
+    const changesHandlers = handlers.filter((handler) => handler.channel === "git_changes");
+    expect(changesHandlers.length).toBeGreaterThan(0);
+    for (const handler of changesHandlers) {
+      expect(handler.required).toEqual(["root"]);
+    }
+  });
+
   it("pty_kill_foreground carries the flat { id } payload on both sides", () => {
     // The Agent Board's Stop (spec §5.6, §11.6), pinned the way
     // `create_directory` above is: proof this generic scanner actually reaches

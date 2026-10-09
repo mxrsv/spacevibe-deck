@@ -62,6 +62,7 @@ import { registerShell } from "./ipc/register-shell";
 import { registerUpdater } from "./ipc/register-updater";
 import { registerTelemetry } from "./ipc/register-telemetry";
 import { registerDevServers } from "./ipc/register-dev-servers";
+import { registerChanges } from "./ipc/register-changes";
 import { registerAgentSignals } from "./ipc/register-agent-signals";
 import { createHookServer } from "./agent-hooks/hook-server";
 import { createOpencodeClients } from "./agent-hooks/opencode-client";
@@ -424,6 +425,7 @@ registerAgentSignals({
 // ------------------------------------------------- Dev server discovery
 // Disposed at `will-quit` inside, never at the cancelable `before-quit`.
 registerDevServers();
+registerChanges();
 
 // --------------------------------------------------------- Themes folder
 registerThemes();

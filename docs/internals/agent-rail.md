@@ -412,4 +412,5 @@ content inert, so opening the launcher neither resizes nor stops a terminal.
   [`repositories-store.ts`](../../src/repositories/repositories-store.ts): derived git facts
   are never persisted, only collapse state is, a scan failure degrades to a `plain` cluster,
   and a return to the window refreshes rather than invalidates so the sidebar does not jump.
-  No `git status` is run anywhere.
+  The rail runs no `git status`; the Explorer's Changes list runs a bounded, read-only one
+  of its own.

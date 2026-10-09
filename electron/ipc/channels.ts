@@ -180,6 +180,13 @@ export const CHANNELS = {
   devServersSnapshot: "dev_servers_snapshot",
   devServersRelease: "dev_servers_release",
   devServersResolve: "dev_servers_resolve",
+  // The Explorer's Changes list: one bounded, read-only snapshot of what the
+  // checkout changed against HEAD (spec 2026-10-10-explorer-and-changes, CHG1).
+  // Electron-only like the blocks above: no `#[tauri::command]` counterpart, and
+  // the frozen Tauri host hides the entry point through the facade's
+  // `available` flag. Flat `{ root }` per R6; `root` is checked by the path
+  // guard like every Explorer call.
+  gitChanges: "git_changes",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
