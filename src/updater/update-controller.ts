@@ -112,6 +112,34 @@ const HIDDEN_VIEW = Object.freeze<UpdateView>({
   notes: "",
 });
 
+/**
+ * Phases a check may run from and replace.
+ *
+ * The three it excludes are an update the user is acting on — downloading,
+ * downloaded, or installing — where a check could replace the very version
+ * being acted on, and discard a file already on disk. `available` is included:
+ * nothing has been fetched yet, and a banner found at 01:00 that still names
+ * that build at 09:00 makes the user install each release of the night one
+ * relaunch at a time. Failed phases are included on purpose: nothing in the UI
+ * returns the view to `hidden`, so treating them as "busy" would mean one
+ * dropped connection during a download silences the recheck for the rest of
+ * the session. A non-retryable install failure is separately excluded:
+ * handover stays locked until the next process, so a check must not replace
+ * its recovery guidance.
+ */
+const RECHECKABLE_PHASES: ReadonlySet<UpdatePhase> = new Set([
+  "hidden",
+  "check-failed",
+  "available",
+  "download-failed",
+  "install-failed",
+  "relaunch-failed",
+]);
+
+function checkResultOf(result: PendingUpdate | UpdateUnsupported | null): UpdateCheckResult {
+  return result === UPDATE_UNSUPPORTED ? "unsupported" : result === null ? "current" : "available";
+}
+
 function boundedNotes(notes: string | null): string {
   if (notes === null) {
     return "";
@@ -162,6 +190,11 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       try {
         const result = await deps.check();
         consecutiveCheckFailures = 0;
+        if (!RECHECKABLE_PHASES.has(view.value.phase)) {
+          // The user pressed Update while this check was in flight. Applying
+          // it now would pull the banner back to `available` mid-download.
+          return checkResultOf(result);
+        }
         if (result === UPDATE_UNSUPPORTED) {
           update = null;
           view.value = HIDDEN_VIEW;
@@ -173,6 +206,11 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       } catch (error: unknown) {
         deps.report("Update check failed", error);
         consecutiveCheckFailures += 1;
+        if (view.value.phase === "available" || !RECHECKABLE_PHASES.has(view.value.phase)) {
+          // A dropped connection says nothing about the update already found;
+          // keep it on screen rather than take it back.
+          return "failed";
+        }
         update = null;
         view.value =
           consecutiveCheckFailures >= CHECK_FAILURE_THRESHOLD
@@ -185,26 +223,6 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
     });
     return checkOperation;
   };
-
-  /**
-   * Phases the timer may check from.
-   *
-   * The four it excludes are an update the user is mid-way through — on screen
-   * to install, downloading, or installing — where a check could replace the
-   * very version being acted on, and discard a file already on disk. Failed
-   * phases are included on purpose: nothing in the UI returns the view
-   * to `hidden`, so treating them as "busy" would mean one dropped connection
-   * during a download silences the recheck for the rest of the session. A
-   * non-retryable install failure is separately excluded: handover stays locked
-   * until the next process, so a check must not replace its recovery guidance.
-   */
-  const RECHECKABLE_PHASES: ReadonlySet<UpdatePhase> = new Set([
-    "hidden",
-    "check-failed",
-    "download-failed",
-    "install-failed",
-    "relaunch-failed",
-  ]);
 
   let recheckTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -291,9 +309,27 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
   const checkNow = (): Promise<UpdateCheckResult> =>
     view.value.installRetryable === false
       ? Promise.resolve("failed")
-      : view.value.phase === "hidden" || view.value.phase === "check-failed"
+      : view.value.phase === "hidden" ||
+          view.value.phase === "check-failed" ||
+          view.value.phase === "available"
         ? checkForAvailableUpdate()
         : Promise.resolve("available");
+
+  /**
+   * The newest update at the moment of the press. The check that surfaced the
+   * banner can be hours old; downloading its answer installs a release that is
+   * already superseded. Anything but a fresh find keeps the surfaced update:
+   * the download itself is the honest place for a broken feed to fail.
+   */
+  const latestUpdate = async (surfaced: PendingUpdate): Promise<PendingUpdate> => {
+    try {
+      const result = await deps.check();
+      return result === null || result === UPDATE_UNSUPPORTED ? surfaced : result;
+    } catch (error: unknown) {
+      deps.report("Update recheck before download failed", error);
+      return surfaced;
+    }
+  };
 
   const download = (): Promise<void> =>
     singleFlight(async () => {
@@ -304,12 +340,15 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
         return;
       }
       view.value = updateView(update, "downloading");
+      const target = await latestUpdate(update);
+      update = target;
+      view.value = updateView(target, "downloading");
       try {
-        await update.download();
-        view.value = updateView(update, "downloaded");
+        await target.download();
+        view.value = updateView(target, "downloaded");
       } catch (error: unknown) {
         deps.report("Update download failed", error);
-        view.value = updateView(update, "download-failed");
+        view.value = updateView(target, "download-failed");
       }
     });
 
