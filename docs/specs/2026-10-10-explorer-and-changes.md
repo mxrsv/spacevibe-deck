@@ -48,7 +48,11 @@ read-only towards git and never types into a pane on the user's behalf.
    slice 1's code: (A) a Files / Changes switch in the Explorer's header, (B) a collapsible
    Changes section above the tree, (C) a "changed only" filter on the tree itself. Picking C
    rewords decision 1 (no git markers on tree rows) and the "filter-in-tree" exclusion under
-   [Out of scope](#out-of-scope).
+   [Out of scope](#out-of-scope). **Answered 2026-10-10: A**, the Files / Changes switch (owner,
+   after the specimens in the gallery's `changes specimens` section). Turned down: B (a second
+   action-bearing row and two scroll regions in a 360px column) and C (rewords decision 1 and
+   would break DL-21.8 if its on state were painted). The DL-19.9 / DL-19.7 / DL-21.1 text for A
+   waits for the owner's approval before the UI lands.
 9. **Delivery runs as two lanes in parallel** (owner, 2026-10-10); see
    [Delivery slices](#delivery-slices).
 
@@ -157,9 +161,9 @@ seams and needs its own cross-boundary verification.
 ## Open decisions
 
 Answered 2026-10-10: the refresh trigger (decision 7), running `git status` (decision 6) and
-how the list's form is chosen (decision 8).
+the list's form (decision 8, variant A).
 
-1. **The list's form (decision 8).** Picked from the three specimens at eye review.
+1. **The list's form (decision 8).** Closed 2026-10-10: A, a Files / Changes switch in the Explorer's head.
 2. **Watching the checkout recursively (CHG3).** The current watcher is non-recursive by design
    ([watch.ts](../../electron/fs/watch.ts): "nothing here needs it"). Near-real-time Changes
    needs one recursive watch on the checkout's root, held only while the list is shown and the
