@@ -8,6 +8,7 @@
     "generate:menu:check": "tsx scripts/generate-menu.ts --check",
     "lint": "oxlint && prettier --check .",
     "postinstall": "node scripts/fix-spawn-helper-permissions.mjs",
+    "prepare": "git config core.hooksPath .githooks",
     "verify:windows-bundle": "node scripts/verify-windows-bundle.mjs",
     "test:updater-manifest": "node --test scripts/verify-updater-manifest.test.mjs",
     "predev": "npm run generate:menu",

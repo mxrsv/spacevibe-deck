@@ -1,0 +1,55 @@
+#!/bin/sh
+# The fast slice of CI, run before a push instead of after it: lint over the
+# changed files (not the tree, which may hold another session's work), the policy
+# suites that read stylesheets and docs from disk (`scripts/`, `src/styles/`),
+# and the test file beside every changed source file. Main went red on 46 of
+# 92 pushes between 2026-09-09 and 2026-10-09, almost all of them a test or a
+# ledger nobody ran before pushing. Not the full suite — that takes minutes and
+# stays CI's job. `vitest --changed` would pick related tests by import graph,
+# but it dies on EISDIR resolving `electron/` in this repo, hence the sibling
+# lookup. Prose-only pushes skip it, as CI's paths-ignore does.
+# Installed by `npm install` (the `prepare` script). Emergency bypass:
+# `git push --no-verify`.
+set -eu
+
+zero=0000000000000000000000000000000000000000
+changed=""
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  base="$remote_sha"
+  if [ "$base" = "$zero" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+    base=origin/main
+  fi
+  changed="$changed
+$(git diff --name-only --diff-filter=d "$base" "$local_sha")"
+done
+
+code=$(printf '%s\n' "$changed" | grep -vE '^$|^docs/|^marketing/|\.md$' || true)
+[ -z "$code" ] && exit 0
+
+files=""
+sources=""
+tests=""
+for file in $code; do
+  [ -f "$file" ] || continue
+  files="$files $file"
+  case "$file" in
+    *.ts | *.tsx | *.js | *.mjs | *.cjs) sources="$sources $file" ;;
+  esac
+  case "$file" in
+    *.test.ts | *.test.tsx) tests="$tests $file" ;;
+    *.ts | *.tsx)
+      for candidate in "${file%.*}.test.ts" "${file%.*}.test.tsx"; do
+        [ -f "$candidate" ] && tests="$tests $candidate"
+      done
+      ;;
+  esac
+done
+
+echo "pre-push: lint, policy suites and tests beside the changed files"
+# shellcheck disable=SC2086 # word splitting is the point: one argument per path
+[ -z "$sources" ] || npx oxlint --quiet $sources
+# shellcheck disable=SC2086
+[ -z "$files" ] || npx prettier --check --ignore-unknown $files
+# shellcheck disable=SC2086
+npm test -- scripts/ src/styles/ $tests

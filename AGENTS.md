@@ -88,8 +88,13 @@ turned down and why — a fork nobody can reconstruct is a decision that will be
 | `npm run build:landing`       | landing production build                                                                                                                                                |
 | `npm run video:render`        | render marketing video from DOM stage                                                                                                                                   |
 
-Standing rule in this repo: gates run only when asked. A change reported without them says so.
-Manual native acceptance, real-device upgrade checks, and Windows install/update checks run
+**Main stays green (owner, 2026-10-09).** Before pushing a code change, run the tests beside
+the files you changed, lint them, and run `scripts/` and `src/styles/` — the policy suites that
+read stylesheets and docs and fail when a ledger falls behind. The
+[`pre-push`](.githooks/pre-push) hook runs exactly that set, installed by `npm install`; do not
+bypass it with `--no-verify` to land a red change. A test your change breaks gets updated in
+the same commit. The full suite, `npm run build` and `electron:build` stay CI's job and run
+locally only when asked; a change reported without them says so. Manual native acceptance, real-device upgrade checks, and Windows install/update checks run
 only when explicitly requested; they are not prerequisites for release completion or issue
 closure. Report checks actually performed without treating omitted checks as successful.
 
