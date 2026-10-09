@@ -34,6 +34,7 @@ import type { FileSurfaceController } from "../file-surface-controller";
 import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
 import { chevronForRow, iconForRow } from "./file-icons";
 import { LoadError } from "../../ui/controls/load-error";
+import { useRevealActiveDocument } from "./use-reveal-active-document";
 
 export interface FileTreeViewProps {
   readonly controller: FileSurfaceController;
@@ -77,6 +78,16 @@ export function FileTreeView(props: FileTreeViewProps) {
 
   const focusedIndex = resolveFocusIndex(rows, focusedPath, lastIndexRef.current);
   lastIndexRef.current = focusedIndex;
+
+  // The row of the document on the stage (DL-19.10). Its reveal never takes
+  // focus, so it needs none of the keyboard machinery below.
+  const markedPath = useRevealActiveDocument({
+    controller,
+    workspacePath,
+    containerRef,
+    rowHeight: ROW_HEIGHT,
+    onScrolled: setScrollTop,
+  });
 
   // The root listing is not loaded by anything else — without this the tree
   // stays empty forever the first time a workspace is shown.
@@ -308,6 +319,7 @@ export function FileTreeView(props: FileTreeViewProps) {
       {visible.map((row, offset) => {
         const index = startIndex + offset;
         const isRoot = row.path === workspacePath;
+        const isMarked = row.path === markedPath;
         return (
           <div
             key={row.path}
@@ -321,9 +333,10 @@ export function FileTreeView(props: FileTreeViewProps) {
             role="treeitem"
             aria-expanded={row.directory ? row.expanded : undefined}
             aria-level={row.depth + 1}
+            aria-selected={row.directory ? undefined : isMarked}
             tabIndex={index === focusedIndex ? 0 : -1}
             // DL-19: data rows are 22px, one fixed indent token per depth.
-            class={`file-tree__row${isRoot ? " is-root" : ""}`}
+            class={`file-tree__row${isRoot ? " is-root" : ""}${isMarked ? " is-active" : ""}`}
             style={{
               top: `${index * ROW_HEIGHT}px`,
               paddingLeft: `${8 + row.depth * 14}px`,

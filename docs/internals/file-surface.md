@@ -75,6 +75,14 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   directory without clearing the cache** — clearing destroys the map `visibleDirectories`
   reads, so only the root would reload. **Collapse All** empties `expanded`, leaves the root
   open, and is a controller operation because only the controller may call `refreshWatch()`.
+- **The active document is marked, not selected.** The row is derived from `activeFileTab`
+  while that tab belongs to the tree's workspace, so a terminal holding the stage marks
+  nothing. Revealing it is a request armed by a document change, a mount or hidden files
+  turning on, and spent when it finishes: [`tree-reveal.ts`](../../src/files/tree-reveal.ts)
+  names the next move from the loaded listings, the hook makes it through the controller,
+  and a later collapse or scroll stands. It matches the document against the *listed* entry
+  paths and never against the workspace path, because `list_dir` and ⌘+click paths are
+  realpath'd while the root key is not (a symlinked `/tmp` root on macOS).
 - **Creating goes out over [`create_entry`](../../electron/fs/create-entry.ts)**, an
   Electron-only channel: `open(…, "wx")` or a non-recursive `mkdir`, so it can never
   overwrite, a symlink included. Its name validator is one pure module **both processes

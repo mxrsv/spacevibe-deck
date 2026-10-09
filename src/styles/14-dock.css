@@ -257,6 +257,10 @@
   font-size: var(--type-body);
   cursor: pointer;
   user-select: none;
+  /* DL-20.1's 28px clause: the row is a control with a text label, so its
+     hover and its selection take the tab corner. Square, the selection would
+     be the one wash in the dock with no corner. */
+  border-radius: var(--radius-tab);
   transition: background var(--duration) var(--ease);
 }
 
@@ -274,14 +278,24 @@
   outline-offset: -2px;
 }
 
+/* DL-19.10: the document on the stage. DL-21.1's full wash, set after the
+   hover rule so a hovered selection stays selected. */
+.file-tree__row.is-active {
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+}
+
 .file-tree__chevron,
 .file-tree__icon {
   display: flex;
   flex-shrink: 0;
-  /* DL §8/§19's file-type icon rule: monochrome at --text-faint. Taking the
-     row's color when selected is deferred — this row has no persisted
-     selection state yet, only the roving keyboard focus above. */
+  /* DL §8/§19's file-type icon rule: monochrome at --text-faint, and the
+     marked row's icon takes its ink below. */
   color: var(--text-faint);
+}
+
+.file-tree__row.is-active .file-tree__icon {
+  color: var(--text-primary);
 }
 
 .file-tree__name {

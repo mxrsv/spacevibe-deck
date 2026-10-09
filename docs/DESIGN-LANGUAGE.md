@@ -763,6 +763,14 @@ covering it; the file explorer is the resident instance.
   glyph shows it (`EyeSlash` hidden, `Eye` shown), with no wash; its tooltip is the name
   alone.
   Why: the wash is DL-21.1's selection signifier, and a filter is not a selection.
+- **DL-19.10** The explorer marks the document on the stage. While a file tab holds the
+  stage, the row with that document's path carries DL-21.1's wash at `--radius-tab`
+  (DL-20.1's 28px clause; hover takes the same corner), its name and icon take
+  `--text-primary`, and it is `aria-selected`; DL-21.3's ring composes with it. When the
+  document changes, the tree opens the folders above it and scrolls only as far as the row
+  needs, never moving keyboard focus or the roving tab stop and never opening the dock. A
+  document outside the root, under an excluded name, or a dot-path while hidden files are off
+  marks nothing and changes no filter. While a terminal holds the stage no row is marked.
 
 ## 23. Action tooltips and the `More` menu
 

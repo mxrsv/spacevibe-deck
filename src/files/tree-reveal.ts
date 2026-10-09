@@ -27,8 +27,8 @@ export type RevealStep =
   /** The outermost closed ancestor. Never one already in `expanded`, which
    * `toggleDirectory` would collapse. */
   | { readonly kind: "expand"; readonly directory: string }
-  /** A listing the walk needs is not here yet. */
-  | { readonly kind: "wait"; readonly directory: string }
+  /** A listing the walk needs is on its way; ask again when it lands. */
+  | { readonly kind: "wait" }
   /** The tree cannot show this document, and nothing should change. */
   | { readonly kind: "none" };
 
@@ -73,9 +73,7 @@ export function nextRevealStep(state: RevealState): RevealStep {
       // Nothing is known below an unlisted ROOT, so nothing is opened for it
       // yet. Deeper down the path to `directory` is already verified, and
       // opening its closed ancestor is what loads the listing.
-      return directory === root
-        ? { kind: "wait", directory }
-        : (closed ?? { kind: "wait", directory });
+      return directory === root ? { kind: "wait" } : (closed ?? { kind: "wait" });
     }
     const entry = listing.find(
       (candidate) => isVisible(candidate, showHidden) && onPath(candidate.path, target),

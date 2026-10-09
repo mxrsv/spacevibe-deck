@@ -118,7 +118,6 @@ describe("nextRevealStep", () => {
     it("waits for an unlisted root rather than opening it blind", () => {
       expect(nextRevealStep(state({ target: DEEP, rootExpanded: false }))).toEqual({
         kind: "wait",
-        directory: ROOT,
       });
     });
 
@@ -150,7 +149,7 @@ describe("nextRevealStep", () => {
 
       expect(
         nextRevealStep(state({ target: DEEP, listings: map, expanded: new Set([`${REAL}/src`]) })),
-      ).toEqual({ kind: "wait", directory: `${REAL}/src` });
+      ).toEqual({ kind: "wait" });
     });
 
     it("gives up on an open folder whose listing failed", () => {
