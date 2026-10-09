@@ -85,9 +85,14 @@ Proposed flow: select a project/worktree, inspect its servers, then open or copy
 web URL. Offer focus of the originating Deck terminal only when its current ownership is
 known. External servers have no fabricated Deck terminal association.
 
-The preferred surface is a `Dev servers` section/tab in the existing side panel. A compact
-workspace popover is an alternative. Surface placement, workspace-versus-Space filtering,
-empty/error states and visual treatment must be settled in a mock before production UI work.
+**Owner decision, 2026-10-09: the surface is a popover** opened from a `Dev servers` chip on
+the stage strip, after comparing it with a side-panel tab in the gallery mock. The chip shows
+the running count for the active worktree and a live dot; the dock is not touched. The dot
+loops while a server runs, so DL-1.2 gained a third scoped exception at the owner's request
+(still dot under reduced motion). Built on `main` macOS-first; an unsupported host omits the
+chip. Workspace-versus-Space filtering, the row-action layout (one `Open` pill plus icons,
+an extension of DL-25.1 recorded as DL §36) and visual treatment were implemented from the
+gallery mock and still await the owner's eye-review of the running app.
 Status uses text as well as color, actions have accessible names and keyboard access, and
 the approved design stays within the existing design-language rules unless a rule change
 is explicitly approved.
@@ -178,9 +183,15 @@ of the repository. Browser-only preview and unit tests do not establish native a
 
 ## Open decisions before implementation
 
-1. **UI:** choose panel or popover, its filtering semantics and demo surface; approve a mock.
-2. **Platform rollout:** prove Windows external ownership or explicitly approve a macOS-first
-   rollout with a visible Windows limitation. External discovery remains part of the goal.
+1. **UI:** popover chosen 2026-10-09. Still open: filtering semantics (worktree / project / all,
+   following the rail) and the server row's action layout (DL §36 extends DL-25.1) are
+   implemented and await the owner's eye-review. An unsupported host omits the chip, and DL-1.2
+   was amended for the looping dot. A visible HTTP status token needs a status field in the core
+   row, which does not exist yet.
+2. **Platform rollout:** decided 2026-10-09 (owner): macOS-first. Windows reports discovery as
+   unavailable, with a visible limitation, until external ownership is proven on a real
+   Windows device; the delivery is not cross-platform acceptance (AC7). External discovery
+   remains part of the goal, and a Windows spike script exists in scratch only.
 3. **Process seam:** the core proposal uses feature-owned read-only native metadata without
    changing the process classifier, PTY ownership or quit protocol. Approve any departure
    that touches those R4 seams before implementation; optional PTY links are a later slice.
