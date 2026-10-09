@@ -246,6 +246,19 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("git_changes_watch carries the flat { root } payload on both sides", () => {
+    const sites = callSites.filter((site) => site.channel === "git_changes_watch");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["root"]);
+    }
+    const watchHandlers = handlers.filter((handler) => handler.channel === "git_changes_watch");
+    expect(watchHandlers.length).toBeGreaterThan(0);
+    for (const handler of watchHandlers) {
+      expect(handler.required).toEqual(["root"]);
+    }
+  });
+
   it("pty_kill_foreground carries the flat { id } payload on both sides", () => {
     // The Agent Board's Stop (spec §5.6, §11.6), pinned the way
     // `create_directory` above is: proof this generic scanner actually reaches

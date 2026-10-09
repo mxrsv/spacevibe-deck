@@ -9,7 +9,7 @@
  * The reply types mirror `electron/git/changes.ts`, which owns them; the two
  * sides are separate compilations, so the mirror is the contract (R6).
  */
-import { invoke } from "./bridge";
+import { invoke, listen, type UnlistenFn } from "./bridge";
 
 export const available: boolean =
   typeof globalThis !== "undefined" &&
@@ -52,4 +52,17 @@ export type ChangesReply = ChangesSnapshot | ChangesFailure;
 /** Never rejects on the main side: every failure is a typed reply. */
 export function readChanges(root: string): Promise<ChangesReply> {
   return invoke<ChangesReply>("git_changes", { root });
+}
+
+/**
+ * Replaces this window's one watched checkout; `null` releases it. Rejects for a
+ * root the host cannot resolve, like `watch_paths`.
+ */
+export function watchChanges(root: string | null): Promise<void> {
+  return invoke<void>("git_changes_watch", { root });
+}
+
+/** "Read again" for the watched checkout. The payload names the root only. */
+export function listenChanged(handler: (root: string) => void): Promise<UnlistenFn> {
+  return listen<{ readonly root: string }>("git:changed", (event) => handler(event.payload.root));
 }
