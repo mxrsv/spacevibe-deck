@@ -213,36 +213,36 @@ Add after DL-19.9:
 ## Tasks
 
 ### 1. Hidden-files toggle (feat(explorer))
-- [ ] `TreeRootActions` takes `showHidden` + `onToggleHidden` and renders H1; `FileTreeView` wires
+- [x] `TreeRootActions` takes `showHidden` + `onToggleHidden` and renders H1; `FileTreeView` wires
   it as `setShowHidden(ws, !showHidden)` then `controller.refreshTree(ws)`, restating the watch
   scope with zero controller lines. Same commit: the DL-19.9 text, `tree-root-actions.tsx:1-3`,
   `file-surface.md:71` ("four" → five, plus the toggle), H7's rewording; new comments cite DL only
   where R2 asks.
-- [ ] Tests: `tree-root-actions.test.tsx` — five labels in order, three without create;
+- [x] Tests: `tree-root-actions.test.tsx` — five labels in order, three without create;
   `aria-pressed` and glyph follow the prop; no chord; a press does not reach the row.
   `file-tree-view.test.tsx` — the flip shows/hides `.env`, never `.git`; Enter on the control does
   not toggle the root; `refreshTree` is called once.
 
 ### 2. Reveal model (feat(explorer))
-- [ ] New pure `src/files/tree-reveal.ts` (beside `tree-focus.ts`; task 3 imports it): the next
+- [x] New pure `src/files/tree-reveal.ts` (beside `tree-focus.ts`; task 3 imports it): the next
   step for a document path from listings, `expanded`, `rootExpanded`, `showHidden` and listing
   errors — `done`, `open root`, `expand <dir>`, `wait` or `none`. It walks the loaded listings
   level by level, taking the visible entry whose path equals the document or prefixes it followed
   by `/` or `\`, and never compares against `workspacePath`. Hidden, excluded, out-of-root and
   failed listings answer `none`.
-- [ ] `tree-reveal.test.ts`: root `/tmp/ws` with entries `/private/tmp/ws/...`; Windows
+- [x] `tree-reveal.test.ts`: root `/tmp/ws` with entries `/private/tmp/ws/...`; Windows
   separators; collapsed root; cached-but-collapsed and unlisted ancestors; dot-path with the filter
   off and on; `node_modules`; outside the root; an ancestor already in `expanded` is never
   returned (`toggleDirectory` toggles, so returning it would collapse it).
 
 ### 3. Mark and reveal in the tree (feat(explorer))
-- [ ] `FileTreeView` (or a small hook beside it) applies H3/H4: it keeps a reveal target and runs
+- [x] `FileTreeView` (or a small hook beside it) applies H3/H4: it keeps a reveal target and runs
   task 2's step through the existing `controller.toggleRoot`, `toggleDirectory` and
   `ensureListing`; on `done` it scrolls by index arithmetic as `:122-135` does — no `focus()`, no
   `pendingTreeFocus`, no `scrollIntoView`. The row gets `is-active` + `aria-selected`;
   `14-dock.css` gets the wash and H6's corner. Same commit: DL-19.10 and one "active document"
   line in `file-surface.md`'s Explorer section.
-- [ ] Tests (expansion needs a real `createFileSurfaceController` over a stub client, as the
+- [x] Tests (expansion needs a real `createFileSurfaceController` over a stub client, as the
   gallery section builds one; `fakeController`'s `vi.fn` never expands): the mark follows
   `activeFileTab` and clears for a terminal; a deep document expands its ancestors and its row
   lands in the window; `document.activeElement` and the roving `tabIndex` row are unchanged; a
@@ -250,6 +250,7 @@ Add after DL-19.9:
   on reveals a dot-path.
 
 ### 4. E2E gate (no commit; evidence in scratch)
+_Run in the cloud session under Xvfb on Linux; partly complete, see the Handoff. Boxes stay open because the ⌘+click flows are unrun._
 - [ ] `npm run electron:build` in the worktree; a scratch wrapper calls
   `app.setPath("userData", <scratch>)` before requiring `dist-electron/electron/main.cjs`, driven by
   `playwright-core` `_electron.launch`; never `electron:dev` or the owner's userData. Seed
@@ -267,6 +268,7 @@ Add after DL-19.9:
   with the reason, never replaced by a store poke. Screenshots stay in scratch.
 
 ### 5. Merge (on `main`, per H10)
+_Superseded by the Cloud run paragraph: the branch is pushed and a PR is opened; the owner merges._
 - [ ] Rebase on `main` (rerun the gates if it moved) and fast-forward `main`. Commit the
   `CHANGELOG.md` Unreleased entry, spec row 3 (`Done`, date, commits) and the DL ledger row on
   `main` with `git commit -- <paths>`. If H10 (a): push from the slice's worktree with HEAD
@@ -278,3 +280,75 @@ Add after DL-19.9:
 - 2026-10-10: drafted at `8d96f827`; the DL tiers rewrite merged mid-draft, so DL citations, the
   DL text and the peer facts were re-mapped at `da657e63`. No code, no worktree. Waiting on owner:
   H1–H10.
+- 2026-10-09 (cloud session, branch `feat/explorer-reveal`, from `origin/main` `e3b269a9`):
+  **tasks 1–3 built and unit-verified; task 4 partly run; the slice is not `Done`.** The DL
+  citations needed no re-mapping (`git log da657e63..main -- docs/DESIGN-LANGUAGE.md` was empty).
+  - **Commits:** `ad1b94b` toggle, `a5d289b` reveal model, `fe10abd` mark and reveal, plus the
+    docs/ledger/handoff commit that carries this paragraph.
+  - **Hard stops:** none hit. `file-surface-controller.ts` stays at 768 lines (H7's comment was
+    reworded in place); `app.tsx`, `terminal/**`, `electron/**`, `src-tauri/**` are untouched;
+    no dependency, action id, chord, settings key or IPC change. `npm install` rewrote
+    `package-lock.json` (npm dropped the `libc` fields); it was restored and is not in the diff.
+  - **Decided alone:**
+    - Glyphs `Eye` (shown) and `EyeSlash` (hidden), per H1; no wash class in either state.
+    - Hook `useRevealActiveDocument` in `src/files/ui/use-reveal-active-document.ts`, so
+      `FileTreeView` gains only ~25 lines for lane A to rebase over; model `nextRevealStep`.
+    - The model's `wait` carries no directory (the controller already lists on expand).
+    - The mark is `activeFileTab` while that path is tabbed in the tree's workspace (`hasTab`);
+      `aria-selected` is set on file rows only (`true`/`false`), omitted on folders and the root.
+    - A reveal that finishes while the container reports `clientHeight` 0 (jsdom, unmounted) is
+      spent without scrolling rather than left armed, so a later collapse can never be undone.
+    - Reveal tests live in a new `file-tree-reveal.test.tsx` over a real controller and an
+      in-memory client; the toggle tests extend `file-tree-view.test.tsx` and
+      `tree-root-actions.test.tsx`. The gallery section draws no marked row (its note says
+      "five actions"); nothing there needed a marked specimen.
+    - `docs/user/getting-started.md` "Files" got one short paragraph (eye button, the mark and
+      the reveal).
+    - The DL ledger row is committed on the branch, not left for `main`, because the eye review
+      it tracks is owed whatever the merge order. Spec row 3 and `CHANGELOG.md` are untouched.
+  - **Gates run:** `oxlint --quiet` and `prettier --check` on the changed files; `npm test --
+    scripts/ src/styles/ src/files src/ui/dock` (52 files, 756 tests passed, 1 skipped);
+    `tsc --noEmit`; `npm run build` and `npm run electron:build` (both exit 0, run for the E2E
+    gate; `tsc` caught one `act()` return type in my own test, fixed). **Unrun:** the full
+    `npm test`.
+  - **E2E gate (Electron, Xvfb, `playwright-core`, scratch `userData`, fixture
+    `/tmp/deck-reveal-fixture`, plain shell pane):**
+    1. five controls at the 360px floor: **pass** — 17×17 each, cluster 89px, row 360×22, no row
+       overflow, window `scrollX` 0.
+    2. toggle by pointer and by keyboard (Enter, then Space): **pass** — `.env`/`.github` come and
+       go, `.git`/`node_modules` never; the root's `aria-expanded` is unchanged by a keypress.
+    3. tree click marks the row: **pass** — `is-active`, `aria-selected="true"`, 6px corner,
+       `--text-primary` name and icon.
+    4. ⌘+click an `echo`ed path: **unrun.** `hasPrimaryModifier` returns `false` on Linux
+       (`src/lib/platform.ts`), so no modifier activates a terminal path link here; Ctrl, Meta and
+       Alt+click on the printed path each opened nothing. **Substitute, not the same flow:** a
+       strip-chip click on `deep.ts` with `src`/`a`/`b` collapsed and 200 rows above them
+       (4′ pass: ancestors expanded, row marked and in view, tree scrolled 3846px,
+       `document.activeElement` in the editor; 4″ pass: the roving tab stop stays where the last
+       click put it). It drives the same reveal through a real gesture, not a store write, but it
+       does **not** cover the ⌘+click path or `workspace_for_path`.
+    5. strip chips move the mark, the terminal clears it: **pass.**
+    6. ⌘+click with the dock closed, then open it: **unrun** for the same reason. Substitute:
+       activate a file by chip with the dock closed, then open the dock: **pass** (tree mounts on
+       open, README marked and in view, focus stays on the rail button).
+    7. dot-path with the filter off: **pass** — collapsed tree, filter off: no mark, no
+       expansion, no status text, filter still off; turning it on reveals and marks `ci.yml`.
+       (Reached by opening it with the filter on, since the xterm link is unavailable.)
+    8. creating `.x` under the filter: **pass** — filter flips on with the status line, `.x` is
+       marked and focused (create's own focus request), the control turns it off again.
+    - **Owed before merge:** a macOS (or Windows, Ctrl+click) walk of flows 4 and 6 as written,
+      including a symlinked `/tmp` root, which Linux cannot exercise (the spelling case is covered
+      by unit tests only).
+  - **Screenshots** (floor, hidden on, mark, reveal, dot-path, create) went to the owner through the
+    session, not into the repo.
+  - **Things the owner may want to know:**
+    - The root row, and so the five controls, scrolls out of the window with the tree and is
+      unmounted; after a long reveal the toggle is a scroll away. That is the existing DL-19.9
+      shape, now met more often.
+    - A reveal scrolls the least it can, so a row off-screen lands flush against the bottom edge
+      (see the reveal screenshot). Centering it would be a different DL-19.10 sentence.
+    - The model trusts a cached listing of a collapsed folder; a file created there while it was
+      closed is not found until the folder is refreshed (`none`, nothing opens). Expanding that
+      folder by hand shows the same stale list.
+    - Path links cannot be activated on Linux at all; unrelated to this slice and untouched.
+  - **Next:** lane A rebases on this branch. Slice 4 (EXP3) is the next in this lane.

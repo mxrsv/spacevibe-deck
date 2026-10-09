@@ -104,6 +104,10 @@ expands it again.
 Open the file explorer (**⌘⇧B**) to browse the workspace. A file opens as a document on the
 stage: an editor with **⌘S** (Windows: **Ctrl+S**) to save. Markdown opens rendered; **⌘⇧V** flips it to source.
 
+The eye button on the folder's row shows or hides dot-files such as `.env` and `.github`;
+`.git` and `node_modules` stay hidden. The row of the document on the stage is highlighted,
+and switching documents opens the folders above it and scrolls it into view.
+
 **⌘+click** (Windows: **Ctrl+click**) on a path an agent prints opens it. A path inside a
 workspace this window has open lands in Deck's own editor at that line; anything else goes to
 the app chosen in [Settings → Links & editor](settings.md#links--editor). On Windows only
