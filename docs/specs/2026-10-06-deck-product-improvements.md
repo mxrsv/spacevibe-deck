@@ -223,17 +223,9 @@ References: [shell integration](../../src/ui/app.tsx),
 ### 9. Read-only Changes
 
 Show checkout-scoped changed files and diffs before considering comments sent
-to agents or Git mutations. Reconcile this narrower first slice with the existing proposal.
-
-- **CHANGES1:** The chosen checkout and comparison scope are visible; rename,
-  binary, oversized and failed reads have explicit representations.
-- **CHANGES2:** Git reads are bounded and errors are visible. Large repositories
-  must not trigger unbounded background work.
-- **CHANGES3:** No stage/commit/push/merge or implicit prompt submission. Sending
-  feedback to an agent requires a separately agreed target and delivery behavior.
-
-Related proposal: [Changes panel](../plans/2026-09-24-changes-panel.md).
-Host contracts, refresh policy and visual-rule decisions remain open.
+to agents or Git mutations. Since 2026-10-10 the requirements, CHANGES1–3 included,
+are owned by [Explorer and Changes](2026-10-10-explorer-and-changes.md), together
+with the Explorer improvements queued beside them.
 
 ### 10. Work recipes on demand
 
@@ -284,8 +276,9 @@ ranked delivery outcomes and require separate scope decisions before implementat
 - Agree launch prompt delivery and supported providers separately from launch styling.
 - Reconcile overlapping launcher, Spaces, Settings and Changes records before delivery;
   this document does not supersede their approved decisions.
-- Agree Changes comparison/refresh limits, recipe depth and native convenience scope
-  only when those candidates are selected.
+- Agree recipe depth and native convenience scope only when those candidates are
+  selected. Changes limits are open decisions in
+  [Explorer and Changes](2026-10-10-explorer-and-changes.md#open-decisions).
 - Establish local/cloud ownership, permissions and lifecycle semantics before Routines.
 
 Terminal performance remains a separate scope in
