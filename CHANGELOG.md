@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Send feedback from inside Deck.** **Send Feedback…** in the app menu, or
+  the Feedback row in Settings → About, opens the
+  [feedback page](src/lib/feedback-url.ts) in your browser with your Deck
+  version and system already filled in.
+
 ## 2.8.0
 
 This update lets a split terminal start an agent from its header, lifts the
