@@ -72,6 +72,9 @@ export const messages = {
     feedbackDraftSaved: "Draft saved on this device",
     feedbackDraftRefused: "This browser will not keep a draft. Copy your text before you leave.",
     feedbackBoardSoon: "The board appears once sending opens.",
+    demoLoopTitle: "See it in ten seconds.",
+    demoLoopAlt:
+      "Silent looping demo of Deck: the rail marks one of three agents as needing you, ⌘⇧A jumps to its pane, and ⌘E expands it.",
     panelRestoreTitle: "Close it. Reopen it. Nothing lost the thread.",
     panelRestoreBody:
       "Deck brings back every tab and pane, then types each agent's own resume command — claude --resume, codex resume, opencode -s. The conversation carries on from where it stopped.",
@@ -208,6 +211,9 @@ export const messages = {
     feedbackDraftRefused:
       "Trình duyệt này không cho lưu nháp. Hãy chép lại nội dung trước khi rời trang.",
     feedbackBoardSoon: "Bảng sẽ hiện khi mở gửi góp ý.",
+    demoLoopTitle: "Xem nó chạy trong mười giây.",
+    demoLoopAlt:
+      "Video lặp không tiếng về Deck: rail đánh dấu một trong ba agent đang cần bạn, ⌘⇧A nhảy tới pane của nó, ⌘E phóng to pane đó.",
     panelRestoreTitle: "Đóng rồi mở lại. Không mất mạch nào.",
     panelRestoreBody:
       "Deck dựng lại mọi tab và pane, rồi tự gõ đúng lệnh resume của từng agent — claude --resume, codex resume, opencode -s. Cuộc hội thoại chạy tiếp từ chỗ nó dừng.",

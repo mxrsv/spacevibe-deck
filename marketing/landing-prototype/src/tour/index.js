@@ -1,5 +1,5 @@
 /**
- * The six feature panels, the closing band and the footer.
+ * The muted demo loop, the feature panels, the closing band and the footer.
  *
  * Until 2026-08-19 this was a scroll tour: one ".a-appwin" pinned at viewport
  * centre, morphing through three chapters driven by scroll progress over a
@@ -12,6 +12,7 @@
 
 import { BRAND } from "../../../stage/brand.js";
 import { BRAND_ICON_SRC } from "../appwin.js";
+import { mountDemoLoop, renderDemoLoop } from "../demo-loop.js";
 import { FEATURES_ID } from "../directions/a.js";
 import { PROOF_TERM_STEPS } from "./stage-states.js";
 import { RELEASES_URL, REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
@@ -369,6 +370,7 @@ export function renderTour(copy) {
   return {
     markup: `
       <section class="tour">
+        ${renderDemoLoop(copy)}
         <div class="panels" id="${FEATURES_ID}">
           ${PANELS.map((panel, index) => renderPanel(panel, index, copy)).join("")}
         </div>
@@ -389,8 +391,10 @@ export function renderTour(copy) {
 
       const disposeReveal = mountFinaleReveal(section);
       const disposeProofTerm = mountProofTerm(section, reduceMotion);
+      const disposeDemoLoop = mountDemoLoop(section);
 
       return () => {
+        disposeDemoLoop();
         disposeProofTerm();
         disposeReveal();
       };

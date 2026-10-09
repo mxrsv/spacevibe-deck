@@ -1,0 +1,55 @@
+/* The muted product loop under the hero. The window-sized frame is the page's
+   own media treatment: the hairline, radius and cast shadow are the ones the
+   panel stages and the hero window already wear, so the video reads as one more
+   object standing on the page rather than a pasted player. */
+
+.demo-loop {
+  position: relative;
+  z-index: 1;
+  width: var(--frame-width);
+  margin-inline: auto;
+  padding: clamp(2.4rem, 5vh, 4rem) var(--frame-pad) 0;
+}
+
+/* One quiet line, centred over the frame. The video carries its own headlines,
+   so this is a label, not a heading to compete with them. */
+.demo-loop__title {
+  margin: 0 0 clamp(0.85rem, 1.6vw, 1.25rem);
+  color: var(--t-ink-soft);
+  font: 500 clamp(1rem, 1.5vw, 1.2rem) / 1.3 var(--a-font-display);
+  letter-spacing: -0.012em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* The ratio is reserved on the frame, not read off the video, so nothing moves
+   when the poster or the first frame arrives. 64rem caps it on desktop; below
+   that it takes the frame column. */
+.demo-loop__frame {
+  width: 100%;
+  max-width: 64rem;
+  aspect-ratio: 16 / 9;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 16px;
+  /* The loop fades in and out of this backdrop, so the frame is the same colour
+     before the poster paints. */
+  background: var(--t-surface-0);
+  box-shadow:
+    0 1.8rem 3.6rem -0.9rem rgb(0 0 0 / 62%),
+    0 0.5rem 1.2rem -0.5rem rgb(0 0 0 / 45%);
+}
+
+.demo-loop__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 47.5rem) {
+  .demo-loop__frame {
+    border-radius: 10px;
+  }
+}
