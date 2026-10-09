@@ -28,7 +28,7 @@ import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { NOW, tab } from "../attention-list-fixtures";
-import { row, snapshot, worktree } from "./dev-server-fixtures";
+import { SYMLINKED, row, snapshot, symlinkedScans, worktree } from "./dev-server-fixtures";
 import { DevServersStripChip } from "./dev-servers-strip-chip";
 
 const AVAILABLE: DevServerCapability = { available: true };
@@ -125,6 +125,25 @@ describe("DevServersStripChip", () => {
     await flush();
     expect(chip()?.textContent).toBe("2");
     expect(chip()?.getAttribute("aria-label")).toContain("2 running");
+  });
+
+  it("counts a server in a project opened through a symlink", async () => {
+    tabViews.value = [tab(1, SYMLINKED.tab)];
+    repositoryScans.value = symlinkedScans();
+    await mount(
+      fakeHost(AVAILABLE, [
+        row({ displayRoot: SYMLINKED.primary, workspacePath: SYMLINKED.primary }),
+        row({
+          id: "wt",
+          port: 3000,
+          displayRoot: SYMLINKED.linked,
+          workspacePath: SYMLINKED.linked,
+        }),
+      ]),
+    );
+
+    expect(chip()?.textContent).toBe("1");
+    expect(chip()?.getAttribute("aria-label")).toBe("Dev servers — 1 running");
   });
 
   it("is absent where the host cannot discover servers", async () => {

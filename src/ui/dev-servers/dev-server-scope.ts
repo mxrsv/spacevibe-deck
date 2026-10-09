@@ -3,10 +3,12 @@
  * watch, the checkout and repository the rail's active tab belongs to, and
  * whether a row falls inside the chosen scope. Pure.
  *
- * Paths are compared as the renderer spells them (`displayRoot`), never as the
- * core's canonical `workspacePath`, which is realpath'd and so differs from the
- * active tab's path wherever a symlink sits above it (`/var` against
- * `/private/var`).
+ * Two spellings of one folder meet here. A tab's path is as the user opened it
+ * (`/tmp/p/alpha`); git, and so every scanned worktree, reports the realpath
+ * (`/private/tmp/p/alpha`), and so does the core's `workspacePath`. `displayRoot` is
+ * whichever spelling the core kept when it collapsed the two. A row therefore matches a
+ * checkout on its `displayRoot` or on its `workspacePath` (git's namespace), and the
+ * subject's checkout is named in git's spelling whenever the scan knows it.
  */
 import type { DevServerRow } from "../../dev-servers/dev-server-types";
 import { normalizeWorkspacePath, workspaceLabel } from "../../lib/workspace-label";
@@ -61,10 +63,12 @@ export interface DevServerSubject {
   readonly branch: string | null;
   /** The checkout the active path belongs to; the path itself when unscanned. */
   readonly worktree: string | null;
-  readonly scan: Extract<RepositoryScan, { kind: "repository" }> | null;
+  readonly scan: ScanOfRepository | null;
 }
 
 export type ScanMap = ReadonlyMap<string, RepositoryScan>;
+
+type ScanOfRepository = Extract<RepositoryScan, { kind: "repository" }>;
 
 /** A prunable worktree's folder is gone, so watching it only reports "not found". */
 function worktreePaths(
@@ -84,13 +88,28 @@ export function repositoryScan(
   return scan?.kind === "repository" ? scan : null;
 }
 
+/**
+ * The checkout holding the tab's folder, in git's spelling. When a symlink above the tab
+ * makes `path` match no worktree, `scan.root` (the toplevel git resolved for that very
+ * folder) names it, so the tab's checkout is never taken for a different one.
+ */
+function checkoutOf(scan: ScanOfRepository, path: string): string {
+  const paths = worktreePaths(scan);
+  const found = worktreeForPath(paths, path);
+  if (found !== null) {
+    return found;
+  }
+  const root = normalizeWorkspacePath(scan.root);
+  return root !== null && paths.includes(root) ? root : path;
+}
+
 export function subjectFor(activePath: string | null, scans: ScanMap): DevServerSubject {
   const path = activePath === null ? null : normalizeWorkspacePath(activePath);
   if (path === null) {
     return { path: null, name: "No folder", branch: null, worktree: null, scan: null };
   }
   const scan = repositoryScan(scans, path);
-  const worktree = scan === null ? path : (worktreeForPath(worktreePaths(scan), path) ?? path);
+  const worktree = scan === null ? path : checkoutOf(scan, path);
   const entry = scan?.worktrees.find((item) => normalizeWorkspacePath(item.path) === worktree);
   // The project is the repository's primary checkout, as the rail names it. `scan.root`
   // is only the folder the scan ran in, so a scan taken from a linked worktree would
@@ -109,14 +128,40 @@ export function subjectFor(activePath: string | null, scans: ScanMap): DevServer
  * The checkout a row's root sits in. Without a scan the subject's own folder is the
  * only checkout there is, and a root below it (a package) belongs to it.
  */
-function worktreeOfRow(root: string, subject: DevServerSubject): string {
+function worktreeOfRow(row: DevServerRow, root: string, subject: DevServerSubject): string {
   const checkouts =
     subject.scan !== null
       ? worktreePaths(subject.scan)
       : subject.worktree === null
         ? []
         : [subject.worktree];
-  return worktreeForPath(checkouts, root) ?? root;
+  return (
+    worktreeForPath(checkouts, normalizeWorkspacePath(row.workspacePath) ?? row.workspacePath) ??
+    worktreeForPath(checkouts, root) ??
+    root
+  );
+}
+
+/**
+ * The scan that holds a row's folder: the one taken in that folder, else the one whose
+ * worktree list names it (by either spelling), since scans are keyed by the tab's spelling.
+ */
+export function scanOwning(
+  row: DevServerRow,
+  root: string,
+  scans: ScanMap,
+): ScanOfRepository | null {
+  const direct = repositoryScan(scans, root);
+  if (direct !== null) {
+    return direct;
+  }
+  const canonical = normalizeWorkspacePath(row.workspacePath) ?? row.workspacePath;
+  for (const scan of scans.values()) {
+    if (scan.kind === "repository" && worktreePaths(scan).includes(canonical)) {
+      return scan;
+    }
+  }
+  return null;
 }
 
 export function inScope(
@@ -130,13 +175,13 @@ export function inScope(
   }
   const root = normalizeWorkspacePath(row.displayRoot) ?? row.displayRoot;
   if (scope === "worktree") {
-    return subject.worktree !== null && worktreeOfRow(root, subject) === subject.worktree;
+    return subject.worktree !== null && worktreeOfRow(row, root, subject) === subject.worktree;
   }
   if (subject.scan === null) {
-    return subject.worktree !== null && worktreeOfRow(root, subject) === subject.worktree;
+    return subject.worktree !== null && worktreeOfRow(row, root, subject) === subject.worktree;
   }
   return (
-    worktreeForPath(worktreePaths(subject.scan), root) !== null ||
-    repositoryScan(scans, root)?.key === subject.scan.key
+    scanOwning(row, root, scans)?.key === subject.scan.key ||
+    worktreeForPath(worktreePaths(subject.scan), root) !== null
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../../repositories/repository-client";
-import { deckScans, row, worktree } from "./dev-server-fixtures";
+import { SYMLINKED, deckScans, row, symlinkedScans, worktree } from "./dev-server-fixtures";
 import { devServerRoots, inScope, subjectFor } from "./dev-server-scope";
 
 const scans = deckScans();
@@ -175,5 +175,68 @@ describe("inScope", () => {
   it("includes a package root below the checkout", () => {
     const pkg = row({ displayRoot: "/w/deck/packages/web" });
     expect(inScope(pkg, "worktree", subject, scans)).toBe(true);
+  });
+});
+
+describe("a project opened through a symlink", () => {
+  const linkedScans = symlinkedScans();
+  const viaTab = row({
+    id: "tab",
+    displayRoot: SYMLINKED.tab,
+    workspacePath: SYMLINKED.primary,
+  });
+  const viaGit = row({
+    id: "git",
+    displayRoot: SYMLINKED.primary,
+    workspacePath: SYMLINKED.primary,
+  });
+  const linked = row({ id: "wt", displayRoot: SYMLINKED.linked, workspacePath: SYMLINKED.linked });
+  const linkedViaTab = row({
+    id: "wt-tab",
+    displayRoot: "/tmp/p/alpha-wt",
+    workspacePath: SYMLINKED.linked,
+  });
+  const ids = (
+    scope: "worktree" | "project" | "all",
+    from = subjectFor(SYMLINKED.tab, linkedScans),
+  ) =>
+    [viaTab, viaGit, linked, linkedViaTab]
+      .filter((r) => inScope(r, scope, from, linkedScans))
+      .map((r) => r.id);
+
+  it("names the tab's checkout in git's spelling, project and branch intact", () => {
+    expect(subjectFor(SYMLINKED.tab, linkedScans)).toMatchObject({
+      name: "alpha",
+      branch: "main",
+      worktree: SYMLINKED.primary,
+    });
+  });
+
+  it("keeps the primary's rows in This worktree whichever spelling the core kept", () => {
+    expect(ids("worktree")).toEqual(["tab", "git"]);
+  });
+
+  it("never lets the linked worktree's rows into the primary's worktree, in either spelling", () => {
+    expect(ids("worktree")).not.toContain("wt");
+    expect(ids("worktree")).not.toContain("wt-tab");
+    expect(ids("project")).toEqual(["tab", "git", "wt", "wt-tab"]);
+  });
+
+  it("reads a tab inside a subfolder as its checkout", () => {
+    const sub = subjectFor(
+      `${SYMLINKED.tab}/src`,
+      new Map([[`${SYMLINKED.tab}/src`, [...linkedScans.values()][0]]]),
+    );
+    expect(sub.worktree).toBe(SYMLINKED.primary);
+  });
+
+  it("scopes the linked worktree's own tab to its rows only", () => {
+    const [scan] = [...linkedScans.values()];
+    const own = subjectFor(
+      "/tmp/p/alpha-wt",
+      new Map([["/tmp/p/alpha-wt", { ...scan, root: SYMLINKED.linked }]]),
+    );
+    expect(own).toMatchObject({ worktree: SYMLINKED.linked, branch: "wt", name: "alpha" });
+    expect(ids("worktree", own)).toEqual(["wt", "wt-tab"]);
   });
 });

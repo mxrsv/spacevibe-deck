@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildView, chipSummary, identificationText, scanLine } from "./dev-server-model";
 import { subjectFor } from "./dev-server-scope";
-import { NOW, deckScans, row, snapshot } from "./dev-server-fixtures";
+import { NOW, SYMLINKED, deckScans, row, snapshot, symlinkedScans } from "./dev-server-fixtures";
 
 const MINUTE = 60_000;
 const scans = deckScans();
@@ -167,6 +167,28 @@ describe("chipSummary", () => {
     expect(
       chipSummary(snapshot([], { completeness: "failed" }), false, subject, scans).scanFailed,
     ).toBe(true);
+  });
+});
+
+describe("a project opened through a symlink", () => {
+  const linkedScans = symlinkedScans();
+  const from = subjectFor(SYMLINKED.tab, linkedScans);
+  const rows = [
+    row({ id: "tab", displayRoot: SYMLINKED.tab, workspacePath: SYMLINKED.primary }),
+    row({ id: "wt", displayRoot: SYMLINKED.linked, workspacePath: SYMLINKED.linked, port: 3000 }),
+  ];
+
+  it("counts the checkout's running server on the chip", () => {
+    expect(chipSummary(snapshot(rows), false, from, linkedScans)).toEqual({
+      running: 1,
+      scanFailed: false,
+    });
+  });
+
+  it("labels each project-scope row with its own branch, not its folder name", () => {
+    const view = buildView(snapshot(rows), "project", from, linkedScans, NOW);
+
+    expect(view.items.map((item) => item.detail).sort()).toEqual(["alpha · main", "alpha · wt"]);
   });
 });
 

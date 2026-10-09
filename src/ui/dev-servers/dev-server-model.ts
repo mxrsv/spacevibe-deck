@@ -18,7 +18,7 @@ import { normalizeWorkspacePath, workspaceLabel } from "../../lib/workspace-labe
 import { formatRelativeTime } from "../../lib/workspace-recents";
 import {
   inScope,
-  repositoryScan,
+  scanOwning,
   type DevServerScope,
   type DevServerSubject,
   type ScanMap,
@@ -131,8 +131,12 @@ function detailFor(row: DevServerRow, scope: DevServerScope, scans: ScanMap): st
     return null; // "a row's detail never restates the scope the surface states once" (DL-13.8)
   }
   const root = normalizeWorkspacePath(row.displayRoot) ?? row.displayRoot;
-  const scan = repositoryScan(scans, root);
-  const entry = scan?.worktrees.find((item) => normalizeWorkspacePath(item.path) === root);
+  const scan = scanOwning(row, root, scans);
+  const canonical = normalizeWorkspacePath(row.workspacePath);
+  const entry = scan?.worktrees.find((item) => {
+    const path = normalizeWorkspacePath(item.path);
+    return path === root || path === canonical;
+  });
   // The project is the primary checkout, as the rail names it; `scan.root` is only the
   // folder the scan ran in (same rule as `subjectFor`).
   const primary = scan?.worktrees.find((item) => !item.bare);

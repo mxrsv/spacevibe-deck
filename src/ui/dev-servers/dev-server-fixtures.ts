@@ -62,6 +62,26 @@ export function deckScans(): ReadonlyMap<string, RepositoryScan> {
   ]);
 }
 
+/**
+ * A project opened through a symlink: the tab says `/tmp/p/alpha`, but git (and so the
+ * scan) reports the realpath `/private/tmp/p/alpha`. A linked worktree sits beside it.
+ */
+export const SYMLINKED = {
+  tab: "/tmp/p/alpha",
+  primary: "/private/tmp/p/alpha",
+  linked: "/private/tmp/p/alpha-wt",
+} as const;
+
+export function symlinkedScans(): ReadonlyMap<string, RepositoryScan> {
+  const scan: RepositoryScan = {
+    kind: "repository",
+    key: `${SYMLINKED.primary}/.git`,
+    root: SYMLINKED.primary,
+    worktrees: [worktree(SYMLINKED.primary, "main"), worktree(SYMLINKED.linked, "wt")],
+  };
+  return new Map<string, RepositoryScan>([[SYMLINKED.tab, scan]]);
+}
+
 /** The view item the active checkout would list for one row. */
 export function itemOf(over: Partial<DevServerRow> = {}): DevServerItem {
   const scans = deckScans();
