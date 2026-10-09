@@ -21,9 +21,27 @@ Owner decisions in this conversation:
    when they belong to a workspace project. External launch is not an optional extension.
 3. No implementation, app launch, process termination or deployment is authorized by this
    planning request. The positive response to the research does not approve an unseen UI.
+4. The owner has assigned mock UI creation to other sessions and requested a core-code plan
+   separately. Core delivery must not depend on choosing panel versus popover. UI review and
+   owner eye-review remain required before production UI integration; core verification is
+   not acceptance of the complete user-facing feature.
 
 The requirements and acceptance criteria below propose a precise interpretation of that
 scope for review. They are not claims of shipped behavior or approval of every design choice.
+
+## Delivery boundaries
+
+The current planning slice is the nonvisual core: native listener discovery, canonical project
+attribution, honest lifecycle/protocol state, bounded shared observation, Electron IPC and a
+renderer-facing client/store. It must cover servers started outside Deck without requiring a
+terminal association. Reading PTY ownership or collecting terminal output is not required for
+this core slice; optional terminal navigation belongs to later integration.
+
+Other sessions own gallery mock work. This slice does not change gallery components, production
+UI, dock/menu configuration, browser behavior or the workspace catalog. A later integration
+owner supplies existing workspace roots to the core and connects the eye-approved UI.
+Acceptance remains split: prove AC1–AC4/AC6–AC7 at the core/IPC boundary, then complete AC5 and
+the user-flow part of AC8 with the approved UI. Native core checks do not mark those UI criteria done.
 
 ## Proposed behavior
 
@@ -118,8 +136,10 @@ unseen endpoints do not produce invented stopped records.
 ### AC4 — Protocol and address correctness
 
 HTTP, HTTPS, IPv4, IPv6, wildcard listeners, non-HTTP listeners, redirects, HTTP errors and
-TLS errors keep their distinct meanings. Open actions target the verified endpoint and
-never an unrelated process that acquired its port. Probe failures do not imply stopped.
+TLS errors keep their distinct meanings. Open actions revalidate the selected instance and
+reject observed port takeovers instead of knowingly opening a different process. This is an
+immediate pre-action check, not an atomic guarantee against a process changing after a URL
+is handed to a separate browser. Probe failures do not imply stopped.
 
 ### AC5 — Approved user flow
 
@@ -161,8 +181,9 @@ of the repository. Browser-only preview and unit tests do not establish native a
 1. **UI:** choose panel or popover, its filtering semantics and demo surface; approve a mock.
 2. **Platform rollout:** prove Windows external ownership or explicitly approve a macOS-first
    rollout with a visible Windows limitation. External discovery remains part of the goal.
-3. **Process seam:** approve the plan's exact use of process identity, PTY snapshots and
-   ownership checks under the repository's R4/fork rules before touching those seams.
+3. **Process seam:** the core proposal uses feature-owned read-only native metadata without
+   changing the process classifier, PTY ownership or quit protocol. Approve any departure
+   that touches those R4 seams before implementation; optional PTY links are a later slice.
 4. **Delivery contract:** approve the concrete implementation slice and its verification;
    this planning task does not authorize production changes.
 
