@@ -145,7 +145,7 @@ merges first; lane A rebases on it. The file-surface controller has 32 lines lef
 
 | Slice                                | Requirements | Host                          | Plan | Status      |
 | ------------------------------------ | ------------ | ----------------------------- | ---- | ----------- |
-| 1. Git status channel + Changes list | CHG1–5       | Electron; hidden on Tauri     | [changes-list](../plans/2026-10-10-changes-list.md) | Approved 2026-10-10, runs in the cloud |
+| 1. Git status channel + Changes list | CHG1–5       | Electron; hidden on Tauri     | [changes-list](../plans/2026-10-10-changes-list.md) | Built 2026-10-10, draft PR open; not Done until the owner has merged it and the working-tree watch walks are run on macOS |
 | 2. Diff column                       | DIFF1–5      | Electron                      | —    | Not started |
 | 3. Hidden-files toggle + reveal      | EXP1–2       | Electron                      | [explorer-hidden-and-reveal](../plans/2026-10-10-explorer-hidden-and-reveal.md) | Approved 2026-10-10, runs in the cloud |
 | 4. Row context menu                  | EXP3         | Electron                      | —    | Not started |
@@ -160,15 +160,17 @@ seams and needs its own cross-boundary verification.
 
 ## Open decisions
 
-Answered 2026-10-10: the refresh trigger (decision 7), running `git status` (decision 6) and
-the list's form (decision 8, variant A).
+Answered 2026-10-10: the refresh trigger (decision 7), running `git status` (decision 6), the
+list's form (decision 8, variant A) and watching the checkout (open decision 2).
 
 1. **The list's form (decision 8).** Closed 2026-10-10: A, a Files / Changes switch in the Explorer's head.
-2. **Watching the checkout recursively (CHG3).** The current watcher is non-recursive by design
-   ([watch.ts](../../electron/fs/watch.ts): "nothing here needs it"). Near-real-time Changes
-   needs one recursive watch on the checkout's root, held only while the list is shown and the
-   window is visible, with Node's built-in `fs.watch` and no watcher library. Recommended: yes,
-   confirmed with slice 1's plan.
+2. **Watching the checkout recursively (CHG3).** Closed 2026-10-10: yes, with one addition. The
+   current watcher is non-recursive by design ([watch.ts](../../electron/fs/watch.ts): "nothing
+   here needs it"). Near-real-time Changes holds one recursive watch on the checkout's root on
+   macOS and Windows, only while the list is shown and the window is visible, with Node's
+   built-in `fs.watch` and no watcher library. A linked worktree keeps its index and HEAD
+   outside its root, so a second, non-recursive watch on the git directory covers them, and is
+   the only watch on Linux. See [file-surface.md](../internals/file-surface.md#changes-list).
 3. **Diff colours.** DL-3.2 reserves `--green` for success and `--red` for danger. Recommended:
    a scoped amendment that lets added and removed lines and counts use them. Every tool surveyed
    colours a diff, and a diff without colour is slow to read.
