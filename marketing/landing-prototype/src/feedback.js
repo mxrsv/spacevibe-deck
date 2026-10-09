@@ -1,3 +1,4 @@
+import { appContextLine, withAppContext } from "./feedback-app-context.js";
 import { createFeedbackAuth } from "./feedback-auth.js";
 import { createFeedbackImages } from "./feedback-images.js";
 import "../styles/tokens.css";
@@ -266,6 +267,17 @@ async function start() {
     draftId = draft.id || draftId;
     fillForm(form, draft);
     renderDraftStatus(root, "saved", messages[locale]);
+  }
+
+  const contextLine = appContextLine(params);
+  if (contextLine) {
+    const body = form.querySelector('[name="body"]');
+    body.value = withAppContext(body.value, contextLine);
+    // Keep `lang`; drop only what was consumed, so a shared link carries no build.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("v");
+    url.searchParams.delete("os");
+    window.history.replaceState(window.history.state, "", url);
   }
 
   updateFormMeters(form);
