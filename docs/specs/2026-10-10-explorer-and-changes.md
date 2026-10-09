@@ -141,9 +141,9 @@ merges first; lane A rebases on it. The file-surface controller has 32 lines lef
 
 | Slice                                | Requirements | Host                          | Plan | Status      |
 | ------------------------------------ | ------------ | ----------------------------- | ---- | ----------- |
-| 1. Git status channel + Changes list | CHG1–5       | Electron; hidden on Tauri     | [changes-list](../plans/2026-10-10-changes-list.md) | Draft plan |
+| 1. Git status channel + Changes list | CHG1–5       | Electron; hidden on Tauri     | [changes-list](../plans/2026-10-10-changes-list.md) | Approved 2026-10-10, runs in the cloud |
 | 2. Diff column                       | DIFF1–5      | Electron                      | —    | Not started |
-| 3. Hidden-files toggle + reveal      | EXP1–2       | Electron                      | [explorer-hidden-and-reveal](../plans/2026-10-10-explorer-hidden-and-reveal.md) | Draft plan |
+| 3. Hidden-files toggle + reveal      | EXP1–2       | Electron                      | [explorer-hidden-and-reveal](../plans/2026-10-10-explorer-hidden-and-reveal.md) | Approved 2026-10-10, runs in the cloud |
 | 4. Row context menu                  | EXP3         | Electron                      | —    | Not started |
 | 5. Quick open                        | EXP4         | Electron                      | —    | Not started |
 | 6. Move to Trash and Rename          | EXP5         | Electron                      | —    | Not started |
