@@ -237,6 +237,8 @@ export interface TerminalManager {
   applySettings(next: Settings): void;
   serializeLayout(): SerializedNode | null;
   paneIds(): number[];
+  /** Whether this manager still holds the pane in its live pane map (O(1)). */
+  hasPane(id: number): boolean;
   activePaneId(): number | null;
   paneCount(): number;
   /** Root element of a pane (overlay anchor for the agent picker). */

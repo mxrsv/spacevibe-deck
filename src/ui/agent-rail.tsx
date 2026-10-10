@@ -1,7 +1,7 @@
 import { CaretRight, X } from "@phosphor-icons/react";
 import { untracked, useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
-import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import {
@@ -167,31 +167,48 @@ function WorktreeCardRail(props: AgentRailProps) {
   // a mutated one (C1), so the signal actually notifies.
   const collapsedGroupKeys = useSignal<ReadonlySet<string>>(new Set());
 
-  const view = buildAgentRail({
-    tabs,
-    activeIndex: activeTabIndex.value,
-    scans: repositoryScans.value,
-    workspaceHistoryPaths: workspacesData.value.recents.map((recent) => recent.path),
-    // Tier 3 (spec §5): the newest turn each agent pane has said, kept by
-    // `session-tail-store`. Empty on Tauri and in the browser preview, where
-    // the `session_tail` channel does not exist — the model then falls back
-    // to the custom-name line it drew before this.
-    tails: paneTails.value,
-    // Per-pane model string (e.g. "claude-sonnet-5"), written alongside tails
-    // by the session-tail IPC answer. Empty on Tauri and in the browser
-    // preview — the card omits the pill when the string is absent.
-    // Do not surface `paneModels` here: its pane→session pairing is ranked by
-    // cwd/mtime and then pinned, not causally bound to the pane. Gallery/model
-    // callers may still inject trusted model facts directly into the pure view.
-    // DL-27.28: an unnamed row's first line is its session's first prompt,
-    // joined on the contract-layer session id only.
-    titles: sessionTitlesFor(tabs, sessionEntries.value),
-    // The order the user dragged these projects into (DL-27.20). App-level,
-    // so a drag in one window reorders the rail in every window.
-    railOrder: settings.value.railOrder,
-    // Read once per render and injected; the model never calls the clock.
-    now: Date.now(),
-  });
+  // The rail model is the Sidebar's only list. Preact re-renders this
+  // component for reasons that touch none of the model's inputs (focus flips,
+  // group folds, the sidebar's own resize), and `session-tail-store` now only
+  // republishes a tail map when its content actually moved — so memoize the
+  // pure build on its inputs' identities instead of running the O(rows)
+  // filter/sort/format pass on every render. A genuinely new tail or view set
+  // still invalidates the memo, exactly like the old inline build.
+  const activeIndex = activeTabIndex.value;
+  const scans = repositoryScans.value;
+  const recents = workspacesData.value.recents;
+  const tails = paneTails.value;
+  const sessions = sessionEntries.value;
+  const railOrder = settings.value.railOrder;
+  const view = useMemo(
+    () =>
+      buildAgentRail({
+        tabs,
+        activeIndex,
+        scans,
+        workspaceHistoryPaths: recents.map((recent) => recent.path),
+        // Tier 3 (spec §5): the newest turn each agent pane has said, kept by
+        // `session-tail-store`. Empty on Tauri and in the browser preview, where
+        // the `session_tail` channel does not exist — the model then falls back
+        // to the custom-name line it drew before this.
+        tails,
+        // Per-pane model string (e.g. "claude-sonnet-5"), written alongside tails
+        // by the session-tail IPC answer. Empty on Tauri and in the browser
+        // preview — the card omits the pill when the string is absent.
+        // Do not surface `paneModels` here: its pane→session pairing is ranked by
+        // cwd/mtime and then pinned, not causally bound to the pane. Gallery/model
+        // callers may still inject trusted model facts directly into the pure view.
+        // DL-27.28: an unnamed row's first line is its session's first prompt,
+        // joined on the contract-layer session id only.
+        titles: sessionTitlesFor(tabs, sessions),
+        // The order the user dragged these projects into (DL-27.20). App-level,
+        // so a drag in one window reorders the rail in every window.
+        railOrder,
+        // Read once per memo run and injected; the model never calls the clock.
+        now: Date.now(),
+      }),
+    [tabs, activeIndex, scans, recents, tails, sessions, railOrder],
+  );
 
   // The stream the drag controller answers about. It is installed ONCE — a
   // controller re-created on every render would be disposed mid-drag, since a

@@ -3306,10 +3306,14 @@ export function createTabManager(
         const before = activity.working(id);
         const transitions = activity.noteOutputEvents(id, data);
         const workingChanged = activity.working(id) !== before;
-        for (const tab of tabs) {
-          tab.manager.handleOutput(id, data);
-        }
-        const owner = tabs.find((t) => t.manager.paneIds().includes(id));
+        // A pane id lives in exactly one manager's live pane map, so the owner
+        // is the first tab that still holds it — an O(1) map lookup per tab
+        // instead of the old per-tab `paneIds()` scan, which rebuilt a fresh
+        // leaf array from each tab's split tree on every output chunk. Only
+        // the owner writes: `handleOutput` ignores unowned ids anyway, so the
+        // previous loop over every tab was O(tabs) no-ops plus one real write.
+        const owner = tabs.find((t) => t.manager.hasPane(id));
+        owner?.manager.handleOutput(id, data);
         // Feed every ordered transition into the tracker, in order — the
         // process gate drops them when the pane isn't a recognized agent, so
         // never pre-filter here (the tracker owns the gate). A non-null return
