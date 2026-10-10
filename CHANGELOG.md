@@ -7,6 +7,14 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **See what the checkout changed.** The file explorer has a **Files / Changes** switch:
+  Changes lists what changed since the last commit, with the branch, each file's status and
+  its added and removed lines, and refreshes by itself. Click a file to open it. Electron
+  only.
+- **Show hidden files, and see where you are.** An eye button on the file explorer's folder
+  row shows or hides dot-files such as `.env` and `.github` (`.git` and `node_modules` stay
+  hidden). The row of the document you are reading is now highlighted, and switching
+  documents opens the folders above it and scrolls it into view.
 - **See your dev servers from the strip (macOS).** A **Dev servers** chip
   [beside the tabs](src/ui/dev-servers/dev-servers-strip-chip.tsx) counts the
   servers running for the project you are in and opens a popover listing them,
