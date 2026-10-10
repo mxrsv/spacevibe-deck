@@ -227,10 +227,9 @@ export function flush(): Promise<void> {
 }
 
 /**
- * Fake `AgentNotifier` — records every `maybeNotify` call verbatim instead
- * of applying the real enabled/focus/dedupe policy, so a test can assert
- * exactly what TabManager routed through the Task 23 choke point without
- * that policy masking it (and without ever touching the real Tauri API).
+ * Fake `AgentNotifier` — records latch transitions after the production
+ * kind-based dedupe, while leaving enabled/focus/revision policy out of the
+ * test and never touching the real Tauri API.
  */
 export function fakeNotifierSpy(): {
   notifier: AgentNotifier;
@@ -238,8 +237,18 @@ export function fakeNotifierSpy(): {
   prune: ReturnType<typeof vi.fn<(live: readonly number[]) => void>>;
 } {
   const maybeNotify = vi.fn<(n: AttentionNotification) => void>();
-  const notifyLatchTransition = vi.fn<(n: AttentionNotification) => void>((n) => maybeNotify(n));
-  const prune = vi.fn<(live: readonly number[]) => void>();
+  const lastAttentionKind = new Map<number, AttentionNotification["kind"]>();
+  const notifyLatchTransition = vi.fn<(n: AttentionNotification) => void>((n) => {
+    const previous = lastAttentionKind.get(n.paneId) ?? "none";
+    lastAttentionKind.set(n.paneId, n.kind);
+    if (n.kind !== "none" && n.kind !== previous) maybeNotify(n);
+  });
+  const prune = vi.fn<(live: readonly number[]) => void>((live) => {
+    const keep = new Set(live);
+    for (const paneId of lastAttentionKind.keys()) {
+      if (!keep.has(paneId)) lastAttentionKind.delete(paneId);
+    }
+  });
   return { notifier: { maybeNotify, notifyLatchTransition, prune }, maybeNotify, prune };
 }
 
