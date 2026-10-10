@@ -26,6 +26,15 @@ export function WorkspaceIcon({
     let cancelled = false;
     void (async () => {
       try {
+        const electron =
+          (globalThis as { __deckHost?: unknown }).__deckHost !== undefined &&
+          (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ === undefined;
+        if (electron) {
+          const authorized = await invoke<boolean>("activate_image_workspace_root", {
+            root: path,
+          });
+          if (!authorized) return;
+        }
         const result = await invoke<unknown>("scan_workspace_favicon", { dir: path });
         if (!cancelled) favicon.value = validateLogoDataUrl(result);
       } catch (error) {
