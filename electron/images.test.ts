@@ -54,8 +54,12 @@ describe("readWorkspaceImageAsDataUrl", () => {
     writeFileSync(oversized, Buffer.alloc(1_048_577));
     mkdirSync(directory);
 
-    await expect(readWorkspaceImageAsDataUrl(oversized, [root])).rejects.toThrow();
-    await expect(readWorkspaceImageAsDataUrl(directory, [root])).rejects.toThrow();
+    await expect(readWorkspaceImageAsDataUrl(oversized, [root])).rejects.toThrow(
+      "Couldn't read the image file",
+    );
+    await expect(readWorkspaceImageAsDataUrl(directory, [root])).rejects.toThrow(
+      "Couldn't read the image file",
+    );
   });
 });
 
