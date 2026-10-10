@@ -53,6 +53,14 @@ describe("PrivacySection", () => {
     expect(text).toContain("update checks and downloads ran or failed");
     expect(text).toContain("update installs it started");
     expect(text.toLowerCase()).not.toContain("anonymous");
+
+    expect(text).toContain("Packaged Electron builds");
+    expect(text).toContain("send crash and error reports to Sentry automatically");
+    expect(text).toContain("with no opt-out");
+    expect(text).toContain("error messages, stack traces, Deck source lines");
+    expect(text).toContain("home-directory portion of paths with ~");
+    expect(text).toContain("Breadcrumbs, local variables, native crash dumps");
+    expect(text).toContain("Tauri, browser preview and unpackaged builds do not send");
   });
 
   it("offers no control at all, in every consent phase", () => {
