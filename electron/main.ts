@@ -53,6 +53,7 @@ import { MainDirtyRegistry } from "./dirty-registry";
 import { createMenuState } from "./menu-state";
 import { registerSettingsIpc } from "./settings-ipc";
 import { registerServices } from "./ipc/register-services";
+import { resolveRoot } from "./fs/path-guard";
 import { registerThemes } from "./ipc/register-themes";
 import { registerExplorer } from "./ipc/register-explorer";
 import { registerStore } from "./ipc/register-store";
@@ -99,6 +100,9 @@ const quitFlight = new QuitFlight();
 // at the same time, and each guards only its own panes.
 const closeFlight = new CloseFlight();
 const stores = new StoreRegistry(app.getPath("userData"));
+const MAX_IMAGE_ROOTS_PER_WINDOW = 64;
+const imageRootsBySender = new Map<number, Set<string>>();
+const activeImageRootsBySender = new Map<number, Set<string>>();
 
 /**
  * Emit to one window by label. Returns false when there was no live window to
@@ -310,6 +314,8 @@ function createWindow(label: string): BrowserWindow {
     // resolvable so the native view can be detached from its content view.
     browserPanels.close(label);
     windows.delete(label);
+    imageRootsBySender.delete(senderId);
+    activeImageRootsBySender.delete(senderId);
     // Same reason as `render-process-gone`: closing a window while one of its
     // Shortcuts rows is recording must not leave the app without accelerators.
     menuState.setRecording(senderId, false);
@@ -407,7 +413,23 @@ ipcMain.handle(CHANNELS.ptyCwds, (_event, payload: unknown) => {
 });
 
 // -------------------------------------------------------------- Services
-registerServices({ labelOf, setRecording: menuState.setRecording });
+registerServices({
+  labelOf,
+  setRecording: menuState.setRecording,
+  imageRootsFor: (senderId) =>
+    [...(activeImageRootsBySender.get(senderId) ?? [])].filter(
+      (root) => resolveRoot(root) === root,
+    ),
+  activateImageRootFor: (senderId, root) => {
+    if (typeof root !== "string") return false;
+    const canonical = resolveRoot(root);
+    if (canonical === null || !imageRootsBySender.get(senderId)?.has(canonical)) return false;
+    const active = activeImageRootsBySender.get(senderId) ?? new Set<string>();
+    active.add(canonical);
+    activeImageRootsBySender.set(senderId, active);
+    return true;
+  },
+});
 
 // ------------------------------------------------- Agent-signal adapters
 registerAgentSignals({
@@ -566,7 +588,22 @@ const updater = registerUpdater({
 
 registerStore({ stores, windows, emitTo });
 
-registerDialogs();
+registerDialogs({
+  grantWorkspaceRoot: (senderId, root) => {
+    const roots = imageRootsBySender.get(senderId) ?? new Set<string>();
+    roots.add(root);
+    while (roots.size > MAX_IMAGE_ROOTS_PER_WINDOW) {
+      const oldest = roots.values().next().value;
+      if (oldest === undefined) break;
+      roots.delete(oldest);
+      activeImageRootsBySender.get(senderId)?.delete(oldest);
+    }
+    imageRootsBySender.set(senderId, roots);
+    const active = activeImageRootsBySender.get(senderId) ?? new Set<string>();
+    active.add(root);
+    activeImageRootsBySender.set(senderId, active);
+  },
+});
 
 registerBrowser({ labelOf, browserPanels });
 

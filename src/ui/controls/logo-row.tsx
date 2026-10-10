@@ -1,7 +1,9 @@
 import { ArrowCounterClockwise, DotsThree } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
+import { invoke } from "../../host/bridge";
 import { open } from "../../host/dialog-host";
-import { clearLogo, logoDataUrl, setLogoFromPath } from "../../settings/logo-store";
+import { available as electronAvailable } from "../../host/external-apps-host";
+import { clearLogo, logoDataUrl, setLogoFromDataUrl } from "../../settings/logo-store";
 import { ConfigRow } from "./config-row";
 import { DeckIcon, ROW_ICON } from "./deck-icon";
 
@@ -15,16 +17,21 @@ export function LogoRow() {
 
   async function choose(): Promise<void> {
     try {
-      const picked = await open({
-        multiple: false,
-        directory: false,
-        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] }],
-      });
-      if (typeof picked !== "string") {
+      const dataUrl = electronAvailable
+        ? await invoke<string | null>("pick_image_as_data_url", {})
+        : await (async () => {
+            const picked = await open({
+              filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] }],
+            });
+            return picked === null
+              ? null
+              : invoke<string>("read_image_as_data_url", { path: picked });
+          })();
+      if (typeof dataUrl !== "string") {
         return;
       }
       error.value = null;
-      await setLogoFromPath(picked);
+      await setLogoFromDataUrl(dataUrl);
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : "Couldn't set the logo";
     }

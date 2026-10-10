@@ -1,16 +1,9 @@
 /**
  * Reading a local image the rendered view wants to draw (design 2026-08-23 §6).
  *
- * Two existing channels, **no new IPC** — which is what keeps design §9's
- * "no contract in `scripts/electron-ipc-contract.test.ts` moves" true:
- *
- *  - `workspace_for_path` answers CONTAINMENT, main-process side, through
- *    `resolveInsideRoot` — the explorer's own guard. The renderer's
- *    `classifyImage` already refused anything that resolves outside the root,
- *    but the renderer is not the trust boundary, and this is the same
- *    main-process answer a ⌘+click on an agent-printed path gets.
- *  - `read_image_as_data_url` carries the bytes, with its own extension
- *    allowlist and 1 MB cap.
+ * Electron authorizes reads against roots selected through its native folder
+ * picker, then applies the explorer's realpath containment guard. Tauri keeps
+ * its frozen legacy command behind the same renderer containment preflight.
  *
  * `read_file` — which design §6 named — cannot serve this: `looksBinary`
  * refuses any file with a NUL byte in its first 8 KiB, which is every PNG,
@@ -22,7 +15,7 @@
  * `classifyImage` turned it into a placeholder before the parse finished.
  */
 import { invoke } from "../host/bridge";
-import { workspaceForPath } from "../host/external-apps-host";
+import { available as electronAvailable, workspaceForPath } from "../host/external-apps-host";
 
 export interface MarkdownImageSource {
   /** A data URL for `path`, or null when it may not or cannot be shown. */
@@ -31,14 +24,22 @@ export interface MarkdownImageSource {
 
 export const defaultMarkdownImageSource: MarkdownImageSource = {
   async read(path, workspaceRoot) {
-    const root = await workspaceForPath(path, [workspaceRoot]);
-    if (root === null) {
-      // Either the host declined containment, or there is no host at all
-      // (Tauri, where this surface does not exist). Both mean "do not draw".
-      return null;
+    if (!electronAvailable) {
+      const root = await workspaceForPath(path, [workspaceRoot]);
+      if (root === null) return null;
+      try {
+        const dataUrl = await invoke<string>("read_image_as_data_url", { path });
+        return typeof dataUrl === "string" && dataUrl.length > 0 ? dataUrl : null;
+      } catch {
+        return null;
+      }
     }
     try {
-      const dataUrl = await invoke<string>("read_image_as_data_url", { path });
+      const authorized = await invoke<boolean>("activate_image_workspace_root", {
+        root: workspaceRoot,
+      });
+      if (!authorized) return null;
+      const dataUrl = await invoke<string>("read_workspace_image_as_data_url", { path });
       return typeof dataUrl === "string" && dataUrl.length > 0 ? dataUrl : null;
     } catch {
       // An unreadable or over-cap image leaves the alt text standing, which is

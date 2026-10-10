@@ -171,7 +171,8 @@ const SHARED: Readonly<Record<string, CannedHandler>> = {
     ],
   }),
   scan_workspace_favicon: () => null,
-  read_image_as_data_url: () => null,
+  read_workspace_image_as_data_url: () => null,
+  pick_image_as_data_url: () => null,
   pty_info: () => null,
 };
 

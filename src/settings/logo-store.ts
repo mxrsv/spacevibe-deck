@@ -1,5 +1,4 @@
 import { signal } from "@preact/signals";
-import { invoke } from "../host/bridge";
 import { Store } from "../host/store-host";
 import { reportPersistError } from "../chrome/events";
 
@@ -65,16 +64,9 @@ function persist(dataUrl: string): void {
 
 /**
  * Swallow an image file into the app as a data URL and set it as the logo.
- * Throws a human-readable message (from Rust) on an unsupported / too-large /
- * unreadable file so the caller can show it inline; the logo is left unchanged.
+ * Set the data URL returned by the host's native image picker.
  */
-export async function setLogoFromPath(path: string): Promise<void> {
-  let dataUrl: string;
-  try {
-    dataUrl = await invoke<string>("read_image_as_data_url", { path });
-  } catch (err: unknown) {
-    throw new Error(typeof err === "string" ? err : "Couldn't read the image", { cause: err });
-  }
+export async function setLogoFromDataUrl(dataUrl: string): Promise<void> {
   logoDataUrl.value = dataUrl;
   persist(dataUrl);
 }

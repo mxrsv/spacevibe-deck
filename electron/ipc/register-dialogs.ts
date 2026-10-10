@@ -3,6 +3,8 @@
  * to the window that asked.
  */
 import { BrowserWindow, dialog, ipcMain } from "electron";
+import fs from "node:fs/promises";
+import { resolveRoot } from "../fs/path-guard";
 
 interface DialogPayload {
   readonly message: string;
@@ -26,7 +28,9 @@ interface OpenDialogPayload {
  * the plain button pair macOS draws. Electron documents the flag as
  * Windows-only, so macOS is unaffected.
  */
-export function registerDialogs(): void {
+export function registerDialogs(deps: {
+  readonly grantWorkspaceRoot: (senderId: number, root: string) => void;
+}): void {
   ipcMain.handle("dialog_ask", async (event, payload) => {
     const { message, title, kind, okLabel, cancelLabel } = payload as DialogPayload;
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -63,6 +67,19 @@ export function registerDialogs(): void {
         ...(multiple === true ? (["multiSelections"] as const) : []),
       ],
     });
+    if (!result.canceled && directory === true) {
+      const root = result.filePaths[0];
+      if (root !== undefined) {
+        try {
+          const canonical = resolveRoot(root);
+          if (canonical !== null && (await fs.stat(canonical)).isDirectory()) {
+            deps.grantWorkspaceRoot(event.sender.id, canonical);
+          }
+        } catch {
+          // An unreadable selection is not an authorization grant.
+        }
+      }
+    }
     return result.canceled ? null : (result.filePaths[0] ?? null);
   });
 }

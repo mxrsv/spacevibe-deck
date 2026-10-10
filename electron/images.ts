@@ -6,7 +6,9 @@
  * 1 MB cap is why: a data URL is stored and re-read in full every time.
  */
 import fs from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
 import path from "node:path";
+import { assertInsideRoot } from "./fs/path-guard";
 
 const MAX_LOGO_BYTES = 1_048_576; // 1 MB
 
@@ -31,26 +33,69 @@ function mimeFor(target: string): string | null {
 }
 
 /** Errors are human-readable because they reach the settings UI verbatim. */
-export async function readImageAsDataUrl(target: string): Promise<string> {
+async function readImageAtResolvedPath(target: string): Promise<string> {
   const mime = mimeFor(target);
   if (mime === null) {
     throw new Error("Unsupported image type — use .png, .jpg, .svg or .webp");
   }
-  let stat;
+  const safeFlags =
+    process.platform === "win32" ? 0 : fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK;
+  let handle;
   try {
-    stat = await fs.stat(target);
+    handle = await fs.open(target, fsConstants.O_RDONLY | safeFlags);
+    const stat = await handle.stat();
+    if (!stat.isFile()) throw new Error("Not a regular file");
+    if (stat.size > MAX_LOGO_BYTES) throw new Error("Image is too large (max 1 MB)");
+    const bytes = Buffer.alloc(MAX_LOGO_BYTES + 1);
+    let offset = 0;
+    while (offset < bytes.length) {
+      // oxlint-disable-next-line no-await-in-loop -- sequential reads share one bounded handle.
+      const { bytesRead } = await handle.read(bytes, offset, bytes.length - offset, null);
+      if (bytesRead === 0) break;
+      offset += bytesRead;
+    }
+    if (offset > MAX_LOGO_BYTES) throw new Error("Image is too large (max 1 MB)");
+    return `data:${mime};base64,${bytes.subarray(0, offset).toString("base64")}`;
   } catch {
     throw new Error("Couldn't read the image file");
+  } finally {
+    await handle?.close().catch(() => undefined);
   }
-  if (stat.size > MAX_LOGO_BYTES) {
-    throw new Error("Image is too large (max 1 MB)");
+}
+
+/** Read an image only when its path resolves inside a main-authorized root. */
+export async function readWorkspaceImageAsDataUrl(
+  target: string,
+  roots: readonly string[],
+): Promise<string> {
+  for (const root of roots) {
+    let canonical: string;
+    try {
+      canonical = assertInsideRoot(root, target);
+    } catch {
+      // Try another authorized root.
+      continue;
+    }
+    return readImageAtResolvedPath(canonical);
   }
-  try {
-    const bytes = await fs.readFile(target);
-    return `data:${mime};base64,${bytes.toString("base64")}`;
-  } catch {
-    throw new Error("Couldn't read the image file");
-  }
+  throw new Error("Image is outside an authorized workspace");
+}
+
+export async function pickImageAsDataUrl(
+  window?: import("electron").BrowserWindow,
+): Promise<string | null> {
+  const { dialog } = await import("electron");
+  const options: import("electron").OpenDialogOptions = {
+    properties: ["openFile"],
+    filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] }],
+  };
+  const result =
+    window === undefined
+      ? await dialog.showOpenDialog(options)
+      : await dialog.showOpenDialog(window, options);
+  return result.canceled || result.filePaths[0] === undefined
+    ? null
+    : readImageAtResolvedPath(await fs.realpath(result.filePaths[0]));
 }
 
 /** In-repo favicon locations, checked in order; the first that encodes wins. */
@@ -94,7 +139,7 @@ export async function scanWorkspaceFavicon(dir: string): Promise<string | null> 
       if (!(await fs.stat(resolved)).isFile()) {
         continue;
       }
-      return await readImageAsDataUrl(resolved);
+      return await readImageAtResolvedPath(resolved);
     } catch {
       // Missing or unreadable: try the next candidate.
     }

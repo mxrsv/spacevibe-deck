@@ -204,7 +204,7 @@ export type ImageTarget =
   /** Nothing is drawn but the alt text. */
   | { readonly kind: "dead" };
 
-/** Extensions `read_image_as_data_url` will encode. Mirrored from
+/** Extensions `read_workspace_image_as_data_url` will encode. Mirrored from
  * `electron/images.ts`'s `mimeFor`; anything else is dead rather than a
  * request main is going to refuse. */
 const IMAGE_EXTENSIONS: readonly string[] = [".png", ".jpg", ".jpeg", ".svg", ".webp", ".ico"];

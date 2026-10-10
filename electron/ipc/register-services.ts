@@ -5,7 +5,7 @@
  * Shortcuts row sends while recording a chord.
  */
 import path from "node:path";
-import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { CHANNELS } from "./channels";
 import { discoverAgents, dirsExist } from "../agents";
 import { gitBranch } from "../git";
@@ -21,7 +21,7 @@ import { resolvePaths, openEditor } from "../links";
 import { listExternalApps, openInApp } from "../external-apps";
 import { workspaceForPath } from "../fs/workspace-for-path";
 import { listPromptAssets } from "../prompt-assets";
-import { readImageAsDataUrl, scanWorkspaceFavicon } from "../images";
+import { pickImageAsDataUrl, readWorkspaceImageAsDataUrl, scanWorkspaceFavicon } from "../images";
 import { createUsageService } from "../usage/service";
 import { USAGE_CACHE_FILE } from "../usage/model";
 import { createAgentLimitsService } from "../agent-limits/service";
@@ -29,6 +29,8 @@ import { createAgentLimitsService } from "../agent-limits/service";
 export interface RegisterServicesDeps {
   readonly labelOf: (event: IpcMainInvokeEvent) => string;
   readonly setRecording: (senderId: number, recording: boolean) => void;
+  readonly imageRootsFor: (senderId: number) => readonly string[];
+  readonly activateImageRootFor: (senderId: number, root: unknown) => boolean;
 }
 
 export function registerServices(deps: RegisterServicesDeps): void {
@@ -109,10 +111,21 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
     listPromptAssets(agent, cwd ?? null),
   );
-  ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
-    readImageAsDataUrl(target),
+  ipcMain.handle(CHANNELS.readWorkspaceImageAsDataUrl, (event, { path: target }) =>
+    readWorkspaceImageAsDataUrl(target, deps.imageRootsFor(event.sender.id)),
   );
-  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) => scanWorkspaceFavicon(dir));
+  ipcMain.handle(CHANNELS.activateImageWorkspaceRoot, (event, { root }) =>
+    deps.activateImageRootFor(event.sender.id, root),
+  );
+  ipcMain.handle(CHANNELS.pickImageAsDataUrl, (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    return pickImageAsDataUrl(window ?? undefined);
+  });
+  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (event, { dir }) => {
+    const roots = deps.imageRootsFor(event.sender.id);
+    if (!roots.some((root) => workspaceForPath({ path: dir, roots: [root] }) !== null)) return null;
+    return scanWorkspaceFavicon(dir);
+  });
   // Token usage: one command, no payload — the scan takes no renderer input.
   // Failures inside the scan are in-band (`sources[].state`, `skippedLines`);
   // a rejection here is user-safe while the detail stays in main's log.
