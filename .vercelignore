@@ -25,10 +25,15 @@
 # is copied verbatim into the output root and served by the /privacy rewrites.
 !/marketing/public
 
-# The landing's agent logos live with the app's own assets.
+# The landing's agent logos live with the app's own assets, and the agent strip
+# reads the app's agent registry.
 !/src
 /src/*
 !/src/assets
+!/src/lib
+/src/lib/*
+!/src/lib/agent-logos.ts
+!/src/lib/agents
 
 # Rebuilt on Vercel; never upload the local output.
 /marketing/landing-prototype/dist
