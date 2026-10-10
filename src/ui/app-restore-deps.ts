@@ -3,12 +3,19 @@ import { defaultFileClient } from "../files/file-client";
 import { defaultPtyClient } from "../terminal/pty-client";
 import {
   clearWindowRecord,
+  flushSessionJournal,
   readWindowRecords,
+  resumeSessionJournal,
+  sessionArchive,
   sessionRestoreMarker,
+  suspendSessionJournal,
 } from "../terminal/session-journal";
 import { settings } from "../settings/settings-store";
-import type { RestoreDeps } from "../terminal/session-restore";
+import { resumeWorkspace, type RestoreDeps } from "../terminal/session-restore";
 import type { WindowRecord } from "../lib/session-schema";
+import { reportPersistError } from "../chrome/events";
+import { worktreeForPath } from "../repositories/repository-model";
+import { archivedWorkspaceResumeAvailable } from "./app-policy";
 
 /**
  * Bundles `restoreSession`'s dependencies from the app's real hosts —
@@ -53,4 +60,58 @@ export function railResumeDeps(
     lookup: resumeLookup,
     customAgents: () => settings.value.customAgents,
   };
+}
+
+/** Restore one archived worktree and recapture after the suspended journal resumes. */
+export function resumeArchivedWorktree(
+  path: string,
+  deps: {
+    readonly manager: RestoreDeps["manager"] | null;
+    readonly resumingWorkspaces: ReadonlySet<string>;
+    readonly setResumingWorkspaces: (paths: ReadonlySet<string>) => void;
+  },
+): void {
+  const { manager, resumingWorkspaces, setResumingWorkspaces } = deps;
+  if (manager === null || !archivedWorkspaceResumeAvailable(resumingWorkspaces)) {
+    return;
+  }
+  const newestPrefixMatch = Object.entries(sessionArchive.value)
+    .filter(([key]) => worktreeForPath([path], key) === path)
+    .reduce<[string, (typeof sessionArchive.value)[string]] | undefined>(
+      (best, current) =>
+        best === undefined || current[1].savedAt > best[1].savedAt ? current : best,
+      undefined,
+    );
+  const entry = sessionArchive.value[path] ?? newestPrefixMatch?.[1];
+  if (entry === undefined) {
+    reportPersistError("Couldn't find that archived workspace.");
+    return;
+  }
+
+  setResumingWorkspaces(new Set([path]));
+  suspendSessionJournal();
+  void resumeWorkspace(railResumeDeps(manager), entry, path)
+    .then((resumed) => {
+      if (!resumed) {
+        reportPersistError("Couldn't resume that workspace.");
+      }
+    })
+    .catch((error: unknown) => {
+      console.warn("Failed to resume archived workspace:", error);
+      reportPersistError("Couldn't resume that workspace.");
+    })
+    .finally(() => {
+      resumeSessionJournal();
+      // The restore's signal changes were ignored while suspended. Capture the
+      // complete result before another restore can start; concurrent shutdown
+      // suspension still makes this a no-op through the journal's reference count.
+      return flushSessionJournal()
+        .catch((error: unknown) => {
+          console.warn("Failed to capture restored workspace:", error);
+          reportPersistError("Couldn't save that restored workspace.");
+        })
+        .finally(() => {
+          setResumingWorkspaces(new Set());
+        });
+    });
 }

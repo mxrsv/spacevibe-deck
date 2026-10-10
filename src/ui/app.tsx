@@ -224,18 +224,14 @@ import {
   clearWindowRecord,
   flushSessionJournal,
   initSessionJournal,
-  resumeSessionJournal,
-  sessionArchive,
   suspendSessionJournal,
 } from "../terminal/session-journal";
-import { readLastSession, resumeWorkspace } from "../terminal/session-restore";
+import { readLastSession } from "../terminal/session-restore";
 import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
 import type { WindowRecord } from "../lib/session-schema";
 import { discardLastSession, reopenLastSession } from "./last-session-actions";
-import { worktreeForPath } from "../repositories/repository-model";
 import { DesktopChrome } from "./desktop-chrome";
 import {
-  archivedWorkspaceResumeAvailable,
   boardClosesAfterResume,
   bootOpensTheBoard,
   agentBoardClosesWithLastTab,
@@ -255,7 +251,7 @@ import {
   workspaceOrphanedByClose,
   workspacesOrphanedByClose,
 } from "./app-policy";
-import { railResumeDeps, restoreDeps } from "./app-restore-deps";
+import { restoreDeps, resumeArchivedWorktree } from "./app-restore-deps";
 
 interface TaskLaunchAttempt {
   readonly tabKey: number;
@@ -555,52 +551,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   };
 
   /** Restore the newest archived tab set belonging to one legacy rail row. */
-  const resumeArchivedWorktree = (path: string): void => {
-    const manager = tabsRef.current;
-    if (manager === null || !archivedWorkspaceResumeAvailable(resumingWorkspacesRef.current)) {
-      return;
-    }
-    const newestPrefixMatch = Object.entries(sessionArchive.value)
-      .filter(([key]) => worktreeForPath([path], key) === path)
-      .reduce<[string, (typeof sessionArchive.value)[string]] | undefined>(
-        (best, current) =>
-          best === undefined || current[1].savedAt > best[1].savedAt ? current : best,
-        undefined,
-      );
-    const entry = sessionArchive.value[path] ?? newestPrefixMatch?.[1];
-    if (entry === undefined) {
-      reportPersistError("Couldn't find that archived workspace.");
-      return;
-    }
-
-    resumingWorkspacesRef.current = new Set([path]);
-    suspendSessionJournal();
-    void resumeWorkspace(railResumeDeps(manager), entry, path)
-      .then((resumed) => {
-        if (!resumed) {
-          reportPersistError("Couldn't resume that workspace.");
-        }
-      })
-      .catch((error: unknown) => {
-        console.warn("Failed to resume archived workspace:", error);
-        reportPersistError("Couldn't resume that workspace.");
-      })
-      .finally(() => {
-        resumeSessionJournal();
-        // The restore's signal changes were intentionally ignored while the
-        // journal was suspended. Capture the complete result before another
-        // archived restore can start; a concurrent quit/close suspension still
-        // makes this a no-op through the journal's reference count.
-        return flushSessionJournal()
-          .catch((error: unknown) => {
-            console.warn("Failed to capture restored workspace:", error);
-            reportPersistError("Couldn't save that restored workspace.");
-          })
-          .finally(() => {
-            resumingWorkspacesRef.current = new Set();
-          });
-      });
-  };
+  const resumeArchivedWorktreeForRail = (path: string): void =>
+    resumeArchivedWorktree(path, {
+      manager: tabsRef.current,
+      resumingWorkspaces: resumingWorkspacesRef.current,
+      setResumingWorkspaces: (paths) => {
+        resumingWorkspacesRef.current = paths;
+      },
+    });
 
   // The rail's useful five-session snapshot: loaded at boot — the same request
   // that decides whether the host supports sessions at all — and kept current
@@ -2382,7 +2340,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onOpenWorkspace: openTaskBoard,
               openWorkspaceDisabled: taskOperationPending.value !== null,
               onFocusAttention: requestAttentionFocus,
-              onResumeWorktree: resumeArchivedWorktree,
+              onResumeWorktree: resumeArchivedWorktreeForRail,
             }}
             onCloseTab={(index) => void closeTab(index)}
             // Close model table row 1: the agent row's ✕ closes that pane, and
