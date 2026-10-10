@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+## 2.9.0
+
+This update adds checkout changes and hidden files to the explorer, finds your dev servers,
+and makes Update go straight to the newest release.
+
 - **See what the checkout changed.** The file explorer has a **Files / Changes** switch:
   Changes lists what changed since the last commit, with the branch, each file's status and
   its added and removed lines in green and red, and refreshes by itself. Click a file to open
@@ -27,11 +32,6 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   agent row are gone: a working agent now shows a small terminal-style spinner on its
   logo's corner, beside the dots that mark the other states, and those dots sit a little
   further out so they cover less of the logo.
-
-## 2.9.0
-
-This update lets you send feedback from inside Deck and makes Update go
-straight to the newest release.
 
 - **Send feedback from inside Deck.** **Send Feedback…** in the app menu, or
   the Feedback row in Settings → About, opens the
