@@ -204,12 +204,12 @@
         <a href="#builds">01 / Your build</a><a href="#data">02 / The payload</a>
         <a href="#delivery">03 / Delivery</a><a href="#retention">04 / Retention</a>
         <a href="#infrastructure">05 / Infrastructure</a><a href="#feedback">06 / Feedback</a
-        ><a href="#contact">07 / Questions</a>
+        ><a href="#crash-reports">07 / Crash reports</a><a href="#contact">08 / Questions</a>
       </nav>
       <main id="content">
-        <div class="label">Usage analytics and feedback</div>
+        <div class="label">Usage analytics, crash reports and feedback</div>
         <h1>What Deck stores.</h1>
-        <p class="intro">Usage totals from the app.<br />Feedback you choose to send.</p>
+        <p class="intro">Usage totals and crash reports from the app.<br />Feedback you choose to send.</p>
         <p class="meta">
           Effective October 8, 2026 ·
           <a href="/privacy/2026-10-08">Dated copy of this notice</a> ·
@@ -399,6 +399,27 @@
             <a href="https://supabase.com/privacy">Supabase's privacy policy</a>. Cloudflare
             processes feedback requests and Vercel hosts the website; the service does not store
             request IP addresses or user agents.
+          </p>
+        </section>
+        <section id="crash-reports">
+          <h2>Crash and error reports</h2>
+          <p>
+            Packaged Electron builds automatically send crash and error reports to Sentry, with no
+            in-app opt-out. This includes uncaught exceptions and rejections, linked errors, and
+            abnormal renderer or helper-process exits. Tauri builds, browser previews and
+            unpackaged runs do not send these reports.
+          </p>
+          <p>
+            Reports can contain error messages, stack traces, source lines from Deck's app bundle,
+            and Deck, Electron, Chromium, Node, platform and architecture details. File paths can
+            appear in error messages and stack traces. Deck replaces occurrences of the current
+            user's home-directory path with <code>~</code>; other path text may remain.
+          </p>
+          <p>
+            Deck disables breadcrumbs, local-variable capture, native crash dumps, console and
+            request-event capture, and Sentry's default personally identifying data. Reports are
+            sent to Sentry for processing; the usage-analytics retention period above does not
+            describe crash-report retention.
           </p>
         </section>
         <section id="contact">

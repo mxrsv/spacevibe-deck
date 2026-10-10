@@ -39,7 +39,7 @@ export function PrivacySection() {
     <>
       <p class="settings-screen__note">
         Deck sends first-party usage stats. They are always on and cannot be turned off in this
-        build. No code, file paths or prompts are ever included.
+        build. Usage stats never include code, file paths or prompts.
       </p>
       {consent === "unreadable" ? (
         // Dormant while `USAGE_ANALYTICS_MANDATORY` holds: since 2026-09-10
@@ -65,10 +65,18 @@ export function PrivacySection() {
         linked.
       </p>
       <p class="settings-screen__note">
-        Deck never sends code, file paths, repository or branch names, prompts, terminal output,
-        hostname, username, locale or timezone. Raw records expire after 35 days. The data is stored
-        on Deck's own Cloudflare Worker; Cloudflare processes ordinary connection metadata at its
-        edge as the infrastructure provider.
+        Usage analytics never includes code, file paths, repository or branch names, prompts,
+        terminal output, hostname, username, locale or timezone. Raw analytics records expire after
+        35 days. The data is stored on Deck's own Cloudflare Worker; Cloudflare processes ordinary
+        connection metadata at its edge as the infrastructure provider.
+      </p>
+      <p class="settings-screen__note">
+        Packaged Electron builds also send crash and error reports to Sentry automatically, with no
+        opt-out. Reports can include error messages, stack traces, Deck source lines, and app and
+        runtime details. Deck replaces the home-directory portion of paths with ~; other path text
+        in an error or stack trace may remain. Breadcrumbs, local variables, native crash dumps,
+        console and request events are excluded. Tauri, browser preview and unpackaged builds do not
+        send these reports.
       </p>
       <button
         type="button"
