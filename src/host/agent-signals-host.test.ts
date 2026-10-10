@@ -19,6 +19,7 @@ describe("agent-signals-host launch config", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("keeps parsing the settings path and the hook port as before", async () => {

@@ -15,14 +15,9 @@ function overlays(partial: Partial<AttentionOverlaySnapshot> = {}): AttentionOve
   };
 }
 
-interface Spies {
-  dismissBoard: ReturnType<typeof vi.fn>;
-  dismissSettings: ReturnType<typeof vi.fn>;
-  focusAttention: ReturnType<typeof vi.fn>;
-  order: string[];
-}
+type Spies = ReturnType<typeof makeSpies>;
 
-function makeSpies(): Spies {
+function makeSpies() {
   const order: string[] = [];
   return {
     dismissBoard: vi.fn(() => order.push("dismissBoard")),

@@ -38,13 +38,13 @@ function card(over: Partial<BoardCard> = {}): BoardCard {
     ...over,
   };
 }
-function actions(): BoardCardActions & Record<keyof BoardCardActions, ReturnType<typeof vi.fn>> {
+function actions() {
   return {
-    onSelect: vi.fn(),
-    onOpenInStage: vi.fn(),
-    onStop: vi.fn(),
-    onRestart: vi.fn(),
-    onClose: vi.fn(),
+    onSelect: vi.fn<BoardCardActions["onSelect"]>(),
+    onOpenInStage: vi.fn<BoardCardActions["onOpenInStage"]>(),
+    onStop: vi.fn<BoardCardActions["onStop"]>(),
+    onRestart: vi.fn<BoardCardActions["onRestart"]>(),
+    onClose: vi.fn<BoardCardActions["onClose"]>(),
   };
 }
 function mount(c: BoardCard, a = actions()) {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from "preact";
 import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 vi.mock("../host/store-host", () => ({
   Store: {
@@ -30,8 +30,8 @@ const templates = [
 
 describe("PromptPopover", () => {
   let host: HTMLDivElement;
-  let inject: ReturnType<typeof vi.fn>;
-  let onClose: ReturnType<typeof vi.fn>;
+  let inject: Mock<Parameters<typeof PromptPopover>[0]["inject"]>;
+  let onClose: Mock<Parameters<typeof PromptPopover>[0]["onClose"]>;
 
   beforeEach(() => {
     settings.value = { ...DEFAULT_SETTINGS, promptTemplates: templates };

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 
 const xterm = vi.hoisted(() => ({
@@ -137,6 +137,11 @@ beforeEach(() => {
   webgl.instances = [];
   webgl.throwOnActivate = false;
   vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const events = {

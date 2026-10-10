@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { createTabStripDrag } from "./tab-strip-drag";
 
 const box = (left: number, width: number): DOMRect => ({
@@ -28,7 +28,7 @@ function pointer(target: EventTarget, type: string, x: number, y = 10): void {
 describe("tab strip pointer reorder", () => {
   let list: HTMLDivElement;
   let dispose: () => void;
-  let drop: ReturnType<typeof vi.fn>;
+  let drop: Mock<Parameters<typeof createTabStripDrag>[1]["onDrop"]>;
   beforeEach(() => {
     vi.stubGlobal(
       "requestAnimationFrame",
