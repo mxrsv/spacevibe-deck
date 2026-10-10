@@ -516,11 +516,20 @@ describe("identifyEndpoint over TLS", () => {
     expect(result.status).toBeUndefined();
   });
 
-  it("reports unknown with a tlsError when the certificate does not cover the address", async () => {
-    const server = await httpsServer(LOCAL_V4, fixtures.wrongName);
+  it.each([LOCAL_V4, LOCAL_V6])(
+    "rejects a certificate without an IP SAN for %s",
+    async (host, context) => {
+      if (host === LOCAL_V6) skipWithoutIpv6(context);
+      const server = await httpsServer(host, fixtures.wrongName);
+      const result = await identifyEndpoint(target(server.port, host), { ca: fixtures.ca });
+      expect(result).toEqual({ protocol: "unknown", tlsError: "ERR_TLS_CERT_ALTNAME_INVALID" });
+    },
+  );
 
+  it("rejects a trusted certificate whose IP SAN covers a different loopback address", async () => {
+    const wrongIp = signedLeaf(dir, "wrongip", "IP:127.0.0.2");
+    const server = await httpsServer(LOCAL_V4, wrongIp);
     const result = await identifyEndpoint(target(server.port), { ca: fixtures.ca });
-
     expect(result).toEqual({ protocol: "unknown", tlsError: "ERR_TLS_CERT_ALTNAME_INVALID" });
   });
 

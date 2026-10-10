@@ -18,6 +18,7 @@
  * `createProber` adds the scheduling around it: bounded concurrency, one probe in
  * flight per instance, a cache of successful protocols and backoff for failures.
  */
+import { X509Certificate } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
@@ -227,6 +228,15 @@ function createRequest(scheme: "http" | "https", context: ProbeContext): http.Cl
     ...options,
     ca: context.ca as https.RequestOptions["ca"],
     rejectUnauthorized: true,
+    // Node 22.23.3's DNS normalization rejects valid IPv6 IP SANs. The target
+    // is already a numeric loopback address; verify its IP SAN natively.
+    // TLS still validates the certificate chain before invoking this callback.
+    checkServerIdentity: (_hostname, cert) => {
+      if (new X509Certificate(cert.raw).checkIP(context.host)) return undefined;
+      return Object.assign(new Error("Certificate does not cover the loopback address"), {
+        code: "ERR_TLS_CERT_ALTNAME_INVALID",
+      });
+    },
   });
 }
 
