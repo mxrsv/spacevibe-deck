@@ -415,6 +415,22 @@ function merged(
   return { tails, models };
 }
 
+/** Content equality for the tail/model maps: identity fast path, then size and every value. */
+function sameContent(a: ReadonlyMap<number, string>, b: ReadonlyMap<number, string>): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (a.size !== b.size) {
+    return false;
+  }
+  for (const [key, value] of a) {
+    if (b.get(key) !== value) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * The session id each pane's agent was running when it LEFT (spec §11.11).
  *
@@ -590,8 +606,18 @@ async function run(): Promise<void> {
       queued = true;
     } else if (epoch === epochAtSend) {
       const next = merged({ tails: paneTails.value, models: paneModels.value }, entries, answers);
-      paneTails.value = next.tails;
-      paneModels.value = next.models;
+      // The send above is fingerprint-guarded, but the MERGE can settle on
+      // bytes identical to what is on screen — a tabViews flip with no new
+      // tail, a tool-only turn that names no model — and republishing a fresh
+      // Map identity would re-render every rail subscriber over nothing. Gate
+      // each map on content equality, matching the prune step's rule of
+      // publishing the maps separately (a pane can hold a model with no tail).
+      if (!sameContent(next.tails, paneTails.value)) {
+        paneTails.value = next.tails;
+      }
+      if (!sameContent(next.models, paneModels.value)) {
+        paneModels.value = next.models;
+      }
       publishPairings();
     }
   } catch (err) {

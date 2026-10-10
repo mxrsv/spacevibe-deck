@@ -841,6 +841,9 @@ export function createTerminalManager(
     paneIds() {
       return tree === null ? [] : leafIds(tree);
     },
+    hasPane(id) {
+      return life.panes.has(id);
+    },
     activePaneId() {
       return activeId;
     },
