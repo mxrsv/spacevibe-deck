@@ -54,6 +54,7 @@ import { createMenuState } from "./menu-state";
 import { registerSettingsIpc } from "./settings-ipc";
 import { registerServices } from "./ipc/register-services";
 import { resolveRoot } from "./fs/path-guard";
+import { ImageWorkspaceGrants } from "./image-workspace-grants";
 import { registerThemes } from "./ipc/register-themes";
 import { registerExplorer } from "./ipc/register-explorer";
 import { registerStore } from "./ipc/register-store";
@@ -101,8 +102,8 @@ const quitFlight = new QuitFlight();
 const closeFlight = new CloseFlight();
 const stores = new StoreRegistry(app.getPath("userData"));
 const MAX_IMAGE_ROOTS_PER_WINDOW = 64;
-const imageRootsBySender = new Map<number, Set<string>>();
 const activeImageRootsBySender = new Map<number, Set<string>>();
+const imageWorkspaceGrants = ImageWorkspaceGrants.open(stores);
 
 /**
  * Emit to one window by label. Returns false when there was no live window to
@@ -314,7 +315,6 @@ function createWindow(label: string): BrowserWindow {
     // resolvable so the native view can be detached from its content view.
     browserPanels.close(label);
     windows.delete(label);
-    imageRootsBySender.delete(senderId);
     activeImageRootsBySender.delete(senderId);
     // Same reason as `render-process-gone`: closing a window while one of its
     // Shortcuts rows is recording must not leave the app without accelerators.
@@ -416,16 +416,23 @@ ipcMain.handle(CHANNELS.ptyCwds, (_event, payload: unknown) => {
 registerServices({
   labelOf,
   setRecording: menuState.setRecording,
-  imageRootsFor: (senderId) =>
-    [...(activeImageRootsBySender.get(senderId) ?? [])].filter(
-      (root) => resolveRoot(root) === root,
-    ),
-  activateImageRootFor: (senderId, root) => {
+  imageRootsFor: async (senderId) => {
+    const grants = await imageWorkspaceGrants;
+    return [...(activeImageRootsBySender.get(senderId) ?? [])].filter(
+      (root) => resolveRoot(root) === root && grants.has(root),
+    );
+  },
+  activateImageRootFor: async (senderId, root) => {
     if (typeof root !== "string") return false;
     const canonical = resolveRoot(root);
-    if (canonical === null || !imageRootsBySender.get(senderId)?.has(canonical)) return false;
+    if (canonical === null || !(await imageWorkspaceGrants).has(canonical)) return false;
     const active = activeImageRootsBySender.get(senderId) ?? new Set<string>();
     active.add(canonical);
+    while (active.size > MAX_IMAGE_ROOTS_PER_WINDOW) {
+      const oldest = active.values().next().value;
+      if (oldest === undefined) break;
+      active.delete(oldest);
+    }
     activeImageRootsBySender.set(senderId, active);
     return true;
   },
@@ -589,18 +596,15 @@ const updater = registerUpdater({
 registerStore({ stores, windows, emitTo });
 
 registerDialogs({
-  grantWorkspaceRoot: (senderId, root) => {
-    const roots = imageRootsBySender.get(senderId) ?? new Set<string>();
-    roots.add(root);
-    while (roots.size > MAX_IMAGE_ROOTS_PER_WINDOW) {
-      const oldest = roots.values().next().value;
-      if (oldest === undefined) break;
-      roots.delete(oldest);
-      activeImageRootsBySender.get(senderId)?.delete(oldest);
-    }
-    imageRootsBySender.set(senderId, roots);
+  grantWorkspaceRoot: async (senderId, root) => {
+    if (!(await imageWorkspaceGrants).grant(root)) return;
     const active = activeImageRootsBySender.get(senderId) ?? new Set<string>();
     active.add(root);
+    while (active.size > MAX_IMAGE_ROOTS_PER_WINDOW) {
+      const oldest = active.values().next().value;
+      if (oldest === undefined) break;
+      active.delete(oldest);
+    }
     activeImageRootsBySender.set(senderId, active);
   },
 });

@@ -29,8 +29,8 @@ import { createAgentLimitsService } from "../agent-limits/service";
 export interface RegisterServicesDeps {
   readonly labelOf: (event: IpcMainInvokeEvent) => string;
   readonly setRecording: (senderId: number, recording: boolean) => void;
-  readonly imageRootsFor: (senderId: number) => readonly string[];
-  readonly activateImageRootFor: (senderId: number, root: unknown) => boolean;
+  readonly imageRootsFor: (senderId: number) => readonly string[] | Promise<readonly string[]>;
+  readonly activateImageRootFor: (senderId: number, root: unknown) => boolean | Promise<boolean>;
 }
 
 export function registerServices(deps: RegisterServicesDeps): void {
@@ -111,18 +111,18 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
     listPromptAssets(agent, cwd ?? null),
   );
-  ipcMain.handle(CHANNELS.readWorkspaceImageAsDataUrl, (event, { path: target }) =>
-    readWorkspaceImageAsDataUrl(target, deps.imageRootsFor(event.sender.id)),
+  ipcMain.handle(CHANNELS.readWorkspaceImageAsDataUrl, async (event, { path: target }) =>
+    readWorkspaceImageAsDataUrl(target, await deps.imageRootsFor(event.sender.id)),
   );
-  ipcMain.handle(CHANNELS.activateImageWorkspaceRoot, (event, { root }) =>
+  ipcMain.handle(CHANNELS.activateImageWorkspaceRoot, async (event, { root }) =>
     deps.activateImageRootFor(event.sender.id, root),
   );
   ipcMain.handle(CHANNELS.pickImageAsDataUrl, (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return pickImageAsDataUrl(window ?? undefined);
   });
-  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (event, { dir }) => {
-    const roots = deps.imageRootsFor(event.sender.id);
+  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, async (event, { dir }) => {
+    const roots = await deps.imageRootsFor(event.sender.id);
     if (!roots.some((root) => workspaceForPath({ path: dir, roots: [root] }) !== null)) return null;
     return scanWorkspaceFavicon(dir);
   });

@@ -29,7 +29,7 @@ interface OpenDialogPayload {
  * Windows-only, so macOS is unaffected.
  */
 export function registerDialogs(deps: {
-  readonly grantWorkspaceRoot: (senderId: number, root: string) => void;
+  readonly grantWorkspaceRoot: (senderId: number, root: string) => void | Promise<void>;
 }): void {
   ipcMain.handle("dialog_ask", async (event, payload) => {
     const { message, title, kind, okLabel, cancelLabel } = payload as DialogPayload;
@@ -73,7 +73,7 @@ export function registerDialogs(deps: {
         try {
           const canonical = resolveRoot(root);
           if (canonical !== null && (await fs.stat(canonical)).isDirectory()) {
-            deps.grantWorkspaceRoot(event.sender.id, canonical);
+            await deps.grantWorkspaceRoot(event.sender.id, canonical);
           }
         } catch {
           // An unreadable selection is not an authorization grant.
