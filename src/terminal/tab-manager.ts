@@ -182,6 +182,7 @@ export function createTabManager(
   const unlisteners: UnlistenFn[] = [];
   const promptStaging = deps.promptStaging ?? TASK_PROMPT_STAGING_ENABLED;
   const surfaces = deps.surfaces ?? INERT_SURFACES;
+  const surfaceHasFocus = (): boolean => surfaces.hasFocus?.() ?? surfaces.activeIndex() >= 0;
   const transfer = deps.transfer ?? defaultTransferClient;
   const closeWindow = deps.closeWindow ?? (() => getCurrentWindow().close());
   // Per-tab user overrides (rename, dot color), keyed by tab key —
@@ -469,7 +470,7 @@ export function createTabManager(
    * a shell, and the failure is silent (spec §7).
    */
   function focusStage(): void {
-    if (surfaces.activeIndex() >= 0) {
+    if (surfaceHasFocus()) {
       surfaces.focus();
       return;
     }
@@ -632,7 +633,7 @@ export function createTabManager(
       agent: explicitAgent(info),
       // Null, not zero: a non-terminal surface owns no panes, and spec §7 asks
       // for the count to be ABSENT rather than reading "0 panes".
-      paneCount: surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
+      paneCount: surfaceHasFocus() ? null : (manager?.paneCount() ?? 0),
       home,
     };
     // One prune for every per-pane store. `syncViews` runs after every path
@@ -894,7 +895,7 @@ export function createTabManager(
     // `index === active` is no longer enough to skip: a non-terminal surface
     // may be on top of that same tab, and selecting the tab has to take the
     // stage back. Checked BEFORE the early return for exactly that reason.
-    const surfaceWasActive = surfaces.activeIndex() >= 0;
+    const surfaceWasActive = surfaceHasFocus();
     surfaces.deactivate();
     if (index === active) {
       if (surfaceWasActive) {
@@ -971,7 +972,7 @@ export function createTabManager(
     // cross-tab. Mirrors `selectTab`'s own `surfaces.deactivate()` (Task 7):
     // without it, focus/ack below lands on a pane the user cannot see while
     // an editor still holds the DOM's keyboard focus.
-    const surfaceWasActive = surfaces.activeIndex() >= 0;
+    const surfaceWasActive = surfaceHasFocus();
     surfaces.deactivate();
     if (index === active) {
       target.manager.focusPane(paneId); // same-tab: ack ONLY the candidate
@@ -1062,7 +1063,7 @@ export function createTabManager(
     // non-terminal surface has none. A no-op with a message, reusing the same
     // refusal shape as the one-pane-window fork rather than inventing a second
     // one (spec §7).
-    if (surfaces.activeIndex() >= 0) {
+    if (surfaceHasFocus()) {
       reportChromeMessage("Only a terminal pane can move to another window.");
       return;
     }
@@ -2588,8 +2589,7 @@ export function createTabManager(
     // one, and neither may fall through to the other — a file tab has no pane
     // to close, and closing the terminal tab behind it would be a silent
     // catastrophe.
-    "close-pane": () =>
-      surfaces.activeIndex() >= 0 ? void surfaces.close() : void close.closePane(),
+    "close-pane": () => (surfaceHasFocus() ? void surfaces.close() : void close.closePane()),
     "focus-next": () => activeManager()?.cycleFocus(1),
     "focus-prev": () => activeManager()?.cycleFocus(-1),
     "toggle-expand": () => updateSettings({ focusExpand: !settings.value.focusExpand }),
@@ -2853,7 +2853,7 @@ export function createTabManager(
     if (openOverlayRanks().length > 0) {
       return "overlay";
     }
-    if (surfaces.activeIndex() >= 0 || browserSurfaceActive.value) {
+    if (surfaceHasFocus() || browserSurfaceActive.value) {
       return "surface";
     }
     return "terminal";
@@ -2914,7 +2914,7 @@ export function createTabManager(
     // here.
     if (
       scope === "pane" &&
-      surfaces.activeIndex() >= 0 &&
+      surfaceHasFocus() &&
       !isSurfaceRoutedAction(action) &&
       !isChromeScopedAction(action)
     ) {

@@ -111,7 +111,6 @@ import {
   browserOpen,
   browserSurfaceActive,
   closeBrowser,
-  deactivateBrowserSurface,
   initBrowserBridge,
   openBrowserAt,
 } from "../browser/browser-store";
@@ -190,7 +189,6 @@ import { isUpdateMenuAction, runUpdateMenuAction } from "../updater/update-menu-
 import { defaultLinkClient } from "../terminal/link-client";
 import { buildOpenEditorRequest } from "../lib/editor-command";
 import {
-  activeFileTab,
   activeWorkspace,
   dirtyPaths,
   dockCollapseArmed,
@@ -214,7 +212,6 @@ import { DockToggle } from "./dock/dock-toggle";
 import { useDockPresence } from "./dock/dock-presence";
 import { useTitleBarOverlaySync } from "./title-bar-overlay-sync";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
-import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { applySidebarShell } from "./sidebar-shell";
@@ -296,8 +293,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // `syncViews` never runs for a file-only transition (spec §2.3's
       // seam) — this is how the file store tells `TabManager` to re-derive
       // the strip's status without either module knowing about the other.
-      beforeActivate: () => agentLaunchPage.close(),
-      canFocus: () => agentLaunchPage.request.value === null,
+      beforeActivate: () => {
+        agentLaunchPage.close();
+        if (!settings.value.dockOpen || settings.value.dockTab !== "explorer") {
+          updateSettings({ dockOpen: true, dockTab: "explorer" });
+        }
+      },
+      canFocus: () =>
+        agentLaunchPage.request.value === null &&
+        settings.value.dockOpen &&
+        settings.value.dockTab === "explorer",
       onSurfacesChanged: () => tabsRef.current?.notifySurfacesChanged(),
     });
   }
@@ -985,20 +990,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     const current = settings.value;
     tabsRef.current?.applySettings(current);
     applyThemeVars(document.documentElement.style, resolveTheme(current));
-  });
-
-  // The stage's exclusion backstop: a file surface activating through ANY
-  // path (explorer click, chip click, external open) pushes the browser off
-  // the stage. The synchronous paths (composeSurfaceStrip, toggle-browser,
-  // selectBrowserTab) already keep the invariant; this catches the file-side
-  // entry points that never see the browser store. Runs a frame after the
-  // signal flips (signals batch effects to animation frames), which is
-  // acceptable: `setVisible` is an async IPC hop anyway.
-  useSignalEffect(() => {
-    if (activeFileTab.value !== null && browserSurfaceActive.value) {
-      deactivateBrowserSurface(defaultBrowserClient);
-      tabsRef.current?.notifySurfacesChanged();
-    }
   });
 
   /**
@@ -1811,7 +1802,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     if (!agentBoardSurfaceActive.value) {
       return;
     }
-    if (browserSurfaceActive.value || activeFileTab.value !== null) {
+    if (browserSurfaceActive.value) {
       stepAgentBoardBack();
       tabsRef.current?.notifySurfacesChanged();
     }
@@ -2568,16 +2559,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }}
             />
           )}
-          {/* The document, on the stage rather than parked in the explorer
-              panel (spec §4.2). It COVERS `.stage__tabs` instead of
-              unmounting it: the terminal grid keeps its size, so taking the
-              stage back costs no xterm reflow and no PTY resize round-trip.
-              Deliberately NOT gated on `dockOpen`, unlike the old preview
-              block that inherited that gate from the panel around it — an
-              open document is not part of the file tree, and ⌘⇧B should not
-              throw an editor away. `StageSurface` owns the condition so it is
-              testable without an `<App>` harness. */}
-          <StageSurface controller={fileController} />
           {/* The browser, on the stage the same way the document is — its
               own component owns the mount condition (browser-surface.tsx).
               The native view paints above every DOM layer, so "something
@@ -2621,6 +2602,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               {dockTab() === "explorer" ? (
                 <ExplorerTab
                   controller={fileController}
+                  onDocumentEmpty={() => tabsRef.current?.focusActive()}
                   workspacePath={activeWorkspace.value}
                   canCreate={fileCreateAvailable}
                   changesAvailable={gitChangesAvailable}

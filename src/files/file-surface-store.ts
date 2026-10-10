@@ -283,7 +283,7 @@ function forgetViewMode(path: string): void {
 export const activeWorkspace = signal<string | null>(null);
 
 /**
- * The file tab currently on top of the stage, or null when a terminal tab is.
+ * The document currently owning keyboard focus, or null outside the file panel.
  *
  * Held as a path rather than an index because file tabs open and close
  * constantly and an index would go stale between a render and a click — the

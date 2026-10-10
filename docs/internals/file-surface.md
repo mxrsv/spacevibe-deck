@@ -2,9 +2,9 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
-Three things share the stage with the terminal grid: documents opened from the file
-explorer, the browser tab, and the routing that turns a path an agent printed into one of
-those. All of it is Electron only: the file channels, the `WebContentsView` and the external
+Documents opened from the Explorer share its dock; the browser occupies the stage.
+Path routing turns a path an agent printed into either an in-Deck document or an external
+open. All of it is Electron only: the file channels, the `WebContentsView` and the external
 app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri keeps.
 
 ## Surfaces beside tabs
@@ -13,19 +13,17 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   [`file-surface-store.ts`](../../src/files/file-surface-store.ts) imports nothing from
   `tab-manager.ts` and vice versa, because `syncViews` rebuilds tab views from a process poll
   and a PTY-less tab could not survive that. `App`, `TabBar` and the strip are the only
-  modules that see both. The browser store keeps the same seam: `browserSurfaceActive` and
-  `activeFileTab` are held mutually exclusive by `App`, and the two stores never import each
-  other.
-- **`SurfaceStrip`** ([`stage-surface-strip.ts`](../../src/ui/stage-surface-strip.ts)) is
-  everything `TabManager` is allowed to know: `count`, `total`, `activeIndex`, activate,
-  deactivate, focus, close, save, and three optional methods, `orderKey`, `runEditCommand`
-  and `canToggleView`/`toggleView`. Index space is the active workspace's file tabs, then
-  the browser as the one index past them; the merged strip places every chip by `orderKey`,
-  so the browser can sit before a file tab.
-- **Exactly one of terminal grid, document or browser owns the stage.** The document and the
-  browser surface cover `.stage__tabs` rather than unmounting it, so taking the stage back
-  costs no xterm reflow and no PTY resize. A document stays mounted on `activeFileTab` alone,
-  not on the dock being open.
+  modules that see both. The browser and file stores never import each other; a docked
+  document can remain visible beside the browser or terminal.
+- **`SurfaceStrip`** ([`stage-surface-strip.ts`](../../src/ui/stage-surface-strip.ts))
+  counts only browser/board slots for tab navigation. Its `total` also counts retained
+  documents, keeping the window alive after its last terminal closes. `hasFocus` routes
+  save/close/edit commands to a docked document without inventing a strip slot.
+- **One document panel shares the Explorer's width with its list.**
+  [`FilePanel`](../../src/files/ui/file-panel.tsx) displays the workspace's `activePath`;
+  `activeFileTab` tracks keyboard ownership, so returning to the terminal does not remove
+  the document. Hiding the dock unmounts the view and releases focus, but keeps buffers and
+  dirty guards. The Open files selector makes retained/dirty documents reachable.
 - **Per window, in memory.** File tabs and view modes are not settings; only the dock's width
   and default-open state persist. Session restore carries the main window's file list in
   its own record.
@@ -75,9 +73,9 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   directory without clearing the cache** — clearing destroys the map `visibleDirectories`
   reads, so only the root would reload. **Collapse All** empties `expanded`, leaves the root
   open, and is a controller operation because only the controller may call `refreshWatch()`.
-- **The active document is marked, not selected.** The row is derived from `activeFileTab`
-  while that tab belongs to the tree's workspace, so a terminal holding the stage marks
-  nothing. Revealing it is a request armed by a document change, a mount or hidden files
+- **The active document is marked, not selected.** The row follows the workspace's selected
+  document, even while the terminal has focus. Revealing it is a request armed by a document
+  change, a mount or hidden files
   turning on, and spent when it finishes: [`tree-reveal.ts`](../../src/files/tree-reveal.ts)
   names the next move from the loaded listings, the hook makes it through the controller,
   and a later collapse or scroll stands. It matches the document against the *listed* entry

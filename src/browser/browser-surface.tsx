@@ -1,8 +1,7 @@
 /**
- * The browser ON the stage — the browser twin of `StageSurface`
- * (src/files/ui/stage-surface.tsx), landed when the docked column retired.
+ * The browser on the stage; documents live separately in the Explorer dock.
  *
- * Same reasoning as that component: `App` has no render harness in this
+ * `App` has no render harness in this
  * repo, so the mount condition ("the browser tab holds the stage") must live
  * in a component of its own to be assertable. And the same geometry: the
  * surface COVERS `.stage__tabs` instead of unmounting it, so the terminal

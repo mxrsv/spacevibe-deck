@@ -101,11 +101,15 @@ expands it again.
 
 ## Files
 
-Open the file explorer (**⌘⇧B**) to browse the workspace. A file opens as a document on the
-stage: an editor with **⌘S** (Windows: **Ctrl+S**) to save. Markdown opens rendered; **⌘⇧V** flips it to source.
+Open the file explorer (**⌘⇧B**) to browse the workspace. Opening a file splits the
+sidebar: the list stays on the left and the document appears on the right, while the
+terminal remains visible. Use **Open files** to return to a retained document; unsaved
+files carry a dot. With the document focused, **⌘S** (Windows: **Ctrl+S**) saves and
+**⌘W** closes it. Markdown opens rendered; **⌘⇧V** flips it to source.
+See the [file panel](../../src/files/ui/file-panel.tsx).
 
 The eye button on the folder's row shows or hides dot-files such as `.env` and `.github`;
-`.git` and `node_modules` stay hidden. The row of the document on the stage is highlighted,
+`.git` and `node_modules` stay hidden. The row of the document beside the list is highlighted,
 and switching documents opens the folders above it and scrolls it into view.
 
 In a git checkout, switch the explorer from **Files** to **Changes** to see what has changed since the last commit: each file with its status and added and removed lines. Click one to open it.

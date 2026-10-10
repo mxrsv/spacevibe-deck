@@ -8,13 +8,14 @@ import {
   type AgentAttentionSummary,
   type TabView,
 } from "../terminal/tabs-store";
+import { browserOpen, resetBrowserStore } from "../browser/browser-store";
 import { TabBar } from "./tab-bar";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../files/file-surface-controller";
-import { openFileTab, resetFileSurfaces, updateDocument } from "../files/file-surface-store";
+import { openFileTab, resetFileSurfaces } from "../files/file-surface-store";
 import type { FileClient } from "../files/file-client";
 
 const fileClient: FileClient = {
@@ -67,6 +68,7 @@ describe("TabBar", () => {
     tabViews.value = [];
     activeTabIndex.value = 0;
     resetFileSurfaces();
+    resetBrowserStore();
     fileController = createFileSurfaceController({ client: fileClient });
   });
 
@@ -77,6 +79,7 @@ describe("TabBar", () => {
     resetDesktopEnvironmentForTests();
     fileController.dispose();
     resetFileSurfaces();
+    resetBrowserStore();
   });
 
   const baseProps = () => ({
@@ -119,13 +122,13 @@ describe("TabBar", () => {
 
   it("draws a surface chip's close as an icon, named only by its label", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    browserOpen.value = true;
     mount(baseProps());
 
     const close = host.querySelector(".tab__close") as HTMLButtonElement;
 
     expect(close.querySelector(".deck-icon--x")).not.toBeNull();
-    expect(close.getAttribute("aria-label")).toBe("Close a.ts");
+    expect(close.getAttribute("aria-label")).toBe("Close the browser tab");
   });
 
   it("clicking an inactive tab calls onSelectTab", () => {
@@ -247,61 +250,13 @@ describe("TabBar", () => {
       expect(host.querySelector(".tabbar__sep")).toBeNull();
     });
 
-    it("renders file tabs after the space marks, preview italic on the unedited preview slot only", async () => {
-      tabViews.value = [tab({ key: 1, name: "Alpha" })];
-      await fileController.openFile("/repo", "/repo/a.ts", true); // kept
-      await fileController.openFile("/repo", "/repo/b.ts", false); // preview, untouched
-      mount(baseProps());
-
-      const rows = host.querySelectorAll(".tab");
-      // 1 space mark, then the 2 file chips in order.
-      expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
-      expect(rows).toHaveLength(2);
-      expect(rows[0].querySelector(".tab__label")?.textContent).toBe("a.ts");
-      expect(rows[1].querySelector(".tab__label")?.textContent).toBe("b.ts");
-      expect(rows[0].querySelector(".tab__label--preview")).toBeNull(); // kept
-      expect(rows[1].querySelector(".tab__label--preview")).not.toBeNull(); // preview
-      // The segment hairline is gone with the segments themselves (DL-18.6).
-      expect(host.querySelector(".tabbar__sep")).toBeNull();
-    });
-
-    it("renders the dirty dot on a file tab whose document is dirty", async () => {
+    it("keeps open documents out of the top strip and the terminal mark active", async () => {
       tabViews.value = [tab({ key: 1, name: "Alpha" })];
       await fileController.openFile("/repo", "/repo/a.ts", true);
-      updateDocument("/repo/a.ts", { dirty: true });
+      await fileController.openFile("/repo", "/repo/b.ts", false);
       mount(baseProps());
-
-      expect(host.querySelector(".tab--file .tab__dot--dirty")).not.toBeNull();
-    });
-
-    it("clicking a file tab activates it through the controller, not onSelectTab", () => {
-      tabViews.value = [tab({ key: 1, name: "Alpha" })];
-      openFileTab("/repo", "/repo/a.ts", { keep: true });
-      const props = baseProps();
-      mount(props);
-
-      const fileRow = host.querySelector(".tab--file") as HTMLElement;
-      act(() => {
-        fileRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      });
-
-      expect(props.onSelectTab).not.toHaveBeenCalled();
-    });
-
-    it("closing a file tab calls closePath, not onCloseTab", () => {
-      tabViews.value = [tab({ key: 1, name: "Alpha" })];
-      openFileTab("/repo", "/repo/a.ts", { keep: true });
-      const props = baseProps();
-      const closePath = vi.spyOn(fileController, "closePath");
-      mount(props);
-
-      const close = host.querySelector(".tab--file .tab__close") as HTMLButtonElement;
-      act(() => {
-        close.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      });
-
-      expect(closePath).toHaveBeenCalledWith("/repo", "/repo/a.ts");
-      expect(props.onCloseTab).not.toHaveBeenCalled();
+      expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
+      expect(host.querySelectorAll(".tab")).toHaveLength(0);
     });
 
     it("clicking the terminal tab that's still 'active' takes the stage back while a file surface is on top", () => {

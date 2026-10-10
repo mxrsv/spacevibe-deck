@@ -660,3 +660,96 @@
   font-size: var(--type-meta);
   font-variant-numeric: tabular-nums;
 }
+
+/* The document shares the existing dock rectangle: opening a file never
+   changes the terminal's bounds. Both columns may shrink below content width. */
+.explorer-tab--document {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+.explorer-tab__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--hair);
+  overflow: hidden;
+}
+
+.file-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.file-panel__files {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  color: var(--text-primary);
+  background: var(--sidebar-bg);
+  border: none;
+  font: inherit;
+  font-size: var(--type-meta);
+  text-overflow: ellipsis;
+}
+
+.file-panel__action {
+  padding: 4px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: var(--type-meta);
+  cursor: pointer;
+}
+
+.file-panel__action:hover:not(:disabled) {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.file-panel__action:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.file-panel__action:focus-visible,
+.file-panel__files:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.file-panel__header .md-view-toggle {
+  position: static;
+}
+
+.file-panel__content {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-panel__content > .fileview {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+}

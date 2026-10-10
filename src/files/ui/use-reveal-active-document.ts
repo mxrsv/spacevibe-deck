@@ -2,10 +2,8 @@
  * Marks the document on the stage in the explorer tree and brings its row into
  * view (EXP2, DL-19.10).
  *
- * The mark is DERIVED: the row whose path is the active file tab's, while that
- * tab belongs to this workspace. A terminal holding the stage clears
- * `activeFileTab`, so nothing is marked then — the mark names what the stage
- * shows, not what the workspace last opened.
+ * The mark follows the document shown beside the tree, independently of
+ * whether the terminal or the document currently owns keyboard focus.
  *
  * The reveal is a REQUEST, armed by three events only — the marked document
  * changing (a mount with one counts), and hidden files turning on — and spent
@@ -19,7 +17,7 @@
 import type { RefObject } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { FileSurfaceController } from "../file-surface-controller";
-import { activeFileTab, listingErrorsFor, surfaceFor, treeRows } from "../file-surface-store";
+import { listingErrorsFor, surfaceFor, treeRows } from "../file-surface-store";
 import { hasTab } from "../preview-slot";
 import { nextRevealStep } from "../tree-reveal";
 
@@ -36,7 +34,7 @@ export interface RevealActiveDocumentOptions {
 export function useRevealActiveDocument(options: RevealActiveDocumentOptions): string | null {
   const { controller, workspacePath, containerRef, rowHeight, onScrolled } = options;
   const surface = surfaceFor(workspacePath);
-  const active = activeFileTab.value;
+  const active = surface.activePath;
   const marked = active !== null && hasTab(surface.tabs, active) ? active : null;
   const listingErrors = listingErrorsFor(workspacePath);
   // A string, so the effect below runs when a directory FAILS, which is what

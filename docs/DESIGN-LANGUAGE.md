@@ -632,7 +632,7 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
   top-tab mode, `.stage__strip` in sidebar mode, the same `TabStrip` in a `--frame-h` row.
   `.tabbar` closes with a 1px `--seam-divider` bottom edge; `.stage__strip` is transparent on
   `--bg` with no line under it, parted from the work area by the stage gutter alone. Its right edge stops at the docked panel when one is open (DL-19.1, `--explorer-w`).
-  The rail lists no documents; the strip says what is open.
+  The rail lists no documents; documents stay in the Explorer and the strip names stage surfaces.
 - **DL-18.7** The stage is the focal surface in every theme. The terminal and document
   surface keep the theme's `--bg`; the navigation frame and rail and every docked side panel
   share the derived `--sidebar-bg`, which never equals `--bg` (light and pure-black
@@ -644,8 +644,8 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
   Why: the dark steps stay narrow because the sidebar already spends 8% of DL-3.5's headroom.
 - **DL-18.8** The browser is a stage surface, not a docked column: one chip on the strip, a
   globe plus the page title, ordered by when it was opened. While active it covers the
-  terminal grid as the document surface does (the same `.stage__surface` rectangle and
-  explorer inset, terminal left mounted). At most one surface holds the stage; activating
+  terminal grid in the `.stage__surface` rectangle with its dock inset, leaving the terminal
+  mounted. Documents remain beside the Explorer. At most one surface holds the stage; activating
   another surface or a terminal steps the others back. The page is a native view above every
   DOM layer, so the surface tells the host to hide it whenever a DOM overlay opens or it
   loses the stage (DL-19.6). Closing the chip hides the view and keeps the page; only
@@ -775,14 +775,16 @@ covering it; the file explorer is the resident instance.
   cannot say why (DL-21.4); on a host that cannot serve the read the switch is omitted
   (DL-19.7).
   Why: the wash is DL-21.1's selection signifier, and a filter is not a selection.
-- **DL-19.10** The explorer marks the document on the stage. While a file tab holds the
-  stage, the row with that document's path carries DL-21.1's wash at `--radius-tab`
+- **DL-19.10** Opening a document splits the Explorer's existing width into a narrower list
+  and a document panel on its right; it creates no top-strip chip. The panel's Open files
+  selector retains access to kept and dirty files ([FilePanel](../src/files/ui/file-panel.tsx)).
+  The row with the displayed document's path carries DL-21.1's wash at `--radius-tab`
   (DL-20.1's 28px clause; hover takes the same corner), its name and icon take
   `--text-primary`, and it is `aria-selected`; DL-21.3's ring composes with it. When the
   document changes, the tree opens the folders above it and scrolls only as far as the row
   needs, never moving keyboard focus or the roving tab stop and never opening the dock. A
   document outside the root, under an excluded name, or a dot-path while hidden files are off
-  marks nothing and changes no filter. While a terminal holds the stage no row is marked.
+  marks nothing and changes no filter. The mark remains while the terminal has keyboard focus.
 
 ## 23. Action tooltips and the `More` menu
 
@@ -1489,7 +1491,7 @@ belongs to the tab, so every surface reads the same one. Built by
   project › branch › space › session for the focused pane, truncating from the project end first;
   an unnamed space whose folder is its project drops the name crumb, and the rename field takes
   its place while editing. Then come one mark per space of the current project (others are
-  reached through the rail) and the document and browser chips; every mark precedes every surface
+  reached through the rail) and the browser chip; every mark precedes every surface
   chip, and ⌘1–9 and cycling count them in that order.
   A name is what the user typed, else the folder, plus an index when several spaces share the
   workspace (`spacevibe-deck 2`); `New space` on a launch card names the space

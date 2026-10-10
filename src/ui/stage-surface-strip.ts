@@ -1,25 +1,4 @@
-/**
- * The one `SurfaceStrip` TabManager sees: the file controller's strip with
- * the browser tab composed in as the segment's last surface.
- *
- * `TabManager` deliberately knows nothing about files OR the browser — it
- * consumes the `SurfaceStrip` seam (tab-manager.ts) and `App` decides what
- * implements it, exactly how `INERT_SURFACES` → `fileController` was swapped
- * (file-explorer plan Task 5). Composing here, renderer-side, is what keeps
- * cycling (⌘⇧[/]), ⌘W routing, "last surface, not last tab" and focus
- * working for the browser without touching any R4 seam.
- *
- * Index space: `0 .. files.count()-1` are the active workspace's file tabs,
- * `files.count()` is the browser tab while it is open, and the slot after it
- * is the Agent Board while ITS chip exists (spec §4.1). Each new kind is
- * appended rather than inserted, so no existing index moves; where a chip
- * actually PAINTS is `orderKey`'s answer, not this space's.
- *
- * Mutual exclusion is enforced on every path THROUGH this object (activate,
- * deactivate); paths that reach the file store directly (explorer clicks,
- * chip clicks) are backstopped by App's exclusion effect instead — the two
- * stores never import each other.
- */
+/** Browser/board occupy the stage; documents remain in the Explorer beside it. */
 import type { SurfaceStrip } from "../terminal/tab-manager";
 import type { BrowserClient } from "../browser/browser-client";
 import {
@@ -45,7 +24,7 @@ import { dismissMissionControl } from "./mission-control/mission-control-store";
 export interface StageSlotDescriptor {
   /** SurfaceStrip index this slot addresses. */
   readonly index: number;
-  readonly kind: "file" | "browser" | "agent-board";
+  readonly kind: "browser" | "agent-board";
   readonly openedAt: number;
 }
 
@@ -75,7 +54,7 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
   };
   const boardSlot = (): number => (agentBoardOpen.value ? 1 : 0);
   /** Index of the board's own slot while its chip exists, else -1. */
-  const boardIndex = (): number => (agentBoardOpen.value ? files.count() + browserSlot() : -1);
+  const boardIndex = (): number => (agentBoardOpen.value ? browserSlot() : -1);
   /** Take the board off the stage if it holds it; report whether it did. */
   const stepBoardBack = (): boolean => {
     if (!agentBoardSurfaceActive.value) {
@@ -85,36 +64,29 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
     return true;
   };
   return {
-    count: () => files.count() + browserSlot() + boardSlot(),
+    count: () => browserSlot() + boardSlot(),
+    hasFocus: () =>
+      files.activeIndex() >= 0 || browserSurfaceActive.value || agentBoardSurfaceActive.value,
     total: () => files.total() + browserSlot() + boardSlot(),
     activeIndex: () =>
-      agentBoardSurfaceActive.value
-        ? boardIndex()
-        : browserSurfaceActive.value
-          ? files.count()
-          : files.activeIndex(),
-    // Same delegation as every other method: file indexes go to the file
-    // strip, the browser's and the board's own slots answer from their stores.
-    // The merged strip then places each chip by when it was opened, not by
-    // this index space — which is why the browser can now sit BEFORE a file
-    // tab even though it is still a later index here.
+      agentBoardSurfaceActive.value ? boardIndex() : browserSurfaceActive.value ? 0 : -1,
+    // Only surfaces occupying the stage participate in tab navigation.
     orderKey: (index) =>
       index === boardIndex()
         ? agentBoardOpenedAt.value
-        : browserOpen.value && index === files.count()
+        : browserOpen.value && index === 0
           ? browserOpenedAt.value
-          : (files.orderKey?.(index) ?? UNSEQUENCED),
+          : UNSEQUENCED,
     // Straight delegation, with no browser branch: the file side answers
     // false unless its editor actually holds the caret, so a browser tab on
     // the stage falls through to the browser's own handling exactly as it did
     // when these three were native Cocoa roles.
     runEditCommand: (command) => files.runEditCommand?.(command) ?? false,
     // The board is tested FIRST because its slot is the highest index: an
-    // `index === files.count()` test would claim the board's slot as the
+    // `index === 0` test would claim the board's slot as the
     // browser's the moment the browser is closed and the board is open.
     activate(index) {
-      if (index >= 0 && index < files.count() + browserSlot() + boardSlot())
-        deps.beforeActivate?.();
+      if (index >= 0 && index < browserSlot() + boardSlot()) deps.beforeActivate?.();
       if (index === boardIndex()) {
         if (agentBoardSurfaceActive.value) {
           return; // already on the stage
@@ -126,7 +98,7 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
         return;
       }
       const boardChanged = stepBoardBack();
-      if (browserOpen.value && index === files.count()) {
+      if (browserOpen.value && index === 0) {
         if (browserSurfaceActive.value) {
           // `boardChanged` is necessarily false here: every path through this
           // object steps the other surface back before activating one, so the
@@ -138,11 +110,9 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
         onChanged();
         return;
       }
-      const browserChanged = stepBrowserBack();
-      files.activate(index);
-      if (boardChanged || browserChanged) {
-        onChanged();
-      }
+      // Last terminal closed: retained documents keep the window usable.
+      if (browserSlot() + boardSlot() === 0) files.activate(index);
+      if (boardChanged) onChanged();
     },
     deactivate() {
       const boardChanged = stepBoardBack();
@@ -153,6 +123,10 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
       }
     },
     focus() {
+      if (files.activeIndex() >= 0) {
+        files.focus();
+        return;
+      }
       if (agentBoardSurfaceActive.value) {
         // The Board takes DOM focus through its own mount effect: focusing
         // from here would fight the roving focus inside its card grid.
@@ -167,6 +141,10 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
       files.focus();
     },
     async close() {
+      if (files.activeIndex() >= 0) {
+        await files.close();
+        return;
+      }
       if (agentBoardSurfaceActive.value) {
         // ⌘W on the Board closes the CHIP, not the panes it lists (spec
         // §4.4): its own state resets and every agent keeps running.
@@ -182,11 +160,10 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
       await files.close();
     },
     async save() {
-      if (agentBoardSurfaceActive.value || browserSurfaceActive.value) {
-        return; // neither a web page nor the Board has anything Deck can save
-      }
-      await files.save();
+      if (files.activeIndex() >= 0) await files.save();
     },
+    canToggleView: () => files.canToggleView?.() ?? false,
+    toggleView: () => files.toggleView?.(),
     applySettings(next) {
       files.applySettings(next);
     },
@@ -203,15 +180,8 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
  * function is the renderer's own reading of the space the composer publishes,
  * not a widening of what TabManager consumes.
  */
-export function stageSurfaceDescriptors(
-  // The file side's own two methods, structurally — not `FileSurfaceController`,
-  // which would drag the file layer's type into a module TabManager consumes.
-  files: Pick<SurfaceStrip, "count" | "orderKey">,
-): readonly StageSlotDescriptor[] {
+export function stageSurfaceDescriptors(): readonly StageSlotDescriptor[] {
   const slots: StageSlotDescriptor[] = [];
-  for (let index = 0; index < files.count(); index += 1) {
-    slots.push({ index, kind: "file", openedAt: files.orderKey?.(index) ?? UNSEQUENCED });
-  }
   if (browserOpen.value) {
     slots.push({ index: slots.length, kind: "browser", openedAt: browserOpenedAt.value });
   }

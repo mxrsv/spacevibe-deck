@@ -25,7 +25,7 @@ import {
   loadMonaco,
   type MonacoApi,
 } from "../editor-host";
-import { clearReveal, documentFor, pendingReveal } from "../file-surface-store";
+import { activeFileTab, clearReveal, documentFor, pendingReveal } from "../file-surface-store";
 import { editorSettings, type FileSurfaceController } from "../file-surface-controller";
 import { ExternalChangeBar } from "./external-change-bar";
 
@@ -176,7 +176,7 @@ export function FileEditor(props: FileEditorProps) {
           editor.trigger("deck-menu", command, null);
           return true;
         });
-        editor.focus();
+        if (activeFileTab.value === props.path) editor.focus();
         // Re-runs the model effect now that there is something to attach to.
         ready.value += 1;
       })
@@ -254,7 +254,7 @@ export function FileEditor(props: FileEditorProps) {
     if (reveal !== null && reveal.path === props.path && document.file !== null) {
       editor.revealLineInCenter(reveal.line);
       editor.setPosition({ lineNumber: reveal.line, column: reveal.column });
-      editor.focus();
+      if (activeFileTab.value === props.path) editor.focus();
       clearReveal(reveal.path);
     }
   }, [props.path, document?.text, document?.file, ready.value, reveal]);

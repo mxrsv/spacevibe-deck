@@ -81,10 +81,9 @@ describe("ExplorerTab", () => {
     // (spec §4.1) — the read itself resolves to "refused" here on purpose.
     expect(activeFileTab.value).toBe(FILE);
     expect(documentFor(FILE)).toBeDefined();
-    // …and the tab renders NO editor. The document goes to the stage
-    // (`.stage__surface`, mounted by `App`) since 2026-08-14; a click here
-    // opens the tab and stops there.
-    expect(host.querySelector(".fileview")).toBeNull();
+    expect(host.querySelector(".explorer-tab--document .file-panel .fileview")).not.toBeNull();
+    expect(host.querySelector(".explorer-tab__list .file-tree")).not.toBeNull();
+    expect(host.querySelector(".stage__surface")).toBeNull();
   });
 
   it("shows an empty state instead of a tree when the tab has no workspace", () => {

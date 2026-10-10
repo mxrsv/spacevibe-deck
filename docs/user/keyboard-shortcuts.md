@@ -91,7 +91,7 @@ and overwritten, but not renamed or deleted from inside the app.
 - On macOS, menu-bound chords such as Find and Clear Buffer are consumed by the menu bar
   before a document can see them.
 - Bracket and digit chords bind to the physical key position, so they work on non-US layouts.
-- On Windows, Ctrl+S saves the open document, but only while a document is on the stage. Over a
+- On Windows, Ctrl+S saves the open document, but only while its panel has keyboard focus ([routing](../../src/ui/stage-surface-strip.ts)). Over a
   terminal it still goes to the terminal, as it always has.
 - ⌘⇧V has no Windows binding because Ctrl+Shift+V is paste. Use the toggle on the document
   surface instead.

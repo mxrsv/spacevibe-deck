@@ -42,6 +42,8 @@ export interface SurfaceStrip {
   total(): number;
   /** Index within the strip's segment, or -1 when a terminal tab is active. */
   activeIndex(): number;
+  /** A docked surface may own keyboard focus without occupying a strip slot. */
+  hasFocus?(): boolean;
   /**
    * When the surface at `index` was opened, on the window's shared clock
    * (`lib/open-sequence.ts`).

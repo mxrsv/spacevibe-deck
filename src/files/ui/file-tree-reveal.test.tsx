@@ -155,7 +155,7 @@ function open(path: string): void {
 }
 
 describe("marking the document on the stage (H3)", () => {
-  it("marks the clicked file's row, moves with the strip, and clears for a terminal", async () => {
+  it("marks the displayed document even while the terminal has focus", async () => {
     const h = harness();
     mount(h.controller);
     await vi.waitFor(() => expect(names()).toContain("README.md"));
@@ -179,10 +179,10 @@ describe("marking the document on the stage (H3)", () => {
     act(() => activateFileTab(WS, `${REAL}/README.md`));
     await vi.waitFor(() => expect(marked()).toEqual(["README.md"]));
 
-    // A terminal holds the stage: the mark names what the stage shows.
+    // The document remains visible beside the tree when the terminal has focus.
     act(() => activateTerminalSurface());
-    await vi.waitFor(() => expect(marked()).toEqual([]));
-    expect(rows().some((r) => r.getAttribute("aria-selected") === "true")).toBe(false);
+    await vi.waitFor(() => expect(marked()).toEqual(["README.md"]));
+    expect(rows().some((r) => r.getAttribute("aria-selected") === "true")).toBe(true);
   });
 
   it("only files carry aria-selected", async () => {

@@ -250,6 +250,32 @@ describe("file surfaces in the tab strip", () => {
     expect(tabViews.value).toHaveLength(1);
   });
 
+  it("routes focus, save and close to a docked surface without a strip slot", async () => {
+    const surfaces = fakeSurfaces({ count: 0, total: 1, activeIndex: -1 });
+    let focused = false;
+    const { tm } = setup({
+      deps: { surfaces: { ...surfaces, hasFocus: () => focused } },
+      infos: IDLE_SHELLS,
+    });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    focused = true;
+    surfaces.calls.length = 0;
+    tm.focusActive();
+    tm.runAction("save-file");
+    tm.runAction("close-pane");
+    await vi.waitFor(() => expect(surfaces.calls).toContain("close"));
+    expect(surfaces.calls).toContain("focus");
+    expect(surfaces.calls).toContain("save");
+    expect(tabViews.value).toHaveLength(1);
+    focused = false;
+    surfaces.calls.length = 0;
+    tm.focusActive();
+    expect(surfaces.calls).not.toContain("focus");
+    tm.runAction("close-pane");
+    await vi.waitFor(() => expect(tabViews.value).toHaveLength(0));
+    expect(surfaces.calls).not.toContain("close");
+  });
+
   it("T20: ⌘W still closes the PANE when a terminal tab is active", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });

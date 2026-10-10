@@ -5,7 +5,7 @@
  * the BUFFER — not from the disk — when it changes underneath.
  *
  * Monaco is never loaded here. Every test either renders a document with no
- * fence at all, or supplies its own image seam; `StageSurface`'s source-mode
+ * fence at all, or supplies its own image seam; `FilePanel`'s source-mode
  * branch mounts `FileEditor`, which loads Monaco lazily and simply never
  * resolves under jsdom — the assertion is on which root class is in the DOM,
  * which the component decides before that import is ever started.
@@ -13,7 +13,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StageSurface } from "./stage-surface";
+import { FilePanel } from "./file-panel";
 import { MarkdownView, RENDER_DEBOUNCE_MS } from "./markdown-view";
 import {
   createFileSurfaceController,
@@ -76,7 +76,7 @@ async function waitFor(check: () => boolean): Promise<void> {
 const headingIn = (host: HTMLElement): string | null =>
   host.querySelector(".md-doc h1")?.textContent ?? null;
 
-describe("StageSurface — which view a file lands on", () => {
+describe("FilePanel — which view a file lands on", () => {
   let host: HTMLDivElement;
   let controller: FileSurfaceController;
 
@@ -96,7 +96,7 @@ describe("StageSurface — which view a file lands on", () => {
 
   const mount = (): void => {
     act(() => {
-      render(<StageSurface controller={controller} />, host);
+      render(<FilePanel workspacePath={WS} controller={controller} />, host);
     });
   };
 

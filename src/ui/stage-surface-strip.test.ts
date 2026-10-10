@@ -74,7 +74,7 @@ describe("composeSurfaceStrip with the browser tab closed", () => {
   // The invariant protecting every existing TabManager behavior: while no
   // browser tab exists, the composed strip must be indistinguishable from
   // the file controller it wraps.
-  it("delegates every method bit-identically to the file strip", async () => {
+  it("keeps documents out of the strip while preserving focused commands and last-surface protection", async () => {
     const files = fakeFiles({ activeIndex: vi.fn(() => 1) });
     const onChanged = vi.fn();
     const strip = composeSurfaceStrip({
@@ -83,9 +83,10 @@ describe("composeSurfaceStrip with the browser tab closed", () => {
       onChanged,
     });
 
-    expect(strip.count()).toBe(2);
+    expect(strip.count()).toBe(0);
     expect(strip.total()).toBe(3);
-    expect(strip.activeIndex()).toBe(1);
+    expect(strip.activeIndex()).toBe(-1);
+    expect(strip.hasFocus?.()).toBe(true);
     strip.activate(1);
     expect(files.activate).toHaveBeenCalledWith(1);
     strip.deactivate();
@@ -111,12 +112,12 @@ describe("composeSurfaceStrip with the browser tab open", () => {
       client: fakeClient(),
       onChanged: vi.fn(),
     });
-    expect(strip.count()).toBe(3);
+    expect(strip.count()).toBe(1);
     expect(strip.total()).toBe(4);
     expect(strip.activeIndex()).toBe(-1); // nothing active yet
 
     browserSurfaceActive.value = true;
-    expect(strip.activeIndex()).toBe(2); // files.count() — after the files
+    expect(strip.activeIndex()).toBe(0); // files.count() — after the files
   });
 
   it("activating the browser index steps the file surface back", () => {
@@ -129,31 +130,40 @@ describe("composeSurfaceStrip with the browser tab open", () => {
       onChanged,
     });
 
-    strip.activate(2);
+    strip.activate(0);
     expect(browserSurfaceActive.value).toBe(true);
     expect(files.deactivate).toHaveBeenCalledTimes(1);
     expect(files.activate).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalledTimes(1);
 
     // Re-activating the already-active browser is a no-op, not a re-notify.
-    strip.activate(2);
+    strip.activate(0);
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
-  it("activating a file index steps the browser back and hides its view", () => {
+  it("routes focused document commands without taking the browser off the stage", async () => {
     browserOpen.value = true;
     browserSurfaceActive.value = true;
-    const files = fakeFiles();
+    const files = fakeFiles({
+      activeIndex: () => 0,
+      canToggleView: () => true,
+      toggleView: vi.fn(),
+    });
     const client = fakeClient();
-    const onChanged = vi.fn();
-    const strip = composeSurfaceStrip({ files, client, onChanged });
-
-    strip.activate(0);
-    expect(browserSurfaceActive.value).toBe(false);
-    expect(browserOpen.value).toBe(true); // the chip survives losing the stage
-    expect(client.setVisible).toHaveBeenCalledWith(false);
-    expect(files.activate).toHaveBeenCalledWith(0);
-    expect(onChanged).toHaveBeenCalledTimes(1);
+    const strip = composeSurfaceStrip({ files, client, onChanged: vi.fn() });
+    expect(strip.count()).toBe(1);
+    expect(strip.hasFocus?.()).toBe(true);
+    await strip.save();
+    await strip.close();
+    strip.focus();
+    strip.toggleView?.();
+    expect(files.save).toHaveBeenCalledOnce();
+    expect(files.close).toHaveBeenCalledOnce();
+    expect(files.focus).toHaveBeenCalledOnce();
+    expect(files.toggleView).toHaveBeenCalledOnce();
+    expect(strip.canToggleView?.()).toBe(true);
+    expect(browserSurfaceActive.value).toBe(true);
+    expect(client.setVisible).not.toHaveBeenCalled();
   });
 
   it("deactivate steps both surfaces back (a terminal took the stage)", () => {
@@ -252,14 +262,14 @@ describe("the agent board slot", () => {
       client: fakeClient(),
       onChanged: vi.fn(),
     });
-    expect(strip.count()).toBe(3); // two file tabs plus the browser
+    expect(strip.count()).toBe(1); // two file tabs plus the browser
 
     openAgentBoard();
-    expect(strip.count()).toBe(4);
+    expect(strip.count()).toBe(2);
     expect(strip.total()).toBe(5);
     // Files, then the browser, then the board — the index space is
     // bookkeeping, and the merged strip places the chip by this key instead.
-    expect(strip.orderKey?.(3)).toBe(agentBoardOpenedAt.value);
+    expect(strip.orderKey?.(1)).toBe(agentBoardOpenedAt.value);
   });
 
   it("activates the board, and a terminal tab steps it back", () => {
@@ -269,9 +279,9 @@ describe("the agent board slot", () => {
 
     openAgentBoard();
     stepAgentBoardBack(); // the chip exists, but a terminal holds the stage
-    strip.activate(1);
+    strip.activate(0);
     expect(agentBoardSurfaceActive.value).toBe(true);
-    expect(strip.activeIndex()).toBe(1);
+    expect(strip.activeIndex()).toBe(0);
     expect(files.deactivate).toHaveBeenCalledTimes(1);
     expect(files.activate).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -309,20 +319,14 @@ describe("the agent board slot", () => {
   it("describes every slot by kind, in SurfaceStrip index order", () => {
     browserOpen.value = true;
     openAgentBoard();
-    const descriptors = stageSurfaceDescriptors(
-      fakeFiles({ count: vi.fn(() => 1), orderKey: vi.fn(() => 7) }),
-    );
-
-    expect(descriptors.map((slot) => slot.kind)).toEqual(["file", "browser", "agent-board"]);
-    expect(descriptors.map((slot) => slot.index)).toEqual([0, 1, 2]);
-    expect(descriptors[0].openedAt).toBe(7);
-    expect(descriptors[2].openedAt).toBe(agentBoardOpenedAt.value);
+    const descriptors = stageSurfaceDescriptors();
+    expect(descriptors.map((slot) => slot.kind)).toEqual(["browser", "agent-board"]);
+    expect(descriptors.map((slot) => slot.index)).toEqual([0, 1]);
+    expect(descriptors[1].openedAt).toBe(agentBoardOpenedAt.value);
   });
 
-  it("describes only the files while neither the browser nor the board is open", () => {
-    expect(
-      stageSurfaceDescriptors(fakeFiles({ count: vi.fn(() => 2) })).map((s) => s.kind),
-    ).toEqual(["file", "file"]);
+  it("has no strip slots while neither browser nor board is open", () => {
+    expect(stageSurfaceDescriptors()).toEqual([]);
   });
 });
 

@@ -12,11 +12,9 @@ import {
   stripPreferences,
 } from "../lib/strip-order";
 import { AgentGlyph } from "./controls/agent-glyph";
-import { fileIcon } from "../files/ui/file-icons";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { activeWorkspace, fileSurfaces, promoteFileTab } from "../files/file-surface-store";
-import { fileTabViews } from "../files/file-tab-views";
 import { browserState, browserSurfaceActive } from "../browser/browser-store";
 import { agentBoardSurfaceActive } from "./agent-board-store";
 import { stageSurfaceDescriptors } from "./stage-surface-strip";
@@ -96,7 +94,12 @@ function terminalChips(props: TabStripProps, surfaceActive: boolean): readonly C
           <DeckIcon icon={TerminalWindow} size={CHROME_ICON} />
         ),
         select: () => {
-          if (index !== active || surfaceActive || props.transientPageOpen)
+          if (
+            index !== active ||
+            surfaceActive ||
+            props.fileController.activeIndex() >= 0 ||
+            props.transientPageOpen
+          )
             props.onSelectTab(index);
         },
         close: () => {
@@ -109,30 +112,7 @@ function terminalChips(props: TabStripProps, surfaceActive: boolean): readonly C
 }
 
 function surfaceChips(props: TabStripProps): readonly Chip[] {
-  const files = fileTabViews(props.fileController);
-  const workspace = activeWorkspace.value;
-  return stageSurfaceDescriptors(props.fileController).flatMap((surface): Chip[] => {
-    if (surface.kind === "file") {
-      const tab = files[surface.index];
-      if (!tab || !workspace) return [];
-      return [
-        {
-          key: `file-${workspace}-${tab.path}-${surface.openedAt}`,
-          openedAt: surface.openedAt,
-          label: tab.name,
-          closeLabel: `Close ${tab.name}`,
-          kind: "file",
-          workspace,
-          path: tab.path,
-          active: tab.active,
-          dirty: tab.dirty,
-          preview: tab.preview,
-          glyph: <DeckIcon icon={fileIcon(tab.name)} size={CHROME_ICON} />,
-          select: () => props.fileController.activate(surface.index),
-          close: () => props.fileController.closePath(workspace, tab.path),
-        },
-      ];
-    }
+  return stageSurfaceDescriptors().flatMap((surface): Chip[] => {
     const browser = surface.kind === "browser";
     return [
       {
@@ -158,10 +138,7 @@ function surfaceChips(props: TabStripProps): readonly Chip[] {
 }
 
 export function TabStrip(props: TabStripProps) {
-  const surfaceActive =
-    props.fileController.activeIndex() >= 0 ||
-    browserSurfaceActive.value ||
-    agentBoardSurfaceActive.value;
+  const surfaceActive = browserSurfaceActive.value || agentBoardSurfaceActive.value;
   const terminals = terminalChips(props, surfaceActive);
   const surfaces = surfaceChips(props);
   const preferences = stripPreferences.value;

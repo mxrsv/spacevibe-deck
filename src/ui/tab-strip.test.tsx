@@ -25,7 +25,7 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../files/file-surface-controller";
-import { openFileTab, closeFileSurface, resetFileSurfaces } from "../files/file-surface-store";
+import { openFileTab, resetFileSurfaces } from "../files/file-surface-store";
 import { nextOpenSequence, resetOpenSequence } from "../lib/open-sequence";
 import type { FileClient } from "../files/file-client";
 import { repositoryScans } from "../repositories/repositories-store";
@@ -132,8 +132,9 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     )!;
   it("reorders surface chips from mouse pointer events with no space marks", () => {
     tabViews.value = [tab({ key: 1, openedAt: nextOpenSequence() })];
-    openFileTab("/repo", "/repo/first.ts", { keep: true });
-    openFileTab("/repo", "/repo/second.ts", { keep: true });
+    browserOpen.value = true;
+    browserOpenedAt.value = nextOpenSequence();
+    openAgentBoard();
     const select = vi.fn();
     mount({ onSelectTab: select });
     expect(host.querySelector(".space-mark")).toBeNull();
@@ -141,8 +142,8 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     const box = (left: number, width: number) =>
       ({ left, right: left + width, top: 0, bottom: 30, width, height: 30 }) as DOMRect;
     list.getBoundingClientRect = () => box(0, 200);
-    chipNamed("first.ts").getBoundingClientRect = () => box(0, 100);
-    chipNamed("second.ts").getBoundingClientRect = () => box(100, 100);
+    chipNamed("Browser").getBoundingClientRect = () => box(0, 100);
+    chipNamed("Agents").getBoundingClientRect = () => box(100, 100);
     const pointer = (target: EventTarget, type: string, x: number) => {
       const event = new MouseEvent(type, {
         bubbles: true,
@@ -155,14 +156,14 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       target.dispatchEvent(event);
     };
     act(() => {
-      pointer(chipNamed("second.ts").querySelector(".tab__label")!, "pointerdown", 150);
+      pointer(chipNamed("Agents").querySelector(".tab__label")!, "pointerdown", 150);
       pointer(window, "pointermove", 10);
       pointer(window, "pointerup", 10);
       list.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect([...list.querySelectorAll(".tab__label")].map((el) => el.textContent)).toEqual([
-      "second.ts",
-      "first.ts",
+      "Agents",
+      "Browser",
     ]);
     expect(select).not.toHaveBeenCalled();
   });
@@ -186,22 +187,17 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
   };
 
-  it("keeps a pinned preview file when another preview opens", async () => {
-    tabViews.value = [tab({ openedAt: nextOpenSequence() })];
-    openFileTab("/repo", "/repo/a.ts", { keep: false });
+  it("keeps files out of the strip even when retained and pinned in old preferences", () => {
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    setStripPinned(fileController.orderKey!(0), true);
+    openFileTab("/repo", "/repo/b.ts", { keep: false });
     mount();
-    context("a.ts");
-    await menuAction("Pin");
-    act(() => {
-      openFileTab("/repo", "/repo/b.ts", { keep: false });
-    });
-    expect(chipNamed("a.ts").querySelector(".tab__label--preview")).toBeNull();
-    expect(chipNamed("a.ts").dataset.pinned).toBe("true");
+    expect(host.querySelectorAll(".tab")).toHaveLength(0);
   });
 
   it("shows the active breadcrumb and surface chips without terminal marks", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" }), tab({ key: 2, name: "Beta" })];
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    browserOpen.value = true;
     mount({ scopeToActiveRepository: false });
     const label = () =>
       host.querySelector('.space-bar__name-slot[data-current="true"] .space-bar__label')
@@ -209,7 +205,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(label()).toBe("Alpha");
     expect(host.querySelector(".space-mark, .space-bar__marks, .tab-add, .tabbar")).toBeNull();
     expect(host.querySelectorAll('[role="tab"]')).toHaveLength(1);
-    expect(chipNamed("a.ts")).toBeDefined();
+    expect(chipNamed("Browser")).toBeDefined();
     act(() => {
       activeTabIndex.value = 1;
     });
@@ -240,19 +236,19 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(calls).toEqual(["dismiss", "select"]);
   });
 
-  it("Escape and removal of the owning file close its menu", () => {
+  it("Escape and removal of the owning browser close its menu", () => {
     tabViews.value = [tab()];
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    browserOpen.value = true;
     mount();
-    context("a.ts");
+    context("Browser");
     expect(document.querySelector('[role="menu"]')).not.toBeNull();
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(document.querySelector('[role="menu"]')).toBeNull();
-    context("a.ts");
+    context("Browser");
     act(() => {
-      closeFileSurface("/repo", "/repo/a.ts");
+      browserOpen.value = false;
     });
     expect(document.querySelector('[role="menu"]')).toBeNull();
   });
@@ -265,109 +261,38 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       tab({ key: 3, openedAt: keys[2], workspacePath: "/elsewhere" }),
     ];
     setStripPinned(keys[1]!, true);
-    openFileTab("/repo", "/repo/keep.ts", { keep: true });
+    browserOpen.value = true;
     const closeTabs = vi.fn(async () => true);
     mount({ onCloseTabs: closeTabs });
-    context("keep.ts");
+    context("Browser");
     await menuAction("Close Others");
     expect(closeTabs).toHaveBeenCalledExactlyOnceWith([0]);
   });
 
-  it("Close to the Right closes only unpinned surfaces after the owner", async () => {
-    tabViews.value = [tab({ openedAt: nextOpenSequence() })];
-    for (const name of ["left", "owner", "pinned", "right"]) {
-      openFileTab("/repo", `/repo/${name}.ts`, { keep: true });
-    }
-    const closeTabs = vi.fn(async () => true);
-    const closePath = vi.fn(async (workspace: string, path: string) => {
-      closeFileSurface(workspace, path);
-    });
-    mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
-    context("pinned.ts");
-    await menuAction("Pin");
-    context("owner.ts");
-    await menuAction("Close to the Right");
-    expect(closePath).toHaveBeenCalledExactlyOnceWith("/repo", "/repo/right.ts");
-    expect(closeTabs).not.toHaveBeenCalled();
-    expect(
-      ["left.ts", "owner.ts", "pinned.ts"].map((name) => chipNamed(name)?.textContent),
-    ).toEqual(["left.ts", "owner.ts", "pinned.ts"]);
-  });
-
-  it("explicitly closes a pinned file while bulk actions exclude pinned targets", async () => {
-    const openedAt = nextOpenSequence();
-    tabViews.value = [tab({ openedAt })];
-    setStripPinned(openedAt, true);
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    openFileTab("/repo", "/repo/b.ts", { keep: true });
-    const closePath = vi.fn(async (workspace: string, path: string) => {
-      closeFileSurface(workspace, path);
-    });
-    mount({ fileController: { ...fileController, closePath } });
-    for (const name of ["a.ts", "b.ts"]) {
-      context(name);
-      await menuAction("Pin");
-    }
-    context("a.ts");
-    const items = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
-    expect(items.find((item) => item.textContent === "Close Others")?.disabled).toBe(true);
-    expect(items.find((item) => item.textContent === "Close to the Right")?.disabled).toBe(true);
-    await menuAction("Close");
-    expect(closePath).toHaveBeenCalledExactlyOnceWith("/repo", "/repo/a.ts");
-    expect(chipNamed("a.ts")).toBeUndefined();
-    expect(chipNamed("b.ts")).toBeDefined();
-  });
-
-  it("a cancelled file close stops the batch before touching terminals", async () => {
-    tabViews.value = [tab({ openedAt: nextOpenSequence() })];
-    openFileTab("/repo", "/repo/keep.ts", { keep: true });
+  it("Close to the Right skips pinned stage surfaces and never closes dock files", async () => {
+    browserOpen.value = true;
+    browserOpenedAt.value = nextOpenSequence();
+    openAgentBoard();
     openFileTab("/repo", "/repo/dirty.ts", { keep: true });
-    const closeTabs = vi.fn(async () => true);
-    const closePath = vi.fn(async () => {});
-    mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
-    context("keep.ts");
-    await menuAction("Close Others");
-    expect(closePath).toHaveBeenCalledExactlyOnceWith("/repo", "/repo/dirty.ts");
-    expect(closeTabs).not.toHaveBeenCalled();
-    expect(tabViews.value).toHaveLength(1);
-  });
-
-  it("resolves terminal identities again after waiting for a file guard", async () => {
-    tabViews.value = [
-      tab({ key: 1, openedAt: nextOpenSequence() }),
-      tab({ key: 2, openedAt: nextOpenSequence() }),
-    ];
-    openFileTab("/repo", "/repo/keep.ts", { keep: true });
-    openFileTab("/repo", "/repo/close.ts", { keep: true });
-    let release = () => {};
-    const guard = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const closePath = vi.fn(async (workspace: string, path: string) => {
-      await guard;
-      closeFileSurface(workspace, path);
-    });
-    const closeTabs = vi.fn(async () => true);
-    mount({ onCloseTabs: closeTabs, fileController: { ...fileController, closePath } });
-    context("keep.ts");
-    await menuAction("Close Others");
-    expect(closePath).toHaveBeenCalledExactlyOnceWith("/repo", "/repo/close.ts");
-    expect(closeTabs).not.toHaveBeenCalled();
-    await act(async () => {
-      tabViews.value = [
-        tab({ key: 2, openedAt: 2 }),
-        tab({ key: 3, openedAt: nextOpenSequence() }),
-      ];
-      release();
-    });
-    await vi.waitFor(() => expect(closeTabs).toHaveBeenCalledExactlyOnceWith([0]));
+    const closeBoard = vi.fn();
+    const closePath = vi.spyOn(fileController, "closePath");
+    mount({ onCloseAgentBoard: closeBoard });
+    context("Agents");
+    await menuAction("Pin");
+    context("Browser");
+    await menuAction("Close to the Right");
+    expect(closeBoard).not.toHaveBeenCalled();
+    expect(closePath).not.toHaveBeenCalled();
+    context("Agents");
+    await menuAction("Close");
+    expect(closeBoard).toHaveBeenCalledOnce();
   });
 
   it.each([false, true])(
     "closes the browser and board only when the terminal guard accepts: %s",
     async (accepted) => {
       tabViews.value = [tab({ openedAt: nextOpenSequence() })];
-      openFileTab("/repo", "/repo/keep.ts", { keep: true });
+      browserOpen.value = true;
       browserOpen.value = true;
       browserOpenedAt.value = nextOpenSequence();
       openAgentBoard();
@@ -379,10 +304,10 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
         onCloseBrowser: closeBrowser,
         onCloseAgentBoard: closeBoard,
       });
-      context("keep.ts");
+      context("Browser");
       await menuAction("Close Others");
       expect(closeTabs).toHaveBeenCalledExactlyOnceWith([0]);
-      expect(closeBrowser).toHaveBeenCalledTimes(accepted ? 1 : 0);
+      expect(closeBrowser).not.toHaveBeenCalled();
       expect(closeBoard).toHaveBeenCalledTimes(accepted ? 1 : 0);
     },
   );

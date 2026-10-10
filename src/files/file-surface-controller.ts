@@ -85,7 +85,7 @@ export interface FileSurfaceController extends SurfaceStrip {
     position?: { readonly line: number; readonly column: number },
   ): Promise<void>;
   /** Bring an already-open file tab to the stage. */
-  activateFile(workspacePath: string, path: string): void;
+  activateFile(workspacePath: string, path: string, focus?: boolean): void;
   /** Expand or collapse a directory, loading its listing on demand. */
   toggleDirectory(workspacePath: string, directory: string): void;
   /**
@@ -432,15 +432,15 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       if (isNew) {
         await readDocument(workspacePath, path);
       }
-      if (deps.canFocus?.() !== false) focusEditor?.();
+      if (activeFileTab.value === path && deps.canFocus?.() !== false) focusEditor?.();
     },
 
-    activateFile(workspacePath, path) {
+    activateFile(workspacePath, path, focus = true) {
       deps.beforeActivate?.();
       activateFileTab(workspacePath, path);
       notify();
       refreshWatch();
-      if (deps.canFocus?.() !== false) focusEditor?.();
+      if (focus && deps.canFocus?.() !== false) focusEditor?.();
       void this.reconcile();
     },
 
@@ -695,7 +695,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
     // ---- SurfaceStrip: everything `TabManager` is allowed to know ----
     count: () => stripFileTabs().length,
     total: () => totalFileTabs(),
-    activeIndex: () => activeStripIndex(),
+    activeIndex: () => (deps.canFocus?.() === false ? -1 : activeStripIndex()),
     // The whole of what the merged strip asks a surface for: when it opened.
     // An index nothing occupies reads as `UNSEQUENCED` rather than throwing —
     // `count()` and this are read in separate turns, and a tab can close
@@ -707,7 +707,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
     // file — `activeFileTab` is the one truth about what is on the stage.
     canToggleView: () => {
       const path = activeFileTab.value;
-      return path !== null && isMarkdownPath(path);
+      return deps.canFocus?.() !== false && path !== null && isMarkdownPath(path);
     },
     toggleView() {
       const path = activeFileTab.value;

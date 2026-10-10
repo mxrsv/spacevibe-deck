@@ -62,7 +62,7 @@ export async function closeChips(
     (item) => item.kind === "browser" || item.kind === "agent-board",
   )) {
     if (
-      stageSurfaceDescriptors(props.fileController).some(
+      stageSurfaceDescriptors().some(
         (item) => item.kind === chip.kind && item.openedAt === chip.openedAt,
       )
     )

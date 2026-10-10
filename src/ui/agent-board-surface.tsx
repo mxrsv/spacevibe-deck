@@ -1,8 +1,8 @@
 /**
  * The Agent Board ON the stage — the twin of `BrowserSurface`
- * (src/browser/browser-surface.tsx) and `StageSurface` (src/files/ui/).
+ * (src/browser/browser-surface.tsx) while documents live in the Explorer dock.
  *
- * Same reasoning as those two: `App` has no render harness in this repo, so
+ * Same reasoning as the browser: `App` has no render harness in this repo, so
  * the mount condition ("the Board holds the stage") lives in a component of
  * its own to be assertable. And the same geometry: the surface COVERS
  * `.stage__tabs` instead of unmounting it, so the terminal grid keeps its

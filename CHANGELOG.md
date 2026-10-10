@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Read files beside the Explorer.** Opening a file now splits the right sidebar into
+  the file list and a [document panel](src/files/ui/file-panel.tsx), keeping your terminal
+  visible. Use Open files to return to retained or unsaved documents; files no longer
+  appear in the top tab strip. Electron only.
+
 - **The top tab bar shows your terminals again.** With the tab list on top,
   2.9.0 dropped the space marks that stand for your terminals, so none could be
   clicked; they are back. With the tab list on the left the rail lists your
