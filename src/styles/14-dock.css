@@ -665,7 +665,7 @@
    changes the terminal's bounds. Both columns may shrink below content width. */
 .explorer-tab--document {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
 }
 
 .explorer-tab__list {
@@ -682,7 +682,7 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-left: 1px solid var(--hair);
+  border-right: 1px solid var(--hair);
   overflow: hidden;
 }
 

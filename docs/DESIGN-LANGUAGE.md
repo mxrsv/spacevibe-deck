@@ -776,7 +776,7 @@ covering it; the file explorer is the resident instance.
   (DL-19.7).
   Why: the wash is DL-21.1's selection signifier, and a filter is not a selection.
 - **DL-19.10** Opening a document splits the Explorer's existing width into a narrower list
-  and a document panel on its right; it creates no top-strip chip. The panel's Open files
+  and a document panel on its left, so the list stays against the window edge; it creates no top-strip chip. The panel's Open files
   selector retains access to kept and dirty files ([FilePanel](../src/files/ui/file-panel.tsx)).
   The row with the displayed document's path carries DL-21.1's wash at `--radius-tab`
   (DL-20.1's 28px clause; hover takes the same corner), its name and icon take

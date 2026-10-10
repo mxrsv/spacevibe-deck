@@ -102,7 +102,7 @@ expands it again.
 ## Files
 
 Open the file explorer (**⌘⇧B**) to browse the workspace. Opening a file splits the
-sidebar: the list stays on the left and the document appears on the right, while the
+sidebar: the list stays against the right edge and the document appears to its left, while the
 terminal remains visible. Use **Open files** to return to a retained document; unsaved
 files carry a dot. With the document focused, **⌘S** (Windows: **Ctrl+S**) saves and
 **⌘W** closes it. Markdown opens rendered; **⌘⇧V** flips it to source.

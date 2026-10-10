@@ -1,4 +1,4 @@
-/** The Explorer list and its selected document share the dock width. */
+/** The Explorer list and its selected document share the dock width; the list hugs the window edge. */
 import { useEffect } from "preact/hooks";
 import type { FileSurfaceController } from "../file-surface-controller";
 import { clearExplorerStatus, explorerStatus, surfaceFor } from "../file-surface-store";
@@ -83,6 +83,11 @@ export function ExplorerTab(props: ExplorerTabProps) {
     <div
       class={`explorer-tab${surfaceFor(workspacePath).activePath !== null ? " explorer-tab--document" : ""}`}
     >
+      <FilePanel
+        controller={props.controller}
+        workspacePath={workspacePath}
+        onEmpty={props.onDocumentEmpty}
+      />
       <div class="explorer-tab__list">
         {createLine !== null && (
           <p
@@ -129,11 +134,6 @@ export function ExplorerTab(props: ExplorerTabProps) {
           />
         )}
       </div>
-      <FilePanel
-        controller={props.controller}
-        workspacePath={workspacePath}
-        onEmpty={props.onDocumentEmpty}
-      />
     </div>
   );
 }
