@@ -45,6 +45,8 @@ export interface AttentionNotification {
 export interface AgentNotifier {
   /** Evaluate one transition; fires at most one `send` per (paneId, revision). */
   maybeNotify(n: AttentionNotification): void;
+  /** Forward only a newly raised or escalated attention latch to maybeNotify. */
+  notifyLatchTransition(n: AttentionNotification): void;
   /** Forget dedupe state for panes outside `live` — call after a pane/tab closes. */
   prune(live: readonly number[]): void;
 }
@@ -86,36 +88,47 @@ const KIND_PHRASE: Record<Exclude<AttentionKind, "none">, string> = {
 export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
   // paneId -> highest revision actually notified for that pane so far.
   const lastNotified = new Map<number, number>();
+  // paneId -> current latch identity, including transitions suppressed by
+  // focus/settings gates. Phase-only revisions must not become notifications.
+  const lastAttentionKind = new Map<number, AttentionKind>();
+
+  function maybeNotify(n: AttentionNotification): void {
+    if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === "none") {
+      return;
+    }
+    const previous = lastNotified.get(n.paneId) ?? -Infinity;
+    if (n.revision <= previous) {
+      return; // same or older revision — already notified, or out of order
+    }
+    lastNotified.set(n.paneId, n.revision);
+
+    const phrase = KIND_PHRASE[n.kind];
+    const agent = n.agentLabel ?? "Agent";
+    deps.send({
+      title: n.workspaceLabel,
+      body: `${agent} ${phrase}`,
+    });
+  }
 
   return {
-    maybeNotify(n) {
-      if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === "none") {
+    maybeNotify,
+
+    notifyLatchTransition(n) {
+      const previous = lastAttentionKind.get(n.paneId) ?? "none";
+      lastAttentionKind.set(n.paneId, n.kind);
+      if (n.kind === "none" || n.kind === previous) {
         return;
       }
-      const previous = lastNotified.get(n.paneId) ?? -Infinity;
-      if (n.revision <= previous) {
-        return; // same or older revision — already notified, or out of order
-      }
-      lastNotified.set(n.paneId, n.revision);
-
-      const phrase = KIND_PHRASE[n.kind];
-      const agent = n.agentLabel ?? "Agent";
-      deps.send({
-        title: n.workspaceLabel,
-        body: `${agent} ${phrase}`,
-      });
+      maybeNotify(n);
     },
 
     prune(live) {
       const keep = new Set(live);
-      const doomed: number[] = [];
       for (const paneId of lastNotified.keys()) {
-        if (!keep.has(paneId)) {
-          doomed.push(paneId);
-        }
+        if (!keep.has(paneId)) lastNotified.delete(paneId);
       }
-      for (const paneId of doomed) {
-        lastNotified.delete(paneId);
+      for (const paneId of lastAttentionKind.keys()) {
+        if (!keep.has(paneId)) lastAttentionKind.delete(paneId);
       }
     },
   };

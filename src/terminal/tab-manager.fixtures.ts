@@ -238,8 +238,9 @@ export function fakeNotifierSpy(): {
   prune: ReturnType<typeof vi.fn<(live: readonly number[]) => void>>;
 } {
   const maybeNotify = vi.fn<(n: AttentionNotification) => void>();
+  const notifyLatchTransition = vi.fn<(n: AttentionNotification) => void>((n) => maybeNotify(n));
   const prune = vi.fn<(live: readonly number[]) => void>();
-  return { notifier: { maybeNotify, prune }, maybeNotify, prune };
+  return { notifier: { maybeNotify, notifyLatchTransition, prune }, maybeNotify, prune };
 }
 
 // init() installs the file-drop listener, which reaches into the Tauri window
