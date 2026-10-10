@@ -250,7 +250,9 @@ describe("createAgentNotifier", () => {
       const { deps, send } = makeDeps();
       const notifier = createAgentNotifier(deps);
 
-      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "requested" }));
+      notifier.notifyLatchTransition(
+        makeNotification({ paneId: 1, revision: 1, kind: "requested" }),
+      );
       notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "error" }));
 
       expect(send).toHaveBeenCalledTimes(2);
@@ -280,12 +282,16 @@ describe("createAgentNotifier", () => {
         });
         const notifier = createAgentNotifier(deps);
 
-        notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "warning" }));
+        notifier.notifyLatchTransition(
+          makeNotification({ paneId: 1, revision: 1, kind: "warning" }),
+        );
         expect(send).not.toHaveBeenCalled();
 
         enabled = true;
         focused = false;
-        notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "warning" }));
+        notifier.notifyLatchTransition(
+          makeNotification({ paneId: 1, revision: 2, kind: "warning" }),
+        );
         expect(send).not.toHaveBeenCalled();
 
         notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 3, kind: "error" }));
