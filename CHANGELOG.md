@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **The top tab bar shows your terminals again.** With the tab list on top,
+  2.9.0 dropped the space marks that stand for your terminals, so none could be
+  clicked; they are back. With the tab list on the left the rail lists your
+  spaces, so the row above the panes still leaves them out.
+
 ## 2.9.0
 
 This update adds checkout changes and hidden files to the explorer, finds your dev servers,

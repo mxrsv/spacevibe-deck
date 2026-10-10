@@ -1483,7 +1483,9 @@ belongs to the tab, so every surface reads the same one. Built by
   `transform` only, with the stage clipped by `overflow: clip` for the slide. A just-created tab,
   a switch a document or the browser was covering, and a switch into another repository's scope
   do not slide. ⌃← / ⌃→ are not bound: they are macOS's Spaces chords and word motion in shells.
-- **DL-35.3** The strip draws terminal tabs as space marks. Its identity line is a breadcrumb
+- **DL-35.3** With the tab list on top, the strip draws terminal tabs as space marks; with it on
+  the left the rail lists the spaces, so the strip draws no marks
+  ([`hideMarks`](../src/ui/tab-strip.tsx)). Its identity line is a breadcrumb
   project › branch › space › session for the focused pane, truncating from the project end first;
   an unnamed space whose folder is its project drops the name crumb, and the rename field takes
   its place while editing. Then come one mark per space of the current project (others are

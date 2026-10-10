@@ -2,8 +2,9 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
-A **space** is a terminal tab, shown by its workspace folder. The strip draws one mark per
-space, a switch between spaces slides the stage, and Mission Control (⌘⇧O) zooms the panes
+A **space** is a terminal tab, shown by its workspace folder. With the tab list on top the
+strip draws one mark per space (on the left the rail lists them instead), a switch between
+spaces slides the stage, and Mission Control (⌘⇧O) zooms the panes
 out over the stage with every space on a shelf. It replaced the
 [Agent Board](agent-board.md) on 2026-09-28. Visual rules are
 [`DESIGN-LANGUAGE.md` §35](../DESIGN-LANGUAGE.md).

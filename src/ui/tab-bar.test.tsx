@@ -128,8 +128,73 @@ describe("TabBar", () => {
     expect(close.getAttribute("aria-label")).toBe("Close a.ts");
   });
 
-  it("shows a terminal breadcrumb without a space mark, agent glyph or colour dot", () => {
-    // The current space keeps its breadcrumb; its mark row is hidden.
+  it("clicking an inactive tab calls onSelectTab", () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha" }), tab({ key: 2, name: "Beta" })];
+    activeTabIndex.value = 0;
+    const props = baseProps();
+    mount(props);
+
+    const marks = host.querySelectorAll(".space-mark");
+    act(() => {
+      marks[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(props.onSelectTab).toHaveBeenCalledTimes(1);
+    expect(props.onSelectTab).toHaveBeenCalledWith(1);
+  });
+
+  it("clicking the mark of the space that already holds the stage does nothing", () => {
+    // It used to open the rename popover. The owner removed that popover from
+    // the strip on 2026-08-16, so the click is inert — it must not fall
+    // through to a selection either.
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    activeTabIndex.value = 0;
+    const props = baseProps();
+    mount(props);
+
+    const row = host.querySelector(".space-mark") as HTMLElement;
+    act(() => {
+      row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(host.querySelector(".tab-popover")).toBeNull();
+    expect(props.onSelectTab).not.toHaveBeenCalled();
+  });
+
+  it("closing a space from its menu calls onCloseTab only", async () => {
+    tabViews.value = [
+      tab({
+        key: 1,
+        name: "Alpha",
+        attention: actionable({ kind: "warning", actionableCount: 1 }),
+      }),
+      tab({ key: 2, name: "Beta" }),
+    ];
+    activeTabIndex.value = 0;
+    const props = baseProps();
+    mount(props);
+
+    const marks = host.querySelectorAll(".space-mark");
+    act(() => {
+      marks[1].dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((el) => el.textContent === "Close")!
+        .click();
+    });
+
+    expect(props.onCloseTab).toHaveBeenCalledTimes(1);
+    expect(props.onCloseTab).toHaveBeenCalledWith(1);
+    expect(props.onSelectTab).not.toHaveBeenCalled();
+    expect(props.onFocusAttention).not.toHaveBeenCalled();
+    expect(host.querySelector(".tab-popover")).toBeNull();
+  });
+
+  it("draws a terminal tab as a space mark, with no agent glyph, colour dot or label", () => {
+    // DL-35.3 (2026-09-28): a terminal tab left the chip shape. The colour dot
+    // had already gone on 2026-08-16 (DL-18.10); the glyph and label went with
+    // the chip.
     tabViews.value = [
       tab({
         key: 1,
@@ -141,8 +206,7 @@ describe("TabBar", () => {
     ];
     mount(baseProps());
 
-    expect(host.querySelectorAll(".space-mark")).toHaveLength(0);
-    expect(host.querySelector(".space-bar__label")?.textContent).toBe("Alpha");
+    expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
     expect(host.querySelector(".tab")).toBeNull();
     expect(host.querySelector(".tab__logo, .tab__dot")).toBeNull();
   });
@@ -163,9 +227,9 @@ describe("TabBar", () => {
 
     expect(host.querySelector(".tab__attn")).toBeNull();
     expect(host.querySelector(".attn-mark")).toBeNull();
-    // Space marks remain hidden even when a terminal needs attention.
+    // Only panes drive a mark's needs-you (DL-35.3); a tab summary does not.
     expect(host.querySelectorAll(".space-mark[data-needs]")).toHaveLength(0);
-    expect(host.querySelectorAll(".space-mark")).toHaveLength(0);
+    expect(host.querySelectorAll(".space-mark")).toHaveLength(2);
   });
 
   /**
@@ -183,15 +247,15 @@ describe("TabBar", () => {
       expect(host.querySelector(".tabbar__sep")).toBeNull();
     });
 
-    it("renders file tabs beside the breadcrumb, preview italic on the unedited preview slot only", async () => {
+    it("renders file tabs after the space marks, preview italic on the unedited preview slot only", async () => {
       tabViews.value = [tab({ key: 1, name: "Alpha" })];
       await fileController.openFile("/repo", "/repo/a.ts", true); // kept
       await fileController.openFile("/repo", "/repo/b.ts", false); // preview, untouched
       mount(baseProps());
 
       const rows = host.querySelectorAll(".tab");
-      // The breadcrumb remains beside the two file chips; space marks are hidden.
-      expect(host.querySelectorAll(".space-mark")).toHaveLength(0);
+      // 1 space mark, then the 2 file chips in order.
+      expect(host.querySelectorAll(".space-mark")).toHaveLength(1);
       expect(rows).toHaveLength(2);
       expect(rows[0].querySelector(".tab__label")?.textContent).toBe("a.ts");
       expect(rows[1].querySelector(".tab__label")?.textContent).toBe("b.ts");
@@ -238,6 +302,26 @@ describe("TabBar", () => {
 
       expect(closePath).toHaveBeenCalledWith("/repo", "/repo/a.ts");
       expect(props.onCloseTab).not.toHaveBeenCalled();
+    });
+
+    it("clicking the terminal tab that's still 'active' takes the stage back while a file surface is on top", () => {
+      // Regression guard for the popover-vs-reselect fork: `index === active`
+      // alone used to open the rename popover, which would leave the file
+      // surface on the stage forever with no way back via that tab's chip.
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      activeTabIndex.value = 0;
+      openFileTab("/repo", "/repo/a.ts", { keep: true }); // activates the file surface
+      const props = baseProps();
+      mount(props);
+
+      const terminalRow = host.querySelector(".space-mark") as HTMLElement;
+
+      act(() => {
+        terminalRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(props.onSelectTab).toHaveBeenCalledWith(0);
+      expect(host.querySelector(".tab-popover")).toBeNull();
     });
   });
 });

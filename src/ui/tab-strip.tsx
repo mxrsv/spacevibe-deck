@@ -48,6 +48,9 @@ export interface TabStripProps {
   onSelectAgentBoard(): void;
   onCloseAgentBoard(): void | Promise<void>;
   scopeToActiveRepository: boolean;
+  /** Drop the space marks, for a layout whose rail already lists the spaces.
+   * Top-tab mode has no rail, so its marks are the only terminal tabs. */
+  hideMarks?: boolean;
 }
 
 interface Chip {
@@ -271,7 +274,7 @@ export function TabStrip(props: TabStripProps) {
       {spaces.length > 0 && (
         <SpaceBar
           spaces={spaces}
-          hideMarks
+          hideMarks={props.hideMarks}
           menuKey={owner?.kind === "terminal" ? (owner.terminalKey ?? null) : null}
           onGo={(space) => {
             props.onBeforeSelect?.();

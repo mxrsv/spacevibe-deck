@@ -2499,6 +2499,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   // every-workspace marks; other projects are reached
                   // through the rail.
                   scopeToActiveRepository
+                  hideMarks
                 />
               ) : null}
               {/* The feature toolbar's sidebar-mode mount (2026-08-16). It

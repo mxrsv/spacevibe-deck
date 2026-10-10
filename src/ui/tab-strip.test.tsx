@@ -10,8 +10,9 @@
  * whose root moved from the `<header>` to the tablist when the component was
  * extracted.
  *
- * The strip keeps the current-space breadcrumb but hides space marks.
- * Exercise menus through visible surface chips.
+ * The sidebar mount keeps the current-space breadcrumb but hides space marks,
+ * because the rail lists the spaces. Exercise menus through visible surface
+ * chips. Top-tab mode keeps the marks; `tab-bar.test.tsx` covers them.
  */
 import { render } from "preact";
 import { act } from "preact/test-utils";
@@ -116,6 +117,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
             onCloseAgentBoard={vi.fn()}
             fileController={fileController}
             scopeToActiveRepository
+            hideMarks
             {...props}
           />
         </div>,
@@ -212,6 +214,17 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
       activeTabIndex.value = 1;
     });
     expect(label()).toBe("Beta");
+  });
+
+  it("draws a mark per space again when the mount has no rail", () => {
+    const select = vi.fn();
+    tabViews.value = [tab({ key: 1, name: "Alpha" }), tab({ key: 2, name: "Beta" })];
+    mount({ scopeToActiveRepository: false, hideMarks: false, onSelectTab: select });
+
+    const marks = host.querySelectorAll<HTMLElement>(".space-mark");
+    expect(marks).toHaveLength(2);
+    act(() => marks[1].click());
+    expect(select).toHaveBeenCalledWith(1);
   });
 
   it("dismisses a transient launcher before selecting a browser chip", () => {
