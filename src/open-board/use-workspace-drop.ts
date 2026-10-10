@@ -76,7 +76,8 @@ export function useWorkspaceDrop(options: WorkspaceDropOptions) {
         return;
       }
       if (!(await grantDroppedWorkspace(files[0]!))) {
-        current.current.onError("Couldn't open that folder — try again or use Open folder.");
+        if (isCurrent())
+          current.current.onError("Couldn't open that folder — try again or use Open folder.");
         return;
       }
       if (!isCurrent()) return;
