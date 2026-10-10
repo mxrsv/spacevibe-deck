@@ -61,52 +61,8 @@
   font: var(--type-meta) var(--ui-font);
   font-weight: 500;
 }
-.pane-agent-header__control {
-  position: relative;
-  flex-shrink: 0;
-}
-.pane-agent-header__control button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 6px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
-  background: var(--chrome-1);
-  color: var(--text-muted);
-  font: var(--type-micro) var(--ui-font);
-  cursor: pointer;
-}
-.pane-agent-header__control button:hover:not(:disabled) {
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
-}
-.pane-agent-header__control button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.pane-agent-header__control button:disabled {
-  color: var(--text-faint);
-  cursor: default;
-}
-/* DL-32.8: the pane's own actions end the header. Hidden until the pane is hovered
-   or holds focus, so a resting window shows the logo and the message alone, but never
-   out of the tab order: `:focus-within` reveals them for the keyboard, and the focused
-   pane — whose terminal holds focus inside the pane — is always the one showing them.
-   The space is reserved at rest, so the message does not reflow when they appear. */
-.pane-agent-header__actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 1px;
-  opacity: 0;
-}
-.pane:hover .pane-agent-header__actions,
-.pane:focus-within .pane-agent-header__actions {
-  opacity: 1;
-}
-/* DL-21.2's wash on hover and DL-21.3's outline on keyboard focus; DL-21.8 means no
-   rule paints Focus expand's pressed state, which reaches ARIA alone. The wash is the
-   same neutral step on `--chrome-2` and on the focused pane's `--bg` sheet. */
+/* DL-21.2's wash on hover and DL-21.3's outline on keyboard focus, the same neutral step
+   on `--chrome-2` and on the focused pane's `--bg` sheet. */
 .pane-agent-header__act {
   display: grid;
   place-items: center;
@@ -127,15 +83,8 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-/* DL-1.5: motion only where the user has not asked for less. Reduced, they just appear. */
-@media (prefers-reduced-motion: no-preference) {
-  .pane-agent-header__actions {
-    transition: opacity var(--duration) var(--ease);
-  }
-}
 /* A shell pane's header in a split tab: the pinned agents' logos, always visible,
-   so a bare terminal is one press from an agent. The spacer message keeps the
-   actions at the right edge. */
+   so a bare terminal is one press from an agent. */
 .pane-quick-agents {
   display: flex;
   flex-shrink: 0;

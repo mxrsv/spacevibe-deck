@@ -7,6 +7,10 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Cleaner pane headers.** The Effort menu and the split, expand and close buttons no
+  longer appear in each pane's header. Claude Code's model/effort picker is still on Meta+P,
+  and the pane actions are in More and on their shortcuts.
+
 - **Read files beside the Explorer.** Opening a file now splits the right sidebar into
   the file list and a [document panel](src/files/ui/file-panel.tsx), keeping your terminal
   visible. Use Open files to return to retained or unsaved documents; files no longer

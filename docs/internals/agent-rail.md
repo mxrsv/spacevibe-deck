@@ -336,8 +336,7 @@ past the floor and the `toggle-sidebar` chord alike, so the four routes cannot d
 
 ## The tools row
 
-The rail's foot is an icon row above the usage summary (DL-28), and the agent pane header
-carries its pane's own actions (DL-32.8). What a maintainer would get wrong:
+The rail's foot is an icon row above the usage summary (DL-28). What a maintainer would get wrong:
 
 - **The row is Electron's, and `More` is its fallback.** [`App`](../../src/ui/app.tsx) mounts the
   [row](../../src/ui/sidebar-actions.tsx) only for `sidebar && railAvailable && !isTauriHost()`
@@ -357,15 +356,6 @@ carries its pane's own actions (DL-32.8). What a maintainer would get wrong:
 - **Tooltips open above** (`placement: "above"`, [`action-tooltip.tsx`](../../src/ui/controls/action-tooltip.tsx)):
   a tooltip below a bottom-edge trigger is off the window. They are suppressed while the Prompt
   Board is open, since it flies up over the same space.
-- **Header actions reach `App` through a registry.** The header renders in its own Preact root
-  inside the pane bar, so [`pane-header-actions.ts`](../../src/terminal/pane-header-actions.ts)
-  carries the handlers. A split and Focus expand act on the *active* pane, so they focus the
-  pressed pane first and continue only if it took the focus; a refused focus (a preset draft is
-  open) must not split whichever pane was active. Close is already pane-exact. No file on the
-  PTY, layout or close seam changed for this (R4).
-- **The narrow rule is measured, not a container query.** `container-type` is layout containment,
-  which would make the pane bar the containing block of the actions' `fixed` tooltips and move
-  them.
 
 ## One create row, no create control on a tree row
 

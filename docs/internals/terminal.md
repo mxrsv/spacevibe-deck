@@ -12,14 +12,10 @@ window-transfer protocols. The vocabulary is in [glossary.md](glossary.md).
 
 The Electron [agent pane header](../../src/terminal/pane-agent-header.tsx) reads
 the same pane tail as the sidebar and disposes its subscriptions with the pane.
-The Claude-only Effort button sends the default Meta+P shortcut through the
-[pane's existing input callback](../../src/terminal/pane.ts). Claude owns the
-model/effort picker, its supported levels and confirmation. Left/Right chooses
-effort; S applies it to this session only on Claude Code 2.1.257 and later.
-Deck never submits a slash command, clears a draft, persists a default, or claims
-an effort value was applied. Custom Claude keybindings can change this shortcut;
-the [control's tooltip](../../src/lib/agent-effort.ts) identifies the default.
-Other agents have no effort control. The experimental Codex App Server bridge
+The header draws no buttons (DL-32.8): the Claude Effort picker and the pane's
+split, Focus expand and Close actions were removed on 2026-10-10; those acts live in
+`More` and on their chords. Claude's own model/effort picker is still reachable with
+its default Meta+P inside the terminal. The experimental Codex App Server bridge
 was removed when the owner narrowed the scope to Claude Code.
 
 [`electron/pty/manager.ts`](../../electron/pty/manager.ts) spawns and owns every PTY.

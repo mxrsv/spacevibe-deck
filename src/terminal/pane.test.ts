@@ -1,6 +1,4 @@
 // @vitest-environment jsdom
-import { act } from "preact/test-utils";
-import { tabViews } from "./tabs-store";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -90,54 +88,6 @@ describe("Pane input provenance", () => {
     paste.mockRestore();
     expect(writes.at(-1)).toEqual({ data: "first prompt", userInput: true });
     pane.dispose();
-  });
-});
-
-describe("Claude header input routing", () => {
-  it("sends the native picker shortcut to its own pane through the existing input handler", async () => {
-    vi.stubGlobal("__deckHost", {});
-    const onData = vi.fn(async () => true);
-    const focus = vi.spyOn(Terminal.prototype, "focus").mockImplementation(() => {});
-    let pane: ReturnType<typeof createPane> | undefined;
-    try {
-      tabViews.value = [
-        {
-          key: 1,
-          process: "claude",
-          name: null,
-          dotColor: null,
-          workspacePath: "/repo",
-          agents: ["claude"],
-          agentBusy: false,
-          unread: false,
-          panes: [
-            {
-              paneId: 17,
-              agent: "claude",
-              attention: "none",
-              phase: "idle",
-              hasRun: false,
-              changedAt: 0,
-            },
-          ],
-        },
-      ];
-      act(() => {
-        pane = createPane(17, DEFAULT_SETTINGS as Settings, { ...silentEvents, onData });
-      });
-      await act(async () =>
-        pane!.element
-          .querySelector<HTMLButtonElement>('[aria-label="Change Claude Code effort"]')!
-          .click(),
-      );
-      expect(onData).toHaveBeenCalledExactlyOnceWith(17, "\x1bp", true);
-      expect(focus).toHaveBeenCalledOnce();
-    } finally {
-      act(() => pane?.dispose());
-      tabViews.value = [];
-      focus.mockRestore();
-      vi.unstubAllGlobals();
-    }
   });
 });
 

@@ -822,7 +822,7 @@ overflow menu and the permanent home of the pane group.
   rail's icon row (DL-28); top-tab mode, Tauri and an Electron window with no live rail print
   the pane group, a hairline, then the global group
   ([`deck-toolbar.tsx`](../src/ui/toolbar/deck-toolbar.tsx)).
-  Why: a plain shell pane has no agent header (DL-32.8), so `More` keeps the pane group.
+  Why: the pane header draws no actions (DL-32.8), so `More` keeps the pane group.
 - **DL-23.9** `.toolbar-menu__row` takes `--type-title` (14px) for its label, `--type-body`
   for its chord and `--type-meta` for its unavailable reason, with a `RAIL_ICON` (16px)
   leading mark and 6px of vertical padding, a 28px row. This is a role widening of DL-4.4
@@ -1164,8 +1164,7 @@ mode do not mount the row ([`SidebarActions`](../src/ui/sidebar-actions.tsx)).
   outline; an action that cannot run follows DL-23.6.
 - **DL-28.3** The row carries everything that is not an operation on the focused pane: the
   surfaces Deck can open (Explorer is the dock's explorer tab, ⌘⇧B) and the window's own
-  actions. Pane operations live on the agent pane's header (DL-32.8) and in `More`
-  (DL-23.8). A surface the running host cannot serve is omitted, not disabled (DL-19.7).
+  actions. Pane operations live in `More` (DL-23.8) and on their chords. A surface the running host cannot serve is omitted, not disabled (DL-19.7).
 - **DL-28.4** Top-tab mode has no rail, so the same members ride in the toolbar's `More`
   menu there, built from the same projection
   ([`pinnedMenu`](../src/ui/toolbar/feature-toolbar.tsx)). Top-tab mode, the Tauri host and
@@ -1307,23 +1306,18 @@ The launcher is the compact launch page plus the Open Board's agent cards, shari
   checkout re-targets in place and starts nothing; the launch does what the chip says.
 - **DL-32.7** Agent panes carry one compact identity header. On Electron the
   [pane header](../src/terminal/pane-agent-header.tsx) is logo · the sidebar's latest message
-  (one line, ellipsis, full text on hover) · Effort (Claude only; opens Claude's native
-  model/effort picker, and Deck shows no unverified effort value) · pane actions (DL-32.8). It
+  (one line, ellipsis, full text on hover), with no buttons (DL-32.8). It
   stays visible when the legacy shell pane bar is hidden; hover is neutral and keyboard focus
   explicit (`pane-agent-header.css`). On `.pane-slot.is-active` the bar takes
   the pane's `--bg` and a transparent bottom seam, so header and body read as one sheet inside
   DL-18.12's focus edge; other panes keep `--chrome-2` (DL-3.3). The height is unchanged.
   Why: the join needs xterm and `--bg` to read the same `theme.background`
   ([`theme-vars.ts`](../src/lib/theme-vars.ts)).
-- **DL-32.8** The agent header ends in four icon buttons: Split horizontally, Split vertically,
-  Focus expand, Close pane, each with DL-23's tooltip (name and chord). They act on the pane whose
-  header holds them, not the focused pane
-  ([`pane-header-actions.ts`](../src/terminal/pane-header-actions.ts)). They are `opacity: 0`
-  until the pane is hovered or holds focus, stay in the tab order, and drop the fade under reduced
-  motion (DL-1.5). Hover is DL-21.2's wash, focus DL-21.3's outline, and Focus expand is a toggle
-  that paints no state (DL-21.8). Each stops `pointerdown` and `mousedown` so a press never starts
-  the pane drag (`pane-drag.ts`). A plain shell pane has no agent header and keeps `More`. Below
-  280px of header width the splits are not drawn.
+- **DL-32.8** The pane header draws no action buttons (owner, 2026-10-10): neither the Claude
+  Effort picker nor Split horizontally, Split vertically, Focus expand and Close pane, which
+  shipped on 2026-10-07 and were removed after the owner reviewed them. The pane operations
+  live in `More` (DL-23.8) and on their chords. A shell pane in a split tab keeps its pinned
+  agent logos (`pane-quick-agents.tsx`).
 
 ## 33. Sidebar usage and retained activity rows
 
@@ -1603,7 +1597,7 @@ section therefore means naming DL, or the gate does not see the citation.
 | Space names are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-09-29 on `feat/space-names`: the strip (DL-35.3), the shelf (DL-35.1) and the rail row (DL-27.15's amendment) rename and render a name. The walk must cover the floating strip field over a short name and a 40-character one, the shelf field inside a 96px thumbnail, and a named and an unnamed space in one folder |
 | Every needs-you surface of a space wears the rail's two inks | `building` | the strip's marks do; the rest stay single red, owner decision owed | 2026-10-06 on `feat/rail-row-badge`: the marks and the current space's under-dot paint `--status-unread` for a question and `--red` for a failure (DL-35.3). DL-35.3 also says the shelf counts wear the same two colours, but `.mc-space__needs` paints `--red` for both (its `data-tone` is emitted and the stylesheet never reads it); the miniature's cells and the hidden-needs edge dot are single red too. Unwalked in `electron:dev` |
 | The collapsed rail is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-07 on `feat/rail-collapsed` (DL-27.29, DL-18.9 amended): the avatar column, its needs-you badge and current mark, the flyout and `toggle-sidebar` (⌘B, Ctrl+Shift+L). No `electron:dev` walk. The walk must cover the traffic lights over a 52px column on macOS, a drag past the floor and back out, an avatar flyout over the browser tab, Esc returning focus to the avatar, and ⌘B from a terminal, a document and the tree |
-| The rail's tools row and the pane-header actions are a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-07 on `main` (DL-28, DL-23.4, DL-23.8 and DL-32.8 amended): the icon row above the usage summary, the collapsed `Tools` button and its popover, the above-opening tooltip, `More` shrinking to the pane group, and the four header actions. Gallery-screenshotted; no `electron:dev` walk, no `electron:smoke`. The walk must cover the six tools by pointer and by chord, Prompts anchoring from the row and from the collapsed button, the tooltip above at a short window, the collapsed popover over the browser tab, the header actions on a focused, a hovered and a narrow pane, and a shell pane's `More` |
+| The rail's tools row is a shipping surface | `building` | built and unit-verified, native walk and owner eye review owed | 2026-10-07 on `main` (DL-28, DL-23.4, DL-23.8 and DL-32.8 amended): the icon row above the usage summary, the collapsed `Tools` button and its popover, the above-opening tooltip, and `More` shrinking to the pane group (the four pane-header actions shipped here were removed 2026-10-10, DL-32.8). Gallery-screenshotted; no `electron:dev` walk, no `electron:smoke`. The walk must cover the six tools by pointer and by chord, Prompts anchoring from the row and from the collapsed button, the tooltip above at a short window, the collapsed popover over the browser tab, and a shell pane's `More` |
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).
