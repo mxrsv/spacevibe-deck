@@ -55,10 +55,10 @@ describe("readWorkspaceImageAsDataUrl", () => {
     mkdirSync(directory);
 
     await expect(readWorkspaceImageAsDataUrl(oversized, [root])).rejects.toThrow(
-      "Couldn't read the image file",
+      "Image is too large (max 1 MB)",
     );
     await expect(readWorkspaceImageAsDataUrl(directory, [root])).rejects.toThrow(
-      "Couldn't read the image file",
+      "Not a regular file",
     );
   });
 });

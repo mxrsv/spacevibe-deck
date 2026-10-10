@@ -12,6 +12,8 @@ import { assertInsideRoot } from "./fs/path-guard";
 
 const MAX_LOGO_BYTES = 1_048_576; // 1 MB
 
+class ImageValidationError extends Error {}
+
 /** MIME type for an allowlisted extension, case-insensitive so `Logo.PNG`
  * works. `.ico` is included for favicons. */
 function mimeFor(target: string): string | null {
@@ -44,8 +46,10 @@ async function readImageAtResolvedPath(target: string): Promise<string> {
   try {
     handle = await fs.open(target, fsConstants.O_RDONLY | safeFlags);
     const stat = await handle.stat();
-    if (!stat.isFile()) throw new Error("Not a regular file");
-    if (stat.size > MAX_LOGO_BYTES) throw new Error("Image is too large (max 1 MB)");
+    if (!stat.isFile()) throw new ImageValidationError("Not a regular file");
+    if (stat.size > MAX_LOGO_BYTES) {
+      throw new ImageValidationError("Image is too large (max 1 MB)");
+    }
     const bytes = Buffer.alloc(MAX_LOGO_BYTES + 1);
     let offset = 0;
     while (offset < bytes.length) {
@@ -54,10 +58,13 @@ async function readImageAtResolvedPath(target: string): Promise<string> {
       if (bytesRead === 0) break;
       offset += bytesRead;
     }
-    if (offset > MAX_LOGO_BYTES) throw new Error("Image is too large (max 1 MB)");
+    if (offset > MAX_LOGO_BYTES) {
+      throw new ImageValidationError("Image is too large (max 1 MB)");
+    }
     return `data:${mime};base64,${bytes.subarray(0, offset).toString("base64")}`;
-  } catch {
-    throw new Error("Couldn't read the image file");
+  } catch (error) {
+    if (error instanceof ImageValidationError) throw error;
+    throw new Error("Couldn't read the image file", { cause: error });
   } finally {
     await handle?.close().catch(() => undefined);
   }
