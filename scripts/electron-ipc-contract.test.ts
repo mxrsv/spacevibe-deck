@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { INVOKABLE_CHANNELS } from "../electron/ipc/channels";
 
 /**
  * The one gate that crosses the IPC boundary — the Electron counterpart of
@@ -22,6 +23,7 @@ import { join } from "node:path";
 const HANDLER = /ipcMain\.handle\(\s*([^,]+),\s*(?:async\s*)?\(([^)]*)\)/g;
 const INVOKE = /invoke<[^>]*>\(\s*['"]([^'"]+)['"](?:\s*,\s*\{([^}]*)\})?/g;
 const INVOKE_UNTYPED = /(?<!\w)invoke\(\s*['"]([^'"]+)['"](?:\s*,\s*\{([^}]*)\})?/g;
+const TAURI_ONLY_CHANNELS = new Set(["read_image_as_data_url"]);
 
 function filesUnder(dir: string, extensions: readonly string[]): string[] {
   const found: string[] = [];
@@ -380,8 +382,39 @@ describe("Electron IPC contract", () => {
       }
     }
     const unhandled = [
-      ...new Set(callSites.map((site) => site.channel).filter((channel) => !handled.has(channel))),
+      ...new Set(
+        callSites
+          .map((site) => site.channel)
+          .filter((channel) => !TAURI_ONLY_CHANNELS.has(channel) && !handled.has(channel)),
+      ),
     ];
     expect(unhandled).toEqual([]);
+  });
+
+  it("keeps the legacy image read Tauri-only", () => {
+    const channel = "read_image_as_data_url";
+    const sites = callSites.filter((site) => site.channel === channel);
+    expect(sites.map((site) => site.file).sort()).toEqual([
+      "src/files/markdown-image-source.ts",
+      "src/ui/controls/logo-row.tsx",
+    ]);
+    expect(INVOKABLE_CHANNELS.has(channel)).toBe(false);
+    const registered = filesUnder("electron", [".ts"]).some((file) => {
+      if (file.endsWith(".test.ts")) return false;
+      const source = readFileSync(file, "utf8");
+      return [...source.matchAll(/ipcMain\.handle\(\s*([^,]+),/g)].some(
+        (match) => resolveChannelName(match[1], channels) === channel,
+      );
+    });
+    expect(registered).toBe(false);
+    for (const site of sites) {
+      const source = readFileSync(site.file, "utf8");
+      expect(
+        source.includes("if (!electronAvailable)") ||
+          /electronAvailable\s*\?[\s\S]*?:[\s\S]*?invoke<string>\("read_image_as_data_url"/.test(
+            source,
+          ),
+      ).toBe(true);
+    }
   });
 });
