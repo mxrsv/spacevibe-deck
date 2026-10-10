@@ -27,6 +27,7 @@ import { createCodexIntegration } from "./agent-hooks/codex-integration";
  *    touches a session.
  */
 import path from "node:path";
+import fs from "node:fs/promises";
 import {
   app,
   BrowserWindow,
@@ -104,6 +105,28 @@ const stores = new StoreRegistry(app.getPath("userData"));
 const MAX_IMAGE_ROOTS_PER_WINDOW = 64;
 const activeImageRootsBySender = new Map<number, Set<string>>();
 const imageWorkspaceGrants = ImageWorkspaceGrants.open(stores);
+
+// This channel is reachable only through the preload's File-backed method;
+// it is intentionally excluded from the general renderer invoke allowlist.
+ipcMain.handle("grant_dropped_workspace", async (event, droppedPath: unknown) => {
+  if (typeof droppedPath !== "string" || droppedPath.length === 0) return false;
+  const realPath = await fs.realpath(droppedPath).catch(() => null);
+  const canonical = realPath === null ? null : resolveRoot(realPath);
+  if (canonical === null || !(await fs.stat(canonical).catch(() => null))?.isDirectory()) {
+    return false;
+  }
+  const grants = await imageWorkspaceGrants;
+  if (!(await grants.grant(canonical))) return false;
+  const active = activeImageRootsBySender.get(event.sender.id) ?? new Set<string>();
+  active.add(canonical);
+  while (active.size > MAX_IMAGE_ROOTS_PER_WINDOW) {
+    const oldest = active.values().next().value;
+    if (oldest === undefined) break;
+    active.delete(oldest);
+  }
+  activeImageRootsBySender.set(event.sender.id, active);
+  return true;
+});
 
 /**
  * Emit to one window by label. Returns false when there was no live window to

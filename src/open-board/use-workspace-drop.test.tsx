@@ -34,7 +34,10 @@ function dispatch(type: string, names = ["/work/My Folder"], types = ["Files"]) 
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.stubGlobal("__deckHost", { getPathForFile: (file: File) => file.name });
+  vi.stubGlobal("__deckHost", {
+    getPathForFile: (file: File) => file.name,
+    grantDroppedWorkspace: vi.fn().mockResolvedValue(true),
+  });
   vi.mocked(invoke).mockResolvedValue([true]);
   select.mockResolvedValue(undefined);
   host = document.createElement("div");
@@ -51,6 +54,7 @@ describe("workspace folder drop", () => {
   it("validates one folder and selects its full path without launching", async () => {
     await act(async () => {
       dispatch("drop");
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(invoke).toHaveBeenCalledWith("dirs_exist", { paths: ["/work/My Folder"] });
     expect(select).toHaveBeenCalledExactlyOnceWith("/work/My Folder");
@@ -79,6 +83,7 @@ describe("workspace folder drop", () => {
     expect(select).not.toHaveBeenCalled();
     await act(async () => {
       resolve([true]);
+      await new Promise((done) => setTimeout(done, 0));
     });
     expect(select).toHaveBeenCalledExactlyOnceWith("/work/My Folder");
   });
@@ -108,6 +113,7 @@ describe("workspace folder drop", () => {
     vi.stubGlobal("__deckHost", { getPathForFile: () => "" });
     await act(async () => {
       dispatch("drop");
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(invoke).not.toHaveBeenCalled();
     expect(select).not.toHaveBeenCalled();
@@ -133,6 +139,7 @@ describe("workspace folder drop", () => {
     vi.mocked(invoke).mockRejectedValueOnce(new Error("offline"));
     await act(async () => {
       dispatch("drop");
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(select).not.toHaveBeenCalled();
     expect(error).toHaveBeenLastCalledWith(
@@ -140,6 +147,7 @@ describe("workspace folder drop", () => {
     );
     await act(async () => {
       dispatch("drop");
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(select).toHaveBeenCalledTimes(1);
   });

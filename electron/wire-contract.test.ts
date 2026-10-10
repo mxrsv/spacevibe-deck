@@ -25,6 +25,7 @@ import { parseRegistrySnapshot } from "../src/lib/agent-registry";
 import { EMPTY_SNAPSHOT, parseClaudeAgents } from "./agent-registry/claude-registry";
 
 const MAIN = readFileSync("electron/main.ts", "utf8");
+const PRELOAD = readFileSync("electron/preload.ts", "utf8");
 const MENU = readFileSync("electron/menu.ts", "utf8");
 // The `desktop_environment`, `shell_open_url` and `store_*` handlers moved out
 // of `main.ts` into their own `electron/ipc/register-*.ts` modules — the
@@ -204,7 +205,10 @@ describe("the preload bridge's channel allowlist", () => {
     // A handler the bridge does not know about is a feature that silently
     // stops working the moment it is called — the allowlist is only safe if
     // this stays exhaustive.
-    const missing = [...registered].filter((channel) => !INVOKABLE_CHANNELS.has(channel));
+    const preloadOnly = new Set(["grant_dropped_workspace"]);
+    const missing = [...registered].filter(
+      (channel) => !INVOKABLE_CHANNELS.has(channel) && !preloadOnly.has(channel),
+    );
 
     expect(missing).toEqual([]);
   });
@@ -215,6 +219,13 @@ describe("the preload bridge's channel allowlist", () => {
     const orphans = [...INVOKABLE_CHANNELS].filter((channel) => !registered.has(channel));
 
     expect(orphans).toEqual([]);
+  });
+
+  it("keeps dropped workspace grants behind the preload File API", () => {
+    expect(MAIN).toContain('ipcMain.handle("grant_dropped_workspace"');
+    expect(PRELOAD).toContain("webUtils.getPathForFile(file)");
+    expect(PRELOAD).toContain('ipcRenderer.invoke("grant_dropped_workspace", path)');
+    expect(INVOKABLE_CHANNELS.has("grant_dropped_workspace")).toBe(false);
   });
 
   it("refuses an unknown channel instead of forwarding it", () => {

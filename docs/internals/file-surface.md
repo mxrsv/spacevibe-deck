@@ -179,12 +179,12 @@ enforce.
   an in-workspace relative link raises the same `requestPathOpen` a ⌘+click does; `#anchor`
   scrolls; `javascript:`, `data:`, `file:` and every unhandled scheme, and anything
   resolving outside the root by segment-wise comparison, render as plain text.
-- Images are local only. Electron persists roots selected through its native folder picker in
-  a [main-only grant store](../../electron/image-workspace-grants.ts), records picker results in
-  [main](../../electron/ipc/register-dialogs.ts), then authorizes each window's active roots
-  against those grants before [bounded image reads](../../electron/images.ts). A remote image is
-  a labelled placeholder, never a fetch. Logo import uses its own native image picker and
-  returns bytes, never a renderer-readable path. Tauri keeps its frozen image command.
+- Images are local only. Electron persists roots selected through its native folder picker or
+  dropped as an OS-backed folder in a [main-only grant store](../../electron/image-workspace-grants.ts),
+  then authorizes each window's active roots against those grants before
+  [bounded image reads](../../electron/images.ts). A remote image is a labelled placeholder,
+  never a fetch. Logo import uses its own native image picker and returns bytes, never a
+  renderer-readable path. Tauri keeps its frozen image command.
   `read_file` cannot serve images because it refuses every PNG as binary.
 - Fenced code is colorized by Monaco's own colorizer against the enumerated language set;
   `mermaid` is imported only when a document holds a fence, and a diagram that fails keeps

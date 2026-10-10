@@ -1,7 +1,11 @@
 import { useSignal } from "@preact/signals";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import { invoke } from "../host/bridge";
-import { canResolveDroppedPaths, droppedFilePaths } from "../host/window-host";
+import {
+  canResolveDroppedPaths,
+  droppedFilePaths,
+  grantDroppedWorkspace,
+} from "../host/window-host";
 
 interface WorkspaceDropOptions {
   readonly enabled: boolean;
@@ -71,6 +75,11 @@ export function useWorkspaceDrop(options: WorkspaceDropOptions) {
         current.current.onError("Drop an existing folder, not a file.");
         return;
       }
+      if (!(await grantDroppedWorkspace(files[0]!))) {
+        current.current.onError("Couldn't open that folder — try again or use Open folder.");
+        return;
+      }
+      if (!isCurrent()) return;
       await current.current.onSelect(paths[0]);
     } catch (error) {
       console.warn("Workspace drop failed:", error);
