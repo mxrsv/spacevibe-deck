@@ -1,9 +1,12 @@
 /** Translated from `src-tauri/src/images.rs`. */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
+import { pickImageAsDataUrl, readWorkspaceImageAsDataUrl, scanWorkspaceFavicon } from "./images";
+
+const mocks = vi.hoisted(() => ({ showOpenDialog: vi.fn() }));
+vi.mock("electron", () => ({ dialog: { showOpenDialog: mocks.showOpenDialog } }));
 
 const temps: string[] = [];
 function tempDir(): string {
@@ -18,54 +21,57 @@ afterEach(() => {
   }
 });
 
-describe("readImageAsDataUrl", () => {
-  it("encodes a png as a data URL", async () => {
-    const file = join(tempDir(), "logo.png");
+describe("readWorkspaceImageAsDataUrl", () => {
+  it("reads an image inside an authorized workspace", async () => {
+    const root = tempDir();
+    const file = join(root, "logo.png");
     writeFileSync(file, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 
-    expect(await readImageAsDataUrl(file)).toBe("data:image/png;base64,iVBORw==");
+    await expect(readWorkspaceImageAsDataUrl(file, [root])).resolves.toBe(
+      "data:image/png;base64,iVBORw==",
+    );
   });
 
-  it("is case-insensitive about the extension", async () => {
-    const file = join(tempDir(), "Logo.PNG");
-    writeFileSync(file, Buffer.from([0x89]));
+  it("rejects paths outside authorized roots and symlink escapes", async () => {
+    const root = tempDir();
+    const outside = tempDir();
+    const secret = join(outside, "secret.png");
+    writeFileSync(secret, "private");
+    symlinkSync(secret, join(root, "escape.png"));
 
-    await expect(readImageAsDataUrl(file)).resolves.toContain("data:image/png");
+    await expect(readWorkspaceImageAsDataUrl(secret, [root])).rejects.toThrow(
+      /outside an authorized workspace/,
+    );
+    await expect(readWorkspaceImageAsDataUrl(join(root, "escape.png"), [root])).rejects.toThrow(
+      /outside an authorized workspace/,
+    );
   });
 
-  it("maps each allowlisted extension to its mime type", async () => {
-    const dir = tempDir();
-    for (const [name, mime] of [
-      ["a.jpg", "image/jpeg"],
-      ["a.jpeg", "image/jpeg"],
-      ["a.svg", "image/svg+xml"],
-      ["a.webp", "image/webp"],
-      ["a.ico", "image/x-icon"],
-    ] as const) {
-      const file = join(dir, name);
-      writeFileSync(file, "x");
-      await expect(readImageAsDataUrl(file)).resolves.toContain(`data:${mime}`);
-    }
+  it("rejects oversized and non-regular image paths", async () => {
+    const root = tempDir();
+    const oversized = join(root, "large.png");
+    const directory = join(root, "folder.png");
+    writeFileSync(oversized, Buffer.alloc(1_048_577));
+    mkdirSync(directory);
+
+    await expect(readWorkspaceImageAsDataUrl(oversized, [root])).rejects.toThrow();
+    await expect(readWorkspaceImageAsDataUrl(directory, [root])).rejects.toThrow();
+  });
+});
+
+describe("pickImageAsDataUrl", () => {
+  it("returns null when the native picker is cancelled", async () => {
+    mocks.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] });
+
+    await expect(pickImageAsDataUrl()).resolves.toBeNull();
   });
 
-  it("rejects an unsupported type with a user-facing message", async () => {
+  it("rejects a selected file with an unsupported image type", async () => {
     const file = join(tempDir(), "notes.txt");
-    writeFileSync(file, "x");
+    writeFileSync(file, "text");
+    mocks.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [file] });
 
-    await expect(readImageAsDataUrl(file)).rejects.toThrow(/Unsupported image type/);
-  });
-
-  it("rejects a file over the 1 MB cap", async () => {
-    // A data URL is stored and re-read in full, so the cap is what keeps the
-    // store small.
-    const file = join(tempDir(), "big.png");
-    writeFileSync(file, Buffer.alloc(1_048_577));
-
-    await expect(readImageAsDataUrl(file)).rejects.toThrow(/too large/);
-  });
-
-  it("rejects a missing file", async () => {
-    await expect(readImageAsDataUrl(join(tempDir(), "gone.png"))).rejects.toThrow(/Couldn't read/);
+    await expect(pickImageAsDataUrl()).rejects.toThrow(/Unsupported image type/);
   });
 });
 

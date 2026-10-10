@@ -1,21 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { registerDialogs } from "./register-dialogs";
 
 const mocks = vi.hoisted(() => ({
   handlers: new Map<string, (event: unknown, payload?: unknown) => Promise<unknown>>(),
   window: { id: "asking-window" },
   showMessageBox: vi.fn(),
+  showOpenDialog: vi.fn(),
+  grantWorkspaceRoot: vi.fn(),
 }));
 vi.mock("electron", () => ({
   BrowserWindow: { fromWebContents: () => mocks.window },
-  dialog: { showMessageBox: mocks.showMessageBox },
+  dialog: { showMessageBox: mocks.showMessageBox, showOpenDialog: mocks.showOpenDialog },
   ipcMain: {
     handle: (name: string, callback: (event: unknown, payload?: unknown) => Promise<unknown>) =>
       mocks.handlers.set(name, callback),
   },
 }));
 
-const EVENT = { sender: {} };
+const EVENT = { sender: { id: 42 } };
 
 function call(channel: string, payload: unknown): Promise<unknown> {
   const handler = mocks.handlers.get(channel);
@@ -29,7 +34,38 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.handlers.clear();
   mocks.showMessageBox.mockResolvedValue({ response: 0 });
-  registerDialogs();
+  mocks.showOpenDialog.mockReset();
+  mocks.grantWorkspaceRoot.mockReset();
+  registerDialogs({ grantWorkspaceRoot: mocks.grantWorkspaceRoot });
+});
+
+describe("registerDialogs workspace grants", () => {
+  it("grants a selected directory to the requesting window", async () => {
+    const root = mkdtempSync(join(tmpdir(), "deck-dialog-root-"));
+    try {
+      mocks.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [root] });
+
+      await expect(call("dialog_open", { directory: true })).resolves.toBe(root);
+      expect(mocks.grantWorkspaceRoot).toHaveBeenCalledWith(42, realpathSync(root));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not grant a workspace root when the picker is cancelled", async () => {
+    mocks.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] });
+
+    await expect(call("dialog_open", { directory: true })).resolves.toBeNull();
+    expect(mocks.grantWorkspaceRoot).not.toHaveBeenCalled();
+  });
+
+  it("does not grant a missing selected directory", async () => {
+    const invalid = join(tmpdir(), "deck-dialog-missing-root");
+    mocks.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [invalid] });
+
+    await expect(call("dialog_open", { directory: true })).resolves.toBe(invalid);
+    expect(mocks.grantWorkspaceRoot).not.toHaveBeenCalled();
+  });
 });
 
 describe("registerDialogs message boxes", () => {
