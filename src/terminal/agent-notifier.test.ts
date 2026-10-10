@@ -223,4 +223,76 @@ describe("createAgentNotifier", () => {
     notifier.maybeNotify(makeNotification({ paneId: 4, revision: 5, kind: "completed" }));
     expect(send).toHaveBeenCalledOnce();
   });
+
+  describe("notifyLatchTransition", () => {
+    it("suppresses repeated transitions with the same kind", () => {
+      const { deps, send } = makeDeps();
+      const notifier = createAgentNotifier(deps);
+
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "warning" }));
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "warning" }));
+
+      expect(send).toHaveBeenCalledOnce();
+    });
+
+    it("allows the same kind to notify again after a none transition", () => {
+      const { deps, send } = makeDeps();
+      const notifier = createAgentNotifier(deps);
+
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "warning" }));
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "none" }));
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 3, kind: "warning" }));
+
+      expect(send).toHaveBeenCalledTimes(2);
+    });
+
+    it("notifies when the latch escalates to a different kind", () => {
+      const { deps, send } = makeDeps();
+      const notifier = createAgentNotifier(deps);
+
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "requested" }));
+      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "error" }));
+
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(send.mock.calls[1][0].body).toBe("claude-code error");
+    });
+
+    it("prune clears stale latch and revision state", () => {
+      const { deps, send } = makeDeps();
+      const notifier = createAgentNotifier(deps);
+      const transition = makeNotification({ paneId: 1, revision: 1, kind: "warning" });
+
+      notifier.notifyLatchTransition(transition);
+      notifier.prune([]);
+      notifier.notifyLatchTransition(transition);
+
+      expect(send).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(["disabled", "focused"] as const)(
+      "preserves latch identity across a %s gate and still notifies on escalation",
+      (gate) => {
+        let enabled = gate !== "disabled";
+        let focused = gate === "focused";
+        const { deps, send } = makeDeps({
+          isEnabled: () => enabled,
+          isWindowFocused: () => focused,
+        });
+        const notifier = createAgentNotifier(deps);
+
+        notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "warning" }));
+        expect(send).not.toHaveBeenCalled();
+
+        enabled = true;
+        focused = false;
+        notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "warning" }));
+        expect(send).not.toHaveBeenCalled();
+
+        notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 3, kind: "error" }));
+
+        expect(send).toHaveBeenCalledOnce();
+        expect(send.mock.calls[0][0].body).toBe("claude-code error");
+      },
+    );
+  });
 });
