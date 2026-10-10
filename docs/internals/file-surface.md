@@ -91,6 +91,55 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   silently truncate) or `create_directory` (not bounded to a root, and refuses every dotted
   name). Failures land on the explorer's status line, never in a second dialog.
 
+## Changes list
+
+The Explorer's second view shows what the checkout changed against `HEAD`. It is Electron
+only: `git_changes`, `git_changes_watch` and `git:changed` have no Tauri counterpart, and the
+switch is omitted where [`git-changes-host.ts`](../../src/host/git-changes-host.ts) says the
+host cannot answer.
+
+- **One read, one reply.** [`readChanges`](../../electron/git/changes.ts) runs `rev-parse`,
+  `status` and `diff --numstat` and merges them, with the untracked files' line counts, in
+  main, so the renderer never holds two replies that can disagree. It never rejects: a
+  failure is a typed reply (`not-repository`, `git-missing`, `timeout`, `overflow`, `failed`)
+  that the Explorer prints on its status line. The bounds are 10 s per command, a 16 MiB
+  buffer, 500 listed entries (the rest only counted in `omitted`) and 200 untracked files
+  counted; an untracked file past that shows no counts rather than a false `+0`.
+- **Every spawn carries `--no-optional-locks`, and that is load-bearing.** A plain `git status`
+  rewrites `.git/index` to refresh its stat cache; the watch below reports the index; the
+  report would read again and rewrite it again. Drop the flag and an idle Explorer spins. The
+  only verbs allowed are `rev-parse`, `status`, `diff` and `hash-object` without `-w`, and the
+  inherited `GIT_*` environment is dropped, so a hook or test that exports `GIT_DIR` cannot
+  redirect a read. A folder inside a repository is read relative to its own prefix, and a
+  rename's old path is dropped when it lies outside the root.
+- **Two watches, because one cannot see everything**
+  ([`changes-watch.ts`](../../electron/git/changes-watch.ts)). A recursive `fs.watch` on the
+  root, macOS and Windows only, because Linux's implementation walks every directory; under
+  the root's `.git` only `index`, `HEAD`, `packed-refs` and `refs/**` count, so the objects a
+  commit writes are not noise. A linked worktree keeps its index and HEAD in
+  `<repo>/.git/worktrees/<name>`, outside its root, where the root watch sees nothing (a commit
+  there produced zero events when measured), so the git directory gets a second, non-recursive
+  watch counting `index` and `HEAD` only. Platforms without a recursive watch use that watch
+  for the root's own `.git` as well and otherwise depend on focus, turn end and Refresh. An
+  event only says "read again", at most one per 100 ms per window.
+- **The scheduler decides when git runs, in the renderer**
+  ([`changes-scheduler.ts`](../../src/files/changes/changes-scheduler.ts)). Watch events and
+  turn ends are debounced 150 ms but never held past 1 s from a burst's first trigger; a read
+  starts no sooner than 1 s after the previous one started and one previous duration after it
+  ended; focus, the list appearing and Refresh skip the debounce; one read is in flight and
+  whatever arrives meanwhile collapses into exactly one more. A hidden window or a hidden view
+  runs nothing and releases the watch; coming back reads once. Turn end is a pane of the shown
+  workspace's tab leaving `working`
+  ([`turn-end.ts`](../../src/files/changes/turn-end.ts)), so a finished agent turn refreshes the
+  list even where no watch exists.
+- **The status line holds one message, and the order is fixed.** A failed create wins while it
+  is up; the git message returns when it clears. A failed read keeps the last list under a red
+  line, except `not-repository`, which clears it. Whether the entry is offered at all comes from
+  the rail's repository scan, not from a `git status`: a folder the scan calls plain disables
+  the Changes chip with "Not a git repository". That scan cannot tell a missing git from a
+  folder that is not a repository, so with no git on `PATH` the chip is disabled the same way
+  and the "Git is not installed" message appears only if git vanishes while the list is shown.
+
 ## Main-process file guards
 
 - **A path is legal only if, after `realpath`, it is inside the workspace root, itself

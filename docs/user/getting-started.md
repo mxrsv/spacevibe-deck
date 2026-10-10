@@ -108,6 +108,8 @@ The eye button on the folder's row shows or hides dot-files such as `.env` and `
 `.git` and `node_modules` stay hidden. The row of the document on the stage is highlighted,
 and switching documents opens the folders above it and scrolls it into view.
 
+In a git checkout, switch the explorer from **Files** to **Changes** to see what has changed since the last commit: each file with its status and added and removed lines. Click one to open it.
+
 **⌘+click** (Windows: **Ctrl+click**) on a path an agent prints opens it. A path inside a
 workspace this window has open lands in Deck's own editor at that line; anything else goes to
 the app chosen in [Settings → Links & editor](settings.md#links--editor). On Windows only

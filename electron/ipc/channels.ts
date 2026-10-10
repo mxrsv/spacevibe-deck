@@ -180,6 +180,16 @@ export const CHANNELS = {
   devServersSnapshot: "dev_servers_snapshot",
   devServersRelease: "dev_servers_release",
   devServersResolve: "dev_servers_resolve",
+  // The Explorer's Changes list: one bounded, read-only snapshot of what the
+  // checkout changed against HEAD (spec 2026-10-10-explorer-and-changes, CHG1).
+  // Electron-only like the blocks above: no `#[tauri::command]` counterpart, and
+  // the frozen Tauri host hides the entry point through the facade's
+  // `available` flag. Flat `{ root }` per R6; `root` is checked by the path
+  // guard like every Explorer call.
+  gitChanges: "git_changes",
+  // Replaces this sender's one watched checkout; `{ root: null }` releases it.
+  // Held only while the list is shown and the window visible. Electron-only.
+  gitChangesWatch: "git_changes_watch",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
@@ -214,6 +224,9 @@ export const EVENTS = {
   // that owns the pane (agent-signal contract layer, stage 2). Flat keys —
   // `electron/agent-hooks/hook-server.ts`'s `HookEventPayload`.
   hookEvent: "hook:event",
+  // "Read the changes again" for the checkout this window watches. Carries the
+  // root only, never a file list: the renderer owns all scheduling.
+  gitChanged: "git:changed",
 } as const;
 
 /**

@@ -1,8 +1,9 @@
 /**
  * Repository and worktree enumeration for the navigation rail.
  *
- * No `git status` is run anywhere; every failure is a plain scan, and the
- * rail degrades that path to a plain folder. See `docs/internals/agent-rail.md`
+ * The rail runs no `git status`; every failure is a plain scan, and the
+ * rail degrades that path to a plain folder. (The Explorer's Changes list runs
+ * a bounded, read-only one in `git/changes.ts`.) See `docs/internals/agent-rail.md`
  * (section "Other surfaces in the column").
  *
  * `git.ts` next door answers a different question — what is this pane's cwd
@@ -229,7 +230,8 @@ async function isSameDirectory(a: string, b: string): Promise<boolean> {
  * Two commands, both bounded (§1.2). The cost is proportional to the number of
  * worktrees, not to the size of any of them, because `worktree list` reads
  * `.git/worktrees/*` and never walks a working tree. No `git status` is run
- * here or anywhere in this design — that cost IS proportional to the tree.
+ * here — that cost IS proportional to the tree. The Explorer's Changes list pays
+ * it on purpose in `git/changes.ts`, bounded and read-only; the rail never does.
  */
 export async function scanRepository(path: string): Promise<RepositoryScan> {
   if (path.length === 0) {
