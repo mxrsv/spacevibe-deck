@@ -193,8 +193,9 @@ export function ExplorerChangesSection() {
       <h2>explorer changes</h2>
       <p class="gx-note">
         The shipping Changes list (variant A, the Files / Changes switch) at the docked
-        column&rsquo;s 360px floor and at 520px. Counts are neutral and tabular, a deleted row is
-        struck through and not pressable, and a failed read keeps the last list under a red line.
+        column&rsquo;s 360px floor and at 520px. Counts are tabular in the diff&rsquo;s green and
+        red, a zero side neutral; a deleted row is struck through and not pressable, and a failed
+        read keeps the last list under a red line.
       </p>
       <div class="gx-changes-frames">
         {set.map((frame) => (

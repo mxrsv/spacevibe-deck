@@ -247,6 +247,21 @@ describe("the list", () => {
     expect(renamed.querySelector(".changes-row__mark")?.textContent).toBe("R");
   });
 
+  it("colours added and removed counts apart, and leaves a zero side neutral", () => {
+    const { controller } = fakeChanges();
+    mount(controller);
+    showChanges();
+    const [first, added] = rows();
+    expect(first.querySelector(".diff-counts__added")?.textContent).toBe("+5");
+    expect(first.querySelector(".diff-counts__removed")?.textContent).toBe("−2");
+    expect(added.querySelector(".diff-counts__added")?.textContent).toBe("+3");
+    expect(added.querySelector(".diff-counts__removed")).toBeNull();
+    expect(chip("changes").querySelector(".diff-counts__added")?.textContent).toBe("+15");
+    expect(host.querySelector(".changes-head__totals .diff-counts__removed")?.textContent).toBe(
+      "−11",
+    );
+  });
+
   it("a root-level file has no directory cell", () => {
     const { controller } = fakeChanges();
     mount(controller);

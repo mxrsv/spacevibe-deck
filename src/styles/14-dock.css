@@ -519,6 +519,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* DL-3.2: a diff count wears the diff's colours; a zero side keeps the
+   count's neutral ink (no class). */
+.diff-counts__added {
+  color: var(--green);
+}
+
+.diff-counts__removed {
+  color: var(--red);
+}
+
 .changes-list {
   display: flex;
   min-height: 0;

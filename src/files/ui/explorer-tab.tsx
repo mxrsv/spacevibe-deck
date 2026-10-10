@@ -21,7 +21,7 @@ import { ChangesList } from "./changes-list";
 import { ExplorerSwitch } from "./explorer-switch";
 import { changesController, type ChangesController } from "../changes/changes-controller";
 import { explorerView } from "../changes/explorer-view";
-import { absolutePath, failureLine, totalsLabel } from "../changes/changes-model";
+import { absolutePath, failureLine } from "../changes/changes-model";
 import { ensureRepositoriesScanned, repositoryScans } from "../../repositories/repositories-store";
 
 export interface ExplorerTabProps {
@@ -107,7 +107,7 @@ export function ExplorerTab(props: ExplorerTabProps) {
         <ExplorerSwitch
           view={view}
           changesTotals={
-            live?.snapshot && live.snapshot.entries.length > 0 ? totalsLabel(live.snapshot) : null
+            live?.snapshot && live.snapshot.entries.length > 0 ? live.snapshot.totals : null
           }
           changesDisabledReason={changesDisabledReason}
           onSelect={(next) => {

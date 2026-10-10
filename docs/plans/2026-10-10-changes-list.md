@@ -233,6 +233,8 @@ Each item has one recommendation; the owner ticks or overrides once.
   waits for slice 2. (b) Tick now a scoped amendment of the DL-3.2 invariant (a fork; the tick
   is the answer) letting counts use `--green` / `--red`, text approved in the reply.
   **Recommended (a):** colour belongs with the diff, and (a) ships nothing to revert.
+  **Owner 2026-10-10, after (a) shipped: (b).** The neutral counts did not read apart; DL-3.2
+  is amended for counts, a zero side stays neutral, and diff lines stay with slice 2.
 - [x] **C10. Tauri.** The Explorer's file channels already have no Tauri counterpart
   ([`file-surface.md:7-8`](../internals/file-surface.md)). (a) Omit the entry point on Tauri and
   in the browser preview through `git-changes-host.ts`'s `available`, as `canCreate` does.

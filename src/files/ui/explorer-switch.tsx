@@ -8,11 +8,13 @@
  * (DL-19.9), so nothing here belongs to one view.
  */
 import type { ExplorerView } from "../changes/explorer-view";
+import type { ChangesSnapshot } from "../../host/git-changes-host";
+import { DiffCounts } from "./changes-list";
 
 export interface ExplorerSwitchProps {
   readonly view: ExplorerView;
-  /** `+N −M` beside the Changes chip; null before the first reply. */
-  readonly changesTotals: string | null;
+  /** The totals beside the Changes chip; null before the first reply. */
+  readonly changesTotals: ChangesSnapshot["totals"] | null;
   /** Why Changes cannot be opened, or null when it can (CHG4). */
   readonly changesDisabledReason: string | null;
   onSelect(view: ExplorerView): void;
@@ -70,7 +72,11 @@ export function ExplorerSwitch(props: ExplorerSwitchProps) {
         }}
       >
         Changes
-        {changesTotals !== null && <span class="explorer-switch__totals">{changesTotals}</span>}
+        {changesTotals !== null && (
+          <span class="explorer-switch__totals">
+            <DiffCounts added={changesTotals.added} removed={changesTotals.removed} />
+          </span>
+        )}
       </button>
     </div>
   );

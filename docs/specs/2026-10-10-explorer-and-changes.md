@@ -171,9 +171,11 @@ list's form (decision 8, variant A) and watching the checkout (open decision 2).
    built-in `fs.watch` and no watcher library. A linked worktree keeps its index and HEAD
    outside its root, so a second, non-recursive watch on the git directory covers them, and is
    the only watch on Linux. See [file-surface.md](../internals/file-surface.md#changes-list).
-3. **Diff colours.** DL-3.2 reserves `--green` for success and `--red` for danger. Recommended:
-   a scoped amendment that lets added and removed lines and counts use them. Every tool surveyed
-   colours a diff, and a diff without colour is slow to read.
+3. **Diff colours.** DL-3.2 reserved `--green` for success and `--red` for danger. Counts closed
+   2026-10-10: the owner chose coloured counts over plan C9's neutral ones, which did not read
+   apart at a glance, so DL-3.2 now lets a diff count use them, a zero side neutral. Open for
+   slice 2: added and removed lines in the diff itself. Recommended: the same colours, since
+   every tool surveyed colours a diff and a diff without colour is slow to read.
 4. **A second docked column.** DL §19 describes one docked column holding tabs. The diff column
    is a second, transient one with its own seam, header and width, and it shrinks the grid
    exactly as the dock does. Since 2026-10-10 §19 is a DL _pattern_, rewritten with the code

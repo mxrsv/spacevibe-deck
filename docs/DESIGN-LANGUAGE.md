@@ -108,6 +108,11 @@ through `color-mix`.
 - **DL-3.2** `--green` means on / enabled / success. `--red` means danger / destructive /
   error. `--yellow` means needs your eyes: a question, a permission wait, or a finished run
   nobody has checked — one step below `--red`'s failure. None of them is decoration.
+  A diff's line counts are the one place green and red mean added and removed: `+N` in
+  `--green`, `−M` in `--red`, a zero side in the count's neutral ink
+  ([`DiffCounts`](../src/files/ui/changes-list.tsx)).
+  Why: the owner wants the two counts apart at a glance (2026-10-10), as every diff tool shows
+  them.
 - **DL-3.3** Structure comes from hairlines and background steps, not from color or
   shadow.
 - **DL-3.4** `--text-primary` carries keys and values; `--text-muted` carries secondary

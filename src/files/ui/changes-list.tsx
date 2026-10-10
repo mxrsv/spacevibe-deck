@@ -2,8 +2,8 @@
  * The Changes side of the Explorer (variant A, spec CHG1, CHG4): the branch row
  * with its totals and Refresh, then one 22px row per changed file.
  *
- * A row is status, name, directory and counts. Counts are neutral and tabular
- * (DL-4.2, plan C9) — colour belongs with the diff. A binary file says so
+ * A row is status, name, directory and counts. Counts are tabular (DL-4.2) and
+ * wear the diff's colours (DL-3.2, plan C9). A binary file says so
  * instead of counting. Pressing a row opens the working-tree file in the preview
  * tab, as a tree click does (plan C8); a deleted file has nothing to open, so its
  * row is shown, not pressable. Slice 2 replaces the press with the diff column.
@@ -30,7 +30,6 @@ import {
   entryTitle,
   omittedLabel,
   STATUS_MARK,
-  totalsLabel,
 } from "../changes/changes-model";
 
 export interface ChangesListProps {
@@ -38,6 +37,19 @@ export interface ChangesListProps {
   /** Opens one entry's working-tree file in the preview tab. */
   onOpen(entry: ChangeEntry): void;
   onRefresh(): void;
+}
+
+/**
+ * `+N −M` with added lines in `--green` and removed lines in `--red` (DL-3.2).
+ * A zero side keeps the count's neutral ink, so colour only marks a change.
+ */
+export function DiffCounts(props: { readonly added: number; readonly removed: number }) {
+  return (
+    <>
+      <span class={props.added > 0 ? "diff-counts__added" : undefined}>+{props.added}</span>{" "}
+      <span class={props.removed > 0 ? "diff-counts__removed" : undefined}>−{props.removed}</span>
+    </>
+  );
 }
 
 function RefreshButton({ onPress }: { onPress(): void }) {
@@ -100,7 +112,11 @@ function ChangeRow(props: {
       </span>
       <span class="changes-row__name">{baseName(entry.path)}</span>
       {directory.length > 0 && <span class="changes-row__dir">{directory}</span>}
-      {counts.kind === "counts" && <span class="changes-row__counts">{counts.label}</span>}
+      {counts.kind === "counts" && (
+        <span class="changes-row__counts">
+          <DiffCounts added={counts.added} removed={counts.removed} />
+        </span>
+      )}
       {counts.kind === "binary" && <span class="changes-row__counts">binary</span>}
     </div>
   );
@@ -165,7 +181,9 @@ export function ChangesList(props: ChangesListProps) {
         {snapshot?.initial === true && <span class="changes-head__note">No commits yet</span>}
         <span class="changes-head__right">
           {snapshot !== null && snapshot.entries.length > 0 && (
-            <span class="changes-head__totals">{totalsLabel(snapshot)}</span>
+            <span class="changes-head__totals">
+              <DiffCounts added={snapshot.totals.added} removed={snapshot.totals.removed} />
+            </span>
           )}
           <span class="file-tree__actions">
             <RefreshButton onPress={props.onRefresh} />

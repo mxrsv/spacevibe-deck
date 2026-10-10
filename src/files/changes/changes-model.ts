@@ -43,15 +43,10 @@ export function absolutePath(root: string, entryPath: string): string {
   return `${trimmed}${separator}${entryPath.split("/").join(separator)}`;
 }
 
-/** `+12 −3`, tabular and neutral (DL-4.2). */
-export function countsLabel(entry: Pick<ChangeEntry, "added" | "removed">): string {
-  return `+${entry.added} −${entry.removed}`;
-}
-
 export type CountsView =
   | { readonly kind: "binary" }
   | { readonly kind: "uncounted" }
-  | { readonly kind: "counts"; readonly label: string };
+  | { readonly kind: "counts"; readonly added: number; readonly removed: number };
 
 export function countsFor(entry: ChangeEntry): CountsView {
   if (entry.binary) {
@@ -60,7 +55,7 @@ export function countsFor(entry: ChangeEntry): CountsView {
   if (!entry.counted) {
     return { kind: "uncounted" };
   }
-  return { kind: "counts", label: countsLabel(entry) };
+  return { kind: "counts", added: entry.added, removed: entry.removed };
 }
 
 export function entryTitle(entry: ChangeEntry): string {
@@ -83,10 +78,6 @@ export function comparisonLabel(snapshot: ChangesSnapshot): string {
   return snapshot.initial
     ? "Uncommitted changes against the empty tree"
     : "Uncommitted changes against HEAD";
-}
-
-export function totalsLabel(snapshot: ChangesSnapshot): string {
-  return `+${snapshot.totals.added} −${snapshot.totals.removed}`;
 }
 
 export function omittedLabel(omitted: number): string {
