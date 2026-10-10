@@ -52,6 +52,33 @@ describe("registerDialogs workspace grants", () => {
     }
   });
 
+  it("waits for the main-process grant to persist before returning the selected path", async () => {
+    const root = mkdtempSync(join(tmpdir(), "deck-dialog-pending-grant-"));
+    let finishGrant!: () => void;
+    const grantPersisted = new Promise<void>((resolve) => {
+      finishGrant = resolve;
+    });
+    try {
+      mocks.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: [root] });
+      mocks.grantWorkspaceRoot.mockReturnValueOnce(grantPersisted);
+
+      const result = call("dialog_open", { directory: true });
+      await vi.waitFor(() => expect(mocks.grantWorkspaceRoot).toHaveBeenCalled());
+      let returned = false;
+      void result.then(() => {
+        returned = true;
+      });
+      await Promise.resolve();
+      expect(returned).toBe(false);
+
+      finishGrant();
+      await expect(result).resolves.toBe(root);
+    } finally {
+      finishGrant();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("does not grant a workspace root when the picker is cancelled", async () => {
     mocks.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] });
 

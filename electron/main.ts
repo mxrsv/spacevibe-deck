@@ -620,7 +620,9 @@ registerStore({ stores, windows, emitTo });
 
 registerDialogs({
   grantWorkspaceRoot: async (senderId, root) => {
-    if (!(await imageWorkspaceGrants).grant(root)) return;
+    const grants = await imageWorkspaceGrants;
+    const persisted = await grants.grant(root);
+    if (!persisted) return;
     const active = activeImageRootsBySender.get(senderId) ?? new Set<string>();
     active.add(root);
     while (active.size > MAX_IMAGE_ROOTS_PER_WINDOW) {
