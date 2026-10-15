@@ -22,7 +22,6 @@ const CHANNEL = "window_set_title_bar_overlay";
 const DARK: TitleBarOverlaySyncInput = {
   settings: { ...DEFAULT_SETTINGS, themeId: DECK_DARK_ID },
   sidebar: true,
-  dockPainted: false,
   settingsOpen: false,
 };
 const LIGHT: TitleBarOverlaySyncInput = {
@@ -81,7 +80,6 @@ describe("useTitleBarOverlaySync off Windows", () => {
     mount(DARK);
     mount(LIGHT);
     mount({ ...LIGHT, sidebar: false });
-    mount({ ...LIGHT, sidebar: false, dockPainted: true });
     mount({ ...LIGHT, settingsOpen: true });
 
     expect(invoke).not.toHaveBeenCalled();
@@ -104,11 +102,9 @@ describe("useTitleBarOverlaySync on Windows under Electron", () => {
 
   it.each([
     ["dark", "sidebar layout", {}, "#0a0a0a"],
-    ["dark", "sidebar layout, dock open", { dockPainted: true }, "#141414"],
     ["dark", "top-tab layout", { sidebar: false }, "#1b1b1b"],
     ["dark", "Settings open", { settingsOpen: true }, "#0a0a0a"],
     ["light", "sidebar layout", {}, "#f5f6f8"],
-    ["light", "sidebar layout, dock open", { dockPainted: true }, "#e9eaec"],
     ["light", "top-tab layout", { sidebar: false }, "#e9eaec"],
     ["light", "Settings open", { settingsOpen: true }, "#f5f6f8"],
   ] as const)("%s theme, %s: sends the corner's colour at boot", (mode, _state, patch, color) => {
@@ -135,13 +131,12 @@ describe("useTitleBarOverlaySync on Windows under Electron", () => {
 
   it("does not repeat a send when nothing under the corner changed", () => {
     mount(DARK);
-    // Same colours three ways: an identical render, a fresh but equal settings
-    // object, and a dock toggle in the top-tab layout, where the dock sits
-    // below the tab bar and never reaches the corner.
+    // Same colour three ways: an identical render, a fresh but equal settings
+    // object, and Settings opening over a stage that already shares its `--bg`.
     mount(DARK);
     mount({ ...DARK, settings: { ...DARK.settings } });
+    mount({ ...DARK, settingsOpen: true });
     mount({ ...DARK, sidebar: false });
-    mount({ ...DARK, sidebar: false, dockPainted: true });
 
     expect(overlayCalls()).toEqual([
       { color: "#0a0a0a", symbolColor: "#e7e7e7" },

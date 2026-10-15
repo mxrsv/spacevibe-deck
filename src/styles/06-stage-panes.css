@@ -25,18 +25,16 @@
   inset: 0;
   /* A gutter on all four edges again (owner, 2026-09-18), replacing the
      full-bleed grid of 2026-08-17: panes are rounded CARDS floating on the
-     gutter's chrome, so the stage no longer reads as one ruled surface and the
+     gutter, so the stage no longer reads as one ruled surface and the
      split lines no longer have to meet the strip's hairline — the whole reason
      the 8px gutter was removed. 4px, not the old 8px, so the terminal keeps
      its columns. */
   padding: var(--stage-gutter);
   display: flex;
-  /* The gutter has to be a DIFFERENT surface from the pane or the radius is
-     invisible: the pane background and `.stage` are both `--bg`. `--sidebar-bg`
-     is the chrome the rail already paints (DL-18.7), and
-     `derive-colors.test.ts` guarantees it never collapses into `--bg` in any
-     theme. */
-  background: var(--sidebar-bg);
+  /* The stage's own `--bg` (owner, 2026-10-15): only the navigation rail keeps
+     a colour of its own (DL-18.7). The card's `--seam-split` border draws the
+     radius, so the gutter need not be a second surface. */
+  background: var(--bg);
 }
 
 /* ── DL-18.6: the stage's tab strip (sidebar layout only) ─────────────────
@@ -155,7 +153,7 @@
   display: flex;
   min-width: 0;
   min-height: 0;
-  background: var(--sidebar-bg);
+  background: var(--bg);
 }
 
 /* The document is a card on the gutter like a pane is, so the handover does
@@ -284,9 +282,9 @@
   inset: 0;
   display: flex;
   z-index: 10;
-  /* The gutter's surface, not `--bg`: the zoomed pane is a card on the same
-     chrome as an unzoomed one, so its corners still read as corners. */
-  background: var(--sidebar-bg);
+  /* The gutter's surface: the zoomed pane is a card on the same ground as an
+     unzoomed one, so its edge reads the same. */
+  background: var(--bg);
 }
 
 .tab-stage > * {
@@ -409,10 +407,8 @@
      visible: xterm's canvases fill the pane and would otherwise paint over the
      rounded corners. */
   border-radius: var(--radius-tab);
-  /* The card's own edge, added the same day the gutter was: `--sidebar-bg` is
-     only a few luminance units off `--bg`, so on a dark theme the gutter alone
-     left the corner legible and the straight runs invisible — the owner saw
-     exactly that in the dev app. `--seam-split` is the token the pane boundary
+  /* The card's own edge, added the same day the gutter was, and since the gutter
+     moved to `--bg` (2026-10-15) the only thing that draws the card. `--seam-split` is the token the pane boundary
      has always owned (DL-2.3); it moved from the line BETWEEN two panes to the
      edge AROUND each one, so it is the same 20% of `--tone` doing the same
      job at the new geometry. A real border and not `box-shadow: inset`

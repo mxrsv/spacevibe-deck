@@ -9,18 +9,15 @@ import { TEXT_PRIMARY_FLOOR, contrastRatio } from "./derive-colors";
 import { applyThemeVars } from "./theme-vars";
 import { titleBarOverlayColors, type FrameCornerState } from "./title-bar-overlay-colors";
 
-/** The four things that can sit under the window's top-right corner. */
-const STAGE: FrameCornerState = { sidebar: true, dockPainted: false, settingsOpen: false };
-const DOCK: FrameCornerState = { ...STAGE, dockPainted: true };
-const TABBAR: FrameCornerState = { sidebar: false, dockPainted: false, settingsOpen: false };
+/** The three things that can sit under the window's top-right corner. */
+const STAGE: FrameCornerState = { sidebar: true, settingsOpen: false };
+const TABBAR: FrameCornerState = { sidebar: false, settingsOpen: false };
 const SETTINGS: FrameCornerState = { ...STAGE, settingsOpen: true };
 
 /** Each state with the CSS custom property the corner's occupant paints. */
 const STATES: readonly (readonly [string, FrameCornerState, string])[] = [
   ["sidebar layout: the strip over the stage", STAGE, "--bg"],
-  ["sidebar layout, dock open: the dock panel", DOCK, "--sidebar-bg"],
   ["top-tab layout: the tab bar", TABBAR, "--chrome-1"],
-  ["top-tab layout, dock open: still the tab bar", { ...TABBAR, dockPainted: true }, "--chrome-1"],
   ["Settings in the sidebar layout", SETTINGS, "--bg"],
   ["Settings in the top-tab layout", { ...TABBAR, settingsOpen: true }, "--bg"],
 ];
@@ -41,11 +38,9 @@ describe("titleBarOverlayColors", () => {
   // diff here and not only a pass against the same function.
   it.each([
     [DECK_DARK_ID, "stage strip", STAGE, "#0a0a0a", "#e7e7e7"],
-    [DECK_DARK_ID, "dock panel", DOCK, "#141414", "#e7e7e7"],
     [DECK_DARK_ID, "tab bar", TABBAR, "#1b1b1b", "#e7e7e7"],
     [DECK_DARK_ID, "Settings", SETTINGS, "#0a0a0a", "#e7e7e7"],
     [DECK_LIGHT_ID, "stage strip", STAGE, "#f5f6f8", "#272727"],
-    [DECK_LIGHT_ID, "dock panel", DOCK, "#e9eaec", "#272727"],
     [DECK_LIGHT_ID, "tab bar", TABBAR, "#e9eaec", "#272727"],
     [DECK_LIGHT_ID, "Settings", SETTINGS, "#f5f6f8", "#272727"],
   ])("%s under the %s: exact colours", (id, _occupant, state, color, symbolColor) => {

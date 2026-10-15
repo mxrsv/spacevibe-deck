@@ -2319,11 +2319,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return () => setUsageCoverInert(false);
   }, [usageCovering, dockPresence.mounted, dockPresence.entered]);
 
-  // After `dockPainted`, which is half of what decides the corner's colour.
   useTitleBarOverlaySync({
     settings: settings.value,
     sidebar,
-    dockPainted,
     settingsOpen: settingsOpen.value,
   });
   // The chrome carries the dock's hide control only while the column is gone
