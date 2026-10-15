@@ -58,7 +58,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--sidebar-bg);
+  /* The stage's `--bg`, not the rail's `--sidebar-bg` (owner, 2026-10-15): only
+     the navigation rail keeps a colour of its own (DL-18.7, DL-19.2). */
+  background: var(--bg);
   /* DL-19.2: the seam is a single hairline, never a shadow. */
   border-left: 1px solid var(--hair);
   /* DL §7's panel slide-over, and the resting state is the CLOSED one: the
@@ -124,9 +126,8 @@
   transition: background var(--duration) var(--ease);
 }
 
-/* Full `--accent`, the sidebar seam's reason exactly: this line has
-   `--sidebar-bg` on one side, and a 60% mix of it reads as a lighter
-   hairline instead of a lit seam. */
+/* Full `--accent`, the sidebar seam's reason exactly: a 60% mix reads as a
+   lighter hairline instead of a lit seam. */
 .dock-panel__grip:hover::after,
 .dock-panel__grip.is-dragging::after {
   background: var(--accent);
@@ -700,7 +701,7 @@
   min-width: 0;
   width: 0;
   color: var(--text-primary);
-  background: var(--sidebar-bg);
+  background: var(--bg);
   border: none;
   font: inherit;
   font-size: var(--type-meta);

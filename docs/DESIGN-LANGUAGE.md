@@ -647,15 +647,17 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
 - **DL-18.6** The tabs are the frame row's stage-side occupant in both layouts: `.tabbar` in
   top-tab mode, `.stage__strip` in sidebar mode, the same `TabStrip` in a `--frame-h` row.
   `.tabbar` closes with a 1px `--seam-divider` bottom edge; `.stage__strip` is transparent on
-  `--bg` with no line under it, parted from the work area by the stage gutter alone. Its right edge stops at the docked panel when one is open (DL-19.1, `--explorer-w`).
+  `--bg` with no line under it, parted from the work area by the pane cards' edges alone. Its right edge stops at the docked panel when one is open (DL-19.1, `--explorer-w`).
   The rail lists no documents; documents stay in the Explorer and the strip names stage surfaces.
-- **DL-18.7** The stage is the focal surface in every theme. The terminal and document
-  surface keep the theme's `--bg`; the navigation frame and rail and every docked side panel
-  share the derived `--sidebar-bg`, which never equals `--bg` (light and pure-black
-  overrides included; [`derive-colors.ts`](../src/lib/derive-colors.ts)). On a dark theme the
-  columns rise off the stage: `--sidebar-bg`, then `--chrome-1`, `--chrome-2` and
-  `--tab-active-bg` stand above it, each measured from the sidebar rather than from `--bg`,
-  in steps of 3/6/10 (light themes use 5/9/15 and their columns recede). `--input-bg` still
+- **DL-18.7** The navigation column is the one surface with a colour of its own (owner,
+  2026-10-15). The navigation frame and rail paint the derived `--sidebar-bg`, which never
+  equals `--bg` (light and pure-black overrides included;
+  [`derive-colors.ts`](../src/lib/derive-colors.ts)); the terminal, the document surface,
+  the stage gutter, every docked side panel and the full-window pages share the theme's
+  `--bg`. On a dark theme the navigation column rises off the stage: `--sidebar-bg`, then
+  `--chrome-1`, `--chrome-2` and `--tab-active-bg` stand above it, each measured from the
+  sidebar rather than from `--bg`, in steps of 3/6/10 (light themes use 5/9/15 and the column
+  recedes). `--input-bg` still
   recedes toward the stage; `--seam-raised` sits on the same ladder.
   Why: the dark steps stay narrow because the sidebar already spends 8% of DL-3.5's headroom.
 - **DL-18.8** The browser is a stage surface, not a docked column: one chip on the strip, a
@@ -714,8 +716,8 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
 - **DL-18.12** A pane is a card on the stage gutter. `--stage-gutter` is 4px on all four
   edges of the work area and between panes
   ([`06-stage-panes.css`](../src/styles/06-stage-panes.css)); the card's 6px corner is
-  `--radius-tab` (DL-20.1). The gutter paints `--sidebar-bg` (DL-18.7) and the card carries a
-  1px `--seam-split` border. It is a real `border`, not DL-1.3's inset hairline: xterm fills
+  `--radius-tab` (DL-20.1). The gutter paints `--bg` like the card (DL-18.7), so the card's
+  1px `--seam-split` border alone draws it. It is a real `border`, not DL-1.3's inset hairline: xterm fills
   the padding box and would paint over an inset line. The document surface takes the same
   gutter and radius; the browser tab is the exception, its web content being a native view
   that CSS cannot round. `.window--sidebar > .stage` carries the shell's one vertical line, a
@@ -734,8 +736,9 @@ covering it; the file explorer is the resident instance.
 - **DL-19.1** A docked panel is a column of the stage, not an overlay. The terminal grid's
   bounds shrink by exactly the panel's width, so panes resize around it.
 - **DL-19.2** The seam is a single `--hair` border on the panel's inner edge (DL-3.3), with
-  no shadow, gradient or second rule. The background step from `--bg` to `--sidebar-bg`
-  separates the regions and keeps the panel on the navigation sidebar's plane (DL-18.7).
+  no shadow, gradient or second rule. The panel stands on the stage's `--bg`, so that
+  hairline alone separates the regions; only the navigation column has its own colour
+  (DL-18.7).
 - **DL-19.3** The header is the tab row (DL-19.7), built from the window's own controls at
   the tab bar's 13px chrome icon size (DL-14.2). It is `--frame-h` tall with
   `box-sizing: border-box`, closing on the same pixel row as the stage strip beside it. A
