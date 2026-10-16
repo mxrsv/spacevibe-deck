@@ -23,8 +23,6 @@ export interface TitleBarOverlayColors {
 export interface FrameCornerState {
   /** `tabBarPosition === "left"`: the strip, not the tab bar, owns the corner. */
   readonly sidebar: boolean;
-  /** The docked column is painted open (it owns its column top to bottom, DL-19.1). */
-  readonly dockPainted: boolean;
   /** The full-window Settings screen covers the frame row. */
   readonly settingsOpen: boolean;
 }
@@ -43,9 +41,9 @@ function cornerGround(state: FrameCornerState, bg: string, chrome: ChromeColors)
   if (!state.sidebar) {
     return chrome.chrome1; // `.tabbar` spans the window (DL-18.3)
   }
-  // The strip is transparent on the stage's `--bg` (DL-18.2); an open dock
-  // stops the strip short and puts its own `--sidebar-bg` header there.
-  return state.dockPainted ? chrome.sidebarBg : bg;
+  // The strip, an open dock's header and the usage page's header all stand on
+  // the stage's `--bg` (DL-18.2, DL-19.2, DL-16.8).
+  return bg;
 }
 
 export function titleBarOverlayColors(
