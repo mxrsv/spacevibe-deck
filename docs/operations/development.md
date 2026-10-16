@@ -54,6 +54,10 @@ touches only `docs/**` or `*.md` runs nothing.
   only `marketing/**` changed.
 - [`landing.yml`](../../.github/workflows/landing.yml) (ubuntu): the landing's Vitest files
   and `build:landing`, when `marketing/**` changes.
+- [`pr-shots.yml`](../../.github/workflows/pr-shots.yml) (ubuntu, pull requests touching the
+  app): builds, runs `electron/shoot.ts` under Xvfb, pushes the PNGs to the `pr-assets` branch
+  and keeps one comment on the PR linking them. Fork PRs get the artifact only. By hand on a
+  branch, with an optional PR number to comment on.
 - By hand only, in `ci.yml`: `windows-check` — `npm test` on Windows, which spawns a real
   ConPTY through `electron/pty/windows-pty.test.ts`, plus `build` and `electron:build`; run
   it before a Windows release. It still carries the pre-existing failures in

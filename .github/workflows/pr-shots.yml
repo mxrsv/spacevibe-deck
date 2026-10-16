@@ -1,0 +1,139 @@
+name: PR Shots
+
+# Screenshots of the Electron app for a pull request, so a reviewer on a phone sees the change
+# without checking it out. `electron/shoot.ts` renders from inside the app with
+# `webContents.capturePage()`, so a virtual display is all Linux needs.
+#
+# Two jobs on purpose: `shoot` runs the PR's code with a read-only token; `publish` holds the
+# write token and runs nothing from the PR, only copies the PNGs to the `pr-assets` branch and
+# comments links to them. A fork PR gets the artifact but no comment — its token cannot write.
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "electron/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package-lock.json"
+      - ".github/workflows/pr-shots.yml"
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number to comment on (empty: artifact only)"
+        required: false
+
+concurrency:
+  group: pr-shots-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shoot:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The locked `electron` package has no install script, so `npm ci` leaves
+      # `node_modules/electron/dist` empty (the same step test-deck-app takes in a fresh worktree).
+      - name: Fetch the Electron binary
+        run: node node_modules/electron/install.js
+
+      - name: Install a virtual display
+        run: sudo apt-get update -q && sudo apt-get install -yq xvfb libgbm1 libnss3 libasound2t64
+
+      - name: Build
+        run: npm run build && npm run electron:build
+
+      # The same capture `npm run shoot` does, minus its rebuild. `--no-sandbox`: the runner's
+      # unprivileged user namespace is restricted, and this is a throwaway VM. It goes last:
+      # `shoot.ts` reads its output dir from `argv[2]`, and a switch before the script shifts it.
+      # A failed capture leaves the process alive, hence the timeout.
+      - name: Shoot
+        timeout-minutes: 5
+        run: |
+          xvfb-run -a -s "-screen 0 1440x900x24" \
+            node_modules/electron/dist/electron dist-electron/electron/shoot.cjs shots 5 --no-sandbox
+          ls shots/*.png
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr-shots
+          path: shots/*.png
+          retention-days: 14
+
+  publish:
+    needs: shoot
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && inputs.pr != '')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number || inputs.pr }}
+      SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Download screenshots
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: pr-shots
+          path: shots
+
+      # One folder per PR and commit, so a re-run never overwrites what an older comment links.
+      - name: Push to pr-assets
+        run: |
+          set -eu
+          dir="pr-$PR/${SHA:0:12}"
+          # An unborn `pr-assets` is the first run ever: the commit below starts the branch.
+          git init -q -b pr-assets assets && cd assets
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          for attempt in 1 2 3; do
+            if git fetch -q --depth 1 origin pr-assets; then
+              git checkout -q -f -B pr-assets FETCH_HEAD
+            fi
+            mkdir -p "$dir" && cp ../shots/*.png "$dir/"
+            git add "$dir"
+            git commit -qm "chore(pr-assets): screenshots for #$PR at ${SHA:0:12}"
+            git push -q origin pr-assets && exit 0
+            echo "push raced another run, retrying ($attempt)"
+          done
+          exit 1
+
+      - name: Comment on the pull request
+        run: |
+          set -eu
+          base="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/pr-assets/pr-$PR/${SHA:0:12}"
+          {
+            echo "### Screenshots at \`${SHA:0:12}\`"
+            echo
+            echo "Captured by \`electron/shoot.ts\` on Linux under Xvfb, so fonts and window chrome differ from macOS."
+            echo
+            for png in shots/*.png; do
+              name=$(basename "$png")
+              echo "**${name%.png}**"
+              echo
+              echo "![${name%.png}]($base/$name)"
+              echo
+            done
+          } > body.md
+          gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file body.md --edit-last --create-if-none

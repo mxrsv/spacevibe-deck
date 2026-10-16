@@ -1,0 +1,41 @@
+# A task the nightly cloud routine can pick up. The routine acts only on issues that also
+# carry the `claude-ready` label, applied by the owner; this form deliberately does not add it,
+# because anyone can open an issue on a public repo. See AGENTS.md "Unattended routine".
+name: Agent task
+description: A small, self-contained change for the unattended coding routine
+title: "[agent] "
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should be true when this is done, in one or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: One checkable line each. The PR is judged against these and nothing else.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: pointers
+    attributes:
+      label: Where to look
+      description: Files, components or docs that are a good starting point. Optional.
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What the routine must not touch or change.
+  - type: checkboxes
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - label: Visible UI change (the PR needs screenshots)
+        - label: New surface or changed UI flow (the test-deck-app E2E gate applies)

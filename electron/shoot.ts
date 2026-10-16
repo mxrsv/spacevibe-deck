@@ -63,14 +63,15 @@ async function main(): Promise<void> {
   // the board alone does not show the frame in its working state.
   const opened = await window.webContents.executeJavaScript(
     `new Promise((resolve) => {
-       const row = document.querySelector(".open-board .row");
+       const row = document.querySelector(".open-board .row__open");
        if (!row) { resolve("no row"); return; }
        row.click();
        setTimeout(() => {
-         // Selected by class, not by text: the Open Folder button also starts
-         // with Open, and clicking it opens a native picker nothing can close.
-         const open = document.querySelector(".open-board .btn--primary");
-         if (!open) { resolve("no open button"); return; }
+         // The Terminal card, never the first card: with agents installed the
+         // first one starts a real, unattended agent session.
+         const open = [...document.querySelectorAll(".open-board .agent-launch-page__main")]
+           .find((card) => card.textContent.includes("Terminal"));
+         if (!open) { resolve("no terminal card"); return; }
          open.click();
          setTimeout(() => resolve(document.querySelector(".xterm") ? "panes" : "still board"), 4000);
        }, 400);
