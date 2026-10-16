@@ -1,10 +1,16 @@
 # Usage details page
 
 - **Started:** 2026-10-14
-- **Status:** requirements agreed in conversation; not implemented
-- **Plans:** [page frame](../plans/2026-10-14-usage-page-frame.md) (gitignored, primary checkout),
-  [scanner by repo](../plans/2026-10-14-usage-scanner-by-repo.md) (gitignored). The page's
-  *content* is a third piece of work, owned by a separate session.
+- **Status:** implemented in part (2026-10-16). The frame, the per-repo scanner and the
+  2026-10-15 cover decisions are merged ([#50](https://github.com/mxrsv/spacevibe-deck/pull/50));
+  the repository tiles, the palette and the dock overview are merged
+  ([#49](https://github.com/mxrsv/spacevibe-deck/pull/49)); the one-background rule is
+  [#51](https://github.com/mxrsv/spacevibe-deck/pull/51). Not frozen: wiring the tiles into the
+  page is not on `origin/main` yet, the dock layout slice is unmerged, and Windows is unverified.
+- **Plans:** [page frame](../plans/2026-10-14-usage-page-frame.md),
+  [scanner by repo](../plans/2026-10-14-usage-scanner-by-repo.md),
+  [page content](../plans/2026-10-14-usage-page-content.md) and
+  [dock layout](../plans/2026-10-15-usage-dock-layout.md) (all gitignored, primary checkout).
 
 ## Goal
 
@@ -17,7 +23,8 @@ usage in more detail, including usage per repository.
    "Details" entry that opens the page.
 2. **R2. The page opens like t3code's Usage page.** It takes over the content area, the rail
    stays visible, Back and Escape return. (Reference: `pingdotgg/t3code`, MIT, ideas only, no code
-   copied.)
+   copied.) Amended by the owner on 2026-10-15: the page also covers the docked panel and the
+   stage strip, going full-bleed like Settings; while covered the dock is inert.
 3. **R3. Technical approach A (owner, 2026-10-14).** The page is an overlay that covers the
    stage and leaves the rail uncovered, built on Settings' mechanism. Terminal panes are never
    unmounted or hidden by CSS, so PTY ownership, tabs and layout are untouched. Approach B (swap
@@ -29,6 +36,8 @@ usage in more detail, including usage per repository.
    so the page can group by repository.
 6. **R6. No new data leaves the machine.** Paths enter the renderer through IPC only; they are
    not sent to telemetry or the backend.
+7. **R7. One background (owner, 2026-10-15).** The navigation rail is the only surface with a
+   colour of its own; the page, Settings, the stage and the dock share the stage background.
 
 ## Acceptance criteria
 
