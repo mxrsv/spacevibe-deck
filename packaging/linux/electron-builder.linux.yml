@@ -1,0 +1,57 @@
+# Linux package for an UNSIGNED, community-style Linux build.
+#
+# This mirrors electron-builder.release.yml's shape (the same `files` list, the
+# same asar unpacking for the native node-pty module, the same shipping
+# identity) but targets AppImage + deb instead of dmg/zip + nsis, and it carries
+# NO `publish` block on purpose: there is no Linux update feed. The Electron
+# host answers "unsupported" to the updater on Linux
+# (electron/ipc/register-updater.ts), so an app-update.yml here would be a file
+# that only ever 404s.
+#
+# It is referenced by `.github/workflows/linux-artifact.yml` alone, which runs
+# by hand and uploads the two artifacts without publishing anything. No macOS or
+# Windows release path reads this file.
+appId: dev.spacevibe.deck
+productName: SpaceVibe Deck
+directories:
+  output: dist-electron-linux
+extraMetadata:
+  main: dist-electron/electron/main.cjs
+  productName: SpaceVibe Deck
+  description: Attention-first terminal for AI agent CLIs
+  # Upstream package.json carries no `license`/`homepage`; deb and AppImage read
+  # these instead. The license is the repository's own, unchanged.
+  license: MIT
+  homepage: https://github.com/mxrsv/spacevibe-deck
+  desktopName: spacevibe-deck.desktop
+files:
+  - dist/**
+  - dist-electron/electron/**/*.cjs
+  - dist-electron/src/**/*.cjs
+  - dist-electron/electron/vendor/**
+  - package.json
+# node-pty is a native module: it cannot load from inside the asar, and its
+# helper binaries must keep their executable modes.
+asarUnpack:
+  - "**/node_modules/node-pty/**"
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  category: Development
+  # `build/` holds no Linux icon; both hosts share the Tauri icon set.
+  icon: src-tauri/icons/icon.png
+  executableName: spacevibe-deck
+  # Match the .desktop file to the bundle so the WM_CLASS of a running window
+  # resolves back to this entry (taskbar icon grouping).
+  syncDesktopName: true
+  artifactName: SpaceVibe-Deck-${version}-linux-${arch}.${ext}
+  maintainer: SpaceVibe Deck <mxrsv@users.noreply.github.com>
+  synopsis: Attention-first terminal for AI agent CLIs
+  description: >-
+    SpaceVibe Deck packaged for Linux. This is an unsigned, community-style
+    build; it is not a published release and it has no update feed.

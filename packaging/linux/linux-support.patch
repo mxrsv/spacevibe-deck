@@ -1,0 +1,393 @@
+diff --git a/electron/ipc/register-services.ts b/electron/ipc/register-services.ts
+index 87f92f4..b5dc028 100644
+--- a/electron/ipc/register-services.ts
++++ b/electron/ipc/register-services.ts
+@@ -86,7 +86,9 @@ export function registerServices(deps: RegisterServicesDeps): void {
+         ? "macos"
+         : process.platform === "win32"
+           ? "windows"
+-          : "unsupported",
++          : process.platform === "linux"
++            ? "linux"
++            : "unsupported",
+     homeDir: app.getPath("home"),
+   }));
+   ipcMain.handle(CHANNELS.resolvePaths, (_event, { cwd, paths }) => resolvePaths(cwd, paths));
+diff --git a/electron/ipc/register-updater.test.ts b/electron/ipc/register-updater.test.ts
+index aaeaf5c..2086b81 100644
+--- a/electron/ipc/register-updater.test.ts
++++ b/electron/ipc/register-updater.test.ts
+@@ -26,7 +26,15 @@ vi.mock("electron", () => ({
+ }));
+ vi.mock("electron-updater", () => ({ autoUpdater: mocks.updater }));
+ 
++// `register-updater` answers "unsupported" on Linux — there is no Linux feed —
++// which would answer every case below before it reaches the lifecycle. The
++// diagnostics here are platform-independent, so pin a supported platform for
++// the file, the same seam `electron/menu.test.ts` uses, and exercise the Linux
++// answer in its own case below.
++const realPlatform = process.platform;
++
+ beforeEach(() => {
++  Object.defineProperty(process, "platform", { value: "darwin" });
+   vi.clearAllMocks();
+   mocks.root = mkdtempSync(join(tmpdir(), "deck-updater-ipc-"));
+   mocks.handlers.clear();
+@@ -38,7 +46,10 @@ beforeEach(() => {
+   });
+   mocks.updater.downloadUpdate.mockResolvedValue([]);
+ });
+-afterEach(() => rmSync(mocks.root, { recursive: true, force: true }));
++afterEach(() => {
++  Object.defineProperty(process, "platform", { value: realPlatform });
++  rmSync(mocks.root, { recursive: true, force: true });
++});
+ 
+ function invoke(name: string, payload?: unknown): unknown {
+   const handler = mocks.handlers.get(name);
+@@ -98,4 +109,10 @@ describe("updater IPC diagnostics", () => {
+       "Invalid updater log operation",
+     );
+   });
++
++  it("answers unsupported on Linux, where the feed carries no manifest", async () => {
++    Object.defineProperty(process, "platform", { value: "linux" });
++    setup();
++    await expect(invoke("update_check")).resolves.toEqual({ status: "unsupported" });
++  });
+ });
+diff --git a/electron/ipc/register-updater.ts b/electron/ipc/register-updater.ts
+index e79db3d..ff5298d 100644
+--- a/electron/ipc/register-updater.ts
++++ b/electron/ipc/register-updater.ts
+@@ -89,7 +89,13 @@ export function registerUpdater(deps: UpdaterDependencies): UpdaterHandle {
+       return autoUpdater as unknown as AutoUpdaterLike;
+     },
+     // A dev run has no bundle to replace and no signature to verify.
+-    supported: app.isPackaged,
++    //
++    // Linux is disabled outright: the feed below is upstream's macOS/Windows
++    // release stream, and `electron-updater` on Linux (AppImageUpdater) is
++    // offered no Linux manifest there. Answering "unsupported" is the honest
++    // result — trying anyway would surface a failed-check banner and could
++    // hand an AppImage user a dmg it cannot install.
++    supported: app.isPackaged && process.platform !== "linux",
+     currentVersion: app.getVersion(),
+     prepareForInstall: () => deps.prepareForInstall(),
+     countOutcome: (outcome) => deps.countOutcome(outcome),
+diff --git a/electron/menu-state.ts b/electron/menu-state.ts
+index c272955..36ef7c4 100644
+--- a/electron/menu-state.ts
++++ b/electron/menu-state.ts
+@@ -11,10 +11,26 @@
+  * duplicating them.
+  */
+ import { buildMenu } from "./menu";
+-import { MACOS_KEYMAP, type KeyBinding } from "../src/terminal/action-registry";
++import { MACOS_KEYMAP, WINDOWS_KEYMAP, type KeyBinding } from "../src/terminal/action-registry";
+ import { resolveKeymap, validateKeybindings } from "../src/lib/keybindings";
+ import type { WindowRegistry } from "./window-lifecycle";
+ 
++/**
++ * The keymap the native menu advertises on THIS host.
++ *
++ * Linux joins Windows on the Ctrl-based keymap — see `keymapPlatform` in
++ * `src/lib/keybindings.ts` for the same rule on the renderer side. Without
++ * this the menu built `Command+…` accelerators for a Linux build, which
++ * Electron reads as Super and which therefore fired nothing.
++ */
++function menuKeymapPlatform(): "macos" | "windows" {
++  return process.platform === "win32" || process.platform === "linux" ? "windows" : "macos";
++}
++
++function defaultMenuKeymap(): readonly KeyBinding[] {
++  return menuKeymapPlatform() === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
++}
++
+ export interface MenuStateDeps {
+   readonly registry: WindowRegistry;
+   readonly emitTo: (label: string, event: string, payload: unknown) => boolean;
+@@ -40,7 +56,7 @@ export function createMenuState(deps: MenuStateDeps): MenuState {
+    * `rebuildMenu` runs on every focus change, and re-reading the store on each
+    * one would put a disk read on the focus path.
+    */
+-  let menuKeymap: readonly KeyBinding[] = MACOS_KEYMAP;
++  let menuKeymap: readonly KeyBinding[] = defaultMenuKeymap();
+ 
+   /**
+    * Web contents currently recording a chord — see `MenuDeps.suspendAccelerators`.
+@@ -75,7 +91,7 @@ export function createMenuState(deps: MenuStateDeps): MenuState {
+     const overrides = validateKeybindings(
+       (settings as { keybindings?: unknown } | null)?.keybindings,
+     );
+-    const next = resolveKeymap("macos", overrides);
++    const next = resolveKeymap(menuKeymapPlatform(), overrides);
+     menuKeymap = next;
+     rebuildMenu();
+   }
+diff --git a/src/lib/agent-install.ts b/src/lib/agent-install.ts
+index a696bc7..d331c87 100644
+--- a/src/lib/agent-install.ts
++++ b/src/lib/agent-install.ts
+@@ -11,9 +11,16 @@ export type InstallOffer =
+   | { readonly kind: "get"; readonly url: string }
+   | { readonly kind: "none" };
+ 
+-/** The agent's command for this OS, or null (`unsupported`, no `install`, or `null` entry). */
++/**
++ * The agent's command for this OS, or null (`unsupported`, `linux`, no
++ * `install`, or `null` entry).
++ *
++ * `linux` joins `unsupported`: the built-in install commands are the vendors'
++ * macOS and Windows one-liners, and neither runs on Linux, so Deck offers the
++ * `Get` link instead of a command it could not vouch for.
++ */
+ export function installCommandFor(agent: BuiltinAgent, platform: DesktopPlatform): string | null {
+-  if (platform === "unsupported") {
++  if (platform === "unsupported" || platform === "linux") {
+     return null;
+   }
+   return agent.install?.[platform]?.command ?? null;
+diff --git a/src/lib/keybindings.ts b/src/lib/keybindings.ts
+index e9f350c..093501b 100644
+--- a/src/lib/keybindings.ts
++++ b/src/lib/keybindings.ts
+@@ -71,7 +71,10 @@ export const NO_KEYBINDING_OVERRIDES: KeybindingOverrides = Object.freeze({
+ export const MAX_CHORDS_PER_ACTION = 4;
+ 
+ export function defaultKeymap(platform: string): readonly KeyBinding[] {
+-  return platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
++  // Linux joins Windows on the Ctrl-based keymap: the macOS keymap's `meta`
++  // chords would land on the Super key, which is not Deck's primary modifier
++  // anywhere outside macOS.
++  return platform === "windows" || platform === "linux" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
+ }
+ 
+ /**
+@@ -86,7 +89,7 @@ export function defaultKeymap(platform: string): readonly KeyBinding[] {
+  * `keymapForPlatform` has always done.
+  */
+ export function keymapPlatform(platform: string): KeymapPlatform {
+-  return platform === "windows" ? "windows" : "macos";
++  return platform === "windows" || platform === "linux" ? "windows" : "macos";
+ }
+ 
+ export function isChord(value: unknown): value is Chord {
+diff --git a/src/lib/launch-augment.ts b/src/lib/launch-augment.ts
+index d52ac59..e6417f8 100644
+--- a/src/lib/launch-augment.ts
++++ b/src/lib/launch-augment.ts
+@@ -36,7 +36,7 @@ export interface SignalAdapters {
+ export interface AugmentContext {
+   readonly adapters: SignalAdapters;
+   /** POSIX hosts only: the hook script is `sh` + `curl`. */
+-  readonly platform: "macos" | "windows" | "unsupported";
++  readonly platform: "macos" | "windows" | "linux" | "unsupported";
+   readonly claudeSettingsPath: string | null;
+   /** A uuid minted for a fresh Claude launch, or null to leave the id to Claude. */
+   readonly sessionId: string | null;
+diff --git a/src/lib/platform.test.ts b/src/lib/platform.test.ts
+index 85921bf..1ef7a58 100644
+--- a/src/lib/platform.test.ts
++++ b/src/lib/platform.test.ts
+@@ -13,7 +13,7 @@ describe("desktop environment", () => {
+     resetDesktopEnvironmentForTests();
+   });
+ 
+-  it("accepts validated macOS, Windows, and unsupported values", () => {
++  it("accepts validated macOS, Windows, Linux, and unsupported values", () => {
+     expect(
+       parseDesktopEnvironment({
+         platform: "macos",
+@@ -29,6 +29,10 @@ describe("desktop environment", () => {
+       platform: "windows",
+       homeDir: String.raw`C:\Users\dev`,
+     });
++    expect(parseDesktopEnvironment({ platform: "linux", homeDir: "/home/dev" })).toEqual({
++      platform: "linux",
++      homeDir: "/home/dev",
++    });
+     expect(parseDesktopEnvironment({ platform: "unsupported", homeDir: "" })).toEqual({
+       platform: "unsupported",
+       homeDir: "",
+@@ -36,7 +40,7 @@ describe("desktop environment", () => {
+   });
+ 
+   it("rejects unknown platforms and invalid home directories", () => {
+-    expect(() => parseDesktopEnvironment({ platform: "linux", homeDir: "/home/dev" })).toThrow(
++    expect(() => parseDesktopEnvironment({ platform: "freebsd", homeDir: "/home/dev" })).toThrow(
+       "platform",
+     );
+     expect(() => parseDesktopEnvironment({ platform: "macos", homeDir: "Users/dev" })).toThrow(
+diff --git a/src/lib/platform.ts b/src/lib/platform.ts
+index 4629fc3..b40f3b3 100644
+--- a/src/lib/platform.ts
++++ b/src/lib/platform.ts
+@@ -1,6 +1,6 @@
+ import { invoke } from "../host/bridge";
+ 
+-export type DesktopPlatform = "macos" | "windows" | "unsupported";
++export type DesktopPlatform = "macos" | "windows" | "linux" | "unsupported";
+ 
+ export interface DesktopEnvironment {
+   readonly platform: DesktopPlatform;
+@@ -12,7 +12,12 @@ type ModifierEvent = Readonly<Pick<KeyboardEvent, "metaKey" | "ctrlKey">>;
+ type EnvironmentLoader = () => Promise<unknown>;
+ type DiagnosticWriter = (message: string, error: unknown) => void;
+ 
+-const SUPPORTED_PLATFORMS: ReadonlySet<string> = new Set(["macos", "windows", "unsupported"]);
++const SUPPORTED_PLATFORMS: ReadonlySet<string> = new Set([
++  "macos",
++  "windows",
++  "linux",
++  "unsupported",
++]);
+ const MACOS_ABSOLUTE_PATH = /^\//;
+ const WINDOWS_ABSOLUTE_PATH = /^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/;
+ const FALLBACK_ENVIRONMENT: DesktopEnvironment = Object.freeze({
+@@ -27,7 +32,7 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+ }
+ 
+ function hasAbsoluteHome(platform: DesktopPlatform, homeDir: string): boolean {
+-  if (platform === "macos") {
++  if (platform === "macos" || platform === "linux") {
+     return MACOS_ABSOLUTE_PATH.test(homeDir);
+   }
+   if (platform === "windows") {
+@@ -91,7 +96,7 @@ export function hasPrimaryModifier(event: ModifierEvent): boolean {
+   if (platform === "macos") {
+     return event.metaKey;
+   }
+-  if (platform === "windows") {
++  if (platform === "windows" || platform === "linux") {
+     return event.ctrlKey;
+   }
+   return false;
+diff --git a/src/lib/shortcut-label.ts b/src/lib/shortcut-label.ts
+index 95ea040..7671926 100644
+--- a/src/lib/shortcut-label.ts
++++ b/src/lib/shortcut-label.ts
+@@ -53,7 +53,7 @@ function bindingKey(binding: KeyChord, platform: DesktopPlatform): string {
+     }
+     return binding.code.replace(/^(?:Digit|Key)/, "");
+   }
+-  const labels = platform === "windows" ? WINDOWS_KEY_LABELS : MACOS_KEY_LABELS;
++  const labels = usesCtrlKeycaps(platform) ? WINDOWS_KEY_LABELS : MACOS_KEY_LABELS;
+   return labels[binding.key] ?? binding.key.toUpperCase();
+ }
+ 
+@@ -61,9 +61,17 @@ export function formatShortcutBinding(binding: KeyBinding, platform: DesktopPlat
+   return formatKeyChord(binding, platform);
+ }
+ 
++/**
++ * Linux reads Ctrl-based keycaps like Windows: the Linux build runs the
++ * Windows keymap, so a `⌘`/`Cmd` label would name a key that fires nothing.
++ */
++function usesCtrlKeycaps(platform: DesktopPlatform): boolean {
++  return platform === "windows" || platform === "linux";
++}
++
+ export function formatKeyChord(binding: KeyChord, platform: DesktopPlatform): string {
+   const key = bindingKey(binding, platform);
+-  if (platform === "windows") {
++  if (usesCtrlKeycaps(platform)) {
+     const modifiers = [
+       binding.ctrl ? "Ctrl" : null,
+       binding.alt ? "Alt" : null,
+@@ -103,7 +111,7 @@ export function shortcutLabel(
+ export function primaryModifierName(
+   platform: DesktopPlatform = getDesktopEnvironment().platform,
+ ): "Cmd" | "Ctrl" {
+-  return platform === "windows" ? "Ctrl" : "Cmd";
++  return usesCtrlKeycaps(platform) ? "Ctrl" : "Cmd";
+ }
+ 
+ /**
+@@ -116,7 +124,7 @@ export function primaryModifierName(
+ export function primaryModifierKeycap(
+   platform: DesktopPlatform = getDesktopEnvironment().platform,
+ ): "⌘" | "Ctrl" {
+-  return platform === "windows" ? "Ctrl" : "⌘";
++  return usesCtrlKeycaps(platform) ? "Ctrl" : "⌘";
+ }
+ 
+ /**
+diff --git a/src/terminal/keymap.ts b/src/terminal/keymap.ts
+index db09657..0356ca4 100644
+--- a/src/terminal/keymap.ts
++++ b/src/terminal/keymap.ts
+@@ -32,7 +32,7 @@ export type ShortcutAction = ActionId;
+  * why it, not this, is `matchBinding`'s default.
+  */
+ export function keymapForPlatform(platform: DesktopPlatform): readonly KeyBinding[] {
+-  return platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
++  return platform === "windows" || platform === "linux" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
+ }
+ 
+ /**
+diff --git a/src/ui/controls/shortcut-capture.tsx b/src/ui/controls/shortcut-capture.tsx
+index a4679e0..690c34e 100644
+--- a/src/ui/controls/shortcut-capture.tsx
++++ b/src/ui/controls/shortcut-capture.tsx
+@@ -119,7 +119,7 @@ export function ShortcutCapture({
+         // Not an error to report — the user is mid-chord, still holding
+         // modifiers down. Say what is missing and keep listening.
+         hint.value =
+-          platform === "windows"
++          platform === "windows" || platform === "linux"
+             ? WINDOWS_REJECTION_HINT[result.reason]
+             : REJECTION_HINT[result.reason];
+         return;
+diff --git a/src/ui/desktop-chrome.test.tsx b/src/ui/desktop-chrome.test.tsx
+index ac61109..62ef88d 100644
+--- a/src/ui/desktop-chrome.test.tsx
++++ b/src/ui/desktop-chrome.test.tsx
+@@ -86,6 +86,7 @@ describe("caption-overlay marker", () => {
+   const HOMES: Record<DesktopPlatform, string> = {
+     macos: "/Users/deck",
+     windows: "C:\\Users\\Deck",
++    linux: "/home/deck",
+     unsupported: "",
+   };
+ 
+diff --git a/src/ui/title-bar-overlay-sync.test.tsx b/src/ui/title-bar-overlay-sync.test.tsx
+index a218cf0..6d393da 100644
+--- a/src/ui/title-bar-overlay-sync.test.tsx
++++ b/src/ui/title-bar-overlay-sync.test.tsx
+@@ -46,7 +46,12 @@ function installElectronHost(): void {
+ function usePlatform(platform: DesktopPlatform): void {
+   initializeDesktopEnvironment({
+     platform,
+-    homeDir: { macos: "/Users/deck", windows: "C:\\Users\\Deck", unsupported: "" }[platform],
++    homeDir: {
++      macos: "/Users/deck",
++      windows: "C:\\Users\\Deck",
++      linux: "/home/deck",
++      unsupported: "",
++    }[platform],
+   });
+ }
+ 
+diff --git a/src/updater/update-attempt.ts b/src/updater/update-attempt.ts
+index 14352de..c5a6c5e 100644
+--- a/src/updater/update-attempt.ts
++++ b/src/updater/update-attempt.ts
+@@ -89,7 +89,7 @@ export function resolveAttemptOutcome(attempt: unknown, currentVersion: string):
+  * the stale one it was written with.
+  */
+ export function manualUpdateHint(
+-  platform: "macos" | "windows" | "unsupported" = "unsupported",
++  platform: "macos" | "windows" | "linux" | "unsupported" = "unsupported",
+ ): string {
+   const location =
+     platform === "macos"
+@@ -102,7 +102,7 @@ export function manualUpdateHint(
+ 
+ export function attemptMessage(
+   outcome: AttemptOutcome,
+-  platform: "macos" | "windows" | "unsupported" = "unsupported",
++  platform: "macos" | "windows" | "linux" | "unsupported" = "unsupported",
+ ): string | null {
+   switch (outcome.kind) {
+     case "incomplete":

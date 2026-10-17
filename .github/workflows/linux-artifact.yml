@@ -1,0 +1,50 @@
+name: Linux artifact
+
+# An UNSIGNED, community-style Linux build (AppImage + deb), reproduced from a
+# pinned ref by applying packaging/linux/linux-support.patch.
+#
+# Manual only, and it publishes nothing: it uploads the two artifacts for a
+# person to download. The macOS and Windows release workflows are untouched, and
+# no Linux update feed exists, so this can never move a release channel.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Source ref (tag or branch) to build"
+        required: false
+        default: "v2.10.0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the build tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Build the AppImage and the deb
+        env:
+          REF: ${{ inputs.ref }}
+          # Build into the runner's temp dir, not the workspace: the output
+          # directory is deliberately not added to .gitignore, and a checked-out
+          # workspace is no place for an unignored build directory.
+          SPACEVIBE_OUT: ${{ runner.temp }}/linux-out
+        run: bash scripts/build-linux.sh "$REF"
+
+      - name: Upload the Linux artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deck-linux-unsigned
+          path: |
+            ${{ runner.temp }}/linux-out/*.AppImage
+            ${{ runner.temp }}/linux-out/*.deb
+          if-no-files-found: error
+          retention-days: 7
