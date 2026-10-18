@@ -4,7 +4,7 @@
  *
  * Data only. The pricing math lives in `usage-pricing.ts`, so a script that
  * overwrites a whole file can never destroy hand-written logic — the same
- * discipline `menu_registry.rs` already uses.
+ * discipline `ACTION_REGISTRY` already uses.
  *
  * USD per token, from LiteLLM's published catalog, filtered to the Anthropic
  * and OpenAI model families the Claude Code and Codex CLIs can emit. These

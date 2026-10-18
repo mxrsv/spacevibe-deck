@@ -516,7 +516,7 @@ describe("identifyEndpoint over TLS", () => {
     expect(result.status).toBeUndefined();
   });
 
-  it.each([LOCAL_V4, LOCAL_V6])(
+  it.for([LOCAL_V4, LOCAL_V6])(
     "rejects a certificate without an IP SAN for %s",
     async (host, context) => {
       if (host === LOCAL_V6) skipWithoutIpv6(context);

@@ -2,9 +2,8 @@
  * The usage-analytics payload contract — the ONE readable statement of what a
  * Deck install sends, written for a person who is not a programmer.
  *
- * The behaviour around it is documented in docs/internals/telemetry.md. The
- * landing tour may `cat` this file on screen as a disclosure aid, so it must
- * keep reading as a contract. The snapshot test beside it is the privacy
+ * The behaviour around it is documented in docs/internals/telemetry.md. It is
+ * the disclosure in code form, so it must keep reading as a contract. The snapshot test beside it is the privacy
  * contract in executable form: adding a field turns it red, and updating it
  * requires that page, the privacy page and its versioned archive to change in
  * the same release.

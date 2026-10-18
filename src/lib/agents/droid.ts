@@ -14,17 +14,17 @@ const AUTO = ["--auto"];
 export const DROID: AgentDefinition = {
   id: "droid",
   label: "Droid",
-  url: "https://docs.factory.ai/cli/getting-started/overview",
+  url: "https://docs.factory.com/droid-cli/overview",
   // The quickstart's macOS/Linux and Windows tabs; Homebrew and npm were the alternatives.
   install: {
     macos: {
       command: "curl -fsSL https://app.factory.ai/cli | sh",
-      source: "https://docs.factory.ai/cli/getting-started/quickstart",
+      source: "https://docs.factory.com/droid-cli/quickstart",
       checked: "2026-10-10",
     },
     windows: {
       command: "irm https://app.factory.ai/cli/windows | iex",
-      source: "https://docs.factory.ai/cli/getting-started/quickstart",
+      source: "https://docs.factory.com/droid-cli/quickstart",
       checked: "2026-10-10",
     },
   },

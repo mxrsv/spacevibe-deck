@@ -91,10 +91,8 @@ export function hasPrimaryModifier(event: ModifierEvent): boolean {
   if (platform === "macos") {
     return event.metaKey;
   }
-  if (platform === "windows") {
-    return event.ctrlKey;
-  }
-  return false;
+  // Windows and Linux (reported as "unsupported" until it ships) use Ctrl.
+  return event.ctrlKey;
 }
 
 /** Test-only reset for exercising the one-time initialization boundary. */

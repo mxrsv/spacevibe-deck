@@ -4,8 +4,8 @@
 
 Documents opened from the Explorer share its dock; the browser occupies the stage.
 Path routing turns a path an agent printed into either an in-Deck document or an external
-open. All of it is Electron only: the file channels, the `WebContentsView` and the external
-app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri keeps.
+open. All of it runs on the Electron host: the file channels, the `WebContentsView`, the
+external app catalog and `open_editor`.
 
 ## Surfaces beside tabs
 
@@ -91,8 +91,8 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
 
 ## Changes list
 
-The Explorer's second view shows what the checkout changed against `HEAD`. It is Electron
-only: `git_changes`, `git_changes_watch` and `git:changed` have no Tauri counterpart, and the
+The Explorer's second view shows what the checkout changed against `HEAD`. It is served by
+`git_changes`, `git_changes_watch` and `git:changed`, and the
 switch is omitted where [`git-changes-host.ts`](../../src/host/git-changes-host.ts) says the
 host cannot answer.
 
@@ -183,7 +183,7 @@ enforce.
   then authorizes each window's active roots against those grants before
   [bounded image reads](../../electron/images.ts). A remote image is a labelled placeholder,
   never a fetch. Logo import uses its own native image picker and returns bytes, never a
-  renderer-readable path. Tauri keeps its frozen image command.
+  renderer-readable path.
   `read_file` cannot serve images because it refuses every PNG as binary.
 - Fenced code is colorized by Monaco's own colorizer against the enumerated language set;
   `mermaid` is imported only when a document holds a fence, and a diagram that fails keeps
@@ -240,6 +240,6 @@ reaches both hosts; routing is Electron only.
 - The link provider raises `requestPathOpen` and never imports the file layer; `App` decides
   where the path opens, clearing the request before the await so a second click during a
   slow answer raises a fresh one.
-- On Tauri, and in any host that cannot answer `external_apps`, an editor selection keeps its
+- In any host that cannot answer `external_apps`, an editor selection keeps its
   template, anything else falls back to VS Code, and the split button is hidden. On Windows,
   `open_editor` is unavailable and no external app bundle is detected.

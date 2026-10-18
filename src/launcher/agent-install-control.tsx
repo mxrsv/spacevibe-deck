@@ -35,7 +35,7 @@ export function AgentInstallControl({ agentId, label }: { agentId: string; label
           class="cfg-btn"
           title={offer.command}
           aria-label={`Install ${label}`}
-          disabled={agentInstallOpening.value.has(agentId)}
+          aria-disabled={agentInstallOpening.value.has(agentId) ? "true" : undefined}
           onClick={() => void startAgentInstall(agentId)}
         >
           Install

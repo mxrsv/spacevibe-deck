@@ -51,9 +51,8 @@ working, asked, and failed work; supported session logs supply the agent's lates
 unsupported tails fall back to the agent name
 ([rail model](src/ui/agent-rail-model.ts)).
 
-Click a worktree card's heading to focus its session and expand or collapse its agents. A
-project's only card stays open, so its heading just focuses. Clicking the card's empty space
-focuses it without changing expansion ([worktree card](src/ui/worktree-card.tsx)).
+Click a checkout's label to focus its session. Checkouts do not fold; only the project
+header's caret folds the project's checkouts ([worktree card](src/ui/worktree-card.tsx)).
 
 ### One project stage
 

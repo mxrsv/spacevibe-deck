@@ -8,9 +8,9 @@ import "./board-agent-launcher.css";
 
 /**
  * Workspace selection is separate from the explicit Run on each agent. The
- * cards are the pinned quick agents, the same list the launch page shows, then
- * any declared agent whose binary is gone: the board names it `Not installed`
- * where the launch page leaves it out.
+ * cards are the pinned quick agents, then any declared agent whose binary is
+ * gone. A missing agent is a dimmed tile marked `Not installed`, with its
+ * Install (or Get) control beside the press.
  */
 export function BoardAgentLauncher(props: BoardComposerProps) {
   const busy = props.pending !== null;

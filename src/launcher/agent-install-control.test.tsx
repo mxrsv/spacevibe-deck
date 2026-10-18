@@ -88,9 +88,22 @@ describe("AgentInstallControl", () => {
       "amp",
       "curl -fsSL https://example.test/amp | bash",
     );
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    act(() => button.click());
+    expect(fake.open).toHaveBeenCalledOnce();
     await act(async () => finish(SPAWNED));
-    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute("aria-disabled")).toBe(false);
+  });
+
+  it("keeps keyboard focus on the button after a failed install", async () => {
+    fake.open.mockResolvedValue({ kind: "failed", message: "Couldn't open a terminal." });
+    mount("amp", "Amp");
+    const button = host.querySelector("button")!;
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    await act(async () => button.click());
+    expect(host.querySelector("[role='alert']")).not.toBeNull();
+    expect(document.activeElement).toBe(button);
   });
 
   it("shows a failed press next to the button as an alert", async () => {

@@ -26,13 +26,13 @@ interface KeyBindingBase {
  *
  * Bind on WHATEVER THE MENU ACCELERATOR BINDS ON, if the action has a macOS
  * menu item (a `menu` field here and a real accelerator in
- * menu.rs/menu_registry.rs). A Tauri/Cocoa menu accelerator is declared by
+ * `ACTION_REGISTRY`, which electron/menu.ts turns into the menu). A Cocoa menu accelerator is declared by
  * character (e.g. "CmdOrCtrl+D"), never by physical position — so an action
  * with both a menu item and a webview binding MUST use `CharKeyBinding`.
  * Using `PhysicalKeyBinding` here instead means the two paths point at TWO
  * DIFFERENT PHYSICAL KEYS for the same action on a non-QWERTY layout (Dvorak
  * being the clearest case), breaking the invariant "menu item and shortcut
- * never drift apart" (src-tauri/src/menu.rs, top-of-file comment).
+ * never drift apart" (the registry is the one source of both).
  *
  * `PhysicalKeyBinding` is only for an action with NO menu item — where the
  * webview is the only path and the produced character depends on Shift +

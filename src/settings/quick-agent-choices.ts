@@ -20,8 +20,8 @@ export interface QuickAgentChoice {
 
 /**
  * Every agent Deck knows plus any saved id nothing declares anymore, in the
- * catalog's order. The one list behind Settings → Quick agents and the quick
- * launcher's agent editor, so the two never disagree about what is pinned.
+ * catalog's order. The one list behind Settings → Quick agents, so a saved id
+ * stays visible there even after nothing declares it.
  */
 export function quickAgentChoices(): readonly QuickAgentChoice[] {
   const current = settings.value;

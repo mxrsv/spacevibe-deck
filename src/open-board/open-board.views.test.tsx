@@ -563,6 +563,38 @@ describe("OpenBoard home view", () => {
     expect(onRetryDelivery).toHaveBeenCalledTimes(1);
   });
 
+  it("recovers the board when retrying the delivery rejects", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/alpha"]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onStartTask = vi.fn(async () => "prompt-failed" as LaunchTaskOutcome);
+    const onRetryDelivery = vi.fn(async (): Promise<LaunchTaskOutcome> => {
+      throw new Error("retry blew up");
+    });
+    await mount(onStartTask, { canRetryDelivery: true, onRetryDelivery });
+    await settle();
+
+    const textarea = host.querySelector<HTMLTextAreaElement>("textarea");
+    if (textarea === null) throw new Error("no task prompt");
+    await act(async () => {
+      textarea.value = "ship it";
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => host.querySelector<HTMLButtonElement>(".nt-primary-action")?.click());
+    await settle();
+    const retryButton = () =>
+      Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent === "Retry delivery",
+      );
+    await act(async () => retryButton()?.click());
+    await settle();
+
+    expect(onRetryDelivery).toHaveBeenCalledTimes(1);
+    expect(host.textContent).toContain("Couldn't retry delivery");
+    expect(retryButton()?.disabled).toBe(false);
+    warn.mockRestore();
+  });
+
   it("withdraws retry guidance when editing invalidates the original attempt", async () => {
     detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
     seed(["/w/alpha"]);

@@ -89,6 +89,20 @@ describe("desktop environment", () => {
     expect(hasPrimaryModifier({ metaKey: true, ctrlKey: false })).toBe(false);
   });
 
+  it("uses Ctrl as the primary modifier on Linux, which the host reports as unsupported", () => {
+    initializeDesktopEnvironment({ platform: "unsupported", homeDir: "" });
+
+    expect(hasPrimaryModifier({ metaKey: false, ctrlKey: true })).toBe(true);
+    expect(hasPrimaryModifier({ metaKey: true, ctrlKey: false })).toBe(false);
+  });
+
+  it("uses Cmd as the primary modifier on macOS", () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
+
+    expect(hasPrimaryModifier({ metaKey: true, ctrlKey: false })).toBe(true);
+    expect(hasPrimaryModifier({ metaKey: false, ctrlKey: true })).toBe(false);
+  });
+
   it("falls back once when backend initialization fails", async () => {
     const warn = vi.fn();
 

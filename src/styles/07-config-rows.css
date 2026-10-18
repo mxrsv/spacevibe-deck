@@ -152,17 +152,20 @@
    attribute. Matching only one leaves the treatment half applied. Declared
    after the `--on`/`--off`/`--danger` colours so it wins at equal specificity. */
 .cfg-btn:disabled,
+.cfg-btn[aria-disabled="true"],
 .cfg-btn--disabled {
   color: var(--text-faint);
   cursor: default;
 }
 
 .cfg-btn:disabled:hover,
+.cfg-btn[aria-disabled="true"]:hover,
 .cfg-btn--disabled:hover {
   border-color: var(--hair);
 }
 
 .cfg-btn:disabled:hover .cfg-btn__hint,
+.cfg-btn[aria-disabled="true"]:hover .cfg-btn__hint,
 .cfg-btn--disabled:hover .cfg-btn__hint {
   color: var(--text-faint);
 }

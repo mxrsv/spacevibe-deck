@@ -5,7 +5,8 @@
 Release 1.1.0 is the first release that sends cumulative usage snapshots for each day.
 Analytics are always on, with no opt-out, under the 2026-09-06 decision: there is no
 switch, no consent question, and an "off" recorded by a development build is overridden rather
-than honoured. The one state that still stops a send is a `telemetry.json` Deck cannot read.
+than honoured. A `telemetry.json` Deck cannot read does not stop a send either: it is treated as a storage
+failure and the run counts in memory.
 This page is the contract: what leaves the machine, who owns the state, and when a POST
 fires. Settings → Privacy states exactly what is sent. Electron only: 1.0.0 and the Tauri
 host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-09-12/index.html).

@@ -58,6 +58,17 @@ straight to it, or press Esc to go back unchanged. Nothing stops or restarts whi
 | Scroll a page up / down    | ⇧PageUp / ⇧PageDown | Shift+PageUp / Shift+PageDown |
 | Scroll to top / bottom     | ⇧Home / ⇧End | Shift+Home / Shift+End         |
 
+## Changes diff column
+
+These keys work while the diff column beside the Changes list has focus, and are the same on
+every platform.
+
+| Action                           | Key       |
+| -------------------------------- | --------- |
+| Close the diff column            | Esc       |
+| Next / previous file             | ] / [     |
+| Jump to the next / previous change | n / p   |
+
 ## Surfaces
 
 | Action                     | macOS | Windows      |

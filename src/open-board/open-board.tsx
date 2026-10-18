@@ -506,10 +506,16 @@ export function OpenBoard({
     }
     notice.value = null;
     opening.value = true;
-    const resumed = await onResumeSession(entry);
-    opening.value = false;
-    if (!resumed) {
+    try {
+      const resumed = await onResumeSession(entry);
+      if (!resumed) {
+        notice.value = "Couldn't resume that session — try another one";
+      }
+    } catch (error) {
+      console.warn("Board session resume failed:", error);
       notice.value = "Couldn't resume that session — try another one";
+    } finally {
+      opening.value = false;
     }
   }
 
@@ -592,9 +598,15 @@ export function OpenBoard({
     }
     notice.value = null;
     pending.value = "retrying-prompt";
-    const outcome = await onRetryDelivery();
-    pending.value = null;
-    notice.value = launchNotice(outcome);
+    try {
+      const outcome = await onRetryDelivery();
+      notice.value = launchNotice(outcome);
+    } catch (error) {
+      console.warn("Board delivery retry failed:", error);
+      notice.value = "Couldn't retry delivery — try again.";
+    } finally {
+      pending.value = null;
+    }
   }
 
   function clearTaskDraft(): void {
