@@ -1,6 +1,7 @@
 # A task the nightly cloud routine can pick up. The routine acts only on issues that also
-# carry the `claude-ready` label, applied by the owner; this form deliberately does not add it,
-# because anyone can open an issue on a public repo. See AGENTS.md "Unattended routine".
+# carry the `claude-ready` label, added by the owner or the owner's sessions; this form
+# deliberately does not add it, because anyone can open an issue on a public repo. See
+# AGENTS.md "Unattended routine".
 name: Agent task
 description: A small, self-contained change for the unattended coding routine
 title: "[agent] "
