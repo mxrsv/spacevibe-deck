@@ -5,7 +5,7 @@
  * two-byte `ESC x`, and `\r` are dropped; `\n` and `\t` survive.
  */
 const SEQUENCE =
-  // eslint-disable-next-line no-control-regex
+  // eslint-disable-next-line no-control-regex -- matching ESC is how the sequences are found
   /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]|\x1b\([A-Za-z0-9]|\r/g;
 
 export function stripAnsiSequences(text: string): string {

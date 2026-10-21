@@ -619,7 +619,7 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
     }
     focusedFirstRow.current = true;
     rows()[0]?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only placement re-runs this; rows() reads the live DOM
   }, [placed]);
 
   useEffect(() => {
@@ -654,7 +654,7 @@ export function CardActionsMenu(props: CardActionsMenuProps) {
     return () => {
       document.removeEventListener("keydown", onKeyDown);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- registered once; rows() reads the live DOM on every key
   }, []);
 
   return (

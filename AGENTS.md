@@ -230,6 +230,16 @@ run: anything that needs the owner becomes an issue comment, and the run stops.
 - **R8. The renderer never imports the main process.** Under `src/`, oxlint
   ([`.oxlintrc.json`](.oxlintrc.json)) rejects `electron`, `node-pty`, `node:*` and relative
   `electron/` imports outside tests; reach the host through `src/host/`.
+- **R9. Every exception says why.** A lint or type suppression ends with `-- reason` or sits
+  under a comment that gives one, so the next reader can tell a decision from a silenced bug;
+  `deck/require-suppression-reason` fails without it. An override, allowlist entry or exempt
+  path in [`.oxlintrc.json`](.oxlintrc.json) carries a comment naming what it protects. A
+  change that adds or widens one says so in its PR, for the owner to accept.
+- **R10. Tests assert behaviour.** Drive the code the way the user or the store would and
+  assert what they see; a test that only mirrors the implementation or checks that a callback
+  was wired proves nothing. A skipped, focused or `todo` test names its issue on the line
+  above (`// skip: #123 <why>`), checked by `deck/no-unreasoned-skip`; `skipIf`/`runIf`
+  platform gates need none.
 
 ## Known traps
 

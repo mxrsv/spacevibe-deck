@@ -56,7 +56,7 @@ export function RailWorktreeForm({
     if (initialRepo !== null) {
       form.setRepo(initialRepo);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only: one reset and preselection per open
   }, []);
   // DL-13.2: on dismiss, focus returns to the control that had it — the `Worktree`
   // button. Guarded on still being connected, as the card menu's own return is.

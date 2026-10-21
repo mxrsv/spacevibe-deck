@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "plugins": ["react", "react_perf", "typescript", "import", "jest", "vitest"],
+  "jsPlugins": ["./scripts/oxlint-plugin-deck/index.mjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -30,7 +31,9 @@
     // describe idioms this code relies on, not bugs.
     "react/immutability": "off",
     "react/purity": "off",
-    "react/refs": "off"
+    "react/refs": "off",
+    "deck/require-suppression-reason": "error",
+    "deck/no-unreasoned-skip": "error"
   },
   "overrides": [
     {

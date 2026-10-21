@@ -252,7 +252,6 @@ describe("listDir — bounded async realpath on a 10k-entry directory", () => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return await (real as any)(...args);
         } finally {
           inFlight -= 1;
