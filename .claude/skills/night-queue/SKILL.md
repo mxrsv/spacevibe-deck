@@ -1,6 +1,6 @@
 ---
 name: night-queue
-description: Queue a task for tonight's unattended night run on mxrsv/spacevibe-deck. Use when the owner asks to hand work to the night shift ("tonight, fix X", "đêm nay sửa X", "queue this for the night"), from a claude.ai session or a local one. Files one `claude-ready` issue; writes no code.
+description: Queue a task for tonight's unattended night run on mxrsv/spacevibe-deck. Use when the owner asks, in any language, to hand work to the night shift ("tonight, fix X", "queue this for the night"), from a claude.ai session or a local one. Files one `claude-ready` issue; writes no code.
 ---
 
 # Queue a night task
@@ -49,9 +49,12 @@ body to `/tmp/night-task.md`:
 <what must not change>
 
 ### Kind
-- [x] Visible UI change (the PR needs screenshots)
+- [ ] Visible UI change (the PR needs screenshots)
 - [ ] New surface or changed UI flow (the test-deck-app E2E gate applies)
 ```
+
+Tick each Kind box from the task itself, not from this sample: the runner runs the E2E gate only
+when the second box is ticked.
 
 Never start the body with `night-shift-self:`; that marks the night's own picks. Create the issue
 and its label in one call:

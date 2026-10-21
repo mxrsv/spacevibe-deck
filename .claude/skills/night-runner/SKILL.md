@@ -55,6 +55,7 @@ by `mxrsv` with `gh api 'repos/mxrsv/spacevibe-deck/issues?creator=mxrsv&state=a
    (`git fetch origin <branch>:<branch>`, then `git worktree add /tmp/pr-<pr> <branch>`) and run
    `git merge --no-commit --no-ff origin/main` there; push from that worktree, and remove it with
    `git worktree remove --force /tmp/pr-<pr>` when done.
+   - `Already up to date`: nothing to do (there is no merge to abort).
    - Clean: if every `CHANGELOG.md` line the PR adds still sits under `## Unreleased`,
      `git merge --abort`. If a release cut moved one under a version heading, commit the merge,
      move the line back under a single `## Unreleased` at the top, commit, and push (never force).
@@ -70,7 +71,7 @@ by `mxrsv` with `gh api 'repos/mxrsv/spacevibe-deck/issues?creator=mxrsv&state=a
 1. n = the number of open night PRs.
 2. If n ≥ 3: the outcome is `capped 3/3`; finish the log (section 6) and stop.
 3. Owner tasks, oldest first:
-   `gh api 'repos/mxrsv/spacevibe-deck/issues?labels=claude-ready&state=open&creator=mxrsv&sort=created&direction=asc&per_page=100'`,
+   `gh api 'repos/mxrsv/spacevibe-deck/issues?labels=claude-ready&state=open&creator=mxrsv&sort=created&direction=asc&per_page=100' --paginate`,
    dropping entries with a `pull_request` key, #78, and issues whose latest label event's actor is
    not `mxrsv`. Skip an issue that has an open night PR, or a closed night PR or night comment
    created after its latest label event. Take the first remaining one.
