@@ -67,7 +67,7 @@
     "marked": "^18.0.10",
     "mermaid": "^11.17.0",
     "monaco-editor": "0.56.0",
-    "oxlint": "^1.78.0",
+    "oxlint": "1.89.0",
     "playwright-core": "^1.62.0",
     "preact": "^10.29.3",
     "prettier": "^3.9.6",
