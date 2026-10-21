@@ -126,7 +126,9 @@
     },
     {
       // R13: generated preset primitives read only the preset's theme. Their own classes are
-      // upstream source (spec UI-1), so restyle and arbitrary-value checks stay off here.
+      // upstream source (spec UI-1), so restyle and arbitrary-value checks stay off here. One
+      // recorded adaptation applies: the focus ring is inset with a solid ring colour, so a
+      // regenerated primitive fails the focus rule until it carries the same change.
       // The excluded files are Deck's pre-preset controls; each leaves when its wave replaces it.
       "files": ["src/ui/controls/**/*.tsx"],
       "excludeFiles": [
@@ -147,7 +149,8 @@
       ],
       "rules": {
         "shadcn/no-raw-colors": "error",
-        "shadcn/no-unknown-classes": "error"
+        "shadcn/no-unknown-classes": "error",
+        "deck/no-outset-state-indicators": "error"
       }
     },
     {
