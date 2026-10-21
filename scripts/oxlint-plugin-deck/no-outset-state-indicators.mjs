@@ -6,7 +6,8 @@
 
 const COMPOSERS = new Set(["cn", "clsx", "cva", "cx", "classNames", "twMerge"]);
 const STATE = /(?:^|\W)(?:focus(?:-visible|-within)?|selected|checked|pressed)(?=$|\W)/;
-const RING = /^ring(?:-(?:\d+|\[[^\]]+\]))?$/;
+// `ring-0` paints nothing; it is how a state removes a ring.
+const RING = /^ring(?:-(?:[1-9]\d*|\[[^\]]+\]))?$/;
 const OUTLINE = /^outline-(?:(\d+)|\[(\d+(?:\.\d+)?)px\])$/;
 const INSET_OFFSET = /^-outline-offset-(\d+)$/;
 const OUTSET_OFFSET = /^outline-offset-(?:[1-9]|\[)/;

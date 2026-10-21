@@ -9,6 +9,7 @@ const findings = lintFixtures("no-outset-state-indicators", {
   "no-state.tsx": `const e = "ring-1 ring-border";`,
   "ring-colour.tsx": `const f = "focus-visible:ring-ring/50 focus-visible:ring-offset-background";`,
   "prose.tsx": `const g = "focus the ring";`,
+  "ring-zero.tsx": `const m = "group-has-[:focus-visible]/field-label:ring-0";`,
   "outset-ring.tsx": `const h = "focus-visible:ring-2 focus-visible:ring-ring/30";`,
   "inset-wrong-state.tsx": `const i = "focus-visible:ring-2 hover:ring-inset";`,
   "positive-offset.tsx": `const j = "outline-offset-2";`,
@@ -25,6 +26,7 @@ describe("deck/no-outset-state-indicators", () => {
     "no-state.tsx",
     "ring-colour.tsx",
     "prose.tsx",
+    "ring-zero.tsx",
   ])("accepts %s", (name) => {
     expect(findings[name]).toEqual([]);
   });
