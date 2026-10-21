@@ -48,6 +48,9 @@ const TokensSection = lazy(() => import("./sections/tokens-section").then((m) =>
 const ExplorerChangesSection = lazy(() =>
   import("./sections/explorer-changes-section").then((m) => m.ExplorerChangesSection),
 );
+const DiffCommentSection = lazy(() =>
+  import("./sections/diff-comment-section").then((m) => m.DiffCommentSection),
+);
 const UsagePageSection = lazy(() =>
   import("./sections/usage-page-section").then((m) => m.UsagePageSection),
 );
@@ -116,5 +119,9 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
     Section: LaunchProfilesSection,
   },
   { id: "explorer-changes", label: "explorer changes", Section: ExplorerChangesSection },
+  /* Registered 2026-10-21 for the diff comment composer pick
+     (docs/plans/2026-10-21-diff-line-comments.md T4); remove once the owner
+     picks a placement and it ships. */
+  { id: "diff-comment", label: "★ diff comment composer", Section: DiffCommentSection },
   { id: "usage-page", label: "usage page", Section: UsagePageSection },
 ];
