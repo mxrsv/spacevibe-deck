@@ -26,7 +26,7 @@ export interface InjectOptions {
    * Bind the injection to one agent process: checked before the paste (a
    * mismatch returns `"stale"`, nothing written) and again before `\r`.
    */
-  readonly expectedProcessId?: number | null;
+  readonly expectedProcessId?: number;
   /** Wait this long between the paste and the submit gate; default none. */
   readonly submitDelayMs?: number;
 }

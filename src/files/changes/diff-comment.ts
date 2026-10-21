@@ -10,7 +10,7 @@ import type { ChangeEntry } from "../../host/git-changes-host";
 import { stripAnsiSequences } from "../../lib/strip-ansi-sequences";
 import { sanitizeTerminalPaste } from "../../lib/terminal-paste";
 
-export type DiffSide = "original" | "modified";
+export type CommentSide = "original" | "modified";
 
 /** Monaco's `ILineChange`: an end of 0 means that side has no lines in the change. */
 export interface LineChange {
@@ -38,7 +38,7 @@ export interface LineSelection {
 
 export interface CommentLocationInput {
   readonly entry: Pick<ChangeEntry, "path" | "oldPath" | "status">;
-  readonly side: DiffSide;
+  readonly side: CommentSide;
   /** 1-based, inclusive, in the numbering of `side`. */
   readonly from: number;
   readonly to: number;
@@ -63,18 +63,8 @@ export function selectedLines(selection: LineSelection): { from: number; to: num
 
 const hasOriginal = (change: LineChange): boolean => change.originalEndLineNumber > 0;
 const hasModified = (change: LineChange): boolean => change.modifiedEndLineNumber > 0;
-
-function originalLength(change: LineChange): number {
-  return hasOriginal(change)
-    ? change.originalEndLineNumber - change.originalStartLineNumber + 1
-    : 0;
-}
-
-function modifiedLength(change: LineChange): number {
-  return hasModified(change)
-    ? change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1
-    : 0;
-}
+/** Lines `start` to `end` cover; an end of 0 means none. */
+const span = (start: number, end: number): number => (end > 0 ? end - start + 1 : 0);
 
 /** The change that deletes or replaces old line `line`, if any. */
 function changeCovering(changes: readonly LineChange[], line: number): LineChange | null {
@@ -96,7 +86,9 @@ function newNumberOf(changes: readonly LineChange[], line: number): number {
       ? change.originalEndLineNumber < line
       : change.originalStartLineNumber < line;
     if (before) {
-      shift += modifiedLength(change) - originalLength(change);
+      shift +=
+        span(change.modifiedStartLineNumber, change.modifiedEndLineNumber) -
+        span(change.originalStartLineNumber, change.originalEndLineNumber);
     }
   }
   return line + shift;
@@ -104,14 +96,17 @@ function newNumberOf(changes: readonly LineChange[], line: number): number {
 
 function originalSideLocation(input: CommentLocationInput): CommentLocation {
   const { entry, changes, from, to } = input;
+  if (entry.status === "deleted") {
+    return { path: entry.path, from, to, suffix: DELETED_SUFFIX };
+  }
   const deletedPath = entry.status === "renamed" ? (entry.oldPath ?? entry.path) : entry.path;
   const deleted: LineChange[] = [];
   const kept: number[] = [];
   for (let line = from; line <= to; line += 1) {
-    const change = entry.status === "deleted" ? null : changeCovering(changes, line);
-    if (entry.status !== "deleted" && change === null) {
+    const change = changeCovering(changes, line);
+    if (change === null) {
       kept.push(newNumberOf(changes, line));
-    } else if (change !== null && !deleted.includes(change)) {
+    } else if (!deleted.includes(change)) {
       deleted.push(change);
     }
   }

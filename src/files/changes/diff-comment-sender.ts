@@ -19,7 +19,7 @@ export interface CommentTarget {
 }
 
 /** `"pasted"`: the text sits unsent in the agent's composer. */
-export type CommentDelivery = "sent" | "pasted" | "stale" | "failed" | "no-target";
+export type CommentDelivery = Exclude<InjectOutcome, "busy">;
 
 export interface CommentSender {
   send(target: CommentTarget, payload: string): Promise<CommentDelivery>;

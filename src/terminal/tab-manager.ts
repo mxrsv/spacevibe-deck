@@ -2158,7 +2158,7 @@ export function createTabManager(
       if (!opts.autoSend) {
         return "pasted";
       }
-      if (opts.submitDelayMs !== undefined && opts.submitDelayMs > 0) {
+      if ((opts.submitDelayMs ?? 0) > 0) {
         await new Promise((resolve) => setTimeout(resolve, opts.submitDelayMs));
       }
       const [info] = await freshPaneInfo(
