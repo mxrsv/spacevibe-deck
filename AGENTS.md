@@ -128,6 +128,7 @@ stop where the table says.
 | [`landing-sync`](.claude/skills/landing-sync/SKILL.md)                     | before `npm run release:cut`                                                                             | the drift report; landing edits wait for the owner |
 | [`clean-worktrees`](.claude/skills/clean-worktrees/SKILL.md)               | once per session, when worktrees made by hand under `../spacevibe-deck-worktrees/` still exist and you are about to add one (scratch worktrees under `/tmp` do not count) | the report; it never blocks your `git worktree add`, and each removal needs the owner's yes |
 | [`respond-to-pr-comments`](.claude/skills/respond-to-pr-comments/SKILL.md) | the owner asks to handle a PR's comments, or a PR this session opened gets review comments              | drafted replies; posting needs the owner's yes    |
+| [`ui-consistency-review`](.claude/skills/ui-consistency-review/SKILL.md)   | a change to `src/**/*.tsx` or `src/**/*.css` outside the gallery is about to be committed               | findings on changed lines, or `All clear`         |
 
 None of these is wired into the [unattended routine](#unattended-routine) yet:
 `test-deck-app`'s launch recipe is macOS-only, and `respond-to-pr-comments` is not enabled there.
@@ -240,6 +241,28 @@ run: anything that needs the owner becomes an issue comment, and the run stops.
   was wired proves nothing. A skipped, focused or `todo` test names its issue on the line
   above (`// skip: #123 <why>`), checked by `deck/no-unreasoned-skip`; `skipIf`/`runIf`
   platform gates need none.
+- **R11. A control owns its look.** Preset controls in `src/ui/controls/` are the preset's
+  generated source ([spec](docs/specs/2026-10-21-shadcn-base-ui-migration.md) UI-1, UI-4); the
+  pre-preset controls beside them leave as their waves replace them. A caller picks
+  `variant` and `size`; its `className` is layout only (position, margin, width, flex or grid
+  placement). A look one feature needs is that feature's component, composed from controls. A new variant is a change to the primitive, with a gallery specimen and the
+  owner's eye review. `shadcn/no-restyle` fails a caller that restyles; it lets sizing such as
+  `h-*` through as layout, so overriding a control's height is left to review.
+- **R12. Reuse before you add.** Look in `src/ui/controls/` first. Elsewhere, import the
+  primitive, never its class recipe (`*Variants`), Base UI or Hugeicons; oxlint rejects those
+  imports outside `src/ui/controls/` and the gallery. Do not dress a bare `<button>`, `<input>`,
+  `<select>` or `<textarea>` as a control that exists; a raw element is right for a row, tab,
+  resize handle, swatch, the terminal or an editor surface, whose behaviour differs by design.
+- **R13. A surface on the preset uses its theme.** Colours are the preset's semantic tokens,
+  never the raw palette or Deck's chrome tokens; values sit on the theme scale, and only layout
+  takes an arbitrary value; classes are static strings; a focus or selection mark stays inside
+  its element, where a clipping ancestor cannot hide it. Global CSS holds only what classes
+  cannot say: the xterm and Monaco hosts, rendered markdown, Electron drag regions, keyframes
+  and runtime theme variables. A static inline `style` is a class; a runtime value may stay
+  inline. oxlint checks the colour, scale, static-class and focus parts outside `src/gallery/`
+  and tests, and review the rest; the legacy files it exempts by name leave that list with
+  their wave ([`oxlint-exemptions.test.ts`](scripts/oxlint-exemptions.test.ts) keeps the names
+  real).
 
 ## Known traps
 

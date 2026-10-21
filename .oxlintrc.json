@@ -1,7 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "plugins": ["react", "react_perf", "typescript", "import", "jest", "vitest"],
-  "jsPlugins": ["./scripts/oxlint-plugin-deck/index.mjs"],
+  "jsPlugins": ["./scripts/oxlint-plugin-deck/index.mjs", "@shadcn/lint"],
+  "settings": {
+    "shadcn": {
+      "ui": "@/ui/controls",
+      // Deck's pre-preset controls also live in src/ui/controls/ and take BEM classes;
+      // they are not preset components, so restyle checks must not treat them as one.
+      "ignoreImports": [
+        "(^|/)controls/(action-tooltip|agent-glyph|color-row|commit-input|commit-textarea|config-row|deck-icon|font-row|github-star-button|load-error|logo-row|rail-status-mark|shortcut-capture)$"
+      ],
+      "note": "Rules: AGENTS.md R11-R13; preset spec docs/specs/2026-10-21-shadcn-base-ui-migration.md."
+    }
+  },
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -64,6 +75,107 @@
             ]
           }
         ]
+      }
+    },
+    {
+      // R12: outside the primitives, reach Base UI, Hugeicons and a control's class recipe
+      // only through src/ui/controls/. An override replaces the rule rather than merging,
+      // so R8's four entries are repeated here. The gallery explores freely (DL intro).
+      "files": ["src/**/*.{ts,tsx}"],
+      "excludeFiles": ["src/ui/controls/**", "src/gallery/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "electron",
+                "message": "The renderer reaches the main process only through src/host/ (overview.md)."
+              },
+              {
+                "name": "node-pty",
+                "message": "PTYs belong to the main process; the renderer goes through src/host/."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["node:*"],
+                "message": "The renderer runs without Node; ask the main process through src/host/."
+              },
+              {
+                "regex": "^(\\.\\./)+electron/",
+                "message": "The renderer must not import the main process; go through src/host/."
+              },
+              {
+                "group": ["**/ui/controls/*", "**/controls/*"],
+                "importNames": ["buttonVariants", "badgeVariants"],
+                "message": "Render the control instead of borrowing its class recipe (R12)."
+              },
+              {
+                "group": ["@base-ui/react", "@base-ui/react/*"],
+                "message": "Base UI is reached through a src/ui/controls/ primitive, which carries the preset's styling (R12)."
+              },
+              {
+                "group": ["@hugeicons/*"],
+                "message": "Icons go through one wrapper in src/ui/controls/, as DeckIcon does today (R12)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // R13: generated preset primitives read only the preset's theme. Their own classes are
+      // upstream source (spec UI-1), so restyle and arbitrary-value checks stay off here.
+      // The excluded files are Deck's pre-preset controls; each leaves when its wave replaces it.
+      "files": ["src/ui/controls/**/*.tsx"],
+      "excludeFiles": [
+        "src/ui/controls/**/*.test.tsx",
+        "src/ui/controls/action-tooltip.tsx",
+        "src/ui/controls/agent-glyph.tsx",
+        "src/ui/controls/color-row.tsx",
+        "src/ui/controls/commit-input.tsx",
+        "src/ui/controls/commit-textarea.tsx",
+        "src/ui/controls/config-row.tsx",
+        "src/ui/controls/deck-icon.tsx",
+        "src/ui/controls/font-row.tsx",
+        "src/ui/controls/github-star-button.tsx",
+        "src/ui/controls/load-error.tsx",
+        "src/ui/controls/logo-row.tsx",
+        "src/ui/controls/rail-status-mark.tsx",
+        "src/ui/controls/shortcut-capture.tsx"
+      ],
+      "rules": {
+        "shadcn/no-raw-colors": "error",
+        "shadcn/no-unknown-classes": "error"
+      }
+    },
+    {
+      // R11/R13: callers pick a variant and size and add layout only, on the theme's scale,
+      // with classes the linter can read. Focus and selection marks stay inside the element.
+      "files": ["src/**/*.{ts,tsx}"],
+      "excludeFiles": ["src/ui/controls/**", "src/gallery/**", "**/*.test.{ts,tsx}"],
+      "rules": {
+        "shadcn/no-restyle": ["error", { "allow": ["layout"] }],
+        "shadcn/no-arbitrary-values": ["error", { "allow": ["layout"] }],
+        "shadcn/require-static-classes": "error",
+        "deck/no-outset-state-indicators": "error"
+      }
+    },
+    {
+      // R13: no raw palette colour. The excluded files use the BEM modifier
+      // `text-input--small`, which reads as a `text-*` colour; each leaves with its wave.
+      "files": ["src/**/*.{ts,tsx}"],
+      "excludeFiles": [
+        "src/ui/controls/**",
+        "src/gallery/**",
+        "**/*.test.{ts,tsx}",
+        "src/prompts/prompt-popover.tsx",
+        "src/ui/settings/sections/agents-section.tsx",
+        "src/ui/spaces/space-rename-field.tsx"
+      ],
+      "rules": {
+        "shadcn/no-raw-colors": "error"
       }
     },
     {
