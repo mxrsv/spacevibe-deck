@@ -17,7 +17,19 @@ export interface PromptTarget {
 }
 
 /** Result of one atomic, per-pane Prompt Board injection attempt. */
-export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target";
+export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target" | "stale";
+
+export interface InjectOptions {
+  readonly autoSend: boolean;
+  readonly expectedAgent: string | null;
+  /**
+   * Bind the injection to one agent process: checked before the paste (a
+   * mismatch returns `"stale"`, nothing written) and again before `\r`.
+   */
+  readonly expectedProcessId?: number | null;
+  /** Wait this long between the paste and the submit gate; default none. */
+  readonly submitDelayMs?: number;
+}
 
 export interface SubmitGateInput {
   /** The agent captured when the popover opened. */
