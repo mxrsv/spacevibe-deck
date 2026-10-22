@@ -5,6 +5,11 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+- **Clear a Settings search in one click.** The match count under the Settings search field
+  now has a **clear** button beside it.
+
 ## 2.13.0
 
 - **Safer terminal paste and Markdown.** Pasted text can no longer break out of its protected
