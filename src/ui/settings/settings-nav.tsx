@@ -26,6 +26,7 @@ import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings
  */
 export function SettingsNav() {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const query = settingsQuery.value;
   const result = searchSettings(query);
@@ -71,6 +72,7 @@ export function SettingsNav() {
     <nav class="settings-nav" aria-label="Settings categories">
       <div class="settings-nav__search">
         <input
+          ref={searchRef}
           type="search"
           class="settings-nav__search-input"
           placeholder="Search"
@@ -89,11 +91,24 @@ export function SettingsNav() {
           }}
         />
         {searching ? (
-          <p class="settings-nav__results" role="status">
-            {result.keys.size === 0
-              ? "No matching settings"
-              : `${result.keys.size} ${result.keys.size === 1 ? "match" : "matches"}`}
-          </p>
+          <div class="settings-nav__results">
+            <span role="status">
+              {result.keys.size === 0
+                ? "No matching settings"
+                : `${result.keys.size} ${result.keys.size === 1 ? "match" : "matches"}`}
+            </span>
+            {/* SET-2: the results line offers Clear; focus returns to the field for the next query. */}
+            <button
+              type="button"
+              class="cfg-btn"
+              onClick={() => {
+                settingsQuery.value = "";
+                searchRef.current?.focus();
+              }}
+            >
+              clear
+            </button>
+          </div>
         ) : null}
       </div>
       <div

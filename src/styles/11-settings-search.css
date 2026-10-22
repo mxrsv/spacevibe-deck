@@ -24,7 +24,10 @@
 }
 
 .settings-nav__results {
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 0 2px;
   color: var(--text-faint);
   font-family: var(--ui-font);

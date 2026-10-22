@@ -71,8 +71,8 @@ the file untouched; the day's counts are lost when you quit.
 ## Search and changed marks
 
 The field at the top of the Settings list finds a setting by the name printed on its row. Each
-page shows how many matches it holds, and matching rows are highlighted. **Esc** clears the
-search before it closes Settings.
+page shows how many matches it holds, and matching rows are highlighted. **clear** beside the
+match count, or **Esc**, empties the search; **Esc** with nothing typed closes Settings.
 
 A dot after a setting's name means it differs from its default. The dot marks exactly what a
 page's **reset page** action would restore: preferences. Declared agents, launch configurations

@@ -384,7 +384,8 @@ the rail.
 - **DL-11.3** Retired.
 - **DL-11.4** Rail items are text only, with no icons, in sentence-case `--ui-font` (DL-4.1,
   DL-4.4). The rail item is the category name, so a section does not repeat it as a sub-heading.
-  Above the items sits one search field (DL-11.8); it is the only control in the rail.
+  Above the items sits one search field (DL-11.8); it is the only control in the rail, except
+  the **clear** pill its results line shows while a query is active.
 - **DL-11.5** A destructive action is an ordinary rail category, last in the registry, with the
   same title, sentence and grouped surface as the rest (DL-11.6). Its row keeps `--red` (DL-3.2),
   which DL-3.7's achromatic Settings surface does not override. No destructive action, no category.
@@ -409,7 +410,9 @@ the rail.
   one setting (colour mode) and on an agent's name; it marks exactly what the page's **reset
   page** action would restore, so layout and data keys never carry it. The rail's search field
   matches the label text the rows print (the registry is their one source), washes matching
-  rows with the selection wash (DL-21.1), and `Esc` clears it before it closes Settings. Anchors:
+  rows with the selection wash (DL-21.1), and `Esc` clears it before it closes Settings. While a
+query is active, a results line under the field states the match count beside a **clear** pill
+(SET-2). Anchors:
   [`11-settings-search.css`](../src/styles/11-settings-search.css),
   [`settings-changes.ts`](../src/settings/settings-changes.ts).
 

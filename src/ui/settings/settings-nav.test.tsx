@@ -170,4 +170,35 @@ describe("SettingsNav", () => {
     expect(activeCategory.value).toBe("appearance");
     expect(host.querySelector('[role="status"]')?.textContent).toBe("No matching settings");
   });
+
+  const clearButton = (): HTMLButtonElement | null =>
+    Array.from(host.querySelectorAll<HTMLButtonElement>(".settings-nav__results button")).find(
+      (button) => button.textContent === "clear",
+    ) ?? null;
+
+  it("offers no Clear while nothing is typed", () => {
+    mount();
+    expect(clearButton()).toBeNull();
+  });
+
+  it("offers Clear on the results line, also when nothing matches", () => {
+    mount();
+    type("zzzz");
+    expect(clearButton()).not.toBeNull();
+  });
+
+  it("Clear empties the search, drops the counts and returns focus to the field", () => {
+    mount();
+    type("history");
+    act(() => {
+      clearButton()!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const input = host.querySelector<HTMLInputElement>('input[type="search"]')!;
+    expect(settingsQuery.value).toBe("");
+    expect(input.value).toBe("");
+    expect(host.querySelector('[role="status"]')).toBeNull();
+    expect(host.querySelector(".settings-nav__count")).toBeNull();
+    expect(clearButton()).toBeNull();
+    expect(document.activeElement).toBe(input);
+  });
 });
