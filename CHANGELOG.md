@@ -5,6 +5,12 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## Unreleased
+
+- **Clone errors name the real cause.** A clone into a folder whose name contains words like
+  `proxy`, `ssl` or `tls` no longer reports a failed connection when the folder could not be
+  written.
+
 ## 2.13.0
 
 - **Safer terminal paste and Markdown.** Pasted text can no longer break out of its protected
