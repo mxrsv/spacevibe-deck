@@ -127,7 +127,9 @@ export function runCloneJob(
     ]);
     // Decided only now: a cancel that arrived while we inspected still wins.
     const reason = stopRequested ? "cancelled" : timedOut ? "timed-out" : null;
-    const failure = classifyCloneFailure(stderr);
+    // Git quotes the destination ("could not create work tree dir '…'"): a folder
+    // named "http-proxy" must not read as a network error.
+    const failure = classifyCloneFailure(stderr.split(destination).join("<destination>"));
     let error: CloneError | null = null;
     if (reason === "timed-out") {
       error = "timed-out";
