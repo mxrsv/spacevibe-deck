@@ -18,7 +18,7 @@ describe("Badge", () => {
     expect(plain.tagName).toBe("SPAN");
     expect(link.tagName).toBe("A");
     expect(link.getAttribute("href")).toBe("#changes");
-    expect(badgeVariants({ variant: "destructive" })).toContain("text-destructive");
+    expect(badgeVariants({ variant: "outline" })).toContain("border-border");
     await view.unmount();
   });
 
