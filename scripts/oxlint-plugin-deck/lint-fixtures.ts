@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const OXLINT = fileURLToPath(new URL("../../node_modules/oxlint/bin/oxlint", import.meta.url));
 const PLUGIN = fileURLToPath(new URL("./index.mjs", import.meta.url));
+const SOURCE = /\.[cm]?[jt]sx?$/;
 
 export interface Finding {
   readonly line: number;
@@ -41,7 +42,9 @@ export function lintFixtures(
       rules: { [`deck/${rule}`]: "error" },
     };
     writeFileSync(join(dir, "oxlintrc.json"), JSON.stringify(config));
-    const args = [OXLINT, "-c", "oxlintrc.json", "-f", "json", ...Object.keys(fixtures)];
+    // A fixture that is not source, such as a rule's data file, is written but not linted.
+    const sources = Object.keys(fixtures).filter((name) => SOURCE.test(name));
+    const args = [OXLINT, "-c", "oxlintrc.json", "-f", "json", ...sources];
     let stdout: string;
     try {
       stdout = execFileSync(process.execPath, args, { cwd: dir, encoding: "utf8" });
@@ -51,7 +54,7 @@ export function lintFixtures(
     }
     const { diagnostics } = JSON.parse(stdout) as { diagnostics: Diagnostic[] };
     const findings: Record<string, Finding[]> = Object.fromEntries(
-      Object.keys(fixtures).map((name) => [name, []]),
+      sources.map((name) => [name, []]),
     );
     for (const diagnostic of diagnostics) {
       if (diagnostic.code !== `deck(${rule})`) continue;

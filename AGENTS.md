@@ -287,6 +287,12 @@ that needs the owner becomes a night comment, and the run stops.
   was wired proves nothing. A skipped, focused or `todo` test names its issue on the line
   above (`// skip: #123 <why>`), checked by `deck/no-unreasoned-skip`; `skipIf`/`runIf`
   platform gates need none.
+- **R11. Text sizes come from the type scale.** A `.tsx` file under `src/` sets its font size
+  with a step of [`src/ui/type-scale.css`](src/ui/type-scale.css) or the preset, never an
+  arbitrary `text-[11px]`; `deck/no-arbitrary-font-size` fails on a new one. Older uses are
+  debt counted per file in
+  [`arbitrary-font-size-debt.txt`](scripts/oxlint-plugin-deck/arbitrary-font-size-debt.txt):
+  lower a count when you pay one off, and never raise one.
 
 ## Known traps
 

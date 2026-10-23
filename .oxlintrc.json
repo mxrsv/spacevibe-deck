@@ -33,7 +33,8 @@
     "react/purity": "off",
     "react/refs": "off",
     "deck/require-suppression-reason": "error",
-    "deck/no-unreasoned-skip": "error"
+    "deck/no-unreasoned-skip": "error",
+    "deck/no-arbitrary-font-size": "error"
   },
   "overrides": [
     {
