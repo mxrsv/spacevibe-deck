@@ -5,18 +5,22 @@
 How Deck writes Tailwind classes and which HTML element each job uses, read off the code that
 already exists. A rule the code meets is stated flatly; a rule it does not meet yet is marked
 **target** with the number of violations. Counts were taken on 2026-10-23 over
-[`src/gallery/layout-mocks/`](../../src/gallery/layout-mocks/) (the surfaces the shell is moving
-to) unless a line says otherwise; re-run them before quoting one. Visual rules stay in
+[`src/gallery/layout-mocks/`](../../src/gallery/layout-mocks/) (the gallery mocks of the shell
+layout the [layout spec](../specs/2026-10-22-agent-first-shell-layout.md) evaluates) unless a line says otherwise; re-run them before quoting one. Visual rules stay in
 [`DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md); this page does not restate them.
 
 ## Where Tailwind applies
 
-Tailwind exists only inside the preset fence (DL-1.6). It compiles classes from two scans: the
-shared controls named by the `@source` line in
-[`src/ui/preset.css:22`](../../src/ui/preset.css), and the mock sources that
-[`src/gallery/layout-mocks/mocks.css:5`](../../src/gallery/layout-mocks/mocks.css) adds. A
-Tailwind class written in any other file compiles to nothing, and nothing fails: the element
-just renders unstyled. Chrome outside the fence is plain CSS under `src/styles/`.
+Tailwind exists only inside the preset fence (DL-1.6), and each stylesheet that imports it
+generates only the classes its own `@source` lines scan. The app's stylesheet,
+[`src/ui/preset-entry.css`](../../src/ui/preset-entry.css), scans only the shared controls named
+in [`src/ui/preset.css:22`](../../src/ui/preset.css). Each gallery page adds its own sources:
+[`layout-mocks/mocks.css:5`](../../src/gallery/layout-mocks/mocks.css),
+[`sections/preset-controls-section.css:4`](../../src/gallery/sections/preset-controls-section.css)
+and [`shadcn-preview/preset.css:4`](../../src/gallery/shadcn-preview/preset.css). So a class that
+renders in a gallery page can compile to nothing in the app, and nothing fails: a class that
+appears only in a shipping file outside those controls leaves its element unstyled. Chrome outside the fence is plain CSS under
+`src/styles/`.
 
 ## Tailwind
 
@@ -110,7 +114,7 @@ just renders unstyled. Chrome outside the fence is plain CSS under `src/styles/`
 - **`Button` for an action.** 62 `<Button>` in the mocks. An icon-only one carries
   `aria-label`: 19 `size="icon*"` buttons, 0 without a label, for example
   [`option-inbox.tsx:67`](../../src/gallery/layout-mocks/option-inbox.tsx). A whole list or
-  tree row that is one click target is today a raw `<button type="button">`: 17 of them, all
+  tree row that is one-click target is today a raw `<button type="button">`: 17 of them, all
   typed, for example the tree row at
   [`changes-tree.tsx:69`](../../src/gallery/layout-mocks/surfaces/changes/changes-tree.tsx).
 - **`<a href>` for navigation.** The mocks have no navigation target (0 `<a>`). The shipping
