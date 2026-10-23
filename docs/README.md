@@ -34,6 +34,8 @@ translations at `/<locale>/docs` from `marketing/landing-prototype/docs/translat
   editor, markdown policy, browser view and link routing.
 - [Session restore](internals/session-restore.md) — the journal, the last-session offer, resume
   resolution and session history.
+- [UI conventions](internals/ui-conventions.md) — how Tailwind classes are written inside the
+  preset fence and which HTML element each job uses, with the counts behind each rule.
 - [Analytics service](../backend/README.md) — independent Worker/D1 deployment and retention operations.
 - [Usage analytics](internals/telemetry.md) — the payload, consent state and when a POST
   fires.
