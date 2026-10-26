@@ -92,7 +92,7 @@ import {
   type LaunchTaskResult,
 } from "./task-prompt-send";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
-import { submitAllowed, type InjectOutcome } from "../prompts/inject";
+import { submitAllowed, type InjectOptions, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
 import { sessionsSupported } from "../sessions/sessions-store";
 import {
@@ -1732,6 +1732,15 @@ export function createTabManager(
     return { paneId, processId: info.processId as number, cwd: info.cwd, agent: expectedAgent };
   }
 
+  /** Agent and process identity, as `sameTaskPromptTarget` compares them, minus the cwd. */
+  function sameInjectProcess(opts: InjectOptions, info: PaneProcessInfo | undefined): boolean {
+    return (
+      info?.kind === "agent" &&
+      info.agent === opts.expectedAgent &&
+      info.processId === opts.expectedProcessId
+    );
+  }
+
   function sameTaskPromptTarget(
     expected: TaskPromptTarget,
     info: PaneProcessInfo | undefined,
@@ -2119,7 +2128,7 @@ export function createTabManager(
   async function injectIntoPane(
     paneId: number,
     text: string,
-    opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
+    opts: InjectOptions,
   ): Promise<InjectOutcome> {
     if (injectingPanes.has(paneId)) {
       return "busy";
@@ -2127,6 +2136,17 @@ export function createTabManager(
     injectingPanes.add(paneId);
     try {
       const owner = ownerOf(paneId);
+      if (opts.expectedProcessId !== undefined) {
+        // Bound to one agent process: a pane that now runs another gets nothing.
+        const [current] = await freshPaneInfo(
+          [paneId],
+          pty,
+          agentProcessMatchers(settings.value.customAgents),
+        );
+        if (!sameInjectProcess(opts, current)) {
+          return "stale";
+        }
+      }
       const attentionBeforePaste = paneAttention(paneId);
       const paste = owner?.manager.pasteIntoPane(paneId, text) ?? null;
       if (paste === null) {
@@ -2137,6 +2157,9 @@ export function createTabManager(
       }
       if (!opts.autoSend) {
         return "pasted";
+      }
+      if ((opts.submitDelayMs ?? 0) > 0) {
+        await new Promise((resolve) => setTimeout(resolve, opts.submitDelayMs));
       }
       const [info] = await freshPaneInfo(
         [paneId],
@@ -2160,7 +2183,8 @@ export function createTabManager(
           info,
           attention: attentionBeforeSubmit,
           alive: stillOwned !== undefined,
-        });
+        }) &&
+        (opts.expectedProcessId === undefined || sameInjectProcess(opts, info));
       if (!allowed || stillOwned === undefined) {
         return "pasted";
       }
