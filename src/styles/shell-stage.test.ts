@@ -61,11 +61,16 @@ describe("the flush stage stylesheet", () => {
     expect(value(".stage--flush .tabbar__tabs .tab__label", "display")).toBe("none");
   });
 
-  it("rings a lone pane while the keyboard is inside it", () => {
-    expect(value(".stage--flush .pane-slot:focus-within > .pane", "border-color")).toBe(
-      "var(--muted-foreground)",
-    );
-    expect(value(".stage--flush .pane-slot:focus-within::after", "height")).toBe("2px");
+  it("rings a lone pane wherever the keyboard is, like the active pane of a split", () => {
+    const lone = ".stage--flush .pane-slot:not(.has-multiple-panes .pane-slot)";
+    expect(value(`${lone} > .pane`, "border-color")).toBe("var(--ring)");
+    expect(value(`${lone}::after`, "height")).toBe("2px");
+    expect(value(".stage--flush .pane-slot.is-active > .pane", "border-color")).toBe("var(--ring)");
+  });
+
+  it("marks only one pane in a split when the keyboard sits in another", () => {
+    const selectors = rules.flatMap((rule) => rule.selectors);
+    expect(selectors.filter((selector) => selector.includes(":focus-within"))).toEqual([]);
   });
 
   it("keeps the sentence for a screen reader without drawing it", () => {

@@ -77,20 +77,21 @@
 
 .stage--flush .pane {
   border-color: transparent;
+  /* The ring moves with the bar above it, which cannot fade. */
+  transition: none;
 }
 
-/* The focused pane: a quiet 1px ring and a 2px bar on its top edge. In a split `is-active`
-   names it. `is-active` is set only while the tab holds more than one pane (layout, R4), so a
-   lone pane is found by the keyboard instead: xterm's input lives inside the slot, and
-   `:focus-within` holds while the user types into it. The bar is `::after`, which paints over
-   `.pane` (a positioned `::before` would paint under it). */
+/* The focused pane: a quiet 1px ring and a 2px bar on its top edge, whichever part of the window
+   holds the keyboard. In a split `is-active` names it. `is-active` is set only while the tab holds
+   more than one pane (layout, R4), so a lone pane is the focused one by having no such ancestor.
+   The bar is `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
 .stage--flush .pane-slot.is-active > .pane,
-.stage--flush .pane-slot:focus-within > .pane {
-  border-color: var(--muted-foreground);
+.stage--flush .pane-slot:not(.has-multiple-panes .pane-slot) > .pane {
+  border-color: var(--ring);
 }
 
 .stage--flush .pane-slot.is-active::after,
-.stage--flush .pane-slot:focus-within::after {
+.stage--flush .pane-slot:not(.has-multiple-panes .pane-slot)::after {
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -130,7 +131,7 @@
   box-sizing: border-box;
   height: 32px;
   padding: 0 12px;
-  background: var(--muted);
+  background: var(--card);
   border-bottom-color: var(--border);
 }
 
