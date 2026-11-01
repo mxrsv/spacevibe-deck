@@ -92,7 +92,7 @@ export function CreateMenu({ state }: { readonly state: RailState }) {
   return (
     <div ref={anchor} className="relative shrink-0">
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="New" />}>
+        <DropdownMenuTrigger render={<Button size="icon" aria-label="New" />}>
           <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-44">
