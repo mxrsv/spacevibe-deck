@@ -442,7 +442,12 @@ describe("needs-you chip wiring", () => {
       source.indexOf("<DeckToolbar"),
       source.indexOf("/>\n  );", source.indexOf("<DeckToolbar")),
     );
-    expect(toolbar).toContain("attention={<AttentionStripChip onFocusPane={focusRailPane} />}");
+    expect(toolbar).toContain("<AttentionStripChip onFocusPane={focusRailPane} />");
+    // The flush stage's bar replaces it with the "N need you" pill, in sidebar mode only.
+    expect(toolbar).toContain("sidebar && stageAttentionPillEnabled() ? null");
+    expect(source).toContain(
+      "<StageAttentionPill onFocusPane={focusRailPane} onSelectTab={selectTab} />",
+    );
     // `focusRailPane` is the preflighted `activateForAttention` — never the
     // global `focusNextAttention`, which would pick the loudest pane instead.
     const focus = source.slice(

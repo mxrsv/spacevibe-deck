@@ -233,7 +233,13 @@ import { DockToggle } from "./dock/dock-toggle";
 import { useDockPresence } from "./dock/dock-presence";
 import { useTitleBarOverlaySync } from "./title-bar-overlay-sync";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
-import { applyShellFrame, STAGE_FLUSH_CLASS, shellStageEnabled } from "./shell-stage";
+import {
+  applyShellFrame,
+  STAGE_FLUSH_CLASS,
+  shellStageEnabled,
+  stageAttentionPillEnabled,
+} from "./shell-stage";
+import { StageAttentionPill } from "./project-rail/project-rail-attention-pill";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { applySidebarShell } from "./sidebar-shell";
@@ -2308,7 +2314,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // element either mounts. It takes the rail's own pane-exact callback, so
       // a choice walks the same overlay preflight a rail row does and then
       // `activateForAttention`, which acknowledges that pane and no other.
-      attention={<AttentionStripChip onFocusPane={focusRailPane} />}
+      // The flush stage's bar carries the "N need you" pill instead (`StageAttentionPill`).
+      attention={
+        sidebar && stageAttentionPillEnabled() ? null : (
+          <AttentionStripChip onFocusPane={focusRailPane} />
+        )
+      }
       // DL-36.1: the dev servers chip rides the same trailing end, after it.
       devServers={<DevServersStripChip openInDeck={openDevServerInDeck} />}
       compact={!sidebar}
@@ -2667,6 +2678,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   the sidebar's width stops deciding how many of its controls
                   are visible. One element, both layouts, still — `TabBar`
                   mounts this same `chromeActions` in top-tab mode. */}
+              {stageAttentionPillEnabled() && (
+                <StageAttentionPill onFocusPane={focusRailPane} onSelectTab={selectTab} />
+              )}
               <div class="stage__strip-actions">{chromeActions}</div>
               {/* DL-18.9's arrangement, applied to the other edge: while the
                   dock is SHOWN its hide control rides the dock's own header

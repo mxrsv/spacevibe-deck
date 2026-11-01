@@ -1,5 +1,10 @@
 import { useMemo } from "preact/hooks";
-import type { AgentRailView } from "../agent-rail-model";
+import { workspacesData } from "../../open-board/workspaces-store";
+import { repositoryScans } from "../../repositories/repositories-store";
+import { settings } from "../../settings/settings-store";
+import { paneTails } from "../../terminal/session-tail-store";
+import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
+import { buildAgentRail, type AgentRailView } from "../agent-rail-model";
 import { AgentStateMark } from "../blocks/agent-state-mark";
 import { Button } from "../controls/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
@@ -10,6 +15,8 @@ import { unfoldProject } from "./project-rail-state";
 export interface ProjectRailAttentionPillProps extends RailSelection {
   /** The view `AgentRail` builds: the pill counts its unpartitioned rows. */
   readonly view: AgentRailView;
+  /** The stage bar's form: the state mark and the count, no words. */
+  readonly compact?: boolean;
 }
 
 /**
@@ -23,10 +30,12 @@ export interface ProjectRailAttentionPillProps extends RailSelection {
  */
 export function ProjectRailAttentionPill({
   view,
+  compact = false,
   onFocusPane,
   onSelectTab,
 }: ProjectRailAttentionPillProps) {
-  const count = useMemo(() => needsYouItems(view).length, [view]);
+  const items = useMemo(() => needsYouItems(view), [view]);
+  const count = items.length;
   if (count === 0) {
     return null;
   }
@@ -38,6 +47,28 @@ export function ProjectRailAttentionPill({
     unfoldProject(next.projectKey);
     selectRailItem(next, { onFocusPane, onSelectTab });
   };
+  if (compact) {
+    // A question and a failure count together; the mark takes the louder of the two.
+    const status = items.some((item) => item.status === "failed") ? "failed" : "needs-input";
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              size="sm"
+              aria-label={`${count} ${count === 1 ? "agent needs" : "agents need"} you`}
+              className="tabular-nums"
+              onClick={jump}
+            />
+          }
+        >
+          <AgentStateMark status={status} />
+          <span aria-hidden="true">{count}</span>
+        </TooltipTrigger>
+        <TooltipContent>Next agent that needs you</TooltipContent>
+      </Tooltip>
+    );
+  }
   return (
     <Tooltip>
       <TooltipTrigger render={<Button variant="secondary" size="sm" onClick={jump} />}>
@@ -46,5 +77,42 @@ export function ProjectRailAttentionPill({
       </TooltipTrigger>
       <TooltipContent>Next</TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * The pill as the stage bar mounts it: the view built from the same window stores the rail
+ * reads, so the count and the rail cannot disagree. Titles are left out (the pill reads status
+ * and entry only). Wrapped in `.ui-preset` because the bar is not a preset surface.
+ */
+export function StageAttentionPill({ onFocusPane, onSelectTab }: RailSelection) {
+  const tabs = tabViews.value;
+  const activeIndex = activeTabIndex.value;
+  const scans = repositoryScans.value;
+  const recents = workspacesData.value.recents;
+  const tails = paneTails.value;
+  const railOrder = settings.value.railOrder;
+  const view = useMemo(
+    () =>
+      buildAgentRail({
+        tabs,
+        activeIndex,
+        scans,
+        workspaceHistoryPaths: recents.map((recent) => recent.path),
+        tails,
+        railOrder,
+        now: Date.now(),
+      }),
+    [tabs, activeIndex, scans, recents, tails, railOrder],
+  );
+  return (
+    <span className="ui-preset flex shrink-0 items-center bg-transparent empty:hidden">
+      <ProjectRailAttentionPill
+        view={view}
+        compact
+        onFocusPane={onFocusPane}
+        onSelectTab={onSelectTab}
+      />
+    </span>
   );
 }

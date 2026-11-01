@@ -13,6 +13,15 @@ export function shellStageEnabled(): boolean {
 }
 
 /**
+ * The "needs you" control lives on the stage bar instead of the rail's search row (LAY-3), and
+ * replaces the strip's older chip there. It needs both the flush stage and the project rail:
+ * a press unfolds the target's project and walks the rail's rows.
+ */
+export function stageAttentionPillEnabled(): boolean {
+  return shellStageEnabled() && isReleaseSwitchEnabled("projectRail", rendererReleaseSwitches());
+}
+
+/**
  * `--frame-h` sizes the shell's grid row, which sits above `.stage`, so the flush stage's class
  * cannot reach it. On `:root` for the same reason as `sidebar-shell.ts`: props on the element
  * `DesktopChrome` returns never update.

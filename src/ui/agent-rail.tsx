@@ -30,6 +30,7 @@ import { isReleaseSwitchEnabled } from "../lib/release-switches";
 import { rendererReleaseSwitches } from "../terminal/action-availability";
 import { ProjectRail } from "./project-rail/project-rail";
 import { ProjectRailAttentionPill } from "./project-rail/project-rail-attention-pill";
+import { stageAttentionPillEnabled } from "./shell-stage";
 import { onProjectRailKeyDown, ProjectRailControls } from "./project-rail/project-rail-controls";
 import { ProjectRailFooter } from "./project-rail/project-rail-footer";
 import type { SidebarActionsProps } from "./sidebar-actions";
@@ -344,11 +345,14 @@ function WorktreeCardRail(props: AgentRailProps) {
           onOpenBoard={props.legacy.onOpenWorkspace}
           disabled={props.legacy.openWorkspaceDisabled}
           attention={
-            <ProjectRailAttentionPill
-              view={view}
-              onFocusPane={props.onFocusPane}
-              onSelectTab={props.onSelectTab}
-            />
+            // The flush stage carries the pill on its bar instead (LAY-3, `StageAttentionPill`).
+            stageAttentionPillEnabled() ? undefined : (
+              <ProjectRailAttentionPill
+                view={view}
+                onFocusPane={props.onFocusPane}
+                onSelectTab={props.onSelectTab}
+              />
+            )
           }
         />
         <div class="asr-rail__list">

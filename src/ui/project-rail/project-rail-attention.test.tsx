@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { render } from "preact";
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The host stubs `project-rail.test.tsx` needs, and a `DeckIcon` jsdom can draw.
 vi.mock("../../host/store-host", () => ({
@@ -24,7 +25,17 @@ vi.mock("../controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
+// The stage bar carries the pill while the flush stage is on (every switch is on under
+// `pinHost(true)`); `stage.pillOnStage = false` is the rail's own pill, which a build with the
+// project rail and without the flush stage still draws.
+const stage = vi.hoisted(() => ({ pillOnStage: true }));
+vi.mock("../shell-stage", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../shell-stage")>()),
+  stageAttentionPillEnabled: () => stage.pillOnStage,
+}));
+
 import { activeTabIndex, tabViews, type TabView } from "../../terminal/tabs-store";
+import { StageAttentionPill } from "./project-rail-attention-pill";
 import { waitUntil } from "../controls/preset-test-kit";
 import {
   click,
@@ -43,9 +54,30 @@ import { archiveItem, setRailProjectHidden, toggleProjectFolded } from "./projec
 
 installRailHarness();
 
+/** The stage bar's mount point: a sibling of the rail, as in the shell. */
+let bar = document.createElement("div");
+
 beforeEach(() => {
   pinHost(true);
+  stage.pillOnStage = true;
+  bar = document.createElement("div");
+  document.body.appendChild(bar);
 });
+
+afterEach(() => {
+  act(() => render(null, bar));
+  bar.remove();
+});
+
+/** The rail, and beside it the pill the stage bar mounts, with the same host callbacks. */
+function mountShell(props: Parameters<typeof mount>[0] = {}): void {
+  mount(props);
+  act(() => {
+    render(<StageAttentionPill onFocusPane={props.onFocusPane ?? NOOP} onSelectTab={NOOP} />, bar);
+  });
+}
+
+const NOOP = (): void => {};
 
 // Project keys: the repository's `.git`, and `plain:<folder>` for a folder git does not know.
 const MAIN = "/r/.git";
@@ -65,9 +97,10 @@ function projects(...attentions: readonly [string, string, string]): TabView[] {
 }
 
 const pill = () =>
-  [...host.querySelectorAll<HTMLElement>("button")].find((button) =>
-    /^\d+ need you$/.test(text(button)),
+  [...bar.querySelectorAll<HTMLElement>("button")].find((button) =>
+    /^\d+ agents? needs? you$/.test(button.getAttribute("aria-label") ?? ""),
   ) ?? null;
+const label = (element: Element | null) => element?.getAttribute("aria-label") ?? "";
 
 const rowIds = () => rows().map((r) => r.dataset.railRow);
 const tooltip = () => document.body.querySelector<HTMLElement>('[data-slot="tooltip-content"]');
@@ -89,9 +122,9 @@ function windowFocus() {
 describe("the N need you pill", () => {
   it("counts an agent in a hidden project, an archived row and a folded project", async () => {
     tabViews.value = projects("requested", "requested", "requested");
-    mount();
+    mountShell();
     await settle();
-    expect(text(pill())).toBe("3 need you");
+    expect(label(pill())).toBe("3 agents need you");
 
     act(() => {
       setRailProjectHidden(MAIN, true);
@@ -102,31 +135,31 @@ describe("the N need you pill", () => {
 
     // None of the three is on screen, and the pill still says all three are waiting.
     expect(rowIds()).toEqual([]);
-    expect(text(pill())).toBe("3 need you");
+    expect(label(pill())).toBe("3 agents need you");
   });
 
   it("offers the next agent in its tooltip and names no chord", async () => {
     tabViews.value = projects("requested", "none", "none");
-    mount();
+    mountShell();
     await settle();
 
     act(() => pill()?.focus());
     await waitUntil(() => tooltip() !== null);
 
-    expect(text(tooltip())).toBe("Next");
+    expect(text(tooltip())).toBe("Next agent that needs you");
   });
 
   it("counts a failed agent and leaves a finished run alone", async () => {
     tabViews.value = projects("error", "completed", "none");
-    mount();
+    mountShell();
     await settle();
 
-    expect(text(pill())).toBe("1 need you");
+    expect(label(pill())).toBe("1 agent needs you");
   });
 
   it("is absent while no agent needs the user", async () => {
     tabViews.value = projects("none", "completed", "none");
-    mount();
+    mountShell();
     await settle();
 
     expect(pill()).toBeNull();
@@ -135,9 +168,9 @@ describe("the N need you pill", () => {
 
   it("disappears once the last waiting agent has been answered", async () => {
     tabViews.value = projects("requested", "none", "none");
-    mount();
+    mountShell();
     await settle();
-    expect(text(pill())).toBe("1 need you");
+    expect(label(pill())).toBe("1 agent needs you");
 
     tabViews.value = projects("none", "none", "none");
     await settle();
@@ -148,7 +181,7 @@ describe("the N need you pill", () => {
   it("sends the user to the next waiting agent and wraps around", async () => {
     tabViews.value = projects("requested", "requested", "requested");
     const focus = windowFocus();
-    mount({ onFocusPane: focus });
+    mountShell({ onFocusPane: focus });
     await settle();
     const order = rowIds();
     expect(order).toHaveLength(3);
@@ -166,7 +199,7 @@ describe("the N need you pill", () => {
   it("goes on from the agent that holds the keyboard, not from the top", async () => {
     tabViews.value = projects("requested", "requested", "requested");
     const focus = windowFocus();
-    mount({ onFocusPane: focus });
+    mountShell({ onFocusPane: focus });
     await settle();
     act(() => focus(1, 31));
 
@@ -179,7 +212,7 @@ describe("the N need you pill", () => {
   it("reaches agents the list does not show, and unfolds a folded project on arrival", async () => {
     tabViews.value = projects("requested", "requested", "requested");
     const focus = windowFocus();
-    mount({ onFocusPane: focus });
+    mountShell({ onFocusPane: focus });
     await settle();
     act(() => {
       setRailProjectHidden(MAIN, true);
@@ -201,6 +234,41 @@ describe("the N need you pill", () => {
     expect(focus).toHaveBeenLastCalledWith(2, 41);
     // The folded project opened, so the row the keyboard went to is on screen.
     expect(rowIds()).toEqual(["pane:41"]);
-    expect(text(pill())).toBe("3 need you");
+    expect(label(pill())).toBe("3 agents need you");
+  });
+});
+
+describe("where the pill lives", () => {
+  const railPill = () =>
+    [...host.querySelectorAll<HTMLElement>("button")].find((button) =>
+      /^\d+ need you$/.test(text(button)),
+    ) ?? null;
+
+  it("shows the count and the louder state on the bar, with no words", async () => {
+    tabViews.value = projects("requested", "error", "none");
+    mountShell();
+    await settle();
+
+    expect(text(pill())).toBe("2");
+    expect(pill()?.querySelector('[data-state="failed"]')).not.toBeNull();
+    expect(railPill()).toBeNull();
+  });
+
+  it("leaves the rail's search row to the stage bar while the flush stage is on", async () => {
+    tabViews.value = projects("requested", "none", "none");
+    mountShell();
+    await settle();
+
+    expect(railPill()).toBeNull();
+    expect(pill()).not.toBeNull();
+  });
+
+  it("stays in the rail's search row while the flush stage is off", async () => {
+    stage.pillOnStage = false;
+    tabViews.value = projects("requested", "none", "none");
+    mount();
+    await settle();
+
+    expect(text(railPill())).toBe("1 need you");
   });
 });
