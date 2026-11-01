@@ -32,9 +32,10 @@ export interface ProjectRailRowProps {
 }
 
 /**
- * Two lines (LAY-2): the state and the title, then the agent, branch chip and time in state.
- * Hover or focus adds pin, archive and the more menu over the trailing edge; the same menu
- * opens on right-click. F2 or a double-click renames in place.
+ * Two lines (LAY-2): the state and the title, then the agent and the time in state. The branch
+ * chip (and the project, in a flat list) shows on hover or focus; it holds its place, so the
+ * line does not move. Hover or focus also adds pin, archive and the more menu over the
+ * trailing edge; the same menu opens on right-click. F2 or a double-click renames in place.
  */
 export function ProjectRailRow({
   item,
@@ -127,16 +128,25 @@ export function ProjectRailRow({
               ) : (
                 <DeckIcon icon={TerminalWindow} size={CHROME_ICON} class="size-3 shrink-0" />
               )}
-              {projectName === undefined ? null : (
-                <span className="min-w-0 shrink truncate">{projectName}</span>
-              )}
-              <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-muted px-1.5">
-                <DeckIcon
-                  icon={item.checkout.labelled ? GitBranch : Folder}
-                  size={CHROME_ICON}
-                  class="size-2.5 shrink-0"
-                />
-                <span className="truncate">{item.branch}</span>
+              {/* Opacity, not display: the chip keeps its place and stays in the accessible
+                  name, so the line does not move between hover states. */}
+              <span
+                className={cn(
+                  "flex min-w-0 items-center gap-1.5 transition-opacity group-focus-within/item:opacity-100 group-hover/item:opacity-100 has-[[data-popup-open]]:opacity-100",
+                  focused ? "opacity-100" : "opacity-0",
+                )}
+              >
+                {projectName === undefined ? null : (
+                  <span className="min-w-0 shrink truncate">{projectName}</span>
+                )}
+                <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-muted px-1.5">
+                  <DeckIcon
+                    icon={item.checkout.labelled ? GitBranch : Folder}
+                    size={CHROME_ICON}
+                    class="size-2.5 shrink-0"
+                  />
+                  <span className="truncate">{item.branch}</span>
+                </span>
               </span>
               <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
                 {pinned ? <DeckIcon icon={PushPin} size={CHROME_ICON} class="size-2.5" /> : null}
