@@ -59,4 +59,17 @@ describe("the flush stage stylesheet", () => {
   it("draws the browser and board chips as icons", () => {
     expect(value(".stage--flush .tabbar__tabs .tab__label", "display")).toBe("none");
   });
+
+  it("rings a lone pane while the keyboard is inside it", () => {
+    expect(value(".stage--flush .pane-slot:focus-within > .pane", "border-color")).toBe(
+      "var(--text-muted)",
+    );
+    expect(value(".stage--flush .pane-slot:focus-within::after", "height")).toBe("2px");
+  });
+
+  it("keeps the sentence for a screen reader without drawing it", () => {
+    expect(value(".stage--flush .pane-agent-header__message--hidden", "clip-path")).toBe(
+      "inset(50%)",
+    );
+  });
 });

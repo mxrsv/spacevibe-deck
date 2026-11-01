@@ -6,6 +6,7 @@ import { paneTails } from "./session-tail-store";
 import { displayAgent, stateWord } from "../ui/agent-rail-card-model";
 import { paneSignal } from "../ui/agent-rail-model";
 import { AgentStateMark } from "../ui/blocks/agent-state-mark";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/controls/tooltip";
 import { railStatus } from "../ui/rail-view-model";
 import { shellStageEnabled } from "../ui/shell-stage";
 import { PaneQuickAgents } from "./pane-quick-agents";
@@ -39,30 +40,63 @@ export function PaneAgentHeader({
   }
   const name = displayAgent(pane.agent);
   const flush = shellStageEnabled();
-  // The flush stage prints the name on its own, so a silent agent shows its state word beside
-  // it (as the rail's second line does) rather than the name twice.
-  const signal = paneSignal(pane);
-  const label =
-    message.trim() ||
-    (flush
-      ? stateWord({ ...signal, detail: pane.detail ?? null, exitCode: pane.exitCode ?? null })
-      : name);
+  if (flush) {
+    return <FlushIdentity pane={pane} agent={pane.agent} name={name} message={message} />;
+  }
   return (
     <div class="pane-agent-header">
       <span class="pane-agent-header__identity" title={pane.agent}>
         <AgentGlyph agent={pane.agent} className="pane-agent-header__logo" />
       </span>
-      {flush && (
-        <>
-          <span class="pane-agent-header__name">{name}</span>
-          <AgentStateMark
-            status={railStatus({ state: signal.state, attention: pane.attention })}
-            confidence={signal.confidence}
-          />
-        </>
-      )}
-      <span class="pane-agent-header__message" title={label}>
-        {label}
+      <span class="pane-agent-header__message" title={message.trim() || name}>
+        {message.trim() || name}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The flush stage's header (LAY-5): logo, name and state mark, nothing else on the line. The
+ * latest sentence rides a tooltip on the name; an agent that has said nothing shows its state
+ * word there instead of the name twice. A tooltip reaches no screen reader and no keyboard, so
+ * the state and the sentence also sit in the header as visually hidden text.
+ */
+function FlushIdentity({
+  pane,
+  agent,
+  name,
+  message,
+}: {
+  pane: PaneView;
+  agent: NonNullable<PaneView["agent"]>;
+  name: string;
+  message: string;
+}) {
+  const signal = paneSignal(pane);
+  const state = stateWord({
+    ...signal,
+    detail: pane.detail ?? null,
+    exitCode: pane.exitCode ?? null,
+  });
+  const sentence = message.trim();
+  const tip = sentence || state;
+  return (
+    <div class="pane-agent-header">
+      <span class="pane-agent-header__identity">
+        <AgentGlyph agent={agent} className="pane-agent-header__logo" />
+      </span>
+      <Tooltip>
+        <TooltipTrigger render={<span class="pane-agent-header__name" />}>{name}</TooltipTrigger>
+        <TooltipContent side="bottom" align="start">
+          {tip}
+        </TooltipContent>
+      </Tooltip>
+      <AgentStateMark
+        status={railStatus({ state: signal.state, attention: pane.attention })}
+        confidence={signal.confidence}
+      />
+      <span class="pane-agent-header__message pane-agent-header__message--hidden">
+        {sentence ? `${state}. ${sentence}` : state}
       </span>
     </div>
   );

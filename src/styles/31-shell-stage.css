@@ -67,14 +67,18 @@
   border-color: transparent;
 }
 
-/* The focused pane of a split: a quiet 1px ring and a 2px bar on its top edge. `is-active` is
-   set only while the tab holds more than one pane, so a lone pane draws neither. The bar is
-   `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
-.stage--flush .pane-slot.is-active > .pane {
+/* The focused pane: a quiet 1px ring and a 2px bar on its top edge. In a split `is-active`
+   names it. `is-active` is set only while the tab holds more than one pane (layout, R4), so a
+   lone pane is found by the keyboard instead: xterm's input lives inside the slot, and
+   `:focus-within` holds while the user types into it. The bar is `::after`, which paints over
+   `.pane` (a positioned `::before` would paint under it). */
+.stage--flush .pane-slot.is-active > .pane,
+.stage--flush .pane-slot:focus-within > .pane {
   border-color: var(--text-muted);
 }
 
-.stage--flush .pane-slot.is-active::after {
+.stage--flush .pane-slot.is-active::after,
+.stage--flush .pane-slot:focus-within::after {
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -124,7 +128,7 @@
 .stage--flush .pane-agent-header__name {
   flex-shrink: 0;
   color: var(--text-primary);
-  font-size: var(--type-body);
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -134,10 +138,17 @@
   color: var(--text-muted);
 }
 
-.stage--flush .pane-agent-header__message {
-  color: var(--text-muted);
-  font-size: var(--type-body);
-  font-weight: 400;
+/* The sentence and the state word are text for a screen reader only: the tooltip on the name
+   shows them to the eye (pane-agent-header.tsx). Clipped to a point, not `display: none`. */
+.stage--flush .pane-agent-header__message--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ── The breadcrumb (LAY-5) ───────────────────────────────────────────────────

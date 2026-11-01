@@ -8,6 +8,7 @@ import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from ".
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { settings } from "../settings/settings-store";
 import { detectedAgents } from "./agent-detection-store";
+import { waitUntil } from "../ui/controls/preset-test-kit";
 vi.mock("../ui/controls/deck-icon", () => ({ DeckIcon: () => null }));
 
 const pane: PaneView = {
@@ -148,19 +149,56 @@ describe("agent pane header on the flush stage (LAY-5, shellStage switch)", () =
       republish();
     });
 
-    it("shows the logo, the name, the state and the latest sentence", () => {
+    it("shows the logo, the name and the state mark, and no sentence on the line", () => {
       expect(element.querySelector(".pane-agent-header__logo")).not.toBeNull();
       expect(name()).toBe("Claude");
       expect(mark()).toBe("idle");
-      expect(sentence()).toBe("Checking launch behavior");
+      expect(element.querySelector(".pane-agent-header__name")?.textContent).not.toContain(
+        "Checking launch behavior",
+      );
     });
 
-    it("says the state when the agent has not spoken, instead of printing its name twice", () => {
+    it("keeps the state and the latest sentence as text a screen reader reads", () => {
+      expect(sentence()).toBe("No signal. Checking launch behavior");
+    });
+
+    it("says only the state when the agent has not spoken, instead of printing its name twice", () => {
       act(() => {
         paneTails.value = new Map();
       });
       expect(name()).toBe("Claude");
       expect(sentence()).toBe("No signal");
+    });
+
+    const tip = () => document.body.querySelector('[data-slot="tooltip-content"]');
+    async function hoverName() {
+      await act(async () => {
+        const target = element.querySelector(".pane-agent-header__name")!;
+        for (const type of [
+          "pointerover",
+          "pointerenter",
+          "pointermove",
+          "mouseover",
+          "mouseenter",
+          "mousemove",
+        ]) {
+          target.dispatchEvent(new MouseEvent(type, { bubbles: true }));
+        }
+      });
+      await waitUntil(() => tip() !== null, 2500);
+    }
+
+    it("shows the latest sentence in a tooltip on the name", async () => {
+      await hoverName();
+      expect(tip()?.textContent).toBe("Checking launch behavior");
+    });
+
+    it("shows the state word there when the agent has not spoken", async () => {
+      act(() => {
+        paneTails.value = new Map();
+      });
+      await hoverName();
+      expect(tip()?.textContent).toBe("No signal");
     });
 
     it.each([
