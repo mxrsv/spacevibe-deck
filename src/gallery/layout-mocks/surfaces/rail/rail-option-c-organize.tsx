@@ -147,7 +147,7 @@ export function FlatGroups({
     <>
       {groups.map((group) => (
         <section key={group.key} aria-label={group.label}>
-          <h3 className="m-0 mx-3.5 mt-3 mb-0.5 flex items-center gap-1.5 text-2xs font-medium text-muted-foreground">
+          <h3 className="m-0 mx-3.5 mt-3 mb-0.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             {group.label}
             <span className="tabular-nums">{group.threads.length}</span>
           </h3>

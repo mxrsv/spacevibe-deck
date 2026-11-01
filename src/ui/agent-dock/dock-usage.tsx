@@ -122,10 +122,10 @@ export function DockUsage({ item, space, onOpenDetails }: DockUsageProps) {
   return (
     <div className="flex flex-col px-3 pb-2 text-xs">
       {snapshot === null && usageLoading.value ? (
-        <p className="pt-2 text-2xs text-muted-foreground">Reading this machine's usage…</p>
+        <p className="pt-2 text-xs text-muted-foreground">Reading this machine's usage…</p>
       ) : null}
       {usageStale.value ? (
-        <p className="pt-2 text-2xs text-muted-foreground">Stale: showing the last good read.</p>
+        <p className="pt-2 text-xs text-muted-foreground">Stale: showing the last good read.</p>
       ) : null}
       {agent === null ? (
         <p className="py-2 text-muted-foreground">Focus an agent to see its usage.</p>

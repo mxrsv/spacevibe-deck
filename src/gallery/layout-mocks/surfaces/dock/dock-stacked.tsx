@@ -52,7 +52,7 @@ function Section({
           onClick={() => {
             folded.value = { ...folded.value, [id]: !closed };
           }}
-          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-2xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <DockIcon name={closed ? "right" : "down"} size={11} />
           <span className="flex-1">{title}</span>
@@ -167,7 +167,7 @@ function Sheet({ agent, onFocus, changes }: DockProps) {
         </Tooltip>
         <AgentStateMark state={agent.state} confidence={agent.confidence} />
         {sum.files ? (
-          <span className="text-2xs tabular-nums text-foreground">{sum.files}</span>
+          <span className="text-xs tabular-nums text-foreground">{sum.files}</span>
         ) : null}
       </nav>
       {open ? (

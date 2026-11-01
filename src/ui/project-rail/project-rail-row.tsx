@@ -111,23 +111,23 @@ export function ProjectRailRow({
               }
             }}
             className={cn(
-              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 gap-y-0.5 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
               focused ? "bg-accent ring-1 ring-ring/40 ring-inset" : "hover:bg-accent/50",
             )}
           >
-            <span className="flex h-[18px] items-center">
+            <span className="flex h-5 items-center">
               <AgentStateMark status={item.status} confidence={item.confidence} />
             </span>
             <span
               className={cn(
-                "truncate text-sm leading-[18px]",
+                "truncate text-sm leading-5",
                 archived ? "text-muted-foreground" : "text-foreground",
                 focused && "font-medium",
               )}
             >
               {item.title}
             </span>
-            <span className="col-start-2 flex min-w-0 items-center gap-1.5 text-2xs leading-4 text-muted-foreground">
+            <span className="col-start-2 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
               {entry.kind === "agent" ? (
                 <AgentGlyph agent={entry.agent} className="size-3 shrink-0" />
               ) : (

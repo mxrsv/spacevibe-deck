@@ -53,8 +53,8 @@ describe("the flush stage stylesheet", () => {
     );
   });
 
-  it("sets the bar's text at the mock's 12px with 12px of air at each end", () => {
-    expect(value(".stage--flush .space-bar__name", "font-size")).toBe("12px");
+  it("sets the bar's text on the type scale's xs step with 12px of air at each end", () => {
+    expect(value(".stage--flush .space-bar__name", "font-size")).toBe("var(--text-xs)");
     expect(value(".stage--flush .space-bar", "margin-left")).toBe("4px");
     expect(value(".stage--flush .stage__strip-actions", "margin-right")).toBe("4px");
   });
@@ -77,7 +77,7 @@ describe("the flush stage stylesheet", () => {
   });
 
   it("switches the top-tab bar, which sits outside the stage, with the same rules", () => {
-    expect(value(":root.shell-frame .tabbar .space-bar__name", "font-size")).toBe("12px");
+    expect(value(":root.shell-frame .tabbar .space-bar__name", "font-size")).toBe("var(--text-xs)");
     expect(value(":root.shell-frame .tabbar .space-bar__space", "font-weight")).toBe("600");
     expect(value(":root.shell-frame .tabbar .tabbar__tabs .tab__label", "display")).toBe("none");
   });

@@ -46,12 +46,12 @@ export function DockSpace({ agents, selection }: DockSpaceProps) {
               className="h-auto w-full justify-start px-2 py-1.5"
               onClick={() => selectRailItem(item, selection)}
             >
-              <span className="grid w-full min-w-0 grid-cols-[10px_minmax(0,1fr)] gap-x-2 gap-y-0.5 text-left">
-                <span className="flex h-[18px] items-center">
+              <span className="grid w-full min-w-0 grid-cols-[10px_minmax(0,1fr)] gap-x-2 text-left">
+                <span className="flex h-5 items-center">
                   <AgentStateMark status={item.status} confidence={item.confidence} />
                 </span>
-                <span className="truncate text-xs font-normal text-foreground">{item.title}</span>
-                <span className="col-start-2 flex min-w-0 items-center gap-1.5 text-2xs font-normal text-muted-foreground">
+                <span className="truncate text-sm font-normal text-foreground">{item.title}</span>
+                <span className="col-start-2 flex min-w-0 items-center gap-1.5 text-xs font-normal text-muted-foreground">
                   {item.entry.kind === "agent" ? (
                     <AgentGlyph agent={item.entry.agent} className="size-3 shrink-0" />
                   ) : null}

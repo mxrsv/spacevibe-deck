@@ -67,7 +67,7 @@ export function ProjectRailHeader({
           class={cn("shrink-0 text-muted-foreground transition-transform", folded && "-rotate-90")}
         />
         {folded ? (
-          <span className="ml-auto flex shrink-0 items-center gap-1.5 text-2xs text-muted-foreground tabular-nums group-hover/item:invisible group-has-[:focus-visible]/item:invisible group-has-[[data-popup-open]]/item:invisible">
+          <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground tabular-nums group-hover/item:invisible group-has-[:focus-visible]/item:invisible group-has-[[data-popup-open]]/item:invisible">
             {rollup === null ? null : (
               <AgentStateMark status={rollup.status} confidence={rollup.confidence} />
             )}

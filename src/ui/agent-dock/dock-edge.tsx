@@ -69,7 +69,7 @@ export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: 
             <AgentStateMark status={item.status} confidence={item.confidence} />
           )}
           {changed === null ? null : (
-            <span aria-hidden="true" className="text-2xs tabular-nums text-foreground">
+            <span aria-hidden="true" className="text-xs tabular-nums text-foreground">
               {changed}
             </span>
           )}

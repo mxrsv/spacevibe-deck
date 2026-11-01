@@ -80,7 +80,7 @@ export function TreeChanges({
           <span className="min-w-0 flex-1 truncate font-mono text-code text-foreground">
             {node.label}
           </span>
-          <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
             {files.length}
           </span>
           <ChangeCounts added={sums.added} removed={sums.removed} />

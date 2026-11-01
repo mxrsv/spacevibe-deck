@@ -85,7 +85,7 @@ export function changeTotals(agent: MockAgent) {
   };
 }
 
-export const SECTION_LABEL = "text-2xs font-medium text-muted-foreground";
+export const SECTION_LABEL = "text-xs font-medium text-muted-foreground";
 
 const STATUS_CLASS: Readonly<Record<MockFileChange["status"], string>> = {
   M: "text-(--term-warn)",
@@ -100,10 +100,10 @@ export function AgentIdentity({ agent }: { readonly agent: MockAgent }) {
     <div className="flex min-w-0 items-center gap-2.5">
       <AgentLogo kind={agent.kind} className="size-5" />
       <div className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate text-xs font-medium text-foreground">
+        <span className="truncate text-sm font-medium text-foreground">
           {AGENT_NAME[agent.kind]}
         </span>
-        <span className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
           <span className="truncate">
             {project.name} / {checkout.branch ?? "no branch"}
           </span>

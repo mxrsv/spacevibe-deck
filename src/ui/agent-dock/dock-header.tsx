@@ -30,10 +30,10 @@ export function DockHeader({ item, closeLabel, closeChord, onClose }: DockHeader
         <div className="flex min-w-0 items-center gap-2.5">
           <AgentGlyph agent={entry.agent} className="size-5 shrink-0" />
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate text-xs font-medium text-foreground">
+            <span className="truncate text-sm font-medium text-foreground">
               {displayAgent(entry.agent)}
             </span>
-            <span className="truncate text-2xs text-muted-foreground">{item.title}</span>
+            <span className="truncate text-xs text-muted-foreground">{item.title}</span>
           </div>
         </div>
       ) : (

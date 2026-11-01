@@ -41,16 +41,14 @@ export function DockSection({ id, title, count, children }: DockSectionProps) {
       <Collapsible open={open} onOpenChange={(next) => setDockSectionOpen(id, next)}>
         <h3 className="sticky top-0 z-10 bg-(--sidebar-bg)">
           <CollapsibleTrigger
-            render={
-              <Button variant="ghost" size="lg" className="w-full justify-start gap-1.5 px-3" />
-            }
+            render={<Button variant="ghost" className="w-full justify-start gap-1.5 px-3" />}
           >
             <DeckIcon icon={SECTION_ICON[id]} class="text-muted-foreground" />
-            <span className="flex-1 text-left text-2xs font-medium text-muted-foreground">
+            <span className="flex-1 text-left text-xs font-medium text-muted-foreground">
               {title}
             </span>
             {count === undefined ? null : (
-              <span className="text-2xs tabular-nums text-foreground">{count}</span>
+              <span className="text-xs tabular-nums text-foreground">{count}</span>
             )}
             {/* `size-3` opts the caret out of the button's 16px rule: a fold mark, not an action. */}
             <DeckIcon

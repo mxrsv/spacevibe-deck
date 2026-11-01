@@ -81,7 +81,7 @@ function ProjectHeader({
         {open ? null : (
           <span
             className={cn(
-              "ml-auto flex shrink-0 items-center gap-1.5 text-2xs text-muted-foreground tabular-nums",
+              "ml-auto flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground tabular-nums",
               "group-hover/item:invisible group-focus-within/item:invisible group-has-[[data-popup-open]]/item:invisible",
             )}
           >

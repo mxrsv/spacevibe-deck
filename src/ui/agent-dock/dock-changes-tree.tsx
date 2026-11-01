@@ -84,7 +84,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         {counts.kind === "counts" ? (
           <ChangeCounts added={counts.added} removed={counts.removed} />
         ) : counts.kind === "binary" ? (
-          <span className="shrink-0 text-2xs text-muted-foreground">binary</span>
+          <span className="shrink-0 text-xs text-muted-foreground">binary</span>
         ) : null}
       </button>
     </>
@@ -117,7 +117,7 @@ function FolderRow({
         <span className="min-w-0 flex-1 truncate font-mono text-code text-foreground">
           {folder.label}
         </span>
-        <span className="shrink-0 text-2xs tabular-nums text-muted-foreground">
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {folder.fileCount}
         </span>
         <ChangeCounts added={folder.added} removed={folder.removed} />
