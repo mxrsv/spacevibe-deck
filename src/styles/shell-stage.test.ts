@@ -23,7 +23,10 @@ describe("the flush stage stylesheet", () => {
     const loose = rules.flatMap((rule) =>
       rule.selectors.filter(
         (selector) =>
-          selector !== prefix && selector !== frame && !selector.startsWith(`${prefix} `),
+          selector !== prefix &&
+          selector !== frame &&
+          !selector.startsWith(`${prefix} `) &&
+          !selector.startsWith(`${frame} `),
       ),
     );
     expect(loose, "a selector without the switch's class changes the old look").toEqual([]);
@@ -71,5 +74,15 @@ describe("the flush stage stylesheet", () => {
     expect(value(".stage--flush .pane-agent-header__message--hidden", "clip-path")).toBe(
       "inset(50%)",
     );
+  });
+
+  it("switches the top-tab bar, which sits outside the stage, with the same rules", () => {
+    expect(value(":root.shell-frame .tabbar .space-bar__name", "font-size")).toBe("12px");
+    expect(value(":root.shell-frame .tabbar .space-bar__space", "font-weight")).toBe("600");
+    expect(value(":root.shell-frame .tabbar .tabbar__tabs .tab__label", "display")).toBe("none");
+  });
+
+  it("lights the seam, not a gutter, when the grip is hovered", () => {
+    expect(value(":root.shell-frame .sidebar-grip::after", "width")).toBe("1px");
   });
 });

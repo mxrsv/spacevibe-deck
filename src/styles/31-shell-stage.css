@@ -35,7 +35,8 @@
    other sheets override it per state (traffic-light inset, caption controls, the collapsed
    column), so the extra 4px sits on the first and last occupant instead of replacing the
    padding those rules compute. */
-.stage--flush .space-bar {
+.stage--flush .space-bar,
+:root.shell-frame .tabbar .space-bar {
   margin-left: 4px;
 }
 
@@ -98,11 +99,13 @@
 /* The browser's and the board's chips are icons. The chip keeps its name for a screen reader
    (`aria-label`) and for a hover (`title`), so the label only costs width; the close button and
    the selection frame are unchanged. At most two such chips exist, so icons stay distinct. */
-.stage--flush .tabbar__tabs .tab__label {
+.stage--flush .tabbar__tabs .tab__label,
+:root.shell-frame .tabbar .tabbar__tabs .tab__label {
   display: none;
 }
 
-.stage--flush .tabbar__tabs .tab {
+.stage--flush .tabbar__tabs .tab,
+:root.shell-frame .tabbar .tabbar__tabs .tab {
   gap: 2px;
   padding: 0 3px 0 5px;
 }
@@ -155,20 +158,44 @@
    `project / branch / space`: project and branch regular and muted, the space in full ink. The
    session crumb is not drawn (space-bar.tsx), so the shrink order in 20-mission-control.css
    still holds for the three that remain. */
-.stage--flush .space-bar__name {
+.stage--flush .space-bar__name,
+:root.shell-frame .tabbar .space-bar__name {
   font-size: 12px;
   font-weight: 400;
 }
 
-.stage--flush .space-bar__name-slot {
+.stage--flush .space-bar__name-slot,
+:root.shell-frame .tabbar .space-bar__name-slot {
   gap: 6px;
 }
 
-.stage--flush .space-bar__space {
+.stage--flush .space-bar__space,
+:root.shell-frame .tabbar .space-bar__space {
   color: var(--text-primary);
+}
+
+.stage--flush .space-bar__space {
   font-weight: 500;
 }
 
-.stage--flush .space-bar__sep {
+/* 600, not the strip's 500: the Windows weight ledger answers a selector by prefixing it with
+   `.window--windows`, which a `:root` selector can never match, so a 500 here would have no
+   Windows decision. 600 is a weight the face has. */
+:root.shell-frame .tabbar .space-bar__space {
+  font-weight: 600;
+}
+
+.stage--flush .space-bar__sep,
+:root.shell-frame .tabbar .space-bar__sep {
   color: var(--text-muted);
+}
+
+/* ── The sidebar grip ─────────────────────────────────────────────────────────
+   The grip sits outside the stage, so it keeps the :root `--stage-gutter` and its hover bar is
+   that wide: with the gutter closed the bar would lie over the left pane's first pixels. The
+   seam is the stage's own 1px left border, so the bar lights that line instead, as the flush
+   divider between panes does. */
+:root.shell-frame .sidebar-grip::after {
+  width: 1px;
+  border-radius: 0;
 }
