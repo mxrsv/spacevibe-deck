@@ -148,6 +148,18 @@ describe("Command Settings frame", () => {
     expect(rowLabels()).toEqual([]);
   });
 
+  it("announces the result count to a screen reader and draws no count on the chips", async () => {
+    await open();
+    const status = byRole("status") as HTMLElement;
+    expect(status.textContent).toBe("");
+    await typeInto(search(), "scrollback");
+    expect(status.textContent).toMatch(/^\d+ results?$/);
+    await typeInto(search(), "zzzzzz");
+    expect(status.textContent).toBe("No results");
+    expect(status.className).toContain("sr-only");
+    expect(chip("Terminal").textContent).toBe("Terminal");
+  });
+
   it("walks rows with the arrows, and Enter goes into the highlighted row's control", async () => {
     await open();
     await typeInto(search(), "font");

@@ -4,7 +4,7 @@ import { initSettings, settingsLoadState } from "../../settings/settings-store";
 import { useNoteAgentListWhileSettingsOpen } from "../../launcher/agent-install-control";
 import { LoadError } from "../controls/load-error";
 import { settingsTarget } from "../settings/settings-focus-store";
-import { AreaChips, Footer, SearchField } from "./command-settings-frame";
+import { AreaChips, Footer, ResultsStatus, SearchField } from "./command-settings-frame";
 import { handleCommandKey } from "./command-settings-keys";
 import { enterLabel, List } from "./command-settings-list";
 import { rowDomId } from "./command-settings-live";
@@ -133,6 +133,7 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
             scopeLabel={scope === null ? null : areaLabel(scope, sources)}
           />
           <AreaChips scope={scope} onChoose={focusSearch} />
+          <ResultsStatus query={query} count={items.filter(isNavigable).length} />
         </header>
         {load.status === "error" ? (
           <LoadError message={load.message} onRetry={() => void initSettings()} />

@@ -77,11 +77,41 @@ export function AreaChips({
     >
       {SETTINGS_CATEGORIES.map((area) => (
         <Tooltip key={area.id}>
-          <TooltipTrigger render={<ToggleGroupItem value={area.id} />}>{area.label}</TooltipTrigger>
+          {/* The trigger's own data-slot would replace the item's, and the item's is what styles and tests find. */}
+          <TooltipTrigger
+            render={<ToggleGroupItem value={area.id} data-slot="toggle-group-item" />}
+          >
+            {area.label}
+          </TooltipTrigger>
           <TooltipContent>{area.description}</TooltipContent>
         </Tooltip>
       ))}
     </ToggleGroup>
+  );
+}
+
+/**
+ * The result count, for a screen reader only: the list itself is the visual answer, and a count
+ * on the chips or a "N matches" line would only repeat it. The region is always mounted so a
+ * change of text is announced.
+ */
+export function ResultsStatus({
+  query,
+  count,
+}: {
+  readonly query: string;
+  readonly count: number;
+}) {
+  const text =
+    query.trim() === ""
+      ? ""
+      : count === 0
+        ? "No results"
+        : `${count} ${count === 1 ? "result" : "results"}`;
+  return (
+    <span role="status" aria-live="polite" className="sr-only">
+      {text}
+    </span>
   );
 }
 
