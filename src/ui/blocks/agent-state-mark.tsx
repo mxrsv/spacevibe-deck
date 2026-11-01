@@ -7,7 +7,9 @@ import type { RailStatus } from "../rail-view-model";
  * the rail, the dock and the stage say a state the same way. A fixed 10px box: geometry never
  * moves between states. Only `working` (a turning ring) and `needs-input` (one ripple) move,
  * and only while they hold. An inferred `needs-input`, `unread` or `done` is drawn hollow.
- * The colours are the mock's; they move onto theme tokens when a region cuts over.
+ * `failed` and the neutral marks read the preset's `destructive` and `muted-foreground`. The preset
+ * has no warning or info role, so the amber of `needs-input` and the sky of `unread` stay the
+ * mock's palette colours until the theme work gives them one.
  */
 export function AgentStateMark({
   status,
@@ -41,7 +43,7 @@ export function AgentStateMark({
           <span
             className={cn(
               "relative size-2 rounded-full",
-              status === "failed" && "bg-red-600 dark:bg-red-500",
+              status === "failed" && "bg-destructive",
               status === "needs-input" &&
                 (hollow
                   ? "border-[1.5px] border-amber-500 dark:border-amber-400"

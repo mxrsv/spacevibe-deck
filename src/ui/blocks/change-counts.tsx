@@ -1,7 +1,8 @@
 /**
  * A change's added and removed line counts (`+12 −3`), as Changes, the dock and the hunk queue
- * show them. `--term-ok` and `--term-err` are the terminal palette's green and red; the layout
- * mock declares them, the app's theme must before a region using this block cuts over.
+ * show them. `--term-ok` and `--term-err` are the terminal palette's green and red: the layout
+ * mock declares them in `mocks.css`, the app on `.agent-dock__column` (27-dock-stacked.css). A
+ * region that uses this block outside the dock declares them on its own root.
  */
 export function ChangeCounts({
   added,
