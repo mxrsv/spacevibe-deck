@@ -15,10 +15,9 @@ Tailwind exists only inside the preset fence (DL-1.6), and each stylesheet that 
 generates only the classes its own `@source` lines scan. The app's stylesheet,
 [`src/ui/preset-entry.css`](../../src/ui/preset-entry.css), scans only the shared controls named
 in [`src/ui/preset.css:22`](../../src/ui/preset.css). Each gallery page adds its own sources:
-[`layout-mocks/mocks.css:5`](../../src/gallery/layout-mocks/mocks.css),
-[`sections/preset-controls-section.css:4`](../../src/gallery/sections/preset-controls-section.css)
-and [`shadcn-preview/preset.css:4`](../../src/gallery/shadcn-preview/preset.css). So a class that
-renders in a gallery page can compile to nothing in the app, and nothing fails: a class that
+[`layout-mocks/mocks.css:5`](../../src/gallery/layout-mocks/mocks.css) and
+[`sections/preset-controls-section.css:4`](../../src/gallery/sections/preset-controls-section.css).
+So a class that renders in a gallery page can compile to nothing in the app, and nothing fails: a class that
 appears only in a shipping file outside those controls leaves its element unstyled. A shipping
 directory that writes Tailwind classes of its own (`src/ui/blocks/`, `src/ui/project-rail/`) needs its
 own `@source` line there **and** an exemption in the "chrome markup" scan of

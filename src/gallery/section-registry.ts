@@ -35,12 +35,6 @@ const PopoversSection = lazy(() =>
 );
 const RowsSection = lazy(() => import("./sections/rows-section").then((m) => m.RowsSection));
 const SeamSection = lazy(() => import("./sections/seam-section").then((m) => m.SeamSection));
-const SettingsExploreSection = lazy(() =>
-  import("./sections/settings-explore").then((m) => m.SettingsExploreSection),
-);
-const SettingsDirectionSection = lazy(() =>
-  import("./sections/settings-direction").then((m) => m.SettingsDirectionSection),
-);
 const ToolbarSection = lazy(() =>
   import("./sections/toolbar-section").then((m) => m.ToolbarSection),
 );
@@ -57,15 +51,8 @@ const UsageReposSection = lazy(() =>
 const LaunchProfilesSection = lazy(() =>
   import("./sections/launch-profiles-section").then((m) => m.LaunchProfilesSection),
 );
-
-const SmallButtonsSection = lazy(() =>
-  import("./sections/small-buttons-section").then((m) => m.SmallButtonsSection),
-);
 const PresetControlsSection = lazy(() =>
   import("./sections/preset-controls-section").then((m) => m.PresetControlsSection),
-);
-const ShadcnDeckSection = lazy(() =>
-  import("./sections/shadcn-deck-section").then((m) => m.ShadcnDeckSection),
 );
 
 export interface GallerySection {
@@ -91,19 +78,9 @@ export interface GallerySection {
  * `window chrome`, next to the shell it cross-checks.
  */
 export const GALLERY_SECTIONS: readonly GallerySection[] = [
-  { id: "shadcn-deck", label: "shadcn · Deck overview", Section: ShadcnDeckSection },
-  /* Registered 2026-10-10: the Settings exploration round (docs/plans/2026-10-04-settings-redesign.md);
-     remove once the owner picks a direction and it is promoted into the real Settings. */
-  { id: "settings-explore", label: "★ settings · exploration", Section: SettingsExploreSection },
   { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
-  {
-    id: "settings-direction",
-    label: "light/dark settings",
-    Section: SettingsDirectionSection,
-  },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
-  { id: "small-buttons", label: "small buttons", Section: SmallButtonsSection },
   { id: "shared-controls", label: "shared controls · Base UI", Section: PresetControlsSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
   { id: "navigation", label: "navigation", Section: NavigationSection },

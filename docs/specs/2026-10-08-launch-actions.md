@@ -250,8 +250,9 @@ None. Questions 1–4 were answered on 2026-10-08 as decisions 10–13.
 
 ## Evidence
 
-- **HTML mock** (not committed): `docs/plans/2026-10-06-navigation-rail-mock/index.html` in
-  the primary checkout (gitignored). In tab 3 `Launch`, the chosen options are
+- **HTML mock** (not committed): moved on 2026-11-01 to the owner's
+  `~/scratch/spacevibe-deck/archive/2026-10-06-navigation-rail-mock/index.html`, outside the repo.
+  In tab 3 `Launch`, the chosen options are
   `Q1 One launcher`, `Q2 Launcher`, `Q3 Click + drag`, `Q6 One row of three`, `P1 Mono`,
   `P2 Popover`, `P3 Before start` and `P4 Removed`. Q1, Q3 and Q6 also show in tab 1. The
   mock is a static specimen: it proves no runtime behaviour or data source.

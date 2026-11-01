@@ -218,8 +218,8 @@ its button.
 
 ## Evidence
 
-- HTML mock, not committed: `docs/plans/2026-10-06-navigation-rail-mock/index.html` in the
-  primary checkout (gitignored; Treatment `D · Recommended`, `Row` → `Badge + quiet logos`),
+- HTML mock, not committed: moved on 2026-11-01 to the owner's
+  `~/scratch/spacevibe-deck/archive/2026-10-06-navigation-rail-mock/index.html`, outside the repo (Treatment `D · Recommended`, `Row` → `Badge + quiet logos`),
   screenshots in its `shots/` (`p1-d.png` is the chosen layout, `p1-row-badgeQ.png` the
   chosen row). It is a static specimen: it
   proves no runtime behaviour, data source or performance.

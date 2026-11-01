@@ -111,8 +111,8 @@ in implementation evidence; do not silently re-resolve `latest` between waves.
 ### Gallery pilot (owner request, 2026-10-21)
 
 Before production migration, the owner requested a broad gallery preview of Deck with the
-selected shadcn/Tailwind system. The [registered specimen](../../src/gallery/sections/shadcn-deck-section.tsx)
-embeds an isolated document with its own upstream reset, tokens, fonts and portals. It shows
+selected shadcn/Tailwind system. The registered specimen `shadcn-deck-section.tsx` (removed 2026-11-01, superseded by the
+layout mock; git history keeps it) embedded an isolated document with its own upstream reset, tokens, fonts and portals. It shows
 Workbench, Settings, Usage and Changes with launcher/menu interactions and light/dark modes.
 Data is illustrative and local to the preview; no host, persistent settings or agent runs.
 The shared controls are real generated components; surrounding screens are proposed gallery
