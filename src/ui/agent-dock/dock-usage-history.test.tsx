@@ -153,6 +153,11 @@ const usage = (): Record<string, string> =>
       row.querySelector("dd")?.textContent ?? "",
     ]),
   );
+/** The note on what the figures cover: the info control's name, which its tooltip repeats. */
+const scopeNote = (): string =>
+  section("Usage")
+    ?.querySelector('button[aria-label$="API prices."], button[aria-label^="Usage is read"]')
+    ?.getAttribute("aria-label") ?? "";
 const historyRows = (): HTMLElement[] => [
   ...(section("History")?.querySelectorAll<HTMLElement>("li button") ?? []),
 ];
@@ -230,7 +235,7 @@ describe("the Usage section", () => {
       "Cost today": "$1.00",
       "Running for": "42m",
     });
-    expect(section("Usage")?.textContent).toContain("Every Claude session in main today");
+    expect(scopeNote()).toContain("Every Claude session in main today");
     await view.unmount();
   });
 
@@ -241,7 +246,7 @@ describe("the Usage section", () => {
     expect(usage()["Tokens today"]).toBe("—");
     expect(usage()["Cost today"]).toBe("—");
     expect(usage()["Running for"]).toBe("42m");
-    expect(section("Usage")?.textContent).toContain("Claude Code and Codex only");
+    expect(scopeNote()).toContain("Claude Code and Codex only");
     await view.unmount();
   });
 
@@ -313,8 +318,8 @@ describe("the Usage section", () => {
 
   it("opens the full usage page from Details", async () => {
     const view = await mount(dock());
-    const details = [...(section("Usage")?.querySelectorAll("button") ?? [])].find((button) =>
-      button.textContent?.includes("Details"),
+    const details = section("Usage")?.querySelector(
+      'button[aria-label="Usage details"]',
     ) as HTMLElement;
     await click(details);
     expect(onOpenDetails).toHaveBeenCalledTimes(1);

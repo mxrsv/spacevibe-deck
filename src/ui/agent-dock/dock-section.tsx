@@ -1,9 +1,27 @@
-import { CaretDown, CaretRight } from "@phosphor-icons/react";
+import {
+  CaretDown,
+  CaretRight,
+  ChartBar,
+  ClockCounterClockwise,
+  FolderSimple,
+  GitDiff,
+  UsersThree,
+  type Icon,
+} from "@phosphor-icons/react";
 import type { ComponentChildren } from "preact";
 import { Button } from "../controls/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 import { dockSectionsOpen, setDockSectionOpen, type DockSectionId } from "./agent-dock-state";
+
+/** The glyph that leads each header, so a folded section is told apart at a glance. */
+const SECTION_ICON: Readonly<Record<DockSectionId, Icon>> = {
+  changes: GitDiff,
+  space: UsersThree,
+  usage: ChartBar,
+  files: FolderSimple,
+  history: ClockCounterClockwise,
+};
 
 export interface DockSectionProps {
   readonly id: DockSectionId;
@@ -14,8 +32,8 @@ export interface DockSectionProps {
 }
 
 /**
- * One fold of the dock's single scroll (LAY-6). Its header stays at the top of the scroll while
- * its body is in view; folding unmounts the body, so a folded Usage polls nothing.
+ * One fold of the dock's single scroll (LAY-6): a glyph, the name, a count and the fold caret. Its
+ * header stays at the top of the scroll while its body is in view; folding unmounts the body, so a folded Usage polls nothing.
  */
 export function DockSection({ id, title, count, children }: DockSectionProps) {
   const open = dockSectionsOpen.value[id];
@@ -28,13 +46,18 @@ export function DockSection({ id, title, count, children }: DockSectionProps) {
               <Button variant="ghost" size="lg" className="w-full justify-start gap-1.5 px-3" />
             }
           >
-            <DeckIcon icon={open ? CaretDown : CaretRight} size={CHROME_ICON} />
+            <DeckIcon icon={SECTION_ICON[id]} size={CHROME_ICON} class="text-muted-foreground" />
             <span className="flex-1 text-left text-2xs font-medium text-muted-foreground">
               {title}
             </span>
             {count === undefined ? null : (
               <span className="text-2xs tabular-nums text-foreground">{count}</span>
             )}
+            <DeckIcon
+              icon={open ? CaretDown : CaretRight}
+              size={CHROME_ICON}
+              class="size-2.5 text-muted-foreground"
+            />
           </CollapsibleTrigger>
         </h3>
         <CollapsibleContent>{children}</CollapsibleContent>
