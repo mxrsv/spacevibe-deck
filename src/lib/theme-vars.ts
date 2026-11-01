@@ -1,5 +1,54 @@
 import { UI_TOKEN_KEYS, type Theme } from "../settings/theme-schema";
-import { deriveChromeColors } from "./derive-colors";
+import { DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
+import { deriveChromeColors, type ChromeColors } from "./derive-colors";
+
+/**
+ * Deck's two default themes wear the preset's own values, which `preset.css` declares and which
+ * carry alpha a theme's opaque hex cannot hold. Every other theme publishes `presetTokens`.
+ */
+const PRESET_NATIVE_THEME_IDS: ReadonlySet<string> = new Set([
+  DECK_DARK_THEME.id,
+  DECK_LIGHT_THEME.id,
+]);
+
+/**
+ * The preset's token names, without their `--`, read from a theme's own roles so the shadcn chrome
+ * and the terminal beside it are one palette (UI-2). The keys are the whole list: the `--chart-*`
+ * ramp is left out because no shipped surface draws a chart.
+ */
+function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<string, string>> {
+  const text = ui["text-primary"];
+  const raised = ui["chrome-1"];
+  const muted = ui["chrome-2"];
+  return {
+    background: ui.bg,
+    foreground: text,
+    card: raised,
+    "card-foreground": text,
+    popover: raised,
+    "popover-foreground": text,
+    primary: ui.accent,
+    "primary-foreground": ui.bg,
+    secondary: muted,
+    "secondary-foreground": text,
+    muted,
+    "muted-foreground": ui["text-muted"],
+    "ui-accent": muted,
+    "accent-foreground": text,
+    destructive: ui.red,
+    border: chrome.hair,
+    input: chrome.hairStrong,
+    ring: ui["text-muted"],
+    sidebar: ui["sidebar-bg"],
+    "sidebar-foreground": text,
+    "sidebar-primary": ui.accent,
+    "sidebar-primary-foreground": ui.bg,
+    "sidebar-accent": muted,
+    "sidebar-accent-foreground": text,
+    "sidebar-border": chrome.sidebarSeam,
+    "sidebar-ring": ui["text-muted"],
+  };
+}
 
 /**
  * Publishes a theme as the chrome CSS custom properties `:root` in
@@ -34,4 +83,11 @@ export function applyThemeVars(rootStyle: CSSStyleDeclaration, theme: Theme): vo
   rootStyle.setProperty("--seam-divider", chrome.seamDivider);
   rootStyle.setProperty("--seam-split", chrome.seamSplit);
   rootStyle.setProperty("--seam-raised", chrome.seamRaised);
+  // Inline beats `.dark` in preset.css, so going back to a default theme has to clear these.
+  const preset = presetTokens(theme, chrome);
+  const native = PRESET_NATIVE_THEME_IDS.has(theme.id);
+  for (const [key, value] of Object.entries(preset)) {
+    if (native) rootStyle.removeProperty(`--${key}`);
+    else rootStyle.setProperty(`--${key}`, value);
+  }
 }

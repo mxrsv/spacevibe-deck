@@ -14,7 +14,7 @@
  * Key casing follows each group's consumer, so no group needs a mapping table:
  * - `ui` keys are the design language's role names, the CSS custom properties
  *   without their `--` (DL §2). A component library's own names (`card`,
- *   `primary`, `ring`) are aliases in one CSS layer, never theme keys.
+ *   `primary`, `ring`) are never theme keys: `applyThemeVars` maps the roles onto them.
  * - `terminal` keys are xterm's `ITheme` names, so the group spreads straight
  *   into the terminal.
  * - `editor` keys follow `terminal`'s camelCase; the syntax keys are Monaco's

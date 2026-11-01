@@ -7,8 +7,7 @@
 
    LAY-10: the panes sit flush on the terminal background, a 1px seam between them, no gap, no
    corner radius, no card. LAY-5: the bar above them carries a 1px border below it and the
-   breadcrumb reads `project / branch / space`. The seam is `--seam-divider`, which is the value
-   the dock header's `--hair` line has, so the two lines meet at `--frame-h`.
+   breadcrumb reads `project / branch / space`. New chrome here reads the preset's tokens (UI-2).
    The cut-over deletes the card geometry in 06-stage-panes.css and this file's selector prefix. */
 
 /* One number, every consumer: `.stage__tabs`, `.stage__surface` and the launch page read the
@@ -26,9 +25,21 @@
   --frame-h: 40px;
 }
 
+/* The frame and the rail are one side surface with the dock, painted from the preset. The stage
+   keeps `--bg`, so the terminal stays the focal plane. */
+:root.shell-frame .deck-frame,
+:root.shell-frame .asr-rail {
+  --asr-cutout: var(--sidebar);
+  background: var(--sidebar);
+}
+
+:root.shell-frame .stage {
+  border-left-color: var(--sidebar-border);
+}
+
 /* The bar above the panes. The strip is border-box, so the seam costs no height. */
 .stage--flush .stage__strip {
-  border-bottom: 1px solid var(--seam-divider);
+  border-bottom: 1px solid var(--border);
 }
 
 /* The mock's `px-3`: 12px of air at each end, text on the preset's `text-xs` step. The strip's own padding is 8px and
@@ -47,13 +58,13 @@
 /* The divider IS the seam: it keeps the drag and its grab zone, and draws one pixel. */
 .stage--flush .split__divider {
   flex-basis: 1px;
-  background: var(--seam-divider);
+  background: var(--border);
   border-radius: 0;
 }
 
 .stage--flush .split__divider:hover,
 .stage--flush .split__divider.is-dragging {
-  background: var(--accent);
+  background: var(--primary);
 }
 
 /* No card: no corner, and the edge is transparent rather than gone so the active pane's border
@@ -75,7 +86,7 @@
    `.pane` (a positioned `::before` would paint under it). */
 .stage--flush .pane-slot.is-active > .pane,
 .stage--flush .pane-slot:focus-within > .pane {
-  border-color: var(--text-muted);
+  border-color: var(--muted-foreground);
 }
 
 .stage--flush .pane-slot.is-active::after,
@@ -84,7 +95,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 2px;
-  background: var(--text-primary);
+  background: var(--foreground);
   pointer-events: none;
 }
 
@@ -119,8 +130,8 @@
   box-sizing: border-box;
   height: 32px;
   padding: 0 12px;
-  background: var(--chrome-2);
-  border-bottom-color: var(--seam-divider);
+  background: var(--muted);
+  border-bottom-color: var(--border);
 }
 
 .stage--flush .pane-agent-header__logo {
@@ -130,7 +141,7 @@
 
 .stage--flush .pane-agent-header__name {
   flex-shrink: 0;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: var(--text-xs);
   font-weight: 500;
 }
@@ -138,7 +149,7 @@
 /* In a split only the focused pane's name is full ink. A lone pane has no `.has-multiple-panes`
    ancestor, and a zoomed pane has left its slot, so both read as focused. */
 .stage--flush .has-multiple-panes .pane-slot:not(.is-active) .pane-agent-header__name {
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 /* The sentence and the state word are text for a screen reader only: the tooltip on the name
@@ -171,7 +182,7 @@
 
 .stage--flush .space-bar__space,
 :root.shell-frame .tabbar .space-bar__space {
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .stage--flush .space-bar__space {
@@ -187,7 +198,7 @@
 
 .stage--flush .space-bar__sep,
 :root.shell-frame .tabbar .space-bar__sep {
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 /* ── The sidebar grip ─────────────────────────────────────────────────────────

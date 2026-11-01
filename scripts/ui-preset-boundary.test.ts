@@ -116,6 +116,15 @@ function chromeCssFiles(): string[] {
   });
 }
 
+/**
+ * The new shell's own stylesheets, keyed on its release switches and painted from the preset (UI-2).
+ * Exempt from the token rule only, so a packaged build's old surfaces still cannot read the preset.
+ */
+const PRESET_READING_SHELL_CSS = new Set([
+  "styles/27-dock-stacked.css",
+  "styles/31-shell-stage.css",
+]);
+
 /** The controls the barrel exports, as paths under `src/`; the rest of `ui/controls/` is chrome. */
 function presetControlFiles(): Set<string> {
   const barrel = readFileSync(join(SRC, "ui/controls/preset-controls.ts"), "utf8");
@@ -280,6 +289,7 @@ describe("the preset leaks nothing into a surface that does not carry it", () =>
     expect(presetTokens.size).toBeGreaterThan(0);
     const usage: string[] = [];
     for (const file of chromeCssFiles()) {
+      if (PRESET_READING_SHELL_CSS.has(posix(relative(SRC, file)))) continue;
       const text = readFileSync(file, "utf8");
       for (const token of presetTokens) {
         if (new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(text))

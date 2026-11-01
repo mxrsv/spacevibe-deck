@@ -59,11 +59,11 @@ in implementation evidence; do not silently re-resolve `latest` between waves.
   Keep its variants, sizing, spacing, typography, colors, border, radius, shadow and state
   treatment. Adapt imports, renderer types, asset paths and portal integration only where
   required by Deck, recording each adaptation. Do not hand-draw a "shadcn-like" replacement.
-- **UI-2 Independent tokens.** Migrated UI reads the preset's own light/dark tokens. Never
-  alias those values to `--bg`, `--fg`, `--text-*`, `--chrome-*`, Deck's radius/type scales,
-  or colors derived from a terminal palette. Namespacing to prevent collisions is allowed;
-  changing the resulting preset appearance is not. Terminal ANSI and editor syntax colors
-  are separate content concerns and retain their stored values and behavior.
+- **UI-2 One palette (owner, 2026-11-02).** Migrated UI reads the preset's tokens. Deck Dark and
+  Deck Light keep the preset's own light/dark values; any other theme publishes those tokens from
+  its own roles, so the chrome and the terminal beside it never disagree. Namespacing to prevent
+  collisions is allowed. Terminal ANSI and editor syntax colors are separate content concerns and
+  retain their stored values and behavior.
 - **UI-3 Controlled coexistence.** Before a surface moves, it keeps its existing appearance
   and behavior. No global reset, selector or colliding variable may restyle it accidentally.
   A migrated surface and its portals must use the same preset, mode, font and reset rules;

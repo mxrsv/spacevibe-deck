@@ -29,6 +29,10 @@ function publishedVars(theme: Theme): ReadonlyMap<string, string> {
     setProperty(name: string, value: string): void {
       written.set(name, value);
     },
+    removeProperty(name: string): string {
+      written.delete(name);
+      return "";
+    },
   } as unknown as CSSStyleDeclaration;
   applyThemeVars(style, theme);
   return written;

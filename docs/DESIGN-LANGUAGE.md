@@ -79,8 +79,10 @@ cites it.
   unchanged. The sections below name what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1,
   DL-4.1, DL-14.3, DL-20.1 and DL-21.3.
   - `.dark` on the root element is the preset's dark mode, so portals follow it.
-  - The preset's tokens never alias a chrome token, and chrome CSS never reads one (UI-2); the
-    preset's accent is declared `--ui-accent` because `--accent` is the chrome's.
+  - Deck Dark and Deck Light wear the preset's own tokens; every other theme publishes them from
+    its roles in [`theme-vars.ts`](../src/lib/theme-vars.ts) (UI-2). Chrome CSS reads them only in
+    the new shell's two stylesheets; the preset's accent is declared `--ui-accent` because
+    `--accent` is the chrome's.
   - A control takes `className`, not `class`; a wrapper is made with `withRef`
     ([`with-ref.ts`](../src/ui/controls/with-ref.ts)) because Preact strips `ref` from a
     function component's props.

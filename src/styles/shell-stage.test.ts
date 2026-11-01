@@ -44,13 +44,11 @@ describe("the flush stage stylesheet", () => {
 
   it("draws the seam between panes with the divider, one pixel wide", () => {
     expect(value(".stage--flush .split__divider", "flex-basis")).toBe("1px");
-    expect(value(".stage--flush .split__divider", "background")).toBe("var(--seam-divider)");
+    expect(value(".stage--flush .split__divider", "background")).toBe("var(--border)");
   });
 
   it("puts a 1px border under the bar above the stage", () => {
-    expect(value(".stage--flush .stage__strip", "border-bottom")).toBe(
-      "1px solid var(--seam-divider)",
-    );
+    expect(value(".stage--flush .stage__strip", "border-bottom")).toBe("1px solid var(--border)");
   });
 
   it("sets the bar's text on the type scale's xs step with 12px of air at each end", () => {
@@ -65,7 +63,7 @@ describe("the flush stage stylesheet", () => {
 
   it("rings a lone pane while the keyboard is inside it", () => {
     expect(value(".stage--flush .pane-slot:focus-within > .pane", "border-color")).toBe(
-      "var(--text-muted)",
+      "var(--muted-foreground)",
     );
     expect(value(".stage--flush .pane-slot:focus-within::after", "height")).toBe("2px");
   });

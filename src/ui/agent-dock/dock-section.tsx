@@ -39,7 +39,7 @@ export function DockSection({ id, title, count, children }: DockSectionProps) {
   return (
     <section aria-label={title} className="border-b">
       <Collapsible open={open} onOpenChange={(next) => setDockSectionOpen(id, next)}>
-        <h3 className="sticky top-0 z-10 bg-(--sidebar-bg)">
+        <h3 className="sticky top-0 z-10 bg-sidebar">
           <CollapsibleTrigger
             render={<Button variant="ghost" className="w-full justify-start gap-1.5 px-3" />}
           >

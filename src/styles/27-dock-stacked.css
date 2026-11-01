@@ -4,16 +4,16 @@
    slide-over, `is-open`, and the reduced-motion and usage-page `inert` rules keyed on that class.
    This file repaints it. The rules sit here, unlayered, because the Tailwind utilities live in a
    cascade layer and lose to 14-dock.css's unlayered `background` and `border-left`.
-   LAY-10: the dock shares the rail's surface and parts from the stage with one opaque seam,
-   the same `--sidebar-seam` the rail's own edge draws (02-shell.css, DL-2.3). */
+   LAY-10: the dock shares the rail's preset surface (31-shell-stage.css) and parts from the stage
+   with the preset's sidebar border. */
 .dock-panel.agent-dock {
-  background: var(--sidebar-bg);
-  border-left: 1px solid var(--sidebar-seam);
+  background: var(--sidebar);
+  border-left: 1px solid var(--sidebar-border);
 }
 
 /* The column also stands alone inside the narrow-window sheet, where there is no `.dock-panel`. */
 .agent-dock__column {
-  background: var(--sidebar-bg);
+  background: var(--sidebar);
   /* `ChangeCounts` and the Changes rows read the terminal's green, red and amber as
      `--term-ok`, `--term-err` and `--term-warn`, which only the layout mock declares. In the app
      they are the active theme's own role inks (DL-3.2's diff colours), so a theme change reaches
@@ -37,5 +37,5 @@
   flex-shrink: 0;
   height: var(--frame-h);
   box-sizing: border-box;
-  border-bottom: 1px solid var(--hair);
+  border-bottom: 1px solid var(--sidebar-border);
 }
