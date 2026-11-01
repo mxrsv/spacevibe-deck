@@ -19,7 +19,7 @@ vi.mock("../../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
-import { activeWorkspace } from "../../files/file-surface-store";
+import { activeWorkspace, dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
 import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import {
@@ -261,11 +261,10 @@ describe("the stacked dock in a wide window", () => {
     await view.unmount();
   });
 
-  it("is at rest only while entered, and has no resize grip", async () => {
+  it("is at rest only while entered", async () => {
     const view = await mount(dock({ entered: false }));
     const root = document.body.querySelector("aside") as HTMLElement;
     expect(root.classList.contains("is-open")).toBe(false);
-    expect(root.querySelector('[role="separator"]')).toBeNull();
     await view.update(dock({ entered: true }));
     expect(root.classList.contains("is-open")).toBe(true);
     await view.unmount();
@@ -296,6 +295,61 @@ describe("the stacked dock in a wide window", () => {
     });
     const view = await mount(dock());
     expect(trigger("History").getAttribute("aria-expanded")).toBe("true");
+    await view.unmount();
+  });
+});
+
+async function dragGripEnd(): Promise<void> {
+  const grip = document.body.querySelector<HTMLElement>('[role="separator"]') as HTMLElement;
+  await act(async () => {
+    grip.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true }));
+  });
+}
+
+/** Press the grip, move the pointer by `dx`, and optionally release; the way a drag arrives. */
+async function dragGrip(dx: number, release: boolean): Promise<void> {
+  const grip = document.body.querySelector<HTMLElement>('[role="separator"]') as HTMLElement;
+  // jsdom does not implement pointer capture.
+  grip.setPointerCapture = vi.fn();
+  grip.releasePointerCapture = vi.fn();
+  const fire = async (type: string, clientX: number): Promise<void> => {
+    await act(async () => {
+      grip.dispatchEvent(new PointerEvent(type, { clientX, pointerId: 1, bubbles: true }));
+    });
+  };
+  await fire("pointerdown", 1000);
+  await fire("pointermove", 1000 + dx);
+  if (release) {
+    await fire("pointerup", 1000 + dx);
+  }
+}
+
+describe("the stacked dock's resize grip", () => {
+  beforeEach(async () => {
+    await resizeTo(1440);
+    dockWidthLive.value = null;
+    dockCollapseArmed.value = false;
+  });
+
+  it("widens the column from its 320px rest, follows the pointer, and writes one width on release", async () => {
+    const view = await mount(dock());
+    await dragGrip(-100, false);
+    // Dragging left widens it: 320 + 100, held live and not yet written.
+    expect(dockWidthLive.value).toBe(420);
+    expect(settings.value.dockWidth).toBe(DEFAULT_SETTINGS.dockWidth);
+    await dragGripEnd();
+    expect(dockWidthLive.value).toBeNull();
+    expect(settings.value.dockWidth).toBe(420);
+    await view.unmount();
+  });
+
+  it("hides the dock, writing no width, when pulled past the floor", async () => {
+    const onClose = vi.fn();
+    const view = await mount(dock({ onClose }));
+    await dragGrip(150, true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(settings.value.dockWidth).toBe(DEFAULT_SETTINGS.dockWidth);
+    expect(dockWidthLive.value).toBeNull();
     await view.unmount();
   });
 });
@@ -405,6 +459,16 @@ describe("a section header", () => {
 
 describe("the stacked dock under 1360px", () => {
   beforeEach(() => resizeTo(1000));
+
+  it("has no resize grip, and its own control hides the dock", async () => {
+    const onClose = vi.fn();
+    const view = await mount(dock({ onClose }));
+    expect(document.body.querySelector('[role="separator"]')).toBeNull();
+    await click(named("Hide the side panel") as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(dockSheetOpen.value).toBe(false);
+    await view.unmount();
+  });
 
   it("is a handle: no section, no sheet, and the browser is not asked to yield", async () => {
     const view = await mount(dock());

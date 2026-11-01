@@ -1,16 +1,19 @@
-import { SidebarSimple } from "@phosphor-icons/react";
+import { SidebarSimple, X } from "@phosphor-icons/react";
 import { AgentStateMark } from "../blocks/agent-state-mark";
 import { displayAgent } from "../agent-rail-card-model";
 import { Button } from "../controls/button";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "../controls/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
+import { shortcutLabel } from "../../lib/shortcut-label";
+import { Kbd } from "../controls/kbd";
 import { statusLabel } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
 import { dockSheetOpen, takeAfterSheetClose } from "./agent-dock-state";
 import { DockColumn, type DockColumnProps } from "./dock-column";
 
 const OPEN_LABEL = "Open the side panel";
+const HIDE_LABEL = "Hide the side panel";
 
 /** The handle's accessible name: the way in, and which agent it would show. */
 function handleLabel(item: RailItem | null, changed: number | null): string {
@@ -25,16 +28,20 @@ function handleLabel(item: RailItem | null, changed: number | null): string {
 type DockEdgeProps = Pick<
   DockColumnProps,
   "item" | "space" | "selection" | "root" | "cwd" | "bodies"
->;
+> & {
+  /** Hides the whole dock, as the toggle does: the sheet's own control closes the sheet only. */
+  readonly onHide: () => void;
+};
 
 /**
  * The narrow rule (LAY-9, OD-4): under 1360px the dock is a 32px handle, and opening it draws the
  * same column in a sheet over the stage with its scrim. Escape or the scrim closes it and focus
  * returns to the handle. The handle is the sheet's trigger, so Base UI owns that return.
  *
- * The sheet's own header control closes the sheet only; hiding the dock stays the toggle's job.
+ * The sheet's own header control closes the sheet only; the handle's own "x" hides the dock, through
+ * the same action as the toggle, so a narrow window needs no chord to put the column away.
  */
-export function DockEdge({ item, space, selection, root, cwd, bodies }: DockEdgeProps) {
+export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: DockEdgeProps) {
   const changed = bodies.changes?.count(root) ?? null;
   const setOpen = (open: boolean): void => {
     dockSheetOpen.value = open;
@@ -67,6 +74,25 @@ export function DockEdge({ item, space, selection, root, cwd, bodies }: DockEdge
             </span>
           )}
         </div>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="mt-auto mb-2"
+                aria-label={HIDE_LABEL}
+                onClick={onHide}
+              />
+            }
+          >
+            <DeckIcon icon={X} size={ROW_ICON} />
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            {HIDE_LABEL}
+            <Kbd>{shortcutLabel("toggle-dock")}</Kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
       <SheetContent
         showCloseButton={false}

@@ -1,13 +1,15 @@
 /**
  * Where the stacked dock sits and how wide it is (spec LAY-9, OD-4).
  *
- * The column is a fixed 320px with no resize grip. Under 1360px of window width it shrinks to a
- * 32px edge handle, and opening it draws the same column in a sheet over the stage. The window
- * width is read through one signal, and `App` reads only the boolean derived from it, so a window
- * drag re-renders `App` when the width crosses the threshold and not on every pixel.
+ * The column rests at 320px and resizes by the same grip as the tabbed dock (`DockResizeGrip`).
+ * Under 1360px of window width it shrinks to a 32px edge handle, and opening it draws the same
+ * column in a sheet over the stage. The window width is read through one signal, and `App` reads
+ * only the boolean derived from it, so a window drag re-renders `App` when the width crosses the
+ * threshold and not on every pixel.
  */
 import { computed, signal } from "@preact/signals";
 import { isReleaseSwitchEnabled } from "../../lib/release-switches";
+import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { rendererReleaseSwitches } from "../../terminal/action-availability";
 
 export const AGENT_DOCK_WIDTH = 320;
@@ -31,11 +33,19 @@ export const dockNarrow = computed(() => windowWidth.value < AGENT_DOCK_NARROW_B
 
 /**
  * The width the stage and the diff column leave for the dock (`--dock-w`). With the switch off it
- * is the stored width, untouched; with it on the stored `dockWidth` is ignored, not rewritten.
+ * is the live drag width, else the stored one, untouched. With it on, the column rests at 320px
+ * while the stored width is still the legacy default (420, which nobody chose); a width the user
+ * dragged to is honoured. The live width wins during a drag, so the column follows the pointer.
  */
-export function dockStageWidth(storedWidth: number): number {
+export function dockStageWidth(storedWidth: number, liveWidth: number | null = null): number {
   if (!agentDockEnabled()) {
-    return storedWidth;
+    return liveWidth ?? storedWidth;
   }
-  return dockNarrow.value ? AGENT_DOCK_EDGE_WIDTH : AGENT_DOCK_WIDTH;
+  if (dockNarrow.value) {
+    return AGENT_DOCK_EDGE_WIDTH;
+  }
+  if (liveWidth !== null) {
+    return liveWidth;
+  }
+  return storedWidth === DEFAULT_SETTINGS.dockWidth ? AGENT_DOCK_WIDTH : storedWidth;
 }

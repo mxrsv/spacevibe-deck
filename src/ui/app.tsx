@@ -19,8 +19,6 @@ import { QUIT_COPY, WINDOW_CLOSE_COPY, type ConfirmCopy } from "../terminal/clos
 import {
   flushSettingsSave,
   initSettings,
-  openDockTab,
-  revealDockTab,
   settings,
   settingsLoadState,
   updateSettings,
@@ -224,6 +222,7 @@ import { DockPanel } from "./dock/dock-panel";
 import { AgentDock } from "./agent-dock/agent-dock";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
 import { dockSheetOpen, setDockSectionOpen } from "./agent-dock/agent-dock-state";
+import { dockShows, openDockTab, revealDockTab } from "./agent-dock/dock-reveal";
 import { DockChanges } from "./agent-dock/dock-changes";
 import { DockHistory } from "./agent-dock/dock-history";
 import { DockUsage } from "./agent-dock/dock-usage";
@@ -342,7 +341,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       canFocus: () =>
         agentLaunchPage.request.value === null &&
         settings.value.dockOpen &&
-        settings.value.dockTab === "explorer",
+        dockShows("explorer", settings.value.dockTab),
       onSurfacesChanged: () => tabsRef.current?.notifySurfacesChanged(),
     });
   }
@@ -801,12 +800,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         dockVisible({
           dockOpen: settings.value.dockOpen,
           boardOpen: boardOpen.value,
-        }) && resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "explorer",
+        }) &&
+        dockShows("explorer", resolveDockTab(settings.value.dockTab, sessionsSupported.value)),
       usageVisible: () =>
         dockVisible({
           dockOpen: settings.value.dockOpen,
           boardOpen: boardOpen.value,
-        }) && resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "usage",
+        }) && dockShows("usage", resolveDockTab(settings.value.dockTab, sessionsSupported.value)),
     });
     if (updatePreview === null) {
       // Read the previous run's breadcrumb before starting a new check: if the
@@ -2120,10 +2120,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     });
 
   /**
-   * Live drag width while resizing, the persisted setting otherwise. The stacked dock is a fixed
-   * column with no grip: its width replaces both and the stored setting is left as it was.
+   * Live drag width while resizing, the persisted setting otherwise. The stacked dock rests at
+   * 320px until the user drags it, and is a 32px handle in a narrow window (`dockStageWidth`).
    */
-  const dockWidth = (): number => dockStageWidth(dockWidthLive.value ?? settings.value.dockWidth);
+  const dockWidth = (): number => dockStageWidth(settings.value.dockWidth, dockWidthLive.value);
 
   /**
    * The tab the dock actually shows: the stored one, re-checked against

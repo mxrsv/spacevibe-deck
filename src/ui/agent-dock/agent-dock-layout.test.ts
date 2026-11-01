@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 import {
   AGENT_DOCK_EDGE_WIDTH,
@@ -20,7 +21,7 @@ function resizeTo(width: number): void {
   window.dispatchEvent(new Event("resize"));
 }
 
-const STORED = 420;
+const STORED = 400;
 
 beforeEach(() => resizeTo(1440));
 
@@ -41,11 +42,21 @@ describe("the width the stage leaves for the dock", () => {
     expect(dockStageWidth(STORED)).toBe(STORED);
   });
 
-  it("is a fixed 320px with the switch on and room for it, whatever width is stored", () => {
+  it("rests at 320px with the switch on while the stored width is still the default", () => {
     pinHost(true);
-    expect(dockStageWidth(STORED)).toBe(AGENT_DOCK_WIDTH);
-    expect(dockStageWidth(260)).toBe(AGENT_DOCK_WIDTH);
+    expect(dockStageWidth(DEFAULT_SETTINGS.dockWidth)).toBe(AGENT_DOCK_WIDTH);
     expect(AGENT_DOCK_WIDTH).toBe(320);
+  });
+
+  it("honours a width the user dragged to, and follows the pointer during a drag", () => {
+    pinHost(true);
+    expect(dockStageWidth(480)).toBe(480);
+    expect(dockStageWidth(DEFAULT_SETTINGS.dockWidth, 520)).toBe(520);
+  });
+
+  it("follows the pointer in the legacy dock too, with the switch off", () => {
+    pinHost(false);
+    expect(dockStageWidth(STORED, 520)).toBe(520);
   });
 
   it("shrinks to the 32px handle under 1360px and grows back at 1360px", () => {
@@ -53,10 +64,11 @@ describe("the width the stage leaves for the dock", () => {
     resizeTo(AGENT_DOCK_NARROW_BELOW - 1);
     expect(dockNarrow.value).toBe(true);
     expect(dockStageWidth(STORED)).toBe(AGENT_DOCK_EDGE_WIDTH);
+    expect(dockStageWidth(STORED, 500)).toBe(AGENT_DOCK_EDGE_WIDTH);
     expect(AGENT_DOCK_EDGE_WIDTH).toBe(32);
 
     resizeTo(AGENT_DOCK_NARROW_BELOW);
     expect(dockNarrow.value).toBe(false);
-    expect(dockStageWidth(STORED)).toBe(AGENT_DOCK_WIDTH);
+    expect(dockStageWidth(DEFAULT_SETTINGS.dockWidth)).toBe(AGENT_DOCK_WIDTH);
   });
 });
