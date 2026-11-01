@@ -18,6 +18,7 @@ import { Switch } from "../controls/switch";
 import { AgentLaunchFlags } from "../settings/agent-launch-flags";
 import { AgentMark, CommandLine, RuntimeSettings } from "../settings/launch-profile-editor";
 import { agentRowData, type AgentRowData } from "./command-settings-agents";
+import { CustomAgentDetails } from "./command-settings-identities";
 import { RowReset, RowShell } from "./command-settings-live-row";
 
 /** What the row says instead of the command while the agent is not simply ready. */
@@ -101,6 +102,7 @@ function AgentDetails({ data, locked }: { readonly data: AgentRowData; readonly 
           />
         </DetailRow>
       )}
+      {data.custom === null ? null : <CustomAgentDetails agent={data.custom} locked={locked} />}
       {agent === null ? null : (
         <div className="settings-screen__doc--studio">
           <div className="settings-screen__fields settings-screen__fields--studio">

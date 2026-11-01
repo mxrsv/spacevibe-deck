@@ -95,10 +95,10 @@ describe("the Agents area", () => {
       expect(control(agent.id, `${agent.label} availability`).getAttribute("role")).toBe("switch");
     }
     expect(rowOf("setting:quickAgentIds")?.textContent).toContain("pinned");
-    // The legacy pieces stay reachable: add a command, add an agent, token usage.
+    // The forms no row can draw are rows of their own: add a command, add an agent, token usage.
     expect(document.querySelector('input[aria-label="Add command"]')).not.toBeNull();
-    expect(document.body.textContent).toContain("Add agent");
-    expect(document.body.textContent).toContain("Token usage");
+    expect(document.querySelector('input[aria-label="New agent name"]')).not.toBeNull();
+    expect(document.querySelector('button[aria-label="Open token usage"]')).not.toBeNull();
   });
 
   it("reads honestly before detection answers, and for an agent that is not on this machine", async () => {
@@ -129,7 +129,9 @@ describe("the Agents area", () => {
     await configure("custom:aider", "Aider");
     expect(control("custom:aider", "Aider pinned")).not.toBeNull();
     expect(control("custom:aider", "Aider signals")).toBeNull();
-    expect(document.querySelector('input[aria-label="Command for Aider"]')).toBeNull();
+    // Its command is its identity (edited under the row), not a launch preset with flags.
+    expect(document.querySelector('[data-runtime-agent="custom:aider"]')).toBeNull();
+    expect(document.querySelector(".lp-launch-flags")).toBeNull();
   });
 
   it("forces a full probe on Refresh", async () => {

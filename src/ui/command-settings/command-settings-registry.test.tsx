@@ -76,7 +76,7 @@ const EVIDENCE: Readonly<Record<string, () => boolean>> = {
   agentRuntimeDefaults: present('[aria-label="Default effort for Claude Code"]'),
   // The forms no row can draw, mounted in place.
   launchProfiles: present('input[aria-label="Add command"]'),
-  customAgents: present('section[aria-label="Agent identities"]'),
+  customAgents: present('input[aria-label="New agent command"]'),
 };
 
 const pagedKeys = Object.entries(SETTINGS_REGISTRY)
