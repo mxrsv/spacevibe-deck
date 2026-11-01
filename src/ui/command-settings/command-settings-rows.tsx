@@ -7,15 +7,17 @@ import { Button } from "../controls/button";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { LogoRow } from "../controls/logo-row";
 import { AppearancePreview } from "../settings/appearance-preview";
-import { AddCommandRow } from "../settings/launch-profile-editor";
-import { AgentIdentities, AgentUsage } from "../settings/sections/agents-section";
+import { AgentIdentities } from "../settings/sections/agents-section";
 import { PageResetBar } from "../settings/page-reset-bar";
 import { SETTINGS_CATEGORIES } from "../settings/settings-categories";
 import { SettingsGroup } from "../settings/settings-group";
 import { ThemeModeSelector } from "../settings/theme-mode-selector";
 import { AboutRows } from "./command-settings-about";
+import { AddCommandRow } from "./command-settings-add-command";
 import { AgentsRefresh } from "./command-settings-agent-row";
+import { PrivacyRow } from "./command-settings-privacy";
 import { ResetRows } from "./command-settings-reset";
+import { UsageRow } from "./command-settings-usage";
 import { rowDomId } from "./command-settings-live";
 import { commandActiveKey } from "./command-settings-state";
 import type { LegacyPiece } from "./command-settings-view";
@@ -192,9 +194,12 @@ export function SectionMount({ area }: { readonly area: CommandAreaId }) {
 export function PieceMount({
   area,
   piece,
+  locked,
 }: {
   readonly area: CommandAreaId;
   readonly piece: LegacyPiece;
+  /** The settings snapshot is still loading. */
+  readonly locked: boolean;
 }) {
   switch (piece) {
     case "reset":
@@ -233,11 +238,7 @@ export function PieceMount({
     case "refresh":
       return <AgentsRefresh />;
     case "commands":
-      return (
-        <LegacyBox area={area} label="Commands">
-          <AddCommandRow />
-        </LegacyBox>
-      );
+      return <AddCommandRow locked={locked} />;
     case "identities":
       return (
         <LegacyBox area={area} label="Agent identities">
@@ -249,10 +250,8 @@ export function PieceMount({
     case "resets":
       return <ResetRows />;
     case "usage":
-      return (
-        <LegacyBox area={area} label="Usage">
-          <AgentUsage />
-        </LegacyBox>
-      );
+      return <UsageRow />;
+    case "privacy":
+      return <PrivacyRow open />;
   }
 }

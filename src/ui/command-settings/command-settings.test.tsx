@@ -190,11 +190,20 @@ describe("Command Settings frame", () => {
     expect(rowLabels()).toEqual([]);
   });
 
-  it("mounts the legacy section of an area no row edits yet", async () => {
+  it("draws Privacy as one always-on row whose disclosure is open in its own area", async () => {
     await open();
     await clickIn(chip("Privacy"));
-    expect(document.querySelector('section[aria-label="Privacy"]')).not.toBeNull();
-    expect(rowLabels()).toEqual([]);
+    const row = document.getElementById("command-row-piece:privacy:analytics") as HTMLElement;
+    expect(row.textContent).toContain("Usage analytics");
+    expect(row.textContent).toContain("Always on");
+    // The disclosure is the section's own copy, unabridged, and a press on the row's caret folds it.
+    expect(row.textContent).toContain("Packaged Electron builds also send crash and error reports");
+    expect(row.textContent).toContain("Read the full privacy notice");
+    const caret = row.querySelector('[aria-label="What is sent"]') as HTMLElement;
+    expect(caret.getAttribute("aria-expanded")).toBe("true");
+    await clickIn(caret);
+    expect(row.textContent).not.toContain("Read the full privacy notice");
+    expect(rowLabels()).toEqual(["Usage analytics"]);
   });
 
   it("returns focus to where it was once it closes with nothing else holding it", async () => {

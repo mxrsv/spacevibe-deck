@@ -124,9 +124,9 @@ describe("the sentence an attention row reads as", () => {
 });
 
 describe("the list for a query and a scope", () => {
-  it("is the area's own section for an area no row edits yet", () => {
+  it("is the Privacy row for an area no setting row edits", () => {
     expect(commandListItems("", "privacy", commandSources())).toEqual([
-      { type: "section", key: "section:privacy", area: "privacy" },
+      { type: "piece", key: "piece:privacy:privacy", area: "privacy", piece: "privacy" },
     ]);
     expect(commandListItems("   ", "privacy", commandSources())).toHaveLength(1);
   });

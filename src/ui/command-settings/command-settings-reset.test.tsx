@@ -102,9 +102,7 @@ describe("the Reset area", () => {
     await open();
     const row = resetButton("Reset layout").closest("li");
     expect(row?.textContent).not.toContain("Sidebar, dock and rail order");
-    expect(row?.querySelector('[title="Sidebar, dock and rail order"]')?.textContent).toBe(
-      "Reset layout",
-    );
+    expect(row?.querySelector('[data-slot="tooltip-trigger"]')?.textContent).toBe("Reset layout");
   });
 
   it("asks first, names what goes and what stays, and resets only preferences", async () => {

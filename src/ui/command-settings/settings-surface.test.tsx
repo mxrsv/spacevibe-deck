@@ -98,11 +98,11 @@ describe("Settings entrance with the commandSettings switch on", () => {
     expect(document.querySelector(".settings-screen")).toBeNull();
   });
 
-  it("scopes to the page's area and mounts its section when no row edits the page", async () => {
+  it("scopes to the page's area and draws its row when no setting row edits the page", async () => {
     await mount(<Entrance />);
     await openAt("privacy");
     expect(badge()).toBe("Privacy");
-    expect(document.querySelector('section[aria-label="Privacy"]')).not.toBeNull();
+    expect(document.getElementById("command-row-piece:privacy:analytics")).not.toBeNull();
   });
 
   it("scopes to the area and makes the named row the active one, scrolled into view", async () => {

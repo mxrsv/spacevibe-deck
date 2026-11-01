@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../controls/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { applyReset, resetPromptOpen } from "../settings/confirm-reset";
 import { RESET_ROWS } from "../settings/sections/reset-section";
 import { RowShell } from "./command-settings-live-row";
@@ -74,7 +75,12 @@ export function ResetRows() {
             itemKey={`reset:${row.scope}`}
             active={false}
             changed={false}
-            label={<span title={row.desc}>{row.label}</span>}
+            label={
+              <Tooltip>
+                <TooltipTrigger render={<span className="truncate" />}>{row.label}</TooltipTrigger>
+                <TooltipContent>{row.desc}</TooltipContent>
+              </Tooltip>
+            }
             crumb={null}
             reset={null}
             control={

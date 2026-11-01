@@ -124,7 +124,9 @@ export function List({ items, active, sources, crumbs, locked, focusSearch }: Li
           case "section":
             return <SectionMount key={item.key} area={item.area} />;
           case "piece":
-            return <PieceMount key={item.key} area={item.area} piece={item.piece} />;
+            return (
+              <PieceMount key={item.key} area={item.area} piece={item.piece} locked={locked} />
+            );
           case "empty":
             return (
               <EmptyRow
