@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import type { AgentRailView } from "../agent-rail-model";
+import type { AgentRailView, RailWorktreeGroup } from "../agent-rail-model";
 import { Button } from "../controls/button";
 import { buildRailView } from "../rail-view-model";
 import {
@@ -23,6 +23,17 @@ import {
 
 /** While a search is set no project is folded: every one with a match shows it. */
 const NO_FOLDS: ReadonlySet<string> = new Set();
+
+/** A repository can stand as a live cluster and a remembered twin; the project is both. */
+function checkoutsByProject(
+  view: AgentRailView,
+): ReadonlyMap<string, readonly RailWorktreeGroup[]> {
+  const byKey = new Map<string, RailWorktreeGroup[]>();
+  for (const cluster of view.stream) {
+    byKey.set(cluster.orderKey, [...(byKey.get(cluster.orderKey) ?? []), ...cluster.worktrees]);
+  }
+  return byKey;
+}
 
 export interface ProjectRailProps extends RailSelection, ProjectDeps {
   /** The view `AgentRail` already builds, so the two rails cannot disagree about it. */
@@ -111,6 +122,8 @@ export function ProjectRail({ view, onFocusPane, onSelectTab, ...deps }: Project
     selection: { onFocusPane, onSelectTab },
     deps,
     projects: byProject ? projectCommandsFor(model.groups, view.stream, deps) : new Map(),
+    checkouts: checkoutsByProject(view),
+    searching,
   };
   // A row that archived, hid or closed took the keyboard with it: hand it to a neighbour.
   useEffect(recoverRailFocus);

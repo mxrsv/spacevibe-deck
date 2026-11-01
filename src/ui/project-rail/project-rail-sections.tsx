@@ -1,4 +1,7 @@
+import type { RailWorktreeGroup } from "../agent-rail-model";
 import type { RailGroup, RailItem } from "../rail-view-model";
+import { focusCheckout } from "../worktree-card";
+import { ProjectRailCheckout } from "./project-rail-checkout";
 import { rowCommands } from "./project-rail-commands";
 import { ProjectRailHeader } from "./project-rail-header";
 import { selectRailItem, type RailSelection } from "./project-rail-model";
@@ -17,6 +20,10 @@ export interface RailRowEnv {
   readonly deps: ProjectDeps;
   /** Each shown project's header commands, by project key. */
   readonly projects: ReadonlyMap<string, ProjectCommands>;
+  /** Each project's checkouts in the order the shipped rail drew them, rowless ones included. */
+  readonly checkouts: ReadonlyMap<string, readonly RailWorktreeGroup[]>;
+  /** While a search is set the list shows matches only: no checkout line stands in for none. */
+  readonly searching: boolean;
 }
 
 export function RailRows({
@@ -50,6 +57,18 @@ export function RailRows({
   );
 }
 
+/**
+ * Checkouts with nothing open, in a project that has several. Their rows would be the only
+ * way to see them, so each gets a line under the list (a project with one checkout, or a
+ * search, shows none).
+ */
+function rowlessCheckouts(group: RailGroup, env: RailRowEnv): readonly RailWorktreeGroup[] {
+  const all = env.checkouts.get(group.key) ?? [];
+  return env.searching || all.length < 2
+    ? []
+    : all.filter((checkout) => checkout.entries.length === 0);
+}
+
 /** One project: its header, then its rows unless it is folded. */
 export function ProjectSection({
   group,
@@ -60,6 +79,19 @@ export function ProjectSection({
   readonly folded: boolean;
   readonly env: RailRowEnv;
 }) {
+  const { onFocusPane, onSelectTab } = env.selection;
+  const rowless = rowlessCheckouts(group, env);
+  // As the shipped header: a press focuses the project (its active checkout, else the first
+  // with something open) and then folds or unfolds it.
+  const focusProject = (): void => {
+    const owned = env.checkouts.get(group.key) ?? [];
+    const target =
+      owned.find((checkout) => checkout.active) ??
+      owned.find((checkout) => checkout.entries.length > 0);
+    if (target !== undefined) {
+      focusCheckout(target, onFocusPane, onSelectTab);
+    }
+  };
   return (
     <section aria-label={group.label}>
       <ProjectRailHeader
@@ -68,10 +100,26 @@ export function ProjectSection({
         commands={env.projects.get(group.key) as ProjectCommands}
         active={env.activeId === `project:${group.key}`}
         agentDisabled={env.deps.agentDisabled}
-        onToggle={() => toggleProjectFolded(group.key)}
+        onToggle={() => {
+          focusProject();
+          toggleProjectFolded(group.key);
+        }}
       />
       {folded ? null : <RailRows items={group.items} env={env} named={false} />}
-      {!folded && group.items.length === 0 ? (
+      {folded
+        ? null
+        : rowless.map((checkout) => (
+            <ProjectRailCheckout
+              key={checkout.key}
+              project={group.label}
+              checkout={checkout}
+              active={env.activeId === `checkout:${checkout.key}`}
+              actions={env.deps.cardActions}
+              onFocusPane={onFocusPane}
+              onSelectTab={onSelectTab}
+            />
+          ))}
+      {!folded && group.items.length === 0 && rowless.length === 0 ? (
         <p className="px-5 py-2 text-xs text-muted-foreground">No sessions</p>
       ) : null}
     </section>

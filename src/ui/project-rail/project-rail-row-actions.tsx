@@ -6,6 +6,7 @@ import {
   FolderOpen,
   GitBranch,
   PencilSimple,
+  Plus,
   PushPin,
   PushPinSlash,
   X,
@@ -18,9 +19,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../controls/dropdown-menu";
 import type { RowCommands } from "./project-rail-commands";
+import { ProjectRailCheckoutRows } from "./project-rail-checkout";
 import { MenuEntry, RailPopupGuard, REVEAL, Tip } from "./project-rail-menu-parts";
 import { recoverRailFocus } from "./project-rail-focus";
 
@@ -155,6 +160,17 @@ export function ProjectRailRowActions({
             <MenuEntry icon={FolderOpen} onClick={commands.openFolder}>
               Open in {commands.openFolderLabel}
             </MenuEntry>
+          )}
+          {commands.checkoutActions.length === 0 ? null : (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <DeckIcon icon={Plus} size={ROW_ICON} />
+                New here
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <ProjectRailCheckoutRows groups={commands.checkoutActions} />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           )}
           <DropdownMenuSeparator />
           <MenuEntry icon={archiveIcon} onClick={commands.archive}>

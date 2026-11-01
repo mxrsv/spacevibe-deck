@@ -5,8 +5,9 @@
  * Nothing here decides how a tab closes or renames (R4); it only calls the callbacks.
  */
 import { writeText } from "../../host/shell-host";
+import { subjectOf } from "../agent-rail-card-model";
 import type { RailItem } from "../rail-view-model";
-import type { CardActions } from "../worktree-card-menus";
+import { actionGroups, type CardActions } from "../worktree-card-menus";
 import { archiveItem, togglePin, unarchiveItem } from "./project-rail-state";
 
 /** The host callbacks `AgentRail` already receives, handed through unchanged. */
@@ -18,6 +19,9 @@ export interface RailRowDeps {
   /** Absent where nothing opens folders; the menu then has no Open in Finder. */
   readonly cardActions?: CardActions;
 }
+
+/** The shipped checkout menu's rows, in its groups; each row's `run` is the shipped handler. */
+export type CheckoutActionGroups = ReturnType<typeof actionGroups>;
 
 export interface RowCommands {
   /** Absent on an archived row: unarchiving would not give the pin back. */
@@ -34,6 +38,8 @@ export interface RowCommands {
   copyBranch?(): void;
   openFolder?(): void;
   readonly openFolderLabel: string;
+  /** What the shipped checkout menu offers on this row's checkout; none where nothing wires it. */
+  readonly checkoutActions: CheckoutActionGroups;
 }
 
 function copyText(text: string): void {
@@ -65,6 +71,8 @@ export function rowCommands(item: RailItem, deps: RailRowDeps, archived = false)
     copyBranch: checkout.labelled ? () => copyText(checkout.branch) : undefined,
     openFolder: onOpenFolder === undefined ? undefined : () => onOpenFolder(checkout.path),
     openFolderLabel: cardActions?.filesAppLabel ?? "Finder",
+    checkoutActions:
+      cardActions === undefined ? [] : actionGroups(cardActions, subjectOf(item.project, checkout)),
   };
 }
 

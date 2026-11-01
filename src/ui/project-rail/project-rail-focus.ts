@@ -8,8 +8,9 @@
  * one's place gets the focus, or the one before it when it was the last.
  */
 
-/** Project headers, section heads and rows: what the arrow keys walk. */
-export const RAIL_STOPS = "[data-rail-project],[data-rail-section],[data-rail-row]";
+/** Project headers, checkout lines, section heads and rows: what the arrow keys walk. */
+export const RAIL_STOPS =
+  "[data-rail-project],[data-rail-checkout],[data-rail-section],[data-rail-row]";
 
 interface Memory {
   readonly root: HTMLElement;

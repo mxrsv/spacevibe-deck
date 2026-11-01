@@ -177,6 +177,7 @@ describe("row menu", () => {
       "Copy path",
       "Copy branch",
       "Open in Finder",
+      "New here",
       "Archive",
       "Close",
     ];
