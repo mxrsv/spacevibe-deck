@@ -74,8 +74,8 @@ export function ResetRows() {
             itemKey={`reset:${row.scope}`}
             active={false}
             changed={false}
-            label={row.label}
-            crumb={row.desc}
+            label={<span title={row.desc}>{row.label}</span>}
+            crumb={null}
             reset={null}
             control={
               <Button

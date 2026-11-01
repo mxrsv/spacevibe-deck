@@ -98,6 +98,15 @@ describe("the Reset area", () => {
     expect(resetButton("Reset agents and templates").disabled).toBe(true);
   });
 
+  it("prints no sentence beside a reset label; the scope is its tooltip, and the dialog names the keys", async () => {
+    await open();
+    const row = resetButton("Reset layout").closest("li");
+    expect(row?.textContent).not.toContain("Sidebar, dock and rail order");
+    expect(row?.querySelector('[title="Sidebar, dock and rail order"]')?.textContent).toBe(
+      "Reset layout",
+    );
+  });
+
   it("asks first, names what goes and what stays, and resets only preferences", async () => {
     await open();
     await clickIn(resetButton("Reset preferences"));

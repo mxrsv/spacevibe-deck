@@ -211,7 +211,7 @@ export function PieceMount({
     case "theme":
       return (
         <LegacyBox area={area} label="Color mode">
-          <SettingsGroup settingKey="themeId" description="Choose a light or dark workspace.">
+          <SettingsGroup settingKey="themeId">
             <ThemeModeSelector presentation="cards" />
           </SettingsGroup>
         </LegacyBox>

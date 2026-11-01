@@ -7,6 +7,7 @@ import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 import { Input } from "../controls/input";
 import { Kbd } from "../controls/kbd";
 import { ToggleGroup, ToggleGroupItem } from "../controls/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { SETTINGS_CATEGORIES } from "../settings/settings-categories";
 import { chooseArea } from "./command-settings-actions";
 import { commandQuery } from "./command-settings-state";
@@ -75,9 +76,10 @@ export function AreaChips({
       }}
     >
       {SETTINGS_CATEGORIES.map((area) => (
-        <ToggleGroupItem key={area.id} value={area.id}>
-          {area.label}
-        </ToggleGroupItem>
+        <Tooltip key={area.id}>
+          <TooltipTrigger render={<ToggleGroupItem value={area.id} />}>{area.label}</TooltipTrigger>
+          <TooltipContent>{area.description}</TooltipContent>
+        </Tooltip>
       ))}
     </ToggleGroup>
   );
