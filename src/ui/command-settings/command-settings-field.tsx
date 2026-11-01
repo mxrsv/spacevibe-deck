@@ -14,6 +14,16 @@ interface CommitFieldProps extends FieldProps {
   readonly onCommit: (value: string) => boolean | void;
   /** Commit every accepted keystroke too (a number), not only on blur and Enter (an address). */
   readonly live?: boolean;
+  /** Clearing the field is a valid edit (a launch command, a list of models). */
+  readonly allowEmpty?: boolean;
+  /** Bumped by an explicit reset: it drops a draft even when the saved value did not change. */
+  readonly resetRevision?: number;
+  /** Called on every keystroke, so the owner can clear a stale error. */
+  readonly onDraft?: () => void;
+  /** The last commit was refused: the field reads as invalid until the next edit. */
+  readonly invalid?: boolean;
+  /** A refused draft stays on screen beside its reason; Escape then restores the saved value. */
+  readonly keepRefused?: boolean;
 }
 
 /**
@@ -23,25 +33,37 @@ interface CommitFieldProps extends FieldProps {
  * the field does not also leave; a clean field claims nothing and the key
  * bubbles to the surface's own Escape (`command-settings-keys.ts`).
  */
-export function CommitField({ value, onCommit, live = false, ...input }: CommitFieldProps) {
+export function CommitField({
+  value,
+  onCommit,
+  live = false,
+  allowEmpty = false,
+  resetRevision = 0,
+  onDraft,
+  invalid,
+  keepRefused = false,
+  ...input
+}: CommitFieldProps) {
   const [draft, setDraft] = useState(value);
   const committed = useRef(value);
+  const lastReset = useRef(resetRevision);
 
   // Adopt a change made elsewhere (a reset, another window) without touching a draft in progress:
   // our own commits already match `committed`.
   useEffect(() => {
-    if (value !== committed.current) {
+    if (value !== committed.current || resetRevision !== lastReset.current) {
       committed.current = value;
+      lastReset.current = resetRevision;
       setDraft(value);
     }
-  }, [value]);
+  }, [value, resetRevision]);
 
   const commit = (raw: string): boolean => {
     const next = raw.trim();
     if (next === committed.current) {
       return true;
     }
-    if (next === "" || onCommit(next) === false) {
+    if ((next === "" && !allowEmpty) || onCommit(next) === false) {
       return false;
     }
     committed.current = next;
@@ -52,22 +74,24 @@ export function CommitField({ value, onCommit, live = false, ...input }: CommitF
     <Input
       {...input}
       value={draft}
+      aria-invalid={invalid || undefined}
       onInput={(event: Event) => {
         const raw = (event.target as HTMLInputElement).value;
         setDraft(raw);
+        onDraft?.();
         if (live) {
           commit(raw);
         }
       }}
       onBlur={() => {
-        if (!commit(draft)) {
+        if (!commit(draft) && !keepRefused) {
           setDraft(committed.current);
         }
       }}
       onKeyDown={(event: KeyboardEvent) => {
         if (event.key === "Enter") {
           event.preventDefault();
-          if (!commit(draft)) {
+          if (!commit(draft) && !keepRefused) {
             setDraft(committed.current);
           }
         } else if (event.key === "Escape" && draft !== committed.current) {

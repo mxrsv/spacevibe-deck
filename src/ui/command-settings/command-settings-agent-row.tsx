@@ -1,6 +1,5 @@
 import { useSignal } from "@preact/signals";
 import { ArrowClockwise, CaretDown, CaretRight } from "@phosphor-icons/react";
-import type { ComponentChildren } from "preact";
 import { useEffect } from "preact/hooks";
 import { signalAdaptersPatch } from "../../settings/signal-adapter-choice";
 import { quickAgentChoices, toggleQuickAgent } from "../../settings/quick-agent-choices";
@@ -15,9 +14,10 @@ import { Button } from "../controls/button";
 import { NOT_AVAILABLE_ON_WINDOWS } from "../controls/config-row";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { Switch } from "../controls/switch";
-import { AgentLaunchFlags } from "../settings/agent-launch-flags";
-import { AgentMark, CommandLine, RuntimeSettings } from "../settings/launch-profile-editor";
+import { AgentMark, CommandLine } from "../settings/launch-profile-editor";
 import { agentRowData, type AgentRowData } from "./command-settings-agents";
+import { DetailRow } from "./command-settings-detail-row";
+import { LaunchDetails, RuntimeDetails } from "./command-settings-launch-details";
 import { CustomAgentDetails } from "./command-settings-identities";
 import { RowReset, RowShell } from "./command-settings-live-row";
 
@@ -26,26 +26,6 @@ function statusOf(data: AgentRowData): string | null {
   if (!data.probed) return "Looking…";
   if (!data.installed) return "Not installed";
   return data.enabled ? null : "Off";
-}
-
-function DetailRow({
-  label,
-  hint,
-  children,
-}: {
-  readonly label: string;
-  /** A reason or a sentence, kept off the row: the label's tooltip. */
-  readonly hint?: string;
-  readonly children: ComponentChildren;
-}) {
-  return (
-    <div className="flex min-h-7 items-center justify-between gap-3">
-      <span className="text-muted-foreground" title={hint}>
-        {label}
-      </span>
-      {children}
-    </div>
-  );
 }
 
 const SIGNALS_HINT: Readonly<Record<string, string>> = {
@@ -104,15 +84,9 @@ function AgentDetails({ data, locked }: { readonly data: AgentRowData; readonly 
       )}
       {data.custom === null ? null : <CustomAgentDetails agent={data.custom} locked={locked} />}
       {agent === null ? null : (
-        <div className="settings-screen__doc--studio">
-          <div className="settings-screen__fields settings-screen__fields--studio">
-            <div className="lp-agent-details">
-              <AgentLaunchFlags agent={agent} command={data.command} />
-              {data.installed ? <RuntimeSettings agent={agent} /> : null}
-            </div>
-          </div>
-        </div>
+        <LaunchDetails agent={agent} command={data.command} locked={locked} />
       )}
+      {agent === null || !data.installed ? null : <RuntimeDetails agent={agent} locked={locked} />}
     </div>
   );
 }
