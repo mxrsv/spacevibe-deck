@@ -7,6 +7,9 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Clone errors name the real cause.** A clone into a folder whose name contains words like
+  `proxy`, `ssl` or `tls` no longer reports a failed connection when the folder could not be
+  written.
 - **Older Codex conversations are back.** Codex compresses conversations it has not touched
   for a week, and Deck stopped seeing them. Session history, resume and usage now include them
   again.

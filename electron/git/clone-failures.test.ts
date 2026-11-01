@@ -85,6 +85,27 @@ describe("failures", () => {
     expect(h.locks.size).toBe(0);
   });
 
+  it.each(["http-proxy", "ssl-tools", "tls"])(
+    "classifies by git's words, not the folder name %s",
+    async (name) => {
+      const child = queueChild(h);
+      const started = await h.service.start("w1", {
+        ...FIXTURE_REQUEST,
+        repository: `someone/${name}`,
+        name,
+      });
+      const destination = started.ok ? started.job.destination : "";
+      child.write(`Cloning into '${destination}'...\n`);
+      child.write(`fatal: could not create work tree dir '${destination}': Permission denied\n`);
+      child.finish(128);
+      await h.settle();
+      expect(h.service.status("w1")).toMatchObject({
+        phase: "failed",
+        error: "permission-denied",
+      });
+    },
+  );
+
   it("discloses what a failed clone left behind, and deletes nothing", async () => {
     const child = queueChild(h);
     await h.service.start("w1", FIXTURE_REQUEST);
