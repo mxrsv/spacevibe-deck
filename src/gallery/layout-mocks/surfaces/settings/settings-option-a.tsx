@@ -92,7 +92,7 @@ function Footer({ enter, esc }: { readonly enter: string | null; readonly esc: s
 function SearchField() {
   const area = scope.value;
   return (
-    <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-input/20 px-2.5 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 dark:bg-input/30">
+    <div className="flex h-9 items-center gap-2 rounded-lg border border-input px-2.5 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50 dark:bg-input/30">
       <HugeiconsIcon
         icon={Search01Icon}
         size={14}
@@ -147,7 +147,7 @@ function AreaChips() {
       }}
     >
       {AREAS.map((area) => (
-        <ToggleGroupItem key={area.id} value={area.id}>
+        <ToggleGroupItem key={area.id} value={area.id} className="px-2">
           {area.label}
         </ToggleGroupItem>
       ))}

@@ -26,7 +26,7 @@ export function UsageRing({
       aria-hidden="true"
       data-low={left !== null && left <= LOW_REMAINING_PERCENT ? "" : undefined}
       className={cn(
-        "relative inline-flex size-5 shrink-0 items-center justify-center text-foreground data-low:text-destructive",
+        "relative inline-flex size-6 shrink-0 items-center justify-center text-foreground data-low:text-destructive",
         className,
       )}
     >

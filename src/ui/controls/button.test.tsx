@@ -34,9 +34,9 @@ describe("Button", () => {
     );
     const [plain, destructive] = [...view.host.querySelectorAll("button")];
     expect(plain.className).toContain("bg-primary");
-    expect(plain.className).toContain("h-7");
+    expect(plain.className).toContain("h-8");
     expect(destructive.className).toContain("text-destructive");
-    expect(destructive.className).toContain("size-5");
+    expect(destructive.className).toContain("size-6");
     expect(destructive.className).not.toContain("bg-primary");
     expect(buttonVariants({ variant: "ghost" })).toContain("hover:bg-muted");
     await view.unmount();
@@ -46,7 +46,7 @@ describe("Button", () => {
     const view = await mount(<Button className="h-9">Tall</Button>);
     const classes = (view.host.querySelector("button") as HTMLElement).className.split(" ");
     expect(classes).toContain("h-9");
-    expect(classes).not.toContain("h-7");
+    expect(classes).not.toContain("h-8");
     await view.unmount();
   });
 

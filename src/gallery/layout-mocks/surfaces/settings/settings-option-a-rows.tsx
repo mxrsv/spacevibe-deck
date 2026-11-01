@@ -86,7 +86,7 @@ function Row({
         if (activeKey.value !== itemKey) activeKey.value = itemKey;
       }}
       className={cn(
-        "grid min-h-9 grid-cols-[8px_minmax(0,1fr)_auto_28px] items-center gap-x-2.5 rounded-md px-2.5 py-1 text-xs text-foreground",
+        "grid min-h-10 grid-cols-[8px_minmax(0,1fr)_auto_28px] items-center gap-x-2.5 rounded-md px-2.5 py-1 text-sm text-foreground",
         active && "bg-muted [&_.text-muted-foreground]:text-foreground",
       )}
     >
@@ -110,7 +110,7 @@ function Row({
 }
 
 export function Head({ title }: { readonly title: string }) {
-  return <h3 className="m-0 px-5 pt-3 pb-1 text-2xs font-medium text-muted-foreground">{title}</h3>;
+  return <h3 className="m-0 px-5 pt-3 pb-1 text-xs font-medium text-muted-foreground">{title}</h3>;
 }
 
 function NotificationBlock() {
@@ -120,7 +120,7 @@ function NotificationBlock() {
       <span className="flex-1">macOS blocks Deck's notifications</span>
       <Button
         variant="outline"
-        size="xs"
+        size="sm"
         disabled={osOpened.value}
         onClick={() => {
           osOpened.value = true;
@@ -220,7 +220,7 @@ export function HealthRow({
         activeKey.value = `health:${issue.id}`;
       }}
       className={cn(
-        "grid min-h-9 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-x-2.5 rounded-md px-2.5 py-1 text-xs text-foreground",
+        "grid min-h-10 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-x-2.5 rounded-md px-2.5 py-1 text-sm text-foreground",
         active && "bg-muted [&_.text-muted-foreground]:text-foreground",
       )}
     >
@@ -234,7 +234,7 @@ export function HealthRow({
       </span>
       <Button
         variant={issue.severity === "error" ? "default" : "outline"}
-        size="sm"
+
         disabled={done}
         onClick={() => resolveHealth(issue)}
       >
@@ -253,7 +253,7 @@ export function AreaRow({ area, active }: { readonly area: AreaId; readonly acti
       control={
         <Button
           variant="ghost"
-          size="sm"
+
           aria-label={`Open ${areaById(area).label}`}
           onClick={() => {
             scope.value = area;
@@ -276,7 +276,7 @@ function Field({
   readonly children: ComponentChildren;
 }) {
   return (
-    <div className="grid min-h-8 grid-cols-[104px_minmax(0,1fr)] items-center gap-2">
+    <div className="grid min-h-9 grid-cols-[104px_minmax(0,1fr)] items-center gap-2">
       <span className="text-muted-foreground">{label}</span>
       <span className="flex items-center gap-2">{children}</span>
     </div>
@@ -298,7 +298,7 @@ function AgentFields({ config }: { readonly config: MockAgentConfig }) {
         <span>Not installed</span>
         <Button
           variant="outline"
-          size="xs"
+          size="sm"
           onClick={() => editAgent(config.id, { installed: true })}
         >
           Install
@@ -310,7 +310,6 @@ function AgentFields({ config }: { readonly config: MockAgentConfig }) {
     <div className="border-l pl-3">
       <Field label="Pinned">
         <Switch
-          size="sm"
           aria-label={`${name} pinned to quick launch`}
           checked={agent.pinned}
           onCheckedChange={(next: boolean) => editAgent(config.id, { pinned: next })}
@@ -320,7 +319,6 @@ function AgentFields({ config }: { readonly config: MockAgentConfig }) {
         <Badge variant="outline">{SIGNAL_LABEL[agent.signals]}</Badge>
         {agent.signalsOn === null ? null : (
           <Switch
-            size="sm"
             aria-label={`${name} signal adapter`}
             checked={agent.signalsOn}
             onCheckedChange={(next: boolean) => editAgent(config.id, { signalsOn: next })}
@@ -354,7 +352,7 @@ function AgentFields({ config }: { readonly config: MockAgentConfig }) {
         {config.profile ? <Badge variant="outline">{config.profile.name}</Badge> : null}
         <Input
           aria-label={`${name} launch flags`}
-          className="h-6 flex-1 font-mono"
+          className="flex-1 font-mono"
           placeholder="No flags"
           value={agent.flags}
           onInput={(event: Event) =>
@@ -455,7 +453,7 @@ export function ShortcutRow({
           {isRecording ? (
             <span
               role="status"
-              className="flex h-6 items-center gap-1.5 rounded-md border border-ring px-2 text-foreground"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-ring px-2 text-foreground"
             >
               Press the new chord
               <Kbd>Esc</Kbd>
@@ -467,7 +465,7 @@ export function ShortcutRow({
           )}
           <Button
             variant={isRecording ? "outline" : "ghost"}
-            size="sm"
+
             aria-label={`${isRecording ? "Cancel recording" : "Record"} ${shortcut.label}`}
             onClick={() => {
               recording.value = isRecording ? null : shortcut.id;
@@ -494,7 +492,7 @@ export function ShortcutRow({
           <span className="flex-1">
             {keys.join("")} is also {clash.label}
           </span>
-          <Button variant="outline" size="xs" onClick={() => reassign(shortcut)}>
+          <Button variant="outline" size="sm" onClick={() => reassign(shortcut)}>
             Reassign
           </Button>
         </div>
@@ -530,9 +528,7 @@ export function UpdateRow({
             <span className="text-muted-foreground tabular-nums">
               {ABOUT.update.version} · {ABOUT.update.size}
             </span>
-            <Button size="sm" onClick={onUpdate}>
-              Restart to update
-            </Button>
+            <Button onClick={onUpdate}>Restart to update</Button>
           </>
         )
       }
@@ -573,7 +569,7 @@ export function ResetRow({
       control={
         <Button
           variant="destructive"
-          size="sm"
+
           aria-label={`Reset ${label}`}
           onClick={() => {
             resetTarget.value = id;
@@ -594,7 +590,7 @@ export function EmptyRow({ text }: { readonly text: string }) {
       </span>
       <Button
         variant="outline"
-        size="sm"
+
         onClick={() => {
           query.value = "";
           refocusSearch();

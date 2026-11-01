@@ -47,7 +47,6 @@ export function ChoiceControl({
       <ToggleGroup
         aria-label={label}
         variant="outline"
-        size="sm"
         spacing={0}
         disabled={disabled}
         value={[value]}
@@ -80,7 +79,7 @@ export function ChoiceControl({
         if (typeof next === "string") onChange(next);
       }}
     >
-      <SelectTrigger size="sm" aria-label={label} className={width}>
+      <SelectTrigger aria-label={label} className={width}>
         <SelectValue>
           {(current: string) =>
             choices.find((choice) => choice.value === current)?.label ?? current
@@ -140,7 +139,7 @@ export function SettingControl({ setting }: { readonly setting: MockSetting }) {
             {...{ [ROW_INPUT]: String(setting.key) }}
             type="number"
             aria-label={setting.label}
-            className="h-6 w-20 text-right tabular-nums"
+            className="w-20 text-right tabular-nums"
             min={control.min}
             max={control.max}
             step={control.step}
@@ -162,7 +161,7 @@ export function SettingControl({ setting }: { readonly setting: MockSetting }) {
           {...{ [ROW_INPUT]: String(setting.key) }}
           aria-label={setting.label}
           aria-invalid={invalid}
-          className="h-6 w-64"
+          className="w-64"
           value={String(value)}
           onInput={(event: Event) => {
             const next = (event.target as HTMLInputElement).value;

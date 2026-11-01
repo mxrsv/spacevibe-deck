@@ -36,7 +36,7 @@ export function ProjectRailUsageRings({
               }
             >
               <UsageRing remaining={remaining}>
-                <AgentGlyph agent={agent} className="size-3" />
+                <AgentGlyph agent={agent} className="size-3.5" />
               </UsageRing>
             </TooltipTrigger>
             <TooltipContent>
