@@ -4,6 +4,8 @@ import {
   agentsProbed,
   detectedAgents,
   ensureAgentsDetected,
+  PRIME_REVALIDATE_AFTER_MS,
+  primeAgentsDetected,
   resetAgentDetectionForTests,
   REVALIDATE_AFTER_MS,
 } from "./agent-detection-store";
@@ -214,6 +216,64 @@ describe("agent detection store", () => {
       vi.setSystemTime(NOW + REVALIDATE_AFTER_MS);
       await ensureAgentsDetected(["claude"]);
       expect(host.detectAgents).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("boot prime", () => {
+    it("probes on a cold start", async () => {
+      expect(await primeAgentsDetected(["claude"])).toEqual([CLAUDE]);
+      expect(host.detectAgents).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not probe again for an unchanged name set long past the picker window", async () => {
+      await primeAgentsDetected(["claude"]);
+
+      vi.setSystemTime(NOW + PRIME_REVALIDATE_AFTER_MS - 1);
+      const found = await primeAgentsDetected(["claude"]);
+
+      expect(found).toEqual([CLAUDE]);
+      expect(host.detectAgents).toHaveBeenCalledTimes(1);
+    });
+
+    it("refreshes an unchanged name set once the prime window has passed", async () => {
+      await primeAgentsDetected(["claude"]);
+      host.detectAgents.mockResolvedValue([CLAUDE, CODEX]);
+
+      vi.setSystemTime(NOW + PRIME_REVALIDATE_AFTER_MS);
+      await primeAgentsDetected(["claude"]);
+
+      expect(host.detectAgents).toHaveBeenCalledTimes(2);
+      expect(detectedAgents.value).toEqual([CLAUDE, CODEX]);
+    });
+
+    it("probes when the name set changes", async () => {
+      await primeAgentsDetected(["claude"]);
+      host.detectAgents.mockResolvedValue([CLAUDE, CODEX]);
+
+      const found = await primeAgentsDetected(["claude", "codex"]);
+
+      expect(found).toEqual([CLAUDE, CODEX]);
+      expect(host.detectAgents).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries after a failed probe, since nothing was stamped", async () => {
+      host.detectAgents.mockRejectedValueOnce(new Error("bridge is gone"));
+      await primeAgentsDetected(["claude"]);
+
+      await primeAgentsDetected(["claude"]);
+
+      expect(host.detectAgents).toHaveBeenCalledTimes(2);
+    });
+
+    it("leaves a picker-style call revalidating after the freshness window", async () => {
+      await primeAgentsDetected(["claude"]);
+      await primeAgentsDetected(["claude"]);
+      expect(host.detectAgents).toHaveBeenCalledTimes(1);
+
+      vi.setSystemTime(NOW + REVALIDATE_AFTER_MS);
+      await ensureAgentsDetected(["claude"]);
+
+      expect(host.detectAgents).toHaveBeenCalledTimes(2);
     });
   });
 });

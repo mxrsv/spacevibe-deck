@@ -1,0 +1,12 @@
+/* The stylesheet for this specimen and the one place the gallery pulls in the Base UI preset.
+   The composition below (rows, grids) is written in utilities, so its file is scanned too. */
+@import "../../ui/preset.css";
+@source "./preset-controls-section.tsx";
+@source "./preset-controls-groups.tsx";
+
+/* `.gx-app--chatgpt` (chatgpt-direction.css) declares the gallery's own `--radius`, the one name
+   the chrome and the preset share. The specimen takes the preset's value back, so its radius
+   never follows a gallery direction. Same value as `:root` in preset.css. */
+.ui-preset {
+  --radius: 0.625rem;
+}

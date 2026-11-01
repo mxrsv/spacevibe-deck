@@ -71,7 +71,9 @@ const GLYPH_EXEMPT = (path: string): boolean =>
   // Prompt Board's retired inject glyph, opposite meaning — one names a key,
   // the other named an action. The Paste/Send icons are asserted directly in
   // `prompt-popover.test.tsx`, so nothing is lost by exempting this file.
-  path === "terminal/search-bar.ts";
+  path === "terminal/search-bar.ts" ||
+  // Sample terminal transcripts: `›` is Codex's own prompt in PTY text, not a UI icon.
+  path === "gallery/layout-mocks/layout-fixture.ts";
 
 function sourceFiles(dir = SOURCE_ROOT): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

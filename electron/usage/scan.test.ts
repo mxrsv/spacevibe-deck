@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { zstdCompressSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { scanAll, buildSnapshot } from "./scan";
 import { emptyCache } from "./model";
@@ -166,6 +167,38 @@ describe("scanAll", () => {
       agent: "codex",
       filesScanned: 1,
     });
+  });
+
+  it("counts a compressed Codex rollout, and only the plain copy while both exist", async () => {
+    const home = tempHome();
+    const sessions = path.join(home, ".codex", "sessions");
+    mkdirSync(sessions, { recursive: true });
+    const rollout = (id: string, output: number): string =>
+      [
+        { timestamp: "2026-08-10T04:45:59.358Z", type: "session_meta", payload: { id } },
+        {
+          timestamp: "2026-08-10T04:46:10.000Z",
+          type: "event_msg",
+          payload: {
+            type: "token_count",
+            info: { total_token_usage: { input_tokens: 100, output_tokens: output } },
+          },
+        },
+      ]
+        .map((line) => `${JSON.stringify(line)}\n`)
+        .join("");
+    const compressedOnly = path.join(sessions, "rollout-a.jsonl.zst");
+    const plain = path.join(sessions, "rollout-b.jsonl");
+    const compressedTwin = path.join(sessions, "rollout-b.jsonl.zst");
+    writeFileSync(compressedOnly, zstdCompressSync(Buffer.from(rollout("codex-a", 7))));
+    writeFileSync(plain, rollout("codex-b", 30));
+    writeFileSync(compressedTwin, zstdCompressSync(Buffer.from(rollout("codex-b", 20))));
+    for (const file of [compressedOnly, plain, compressedTwin]) pin(file);
+
+    const snapshot = buildSnapshot(await scanAll(emptyCache(), home, NOW, resolveNone), NOW);
+
+    expect(snapshot.buckets.reduce((sum, bucket) => sum + bucket.counters.output, 0)).toBe(37);
+    expect(snapshot.sources[1]).toMatchObject({ agent: "codex", state: "ok", filesScanned: 2 });
   });
 
   it("accumulates skipped lines across scans instead of resetting them", async () => {

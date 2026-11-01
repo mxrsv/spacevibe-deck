@@ -43,7 +43,9 @@ describe("bootstrapLaunch", () => {
     const launch = bootstrapLaunch("/opt/homebrew/bin/fish", paths);
     expect(launch?.args.slice(0, 2)).toEqual(["-l", "--init-command"]);
     expect(launch?.args[2]).toContain('set -l _deck_bin "/tmp/we\\"ird \\$dir/agent-shell/bin"');
-    expect(launch?.args[2]).toContain('contains -- "$_deck_bin" $PATH; or set -gx PATH');
+    expect(launch?.args[2]).toContain(
+      'if not contains -- "$_deck_bin" $PATH; set -gx PATH "$_deck_bin" $PATH; end',
+    );
     expect(launch?.env).toEqual({});
   });
 
@@ -361,7 +363,7 @@ describe.skipIf(process.platform === "win32")("fish startup", () => {
   const fish = SHELLS.fish;
 
   it.skipIf(fish === null)(
-    "puts Deck's wrapper first and keeps the user's PATH entry and alias",
+    "puts Deck's wrapper first, keeps the user's PATH entry and alias, and leaves no failed status",
     () => {
       const home = makeHome({
         ".config/fish/config.fish": [
@@ -373,7 +375,14 @@ describe.skipIf(process.platform === "win32")("fish startup", () => {
       const result = startup(
         fish!,
         home,
-        ['echo "T:claude="(type -p claude)', 'echo "T:path="(string join : $PATH)', "greet"],
+        [
+          // First, while `$status` is still the init command's: a 1 here is the
+          // `[1]` a status-aware prompt prints on every new pane.
+          'echo "T:status=$status"',
+          'echo "T:claude="(type -p claude)',
+          'echo "T:path="(string join : $PATH)',
+          "greet",
+        ],
         { XDG_CONFIG_HOME: path.join(home, ".config") },
       );
       expect(field(result, "claude")).toBe(path.join(paths.binDir, "claude"));
@@ -382,6 +391,7 @@ describe.skipIf(process.platform === "win32")("fish startup", () => {
         path.join(home, "c"),
       ]);
       expect(field(result, "greet")).toBe("alias-works");
+      expect(field(result, "status")).toBe("0");
     },
   );
 });

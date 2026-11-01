@@ -7,6 +7,7 @@
  * validated user-declared agent carries its display label.
  */
 import { ACTIVE_AGENT_IDS } from "../../src/lib/agents/agent-registry";
+import { isBootstrapCommandLine } from "../agent-shell/shell-bootstrap";
 
 export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
 
@@ -233,7 +234,11 @@ export function classifyProcess(
       return { kind: "agent", agent: customAgent };
     }
   }
-  if (SHELL_NAMES.has(normalized) && isPaneShell && !shellRunsCommand(normalized, commandLine)) {
+  if (
+    SHELL_NAMES.has(normalized) &&
+    isPaneShell &&
+    (isBootstrapCommandLine(normalized, commandLine) || !shellRunsCommand(normalized, commandLine))
+  ) {
     return { kind: "idle-shell", agent: null };
   }
   return { kind: "busy", agent: null };

@@ -58,7 +58,16 @@ describe("Codex thread writer locks", () => {
     ) => {
       cb(null, `p42\n${lock(MAIN)}\np43\n${lock(CHILD)}\n`);
     }) as typeof execFile);
-    expect(await processCodexSessions([42, 43, 42], HOME, "darwin")).toEqual(
+    expect(
+      await processCodexSessions(
+        new Map([
+          [42, []],
+          [43, []],
+        ]),
+        HOME,
+        "darwin",
+      ),
+    ).toEqual(
       new Map([
         [42, MAIN],
         [43, CHILD],
@@ -72,6 +81,26 @@ describe("Codex thread writer locks", () => {
       expect.any(Function),
     );
   });
+  // npm's `codex` is a `node` launcher; the native child it spawns holds the lock.
+  it("counts a lock held by another codex process in the foreground group as the leader's", async () => {
+    vi.mocked(execFile).mockImplementation(((
+      _file: unknown,
+      _args: unknown,
+      _opts: unknown,
+      cb: Function,
+    ) => {
+      cb(null, `p43\n${lock(MAIN)}\n`);
+    }) as typeof execFile);
+    expect(await processCodexSessions(new Map([[42, [43]]]), HOME, "darwin")).toEqual(
+      new Map([[42, MAIN]]),
+    );
+    expect(execFile).toHaveBeenCalledWith(
+      "/usr/sbin/lsof",
+      ["-nP", "-p", "42,43", "-Fpn"],
+      expect.any(Object),
+      expect.any(Function),
+    );
+  });
   it("fails closed on missing lsof or partial output from a failed command", async () => {
     vi.mocked(execFile).mockImplementation(((
       _file: unknown,
@@ -81,7 +110,7 @@ describe("Codex thread writer locks", () => {
     ) => {
       cb(Object.assign(new Error("lsof unavailable"), { code: "ENOENT" }), `p42\n${lock(MAIN)}\n`);
     }) as typeof execFile);
-    expect(await processCodexSessions([42], HOME, "linux")).toEqual(new Map());
+    expect(await processCodexSessions(new Map([[42, []]]), HOME, "linux")).toEqual(new Map());
   });
   it.each([
     ["cli", { subagent: { parent_thread_id: MAIN } }, MAIN],
@@ -118,7 +147,9 @@ describe("Codex thread writer locks", () => {
             `p42\nn${home}/.codex/thread-writer-locks/${MAIN}.lock\nn${home}/.codex/thread-writer-locks/${CHILD}.lock\n`,
           );
         }) as typeof execFile);
-        expect((await processCodexSessions([42], home, "darwin")).get(42) ?? null).toBe(expected);
+        expect(
+          (await processCodexSessions(new Map([[42, []]]), home, "darwin")).get(42) ?? null,
+        ).toBe(expected);
       } finally {
         rmSync(home, { recursive: true, force: true });
       }
@@ -126,8 +157,8 @@ describe("Codex thread writer locks", () => {
   );
 
   it("does not launch lsof on Windows or for an empty batch", async () => {
-    expect(await processCodexSessions([42], HOME, "win32")).toEqual(new Map());
-    expect(await processCodexSessions([], HOME, "darwin")).toEqual(new Map());
+    expect(await processCodexSessions(new Map([[42, []]]), HOME, "win32")).toEqual(new Map());
+    expect(await processCodexSessions(new Map(), HOME, "darwin")).toEqual(new Map());
     expect(execFile).not.toHaveBeenCalled();
   });
 });

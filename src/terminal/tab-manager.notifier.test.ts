@@ -134,6 +134,7 @@ describe("createTabManager notifier deps (Task 23)", () => {
 
 describe("createTabManager notifier — production default reads the setting LIVE (Task 23)", () => {
   it("does not send while agentNotifications is off, then sends once flipped on — without reconstructing the manager", async () => {
+    settings.value = { ...DEFAULT_SETTINGS, agentNotifications: false };
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
@@ -147,7 +148,7 @@ describe("createTabManager notifier — production default reads the setting LIV
     await tm.init();
     await flush();
 
-    // `agentNotifications` defaults to false (beforeEach resets it) — a real
+    // This test explicitly opted out — a real
     // actionable, backgrounded transition must NOT send.
     emitSignal(1, { kind: "requested", source: "osc-notification" });
     expect(tabViews.value[0].attention?.kind).toBe("requested");

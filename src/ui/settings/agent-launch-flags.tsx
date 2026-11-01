@@ -19,6 +19,7 @@ import {
   type LaunchFlag,
   type LaunchFlagValues,
 } from "../../lib/launch-flags";
+import { Button } from "../controls/button";
 
 const CODEX_DESCRIPTIONS: Readonly<Record<string, string>> = {
   bypass: "Run without checks or sandbox.",
@@ -106,9 +107,10 @@ export function AgentLaunchFlags({
               )}
             </div>
             {own !== null && (
-              <button
+              <Button
                 type="button"
-                class="cfg-btn"
+                variant="outline"
+                size="sm"
                 aria-label={`Reset command for ${agent.label}`}
                 title={`Reset command to ${fallback}`}
                 onClick={() => {
@@ -118,7 +120,7 @@ export function AgentLaunchFlags({
                 }}
               >
                 <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
-              </button>
+              </Button>
             )}
           </div>
         </ConfigRow>

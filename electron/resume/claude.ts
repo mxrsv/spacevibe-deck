@@ -14,6 +14,7 @@ import {
   headBytes,
   headJsonLines,
   normalizeTitle,
+  fileCacheKey,
   type CandidateSession,
   type FileCandidate,
   type ScanOptions,
@@ -124,15 +125,69 @@ export function listClaudeFiles(home: string): FileCandidate[] {
   return datedTranscripts(root).sort((left, right) => right.mtimeMs - left.mtimeMs);
 }
 
-/** List + cap + read, with no cache. The boot path's shape; the history
- *  surface uses `listClaudeFiles` + `readClaudeRecord` so it can skip reads. */
+/**
+ * What a restore-budget read found, per transcript path. `cwd` and the id sit
+ * in the first lines of an append-only file, so once a head names a cwd the
+ * answer cannot change as the transcript grows and the entry is final. A head
+ * that named no cwd can still gain one while the file is young, so that answer
+ * is only reused for the exact `mtime + size` it was read at; any growth reads
+ * it again. A read that found no session is never kept: an unreadable file
+ * (EMFILE, a Windows sharing violation) says nothing about its head, and a
+ * remembered miss would hide that session from restore until the file grew.
+ * Never holds `mtimeMs`: that comes from the current listing on every call.
+ */
+interface HeadIdentity {
+  readonly key: string;
+  readonly id: string;
+  readonly cwd: string | null;
+}
+const identityByPath = new Map<string, HeadIdentity>();
+
+function readIdentity(entry: FileCandidate, options: ScanOptions): SessionRecord | null {
+  const key = fileCacheKey(entry);
+  const hit = identityByPath.get(entry.filePath);
+  if (hit !== undefined && (hit.cwd !== null || hit.key === key)) {
+    return {
+      id: hit.id,
+      cwd: hit.cwd,
+      mtimeMs: entry.mtimeMs,
+      sourcePath: entry.filePath,
+      title: null,
+    };
+  }
+  const record = readClaudeRecord(entry, options);
+  if (record === null) {
+    identityByPath.delete(entry.filePath);
+  } else {
+    identityByPath.set(entry.filePath, { key, id: record.id, cwd: record.cwd });
+  }
+  return record;
+}
+
+/** List + cap + read. Head reads are remembered across calls (see
+ *  `identityByPath`) but the listing is always fresh, so every call reflects
+ *  the current state of disk. The boot path's shape; the history surface uses
+ *  `listClaudeFiles` + `readClaudeRecord` so it can skip reads. */
 export function scanClaude(home: string, options: ScanOptions): ScanResult {
   const newestFirst = listClaudeFiles(home);
+  const window = newestFirst.slice(0, options.maxFiles);
+  // A title needs the lines the identity cache does not keep; that caller
+  // (session history) has its own `path + mtime + size` cache.
+  const cached = !options.withTitle;
   const records: SessionRecord[] = [];
-  for (const entry of newestFirst.slice(0, options.maxFiles)) {
-    const record = readClaudeRecord(entry, options);
+  for (const entry of window) {
+    const record = cached ? readIdentity(entry, options) : readClaudeRecord(entry, options);
     if (record !== null) {
       records.push(record);
+    }
+  }
+  if (cached) {
+    // Bounded by `maxFiles`: drop whatever the current window no longer lists.
+    const live = new Set(window.map((entry) => entry.filePath));
+    for (const filePath of identityByPath.keys()) {
+      if (!live.has(filePath)) {
+        identityByPath.delete(filePath);
+      }
     }
   }
   return { total: newestFirst.length, records };

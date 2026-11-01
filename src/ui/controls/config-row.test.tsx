@@ -27,7 +27,7 @@ describe("ToggleRow — disabled state (additive)", () => {
   it("clicking calls onToggle when disabled is omitted (unchanged behavior)", () => {
     const onToggle = vi.fn();
     mount(false, onToggle);
-    const button = host.querySelector("button") as HTMLButtonElement;
+    const button = host.querySelector<HTMLElement>('[role="switch"]')!;
 
     act(() => {
       button.click();
@@ -39,7 +39,7 @@ describe("ToggleRow — disabled state (additive)", () => {
   it("clicking calls onToggle when disabled={false}", () => {
     const onToggle = vi.fn();
     mount(false, onToggle, false);
-    const button = host.querySelector("button") as HTMLButtonElement;
+    const button = host.querySelector<HTMLElement>('[role="switch"]')!;
 
     act(() => {
       button.click();
@@ -51,13 +51,13 @@ describe("ToggleRow — disabled state (additive)", () => {
   // Uses the native `.click()` activation behavior (not a raw
   // dispatchEvent(new MouseEvent(...)), which bypasses the disabled check in
   // jsdom) so this actually exercises the browser's disabled enforcement.
-  it("disabled={true} sets the native disabled attribute and blocks the click", () => {
+  it("disabled={true} marks the switch disabled and blocks the click", () => {
     const onToggle = vi.fn();
     mount(true, onToggle, true);
-    const button = host.querySelector("button") as HTMLButtonElement;
+    const button = host.querySelector<HTMLElement>('[role="switch"]')!;
 
-    expect(button.disabled).toBe(true);
-    expect(button.hasAttribute("disabled")).toBe(true);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.hasAttribute("data-disabled")).toBe(true);
 
     act(() => {
       button.click();
@@ -74,7 +74,7 @@ describe("ToggleRow — disabled state (additive)", () => {
       );
     });
     expect(host.querySelector(".cfg-row__key .cfg-row__note a")?.textContent).toBe("Get");
-    expect(host.querySelectorAll(".cfg-row__value button")).toHaveLength(1);
+    expect(host.querySelectorAll('.cfg-row__value [role="switch"]')).toHaveLength(1);
     expect(host.querySelector(".cfg-row__value a")).toBeNull();
   });
 
@@ -85,7 +85,7 @@ describe("ToggleRow — disabled state (additive)", () => {
 
   it("keeps role=switch and aria-checked when disabled", () => {
     mount(true, vi.fn(), true);
-    const button = host.querySelector("button") as HTMLButtonElement;
+    const button = host.querySelector<HTMLElement>('[role="switch"]')!;
 
     expect(button.getAttribute("role")).toBe("switch");
     expect(button.getAttribute("aria-checked")).toBe("true");

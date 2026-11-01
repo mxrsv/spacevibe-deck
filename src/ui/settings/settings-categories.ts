@@ -54,10 +54,9 @@ export interface SettingsCategory {
  * makes it safe is the native confirm it has always raised, not where it sat.
  *
 
- * `colors` is absent since 2026-08-16 for a different reason: four colour rows
- * that only ever edit the running theme were a whole rail stop away from the
- * theme picker that clears them, so they moved into `appearance` as a group
- * ([`color-overrides.tsx`](./color-overrides.tsx)).
+ * `colors` is absent for a different reason: the per-colour overrides it once
+ * held were retired with the explicit theme model, where a theme declares every
+ * colour itself.
  */
 export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {

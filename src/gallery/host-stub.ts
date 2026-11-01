@@ -213,6 +213,8 @@ const ELECTRON_ONLY: Readonly<Record<string, CannedHandler>> = {
   notification_permission_granted: () => false,
   notification_request_permission: () => "denied",
   notification_send: () => null,
+  attention_badge_set: () => null,
+  notification_open_settings: () => false,
   shell_open_url: () => null,
   suspend_menu_accelerators: () => null,
 };

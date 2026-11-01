@@ -13,6 +13,7 @@ const webgl = vi.hoisted(() => ({
   instances: [] as Array<{
     activatedAfterOpen: boolean;
     disposed: number;
+    blinkCleared: number;
     emitContextLoss(): void;
   }>,
   throwOnActivate: false,
@@ -64,6 +65,16 @@ vi.mock("@xterm/addon-webgl", () => ({
   WebglAddon: class {
     activatedAfterOpen = false;
     disposed = 0;
+    blinkCleared = 0;
+    // The private shape `disposeWebglAddon` reaches into: addon-webgl 0.19.0's
+    // own dispose leaves this manager's blink interval running.
+    _renderer = {
+      _cursorBlinkStateManager: {
+        clear: () => {
+          this.blinkCleared += 1;
+        },
+      },
+    };
     private contextLossHandler: (() => void) | undefined;
 
     constructor() {
@@ -286,6 +297,35 @@ describe("createPane renderer suspension", () => {
     pane.suspendRenderer();
     pane.dispose();
     expect(webgl.instances[0].disposed).toBe(1);
+  });
+});
+
+/**
+ * Every way a pane lets go of its WebGL addon must stop the renderer's cursor
+ * blink timer too: in addon-webgl 0.19.0 that interval outlives the addon and
+ * keeps the whole terminal alive (see `webgl-addon-dispose.ts`).
+ */
+describe("createPane leaves no blink timer behind", () => {
+  it("on suspend", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.suspendRenderer();
+    expect(webgl.instances[0].blinkCleared).toBe(1);
+  });
+
+  it("on context loss", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    webgl.instances[0].emitContextLoss();
+    expect(webgl.instances[0].blinkCleared).toBe(1);
+  });
+
+  it("on pane dispose", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.dispose();
+    expect(webgl.instances[0].blinkCleared).toBe(1);
   });
 });
 

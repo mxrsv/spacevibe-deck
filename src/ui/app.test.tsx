@@ -395,8 +395,15 @@ describe("recent agent activity wiring", () => {
     );
   });
 
+  it("hands the project rail the same tool callbacks the shipped footer is built from", () => {
+    const railMount = source.slice(source.indexOf("<AgentRail"), source.indexOf("topTabs={"));
+    expect(railMount).toContain("footer={railToolsMounted ? railActions : undefined}");
+    expect(railMount).toContain("tools={railToolsMounted ? railToolProps : undefined}");
+    expect(source).toContain("const railActions = <SidebarActions {...railToolProps} />;");
+  });
+
   it("keeps the existing Sessions dock navigation on the rail actions", () => {
-    expect(source).toContain('onOpenSessions={() => openDockTab("sessions")}');
+    expect(source).toContain('onOpenSessions: () => openDockTab("sessions")');
   });
 });
 

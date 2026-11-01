@@ -1,0 +1,131 @@
+/* ── The flush stage (src/ui/shell-stage.ts) ─────────────────────────────────
+   Behind the `shellStage` release switch. `App` puts `stage--flush` on `.stage` while the switch
+   is on and every rule here keys on it, so the card panes of 06-stage-panes.css stay the default
+   and a packaged build draws exactly what it drew before. These rules win on specificity (one
+   more class than the rule they replace), not on source order: `pane-agent-header.css` is
+   imported from its component, so its position against this file is not fixed.
+
+   LAY-10: the panes sit flush on the terminal background, a 1px seam between them, no gap, no
+   corner radius, no card. LAY-5: the bar above them carries a 1px border below it and the
+   breadcrumb reads `project / branch / space`. The seam is `--seam-divider`, which is the value
+   the dock header's `--hair` line has, so the two lines meet at `--frame-h`.
+   The cut-over deletes the card geometry in 06-stage-panes.css and this file's selector prefix. */
+
+/* One number, every consumer: `.stage__tabs`, `.stage__surface` and the launch page read the
+   gutter, so the document handover and the launcher land on the pane rectangle without a jump
+   (06-stage-panes.css). The sidebar grip sits outside `.stage` and keeps the :root value. `0px`,
+   not `0`: the launch page adds it to a length inside `calc()`. */
+.stage--flush {
+  --stage-gutter: 0px;
+}
+
+/* The bar above the panes. The strip is border-box, so the seam costs no height. */
+.stage--flush .stage__strip {
+  border-bottom: 1px solid var(--seam-divider);
+}
+
+/* The divider IS the seam: it keeps the drag and its grab zone, and draws one pixel. */
+.stage--flush .split__divider {
+  flex-basis: 1px;
+  background: var(--seam-divider);
+  border-radius: 0;
+}
+
+.stage--flush .split__divider:hover,
+.stage--flush .split__divider.is-dragging {
+  background: var(--accent);
+}
+
+/* No card: no corner, and the edge is transparent rather than gone so the active pane's border
+   colour (06-stage-panes.css) and a file drop's outline (08-popovers.css) still have a border to
+   colour. The seam is the divider's, so a visible border here would double it. */
+.stage--flush .pane-slot,
+.stage--flush .pane {
+  border-radius: 0;
+}
+
+.stage--flush .pane {
+  border-color: transparent;
+}
+
+/* The focused pane of a split: a quiet 1px ring and a 2px bar on its top edge. `is-active` is
+   set only while the tab holds more than one pane, so a lone pane draws neither. The bar is
+   `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
+.stage--flush .pane-slot.is-active > .pane {
+  border-color: var(--text-muted);
+}
+
+.stage--flush .pane-slot.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--text-primary);
+  pointer-events: none;
+}
+
+/* A document or the browser holding the stage is flush with the panes it covers. */
+.stage--flush .stage__surface > .fileview,
+.stage--flush .stage__surface > .browser-panel,
+.stage--flush .stage__surface > .agent-board {
+  border: 0;
+  border-radius: 0;
+}
+
+/* ── The pane identity header (LAY-5) ─────────────────────────────────────────
+   Logo, name, state mark, latest sentence. The header keeps its surface in every state: the
+   focused pane no longer drops its lid, because the ring and the bar above say focus. 32px
+   including the seam under it. */
+.stage--flush .pane--agent-header > .pane__bar,
+.stage--flush .pane-slot.is-active .pane--agent-header > .pane__bar {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--chrome-2);
+  border-bottom-color: var(--seam-divider);
+}
+
+.stage--flush .pane-agent-header__logo {
+  width: 14px;
+  height: 14px;
+}
+
+.stage--flush .pane-agent-header__name {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-size: var(--type-body);
+  font-weight: 500;
+}
+
+/* In a split only the focused pane's name is full ink. A lone pane has no `.has-multiple-panes`
+   ancestor, and a zoomed pane has left its slot, so both read as focused. */
+.stage--flush .has-multiple-panes .pane-slot:not(.is-active) .pane-agent-header__name {
+  color: var(--text-muted);
+}
+
+.stage--flush .pane-agent-header__message {
+  color: var(--text-muted);
+  font-size: var(--type-body);
+  font-weight: 400;
+}
+
+/* ── The breadcrumb (LAY-5) ───────────────────────────────────────────────────
+   `project / branch / space`: project and branch regular and muted, the space in full ink. The
+   session crumb is not drawn (space-bar.tsx), so the shrink order in 20-mission-control.css
+   still holds for the three that remain. */
+.stage--flush .space-bar__name {
+  font-weight: 400;
+}
+
+.stage--flush .space-bar__name-slot {
+  gap: 6px;
+}
+
+.stage--flush .space-bar__space {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.stage--flush .space-bar__sep {
+  color: var(--text-muted);
+}

@@ -8,8 +8,9 @@ import {
   TEXT_PRIMARY_FLOOR,
 } from "../../lib/derive-colors";
 import { applyThemeVars } from "../../lib/theme-vars";
-import { settings } from "../../settings/settings-store";
-import { resolveTheme, THEME_PRESETS, type ThemePreset } from "../../settings/themes";
+import { BUILT_IN_THEMES } from "../../settings/built-in-themes";
+import type { Theme } from "../../settings/theme-schema";
+import { getTheme } from "../../settings/themes";
 import { DesktopChrome } from "../../ui/desktop-chrome";
 import { StatusBar } from "../../ui/status-bar";
 import { DockToggle } from "../../ui/dock/dock-toggle";
@@ -149,9 +150,8 @@ const DISABLED_FINDING = "--text-faint, hover border and hint accent both off (D
  * at an element's inline style publishes one theme to that subtree only — which
  * is what lets four themes coexist on one page without four windows.
  *
- * `peek()` rather than `.value`: the matrix pins the four presets deliberately
- * and must not follow the gallery's theme picker, or every column would show
- * the same theme.
+ * The cell reads its own `themeId`, never the gallery's picker: the matrix pins
+ * every built-in deliberately, or every column would show the same theme.
  */
 function ThemeCell({
   themeId,
@@ -170,12 +170,7 @@ function ThemeCell({
   useLayoutEffect(() => {
     const node = ref.current;
     if (node !== null) {
-      const theme = resolveTheme({
-        ...settings.peek(),
-        themeId,
-        colorOverrides: {},
-      });
-      applyThemeVars(node.style, theme);
+      applyThemeVars(node.style, getTheme(themeId));
     }
   }, [themeId]);
   return (
@@ -317,16 +312,16 @@ const NATIVE_WINDOW_PREVIEWS = [
 ] as const;
 
 /**
- * Floors are imported, never restated. `deriveChromeColors` raises each tone to
- * these numbers itself since the Native balanced rollout, so this section only
- * measures the result and labels which bar it had to clear — and it labels it
- * with the very constant the derivation used. Writing 8 / 6 / 4.5 here would be
- * a second copy of DL-3.5 that could disagree with the shipping one.
+ * Floors are imported, never restated. Every built-in theme declares tones that
+ * clear these numbers (`built-in-themes.test.ts`), so this section only
+ * measures the result and labels which bar it had to clear — with the very
+ * constant the test uses. Writing 8 / 6 / 4.5 here would be a second copy of
+ * DL-3.5 that could disagree with the shipping one.
  */
 const TEXT_CONTRAST_ROLES = [
   {
     id: "primary",
-    colorKey: "textPrimary",
+    colorKey: "text-primary",
     label: "Primary",
     token: "--text-primary",
     floor: TEXT_PRIMARY_FLOOR,
@@ -335,7 +330,7 @@ const TEXT_CONTRAST_ROLES = [
   },
   {
     id: "muted",
-    colorKey: "textMuted",
+    colorKey: "text-muted",
     label: "Muted",
     token: "--text-muted",
     floor: TEXT_MUTED_FLOOR,
@@ -344,7 +339,7 @@ const TEXT_CONTRAST_ROLES = [
   },
   {
     id: "faint",
-    colorKey: "textFaint",
+    colorKey: "text-faint",
     label: "Faint",
     token: "--text-faint",
     floor: TEXT_FAINT_FLOOR,
@@ -390,30 +385,29 @@ const TYPE_SCALE_ALIAS = [
   "--gx-type-micro:var(--type-micro)",
 ].join(";");
 
-function contrastRows(preset: ThemePreset) {
-  const chrome = deriveChromeColors(preset.theme.background, preset.theme.foreground);
-  const commonSurfaces = [chrome.sidebarBg, chrome.chrome1, chrome.chrome2, chrome.tabActiveBg];
+function contrastRows(theme: Theme) {
+  const { ui } = theme;
+  const { tabActiveBg } = deriveChromeColors(theme);
+  const commonSurfaces = [ui.bg, ui["sidebar-bg"], ui["chrome-1"], ui["chrome-2"], tabActiveBg];
 
   return TEXT_CONTRAST_ROLES.map((role) => {
-    const surfaces = role.id === "primary" ? [chrome.inputBg, ...commonSurfaces] : commonSurfaces;
+    const surfaces = role.id === "primary" ? [ui["input-bg"], ...commonSurfaces] : commonSurfaces;
     return {
       ...role,
-      minimum: Math.min(
-        ...surfaces.map((surface) => contrastRatio(chrome[role.colorKey], surface)),
-      ),
+      minimum: Math.min(...surfaces.map((surface) => contrastRatio(ui[role.colorKey], surface))),
     };
   });
 }
 
-function surfaceContrastRows(preset: ThemePreset) {
-  const chrome = deriveChromeColors(preset.theme.background, preset.theme.foreground);
+function surfaceContrastRows(theme: Theme) {
+  const { ui } = theme;
   const surfaces = [
-    { id: "stage", label: "Stage", color: preset.theme.background },
-    { id: "sidebar", label: "Sidebar", color: chrome.sidebarBg },
-    { id: "chrome-1", label: "Chrome 1", color: chrome.chrome1 },
-    { id: "chrome-2", label: "Chrome 2", color: chrome.chrome2 },
-    { id: "selected", label: "Selected", color: chrome.tabActiveBg },
-    { id: "input", label: "Input", color: chrome.inputBg },
+    { id: "stage", label: "Stage", color: ui.bg },
+    { id: "sidebar", label: "Sidebar", color: ui["sidebar-bg"] },
+    { id: "chrome-1", label: "Chrome 1", color: ui["chrome-1"] },
+    { id: "chrome-2", label: "Chrome 2", color: ui["chrome-2"] },
+    { id: "selected", label: "Selected", color: deriveChromeColors(theme).tabActiveBg },
+    { id: "input", label: "Input", color: ui["input-bg"] },
   ] as const;
 
   return {
@@ -422,7 +416,7 @@ function surfaceContrastRows(preset: ThemePreset) {
       ...role,
       cells: surfaces.map((surface) => ({
         ...surface,
-        ratio: contrastRatio(chrome[role.colorKey], surface.color),
+        ratio: contrastRatio(ui[role.colorKey], surface.color),
       })),
     })),
   };
@@ -440,16 +434,16 @@ function ContrastReview() {
         </span>
       </header>
       <div class="gx-contrast-grid">
-        {THEME_PRESETS.map((preset) => (
-          <ThemeCell key={preset.id} themeId={preset.id} force={null} inactive={false} width={270}>
+        {BUILT_IN_THEMES.map((theme) => (
+          <ThemeCell key={theme.id} themeId={theme.id} force={null} inactive={false} width={270}>
             <article class="gx-contrast-card">
               <header class="gx-contrast-card__head">
-                <strong>{preset.label}</strong>
-                <span>{preset.id}</span>
+                <strong>{theme.name}</strong>
+                <span>{theme.id}</span>
               </header>
               <div
                 class="gx-contrast-card__palette"
-                aria-label={`${preset.label} surface and accent palette`}
+                aria-label={`${theme.name} surface and accent palette`}
               >
                 {PALETTE_ROLES.map((role) => (
                   <span
@@ -459,7 +453,7 @@ function ContrastReview() {
                   />
                 ))}
               </div>
-              {contrastRows(preset).map((role) => (
+              {contrastRows(theme).map((role) => (
                 <div key={role.id} class="gx-contrast-row">
                   <div>
                     <span class={`gx-contrast-row__sample gx-contrast-row__sample--${role.id}`}>
@@ -493,19 +487,13 @@ function SurfaceContrastReview() {
         </span>
       </header>
       <div class="gx-surface-matrix-grid">
-        {THEME_PRESETS.map((preset) => {
-          const matrix = surfaceContrastRows(preset);
+        {BUILT_IN_THEMES.map((theme) => {
+          const matrix = surfaceContrastRows(theme);
           return (
-            <ThemeCell
-              key={preset.id}
-              themeId={preset.id}
-              force={null}
-              inactive={false}
-              width="100%"
-            >
+            <ThemeCell key={theme.id} themeId={theme.id} force={null} inactive={false} width="100%">
               <article class="gx-surface-matrix">
                 <header class="gx-surface-matrix__head">
-                  <strong>{preset.label}</strong>
+                  <strong>{theme.name}</strong>
                   <span>contrast ratio : 1</span>
                 </header>
                 <div class="gx-surface-matrix__table">
@@ -657,9 +645,9 @@ function MatrixBlock({
       <div class="gx-matrix">
         <div class="gx-matrix__row">
           <span class="gx-matrix__rowhead" />
-          {THEME_PRESETS.map((preset) => (
-            <span key={preset.id} class="gx-matrix__colhead" style={{ width: `${CELL_WIDTH}px` }}>
-              {preset.id}
+          {BUILT_IN_THEMES.map((theme) => (
+            <span key={theme.id} class="gx-matrix__colhead" style={{ width: `${CELL_WIDTH}px` }}>
+              {theme.id}
             </span>
           ))}
         </div>
@@ -672,10 +660,10 @@ function MatrixBlock({
                 <span class="gx-matrix__finding">{rowFinding(row, absent)}</span>
               )}
             </span>
-            {THEME_PRESETS.map((preset) => (
+            {BUILT_IN_THEMES.map((theme) => (
               <ThemeCell
-                key={preset.id}
-                themeId={preset.id}
+                key={theme.id}
+                themeId={theme.id}
                 force={row.force}
                 inactive={row.inactive}
               >

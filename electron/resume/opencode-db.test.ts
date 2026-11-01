@@ -305,3 +305,113 @@ describe("opencode.candidates merge", () => {
     expect(opencode.candidates(home).map((entry) => entry.id)).toEqual(["ses_file_only"]);
   });
 });
+
+// opencode 2.0 copies 1.x sessions into `session_v2` / `session_message` and
+// then writes only there; the shapes below are read off opencode 2.0.32's own
+// database (2026-10-24).
+describe("opencode 2.x tables", () => {
+  function addV2Tables(db: DatabaseSync): void {
+    db.exec(`
+      CREATE TABLE session_v2 (
+        id text PRIMARY KEY,
+        project_id text NOT NULL,
+        parent_id text,
+        directory text NOT NULL,
+        time_updated integer NOT NULL
+      );
+      CREATE TABLE session_message (
+        id text PRIMARY KEY,
+        session_id text NOT NULL,
+        type text NOT NULL,
+        seq integer NOT NULL,
+        time_created integer NOT NULL,
+        data text NOT NULL
+      );
+    `);
+  }
+
+  function addV2Session(
+    db: DatabaseSync,
+    id: string,
+    directory: string,
+    timeUpdated: number,
+    parentId: string | null = null,
+  ): void {
+    db.prepare(
+      "INSERT INTO session_v2 (id, project_id, parent_id, directory, time_updated) VALUES (?, ?, ?, ?, ?)",
+    ).run(id, "prj_1", parentId, directory, timeUpdated);
+  }
+
+  function addV2Turn(
+    db: DatabaseSync,
+    sessionId: string,
+    seq: number,
+    type: string,
+    content: readonly Record<string, unknown>[],
+    model?: string,
+  ): void {
+    db.prepare(
+      "INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run(
+      `msg_${sessionId}_${seq}`,
+      sessionId,
+      type,
+      seq,
+      T0 + seq,
+      JSON.stringify({ model: model === undefined ? undefined : { id: model }, content }),
+    );
+  }
+
+  it("lists a 2.x session ahead of an older 1.x one in the same directory", () => {
+    const db = createDatabase(home);
+    addV2Tables(db);
+    addSession(db, "ses_migrated", "/tmp/one", T0);
+    addV2Session(db, "ses_migrated", "/tmp/one", T0);
+    addV2Session(db, "ses_new", "/tmp/one", T0 + 5000);
+    addV2Session(db, "ses_child", "/tmp/one", T0 + 9000, "ses_new");
+    db.close();
+
+    expect(candidates(home)).toEqual([
+      { id: "ses_new", cwd: "/tmp/one", mtimeMs: T0 + 5000 },
+      { id: "ses_migrated", cwd: "/tmp/one", mtimeMs: T0 },
+    ]);
+  });
+
+  it("reads a database that has only the 2.x tables", () => {
+    const filePath = databasePath(home);
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    const db = new DatabaseSync(filePath);
+    addV2Tables(db);
+    addV2Session(db, "ses_only", "/tmp/two", T0);
+    addV2Turn(db, "ses_only", 1, "assistant", [{ type: "text", text: "Done." }], "model-v2");
+    db.close();
+
+    expect(candidates(home).map((entry) => entry.id)).toEqual(["ses_only"]);
+    expect(sessionTailText(home, "ses_only")).toBe("Done.");
+  });
+
+  it("takes the last text of the newest 2.x assistant turn, never reasoning or the user", () => {
+    const db = createDatabase(home);
+    addV2Tables(db);
+    addV2Session(db, "ses_new", "/tmp/one", T0);
+    addV2Turn(db, "ses_new", 1, "assistant", [{ type: "text", text: "Older." }], "model-old");
+    addV2Turn(
+      db,
+      "ses_new",
+      2,
+      "assistant",
+      [
+        { type: "text", text: "Checking." },
+        { type: "tool", text: "ignored" },
+        { type: "text", text: "Tests pass." },
+        { type: "reasoning", text: "PRIVATE: thinking." },
+      ],
+      "model-new",
+    );
+    addV2Turn(db, "ses_new", 3, "user", [{ type: "text", text: "and now?" }]);
+    db.close();
+
+    expect(sessionTailText(home, "ses_new")).toBe("Tests pass.");
+    expect(sessionModel(home, "ses_new")).toBe("model-new");
+  });
+});

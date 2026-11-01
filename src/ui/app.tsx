@@ -6,6 +6,8 @@ import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-lau
 import { createAgentInstallHost } from "../launcher/agent-install-host";
 import { registerAgentInstallHost } from "../launcher/agent-install-store";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { installAttentionBadgeSync } from "./attention/attention-badge-sync";
+import { installNotificationActivation } from "./attention/notification-activation";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { launchPageAgents, quickAgentOptions } from "../settings/quick-agents";
 import { openSettingsAt } from "./settings/settings-focus-store";
@@ -27,7 +29,7 @@ import { defaultPtyClient } from "../terminal/pty-client";
 import {
   agentsProbed,
   detectedAgents,
-  ensureAgentsDetected,
+  primeAgentsDetected,
 } from "../terminal/agent-detection-store";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
@@ -35,7 +37,7 @@ import { BUILT_IN_PRESET, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import type { DockTab } from "../settings/settings-schema";
 import { agentOptions, agentProcessMatchers, probeNames } from "../lib/agent-catalog";
-import { resolveTheme } from "../settings/themes";
+import { activeTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
@@ -172,7 +174,7 @@ import { buildAgentRail, subjectForWorkspace } from "./agent-rail-model";
 import { buildLaunchContext } from "../launcher/agent-launch-context-model";
 import { ensureRepositoriesScanned, repositoryScans } from "../repositories/repositories-store";
 import { StatusBar } from "./status-bar";
-import { SettingsScreen } from "./settings/settings-screen";
+import { SettingsSurface } from "./command-settings/settings-surface";
 import { UsageDockTab } from "./usage/usage-dock-tab";
 import { UsagePage } from "./usage/usage-page";
 import { runAttentionFocus } from "./attention-focus-coordinator";
@@ -218,11 +220,20 @@ import { installChangesTriggers } from "../files/changes/changes-controller";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { RailAgentLimits } from "./usage/agent-usage-summary";
 import { DockPanel } from "./dock/dock-panel";
-import { SidebarActions } from "./sidebar-actions";
+import { AgentDock } from "./agent-dock/agent-dock";
+import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
+import { dockSheetOpen, setDockSectionOpen } from "./agent-dock/agent-dock-state";
+import { DockChanges } from "./agent-dock/dock-changes";
+import { DockHistory } from "./agent-dock/dock-history";
+import { DockUsage } from "./agent-dock/dock-usage";
+import { changedFileCount, DockChangesWatch } from "./agent-dock/dock-changes-watch";
+import { DockSlot } from "./agent-dock/dock-slot";
+import { SidebarActions, type SidebarActionsProps } from "./sidebar-actions";
 import { DockToggle } from "./dock/dock-toggle";
 import { useDockPresence } from "./dock/dock-presence";
 import { useTitleBarOverlaySync } from "./title-bar-overlay-sync";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
+import { STAGE_FLUSH_CLASS, shellStageEnabled } from "./shell-stage";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { applySidebarShell } from "./sidebar-shell";
@@ -239,6 +250,7 @@ import { lastSession, summarizeLastSession } from "../terminal/last-session-stor
 import type { WindowRecord } from "../lib/session-schema";
 import { discardLastSession, reopenLastSession } from "./last-session-actions";
 import { DesktopChrome } from "./desktop-chrome";
+import { AttentionSwitcher, BrowserSideSlot, DockSections, HunkQueue } from "./shell-mounts";
 import {
   boardClosesAfterResume,
   bootOpensTheBoard,
@@ -317,6 +329,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         if (!settings.value.dockOpen || settings.value.dockTab !== "explorer") {
           updateSettings({ dockOpen: true, dockTab: "explorer" });
         }
+        // The stacked dock keeps the document inside its Files section.
+        if (agentDockEnabled()) setDockSectionOpen("files", true);
       },
       canFocus: () =>
         agentLaunchPage.request.value === null &&
@@ -680,6 +694,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // (`recent-activity-sync.ts`), so a sentence in the sidebar is the one the
   // agent said last rather than the one it said at launch.
   useEffect(() => installRecentActivitySync(), []);
+  useEffect(() => installAttentionBadgeSync(), []);
+  useEffect(() => installNotificationActivation(focusRailPane), []);
   // The window's clone job outlives the Open Board, so its controller is
   // attached here for the window's whole life, not when the board mounts.
   useEffect(() => {
@@ -1091,7 +1107,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   useSignalEffect(() => {
     const current = settings.value;
     tabsRef.current?.applySettings(current);
-    applyThemeVars(document.documentElement.style, resolveTheme(current));
+    const theme = activeTheme(current);
+    applyThemeVars(document.documentElement.style, theme);
+    // The preset's own light/dark tokens follow the theme's mode, not its palette (UI-2). The
+    // class sits on the root so a portalled popup inherits it.
+    document.documentElement.classList.toggle("dark", theme.type === "dark");
   });
 
   /**
@@ -1208,10 +1228,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // already on screen: discovery spends an interactive login shell and measured
   // ~1.1s here (see `agent-detection-store.ts`), so a picker that probes on
   // open offers "Shell only" for a second first. Reading `customAgents` also
-  // re-runs this when settings land, and the store's own freshness window is
-  // what stops an ordinary settings broadcast from paying for a second probe.
+  // re-runs this on every settings broadcast, so it uses the prime, which
+  // probes only for a new name list or an answer minutes old: a broadcast that
+  // leaves the list alone does not spend a login shell every 30 s.
   useSignalEffect(() => {
-    void ensureAgentsDetected(probeNames(settings.value.customAgents));
+    void primeAgentsDetected(probeNames(settings.value.customAgents));
   });
 
   // The external-app scan, started at boot for the same reason: the toolbar's
@@ -2085,10 +2106,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       createEntryOpen: createEntryRequest.value !== null,
       persistErrorVisible: persistError.value !== null,
       settingsLoadError: settingsLoadState.value.status === "error",
+      // The narrow-window dock sheet is DOM over the stage (spec OD-4).
+      dockSheetOpen: dockSheetOpen.value,
     });
 
-  /** Live drag width while resizing, the persisted setting otherwise. */
-  const dockWidth = (): number => dockWidthLive.value ?? settings.value.dockWidth;
+  /**
+   * Live drag width while resizing, the persisted setting otherwise. The stacked dock is a fixed
+   * column with no grip: its width replaces both and the stored setting is left as it was.
+   */
+  const dockWidth = (): number => dockStageWidth(dockWidthLive.value ?? settings.value.dockWidth);
 
   /**
    * The tab the dock actually shows: the stored one, re-checked against
@@ -2098,6 +2124,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * host that has it restores the user's own choice.
    */
   const dockTab = (): DockTab => resolveDockTab(settings.value.dockTab, sessionsSupported.value);
+
+  /**
+   * The Explorer over one folder: the legacy dock roots it at the tab's folder, the stacked dock
+   * at the checkout the focused agent stands in (`agent-dock/dock-root.ts`).
+   */
+  const explorerAt = (workspacePath: string | null, changesAvailable: boolean) => (
+    <ExplorerTab
+      controller={fileController}
+      onDocumentEmpty={() => tabsRef.current?.focusActive()}
+      workspacePath={workspacePath}
+      canCreate={fileCreateAvailable}
+      changesAvailable={changesAvailable}
+    />
+  );
+  /** What each dock surface shows: the legacy column mounts one, the stacked dock all of them. */
+  const dockBodies = {
+    files: explorerAt(activeWorkspace.value, gitChangesAvailable),
+    usage: <UsageDockTab onOpenDetails={() => tabsRef.current?.runAction("open-usage")} />,
+    history: <SessionsDockTab onResume={(entry) => void resumeSessionEntry(entry)} />,
+  };
 
   /** Why Prompts cannot run, or null — one answer, read by both mounts. */
   const promptsUnavailable = (): string | null =>
@@ -2145,40 +2191,41 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * The rail's tools row (DL §28). Built here beside `chromeActions` because
    * it is the same job: `App` owns Prompts and Settings, and every layout must
    * show the same state for them — the rail on Electron's sidebar, the
-   * toolbar's `More` menu in top-tab mode and on Tauri.
+   * toolbar's `More` menu in top-tab mode and on Tauri. The props are kept as
+   * a value too, so the project-first rail draws its own foot from the same
+   * callbacks (`AgentRail`'s `tools`).
    */
-  const railActions = (
-    <SidebarActions
-      // `railToolsMounted` already implies the Electron column, so collapsed
-      // here is exactly the avatar column's `Tools` button (DL-28.6).
-      collapsed={effectiveSidebarCollapsed()}
-      // Every callback here OPENS and stops. Pressing the row of something
-      // already on screen is a no-op, so none of them can be the thing that
-      // puts a surface away — that stays with each surface's own control.
-      onOpenBrowser={() => {
-        if (!browserSurfaceActive.value) {
-          tabsRef.current?.runAction("toggle-browser");
-        }
-      }}
-      onOpenUsage={() => openDockTab("usage")}
-      onOpenExplorer={() => openDockTab("explorer")}
-      sessionsAvailable={sessionsSupported.value}
-      onOpenSessions={() => openDockTab("sessions")}
-      promptsOpen={promptsOpen.value}
-      promptsUnavailable={promptsUnavailable()}
-      promptPopover={promptPopover}
-      onOpenPrompts={() => {
-        if (!promptsOpen.value) {
-          togglePrompts();
-        }
-      }}
-      onOpenSettings={() => {
-        if (!settingsOpen.value) {
-          toggleSettings();
-        }
-      }}
-    />
-  );
+  const railToolProps: SidebarActionsProps = {
+    // `railToolsMounted` already implies the Electron column, so collapsed
+    // here is exactly the avatar column's `Tools` button (DL-28.6).
+    collapsed: effectiveSidebarCollapsed(),
+    // Every callback here OPENS and stops. Pressing the row of something
+    // already on screen is a no-op, so none of them can be the thing that
+    // puts a surface away — that stays with each surface's own control.
+    onOpenBrowser: () => {
+      if (!browserSurfaceActive.value) {
+        tabsRef.current?.runAction("toggle-browser");
+      }
+    },
+    onOpenUsage: () => openDockTab("usage"),
+    onOpenExplorer: () => openDockTab("explorer"),
+    sessionsAvailable: sessionsSupported.value,
+    onOpenSessions: () => openDockTab("sessions"),
+    promptsOpen: promptsOpen.value,
+    promptsUnavailable: promptsUnavailable(),
+    promptPopover,
+    onOpenPrompts: () => {
+      if (!promptsOpen.value) {
+        togglePrompts();
+      }
+    },
+    onOpenSettings: () => {
+      if (!settingsOpen.value) {
+        toggleSettings();
+      }
+    },
+  };
+  const railActions = <SidebarActions {...railToolProps} />;
 
   // One element, both layouts: DesktopChrome mounts it in the frame in
   // sidebar mode, TabBar mounts the same element in top-tab mode. Building it
@@ -2478,6 +2525,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           <AgentRail
             newPaneDrop={newPaneDrop}
             footer={railToolsMounted ? railActions : undefined}
+            tools={railToolsMounted ? railToolProps : undefined}
             collapsed={effectiveSidebarCollapsed()}
             usageSummary={
               effectiveSidebarCollapsed() ? null : (
@@ -2543,7 +2591,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // open on purpose, so the painted state answers instead and the
             // terminals reclaim the space the moment the gesture arms.
             (dockDragging ? dockPainted : dockPresence.mounted) ? "stage--dock" : ""
-          } ${sidebar ? "stage--strip" : ""}`}
+          } ${sidebar ? "stage--strip" : ""} ${shellStageEnabled() ? STAGE_FLUSH_CLASS : ""}`}
           // One number, two consumers: the panel's own column and the inset
           // that keeps the terminal grid clear of it. A drag updates the
           // live signal, so both move together instead of the terminals
@@ -2680,6 +2728,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               popover is `right: 0` and 320px wide, so it opens INSIDE the
               surface and the user types into something they cannot see. */}
           <BrowserSurface hidden={panelObscured()} onClose={closeBrowserTab} />
+          <BrowserSideSlot />
           {/* The Agent Board, on the stage the same way the other two are
               (spec §4.1) — its own component owns the mount condition, so it
               is testable without an `<App>` harness. `boardView` is built once
@@ -2709,34 +2758,68 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               a profile that stored "sessions" and then moved to a host with
               no `sessions_list` must not paint an empty column. */}
           {dockPresence.mounted ? (
-            <DockPanel
-              entered={dockPresence.entered}
-              tabs={availableDockTabs(sessionsSupported.value)}
-              activeTab={dockTab()}
-              onSelectTab={(tab) => updateSettings({ dockTab: tab })}
-              width={dockWidth()}
-              onWidthChange={(width) => updateSettings({ dockWidth: width })}
-              // Through the action for the same reason the toolbar button is
-              // (see `chromeActions` above): the chord path owns the focus
-              // guard, so the drag-past-the-floor gesture must not flip
-              // `dockOpen` on its own.
-              onClose={() => tabsRef.current?.runAction("toggle-dock")}
-            >
-              {dockTab() === "explorer" ? (
-                <ExplorerTab
-                  controller={fileController}
-                  onDocumentEmpty={() => tabsRef.current?.focusActive()}
-                  workspacePath={activeWorkspace.value}
-                  canCreate={fileCreateAvailable}
-                  changesAvailable={gitChangesAvailable}
+            <DockSlot
+              legacy={
+                <DockPanel
+                  entered={dockPresence.entered}
+                  tabs={availableDockTabs(sessionsSupported.value)}
+                  activeTab={dockTab()}
+                  onSelectTab={(tab) => updateSettings({ dockTab: tab })}
+                  width={dockWidth()}
+                  onWidthChange={(width) => updateSettings({ dockWidth: width })}
+                  // Through the action for the same reason the toolbar button is
+                  // (see `chromeActions` above): the chord path owns the focus
+                  // guard, so the drag-past-the-floor gesture must not flip
+                  // `dockOpen` on its own.
+                  onClose={() => tabsRef.current?.runAction("toggle-dock")}
+                >
+                  {dockTab() === "explorer"
+                    ? dockBodies.files
+                    : dockTab() === "usage"
+                      ? dockBodies.usage
+                      : dockBodies.history}
+                </DockPanel>
+              }
+              // `agentDock` switch: sections on one scroll, no resize grip. Closing goes
+              // through the action too, so the focus guard stays the one way out.
+              stacked={
+                <AgentDock
+                  entered={dockPresence.entered}
+                  selection={{ onFocusPane: focusRailPane, onSelectTab: selectTab }}
+                  onClose={() => tabsRef.current?.runAction("toggle-dock")}
+                  bodies={{
+                    changes: gitChangesAvailable
+                      ? {
+                          watch: (root) => <DockChangesWatch root={root} />,
+                          section: (root) => <DockChanges root={root} />,
+                          count: changedFileCount,
+                        }
+                      : null,
+                    // Changes is its own section here, so the Explorer keeps only the files.
+                    files: (root) => explorerAt(root, false),
+                    usage: ({ item, space }) => (
+                      <DockUsage
+                        item={item}
+                        space={space}
+                        onOpenDetails={() => tabsRef.current?.runAction("open-usage")}
+                      />
+                    ),
+                    history: sessionsSupported.value
+                      ? ({ item, cwd }) => (
+                          <DockHistory
+                            item={item}
+                            cwd={cwd}
+                            onResume={(entry) => void resumeSessionEntry(entry)}
+                          />
+                        )
+                      : null,
+                  }}
                 />
-              ) : dockTab() === "usage" ? (
-                <UsageDockTab onOpenDetails={() => tabsRef.current?.runAction("open-usage")} />
-              ) : (
-                <SessionsDockTab onResume={(entry) => void resumeSessionEntry(entry)} />
-              )}
-            </DockPanel>
+              }
+            />
           ) : null}
+          <DockSections />
+          <HunkQueue />
           {boardOpen.value ? (
             <OpenBoard
               canBrowseSessions={sessionsSupported.value}
@@ -2870,8 +2953,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               openTaskBoard();
             }}
           />
+          <AttentionSwitcher />
           <UsagePage open={usageOpen.value} onClose={closeUsage} />
-          <SettingsScreen open={settingsOpen.value} onClose={closePanel} />
+          <SettingsSurface open={settingsOpen.value} onClose={closePanel} />
         </main>
       }
       // Off by default since 2026-08-16 (`showStatusBar`): the row is pure

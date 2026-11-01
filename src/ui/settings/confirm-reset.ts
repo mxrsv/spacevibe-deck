@@ -14,6 +14,22 @@ import { resetSettingsKeys, settings } from "../../settings/settings-store";
 export const resetPromptOpen = signal(false);
 
 /**
+ * What a confirmed reset does: resets exactly these keys, and lets go of the agents it deletes.
+ * Both prompts (the native one below and Command Settings' dialog) end here.
+ */
+export function applyReset(keys: readonly (keyof Settings)[]): void {
+  // Read at confirm time, not before the prompt: the user may have edited meanwhile,
+  // and after the reset the declared agents are gone.
+  const declaredIds = keys.includes("customAgents")
+    ? settings.value.customAgents.map((agent) => agent.id)
+    : [];
+  resetSettingsKeys(keys);
+  // The ids are free again; a workspace still remembering one would open
+  // with whatever agent is next minted under it (see removeAgent).
+  declaredIds.forEach((id) => forgetWorkspaceAgent(id));
+}
+
+/**
  * Names what a reset will change and what it leaves, asks, then resets exactly
  * those keys (FBK-3). A failed prompt resets nothing and says so.
  */
@@ -35,15 +51,7 @@ export async function confirmReset(
       cancelLabel: "Cancel",
     });
     if (confirmed) {
-      // Read now, not before the prompt: the user may have edited meanwhile,
-      // and after the reset the declared agents are gone.
-      const declaredIds = keys.includes("customAgents")
-        ? settings.value.customAgents.map((agent) => agent.id)
-        : [];
-      resetSettingsKeys(keys);
-      // The ids are free again; a workspace still remembering one would open
-      // with whatever agent is next minted under it (see removeAgent).
-      declaredIds.forEach((id) => forgetWorkspaceAgent(id));
+      applyReset(keys);
     }
   } catch {
     reportPersistError("Couldn't confirm the reset — nothing was changed.");

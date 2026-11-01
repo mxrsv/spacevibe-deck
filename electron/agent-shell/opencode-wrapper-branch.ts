@@ -35,12 +35,14 @@ export function opencodeWrapperBranch(markerPath: string, configDir: string): st
     "oc_supported=",
     `if [ -n "$oc_local" ] && [ -z "\${DECK_AGENT_NESTED-}" ] && [ -e ${shellQuote(markerPath)} ]; then`,
     // Each probe has its own environment and watchdog; no global cache survives PATH changes.
+    // The watchdog allows 5 s: macOS checks a new binary on its first exec, which took 2.1-2.2 s
+    // for opencode 2.0.32 (2026-10-24), and a probe killed then drops Signals for that launch.
     "  deck_oc_probe() (",
     "    unset DECK_PANE_ID DECK_HOOK_TOKEN DECK_HOOK_PORT DECK_AGENT_ID DECK_AGENT_PID DECK_AGENT_NESTED OPENCODE_CONFIG_DIR",
     '    "$real" "$@" </dev/null &',
     "    oc_probe=$!",
     "    (",
-    "      command -p sleep 2 &",
+    "      command -p sleep 5 &",
     "      oc_sleep=$!",
     "      trap 'kill \"$oc_sleep\" 2>/dev/null; exit' TERM",
     '      wait "$oc_sleep"',

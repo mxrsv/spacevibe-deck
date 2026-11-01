@@ -90,8 +90,8 @@ exact id, `latest`, or nothing, and never rejects.
 | Agent          | Scan                                                        | Answer                                   |
 | -------------- | ----------------------------------------------------------- | ---------------------------------------- |
 | `claude`       | `~/.claude/projects/<project>/*.jsonl`, files directly in the project dir | exact id, else nothing      |
-| `codex`        | Codex rollouts, interactive sources only, archived included | exact id, else nothing                   |
-| `opencode`     | `opencode.db` via `node:sqlite` first, then the legacy JSON tree, deduplicated by id; sub-agent sessions excluded | exact id, else nothing |
+| `codex`        | Codex rollouts, plain or compressed, interactive sources only, archived included | exact id, else nothing |
+| `opencode`     | `opencode.db` via `node:sqlite` (the 1.x and 2.x session tables) first, then the legacy JSON tree, deduplicated by id; sub-agent sessions excluded | exact id, else nothing |
 | `gemini`       | none                                                        | always `latest`                          |
 | `agy`          | `~/.gemini/antigravity/conversations/*.pb` head bytes       | best-effort id, else `latest`            |
 | custom         | none                                                        | the declared command, unchanged          |

@@ -3,6 +3,7 @@ import { Fragment } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { shellStageEnabled } from "../shell-stage";
 import { useStageOverlayFlag, useSurfacePlacement } from "../worktree-card-menus";
 import {
   needsTone,
@@ -74,10 +75,11 @@ function sessionCrumb(space: Space): string | null {
   return space.session === spaceLabel(space) ? null : space.session;
 }
 
-function Separator() {
+/** The flush stage draws the mock's plain slash; the shipped bar keeps its caret icon. */
+function Separator({ flush }: { readonly flush: boolean }) {
   return (
     <span class="space-bar__sep" aria-hidden="true">
-      <DeckIcon icon={CaretRight} size={CHROME_ICON} />
+      {flush ? "/" : <DeckIcon icon={CaretRight} size={CHROME_ICON} />}
     </span>
   );
 }
@@ -141,6 +143,7 @@ export function SpaceBar({
   onRename,
   hideMarks = false,
 }: SpaceBarProps) {
+  const flush = shellStageEnabled();
   const row = useRef<HTMLDivElement>(null);
   const card = useHoverCard();
   /** Owner key of the space whose name is being edited, if any. */
@@ -200,7 +203,7 @@ export function SpaceBar({
                   <span class="space-bar__part" data-part={crumb.part}>
                     {crumb.text}
                   </span>
-                  {(showName || at < crumbs.length - 1) && <Separator />}
+                  {(showName || at < crumbs.length - 1) && <Separator flush={flush} />}
                 </Fragment>
               ))}
               {showName && (
@@ -220,9 +223,9 @@ export function SpaceBar({
                   )}
                 </span>
               )}
-              {sessionCrumb(space) !== null && (
+              {!flush && sessionCrumb(space) !== null && (
                 <>
-                  <Separator />
+                  <Separator flush={flush} />
                   <span class="space-bar__part" data-part="session">
                     {sessionCrumb(space)}
                   </span>

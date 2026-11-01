@@ -169,20 +169,19 @@ describe("parseThemeFile — Alacritty", () => {
 });
 
 describe("parseThemeFile — what it refuses and what it fills in", () => {
-  it("rejects a valid theme whose chrome text cannot meet DL-3.5", () => {
+  it("holds a file only to the terminal floors, since its chrome is a built-in's", () => {
     const { result } = parseThemeFile(
       "mid-gray.json",
       JSON.stringify({
         name: "Mid Gray",
         background: "#777777",
-        // 4.69:1 clears terminal text, while the derived chrome cannot reach
-        // DL-3.5's stricter 8/6/4.5 ladder on this middle-luminance base.
+        // 4.69:1 clears terminal text. Chrome derived from this base could
+        // never reach DL-3.5's 8/6/4.5 ladder, but no chrome is derived now.
         foreground: "#000000",
       }),
     );
 
-    expect(result.ok).toBe(false);
-    expect(!result.ok && result.reason).toContain("DL-3.5");
+    expect(result.ok).toBe(true);
   });
 
   it.each(["#000000", "#ffffff"])(

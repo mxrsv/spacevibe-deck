@@ -3,7 +3,11 @@ import { render } from "preact";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { tabViews, type PaneView } from "./tabs-store";
 import { paneTails } from "./session-tail-store";
-import { displayAgent } from "../ui/agent-rail-card-model";
+import { displayAgent, stateWord } from "../ui/agent-rail-card-model";
+import { paneSignal } from "../ui/agent-rail-model";
+import { AgentStateMark } from "../ui/blocks/agent-state-mark";
+import { railStatus } from "../ui/rail-view-model";
+import { shellStageEnabled } from "../ui/shell-stage";
 import { PaneQuickAgents } from "./pane-quick-agents";
 import "./pane-agent-header.css";
 
@@ -33,12 +37,30 @@ export function PaneAgentHeader({
       </div>
     );
   }
-  const label = message.trim() || displayAgent(pane.agent);
+  const name = displayAgent(pane.agent);
+  const flush = shellStageEnabled();
+  // The flush stage prints the name on its own, so a silent agent shows its state word beside
+  // it (as the rail's second line does) rather than the name twice.
+  const signal = paneSignal(pane);
+  const label =
+    message.trim() ||
+    (flush
+      ? stateWord({ ...signal, detail: pane.detail ?? null, exitCode: pane.exitCode ?? null })
+      : name);
   return (
     <div class="pane-agent-header">
       <span class="pane-agent-header__identity" title={pane.agent}>
         <AgentGlyph agent={pane.agent} className="pane-agent-header__logo" />
       </span>
+      {flush && (
+        <>
+          <span class="pane-agent-header__name">{name}</span>
+          <AgentStateMark
+            status={railStatus({ state: signal.state, attention: pane.attention })}
+            confidence={signal.confidence}
+          />
+        </>
+      )}
       <span class="pane-agent-header__message" title={label}>
         {label}
       </span>

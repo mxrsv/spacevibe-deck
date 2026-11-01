@@ -38,12 +38,13 @@ describe("createAgentNotificationAdapter", () => {
       });
       const adapter = createAgentNotificationAdapter(client);
 
-      await adapter.send({ title: "Agent finished", body: "Workspace foo" });
+      await adapter.send({ title: "Agent finished", body: "Workspace foo", paneId: 42 });
 
       expect(client.sendNotification).toHaveBeenCalledOnce();
       expect(client.sendNotification).toHaveBeenCalledWith({
         title: "Agent finished",
         body: "Workspace foo",
+        paneId: 42,
       });
     });
   });
@@ -137,6 +138,16 @@ describe("createAgentNotificationAdapter", () => {
 
       await expect(adapter.send({ title: "Agent finished" })).resolves.toBeUndefined();
       expect(client.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("handles a rejected asynchronous host send", async () => {
+      const client = makeClient({
+        isPermissionGranted: vi.fn().mockResolvedValue(true),
+        sendNotification: vi.fn().mockRejectedValue(new Error("host unavailable")),
+      });
+      await expect(
+        createAgentNotificationAdapter(client).send({ title: "Done" }),
+      ).resolves.toBeUndefined();
     });
 
     it("send() is a controlled no-op when sendNotification throws synchronously", async () => {

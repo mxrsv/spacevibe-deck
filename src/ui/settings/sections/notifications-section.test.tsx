@@ -25,6 +25,13 @@ vi.mock("../../../chrome/events", async (importOriginal) => {
   };
 });
 
+vi.mock("../../../host/shell-host", () => ({ openNotificationSettings: vi.fn() }));
+import { openNotificationSettings } from "../../../host/shell-host";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../../../lib/platform";
+
 import { NotificationsSection } from "./notifications-section";
 import { settings } from "../../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
@@ -47,7 +54,9 @@ describe("NotificationsSection — agent notifications toggle (Task 22)", () => 
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
-    settings.value = DEFAULT_SETTINGS;
+    settings.value = { ...DEFAULT_SETTINGS, agentNotifications: false };
+    resetDesktopEnvironmentForTests();
+    vi.mocked(openNotificationSettings).mockReset();
     mockedRequestPermission.mockReset();
     mockedReportPersistError.mockReset();
   });
@@ -67,10 +76,59 @@ describe("NotificationsSection — agent notifications toggle (Task 22)", () => 
   const getToggle = (): HTMLButtonElement =>
     host.querySelector('[aria-label="Agent notifications"]') as HTMLButtonElement;
 
-  it("does NOT request permission on render/mount", () => {
+  it("defaults on without requesting permission on render/mount", () => {
+    settings.value = DEFAULT_SETTINGS;
     mount();
     expect(mockedRequestPermission).not.toHaveBeenCalled();
-    expect(getToggle().getAttribute("aria-checked")).toBe("false");
+    expect(getToggle().getAttribute("aria-checked")).toBe("true");
+  });
+
+  it.each(["macos", "windows"] as const)("opens system notifications on %s", async (platform) => {
+    initializeDesktopEnvironment({
+      platform,
+      homeDir: platform === "macos" ? "/Users/test" : "C:\\Users\\test",
+    });
+    vi.mocked(openNotificationSettings).mockResolvedValue(true);
+    mount();
+    const button = Array.from(host.querySelectorAll("button")).find(
+      (node) => node.textContent === "Open System Settings",
+    );
+    expect(button).toBeDefined();
+    await act(async () => {
+      button!.click();
+      await flushMicrotasks();
+    });
+    expect(openNotificationSettings).toHaveBeenCalledExactlyOnceWith();
+    expect(mockedReportPersistError).not.toHaveBeenCalled();
+  });
+
+  it("hides system settings on unsupported hosts", () => {
+    mount();
+    expect(host.textContent).not.toContain("Open System Settings");
+  });
+
+  it("surfaces a system settings failure and enables retry", async () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/test" });
+    vi.mocked(openNotificationSettings)
+      .mockRejectedValueOnce(new Error("unavailable"))
+      .mockResolvedValueOnce(true);
+    mount();
+    const button = Array.from(host.querySelectorAll("button")).find(
+      (node) => node.textContent === "Open System Settings",
+    )!;
+    await act(async () => {
+      button.click();
+      await flushMicrotasks();
+    });
+    expect(mockedReportPersistError).toHaveBeenCalledWith(
+      expect.stringContaining("Couldn't open System Settings"),
+    );
+    expect(button.disabled).toBe(false);
+    await act(async () => {
+      button.click();
+      await flushMicrotasks();
+    });
+    expect(openNotificationSettings).toHaveBeenCalledTimes(2);
   });
 
   it("enable + granted: requests permission once, setting becomes true", async () => {

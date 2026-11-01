@@ -4,6 +4,7 @@ import {
   formatKeyChord,
   formatShortcutBinding,
   primaryModifierKeycap,
+  shortcutCaps,
   shortcutLabel,
   type KeyChord,
 } from "./shortcut-label";
@@ -82,5 +83,26 @@ describe("shortcutLabel", () => {
 
     expect(formatKeyChord(explorer.macos, "macos")).toBe("⌘⇧E");
     expect(formatKeyChord(explorer.windows, "windows")).toBe("Ctrl+Shift+E");
+  });
+});
+
+describe("shortcutCaps", () => {
+  it("splits a macOS chord into one cap per key", () => {
+    expect(shortcutCaps("focus-next-attention", "macos")).toEqual(["⌘", "⇧", "A"]);
+    expect(shortcutCaps("toggle-settings", "macos")).toEqual(["⌘", ","]);
+  });
+
+  it("splits a Windows chord on its plus signs", () => {
+    expect(shortcutCaps("toggle-settings", "windows")).toEqual(["Ctrl", ","]);
+    expect(shortcutCaps("toggle-usage", "windows")).toEqual(["Ctrl", "Shift", "U"]);
+  });
+
+  it("keeps a trailing plus key as a cap", () => {
+    const plus: KeyBinding = { key: "+", ctrl: true, action: "zoom-in" };
+    expect(shortcutCaps("zoom-in", "windows", [plus])).toEqual(["Ctrl", "+"]);
+  });
+
+  it("is null for an action with no chord", () => {
+    expect(shortcutCaps("toggle-settings", "macos", [])).toBeNull();
   });
 });

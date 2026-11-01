@@ -15,7 +15,8 @@ import {
   themeLoadState,
   themesLoading,
 } from "./custom-themes-store";
-import { customPresets, getPreset, THEME_PRESETS } from "./themes";
+import { DECK_DARK_THEME, DECK_LIGHT_THEME } from "./built-in-themes";
+import { customThemes, getTheme } from "./themes";
 
 const mockedList = vi.mocked(listThemeFiles);
 const mockedImport = vi.mocked(importThemeFiles);
@@ -37,14 +38,15 @@ const ORANGE = JSON.stringify({
   foreground: "#e8e3d8",
 });
 
-const MID_GRAY = JSON.stringify({
-  name: "Mid Gray",
-  background: "#777777",
-  foreground: "#000000",
+const PAPER_LIKE = JSON.stringify({
+  name: "Paper Like",
+  background: "#fbf7ee",
+  foreground: "#2b2b2b",
+  red: "#a3332b",
 });
 
 beforeEach(() => {
-  customPresets.value = [];
+  customThemes.value = [];
   themeImportFailures.value = [];
   themeLoadState.value = { status: "idle" };
   vi.clearAllMocks();
@@ -52,7 +54,7 @@ beforeEach(() => {
 });
 
 describe("loadCustomThemes", () => {
-  it("publishes one preset per file that parses", async () => {
+  it("publishes one theme per file that parses", async () => {
     mockedList.mockResolvedValue({
       entries: [{ fileName: "orange.json", content: ORANGE }],
       rejected: [],
@@ -60,15 +62,50 @@ describe("loadCustomThemes", () => {
 
     await loadCustomThemes();
 
-    expect(customPresets.value).toEqual([
+    expect(customThemes.value).toEqual([
       {
-        id: "file:orange.json",
-        label: "Orange Mechanic",
         fileName: "orange.json",
-        theme: expect.objectContaining({ background: "#101014" }),
+        theme: expect.objectContaining({
+          id: "file:orange.json",
+          name: "Orange Mechanic",
+          terminal: expect.objectContaining({ background: "#101014", foreground: "#e8e3d8" }),
+        }),
       },
     ]);
     expect(themesLoading.value).toBe(false);
+  });
+
+  it("replaces only the terminal: the chrome and editor are Deck Dark's for a dark file", async () => {
+    mockedList.mockResolvedValue({
+      entries: [{ fileName: "orange.json", content: ORANGE }],
+      rejected: [],
+    });
+
+    await loadCustomThemes();
+
+    const { theme } = customThemes.value[0];
+    expect(theme.type).toBe("dark");
+    expect(theme.ui).toEqual(DECK_DARK_THEME.ui);
+    expect(theme.editor).toEqual(DECK_DARK_THEME.editor);
+    // A slot the file leaves out keeps the built-in's value; the cursor glyph
+    // is drawn on the file's own ground.
+    expect(theme.terminal.blue).toBe(DECK_DARK_THEME.terminal.blue);
+    expect(theme.terminal.cursorAccent).toBe("#101014");
+  });
+
+  it("takes Deck Light's chrome for a light file", async () => {
+    mockedList.mockResolvedValue({
+      entries: [{ fileName: "paper-like.json", content: PAPER_LIKE }],
+      rejected: [],
+    });
+
+    await loadCustomThemes();
+
+    const { theme } = customThemes.value[0];
+    expect(theme.type).toBe("light");
+    expect(theme.ui).toEqual(DECK_LIGHT_THEME.ui);
+    expect(theme.terminal.background).toBe("#fbf7ee");
+    expect(theme.terminal.red).toBe("#a3332b");
   });
 
   it("keeps a file that does not parse as a named reason", async () => {
@@ -81,23 +118,9 @@ describe("loadCustomThemes", () => {
 
     await loadCustomThemes();
 
-    expect(customPresets.value).toEqual([]);
+    expect(customThemes.value).toEqual([]);
     expect(themeImportFailures.value).toEqual([
       { fileName: "broken.json", reason: expect.any(String) },
-    ]);
-  });
-
-  it("surfaces a parseable theme that cannot keep Deck chrome readable", async () => {
-    mockedList.mockResolvedValue({
-      entries: [{ fileName: "mid-gray.json", content: MID_GRAY }],
-      rejected: [],
-    });
-
-    await loadCustomThemes();
-
-    expect(customPresets.value).toEqual([]);
-    expect(themeImportFailures.value).toEqual([
-      { fileName: "mid-gray.json", reason: expect.stringContaining("DL-3.5") },
     ]);
   });
 
@@ -119,14 +142,17 @@ describe("loadCustomThemes", () => {
   });
 
   it("keeps the last-good themes and reports an unreachable host", async () => {
-    customPresets.value = [
-      { id: "file:stale.json", label: "Stale", theme: THEME_PRESETS[0].theme },
+    customThemes.value = [
+      {
+        fileName: "stale.json",
+        theme: { ...DECK_DARK_THEME, id: "file:stale.json", name: "Stale" },
+      },
     ];
     mockedList.mockRejectedValue(new Error("Deck host bridge is unavailable"));
 
     await loadCustomThemes();
 
-    expect(customPresets.value.map((preset) => preset.label)).toEqual(["Stale"]);
+    expect(customThemes.value.map((entry) => entry.theme.name)).toEqual(["Stale"]);
     expect(themeLoadState.value).toEqual({
       status: "error",
       message: "Couldn't read the themes folder.",
@@ -149,7 +175,7 @@ describe("loadCustomThemes", () => {
     oldScan.reject(new Error("stale scan failure"));
     await first;
 
-    expect(customPresets.value.map((preset) => preset.label)).toEqual(["Orange Mechanic"]);
+    expect(customThemes.value.map((entry) => entry.theme.name)).toEqual(["Orange Mechanic"]);
     expect(themeLoadState.value).toEqual({ status: "ready" });
     expect(themesLoading.value).toBe(false);
   });
@@ -166,7 +192,7 @@ describe("importCustomThemes", () => {
 
     await importCustomThemes();
 
-    expect(customPresets.value.map((preset) => preset.label)).toEqual(["Orange Mechanic"]);
+    expect(customThemes.value.map((entry) => entry.theme.name)).toEqual(["Orange Mechanic"]);
     expect(mockedList).not.toHaveBeenCalled();
   });
 });
@@ -183,20 +209,20 @@ describe("an imported theme across a relaunch", () => {
 
   it("is resolvable once the boot scan lands", async () => {
     // `main.tsx` runs `loadCustomThemes()` at boot for exactly this: until it
-    // lands, `getPreset` can only answer with the built-in fallback.
+    // lands, `getTheme` can only answer with the built-in fallback.
     mockedList.mockResolvedValue({
       entries: [{ fileName: "orange.json", content: ORANGE }],
       rejected: [],
     });
-    expect(getPreset("file:orange.json").id).toBe(THEME_PRESETS[0].id);
+    expect(getTheme("file:orange.json").id).toBe(DECK_DARK_THEME.id);
 
     await loadCustomThemes();
 
-    expect(getPreset("file:orange.json").label).toBe("Orange Mechanic");
+    expect(getTheme("file:orange.json").name).toBe("Orange Mechanic");
   });
 });
 
-describe("getPreset over both sources", () => {
+describe("getTheme over both sources", () => {
   it("resolves an imported theme by its file id", async () => {
     mockedList.mockResolvedValue({
       entries: [{ fileName: "orange.json", content: ORANGE }],
@@ -204,11 +230,11 @@ describe("getPreset over both sources", () => {
     });
     await loadCustomThemes();
 
-    expect(getPreset("file:orange.json").label).toBe("Orange Mechanic");
+    expect(getTheme("file:orange.json").name).toBe("Orange Mechanic");
   });
 
-  it("falls back to the first built-in for a theme whose file is gone", () => {
+  it("falls back to Deck Dark for a theme whose file is gone", () => {
     // `themeId` persists across launches; the file may not.
-    expect(getPreset("file:deleted.json").id).toBe(THEME_PRESETS[0].id);
+    expect(getTheme("file:deleted.json").id).toBe(DECK_DARK_THEME.id);
   });
 });

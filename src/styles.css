@@ -40,3 +40,8 @@
 @import "./styles/24-dev-servers.css";
 @import "./styles/25-diff-column.css";
 @import "./styles/26-clone-workspace.css";
+@import "./styles/27-dock-stacked.css";
+@import "./styles/28-hunk-queue.css";
+@import "./styles/29-browser-beside.css";
+@import "./styles/30-attention-switcher.css";
+@import "./styles/31-shell-stage.css";

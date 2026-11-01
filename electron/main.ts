@@ -266,7 +266,7 @@ function createWindow(label: string): BrowserWindow {
     height: 720,
     ...windowChromeOptions(process.platform, INITIAL_OVERLAY_COLORS),
     // The pre-render ground follows `--bg`'s default (`styles/01-tokens.css` :root,
-    // `FALLBACK_BG` in theme-vars.ts), or window-open and resize flash a
+    // `DECK_DARK_THEME` in built-in-themes.ts), or window-open and resize flash a
     // colour the app never shows again. Tauri's window config carries the same
     // value for the same reason — changing one without the other is the drift.
     // `INITIAL_OVERLAY_COLORS` (window-options.ts) starts the Windows caption

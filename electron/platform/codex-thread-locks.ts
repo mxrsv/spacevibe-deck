@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { CODEX_RESTORE_SCAN, listCodexFiles, readCodexRecord } from "../resume/codex";
+import { isCompressedRollout } from "../usage/compressed-rollout";
 
 const LSOF_TIMEOUT_MS = 1_500;
 const LSOF_MAX_BYTES = 4 * 1024 * 1024;
@@ -49,26 +50,44 @@ function readLocks(pids: readonly number[], home: string, platform: NodeJS.Platf
   });
 }
 
+/**
+ * The thread each foreground Codex process is writing, keyed by that process's pid.
+ * `lookups` maps each foreground pid to other pids whose locks count as its own: npm's `codex`
+ * is a `node` launcher, and the lock belongs to the native child it spawned.
+ */
 export async function processCodexSessions(
-  pids: readonly number[],
+  lookups: ReadonlyMap<number, readonly number[]>,
   home = os.homedir(),
   platform = process.platform,
 ): Promise<Map<number, string>> {
-  const uniquePids = [...new Set(pids)].filter((pid) => Number.isSafeInteger(pid) && pid > 0);
-  if (platform === "win32" || uniquePids.length === 0) return new Map();
-  const locks = await readLocks(uniquePids, home, platform);
-  const ambiguous = new Set([...locks.values()].filter((ids) => ids.length > 1).flat());
+  const valid = (pid: number) => Number.isSafeInteger(pid) && pid > 0;
+  const groups = [...lookups]
+    .filter(([pid]) => valid(pid))
+    .map(([pid, members]) => [pid, [...new Set([pid, ...members.filter(valid)])]] as const);
+  if (platform === "win32" || groups.length === 0) return new Map();
+  const locks = await readLocks([...new Set(groups.flatMap(([, pids]) => pids))], home, platform);
+  const held = new Map(
+    groups.map(([pid, pids]) => [
+      pid,
+      [...new Set(pids.flatMap((member) => locks.get(member) ?? []))],
+    ]),
+  );
+  const ambiguous = new Set([...held.values()].filter((ids) => ids.length > 1).flat());
   const interactive = new Set<string>();
   if (ambiguous.size > 0) {
     const options = { ...CODEX_RESTORE_SCAN, requireInteractiveSource: true };
-    for (const file of listCodexFiles(home, true).slice(0, options.maxFiles)) {
+    // Compressed rollouts stay out, as they were before Deck could read them: Codex writes a
+    // rollout back as plain `.jsonl` before it appends, and their heads cost this per-poll
+    // path 37 → 146 ms on a 1,943-rollout home (2026-10-24).
+    const plain = listCodexFiles(home, true).filter((file) => !isCompressedRollout(file.filePath));
+    for (const file of plain.slice(0, options.maxFiles)) {
       const record = readCodexRecord(file, options);
       if (record !== null && ambiguous.has(record.id)) interactive.add(record.id);
     }
   }
   return new Map(
-    uniquePids.flatMap((pid) => {
-      const id = selectCodexThread(locks.get(pid) ?? [], interactive);
+    groups.flatMap(([pid]) => {
+      const id = selectCodexThread(held.get(pid) ?? [], interactive);
       return id === null ? [] : [[pid, id] as const];
     }),
   );

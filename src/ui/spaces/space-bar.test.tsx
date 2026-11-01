@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { SpaceBar } from "./space-bar";
 import type { Space, SpacePane } from "./space-model";
 
@@ -203,5 +204,97 @@ describe("space mark paint (20-mission-control.css)", () => {
     expect(
       css.indexOf('.space-mark[aria-selected="true"][data-needs="asked"]::after'),
     ).toBeGreaterThan(css.indexOf('.space-mark[aria-selected="true"][data-needs]::after'));
+  });
+});
+
+describe("SpaceBar breadcrumb on the flush stage (LAY-5, shellStage switch)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("__deckHost", {});
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/home/test", isDevelopment: true });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetDesktopEnvironmentForTests();
+  });
+
+  const current = (): HTMLElement =>
+    host.querySelector<HTMLElement>('.space-bar__name-slot[data-current="true"]')!;
+  const crumbs = (): string[] =>
+    [...current().querySelectorAll<HTMLElement>(".space-bar__part, .space-bar__label")].map(
+      (part) => part.textContent ?? "",
+    );
+  const separators = (): string[] =>
+    [...current().querySelectorAll(".space-bar__sep")].map((sep) => sep.textContent ?? "");
+
+  it("prints project / branch / space with slashes and no session", () => {
+    mount([
+      {
+        ...space(1, [pane(1, "working")], true),
+        groupLabel: "spacevibe-deck",
+        branch: "main",
+        name: "rail tree",
+        session: "Claude",
+      },
+    ]);
+
+    expect(crumbs()).toEqual(["spacevibe-deck", "main", "rail tree"]);
+    expect(separators()).toEqual(["/", "/"]);
+    expect(current().querySelector('[data-part="session"]')).toBeNull();
+  });
+
+  it("drops the space crumb when the unnamed space only repeats the project", () => {
+    mount([
+      {
+        ...space(1, [pane(1, "idle")], true),
+        groupLabel: "project-1",
+        branch: "main",
+        session: "Codex",
+      },
+    ]);
+
+    expect(crumbs()).toEqual(["project-1", "main"]);
+    expect(separators()).toEqual(["/"]);
+  });
+
+  it("has no branch crumb for a folder that git does not know", () => {
+    mount([{ ...space(1, [pane(1, "idle")], true), groupLabel: "notes", name: "daily" }]);
+
+    expect(crumbs()).toEqual(["notes", "daily"]);
+    expect(separators()).toEqual(["/"]);
+  });
+
+  it("prints a lone folder as its project alone", () => {
+    mount([{ ...space(1, [pane(1, "idle")], true), groupLabel: "project-1" }]);
+
+    expect(crumbs()).toEqual(["project-1"]);
+    expect(separators()).toEqual([]);
+  });
+
+  it("still renames the space on a double-click of the breadcrumb", () => {
+    const onRename = vi.fn();
+    act(() => {
+      render(
+        <SpaceBar
+          spaces={[{ ...space(1, [pane(1, "idle")], true), name: "rail tree" }]}
+          menuKey={null}
+          onGo={vi.fn()}
+          onMenu={vi.fn()}
+          onRename={onRename}
+        />,
+        host,
+      );
+    });
+
+    act(() => {
+      current().dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    const field = host.querySelector<HTMLInputElement>("input.space-bar__rename")!;
+    expect(field.value).toBe("rail tree");
+    act(() => {
+      field.value = "stage";
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+
+    expect(onRename).toHaveBeenCalledWith(expect.objectContaining({ key: 1 }), "stage");
   });
 });

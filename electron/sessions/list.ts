@@ -47,11 +47,23 @@ const DEFAULT_READERS: SessionReaders = {
 
 /** `path + mtime + size` → the record read from it. A miss is the ONLY thing
  *  that opens a file. `null` is cached too: a transcript that names no session
- *  will not name one on the next open either. */
+ *  will not name one on the next open either. Pruned to the current listing on
+ *  every `listSessions`. */
 const enriched = new Map<string, SessionRecord | null>();
 
 export function clearSessionsCache(): void {
   enriched.clear();
+}
+
+/** Keep only the keys of files the current listing still names, so the map is
+ *  bounded by the listing instead of growing one key per transcript append. */
+function pruneEnriched(...listings: readonly (readonly FileCandidate[])[]): void {
+  const live = new Set(listings.flatMap((files) => files.map(fileCacheKey)));
+  for (const key of enriched.keys()) {
+    if (!live.has(key)) {
+      enriched.delete(key);
+    }
+  }
 }
 
 function toEntry(agent: SessionAgent, record: SessionRecord): SessionEntry | null {
@@ -149,6 +161,7 @@ export async function listSessions(
   await breathe();
   const codexFiles = safeList(() => listCodexFiles(home, CODEX_HISTORY_SCAN.includeArchived));
   await breathe();
+  pruneEnriched(claudeFiles, codexFiles);
 
   const entries: SessionEntry[] = [];
   await collect("claude", claudeFiles, capped, readers.claude, entries);

@@ -1,10 +1,9 @@
 import type { ComponentChildren } from "preact";
-import type { ITheme } from "@xterm/xterm";
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import { deriveChromeColors, type ChromeColors } from "../../../lib/derive-colors";
-import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
-import { CANONICAL_THEME_IDS, resolveTheme, type ThemeMode } from "../../../settings/themes";
+import { deriveChromeColors } from "../../../lib/derive-colors";
+import type { Theme } from "../../../settings/theme-schema";
+import { CANONICAL_THEME_IDS, getTheme, type ThemeMode } from "../../../settings/themes";
 import { toFontStack } from "../../../terminal/pane";
 import { settings, type ColorMode, type CursorStyle, type DemoSettings } from "./model";
 import "./live-preview.css";
@@ -13,7 +12,7 @@ import "./live-preview.css";
  * The shared read-only preview for Appearance and Terminal: a miniature Deck
  * window drawn from the REAL canonical theme of the chosen mode (never a PTY).
  *
- * Its chrome comes from `deriveChromeColors` on that theme, not from the
+ * Its chrome comes from that theme's own tokens and washes, not from the
  * frame's `--tokens` — a token resolves to whatever mode the gallery frame is
  * running, which is exactly what the preview must be free to differ from while
  * the user is choosing between Light, Dark and Match system (same reasoning as
@@ -59,31 +58,28 @@ export function resolveMode(colorMode: ColorMode, system: ThemeMode): ThemeMode 
 }
 
 /** Every colour and type value the stylesheet reads, as custom properties on the root. */
-function previewVars(
-  theme: ITheme,
-  chrome: ChromeColors,
-  current: DemoSettings,
-): Record<string, string> {
-  const fg = theme.foreground ?? chrome.textPrimary;
+function previewVars(theme: Theme, current: DemoSettings): Record<string, string> {
+  const { terminal, ui } = theme;
+  const chrome = deriveChromeColors(theme);
   return {
-    "--srd-p-bg": theme.background ?? chrome.chrome1,
-    "--srd-p-fg": fg,
-    "--srd-p-cursor": theme.cursor ?? fg,
-    "--srd-p-selection": theme.selectionBackground ?? chrome.stateHoverBg,
-    "--srd-p-cwd": theme.cyan ?? fg,
-    "--srd-p-branch": theme.magenta ?? fg,
-    "--srd-p-prompt": theme.blue ?? fg,
-    "--srd-p-ok": theme.green ?? fg,
-    "--srd-p-sidebar": chrome.sidebarBg,
+    "--srd-p-bg": terminal.background,
+    "--srd-p-fg": terminal.foreground,
+    "--srd-p-cursor": terminal.cursor,
+    "--srd-p-selection": terminal.selectionBackground,
+    "--srd-p-cwd": terminal.cyan,
+    "--srd-p-branch": terminal.magenta,
+    "--srd-p-prompt": terminal.blue,
+    "--srd-p-ok": terminal.green,
+    "--srd-p-sidebar": ui["sidebar-bg"],
     "--srd-p-seam": chrome.sidebarSeam,
-    "--srd-p-chrome1": chrome.chrome1,
-    "--srd-p-chrome2": chrome.chrome2,
+    "--srd-p-chrome1": ui["chrome-1"],
+    "--srd-p-chrome2": ui["chrome-2"],
     "--srd-p-active": chrome.tabActiveBg,
     "--srd-p-hair": chrome.hair,
     "--srd-p-hair-strong": chrome.hairStrong,
-    "--srd-p-text": chrome.textPrimary,
-    "--srd-p-muted": chrome.textMuted,
-    "--srd-p-faint": chrome.textFaint,
+    "--srd-p-text": ui["text-primary"],
+    "--srd-p-muted": ui["text-muted"],
+    "--srd-p-faint": ui["text-faint"],
     "--srd-font": toFontStack(current.fontFamily),
     "--srd-fs": String(current.fontSize),
     "--srd-lh": String(current.lineHeight),
@@ -219,15 +215,14 @@ export function LivePreview({ focus }: { readonly focus: "appearance" | "termina
   const current = settings.value;
   const system = useSystemMode();
   const mode = resolveMode(current.colorMode, system);
-  const theme = resolveTheme({ ...DEFAULT_SETTINGS, themeId: CANONICAL_THEME_IDS[mode] });
-  const chrome = deriveChromeColors(theme.background ?? "#0a0a0a", theme.foreground ?? "#e7e7e7");
+  const theme = getTheme(CANONICAL_THEME_IDS[mode]);
   const solo = focus === "terminal";
 
   return (
     <figure
       class={`srd-preview ${solo ? "is-solo" : ""}`}
       aria-label="Live preview"
-      style={previewVars(theme, chrome, current)}
+      style={previewVars(theme, current)}
     >
       <div class="srd-preview__window" aria-hidden="true">
         {solo ? <TerminalView current={current} /> : <WorkspaceView current={current} />}

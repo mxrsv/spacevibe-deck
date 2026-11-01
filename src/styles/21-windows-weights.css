@@ -126,7 +126,9 @@
 .window--windows .nt-board__head > span,
 .window--windows .home-action,
 .window--windows .board-home__star,
-.window--windows .btn--primary {
+.window--windows .btn--primary,
+.window--windows .stage--flush .pane-agent-header__name,
+.window--windows .stage--flush .space-bar__space {
   font-weight: 600;
 }
 
@@ -167,5 +169,11 @@
 /* The Agent Board's star is a quiet 400 link where the home screen's is a 600
    button (`.nt-board--agents .board-home__star`). */
 .window--windows .nt-board--agents .board-home__star {
+  font-weight: 400;
+}
+
+/* The flush stage's pane sentence is a quiet 400 where the shipped header's is a 500 that
+   Windows already folds to 400 (`.pane-agent-header__message`, above). */
+.window--windows .stage--flush .pane-agent-header__message {
   font-weight: 400;
 }

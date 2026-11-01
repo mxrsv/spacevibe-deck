@@ -227,6 +227,27 @@ describe("buildCardEntries labels", () => {
     });
   });
 
+  it("keeps each pane's latched attention on its entry, so a folded `asked` can split (LAY-4)", () => {
+    const row = tabRow({
+      key: 1,
+      index: 0,
+      title: "",
+      named: false,
+      panes: [
+        { ...paneRow("claude", 1), state: "asked", attention: "requested" },
+        { ...paneRow("codex", 2), state: "asked", attention: "completed" },
+      ],
+    });
+    expect(
+      buildCardEntries([row], undefined).map(
+        (entry) => entry.kind === "agent" && [entry.state, entry.attention],
+      ),
+    ).toEqual([
+      ["asked", "requested"],
+      ["asked", "completed"],
+    ]);
+  });
+
   it("keeps a named shell tab on one line, its label the name", () => {
     const row = tabRow({ key: 1, index: 0, title: "scratch", named: true, panes: [] });
     expect(buildCardEntries([row], undefined)[0]).toMatchObject({

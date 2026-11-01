@@ -1,6 +1,6 @@
 import { createPortal } from "preact/compat";
 import { applyThemeVars } from "../../lib/theme-vars";
-import { resolveTheme } from "../../settings/themes";
+import { activeTheme } from "../../settings/themes";
 import { useEffect } from "preact/hooks";
 import { SettingsScreen } from "../../ui/settings/settings-screen";
 import { activeCategory } from "../../ui/settings/active-category-store";
@@ -22,7 +22,7 @@ export function LaunchProfilesSection() {
   const seeded = useSignal(true);
 
   useSignalEffect(() => {
-    applyThemeVars(document.documentElement.style, resolveTheme(settings.value));
+    applyThemeVars(document.documentElement.style, activeTheme(settings.value));
   });
 
   useSignalEffect(() => {

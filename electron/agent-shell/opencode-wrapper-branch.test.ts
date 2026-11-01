@@ -17,6 +17,7 @@ case "$*" in
   --version|--help|'run --help'|'mini --help')
     printf '%s:%s:%s:%s\\n' "$*" "\${DECK_PANE_ID-}" "\${DECK_HOOK_TOKEN-}" "\${OPENCODE_CONFIG_DIR-}" >> "$PROBE_LOG"
     [ "\${PROBE_HANG-}" != 1 ] || exec sleep 20
+    [ -z "\${PROBE_SLOW-}" ] || sleep "\${PROBE_SLOW}"
     [ "\${PROBE_FAIL-}" != 1 ] || exit 1
     case "$*" in --version) printf '%s\\n' "\${PROBE_VERSION-1.18.29}" ;; *) printf '%s\\n' "\${PROBE_HELP---standalone}" ;; esac
     exit 0 ;;
@@ -57,7 +58,7 @@ function run(options: {
   return new Promise((resolve, reject) => {
     const child = spawn(path.join(BIN, "opencode"), options.argv ?? ["run", "hi there"], {
       env,
-      timeout: 7000,
+      timeout: 10_000,
     });
     let stdout = "";
     child.stdout.on("data", (chunk: Buffer) => (stdout += chunk));
@@ -152,14 +153,24 @@ describe.skipIf(process.platform === "win32")("opencode wrapper — OC1 plugin d
     },
   );
 
-  it("bounds failed and hanging probes and preserves the final exec", async () => {
-    for (const env of [{ PROBE_FAIL: "1" }, { PROBE_HANG: "1" }]) {
-      const result = await run({ marker: true, env });
-      expect(result.config).toBe("unset");
-      expect(result.pid).toBe(result.spawned);
-      expect(result.args).toEqual(["run", "hi there"]);
-    }
+  // A new binary's first exec, which macOS checks before it runs (2.1-2.2 s measured).
+  it("waits out a slow first exec instead of dropping Signals", { timeout: 15_000 }, async () => {
+    expect((await run({ marker: true, env: { PROBE_SLOW: "2.5" } })).config).toBe(CONFIG_DIR);
   });
+
+  // The hanging probe waits out the 5-second watchdog.
+  it(
+    "bounds failed and hanging probes and preserves the final exec",
+    { timeout: 15_000 },
+    async () => {
+      for (const env of [{ PROBE_FAIL: "1" }, { PROBE_HANG: "1" }]) {
+        const result = await run({ marker: true, env });
+        expect(result.config).toBe("unset");
+        expect(result.pid).toBe(result.spawned);
+        expect(result.args).toEqual(["run", "hi there"]);
+      }
+    },
+  );
 
   it.each([
     [[], ["--standalone"]],

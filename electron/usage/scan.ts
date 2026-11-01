@@ -5,8 +5,9 @@
  */
 import { statSync, type Stats } from "node:fs";
 import { ingest } from "./codex";
+import { isCompressedRollout } from "./compressed-rollout";
 import { discoverClaude, discoverCodex, fileIdentity } from "./discover";
-import { readLines } from "./reader";
+import { readCompressedLines, readLines, type LineEvent } from "./reader";
 import { resolveRepos, reposEqual, type ResolveRepo } from "./repo-resolver";
 import {
   COMPACT_AFTER_MS,
@@ -92,13 +93,16 @@ function cloneRecord(record: FileRecord): FileRecord {
   };
 }
 
-/** One transcript file, resumed or rescanned as the scan rules require. */
-function scanFile(
+/**
+ * One transcript file, resumed or rescanned as the scan rules require. Async
+ * only for a compressed Codex rollout, which is decompressed as a stream.
+ */
+async function scanFile(
   agent: UsageAgent,
   filePath: string,
   previous: FileRecord | undefined,
   nowMs: number,
-): FileScan {
+): Promise<FileScan> {
   let meta: Stats | undefined;
   try {
     meta = statSync(filePath, { throwIfNoEntry: false });
@@ -137,18 +141,23 @@ function scanFile(
       ? { ...cloneRecord(resumable), mtimeMs: mtime, size }
       : emptyRecord(agent, identity, mtime, size);
 
-  try {
-    readLines(filePath, record.offset, (event) => {
-      if (event.kind === "line") {
-        if (ingest(agent, event.bytes, record) === "skipped") {
-          record.skippedLines += 1;
-        }
-        record.offset = event.offset;
-      } else if (event.kind === "oversized") {
+  const onEvent = (event: LineEvent): void => {
+    if (event.kind === "line") {
+      if (ingest(agent, event.bytes, record) === "skipped") {
         record.skippedLines += 1;
-        record.offset = event.offset;
       }
-    });
+      record.offset = event.offset;
+    } else if (event.kind === "oversized") {
+      record.skippedLines += 1;
+      record.offset = event.offset;
+    }
+  };
+  try {
+    if (isCompressedRollout(filePath)) {
+      await readCompressedLines(filePath, record.offset, onEvent);
+    } else {
+      readLines(filePath, record.offset, onEvent);
+    }
   } catch {
     return { kind: "failed" };
   }
@@ -195,7 +204,7 @@ async function scanInto(
     const priorCandidate = previous.files.get(key);
     const prior =
       priorCandidate !== undefined && priorCandidate.agent === agent ? priorCandidate : undefined;
-    const outcome = scanFile(agent, key, prior, nowMs);
+    const outcome = await scanFile(agent, key, prior, nowMs);
     if (outcome.kind === "updated") {
       files.set(key, outcome.record);
       accounted += 1;

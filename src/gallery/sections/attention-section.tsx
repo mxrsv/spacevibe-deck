@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { applyThemeVars } from "../../lib/theme-vars";
-import { settings } from "../../settings/settings-store";
-import { DECK_DARK_ID, DECK_LIGHT_ID, resolveTheme } from "../../settings/themes";
+import { DECK_DARK_ID, DECK_LIGHT_ID, getTheme } from "../../settings/themes";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { AttentionChip } from "../../ui/attention/attention-chip";
 import { AttentionPanel } from "../../ui/attention/attention-panel";
@@ -138,10 +137,7 @@ function ThemeScope({ themeId, children }: { themeId: string; children: Componen
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (ref.current !== null) {
-      applyThemeVars(
-        ref.current.style,
-        resolveTheme({ ...settings.peek(), themeId, colorOverrides: {} }),
-      );
+      applyThemeVars(ref.current.style, getTheme(themeId));
     }
   }, [themeId]);
   return (

@@ -118,8 +118,10 @@ untouched.
   reject rather than answer when the table cannot be read.
 - Classification ([`platform/classify.ts`](../../electron/platform/classify.ts)): a built-in
   agent by binary name or by the script an interpreter is running, then a user-declared
-  matcher (label as identity), then a shell name → `idle-shell`, otherwise `busy`. An
-  incomplete reading is `unknown`.
+  matcher (label as identity), then a shell name → `idle-shell`, otherwise `busy`. A pane's
+  own shell running a command (`-c`, a script after `exec`) is `busy`; `ps` prints arguments
+  without their quoting, so Deck's own bash and fish launch lines are recognized whole rather
+  than parsed. An incomplete reading is `unknown`.
 - **`unknown` is neither idle nor busy.** The census treats it as "cannot say", and a failed
   reading never becomes an empty census.
 - cwd is the live `lsof -d cwd` answer first (macOS only), then the last OSC 9;9 the shell

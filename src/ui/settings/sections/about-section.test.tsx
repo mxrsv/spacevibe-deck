@@ -37,7 +37,7 @@ function controller(view: Partial<UpdateView> = {}): UpdateController {
 }
 
 function pills(host: HTMLElement): HTMLButtonElement[] {
-  return [...host.querySelectorAll<HTMLButtonElement>("button.cfg-btn")];
+  return [...host.querySelectorAll<HTMLButtonElement>('button[data-slot="button"]')];
 }
 
 describe("AboutSection", () => {

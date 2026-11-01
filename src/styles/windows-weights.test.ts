@@ -226,6 +226,16 @@ const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
   ["board title over its section heads", ".board-home__title", ".board-home__recents-head"],
   ["settings title over a group label", ".settings-screen__title", ".cfg-group"],
   [
+    "flush pane name over its sentence",
+    ".stage--flush .pane-agent-header__name",
+    ".stage--flush .pane-agent-header__message",
+  ],
+  [
+    "flush breadcrumb's space over its project and branch",
+    ".stage--flush .space-bar__space",
+    ".stage--flush .space-bar__name",
+  ],
+  [
     "session heading over its summary",
     ".recent-session-activity__heading",
     ".recent-session-activity__summary",

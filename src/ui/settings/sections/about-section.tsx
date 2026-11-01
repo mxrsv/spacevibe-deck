@@ -8,6 +8,7 @@ import { getDesktopEnvironment } from "../../../lib/platform";
 import { ConfigRow } from "../../controls/config-row";
 import { reportPersistError } from "../../../chrome/events";
 import type { UpdateCheckResult, UpdatePhase } from "../../../updater/update-controller";
+import { Button } from "../../controls/button";
 
 /**
  * The pill's word for each phase. Same vocabulary as the chrome action, so a
@@ -35,14 +36,10 @@ const CHECK_RESULT_DESC: Readonly<Record<UpdateCheckResult, string>> = {
 };
 
 /**
- * Where Deck says which version it is and offers the two update actions.
- *
- * It exists because the macOS menu bar is the only place `Check for Updates…`
- * and `Release Notes…` live, and `src-tauri/src/menu.rs` builds no menu off
- * macOS — so on Windows both were unreachable, and the chrome button only
- * appears once an update has already been found.
+ * The update action and the line that answers it, shared by the section below and by Command
+ * Settings' About rows: both are doors onto the one state machine.
  */
-export function AboutSection() {
+export function useAboutUpdate() {
   const controller = activeUpdateController.value;
   const busy = useSignal(false);
   const lastCheck = useSignal<UpdateCheckResult | null>(null);
@@ -78,22 +75,6 @@ export function AboutSection() {
     }
   };
 
-  const handleReleaseNotes = async (): Promise<void> => {
-    try {
-      await openUrl(RELEASE_NOTES_URL);
-    } catch {
-      reportPersistError("Couldn't open Release Notes in your browser.");
-    }
-  };
-
-  const handleFeedback = async (): Promise<void> => {
-    try {
-      await openUrl(feedbackUrl(appVersion.value, getDesktopEnvironment().platform));
-    } catch {
-      reportPersistError("Couldn't open the feedback page in your browser.");
-    }
-  };
-
   const working = phase === "downloading" || phase === "installing";
   const version = appVersion.value;
   // The outcome of the last check wins over the version line: pressing the
@@ -106,32 +87,66 @@ export function AboutSection() {
       : version === ""
         ? ""
         : `Currently ${version}`;
+  return {
+    desc,
+    label: cannotRetry
+      ? "install failed"
+      : busy.value && (phase === "hidden" || phase === "check-failed")
+        ? "checking…"
+        : PILL[phase],
+    disabled: controller === null || busy.value || working || cannotRetry,
+    press: () => void handleUpdateAction(),
+  };
+}
 
+export async function openReleaseNotes(): Promise<void> {
+  try {
+    await openUrl(RELEASE_NOTES_URL);
+  } catch {
+    reportPersistError("Couldn't open Release Notes in your browser.");
+  }
+}
+
+export async function openFeedback(): Promise<void> {
+  try {
+    await openUrl(feedbackUrl(appVersion.value, getDesktopEnvironment().platform));
+  } catch {
+    reportPersistError("Couldn't open the feedback page in your browser.");
+  }
+}
+
+/**
+ * Where Deck says which version it is and offers the two update actions.
+ *
+ * It exists because the macOS menu bar is the only place `Check for Updates…`
+ * and `Release Notes…` live, and `src-tauri/src/menu.rs` builds no menu off
+ * macOS — so on Windows both were unreachable, and the chrome button only
+ * appears once an update has already been found.
+ */
+export function AboutSection() {
+  const update = useAboutUpdate();
   return (
     <>
-      <ConfigRow label="Check for updates" desc={desc}>
-        <button
+      <ConfigRow label="Check for updates" desc={update.desc}>
+        <Button
           type="button"
-          class={`cfg-btn ${busy.value || working ? "cfg-btn--disabled" : ""}`}
-          disabled={controller === null || busy.value || working || cannotRetry}
-          onClick={() => void handleUpdateAction()}
+          variant="outline"
+          size="sm"
+          disabled={update.disabled}
+          onClick={update.press}
         >
-          {cannotRetry
-            ? "install failed"
-            : busy.value && (phase === "hidden" || phase === "check-failed")
-              ? "checking…"
-              : PILL[phase]}
-        </button>
+          {update.label}
+        </Button>
       </ConfigRow>
       <ConfigRow label="Release notes" desc="What changed in each version">
-        <button type="button" class="cfg-btn" onClick={() => void handleReleaseNotes()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void openReleaseNotes()}>
           open …
-        </button>
+        </Button>
       </ConfigRow>
       <ConfigRow label="Feedback" desc="Report a bug or suggest an idea">
-        <button type="button" class="cfg-btn" onClick={() => void handleFeedback()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void openFeedback()}>
           open …
-        </button>
+        </Button>
       </ConfigRow>
     </>
   );

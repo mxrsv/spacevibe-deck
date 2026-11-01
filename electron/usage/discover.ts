@@ -4,11 +4,13 @@
  */
 import { closeSync, lstatSync, openSync, readSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import { isCompressedRollout, readDecompressedHead } from "./compressed-rollout";
 import {
   CLAUDE_DIR,
   CLAUDE_PROJECTS_DIR,
   CLAUDE_SUBAGENTS_DIR,
   CODEX_ARCHIVED_DIR,
+  CODEX_COMPRESSED_SUFFIX,
   CODEX_DIR,
   CODEX_ROLLOUT_PREFIX,
   CODEX_SESSIONS_DIR,
@@ -32,9 +34,13 @@ function readFirstLine(filePath: string, cap: number): Buffer | null {
     return null;
   }
   try {
-    const head = Buffer.alloc(cap);
-    const read = readSync(fd, head, 0, cap, 0);
-    const window = head.subarray(0, read);
+    let window: Buffer;
+    if (isCompressedRollout(filePath)) {
+      window = readDecompressedHead(fd, cap);
+    } else {
+      const head = Buffer.alloc(cap);
+      window = head.subarray(0, readSync(fd, head, 0, cap, 0));
+    }
     const newlineAt = window.indexOf(0x0a);
     return Buffer.from(newlineAt === -1 ? window : window.subarray(0, newlineAt));
   } catch {
@@ -127,17 +133,33 @@ function entryKind(dir: string, name: string): { file: boolean; dir: boolean } {
 
 /**
  * Regular, non-symlinked entries of `dir` matching `prefix` (when given) and
- * the transcript extension. Returns false when the directory is unlistable.
+ * the transcript extension. With `compressed`, a `.jsonl.zst` counts too
+ * unless its plain `.jsonl` sits beside it. Returns false when the directory
+ * is unlistable.
  */
-function pushTranscripts(dir: string, prefix: string | null, out: string[]): boolean {
+function pushTranscripts(
+  dir: string,
+  prefix: string | null,
+  out: string[],
+  compressed = false,
+): boolean {
   let names: string[];
   try {
     names = readdirSync(dir);
   } catch {
     return false;
   }
+  const listed = new Set(names);
   for (const name of names) {
-    if (!name.endsWith(TRANSCRIPT_EXTENSION)) {
+    const plainName =
+      compressed && name.endsWith(TRANSCRIPT_EXTENSION + CODEX_COMPRESSED_SUFFIX)
+        ? name.slice(0, -CODEX_COMPRESSED_SUFFIX.length)
+        : name;
+    if (!plainName.endsWith(TRANSCRIPT_EXTENSION)) {
+      continue;
+    }
+    // Mid-resume both copies exist; the plain one is the one Codex appends to.
+    if (plainName !== name && listed.has(plainName)) {
       continue;
     }
     if (prefix !== null && !name.startsWith(prefix)) {
@@ -224,15 +246,15 @@ function walkSubagents(dir: string, depth: number, out: string[]): void {
 }
 
 /**
- * Every `rollout-*.jsonl` under a Codex root, at any depth up to the cap.
- * Symlinked directories are never descended, so a loop cannot be built out
- * of them either.
+ * Every `rollout-*.jsonl` (or its compressed `.jsonl.zst`) under a Codex
+ * root, at any depth up to the cap. Symlinked directories are never
+ * descended, so a loop cannot be built out of them either.
  */
 function walkRollouts(dir: string, depth: number, out: string[]): boolean {
   if (depth > MAX_WALK_DEPTH) {
     return true;
   }
-  if (!pushTranscripts(dir, CODEX_ROLLOUT_PREFIX, out)) {
+  if (!pushTranscripts(dir, CODEX_ROLLOUT_PREFIX, out, true)) {
     return false;
   }
   for (const child of childDirs(dir)) {

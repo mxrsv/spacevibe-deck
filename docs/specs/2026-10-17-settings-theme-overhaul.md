@@ -1,6 +1,15 @@
 # Settings and theme overhaul
 
 Date: 2026-10-17
+Updated: 2026-10-21
+
+Visual/component authority: [Deck-wide shadcn / Base UI migration](2026-10-21-shadcn-base-ui-migration.md).
+The owner replaced the Deck-density/Radix direction with Base UI and preset `b1a09kDGF`.
+The linked spec owns appearance and compatibility; this file owns Settings product behavior.
+Unshipped typography, notification, theme-editing and per-project features remain a separate
+backlog and are not prerequisites for the UI migration. The source observations below describe
+the original 2026-10-17 baseline, not a new audit of shipped behavior.
+
 Status: Approved for development, 2026-10-19, except slice P1 (see
 [Resolved decisions](#resolved-decisions)). The owner took decisions 1–5 on 2026-10-17 and
 answered every open decision and approved the forks below on 2026-10-19. Each slice still
@@ -12,10 +21,9 @@ uncommitted `CHANGELOG.md`, `docs/DESIGN-LANGUAGE.md`, `src/styles/11-settings-*
 `src/styles/12-usage.css`; this spec touches none of them.
 Host: Electron only. The Tauri host was removed on 2026-10-13, so nothing here degrades
 through `available`.
-Related records: the audit and function table in
-[`docs/plans/2026-10-04-settings-redesign.md`](../plans/2026-10-04-settings-redesign.md)
-(local plan, gitignored; it stays the audit and the P1–P3 phasing, and its requirements move
-here) and the Studio integration in `docs/plans/2026-10-04-settings-studio.md`.
+Related records: the audit and function table in `docs/plans/2026-10-04-settings-redesign.md`
+and the Studio integration in `docs/plans/2026-10-04-settings-studio.md`. These ignored local
+plans live in the owner checkout named above, not in a fresh worktree; requirements live here.
 
 ## Purpose
 
@@ -46,10 +54,11 @@ asset is copied. The research notes live outside the repository.
    [Requirements, area E](#e-feedback-and-safety). Settings gaps not listed here stay out
    ([Out of scope](#out-of-scope)).
 
-5. **Adopt shadcn-style components and Tailwind CSS gradually** (owner, 2026-10-17): slow and
-   sure, one reviewed step at a time, never a one-pass rewrite. Settings is the first and only
-   surface in this spec ([G](#g-base-components)). The direction is decided; the dependencies it
-   implies are not, and each needs its own approval ([Constraints](#constraints)).
+5. **Adopt official shadcn components on Base UI** (updated 2026-10-21). The owner
+   selected preset `b1a09kDGF` and expanded migration to all Deck UI in waves. Settings moves
+   first after the compatibility/foundation gate. See the [owning migration
+   specification](2026-10-21-shadcn-base-ui-migration.md); the earlier Settings-only,
+   Deck-token and compact-control interpretation is superseded.
 
 Decision 3 reverses two earlier records. The 2026-08-19 decision that light and dark are the
 only theme choice, and the retirement of the theme gallery, theme import and colour overrides
@@ -115,18 +124,20 @@ is the thing to avoid.
   keywords, default, scope (preference, layout or data) and whether a change reaches existing
   or only new sessions. Search, change marks, page reset and deep links read it. A test fails
   when a `Settings` key has no registry entry or a registry entry has no key.
-- **SET-2 Search.** A field at the top of the rail filters by label, keyword and description.
-  While a query is active the rail shows the matching pages with counts, the matching rows are
-  highlighted, and a results line states the count and offers Clear. If the current page has
-  no match, Settings moves to the first page that does. No match shows an explicit empty state.
+- **SET-2 Search and Command.** The selected target is Command navigation (owner decision
+  2026-10-20): search reaches live setting rows, agent fields, shortcuts and areas, with page
+  chips, a Frequent group, a Changed scope and per-row reset. Queries have an explicit empty
+  state; arrows, Enter, Escape and scope backspace work without intercepting IME composition.
+  The existing searchable category rail remains the baseline until the Command wave replaces
+  it. Results read real stores/registry data, never the gallery's in-memory demo model.
 - **SET-3 Deep links.** Every setting and page has an id. Code can open Settings at a page or
   scroll to and highlight a row. Entry points: the agent picker and launch page "manage
   agents" (today they set only the category), a "Settings…" link on toasts and banners that
   concern a setting, and the command surface. ⌘, reopens the last page for the session.
 - **SET-4 Page anatomy.** Changed rows carry a mark. The page head shows how many rows changed
-  and a "Reset page" action. Layout, density and the Studio look follow the
-  [DL §11 patterns](../DESIGN-LANGUAGE.md); a redesign of those patterns needs the owner's eye
-  review, not per-rule approval.
+  and a "Reset page" action. The Command view keeps scope-aware reset and changed feedback.
+  Appearance follows the [migration specification](2026-10-21-shadcn-base-ui-migration.md),
+  not the old Studio density. The owner reviews the real-component specimen before acceptance.
 
 ### C. Terminal and editor typography
 
@@ -197,67 +208,33 @@ cannot be planned until its two open items in [Resolved decisions](#resolved-dec
 - **PRJ-3 Trust.** An override that runs a command or changes a path is not applied until the
   user has trusted that project.
 
-### G. Base components
+### G. Base components (ownership transferred, 2026-10-21)
 
-Raised by the owner on 2026-10-17 while comparing the mock with the reference app: Deck has no
-base component layer, so look, spacing and type cannot be controlled in one place. Evidence
-(2026-10-17, `main` at `4623445c`): `src/ui/controls/` holds row and field helpers
-(`config-row.tsx`, `commit-input.tsx`, `shortcut-capture.tsx`) but no Button, Switch, Select,
-Dialog or Notice; outside the gallery there are 214 raw `<button>` uses across 92 files; the
-`cfg-btn` class is applied by hand in 26 files (68 uses); `role="switch"` is re-implemented in
-six files; the row and button styling lives in global stylesheets
-([`07-config-rows.css`](../../src/styles/07-config-rows.css),
-[`11-settings-screen.css`](../../src/styles/11-settings-screen.css)). The mock needed seven
-stylesheets of overrides to re-skin one frame, which is the same cost a real restyle would pay.
+The [Deck-wide migration specification](2026-10-21-shadcn-base-ui-migration.md) is the sole
+owner of this scope. Earlier BASE IDs remain as cross-reference aliases, not competing rules:
 
-- **BASE-1 Primitives.** Settings is built from one set of components, each with its look in
-  one stylesheet and its variants as props, not as caller-side classes: Button, Switch,
-  Segmented, Menu (select), Stepper, TextField, Row, Group, Notice and Dialog. A page imports
-  them; it does not write `cfg-*` class names or its own switch.
-- **BASE-2 Single source of look.** Heights, radii, type sizes, spacing and states of those
-  components read tokens declared once. Changing the look of every Settings control is a
-  token or component-stylesheet edit that touches no page. A test fails when a Settings page
-  renders a raw `<button>` or applies `cfg-btn` directly.
-- **BASE-3 Accessible by construction.** Roles, names, focus order, disabled and invalid
-  states, and reduced motion are decided in the component, so a page cannot omit them.
-- **BASE-4 Specimens.** The gallery shows each primitive in every state, in light and dark and
-  in every built-in theme, and is the review surface for the look.
-- **BASE-5 Scope of migration.** Settings only in this spec. The rest of the app keeps its
-  current controls until a later spec migrates it; the components must not require that
-  migration.
-- **BASE-6 Gradual adoption (decision 5).** Components follow the shadcn model, source copied
-  into the repository and owned by it, built on Tailwind utilities and small variant helpers.
-  Adoption is a strangler: a control moves only when its page is already being changed by a
-  slice of this spec; old and new controls coexist; each step ships alone with its checks and
-  can be reverted alone. Nothing is migrated "while here".
-- **BASE-7 Coexistence.** Tailwind must not change anything it was not asked to. Its global
-  reset stays off (the stylesheet has no global `box-sizing` reset and relies on that, see the
-  layout traps), its utilities sit in a cascade layer below Deck's stylesheets, and its theme
-  maps onto Deck's tokens so a theme change (area A) restyles base components with no extra
-  work. A utility never carries a literal colour (DL-2.1).
-- **BASE-8 Spike before adoption.** Before any dependency lands, a throwaway spike on a
-  separate branch answers with measurements: does the chosen headless primitive set work
-  through the `preact/compat` alias (focus trap, portals, controlled state, IME) in the
-  packaged Electron app; the size added to the renderer bundle and the stylesheet; whether the
-  policy suites that read stylesheets still pass; and which shadcn defaults (shadows, blur,
-  `transition-all`, custom select popovers) must be rewritten to meet DL §1.
+| Earlier ID      | Owning requirement                                                |
+| --------------- | ----------------------------------------------------------------- |
+| BASE-1 / BASE-2 | UI-1 / UI-4: official preset components and one shared definition |
+| BASE-3          | UI-7: accessible composition and keyboard behavior                |
+| BASE-4          | UI-11 / AC-3: reference specimens and owner eye review            |
+| BASE-5 / BASE-6 | UI-8 / UI-9: whole-app waves, Settings first                      |
+| BASE-7          | UI-2 / UI-3: independent preset tokens and controlled coexistence |
+| BASE-8          | UI-5 / AC-2: Base UI through Deck's renderer and Electron         |
+
+The old Radix spike is historical evidence only. Its "remove shadcn defaults to satisfy
+Deck's styles" conclusions do not apply to this migration.
 
 ## Constraints
 
-- **Dependencies are a fork.** DL-1.1 allows no runtime dependency beyond CSS, Preact and one
-  icon package; Tailwind (build-time), variant helpers (`class-variance-authority`, `clsx`,
-  `tailwind-merge`) and any headless primitive library (Radix or similar) each need the
-  owner's approval and a DL-1.1 rewrite. shadcn defaults also conflict with DL-1.2
-  (`transition-all`), DL-1.3 (blurred shadows) and DL-1.4 (custom select popovers instead of
-  native selects); the copied source is edited to comply, or the rule changes by decision. The
-  bundle, signing and release configuration are also forks under AGENTS.md; a dependency step
-  is reviewed as one.
-- **DL invariants are a fork.** Explicit tokens contradict DL-2.2 (chrome is a function of
-  background and foreground only), and touch DL §2's token table, DL-3.5 and DL-3.6. The
-  change rewrites those rules in the same commit, and the tests that read them
-  (`derive-colors.test.ts`, the policy suites in `scripts/` and `src/styles/`) are updated
-  with it. The owner approves the approach before slice T1 starts. DL §11 and the Studio rules
-  are patterns and need only eye review.
+- **Component and visual forks.** Base UI and the selected preset are approved by the owner
+  on 2026-10-21. The [owning migration spec](2026-10-21-shadcn-base-ui-migration.md#approved-forks-and-hard-stops)
+  names dependency/visual-policy changes and remaining hard stops. Do not strip stock shadows,
+  translucency, sizes or custom selects merely to reproduce old Deck rules.
+- **Theme product work.** THM-1/2/3's custom chrome design and THM-9's chrome token editor are
+  deferred while the preset migration runs; they cannot remap shadcn back to Deck tokens.
+  Existing stored themes, terminal palettes and editor colors remain intact. Reconcile the
+  future theme product design with the owning migration spec before implementing it.
 - **Demo surface.** Every UI slice is first built as gallery specimens (the gallery already
   carries `settings-explore` explorations) and reviewed by eye before integration.
 - **E2E gate.** Slices that add a user-facing flow end with the `test-deck-app` walk of the
@@ -303,17 +280,19 @@ Owner, 2026-10-19. Numbers are the ones the earlier draft used.
    `repositories.json` or a new store). They are decided at the start of P1, after the trust
    model of PRJ-3 is agreed with the owner. P1 is the only slice that may stop for a decision.
 8. **Token editor depth (THM-9).** All tokens are editable, grouped by area.
-9. **Settings look (BASE-2).** Keep the DL §11 chrome. DL-4.4, DL-20 and the five radius roles
-   are untouched, so B0b bakes the current look into the components.
-10. **Component location (BASE-1).** `src/ui/controls/`, which already holds the row and field
-    helpers. No new directory.
-11. **Tailwind (BASE-6/7).** Utilities only, in a layer below the existing stylesheets, no
-    global reset, theme mapped onto Deck's tokens, no literal colours in utilities.
-12. **Headless primitives (BASE-6).** Decided after the B0a spike: a behaviour comes from a
-    library only if the spike shows it works through `preact/compat` in the packaged app at an
-    acceptable size. Native `<select>` stays either way (DL-1.4).
-13. **Variant helpers.** Take `clsx` and `class-variance-authority`; skip `tailwind-merge` until
-    a real class conflict appears.
+9. **Settings look (updated 2026-10-21).** Official Mira preset `b1a09kDGF`; no Deck-density
+   reskin. This supersedes both "keep DL §11" and the subsequent compact shadcn-shape choice.
+10. **Component location.** `src/ui/controls/`, under the whole-app migration contract.
+11. **Tailwind.** Independent preset tokens and isolation from legacy CSS, as UI-2/UI-3 define.
+12. **Headless primitives.** Base UI, explicitly confirmed 2026-10-21. React Aria and the earlier
+    Radix proposal are not selected. Preact compatibility is a gate, not an assumption.
+13. **Generated dependencies.** Use what the pinned official preset requires; do not force an
+    earlier helper-library restriction onto newly generated source.
+14. **Settings structure.** Command, selected 2026-10-20; see SET-2. Canvas and Control center
+    remain explorations. The implementation is a distinct wave after Settings controls.
+
+Decisions 1–3 above concerning future chrome theme customization are subordinate to the
+2026-10-21 migration scope until that product work is explicitly resumed.
 
 ### Fork approvals
 
@@ -323,35 +302,33 @@ plan needs more asks again.
 - **DL §2 and §3.** Rewrite DL-2.2, DL-3.5 and DL-3.6 and the §2 token table for explicit
   per-theme tokens, in the same commit as T1, with `derive-colors.test.ts` and the policy
   suites updated with it.
-- **Dependencies.** Tailwind (build-time), `clsx` and `class-variance-authority`, and a
-  headless primitive library only as decision 12 allows. Rewrite DL-1.1 in the commit that adds
-  the first one. **Gate:** B0a measures first (`preact/compat`, bundle and stylesheet size,
-  policy suites). If the spike fails any of them, B0b stops and the owner is asked; no
-  dependency lands on a failed spike.
-- **shadcn defaults.** The copied source is edited to comply with DL-1.2 to DL-1.4
-  (`transition-all`, blurred shadows, custom select popovers); the rules do not change.
+- **Superseded component approvals.** The earlier Radix/native-select/Deck-style conditions
+  are replaced by [the 2026-10-21 approved forks](2026-10-21-shadcn-base-ui-migration.md#approved-forks-and-hard-stops).
+  The historical spike passed its earlier scope; it does not prove Base UI compatibility.
 - **Not approved here:** per-project storage and trust (P1), bundle or signing configuration
   changes beyond the dependencies above, and any sibling repo.
 
 ## Delivery slices
 
-Slices run in order; the first row not `Done` is the next work. Each gets its own short plan
-before code; the approvals in [Resolved decisions](#resolved-decisions) cover it. Slices B0a and B0b should land before the page slices so they do not build on the old controls. The fork approvals above cover T1 and B0b; P1 does not have one.
+This table is the Settings product backlog. The whole-app migration plan owns the active
+execution order; do not start T1 or other new product features merely because this older table
+says Next. B0a/B0b now refer to the migration record, and Command is its wave 3. P1 still needs
+a separate data/trust decision.
 
-| # | Slice | Covers | Depends on | Fork | Status |
-| --- | --- | --- | --- | --- | --- |
-| 0a | B0a Spike (throwaway branch, no merge) | BASE-8 | owner decision 5 (2026-10-17) | none; answers the dependency fork with measurements | Next |
-| 0b | B0b Base components for Settings | BASE-1–7 | B0a passing | DL-1.1 to 1.4, approved; look unchanged | Waiting on B0a |
-| 1 | T1 Token schema, new built-in set, migration | THM-1–4, THM-10 | none | DL §2/§3, approved | Next |
-| 2 | S1 Settings registry and honest reset | SET-1, SET-4, FBK-3 | none | none | Core Done 2026-10-19 (`ccf87680`); rows outside the editor and shortcuts keep no mark |
-| 3 | S2 Search and deep links | SET-2, SET-3 | S1 | none | Core Done 2026-10-19 (`462433bd`); toast and banner links, command entry and ⌘, last page remain |
-| 4 | T2 Picker and follow system | THM-5, THM-6 | T1 | none | Waiting on T1 |
-| 5 | F1 Feedback group | FBK-1, FBK-2, FBK-4, FBK-5 | S1 | none | Next |
-| 6 | Y1 Terminal and editor typography | TYP-1–6 | S1 | none | Next |
-| 7 | N1 Notification rules and sound | NTF-1–3 | S1 | none | Next |
-| 8 | T3 Import, export, starter | THM-7, THM-8 | T1 | none | Waiting on T1 |
-| 9 | T4 Token editor | THM-9 | T3 | none | Waiting on T3 |
-| 10 | P1 Per-project overrides | PRJ-1–3 | decision 7 (open items) | persistence seam; owner decides keys, storage and trust at P1 start | Last |
+| #   | Slice                                        | Covers                     | Depends on                    | Fork                                                                | Status                                                                                           |
+| --- | -------------------------------------------- | -------------------------- | ----------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 0a  | B0a Spike (throwaway branch, no merge)       | BASE-8                     | owner decision 5 (2026-10-17) | none; answers the dependency fork with measurements                 | Historical Radix spike completed 2026-10-19; Base UI gate is separate                            |
+| 0b  | B0b Base components for Settings             | BASE-1–7                   | B0a passing                   | Superseded by the 2026-10-21 preset approval                        | Replaced by whole-app migration waves 0–2                                                        |
+| 1   | T1 Token schema, new built-in set, migration | THM-1–4, THM-10            | none                          | DL §2/§3, approved                                                  | Next                                                                                             |
+| 2   | S1 Settings registry and honest reset        | SET-1, SET-4, FBK-3        | none                          | none                                                                | Core Done 2026-10-19 (`ccf87680`); rows outside the editor and shortcuts keep no mark            |
+| 3   | S2 Search and deep links                     | SET-2, SET-3               | S1                            | none                                                                | Core Done 2026-10-19 (`462433bd`); toast and banner links, command entry and ⌘, last page remain |
+| 4   | T2 Picker and follow system                  | THM-5, THM-6               | T1                            | none                                                                | Waiting on T1                                                                                    |
+| 5   | F1 Feedback group                            | FBK-1, FBK-2, FBK-4, FBK-5 | S1                            | none                                                                | Next                                                                                             |
+| 6   | Y1 Terminal and editor typography            | TYP-1–6                    | S1                            | none                                                                | Next                                                                                             |
+| 7   | N1 Notification rules and sound              | NTF-1–3                    | S1                            | none                                                                | Next                                                                                             |
+| 8   | T3 Import, export, starter                   | THM-7, THM-8               | T1                            | none                                                                | Waiting on T1                                                                                    |
+| 9   | T4 Token editor                              | THM-9                      | T3                            | none                                                                | Waiting on T3                                                                                    |
+| 10  | P1 Per-project overrides                     | PRJ-1–3                    | decision 7 (open items)       | persistence seam; owner decides keys, storage and trust at P1 start | Last                                                                                             |
 
 ## Acceptance
 

@@ -11,7 +11,16 @@ export type ReleaseSwitchSnapshot = Readonly<Record<string, boolean>>;
 
 // Add each feature here with an explicit boolean type and YYYY-MM-DD creation date.
 // No placeholder production feature: fixtures exercise the contract in both states.
-export const RELEASE_SWITCHES = Object.freeze({} satisfies ReleaseSwitchDefinitions);
+export const RELEASE_SWITCHES = Object.freeze({
+  // The project-first rail (spec LAY-1..LAY-4): replaces the cluster list inside `AgentRail`.
+  projectRail: { enabled: false, createdOn: "2026-10-24" },
+  /** Command Settings replaces the Settings screen (shell rebuild, Settings track C1c). */
+  commandSettings: { enabled: false, createdOn: "2026-10-24" },
+  /** The stacked-section agent dock replaces the tabbed dock column (shell rebuild, Overview track A1). */
+  agentDock: { enabled: false, createdOn: "2026-10-24" },
+  /** The flush stage replaces the card panes: breadcrumb bar, pane identity header (LAY-5, LAY-10). */
+  shellStage: { enabled: false, createdOn: "2026-10-25" },
+} satisfies ReleaseSwitchDefinitions);
 export type ReleaseSwitchId = keyof typeof RELEASE_SWITCHES;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

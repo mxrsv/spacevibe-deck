@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { contrastRatio, deriveChromeColors, mixHex } from "../../lib/derive-colors";
-import { THEME_PRESETS } from "../../settings/themes";
+import { contrastRatio, mixHex } from "../../lib/derive-colors";
+import { BUILT_IN_THEMES } from "../../settings/built-in-themes";
 import { FOREGROUND_SHARE_PERCENT, USAGE_AGENT_BASE, usageAgentColor } from "./usage-agent-colors";
 
 /** WCAG's floor for graphical objects (bars, swatches). */
@@ -17,14 +17,11 @@ describe("usageAgentColor", () => {
     }
   });
 
-  describe.each(THEME_PRESETS.map((preset) => [preset.id, preset] as const))(
-    "on %s",
-    (_, preset) => {
-      const { chrome2 } = deriveChromeColors(preset.theme.background, preset.theme.foreground);
-      it.each(Object.entries(USAGE_AGENT_BASE))("%s holds 3:1 on chrome2", (_agent, base) => {
-        const mixed = mixHex(base, preset.theme.foreground, FOREGROUND_SHARE_PERCENT / 100);
-        expect(contrastRatio(mixed, chrome2)).toBeGreaterThanOrEqual(GRAPHIC_CONTRAST);
-      });
-    },
-  );
+  describe.each(BUILT_IN_THEMES.map((theme) => [theme.id, theme] as const))("on %s", (_, theme) => {
+    it.each(Object.entries(USAGE_AGENT_BASE))("%s holds 3:1 on chrome-2", (_agent, base) => {
+      // `--fg` is what `usageAgentColor` mixes toward.
+      const mixed = mixHex(base, theme.ui.fg, FOREGROUND_SHARE_PERCENT / 100);
+      expect(contrastRatio(mixed, theme.ui["chrome-2"])).toBeGreaterThanOrEqual(GRAPHIC_CONTRAST);
+    });
+  });
 });

@@ -1,9 +1,9 @@
 import { useSignal, type Signal } from "@preact/signals";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import { ArrowCounterClockwise, Minus, Plus, X } from "@phosphor-icons/react";
-import type { ITheme } from "@xterm/xterm";
 import { applyThemeVars } from "../../lib/theme-vars";
-import { DECK_DARK_ID, DECK_LIGHT_ID, getPreset } from "../../settings/themes";
+import type { Theme } from "../../settings/theme-schema";
+import { DECK_DARK_ID, DECK_LIGHT_ID, getTheme } from "../../settings/themes";
 import { ConfigGroup, ConfigRow } from "../../ui/controls/config-row";
 import { CHROME_ICON, DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
 import type { CategoryId } from "../../ui/settings/active-category-store";
@@ -34,33 +34,36 @@ interface ReviewCategory {
 const REVIEW_CATEGORIES: readonly ReviewCategory[] = SETTINGS_CATEGORIES;
 
 /**
- * The two canonical presets, taken from the shipping data rather than copied.
+ * The two canonical themes, taken from the shipping data rather than copied.
  *
  * These were 20 hand-written hex values each until they were compared against
- * `THEME_PRESETS`: eighteen matched and two had already drifted, which is the
- * whole argument. `gallery.tsx` and `matrix-section.tsx` already read the real
- * presets; this specimen now does too, so an edit to a palette reaches the
+ * the shipping palettes: eighteen matched and two had already drifted, which is
+ * the whole argument. `gallery.tsx` and `matrix-section.tsx` already read the
+ * real themes; this specimen does too, so an edit to a palette reaches the
  * proposal it was reviewed as.
  *
- * `foreground` and `cursor` are pinned deliberately. The owner reviewed this
+ * The `fg` ink and the cursor are pinned deliberately. The owner reviewed this
  * direction with the seed inks, and DL-3.6 replaced them at PORT time with
  * their luminance twins (`#e7e7e7` / `#272727`, contrast identical, hue gone).
- * Keeping the seeds is what makes this specimen a record of what was approved
- * rather than a second, drifting copy of what shipped.
+ * The text ladder is each theme's own declared one.
  */
-const DARK_REVIEW_THEME: Readonly<ITheme> = Object.freeze({
-  ...getPreset(DECK_DARK_ID).theme,
-  foreground: "#e5e7eb",
-  cursor: "#e5e7eb",
-});
+function withSeedInk(theme: Theme, ink: string): Theme {
+  return {
+    ...theme,
+    ui: { ...theme.ui, fg: ink },
+    terminal: { ...theme.terminal, foreground: ink, cursor: ink },
+  };
+}
 
-const LIGHT_REVIEW_THEME: Readonly<ITheme> = Object.freeze({
-  ...getPreset(DECK_LIGHT_ID).theme,
-  foreground: "#25272c",
-  cursor: "#25272c",
-});
+const DARK_REVIEW_THEME: Readonly<Theme> = Object.freeze(
+  withSeedInk(getTheme(DECK_DARK_ID), "#e5e7eb"),
+);
 
-const REVIEW_THEMES: Readonly<Record<ReviewMode, Readonly<ITheme>>> = {
+const LIGHT_REVIEW_THEME: Readonly<Theme> = Object.freeze(
+  withSeedInk(getTheme(DECK_LIGHT_ID), "#25272c"),
+);
+
+const REVIEW_THEMES: Readonly<Record<ReviewMode, Readonly<Theme>>> = {
   light: LIGHT_REVIEW_THEME,
   dark: DARK_REVIEW_THEME,
 };

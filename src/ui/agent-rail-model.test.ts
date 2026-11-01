@@ -314,6 +314,27 @@ describe("paneSignal — the sixth word and the confidence beside it (DL-27.3, 2
     expect(row.voice?.paneId).toBe(3);
   });
 
+  it("carries the latched attention onto every rail row beside the folded state (LAY-4)", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [
+              pane(1, { attention: "requested" }),
+              pane(2, { attention: "completed" }),
+              pane(3, { phase: "working" }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(streamRows(view)[0].panes.map((entry) => [entry.state, entry.attention])).toEqual([
+      ["asked", "requested"],
+      ["asked", "completed"],
+      ["working", "none"],
+    ]);
+  });
+
   it("an ended pane outranks a working one when nothing is asked", () => {
     const view = buildAgentRail(
       railInput({

@@ -64,12 +64,6 @@ export const SETTINGS_REGISTRY: Readonly<Record<keyof Settings, SettingEntry>> =
     label: "Color mode",
     keywords: ["theme", "dark", "light", "palette"],
   },
-  colorOverrides: {
-    page: null,
-    scope: "preference",
-    label: "Color overrides",
-    keywords: ["background", "cursor", "selection"],
-  },
   focusExpand: { page: null, scope: "layout", label: "Expand focused pane", keywords: [] },
   showPaneBar: {
     page: "appearance",
@@ -88,6 +82,12 @@ export const SETTINGS_REGISTRY: Readonly<Record<keyof Settings, SettingEntry>> =
     scope: "preference",
     label: "Agent notifications",
     keywords: ["alert", "attention"],
+  },
+  agentNotificationsDefaultOn: {
+    page: null,
+    scope: "data",
+    label: "Notification default migration",
+    keywords: [],
   },
   tabBarPosition: {
     page: "appearance",

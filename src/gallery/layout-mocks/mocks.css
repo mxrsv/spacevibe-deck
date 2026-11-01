@@ -1,0 +1,39 @@
+/* Layout mocks run on the app's own preset and controls; the preset already scans them, so this
+   file only widens Tailwind's scan to the mock sources. */
+@import "../../ui/preset.css";
+@import "../../ui/type-scale.css";
+@source "./";
+
+html,
+body,
+#mocks-root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+}
+
+/* The agent terminal palette: ANSI-like inks that hold AA on both grounds. */
+:root {
+  --term-bg: oklch(0.985 0.002 75);
+  --term-fg: oklch(0.24 0.006 56);
+  --term-dim: oklch(0.47 0.008 56);
+  --term-accent: oklch(0.5 0.13 45);
+  --term-ok: oklch(0.47 0.12 150);
+  --term-err: oklch(0.5 0.19 27);
+  --term-warn: oklch(0.52 0.12 75);
+  --term-info: oklch(0.48 0.12 250);
+}
+
+.dark {
+  --term-bg: oklch(0.16 0.004 56);
+  --term-fg: oklch(0.9 0.004 75);
+  --term-dim: oklch(0.68 0.006 75);
+  --term-accent: oklch(0.76 0.12 50);
+  --term-ok: oklch(0.78 0.13 150);
+  --term-err: oklch(0.72 0.16 25);
+  --term-warn: oklch(0.82 0.12 85);
+  --term-info: oklch(0.76 0.1 245);
+}

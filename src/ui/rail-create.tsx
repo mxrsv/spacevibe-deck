@@ -30,13 +30,13 @@ export interface RailCreateProps {
   readonly newPaneDrop?: NewPaneDropDeps;
 }
 
-interface FocusedCheckout {
+export interface FocusedCheckout {
   readonly project: string;
   readonly group: RailWorktreeGroup;
 }
 
 /** The checkout holding the focused pane (RAIL1); none when a browser or dock surface has focus. */
-function focusedCheckout(stream: readonly RailStreamGroup[]): FocusedCheckout | null {
+export function focusedCheckout(stream: readonly RailStreamGroup[]): FocusedCheckout | null {
   for (const cluster of stream) {
     const group = cluster.worktrees.find((worktree) => worktree.active);
     if (group !== undefined) {
@@ -47,12 +47,12 @@ function focusedCheckout(stream: readonly RailStreamGroup[]): FocusedCheckout | 
 }
 
 /** The active tab's workspace — the target when no pane is focused. */
-function activeTabWorkspace(): string | null {
+export function activeTabWorkspace(): string | null {
   return tabViews.value[activeTabIndex.value]?.workspacePath ?? null;
 }
 
 /** The git repositories the rail shows, each once, by the path the form branches from. */
-function railRepositories(stream: readonly RailStreamGroup[]): RailRepository[] {
+export function railRepositories(stream: readonly RailStreamGroup[]): RailRepository[] {
   const seen = new Set<string>();
   const repositories: RailRepository[] = [];
   for (const cluster of stream) {

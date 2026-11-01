@@ -21,7 +21,7 @@
  * the agent changed", which needs tokenization and nothing more.
  */
 import type { Settings } from "../settings/settings-schema";
-import { resolveTheme } from "../settings/themes";
+import { activeTheme } from "../settings/themes";
 import { deriveChromeColors } from "../lib/derive-colors";
 import { baseName } from "../lib/path-name";
 
@@ -152,83 +152,74 @@ const DIFF_GUTTER_ALPHA = 0.25;
 /**
  * Deck's palette as a Monaco theme.
  *
- * Built from the SAME `resolveTheme` / `deriveChromeColors` pair the terminals
- * and the chrome use (spec §4.4), so the editor is not a differently-themed
- * rectangle sitting in the middle of the app. The defaults mirror `app.tsx`'s,
- * which is where the same fallbacks are applied to the CSS custom properties.
+ * Read from the active theme's own `editor` group, with the widget frames on
+ * its `ui` surfaces and the scroll thumb on the same selection wash the chrome
+ * uses, so the editor is not a differently-themed rectangle sitting in the
+ * middle of the app.
  */
 export function monacoThemeFor(settings: Settings): MonacoThemeData {
-  const theme = resolveTheme(settings);
-  const background = theme.background ?? "#0a0a0a";
-  const foreground = theme.foreground ?? "#cbcbcb";
-  const chrome = deriveChromeColors(background, foreground);
-  const red = theme.red ?? "#f7768e";
-  const green = theme.green ?? "#9ece6a";
-  const yellow = theme.yellow ?? "#e0af68";
-  const magenta = theme.magenta ?? "#bb9af7";
-  const cyan = theme.cyan ?? "#7dcfff";
-  const accent = theme.blue ?? "#7aa2f7";
+  const theme = activeTheme(settings);
+  const { editor, ui } = theme;
+  const { tabActiveBg } = deriveChromeColors(theme);
   return {
-    // `--tone` is white on a dark theme and black on a light one — the same
-    // question Monaco's base asks, already answered once.
-    base: chrome.tone === "#ffffff" ? "vs-dark" : "vs",
+    base: theme.type === "dark" ? "vs-dark" : "vs",
     inherit: true,
     rules: [
-      { token: "", foreground: bare(chrome.textPrimary) },
+      { token: "", foreground: bare(editor.foreground) },
       {
         token: "comment",
-        foreground: bare(chrome.textFaint),
+        foreground: bare(editor.comment),
         fontStyle: "italic",
       },
-      { token: "string", foreground: bare(green) },
-      { token: "number", foreground: bare(yellow) },
-      { token: "keyword", foreground: bare(magenta) },
-      { token: "type", foreground: bare(cyan) },
-      { token: "type.identifier", foreground: bare(cyan) },
-      { token: "delimiter", foreground: bare(chrome.textMuted) },
-      { token: "tag", foreground: bare(red) },
-      { token: "attribute.name", foreground: bare(accent) },
-      { token: "attribute.value", foreground: bare(green) },
-      { token: "regexp", foreground: bare(red) },
-      { token: "variable", foreground: bare(chrome.textPrimary) },
-      { token: "variable.predefined", foreground: bare(accent) },
-      { token: "invalid", foreground: bare(red) },
+      { token: "string", foreground: bare(editor.string) },
+      { token: "number", foreground: bare(editor.number) },
+      { token: "keyword", foreground: bare(editor.keyword) },
+      { token: "type", foreground: bare(editor.type) },
+      { token: "type.identifier", foreground: bare(editor.type) },
+      { token: "delimiter", foreground: bare(editor.delimiter) },
+      { token: "tag", foreground: bare(editor.tag) },
+      { token: "attribute.name", foreground: bare(editor.attributeName) },
+      { token: "attribute.value", foreground: bare(editor.attributeValue) },
+      { token: "regexp", foreground: bare(editor.regexp) },
+      { token: "variable", foreground: bare(editor.variable) },
+      { token: "variable.predefined", foreground: bare(editor.variablePredefined) },
+      { token: "invalid", foreground: bare(editor.invalid) },
     ],
     colors: {
-      "editor.background": background,
-      "editor.foreground": foreground,
-      "editorCursor.foreground": theme.cursor ?? foreground,
-      "editor.selectionBackground": theme.selectionBackground ?? chrome.tabActiveBg,
-      "editor.lineHighlightBackground": chrome.chrome1,
-      "editorLineNumber.foreground": chrome.textFaint,
-      "editorLineNumber.activeForeground": chrome.textMuted,
-      "editorIndentGuide.background1": chrome.chrome2,
-      "editorWhitespace.foreground": chrome.chrome2,
-      "editorGutter.background": background,
-      "editorWidget.background": chrome.chrome1,
-      "editorWidget.border": chrome.chrome2,
-      "input.background": chrome.inputBg,
-      "scrollbarSlider.background": chrome.chrome2,
-      "scrollbarSlider.hoverBackground": chrome.tabActiveBg,
-      "scrollbarSlider.activeBackground": chrome.tabActiveBg,
+      "editor.background": editor.background,
+      "editor.foreground": editor.foreground,
+      "editorCursor.foreground": editor.cursor,
+      "editor.selectionBackground": editor.selection,
+      "editor.lineHighlightBackground": editor.lineHighlight,
+      "editorLineNumber.foreground": editor.lineNumber,
+      "editorLineNumber.activeForeground": editor.lineNumberActive,
+      "editorIndentGuide.background1": editor.indentGuide,
+      "editorWhitespace.foreground": editor.indentGuide,
+      "editorGutter.background": editor.background,
+      "editorWidget.background": ui["chrome-1"],
+      "editorWidget.border": ui["chrome-2"],
+      "input.background": ui["input-bg"],
+      "scrollbarSlider.background": ui["chrome-2"],
+      "scrollbarSlider.hoverBackground": tabActiveBg,
+      "scrollbarSlider.activeBackground": tabActiveBg,
       // DL-1.3: no shadows anywhere. Monaco draws one under its scroll edge by
       // default, and a fully transparent value is how it is turned off.
       "scrollbar.shadow": "#00000000",
       // The diff column (DL-3.2): an added line or word on a low green wash and
       // a removed one on a low red wash, from the live theme. Monaco's own
       // defaults are fixed hex that ignores the theme (DL-2.1).
-      "diffEditor.insertedLineBackground": withAlpha(green, DIFF_LINE_ALPHA),
-      "diffEditor.removedLineBackground": withAlpha(red, DIFF_LINE_ALPHA),
-      "diffEditor.insertedTextBackground": withAlpha(green, DIFF_WORD_ALPHA),
-      "diffEditor.removedTextBackground": withAlpha(red, DIFF_WORD_ALPHA),
-      "diffEditorGutter.insertedLineBackground": withAlpha(green, DIFF_GUTTER_ALPHA),
-      "diffEditorGutter.removedLineBackground": withAlpha(red, DIFF_GUTTER_ALPHA),
+      "diffEditor.insertedLineBackground": withAlpha(ui.green, DIFF_LINE_ALPHA),
+      "diffEditor.removedLineBackground": withAlpha(ui.red, DIFF_LINE_ALPHA),
+      "diffEditor.insertedTextBackground": withAlpha(ui.green, DIFF_WORD_ALPHA),
+      "diffEditor.removedTextBackground": withAlpha(ui.red, DIFF_WORD_ALPHA),
+      "diffEditorGutter.insertedLineBackground": withAlpha(ui.green, DIFF_GUTTER_ALPHA),
+      "diffEditorGutter.removedLineBackground": withAlpha(ui.red, DIFF_GUTTER_ALPHA),
       // DL-1.3 again: the band over a folded run of unchanged lines blurs a shadow.
       "diffEditor.unchangedRegionShadow": "#00000000",
-      "diffEditor.unchangedRegionBackground": chrome.chrome1,
-      "diffEditor.unchangedRegionForeground": chrome.textMuted,
-      "diffEditor.diagonalFill": chrome.chrome2,
-      "diffEditor.border": chrome.chrome2,
+      "diffEditor.unchangedRegionBackground": ui["chrome-1"],
+      "diffEditor.unchangedRegionForeground": ui["text-muted"],
+      "diffEditor.diagonalFill": ui["chrome-2"],
+      "diffEditor.border": ui["chrome-2"],
     },
   };
 }

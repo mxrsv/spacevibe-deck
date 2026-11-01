@@ -1,5 +1,5 @@
 import { settings } from "../settings/settings-store";
-import { getPreset } from "../settings/themes";
+import { getTheme } from "../settings/themes";
 import { statusInfo } from "../terminal/tabs-store";
 import { tildify } from "../lib/process-info";
 import { shortcutLabel } from "../lib/shortcut-label";
@@ -8,7 +8,7 @@ import { currentFileStatus } from "../files/file-status";
 
 export function StatusBar() {
   const info = statusInfo.value;
-  const themeLabel = getPreset(settings.value.themeId).label;
+  const themeLabel = getTheme(settings.value.themeId).name;
   const cwd = info.cwd === null ? null : tildify(info.cwd, info.home);
   const splitRow = shortcutLabel("split-row");
   const newTab = shortcutLabel("new-tab");

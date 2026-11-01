@@ -6,6 +6,7 @@ import { SETTINGS_REGISTRY } from "../../settings/settings-registry";
 import { settings } from "../../settings/settings-store";
 import { searchSettings } from "../../settings/settings-search";
 import { settingsQuery, settingsTarget } from "../settings/settings-focus-store";
+import { Switch } from "./switch";
 
 /**
  * The tooltip on a row whose control the Windows host cannot back. The row
@@ -101,11 +102,11 @@ type ToggleRowProps = (
   note?: ComponentChildren;
   checked: boolean;
   onToggle: () => void;
-  /** Disables the native button (real enforcement, not just styling); default false. */
+  /** Disables the switch (real enforcement, not just styling); default false. */
   disabled?: boolean;
 };
 
-/** toggle value kind: `on` (green) / `off` (faint), click flips (DL-6). */
+/** A setting that is on or off: the shared switch, one click flips it. */
 export function ToggleRow({
   desc,
   note,
@@ -120,17 +121,12 @@ export function ToggleRow({
       : SETTINGS_REGISTRY[identity.settingKey].label;
   return (
     <ConfigRow {...identity} desc={desc} note={note}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
+      <Switch
         aria-label={label}
-        class={`cfg-btn ${checked ? "cfg-btn--on" : "cfg-btn--off"} ${disabled ? "cfg-btn--disabled" : ""}`}
+        checked={checked}
         disabled={disabled}
-        onClick={onToggle}
-      >
-        {checked ? "on" : "off"}
-      </button>
+        onCheckedChange={() => onToggle()}
+      />
     </ConfigRow>
   );
 }

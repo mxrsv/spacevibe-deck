@@ -3,8 +3,7 @@ import { useComputed, useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { CaretLeft, Check } from "@phosphor-icons/react";
 import { applyThemeVars } from "../../../lib/theme-vars";
-import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
-import { CANONICAL_THEME_IDS, resolveTheme, type ThemeMode } from "../../../settings/themes";
+import { CANONICAL_THEME_IDS, getTheme, type ThemeMode } from "../../../settings/themes";
 import { DeckIcon, ROW_ICON } from "../../../ui/controls/deck-icon";
 import { LoadError } from "../../../ui/controls/load-error";
 import {
@@ -79,10 +78,7 @@ export function useFrameTheme(frameRef: RefObject<HTMLElement>): void {
   useLayoutEffect(() => {
     const frame = frameRef.current;
     if (frame === null) return;
-    applyThemeVars(
-      frame.style,
-      resolveTheme({ ...DEFAULT_SETTINGS, themeId: CANONICAL_THEME_IDS[mode] }),
-    );
+    applyThemeVars(frame.style, getTheme(CANONICAL_THEME_IDS[mode]));
     frame.style.setProperty("color-scheme", mode);
   }, [mode]);
   /* oxlint-enable react-hooks/exhaustive-deps */

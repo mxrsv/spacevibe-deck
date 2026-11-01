@@ -3,7 +3,7 @@ import { getCurrentWindow } from "../host/window-host";
 import { getDesktopEnvironment } from "../lib/platform";
 import { titleBarOverlayColors, type FrameCornerState } from "../lib/title-bar-overlay-colors";
 import type { Settings } from "../settings/settings-schema";
-import { resolveTheme } from "../settings/themes";
+import { activeTheme } from "../settings/themes";
 
 export interface TitleBarOverlaySyncInput extends FrameCornerState {
   readonly settings: Settings;
@@ -28,7 +28,7 @@ export interface TitleBarOverlaySyncInput extends FrameCornerState {
 export function useTitleBarOverlaySync({ settings, ...corner }: TitleBarOverlaySyncInput): void {
   const overlay =
     getDesktopEnvironment().platform === "windows"
-      ? titleBarOverlayColors(resolveTheme(settings), corner)
+      ? titleBarOverlayColors(activeTheme(settings), corner)
       : null;
   const color = overlay?.color;
   const symbolColor = overlay?.symbolColor;

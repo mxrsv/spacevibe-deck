@@ -10,6 +10,8 @@
 
 /** Commands: renderer → main, request/response. */
 export const CHANNELS = {
+  attentionBadgeSet: "attention_badge_set",
+  notificationOpenSettings: "notification_open_settings",
   agentLimitsSnapshot: "agent_limits_snapshot",
   spawnShell: "spawn_shell",
   writePty: "write_pty",
@@ -220,6 +222,7 @@ export const CHANNELS = {
 
 /** Events: main → renderer, fire and forget. */
 export const EVENTS = {
+  notificationActivated: "notification:activated",
   ptyOutput: "pty:output",
   ptyExit: "pty:exit",
   ptyPromptReady: "pty:prompt-ready",

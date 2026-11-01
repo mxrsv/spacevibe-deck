@@ -56,7 +56,47 @@ constants that currently switch behaviour off and are meant to be flipped back.
   clip the bottom, where agents keep their prompt. Replacing it with `fitAddon.fit()` brings
   the agent death back.
 
+- **The preset's stylesheet belongs to the surface that imports it, not to `styles.css`.**
+  [`preset.css`](../../src/ui/preset.css) has no Tailwind preflight (its `*` and `body` rules
+  would restyle every unmigrated surface), so the reset is scoped to `.ui-preset` and to the
+  `data-slot` every control root carries; a surface mixing controls and plain Tailwind
+  markup needs `.ui-preset` on its root, or its borders have no style. Its `@source` lists
+  the preset controls by name: a glob over `src/ui/controls/` once turned
+  `class="text-input"` in the legacy `commit-input.tsx` into a colour utility.
+  [`ui-preset-boundary.test.ts`](../../scripts/ui-preset-boundary.test.ts) builds the way a first importer
+  would and fails on a leak; `--accent` is the one name the two systems shared, so the
+  preset's is `--ui-accent`.
+- **A migrated region joins the fence with one bare `@source "./<dir>";` line in
+  [`preset.css`](../../src/ui/preset.css), and its root carries `.ui-preset`.**
+  [`ui-preset-boundary.test.ts`](../../scripts/ui-preset-boundary.test.ts) reads those lines and
+  stops counting the directory's markup as chrome, so a slice never edits the test. A legacy
+  section mounted inside the root (the [Command Settings](../../src/ui/command-settings/command-settings-rows.tsx)
+  area view mounts the old Settings sections as is) sits under the scoped reset, which zeroes
+  margin, padding and border in `@layer base`: legacy rules are unlayered and still win, but
+  anything that leaned on a browser default (a heading margin, a button border) loses it.
+- **A preset control takes `className`, not `class`, and its wrapper is made with
+  [`withRef`](../../src/ui/controls/with-ref.ts).** Preact keeps `class` as its own prop, so a
+  wrapper that merges `className` never sees it, and strips `ref` from function-component props, so
+  `render={<Input />}` loses the element a popup anchors to: the popup stays `opacity: 0`.
+  [`forwarded-refs.test.tsx`](../../src/ui/controls/forwarded-refs.test.tsx) fails when a new control
+  is neither wrapped nor listed as rootless.
+- **Base UI under Vitest loads real React unless the controls come from the test bundle.** Its
+  `use-sync-external-store` is CommonJS and calls `require("react")`, which Node resolves to
+  the React 19 that Phosphor pulls in as a peer. Control tests import
+  `loadPresetControls()`, a bundle built with the `preact/compat` aliases by
+  [`preset-controls-bundle.mjs`](../../scripts/preset-controls-bundle.mjs); inlining the package or the
+  dependency optimizer does not fix it (the optimizer keeps `import "react"` in its chunks). The
+  bundle is built once when Vitest starts, so in watch mode a change to a control needs a restart.
+
 ## Hosts and evidence
+
+- **A dev notification check is not release notification evidence.** The
+  [dev launcher](../../scripts/electron-dev-launch.mjs) ad-hoc signs Deck Dev with its own
+  bundle identity; do not describe `electron:dev` as unsigned or assume its OS permissions
+  match the release app's. Unsigned builds cannot prove macOS alert delivery, and the Dock
+  badge requires notification permission. Tests that intercept the
+  [notification API](../../electron/ipc/register-shell.ts) prove routing and counts only;
+  verify native delivery, permission and badge visibility on the exact app being tested.
 
 - **The app running an update is the old build.** An updater fix cannot protect the
   transition into the release that carries it.
@@ -150,6 +190,12 @@ constants that currently switch behaviour off and are meant to be flipped back.
   whose hooks carry the daemon's environment, possibly a live pane's credentials. Main refuses
   a Codex post whose `X-Deck-Tty` is not that pane's tty, so a daemon-hosted Codex stays
   inferred and a hook that bypasses the script is refused.
+- **Codex compresses a rollout idle for a week** into `<name>.jsonl.zst` (since 0.162.1), so
+  most of a user's Codex history is compressed. A reader that matches only `.jsonl` or reads raw
+  bytes silently loses those sessions from resume, history and usage; read rollouts through
+  [`compressed-rollout.ts`](../../electron/usage/compressed-rollout.ts) or the readers built on
+  it. Electron's zlib throws on a cut-off zstd input that plain Node accepts, so a Vitest run
+  alone cannot prove a head read works in the app.
 - **Inside a Deck pane, `OPENCODE_CONFIG_DIR` is Deck's while opencode Signals is on.** The
   wrapper overwrites a value the user exported, so their own opencode agents, commands and
   plugins from that directory do not load there; turn Signals off to get them back.
@@ -214,9 +260,9 @@ pass cannot delete the half they exist to keep.
 | `PANE_TREE_HIDDEN`         | [`src/ui/agent-rail.tsx`](../../src/ui/agent-rail.tsx)             | `true`    | A multi-agent tab renders flat framed rows instead of a parent row with elbow guides    |
 | `AGENT_BOARD_RETIRED`      | [`src/ui/agent-board-store.ts`](../../src/ui/agent-board-store.ts) | `true`    | A journaled Agent Board is not restored; Mission Control owns the Board's entry points  |
 
-Two more retirements follow the same pattern without a constant: the theme gallery, colour
-overrides and theme import are unmounted from Settings but still build and still resolve a
-stored id; and `RepositoryRail` is mounted only in the gallery.
+Two more retirements follow the same pattern without a constant: the theme gallery and theme
+import are unmounted from Settings but still build and still resolve a stored id; and
+`RepositoryRail` is mounted only in the gallery.
 
 ### Release switch convention
 
@@ -232,7 +278,11 @@ The renderer reads the validated host development identity at invocation time th
 `!app.isPackaged`, including dev-once with a production Vite renderer; browser-only preview
 may use Vite's dev mode. A dev URL cannot override a packaged host. Main-owned handlers use
 [the IPC guard](../../electron/ipc/release-switch-guard.ts); never accept a renderer's claim
-that a feature is enabled. Shared IPC services guard only the feature-specific branch.
+that a feature is enabled. Shared IPC services guard only the feature-specific branch. Without a
+host the renderer trusts Vite's dev mode except under Vitest (`MODE === "test"`), so a unit test
+sees every switch off unless it pins a host identity as
+[the availability test](../../src/terminal/action-availability.test.ts) does; read the snapshot
+when the guard runs, never into a module-level constant.
 
 Each feature adoption must guard its mount and clicks, direct actions, default/rebound
 shortcuts, native menu/registry entries, IPC, restore and background starts. Reuse

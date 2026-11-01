@@ -204,9 +204,9 @@ declined chord reaches whatever holds focus. Not: enabled.
 opened, optionally with Claude Code or Codex skills and subagents referenced, and submits
 only behind a triple gate. Not: quick launch, composer.
 
-**Theme mode** — Light or Dark, the whole of Appearance's theme choice. The theme gallery,
-colour overrides and file import still build and resolve stored ids but mount nowhere.
-Not: theme gallery.
+**Theme mode** — Light or Dark, the whole of Appearance's theme choice: Deck Light or Deck
+Dark. The other built-in themes, the theme gallery and file import still build and resolve
+stored ids but mount nowhere. Not: theme gallery.
 
 **Quit** — Exiting Deck: ⌘Q, or the last window closing on Windows. Closing the last tab does
 not quit and does not close the window; it raises the Open board. Not: close tab.

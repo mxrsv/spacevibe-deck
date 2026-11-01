@@ -335,12 +335,10 @@ describe("SettingsScreen — the interaction foundation", () => {
  */
 const EXPECTED_ROWS = [
   // appearance. The theme is one row again since 2026-08-19 — a Light/Dark
-  // segmented pair. The gallery grid (DL-24), the two rows it brought with it
-  // ("Import theme", "Themes folder") and the four colour override rows
-  // ("Background", "Foreground", "Cursor", "Selection") are UNMOUNTED, not
-  // deleted: `theme-gallery.test.tsx` and `color-overrides.tsx` still stand,
-  // and their absence from this walk is the assertion that Settings no longer
-  // reaches them.
+  // segmented pair. The gallery grid (DL-24) and the two rows it brought with
+  // it ("Import theme", "Themes folder") are UNMOUNTED, not deleted:
+  // `theme-gallery.test.tsx` still stands, and their absence from this walk is
+  // the assertion that Settings no longer reaches them.
   "Appearance",
   "Font",
   "Font size",

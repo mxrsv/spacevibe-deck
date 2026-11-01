@@ -1,12 +1,6 @@
 import { signal } from "@preact/signals";
 import { Store } from "../host/store-host";
-import {
-  DEFAULT_SETTINGS,
-  validateSettings,
-  type DockTab,
-  type Settings,
-  type TerminalColors,
-} from "./settings-schema";
+import { DEFAULT_SETTINGS, validateSettings, type DockTab, type Settings } from "./settings-schema";
 import { defaultsFor } from "./settings-changes";
 import { quickAgentsWithout } from "./quick-agents";
 import { reportPersistError } from "../chrome/events";
@@ -26,6 +20,7 @@ let sync: SettingsSyncClient | null = null;
 let loadGeneration = 0;
 let mergedRevision = 0;
 let settingsDegraded = false;
+let notificationMigrationPending = false;
 let pendingPatches: readonly Promise<unknown>[] = [];
 let syncListener: {
   readonly client: SettingsSyncClient;
@@ -140,6 +135,21 @@ export async function initSettings(): Promise<void> {
     if (loadedSettings !== null && mergedRevision === mergedAtStart) {
       settings.value = loadedSettings;
     }
+    if (
+      loadedSettings !== null &&
+      (notificationMigrationPending ||
+        ((raw as Record<string, unknown>).agentNotificationsDefaultOn !== true &&
+          mergedRevision === mergedAtStart))
+    ) {
+      // Main checks the marker atomically with the merge. Do not send a
+      // stale boolean from this window's earlier disk snapshot.
+      // A failed save leaves main's in-memory marker set; Retry must still
+      // persist it before this renderer considers the migration complete.
+      notificationMigrationPending = true;
+      await sync.sendPatch({ agentNotificationsDefaultOn: true });
+      notificationMigrationPending = false;
+      if (forGeneration !== loadGeneration) return;
+    }
     settingsDegraded = false;
     settingsLoadState.value = LOAD_READY;
   } catch (err) {
@@ -246,13 +256,6 @@ export function revealDockTab(tab: DockTab): boolean {
  */
 export function openDockTab(tab: DockTab): void {
   updateSettings({ dockOpen: true, dockTab: tab });
-}
-
-/** Set or remove (value = undefined) a single color override. */
-export function updateColorOverride(key: keyof TerminalColors, value: string | undefined): void {
-  const { [key]: _removed, ...rest } = settings.value.colorOverrides;
-  const colorOverrides = value === undefined ? rest : { ...rest, [key]: value };
-  updateSettings({ colorOverrides });
 }
 
 /**

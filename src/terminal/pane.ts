@@ -4,6 +4,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { disposeWebglAddon } from "./webgl-addon-dispose";
 import type { Settings } from "../settings/settings-schema";
 import { monoFontFallback } from "../settings/mono-font-fallback";
 import { applyHiddenPaneRenderFix } from "./hidden-pane-render-fix";
@@ -259,8 +260,9 @@ export function createPane(
     // No minimumContrastRatio on purpose: it rewrites *every* color, so an
     // agent TUI's deliberately dim grays get pulled up to near-white and the
     // information hierarchy flattens (SGR 2 `dim` stops reading as dim), on
-    // top of a per-cell contrast computation in the render path. A theme
-    // whose ANSI colors are too dark is fixed in `resolveTheme`, not here.
+    // top of a per-cell contrast computation in the render path. A theme's
+    // ANSI colours meet their floors in the theme itself
+    // (`built-in-themes.test.ts`), not here.
     //
     // A pane built for an adoption starts at the source's capture geometry, so
     // nothing has to resize while the route is still `Transferring`.
@@ -417,7 +419,7 @@ export function createPane(
       return false;
     }
     webglAddon = undefined;
-    addon.dispose();
+    disposeWebglAddon(addon);
     return true;
   }
 
@@ -596,7 +598,9 @@ export function createPane(
     // Explicit like `serializeAddon` above, though `term.dispose()` would also
     // reach it: this one holds a GPU context, so it is released on the line
     // that decides to, not as a side effect further down.
-    webglAddon?.dispose();
+    if (webglAddon !== undefined) {
+      disposeWebglAddon(webglAddon);
+    }
     webglAddon = undefined;
     term.dispose();
     element.remove();

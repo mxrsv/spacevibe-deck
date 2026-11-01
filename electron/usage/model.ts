@@ -88,6 +88,8 @@ export const CODEX_SESSIONS_DIR = "sessions";
 export const CODEX_ARCHIVED_DIR = "archived_sessions";
 export const CODEX_ROLLOUT_PREFIX = "rollout-";
 export const TRANSCRIPT_EXTENSION = ".jsonl";
+/** Appended to a rollout's `.jsonl` name once Codex has compressed it. */
+export const CODEX_COMPRESSED_SUFFIX = ".zst";
 
 /**
  * Directory depth the Codex walk will descend. `sessions/YYYY/MM/DD/file` is

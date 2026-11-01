@@ -53,13 +53,11 @@ export interface AgentNotifier {
 
 /**
  * Fixed, deterministic copy per actionable kind — the ONLY kind-derived text
- * that reaches a notification. `"none"` is intentionally absent: it is the
- * one `AttentionKind` value that never justifies a notification.
+ * that reaches a notification. "warning" is ongoing work, not an alert.
  */
-const KIND_PHRASE: Record<Exclude<AttentionKind, "none">, string> = {
+const KIND_PHRASE: Record<Exclude<AttentionKind, "none" | "warning">, string> = {
   completed: "finished",
   requested: "needs attention",
-  warning: "warning",
   error: "error",
 };
 
@@ -70,7 +68,7 @@ const KIND_PHRASE: Record<Exclude<AttentionKind, "none">, string> = {
  *
  * 1. `deps.isEnabled()` is true.
  * 2. `deps.isWindowFocused()` is false (background-only).
- * 3. `n.kind` is actionable (anything but `"none"`).
+ * 3. `n.kind` is completed, requested or error.
  * 4. `n.revision` is strictly greater than the last revision notified for
  *    that pane (monotonic guard — see below).
  *
@@ -93,7 +91,7 @@ export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
   const lastAttentionKind = new Map<number, AttentionKind>();
 
   function maybeNotify(n: AttentionNotification): void {
-    if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === "none") {
+    if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === "none" || n.kind === "warning") {
       return;
     }
     const previous = lastNotified.get(n.paneId) ?? -Infinity;
@@ -107,6 +105,7 @@ export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
     deps.send({
       title: n.workspaceLabel,
       body: `${agent} ${phrase}`,
+      paneId: n.paneId,
     });
   }
 

@@ -3,10 +3,37 @@
 // type error, and dropping that block silently breaks 276 component tests.
 import { defineConfig } from "vitest/config";
 import preact from "@preact/preset-vite";
+import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
+import type { Plugin } from "vite";
+import { PRESET_CONTROLS_FILE } from "./scripts/preset-controls-bundle.mjs";
+
+/**
+ * Under vitest a component that imports a shared Base UI control would load it through Node,
+ * where Base UI's CommonJS `require("react")` reaches the real React instead of Preact
+ * (scripts/preset-controls-bundle.mjs says why). So a test run resolves every shared control to
+ * the bundle that script builds with the aliases applied; the build and dev server never see it.
+ */
+const PRESET_CONTROL_FILE =
+  /[\\/]src[\\/]ui[\\/]controls[\\/](badge|button|collapsible|dialog|dropdown-menu|field|input|kbd|label|popover|scroll-area|select|separator|sheet|switch|tabs|toggle|toggle-group|tooltip)\.tsx$/;
+const presetControlsInTests: Plugin = {
+  name: "deck-preset-controls-in-tests",
+  enforce: "pre",
+  apply: () => process.env.VITEST === "true",
+  async resolveId(source, importer, options) {
+    if (importer === undefined || !source.startsWith(".")) return null;
+    const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+    return resolved !== null && PRESET_CONTROL_FILE.test(resolved.id) ? PRESET_CONTROLS_FILE : null;
+  },
+};
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [preact()],
+  // Tailwind compiles only a stylesheet that imports it (`src/ui/preset.css`); `styles.css`
+  // and its partials pass through untouched. The `@` alias is the one the shadcn CLI writes
+  // into generated imports (`components.json`).
+  plugins: [presetControlsInTests, preact(), tailwindcss()],
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   // Relative asset paths: Electron loads index.html over file://, where the
   // default absolute "/assets/..." resolves to the filesystem root, 404s, and
   // produces a blank window with nothing on stderr.
@@ -21,6 +48,10 @@ export default defineConfig(async () => ({
     minify: "terser",
   },
   test: {
+    // Bundles the Base UI controls once per run, with the React aliases applied, for the
+    // tests to import; Node would otherwise resolve Base UI's CommonJS `require("react")`
+    // to the real React (scripts/preset-controls-bundle.mjs).
+    globalSetup: ["./scripts/preset-controls-bundle.mjs"],
     server: {
       deps: {
         // `@preact/preset-vite` aliases react -> preact/compat through

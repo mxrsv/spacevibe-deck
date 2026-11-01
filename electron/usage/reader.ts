@@ -4,7 +4,8 @@
  * the semantics (committed offsets, the byte cap, Zulu-only timestamps) are
  * the contract the parity gate holds the two implementations to.
  */
-import { closeSync, openSync, readSync } from "node:fs";
+import { closeSync, createReadStream, openSync, readSync } from "node:fs";
+import { createZstdDecompress } from "node:zlib";
 
 /**
  * Largest line the parser will hold in memory.
@@ -33,6 +34,55 @@ export type LineEvent =
   | { readonly kind: "end" };
 
 /**
+ * The byte cap and offset bookkeeping, fed one window at a time. Shared by
+ * the file reader, which pulls windows, and the compressed-rollout reader,
+ * which is pushed them by a decompression stream.
+ */
+class LineSplitter {
+  private pieces: Buffer[] = [];
+  private held = 0;
+  private oversized = false;
+
+  constructor(
+    /** Bytes consumed so far, including a partial trailing line. */
+    public consumed: number,
+    private readonly cap: number,
+  ) {}
+
+  /**
+   * Take `window` up to and including its first newline. Answers how much
+   * was taken, and the event when that completed a line.
+   */
+  take(window: Buffer): { taken: number; event: LineEvent | null } {
+    const newlineAt = window.indexOf(0x0a);
+    const newline = newlineAt !== -1;
+    const taken = newline ? newlineAt + 1 : window.length;
+    const payload = newline ? newlineAt : taken;
+    if (this.oversized || this.held + payload > this.cap) {
+      // Drop what was already held as well: the point of the cap is that an
+      // over-long line never occupies memory.
+      this.oversized = true;
+      this.pieces = [];
+      this.held = 0;
+    } else {
+      this.pieces.push(Buffer.from(window.subarray(0, payload)));
+      this.held += payload;
+    }
+    this.consumed += taken;
+    if (!newline) {
+      return { taken, event: null };
+    }
+    const event: LineEvent = this.oversized
+      ? { kind: "oversized", offset: this.consumed }
+      : { kind: "line", bytes: Buffer.concat(this.pieces), offset: this.consumed };
+    this.pieces = [];
+    this.held = 0;
+    this.oversized = false;
+    return { taken, event };
+  }
+}
+
+/**
  * A streaming line reader with a hard per-line byte cap, over an open fd.
  *
  * The committed offset only ever advances past a newline, which is what makes
@@ -40,12 +90,10 @@ export type LineEvent =
  */
 export class LineReader {
   private readonly buffer: Buffer;
+  private readonly splitter: LineSplitter;
   /** Valid window into `buffer`. */
   private start = 0;
   private end = 0;
-  /** Bytes consumed so far, including a partial trailing line. */
-  private consumed: number;
-  private readonly cap: number;
 
   constructor(
     private readonly fd: number,
@@ -53,8 +101,7 @@ export class LineReader {
     cap: number = MAX_LINE_BYTES,
     bufferBytes: number = READ_BUFFER_BYTES,
   ) {
-    this.consumed = start;
-    this.cap = cap;
+    this.splitter = new LineSplitter(start, cap);
     this.buffer = Buffer.alloc(bufferBytes);
   }
 
@@ -63,40 +110,50 @@ export class LineReader {
       return this.end - this.start;
     }
     this.start = 0;
-    this.end = readSync(this.fd, this.buffer, 0, this.buffer.length, this.consumed);
+    this.end = readSync(this.fd, this.buffer, 0, this.buffer.length, this.splitter.consumed);
     return this.end;
   }
 
   nextLine(): LineEvent {
-    const pieces: Buffer[] = [];
-    let held = 0;
-    let oversized = false;
     for (;;) {
       const available = this.fill();
       if (available === 0) {
         return { kind: "end" };
       }
-      const window = this.buffer.subarray(this.start, this.end);
-      const newlineAt = window.indexOf(0x0a);
-      const newline = newlineAt !== -1;
-      const taken = newline ? newlineAt + 1 : window.length;
-      const payload = newline ? newlineAt : taken;
-      if (oversized || held + payload > this.cap) {
-        // Drop what was already held as well: the point of the cap is that an
-        // over-long line never occupies memory.
-        oversized = true;
-        pieces.length = 0;
-        held = 0;
-      } else {
-        pieces.push(Buffer.from(window.subarray(0, payload)));
-        held += payload;
-      }
+      const { taken, event } = this.splitter.take(this.buffer.subarray(this.start, this.end));
       this.start += taken;
-      this.consumed += taken;
-      if (newline) {
-        return oversized
-          ? { kind: "oversized", offset: this.consumed }
-          : { kind: "line", bytes: Buffer.concat(pieces), offset: this.consumed };
+      if (event !== null) {
+        return event;
+      }
+    }
+  }
+}
+
+/**
+ * `readLines` for a compressed Codex rollout. Decompressed as a stream, so
+ * memory stays at one chunk plus one line however large the rollout: a whole
+ * decompressed 89 MiB rollout doubled a cold scan's peak memory (2026-10-24).
+ * `start` counts decompressed bytes. A frame that fails to decompress rejects.
+ */
+export async function readCompressedLines(
+  path: string,
+  start: number,
+  onEvent: (event: LineEvent) => void,
+): Promise<void> {
+  const splitter = new LineSplitter(0, MAX_LINE_BYTES);
+  for await (const chunk of createReadStream(path).pipe(createZstdDecompress())) {
+    let window = chunk as Buffer;
+    // An earlier scan already committed everything before `start`.
+    if (splitter.consumed < start) {
+      const skipped = Math.min(start - splitter.consumed, window.length);
+      splitter.consumed += skipped;
+      window = window.subarray(skipped);
+    }
+    while (window.length > 0) {
+      const { taken, event } = splitter.take(window);
+      window = window.subarray(taken);
+      if (event !== null) {
+        onEvent(event);
       }
     }
   }

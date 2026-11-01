@@ -13,9 +13,9 @@ const REQUIRED_FIELDS = ["title", "category", "id"];
 // `website` is a honeypot the landing keeps out of layout, where neither a
 // person nor browser autofill can reach it; `id` is the draft's UUID v4.
 const OPTIONAL_FIELDS = ["body", "website", "id"];
-// eslint-disable-next-line no-control-regex
+// eslint-disable-next-line no-control-regex -- the sanitiser exists to strip control characters
 const CONTROL = /[\x00-\x1f\x7f]/g;
-// eslint-disable-next-line no-control-regex
+// eslint-disable-next-line no-control-regex -- the sanitiser exists to strip control characters
 const CONTROL_EXCEPT_NEWLINE = /[\x00-\x09\x0b-\x1f\x7f]/g;
 
 function record(value) {

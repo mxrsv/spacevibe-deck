@@ -28,18 +28,25 @@ const OPENCODE_DB_PATH = path.join(".local", "share", "opencode", "opencode.db")
 const MAX_SESSIONS = 300;
 
 /**
- * Sessions, newest first. `parent_id IS NULL` keeps sub-agent sessions out:
- * opencode spawns one per delegated task (56 of this machine's 157), they
- * share their parent's `directory`, and a rail row that quoted one would be
- * showing a sub-agent's turn as if the pane had said it.
+ * `parent_id IS NULL` keeps sub-agent sessions out: opencode spawns one per
+ * delegated task (56 of this machine's 157), they share their parent's
+ * `directory`, and a rail row that quoted one would be showing a sub-agent's
+ * turn as if the pane had said it.
  */
-const SESSIONS_SQL = `
-  SELECT id, directory, time_updated
-  FROM session
-  WHERE parent_id IS NULL
-  ORDER BY time_updated DESC
-  LIMIT ?
-`;
+const V1_SESSIONS_SQL = "SELECT id, directory, time_updated FROM session WHERE parent_id IS NULL";
+const V2_SESSIONS_SQL =
+  "SELECT id, directory, time_updated FROM session_v2 WHERE parent_id IS NULL";
+
+/** Sessions newest first; a session both generations hold counts once, at its newest. */
+function sessionsSql(sources: readonly string[]): string {
+  return `
+    SELECT id, directory, MAX(time_updated) AS time_updated
+    FROM (${sources.join(" UNION ALL ")})
+    GROUP BY id
+    ORDER BY time_updated DESC
+    LIMIT ?
+  `;
+}
 
 /**
  * The newest assistant text of one session, and the model that message ran
@@ -57,16 +64,68 @@ const SESSIONS_SQL = `
  * switched model and then only ran tools reports the previous model until it
  * speaks again.
  */
-const TAIL_SQL = `
-  SELECT json_extract(p.data, '$.text') AS text, json_extract(m.data, '$.modelID') AS model
+const V1_TAIL_SQL = `
+  SELECT json_extract(p.data, '$.text') AS text, json_extract(m.data, '$.modelID') AS model,
+    p.time_created AS at, 0 AS item
   FROM part p
   JOIN message m ON m.id = p.message_id
   WHERE p.session_id = ?
     AND json_extract(p.data, '$.type') = 'text'
     AND json_extract(m.data, '$.role') = 'assistant'
-  ORDER BY p.time_created DESC
-  LIMIT 1
 `;
+
+/**
+ * The 2.x spelling of the same rule: an assistant row of `session_message`
+ * holds its parts in a `content` array (`text`, `reasoning`, `tool`) and its
+ * model under `model.id`. The last text item of the newest message wins.
+ */
+const V2_TAIL_SQL = `
+  SELECT json_extract(c.value, '$.text') AS text, json_extract(sm.data, '$.model.id') AS model,
+    sm.time_created AS at, c.key AS item
+  FROM session_message sm, json_each(sm.data, '$.content') c
+  WHERE sm.session_id = ?
+    AND sm.type = 'assistant'
+    AND json_extract(c.value, '$.type') = 'text'
+`;
+
+function tailSql(sources: readonly string[]): string {
+  return `SELECT text, model FROM (${sources.join(" UNION ALL ")}) ORDER BY at DESC, item DESC LIMIT 1`;
+}
+
+function hasTables(db: DatabaseSync, names: readonly string[]): boolean {
+  const lookup = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?");
+  return names.every((name) => lookup.get(name) !== undefined);
+}
+
+/**
+ * One opencode generation's statement and the tables it needs.
+ *
+ * opencode 2.0 copied every 1.x session into `session_v2` and its turns into
+ * `session_message`, then writes new ones there only. Reading the 1.x tables
+ * alone missed every 2.x session, so restore resumed an older 1.x session
+ * from the same directory instead (measured 2026-10-24, opencode 2.0.32).
+ * Each generation is read only when its tables exist, so either install
+ * answers.
+ */
+interface Source {
+  readonly tables: readonly string[];
+  readonly sql: string;
+}
+
+const SESSION_SOURCES: readonly Source[] = [
+  { tables: ["session"], sql: V1_SESSIONS_SQL },
+  { tables: ["session_v2"], sql: V2_SESSIONS_SQL },
+];
+
+const TAIL_SOURCES: readonly Source[] = [
+  { tables: ["message", "part"], sql: V1_TAIL_SQL },
+  { tables: ["session_message"], sql: V2_TAIL_SQL },
+];
+
+/** The statements of the generations this database holds; empty when neither. */
+function presentSources(db: DatabaseSync, sources: readonly Source[]): string[] {
+  return sources.filter((source) => hasTables(db, source.tables)).map((source) => source.sql);
+}
 
 /** True when the database exists as a regular file — a symlink is refused
  *  rather than followed, the same rule `headBytes` applies to transcripts. */
@@ -127,7 +186,11 @@ export function candidates(home: string): CandidateSession[] {
   return withDatabase(
     home,
     (db) => {
-      const rows = db.prepare(SESSIONS_SQL).all(MAX_SESSIONS);
+      const sources = presentSources(db, SESSION_SOURCES);
+      if (sources.length === 0) {
+        return [];
+      }
+      const rows = db.prepare(sessionsSql(sources)).all(MAX_SESSIONS);
       const out: CandidateSession[] = [];
       for (const row of rows) {
         const candidate = toCandidate(row as Record<string, unknown>);
@@ -159,7 +222,12 @@ function queryTail(home: string, sessionId: string): TailRow {
   return withDatabase(
     home,
     (db) => {
-      const row = db.prepare(TAIL_SQL).get(sessionId) as Record<string, unknown> | undefined;
+      const sources = presentSources(db, TAIL_SOURCES);
+      if (sources.length === 0) {
+        return { text: null, model: null };
+      }
+      const row = db.prepare(tailSql(sources)).get(...sources.map(() => sessionId)) as
+        Record<string, unknown> | undefined;
       const text = row?.text;
       const model = row?.model;
       return {

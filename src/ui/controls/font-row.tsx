@@ -24,7 +24,7 @@ const WINDOWS_FONT_CANDIDATES = ["Cascadia Mono", "Consolas"];
 
 const CUSTOM_VALUE = "__custom__";
 
-function fontCandidates(): readonly string[] {
+export function fontCandidates(): readonly string[] {
   return getDesktopEnvironment().platform === "windows"
     ? [...WINDOWS_FONT_CANDIDATES, ...FONT_CANDIDATES]
     : FONT_CANDIDATES;
@@ -32,7 +32,7 @@ function fontCandidates(): readonly string[] {
 
 // Compare rendered width against fallback fonts — document.fonts.check()
 // returns false positives for system fonts that are not installed
-function detectInstalledFonts(): string[] {
+export function detectInstalledFonts(): string[] {
   const candidates = fontCandidates();
   const context = document.createElement("canvas").getContext("2d");
   if (!context) {

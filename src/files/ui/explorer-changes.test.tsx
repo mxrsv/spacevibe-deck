@@ -426,6 +426,14 @@ describe("the column's life follows the list (D4)", () => {
     expect(diff.selection.value).toBeNull();
   });
 
+  it("leaves a diff alone when it offers no Changes: the stacked dock's Files section", () => {
+    const { controller } = fakeChanges();
+    diff.open(WS, "src/a.ts");
+    mount(controller, false);
+    act(() => render(null, host));
+    expect(diff.selection.value?.path).toBe("src/a.ts");
+  });
+
   it("closes when the Explorer is re-rooted on another workspace", () => {
     const { controller } = fakeChanges();
     mount(controller);

@@ -92,14 +92,14 @@ describe("AgentsSection", () => {
     const row = Array.from(host.querySelectorAll(".cfg-row")).find(
       (candidate) => candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
     )!;
-    return row.querySelector<HTMLButtonElement>(".cfg-btn")!;
+    return row.querySelector<HTMLButtonElement>('[data-slot="button"]')!;
   };
 
   /** Open a declared row's key or value for editing (DL-12.5) and return it. */
   const openField = (trigger: string, ariaLabel: string): HTMLInputElement => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
-        ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
+        '.cfg-row--item .cfg-row__label--edit, .cfg-row--item [data-slot="button"]',
       ),
     ).find((candidate) => candidate.textContent?.trim() === trigger)!;
     click(button);
@@ -277,9 +277,9 @@ describe("AgentsSection", () => {
     });
 
     const usageButton = (): HTMLButtonElement => {
-      const found = Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find(
-        (candidate) => candidate.textContent?.trim() === "open …",
-      );
+      const found = Array.from(
+        host.querySelectorAll<HTMLButtonElement>('[data-slot="button"]'),
+      ).find((candidate) => candidate.textContent?.trim() === "open …");
       if (found === undefined) {
         throw new Error("no token usage link row");
       }
@@ -301,9 +301,8 @@ describe("AgentsSection", () => {
       mount();
 
       const button = usageButton();
-      expect(button.classList.contains("cfg-btn")).toBe(true);
-      // No new DL value kind: same class, same copy as "Release notes".
-      expect(button.classList.contains("cfg-btn--disabled")).toBe(false);
+      expect(button.dataset.slot).toBe("button");
+      // No new DL value kind: same control, same copy as "Release notes".
       expect(button.disabled).toBe(false);
     });
   });
@@ -336,7 +335,7 @@ describe("AgentsSection — refusals and cleanup", () => {
   const openAndCommit = (trigger: string, aria: string, value: string): void => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
-        ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
+        '.cfg-row--item .cfg-row__label--edit, .cfg-row--item [data-slot="button"]',
       ),
     ).find((candidate) => candidate.textContent?.trim() === trigger)!;
     act(() => {

@@ -186,6 +186,41 @@ describe("Electron IPC contract", () => {
     expect(handlers.filter((handler) => handler.channel === "usage_snapshot")).toEqual([]);
   });
 
+  it("pins the notification and badge payloads on both sides", () => {
+    const expected = {
+      notification_send: ["title", "body", "paneId"],
+      attention_badge_set: ["count"],
+    };
+    for (const [channel, keys] of Object.entries(expected)) {
+      const sites = callSites.filter((site) => site.channel === channel);
+      const registered = handlers.filter((handler) => handler.channel === channel);
+      expect(sites.length, channel).toBeGreaterThan(0);
+      expect(registered.length, channel).toBeGreaterThan(0);
+      for (const site of sites) expect(site.keys, channel).toEqual(keys);
+      for (const handler of registered) expect(handler.required, channel).toEqual(keys);
+      expect(INVOKABLE_CHANNELS.has(channel)).toBe(true);
+    }
+  });
+
+  it("pins notification settings as zero-payload and activation as flat paneId", () => {
+    const sites = callSites.filter((site) => site.channel === "notification_open_settings");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) expect(site.keys).toEqual([]);
+    expect(handlers.filter((handler) => handler.channel === "notification_open_settings")).toEqual(
+      [],
+    );
+    expect(readFileSync("electron/ipc/register-shell.ts", "utf8")).toContain(
+      "ipcMain.handle(CHANNELS.notificationOpenSettings, async () =>",
+    );
+    expect(INVOKABLE_CHANNELS.has("notification_open_settings")).toBe(true);
+    expect(readFileSync("electron/ipc/channels.ts", "utf8")).toContain(
+      'notificationActivated: "notification:activated"',
+    );
+    expect(readFileSync("electron/ipc/register-shell.ts", "utf8")).toContain(
+      "sender.send(EVENTS.notificationActivated, { paneId })",
+    );
+  });
+
   it("worktree_add carries the flat { repoPath, branch, destPath } payload on both sides", () => {
     // Task 16's explicit fixture, pinned the same way usage_snapshot pins its
     // zero-payload contract above: proof this generic scanner actually

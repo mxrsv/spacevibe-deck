@@ -8,14 +8,9 @@
  * one file with no second copy of the "is this usable" rule.
  */
 import type { ITheme } from "@xterm/xterm";
-import {
-  checkChromeTextContrast,
-  contrastRatio,
-  TERMINAL_CURSOR_FLOOR,
-  TERMINAL_TEXT_FLOOR,
-} from "../../lib/derive-colors";
+import { contrastRatio, TERMINAL_CURSOR_FLOOR, TERMINAL_TEXT_FLOOR } from "../../lib/derive-colors";
 
-/** Exactly the theme object `ThemePreset` carries — see `../themes.ts`. */
+/** The terminal palette a file yields; `themeFromTerminalColors` in `../themes.ts` makes it a theme. */
 export type ThemeColors = Required<
   Pick<ITheme, "background" | "foreground" | "cursor" | "selectionBackground">
 > &
@@ -62,10 +57,10 @@ export function emptyDraft(): ThemeDraft {
 /**
  * Validate a draft and fill the two slots a terminal cannot run without.
  *
- * Background and foreground are required because every derived chrome colour in
- * `deriveChromeColors` is a function of those two (DL-2.2): a theme missing
- * either would not merely look wrong in the terminal, it would leave the
- * sidebar, seams and text tokens resolving against the previous theme's values.
+ * Background and foreground are required because a terminal cannot run
+ * without them, and the background also decides whether the file takes Deck
+ * Dark's or Deck Light's chrome. The chrome itself is that built-in's, so the
+ * file's colours are held only to the terminal floors.
  *
  * Cursor and selection are NOT required. Every format treats them as optional
  * and most collections omit at least one, so rejecting on them would refuse
@@ -93,10 +88,6 @@ export function finishDraft(draft: ThemeDraft, fallbackLabel: string): ThemePars
       ok: false,
       reason: `terminal cursor on background is ${cursorContrast.toFixed(2)}:1; needs ${TERMINAL_CURSOR_FLOOR}:1`,
     };
-  }
-  const contrast = checkChromeTextContrast(background, foreground);
-  if (!contrast.ok) {
-    return { ok: false, reason: contrast.reason };
   }
   const label = (draft.label ?? fallbackLabel).trim();
   return {

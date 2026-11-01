@@ -37,6 +37,10 @@ const RETIRED_KEYS: readonly string[] = [
   // already out of range.
   "explorerOpen",
   "explorerWidth",
+  // Per-colour overrides on top of a terminal palette went with the explicit
+  // theme model: a theme declares every colour itself, so there is nothing
+  // left to override from Settings.
+  "colorOverrides",
 ];
 
 /**
@@ -58,7 +62,14 @@ export function mergeSettings(current: unknown, patch: unknown): unknown {
     return current;
   }
   const base = (current ?? {}) as Record<string, unknown>;
-  const merged = { ...base, ...(patch as Record<string, unknown>) };
+  const changes = patch as Record<string, unknown>;
+  // Migration requests carry only the marker. Decide against the current
+  // main-owned value so a late window cannot undo a newer user's off choice.
+  const notificationDefault =
+    base.agentNotificationsDefaultOn !== true && changes.agentNotificationsDefaultOn === true
+      ? { agentNotifications: true }
+      : {};
+  const merged = { ...base, ...notificationDefault, ...changes };
   return Object.fromEntries(Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)));
 }
 

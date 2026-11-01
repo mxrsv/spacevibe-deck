@@ -28,7 +28,18 @@ vi.mock("../../settings/settings-store", async () => {
 import { ThemeModeSelector } from "./theme-mode-selector";
 import { settings } from "../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
-import { customPresets, getPreset } from "../../settings/themes";
+import { DECK_LIGHT_THEME } from "../../settings/built-in-themes";
+import { customThemes, themeFromTerminalColors } from "../../settings/themes";
+
+/** An imported light theme: the one selection a mode click cannot give back. */
+function importSolarized(): void {
+  customThemes.value = [
+    {
+      fileName: "solarized.json",
+      theme: themeFromTerminalColors("file:solarized.json", "Solarized", DECK_LIGHT_THEME.terminal),
+    },
+  ];
+}
 
 describe("ThemeModeSelector", () => {
   let host: HTMLDivElement;
@@ -38,7 +49,7 @@ describe("ThemeModeSelector", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     settings.value = DEFAULT_SETTINGS;
-    customPresets.value = [];
+    customThemes.value = [];
     ask.mockClear();
     ask.mockResolvedValue(true);
     updateSettings.mockClear();
@@ -74,19 +85,20 @@ describe("ThemeModeSelector", () => {
     });
   };
 
-  it("keeps pictured modes keyboard-selectable and confirms hidden overrides", async () => {
-    settings.value = { ...DEFAULT_SETTINGS, colorOverrides: { background: "#123456" } };
+  it("keeps pictured modes keyboard-selectable and confirms an imported theme", async () => {
+    importSolarized();
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "file:solarized.json" };
     act(() => {
       render(<ThemeModeSelector presentation="cards" />, host);
     });
     expect(updateSettings).not.toHaveBeenCalled();
     act(() => {
-      options()[1].dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+      options()[1].dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
     });
     await settle();
-    expect(document.activeElement).toBe(options()[0]);
+    expect(document.activeElement).toBe(options()[1]);
     expect(ask).toHaveBeenCalledOnce();
-    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-light", colorOverrides: {} });
+    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-dark" });
   });
 
   it("offers exactly two modes as one radio group", () => {
@@ -106,7 +118,7 @@ describe("ThemeModeSelector", () => {
     expect(options().map((option) => option.getAttribute("tabindex"))).toEqual(["0", "-1"]);
   });
 
-  it("shows a legacy theme as the mode its background belongs to, and writes nothing", () => {
+  it("shows a retired theme id as Dark, its fallback, and writes nothing", () => {
     settings.value = { ...DEFAULT_SETTINGS, themeId: "tokyo-night" };
     mount();
 
@@ -115,7 +127,15 @@ describe("ThemeModeSelector", () => {
     expect(ask).not.toHaveBeenCalled();
   });
 
-  it("converts a legacy built-in on click without asking — nothing is lost", async () => {
+  it("shows another built-in as the mode of its type", () => {
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "paper" };
+    mount();
+
+    expect(selected()).toBe("Light");
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("converts a retired id on click without asking — nothing is lost", async () => {
     settings.value = { ...DEFAULT_SETTINGS, themeId: "tokyo-night" };
     mount();
 
@@ -125,18 +145,11 @@ describe("ThemeModeSelector", () => {
     await settle();
 
     expect(ask).not.toHaveBeenCalled();
-    expect(updateSettings).toHaveBeenCalledWith({
-      themeId: "deck-light",
-      colorOverrides: {},
-    });
+    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-light" });
   });
 
-  it("confirms before clearing colour overrides the user can no longer see", async () => {
-    settings.value = {
-      ...DEFAULT_SETTINGS,
-      themeId: "tokyo-night",
-      colorOverrides: { background: "#101014" },
-    };
+  it("writes the canonical id over a retired one even on the segment it already shows", async () => {
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "tokyo-night" };
     mount();
 
     act(() => {
@@ -144,23 +157,18 @@ describe("ThemeModeSelector", () => {
     });
     await settle();
 
-    expect(ask).toHaveBeenCalledTimes(1);
-    expect(updateSettings).toHaveBeenCalledWith({
-      themeId: "deck-dark",
-      colorOverrides: {},
-    });
+    expect(ask).not.toHaveBeenCalled();
+    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-dark" });
   });
 
   it("changes nothing when that confirmation is declined", async () => {
     ask.mockResolvedValue(false);
-    settings.value = {
-      ...DEFAULT_SETTINGS,
-      colorOverrides: { foreground: "#abcdef" },
-    };
+    importSolarized();
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "file:solarized.json" };
     mount();
 
     act(() => {
-      options()[0].click();
+      options()[1].click();
     });
     await settle();
 
@@ -168,18 +176,11 @@ describe("ThemeModeSelector", () => {
   });
 
   it("confirms before replacing an imported theme's selection", async () => {
-    customPresets.value = [
-      {
-        id: "file:solarized.json",
-        label: "Solarized",
-        fileName: "solarized.json",
-        theme: getPreset("deck-light").theme,
-      },
-    ];
+    importSolarized();
     settings.value = { ...DEFAULT_SETTINGS, themeId: "file:solarized.json" };
     mount();
 
-    // Classified by what it paints, not by its id.
+    // Classified by the type it takes from its background, not by its id.
     expect(selected()).toBe("Light");
 
     act(() => {
@@ -188,22 +189,17 @@ describe("ThemeModeSelector", () => {
     await settle();
 
     expect(ask).toHaveBeenCalledTimes(1);
-    expect(updateSettings).toHaveBeenCalledWith({
-      themeId: "deck-dark",
-      colorOverrides: {},
-    });
+    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-dark" });
   });
 
   it("treats a failed prompt as a refusal, not as consent", async () => {
     ask.mockRejectedValue(new Error("no dialog host"));
-    settings.value = {
-      ...DEFAULT_SETTINGS,
-      colorOverrides: { background: "#101014" },
-    };
+    importSolarized();
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "file:solarized.json" };
     mount();
 
     act(() => {
-      options()[0].click();
+      options()[1].click();
     });
     await settle();
 
@@ -232,9 +228,6 @@ describe("ThemeModeSelector", () => {
     });
     await settle();
 
-    expect(updateSettings).toHaveBeenCalledWith({
-      themeId: "deck-light",
-      colorOverrides: {},
-    });
+    expect(updateSettings).toHaveBeenCalledWith({ themeId: "deck-light" });
   });
 });

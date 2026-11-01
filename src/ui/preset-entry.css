@@ -1,0 +1,4 @@
+/* The renderer's one entry into the Base UI preset and the shell type scale. Tailwind compiles
+   it as a single root, so `type-scale.css`'s `@theme` joins the preset's theme. */
+@import "./preset.css";
+@import "./type-scale.css";

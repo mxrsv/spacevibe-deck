@@ -359,8 +359,31 @@ describe("Codex session facts", () => {
       sessions,
     );
     expect((await reader.read(panes))[0].codexSessionId).toBeNull();
-    expect(sessions).toHaveBeenCalledWith([777]);
+    expect(sessions).toHaveBeenCalledWith(new Map([[777, []]]));
     finish(new Map([[777, "own"]]));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect((await reader.read(panes))[0].codexSessionId).toBe("own");
+  });
+  it("asks about the npm launcher's native codex child too, and no other group member", async () => {
+    const sessions = vi.fn().mockResolvedValue(new Map([[777, "own"]]));
+    const reader = createPtyInfoReader(
+      () => ({
+        readProcessTable: async () =>
+          parsePsTable(
+            [
+              "610 610 777 ttys002 zsh",
+              "777 777 777 ttys002 node /u/.nvm/versions/node/v24/bin/codex",
+              "778 777 777 ttys002 /u/.nvm/versions/node/v24/lib/node_modules/@openai/codex/vendor/aarch64-apple-darwin/bin/codex",
+              "779 777 777 ttys002 /bin/bash -c make",
+            ].join("\n"),
+          ),
+        foregroundProcess,
+        processCwds: async () => new Map(),
+      }),
+      sessions,
+    );
+    expect((await reader.read(panes))[0]).toMatchObject({ agent: "codex", processId: 777 });
+    expect(sessions).toHaveBeenCalledWith(new Map([[777, [778]]]));
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect((await reader.read(panes))[0].codexSessionId).toBe("own");
   });

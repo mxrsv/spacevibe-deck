@@ -13,6 +13,7 @@
  */
 import {
   classifyProcess,
+  normalizedProcessName,
   type AgentProcessMatcher,
   type Classification,
 } from "../platform/classify";
@@ -138,7 +139,7 @@ export interface PtyInfoReader {
 export function createPtyInfoReader(
   getPlatform: () => PtyInfoPlatform = platform,
   readCodexSessions: (
-    pids: readonly number[],
+    lookups: ReadonlyMap<number, readonly number[]>,
   ) => Promise<Map<number, string>> = processCodexSessions,
 ): PtyInfoReader {
   type Identity = {
@@ -149,15 +150,24 @@ export function createPtyInfoReader(
   const identities = new Map<number, Identity>();
   let pendingIdentities = new Map<number, Identity>();
   let identityRefresh: Promise<void> | null = null;
+  /**
+   * Per pane, the other `codex` processes in its foreground group, refreshed
+   * every read. npm's `codex` is a `node` launcher whose native `codex` child
+   * holds the thread lock, so asking lsof about the leader alone finds none.
+   * Kept outside `Identity`: replacing that object every read would make the
+   * late-answer guard below drop every answer.
+   */
+  const codexMembers = new Map<number, readonly number[]>();
 
   function refreshIdentities(): void {
     if (identityRefresh !== null || pendingIdentities.size === 0) return;
     const targets = pendingIdentities;
     pendingIdentities = new Map();
+    const lookups = new Map(
+      [...targets].map(([paneId, target]) => [target.pid, codexMembers.get(paneId) ?? []]),
+    );
     const current = Promise.resolve()
-      .then(() =>
-        readCodexSessions([...new Set([...targets.values()].map((target) => target.pid))]),
-      )
+      .then(() => readCodexSessions(lookups))
       .catch((error) => {
         console.warn("Deck: Codex identity refresh failed", error);
         return new Map<number, string>();
@@ -187,6 +197,7 @@ export function createPtyInfoReader(
       if (info.agent !== "codex" || info.processId === null || shellPid === undefined) {
         identities.delete(info.id);
         pendingIdentities.delete(info.id);
+        codexMembers.delete(info.id);
         return info;
       }
       const old = identities.get(info.id);
@@ -272,6 +283,19 @@ export function createPtyInfoReader(
           continue;
         }
         foregroundTargets.set(snapshot.id, foreground.pid);
+        codexMembers.set(
+          snapshot.id,
+          foreground.group === null
+            ? []
+            : rows
+                .filter(
+                  (row) =>
+                    row.pgid === foreground.group &&
+                    row.pid !== foreground.pid &&
+                    normalizedProcessName(macos.argv0Name(row.args) ?? "") === "codex",
+                )
+                .map((row) => row.pid),
+        );
         const cached = cwdByPane.get(snapshot.id);
         if (cached?.foregroundPid === foreground.pid) {
           cachedCwds.set(foreground.pid, cached.cwd);

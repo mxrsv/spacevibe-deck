@@ -7,10 +7,9 @@
  * at all. Normalising here rather than in four parsers is what keeps "is this a
  * colour" one answer instead of four subtly different ones.
  *
- * Output is always lowercase `#rrggbb`: xterm's `ITheme` and the `--bg`/`--fg`
- * custom properties both take CSS colours, and an 8-digit value would put an
- * alpha channel behind the terminal that `deriveChromeColors` cannot reason
- * about (DL-2.2 — every chrome colour is derived from an opaque `--bg`).
+ * Output is always lowercase `#rrggbb`, the only form a theme may declare
+ * (`isThemeColor`): an 8-digit value would put an alpha channel behind the
+ * terminal that no contrast floor can measure.
  */
 
 const SHORT = /^[0-9a-f]{3}$/;

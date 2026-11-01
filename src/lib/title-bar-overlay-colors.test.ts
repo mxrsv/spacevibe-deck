@@ -1,10 +1,11 @@
-import type { ITheme } from "@xterm/xterm";
 import { describe, expect, it } from "vitest";
 // Only a type import of `electron` sits behind this file, so the host's own
 // predicate runs here without pulling Electron: the renderer must never send
 // what the handler would refuse.
 import { isOverlayColor } from "../../electron/window-options";
-import { DECK_DARK_ID, DECK_LIGHT_ID, THEME_PRESETS, getPreset } from "../settings/themes";
+import { BUILT_IN_THEMES } from "../settings/built-in-themes";
+import type { Theme } from "../settings/theme-schema";
+import { DECK_DARK_ID, DECK_LIGHT_ID, getTheme } from "../settings/themes";
 import { TEXT_PRIMARY_FLOOR, contrastRatio } from "./derive-colors";
 import { applyThemeVars } from "./theme-vars";
 import { titleBarOverlayColors, type FrameCornerState } from "./title-bar-overlay-colors";
@@ -22,7 +23,7 @@ const STATES: readonly (readonly [string, FrameCornerState, string])[] = [
   ["Settings in the top-tab layout", { ...TABBAR, settingsOpen: true }, "--bg"],
 ];
 
-function publishedVars(theme: ITheme): ReadonlyMap<string, string> {
+function publishedVars(theme: Theme): ReadonlyMap<string, string> {
   const written = new Map<string, string>();
   const style = {
     setProperty(name: string, value: string): void {
@@ -44,36 +45,23 @@ describe("titleBarOverlayColors", () => {
     [DECK_LIGHT_ID, "tab bar", TABBAR, "#e9eaec", "#272727"],
     [DECK_LIGHT_ID, "Settings", SETTINGS, "#f5f6f8", "#272727"],
   ])("%s under the %s: exact colours", (id, _occupant, state, color, symbolColor) => {
-    expect(titleBarOverlayColors(getPreset(id).theme, state)).toEqual({ color, symbolColor });
+    expect(titleBarOverlayColors(getTheme(id), state)).toEqual({ color, symbolColor });
   });
 
-  describe.each(THEME_PRESETS.map((preset) => [preset.id, preset.theme] as const))(
-    "%s",
-    (_id, theme) => {
-      it.each(STATES)("%s equals the token the stylesheet paints there", (_name, state, token) => {
-        const published = publishedVars(theme);
-        expect(titleBarOverlayColors(theme, state)).toEqual({
-          color: published.get(token),
-          symbolColor: published.get("--text-primary"),
-        });
+  describe.each(BUILT_IN_THEMES.map((theme) => [theme.id, theme] as const))("%s", (_id, theme) => {
+    it.each(STATES)("%s equals the token the stylesheet paints there", (_name, state, token) => {
+      const published = publishedVars(theme);
+      expect(titleBarOverlayColors(theme, state)).toEqual({
+        color: published.get(token),
+        symbolColor: published.get("--text-primary"),
       });
+    });
 
-      it.each(STATES)("%s is readable and in a form the host accepts", (_name, state) => {
-        const { color, symbolColor } = titleBarOverlayColors(theme, state);
-        expect(isOverlayColor(color)).toBe(true);
-        expect(isOverlayColor(symbolColor)).toBe(true);
-        // `bg` is not one of the surfaces the text floor is checked on, so the
-        // stage state is the one this assertion actually guards.
-        expect(contrastRatio(symbolColor, color)).toBeGreaterThanOrEqual(TEXT_PRIMARY_FLOOR);
-      });
-    },
-  );
-
-  it("falls back where the chrome does when a theme omits its base colours", () => {
-    const published = publishedVars({});
-    expect(titleBarOverlayColors({}, STAGE)).toEqual({
-      color: published.get("--bg"),
-      symbolColor: published.get("--text-primary"),
+    it.each(STATES)("%s is readable and in a form the host accepts", (_name, state) => {
+      const { color, symbolColor } = titleBarOverlayColors(theme, state);
+      expect(isOverlayColor(color)).toBe(true);
+      expect(isOverlayColor(symbolColor)).toBe(true);
+      expect(contrastRatio(symbolColor, color)).toBeGreaterThanOrEqual(TEXT_PRIMARY_FLOOR);
     });
   });
 });

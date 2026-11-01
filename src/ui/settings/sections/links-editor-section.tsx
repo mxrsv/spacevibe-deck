@@ -14,7 +14,7 @@ import {
 } from "../../../links/external-apps-store";
 
 /** The four group headings, as the picker prints them. */
-const GROUP_LABELS: Record<string, string> = {
+export const GROUP_LABELS: Record<string, string> = {
   editor: "Editors",
   git: "Git clients",
   files: "File browser",

@@ -1,112 +1,69 @@
 import { describe, expect, it } from "vitest";
-import {
-  checkChromeTextContrast,
-  contrastRatio,
-  TERMINAL_CURSOR_FLOOR,
-  TERMINAL_TEXT_FLOOR,
-} from "../lib/derive-colors";
+import { BUILT_IN_THEMES, DECK_DARK_THEME, DECK_LIGHT_THEME } from "./built-in-themes";
 import { DEFAULT_SETTINGS } from "./settings-schema";
 import {
+  activeTheme,
   conversionDiscardsData,
-  customPresets,
+  customThemes,
   DECK_DARK_ID,
   DECK_LIGHT_ID,
-  getPreset,
+  getTheme,
   resolveTheme,
-  THEME_PRESETS,
+  themeFromTerminalColors,
   themeModeOf,
 } from "./themes";
+
+const RETIRED_IDS = ["tokyo-night", "dracula", "one-dark", "catppuccin-mocha"] as const;
 
 describe("resolveTheme", () => {
   // xterm defaults overviewRulerBorder to #ffffff — a white hairline next to
   // the scrollbar once overviewRuler.width is set (see terminal/pane.ts).
-  it.each(THEME_PRESETS)("hides the overview ruler border on $id", (preset) => {
-    const theme = resolveTheme({ ...DEFAULT_SETTINGS, themeId: preset.id });
+  it.each(BUILT_IN_THEMES)("hides the overview ruler border on $id", (theme) => {
+    const terminal = resolveTheme({ ...DEFAULT_SETTINGS, themeId: theme.id });
 
-    expect(theme.overviewRulerBorder).toBe(theme.background);
+    expect(terminal.overviewRulerBorder).toBe(theme.terminal.background);
   });
 
-  it("follows a background color override", () => {
-    const theme = resolveTheme({
-      ...DEFAULT_SETTINGS,
-      colorOverrides: { background: "#101014" },
-    });
+  it.each(BUILT_IN_THEMES)("hands xterm $id's own terminal group", (theme) => {
+    const terminal = resolveTheme({ ...DEFAULT_SETTINGS, themeId: theme.id });
 
-    expect(theme.background).toBe("#101014");
-    expect(theme.overviewRulerBorder).toBe("#101014");
+    expect(terminal).toEqual({
+      ...theme.terminal,
+      overviewRulerBorder: theme.terminal.background,
+    });
   });
 
-  it("falls back to the first preset for an unknown theme id", () => {
-    const theme = resolveTheme({
-      ...DEFAULT_SETTINGS,
-      themeId: "does-not-exist",
-    });
+  it("falls back to Deck Dark for an unknown theme id", () => {
+    const terminal = resolveTheme({ ...DEFAULT_SETTINGS, themeId: "does-not-exist" });
 
-    expect(theme.background).toBe(THEME_PRESETS[0].theme.background);
-    expect(theme.overviewRulerBorder).toBe(theme.background);
-  });
-
-  it("lets a color override win over the preset", () => {
-    const theme = resolveTheme({
-      ...DEFAULT_SETTINGS,
-      themeId: "tokyo-night",
-      colorOverrides: { foreground: "#abcdef" },
-    });
-
-    expect(theme.foreground).toBe("#abcdef");
-    expect(theme.background).toBe(getPreset("tokyo-night").theme.background);
-  });
-
-  it("pins cursorAccent to the resolved background", () => {
-    const theme = resolveTheme({
-      ...DEFAULT_SETTINGS,
-      colorOverrides: { background: "#101014" },
-    });
-
-    expect(theme.cursorAccent).toBe("#101014");
+    expect(terminal.background).toBe(DECK_DARK_THEME.terminal.background);
   });
 });
 
 describe("the two canonical modes", () => {
-  it("ships Dark and Light as the first two presets", () => {
-    expect(THEME_PRESETS.slice(0, 2).map((preset) => preset.id)).toEqual([
-      DECK_DARK_ID,
-      DECK_LIGHT_ID,
-    ]);
+  it("ships Deck Dark first, so every fallback lands on it", () => {
+    expect(BUILT_IN_THEMES[0].id).toBe(DECK_DARK_ID);
+    expect(BUILT_IN_THEMES.map((theme) => theme.id)).toContain(DECK_LIGHT_ID);
   });
 
   it("defaults a new install to the dark mode", () => {
     expect(DEFAULT_SETTINGS.themeId).toBe(DECK_DARK_ID);
   });
 
-  // Pins the SEMANTIC fallback, which the `THEME_PRESETS[0]` test above cannot:
-  // that one agrees with the array whatever order it is in.
-  it("resolves an unknown id to the dark mode, not to a legacy palette", () => {
-    expect(getPreset("does-not-exist").id).toBe(DECK_DARK_ID);
+  it("resolves an unknown id to the dark mode", () => {
+    expect(getTheme("does-not-exist").id).toBe(DECK_DARK_ID);
   });
 
-  it.each([DECK_DARK_ID, DECK_LIGHT_ID])("derives chrome that clears DL-3.5 on %s", (id) => {
-    const preset = getPreset(id);
-    const check = checkChromeTextContrast(preset.theme.background, preset.theme.foreground);
-
-    expect(check.ok ? null : check.reason).toBeNull();
+  // The four retired palettes were all dark, so falling back needs no map.
+  it.each(RETIRED_IDS)("falls back from the retired %s to Deck Dark", (id) => {
+    expect(getTheme(id)).toBe(DECK_DARK_THEME);
+    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: id })).toBe("dark");
   });
+});
 
-  it.each([DECK_DARK_ID, DECK_LIGHT_ID])("keeps terminal text and cursor legible on %s", (id) => {
-    const { theme } = getPreset(id);
-
-    expect(contrastRatio(theme.foreground, theme.background)).toBeGreaterThanOrEqual(
-      TERMINAL_TEXT_FLOOR,
-    );
-    expect(contrastRatio(theme.cursor, theme.background)).toBeGreaterThanOrEqual(
-      TERMINAL_CURSOR_FLOOR,
-    );
-  });
-
-  it("keeps every legacy built-in id resolvable", () => {
-    for (const id of ["tokyo-night", "dracula", "one-dark", "catppuccin-mocha"]) {
-      expect(getPreset(id).id).toBe(id);
-    }
+describe("activeTheme", () => {
+  it.each(BUILT_IN_THEMES)("returns $id for its own id", (theme) => {
+    expect(activeTheme({ ...DEFAULT_SETTINGS, themeId: theme.id })).toBe(theme);
   });
 });
 
@@ -116,48 +73,76 @@ describe("themeModeOf", () => {
     expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: DECK_DARK_ID })).toBe("dark");
   });
 
-  it("classifies a legacy theme by the background it resolves to", () => {
-    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: "tokyo-night" })).toBe("dark");
+  it.each(BUILT_IN_THEMES)("reports $id by its declared type", (theme) => {
+    expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: theme.id })).toBe(theme.type);
   });
 
-  // The selected segment must describe what the user is LOOKING at. An
-  // override is what the app actually paints, so it decides.
-  it("follows a background override past the preset it overrides", () => {
-    expect(
-      themeModeOf({
-        ...DEFAULT_SETTINGS,
-        themeId: DECK_DARK_ID,
-        colorOverrides: { background: "#fafafa" },
-      }),
-    ).toBe("light");
-  });
-
-  it("classifies an unknown id through the fallback preset", () => {
+  it("classifies an unknown id through the fallback theme", () => {
     expect(themeModeOf({ ...DEFAULT_SETTINGS, themeId: "file:gone.json" })).toBe("dark");
   });
 });
 
-describe("conversionDiscardsData", () => {
-  it("is false for a legacy built-in with nothing overridden", () => {
-    expect(conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "gruvbox" })).toBe(false);
+describe("themeFromTerminalColors", () => {
+  const LIGHT_FILE = {
+    background: "#fdf6e3",
+    foreground: "#586e75",
+    cursor: "#586e75",
+    selectionBackground: "#eee8d5",
+    blue: "#268bd2",
+  };
+
+  it("keeps the chrome and editor of the built-in of its type", () => {
+    const theme = themeFromTerminalColors("file:solarized.json", "Solarized", LIGHT_FILE);
+
+    expect(theme.type).toBe("light");
+    expect(theme.ui).toEqual(DECK_LIGHT_THEME.ui);
+    expect(theme.editor).toEqual(DECK_LIGHT_THEME.editor);
   });
 
-  it("is true while any colour override is set", () => {
-    expect(
-      conversionDiscardsData({
-        ...DEFAULT_SETTINGS,
-        colorOverrides: { foreground: "#abcdef" },
-      }),
-    ).toBe(true);
+  it("replaces the terminal, keeping the built-in's value for a slot the file leaves out", () => {
+    const theme = themeFromTerminalColors("file:solarized.json", "Solarized", LIGHT_FILE);
+
+    expect(theme.id).toBe("file:solarized.json");
+    expect(theme.name).toBe("Solarized");
+    expect(theme.terminal.background).toBe("#fdf6e3");
+    expect(theme.terminal.blue).toBe("#268bd2");
+    expect(theme.terminal.red).toBe(DECK_LIGHT_THEME.terminal.red);
+    expect(theme.terminal.cursorAccent).toBe("#fdf6e3");
+  });
+
+  it("refuses a value a theme cannot declare", () => {
+    const theme = themeFromTerminalColors("file:x.json", "X", {
+      ...LIGHT_FILE,
+      red: "rgba(255, 0, 0, 0.5)",
+    });
+
+    expect(theme.terminal.red).toBe(DECK_LIGHT_THEME.terminal.red);
+  });
+
+  it("types a dark file as Deck Dark", () => {
+    const theme = themeFromTerminalColors("file:night.json", "Night", {
+      background: "#101014",
+      foreground: "#e8e3d8",
+      cursor: "#e8e3d8",
+      selectionBackground: "#303040",
+    });
+
+    expect(theme.type).toBe("dark");
+    expect(theme.ui).toEqual(DECK_DARK_THEME.ui);
+  });
+});
+
+describe("conversionDiscardsData", () => {
+  it("is false for a built-in or a retired id", () => {
+    expect(conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "paper" })).toBe(false);
+    expect(conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "tokyo-night" })).toBe(false);
   });
 
   it("is true for an imported theme, which lives in a file", () => {
-    customPresets.value = [
+    customThemes.value = [
       {
-        id: "file:solarized.json",
-        label: "Solarized",
         fileName: "solarized.json",
-        theme: getPreset(DECK_DARK_ID).theme,
+        theme: { ...DECK_DARK_THEME, id: "file:solarized.json", name: "Solarized" },
       },
     ];
     try {
@@ -168,7 +153,7 @@ describe("conversionDiscardsData", () => {
         }),
       ).toBe(true);
     } finally {
-      customPresets.value = [];
+      customThemes.value = [];
     }
   });
 });

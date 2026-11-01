@@ -99,6 +99,25 @@ describe("listSessions", () => {
     expect(reads).toBe(2);
   });
 
+  it("reads a recreated path again once it has left the listing", async () => {
+    claudeSession(home, "a", "/work", "one", T0);
+    let reads = 0;
+    const readers = {
+      claude: (file: FileCandidate) => {
+        reads += 1;
+        return readClaudeRecord(file, { ...CLAUDE_RESTORE_SCAN, withTitle: true });
+      },
+      codex: () => null,
+    };
+    await listSessions(home, 500, readers);
+    rmSync(path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR, "-p-a"), { recursive: true });
+    expect((await listSessions(home, 500, readers)).entries).toEqual([]);
+    // Identical path + mtime + size as the first call: only a pruned map reads it.
+    claudeSession(home, "a", "/work", "one", T0);
+    await listSessions(home, 500, readers);
+    expect(reads).toBe(2);
+  });
+
   it("answers an empty snapshot when no state directory exists", async () => {
     const snapshot = await listSessions(path.join(home, "nowhere"));
     expect(snapshot.entries).toEqual([]);

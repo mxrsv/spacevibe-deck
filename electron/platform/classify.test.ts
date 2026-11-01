@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { classifyProcess, normalizedProcessName, validateAgentProcessMatchers } from "./classify";
 import { argv0Name, foregroundProcess, parsePsTable } from "./macos";
 import { BUILTIN_AGENTS } from "../agents";
+import { agentShellPaths, bootstrapLaunch } from "../agent-shell/shell-bootstrap";
 
 describe("classifyProcess", () => {
   it("classifies a recognized agent process", () => {
@@ -85,6 +86,32 @@ describe("classifyProcess", () => {
     ],
   ])("preserves the interactive %s bootstrap: %s", (name, command) => {
     expect(classifyProcess(name, true, command).kind).toBe("idle-shell");
+  });
+
+  // `ps` prints argv joined by spaces with the quoting gone, and the real
+  // userData path has spaces: every idle bash and fish pane read as busy.
+  describe("Deck's own bootstrap, as ps prints it", () => {
+    const paths = agentShellPaths("/Users/u/Library/Application Support/SpaceVibe Deck");
+    const psLine = (shell: string): string => {
+      const launch = bootstrapLaunch(shell, paths, { HOME: "/Users/u" });
+      if (launch === null) throw new Error(`no bootstrap for ${shell}`);
+      return [launch.executable, ...launch.args].join(" ");
+    };
+
+    it.each(["/bin/bash", "/opt/homebrew/bin/fish"])("is idle for %s", (shell) => {
+      const name = shell.split("/").pop()!;
+      expect(classifyProcess(name, true, psLine(shell)).kind).toBe("idle-shell");
+    });
+
+    it.each([
+      ["/bin/bash", " -c 'sleep 60'"],
+      ["/bin/bash", " /workspace/build.sh"],
+      ["/opt/homebrew/bin/fish", " -c build"],
+      ["/opt/homebrew/bin/fish", " /workspace/build.fish"],
+    ])("stays busy for %s once anything follows Deck's arguments:%s", (shell, extra) => {
+      const name = shell.split("/").pop()!;
+      expect(classifyProcess(name, true, `${psLine(shell)}${extra}`).kind).toBe("busy");
+    });
   });
 
   it("classifies idle, busy and incomplete processes", () => {

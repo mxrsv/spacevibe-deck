@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tabViews, type PaneView } from "./tabs-store";
 import { paneTails } from "./session-tail-store";
 import { mountPaneAgentHeader } from "./pane-agent-header";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { settings } from "../settings/settings-store";
 import { detectedAgents } from "./agent-detection-store";
@@ -116,5 +117,76 @@ describe("shell pane header in a split tab", () => {
     });
     expect(focus).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(expect.stringMatching(/^claude\b.*\r$/));
+  });
+});
+
+describe("agent pane header on the flush stage (LAY-5, shellStage switch)", () => {
+  const name = () => element.querySelector(".pane-agent-header__name")?.textContent;
+  const sentence = () => element.querySelector(".pane-agent-header__message")?.textContent;
+  const mark = () => element.querySelector("[data-state]")?.getAttribute("data-state");
+  const republish = (next: PaneView = pane) => act(() => publish({ ...next }));
+
+  afterEach(() => resetDesktopEnvironmentForTests());
+
+  it("keeps the shipped header while the switch is off: logo and sentence, no name or mark", () => {
+    expect(element.querySelector(".pane-agent-header__logo")).not.toBeNull();
+    expect(name()).toBeUndefined();
+    expect(mark()).toBeUndefined();
+    act(() => {
+      paneTails.value = new Map();
+    });
+    expect(sentence()).toBe("Claude");
+  });
+
+  describe("with the switch on", () => {
+    beforeEach(() => {
+      initializeDesktopEnvironment({
+        platform: "macos",
+        homeDir: "/home/test",
+        isDevelopment: true,
+      });
+      republish();
+    });
+
+    it("shows the logo, the name, the state and the latest sentence", () => {
+      expect(element.querySelector(".pane-agent-header__logo")).not.toBeNull();
+      expect(name()).toBe("Claude");
+      expect(mark()).toBe("idle");
+      expect(sentence()).toBe("Checking launch behavior");
+    });
+
+    it("says the state when the agent has not spoken, instead of printing its name twice", () => {
+      act(() => {
+        paneTails.value = new Map();
+      });
+      expect(name()).toBe("Claude");
+      expect(sentence()).toBe("No signal");
+    });
+
+    it.each([
+      ["working", { phase: "working" as const }],
+      ["needs-input", { attention: "requested" as const }],
+      ["unread", { attention: "completed" as const }],
+      ["failed", { attention: "error" as const }],
+    ])("marks a %s agent", (state, change) => {
+      republish({ ...pane, ...change });
+      expect(mark()).toBe(state);
+    });
+
+    it("draws no buttons on an agent pane", () => {
+      expect(element.querySelector("button")).toBeNull();
+    });
+
+    it("leaves a shell pane's quick agents as they are", () => {
+      const shell: PaneView = { ...pane, agent: null, sessionId: null };
+      detectedAgents.value = [{ name: "claude", path: "/bin/claude" }];
+      settings.value = { ...DEFAULT_SETTINGS, quickAgentIds: ["claude"] };
+      act(() => {
+        tabViews.value = [{ ...tabViews.value[0], panes: [shell, { ...shell, paneId: 2 }] }];
+      });
+      expect(element.querySelectorAll(".pane-quick-agents button")).toHaveLength(1);
+      expect(name()).toBeUndefined();
+      detectedAgents.value = [];
+    });
   });
 });

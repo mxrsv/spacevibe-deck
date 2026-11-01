@@ -1,5 +1,5 @@
 import { useRef } from "preact/hooks";
-import { CANONICAL_THEME_IDS, getPreset } from "../../../settings/themes";
+import { CANONICAL_THEME_IDS, getTheme } from "../../../settings/themes";
 import { ThemeCardPreview } from "../../../ui/settings/theme-card-preview";
 import { useSystemMode } from "./live-preview";
 import { settings, update, type ColorMode } from "./model";
@@ -23,14 +23,14 @@ function ModeMini({ mode }: { readonly mode: ColorMode }) {
   if (mode === "system") {
     return (
       <span class="srd-appearance-split">
-        <ThemeCardPreview preset={getPreset(CANONICAL_THEME_IDS.dark)} />
+        <ThemeCardPreview theme={getTheme(CANONICAL_THEME_IDS.dark)} />
         <span class="srd-appearance-split__light">
-          <ThemeCardPreview preset={getPreset(CANONICAL_THEME_IDS.light)} />
+          <ThemeCardPreview theme={getTheme(CANONICAL_THEME_IDS.light)} />
         </span>
       </span>
     );
   }
-  return <ThemeCardPreview preset={getPreset(CANONICAL_THEME_IDS[mode])} />;
+  return <ThemeCardPreview theme={getTheme(CANONICAL_THEME_IDS[mode])} />;
 }
 
 /**

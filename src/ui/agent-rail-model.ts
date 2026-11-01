@@ -30,7 +30,7 @@ import {
   worktreeForPath,
 } from "../repositories/repository-model";
 import { NO_PANES, type PaneView, type TabView } from "../terminal/tabs-store";
-import type { SignalConfidence } from "../terminal/agent-attention";
+import type { AttentionKind, SignalConfidence } from "../terminal/agent-attention";
 import { UNSEQUENCED } from "../lib/open-sequence";
 // Type-only the other way (`RailStreamGroup`), so the pair is a compile-time
 // cycle and never a runtime one.
@@ -52,8 +52,9 @@ export type { RailCardEntry, RailCardPane, RailCardShell, RailWorktreeGroup };
  * Spec §3, revocabularised on the owner's ask (2026-08-16) to read from the
  * dev's side rather than the agent's: `asked` is everything waiting on your
  * eyes (a question, a permission wait, or a finished run you have not checked
- * — the old `done` folded in here, TEMPORARILY, so unfolding it is one case
- * label in `paneState`); `done` is a run you checked; `idle` is a pane whose
+ * — the old `done` folded in here; the shipped rail keeps the fold, and the
+ * project-first rail splits it in `railStatus`, `rail-view-model.ts`, off
+ * `RailPaneRow.attention`); `done` is a run you checked; `idle` is a pane whose
  * agent has never run anything. `idle` and the accent-ringed `done` are
  * gone.
  *
@@ -90,6 +91,13 @@ export interface RailPaneRow {
    * as `explicit` — today's filled mark.
    */
   readonly confidence?: SignalConfidence;
+  /**
+   * The tracker's latched attention behind `state`. `asked` folds `requested`,
+   * `warning` and `completed`, so only this field tells a question from a
+   * finished run nobody has looked at (spec LAY-4, `rail-view-model.ts`).
+   * Always set by `paneRows`; optional for the reason `confidence` is.
+   */
+  readonly attention?: AttentionKind;
   /**
    * What the agent is waiting on when a contract-layer source says it is
    * waiting (`permission prompt`, `input needed`), else null. The accessible
@@ -328,7 +336,9 @@ const WEEK = 7 * DAY;
  * `warning` folds into `asked` (§4.6), and so does `completed` — the owner's
  * temporary merge: a finished run you have not checked needs your eyes the
  * same way a question does, so both wear the yellow mark. The tracker still
- * distinguishes them; unfolding is restoring one case label here.
+ * distinguishes them and `RailPaneRow.attention` carries the difference: the
+ * project-first rail splits them in `railStatus` (`rail-view-model.ts`), so
+ * do not unfold here as well.
  *
  * A quiet pane splits on the tracker's `hasRun` bit: `done` is a run you
  * checked, `idle` is an agent that has never run anything.
@@ -398,6 +408,7 @@ function paneRows(
             agent: pane.agent,
             message: tails?.get(pane.paneId) ?? "",
             ...paneSignal(pane),
+            attention: pane.attention,
             detail: pane.detail ?? null,
             exitCode: pane.exitCode ?? null,
             age: formatShortAge(pane.changedAt, now),

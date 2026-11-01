@@ -40,14 +40,16 @@ import {
 } from "../../settings/custom-themes-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
-import { customPresets, THEME_PRESETS } from "../../settings/themes";
+import { BUILT_IN_THEMES } from "../../settings/built-in-themes";
+import { customThemes, themeFromTerminalColors } from "../../settings/themes";
 import { ThemeGallery } from "./theme-gallery";
 
 const IMPORTED = {
-  id: "file:orange.json",
-  label: "Orange Mechanic",
   fileName: "orange.json",
-  theme: { ...THEME_PRESETS[0].theme, background: "#101014" },
+  theme: themeFromTerminalColors("file:orange.json", "Orange Mechanic", {
+    ...BUILT_IN_THEMES[0].terminal,
+    background: "#101014",
+  }),
 };
 
 describe("ThemeGallery", () => {
@@ -55,7 +57,7 @@ describe("ThemeGallery", () => {
 
   beforeEach(() => {
     settings.value = { ...DEFAULT_SETTINGS };
-    customPresets.value = [];
+    customThemes.value = [];
     themeImportFailures.value = [];
     themeLoadState.value = { status: "ready" };
     host = document.createElement("div");
@@ -76,17 +78,17 @@ describe("ThemeGallery", () => {
     Array.from(host.querySelectorAll<HTMLButtonElement>(".theme-card"));
 
   const pill = (text: string): HTMLButtonElement | undefined =>
-    Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find((button) =>
+    Array.from(host.querySelectorAll<HTMLButtonElement>('[data-slot="button"]')).find((button) =>
       button.textContent?.includes(text),
     );
 
   it("renders one radio per theme, the saved one checked", () => {
     mount();
 
-    expect(cards()).toHaveLength(THEME_PRESETS.length);
+    expect(cards()).toHaveLength(BUILT_IN_THEMES.length);
     const checked = cards().filter((card) => card.getAttribute("aria-checked") === "true");
     expect(checked).toHaveLength(1);
-    expect(checked[0].textContent).toContain(THEME_PRESETS[0].label);
+    expect(checked[0].textContent).toContain(BUILT_IN_THEMES[0].name);
   });
 
   it("re-reads the themes folder on mount", () => {
@@ -109,36 +111,39 @@ describe("ThemeGallery", () => {
 
     const checked = cards().filter((card) => card.getAttribute("aria-checked") === "true");
     expect(checked).toHaveLength(1);
-    expect(checked[0].textContent).toContain(THEME_PRESETS[0].label);
+    expect(checked[0].textContent).toContain(BUILT_IN_THEMES[0].name);
   });
 
   it("shows imported themes after the built-ins", () => {
-    customPresets.value = [IMPORTED];
+    customThemes.value = [IMPORTED];
 
     mount();
 
     const themeCards = cards();
-    expect(themeCards).toHaveLength(THEME_PRESETS.length + 1);
+    expect(themeCards).toHaveLength(BUILT_IN_THEMES.length + 1);
     expect(themeCards[themeCards.length - 1]?.textContent).toContain("Orange Mechanic");
   });
 
-  it("selecting a theme clears the previous colour overrides", () => {
-    // An override is an edit to ONE theme; carrying it onto the next silently
-    // corrupts the theme the user just picked from a picture of it.
-    settings.value = {
-      ...DEFAULT_SETTINGS,
-      colorOverrides: { background: "#ff0000" },
-    };
+  it("draws an imported theme's card on its own terminal ground", () => {
+    customThemes.value = [IMPORTED];
+
+    mount();
+
+    const stage = cards().at(-1)?.querySelector<HTMLElement>(".theme-mini__stage");
+    // #101014: the file's background, not the Deck Dark chrome it borrows.
+    expect(stage?.style.background).toBe("rgb(16, 16, 20)");
+  });
+
+  it("selects a built-in theme by its id", () => {
     mount();
 
     act(() => cards()[1].click());
 
-    expect(settings.value.themeId).toBe(THEME_PRESETS[1].id);
-    expect(settings.value.colorOverrides).toEqual({});
+    expect(settings.value.themeId).toBe(BUILT_IN_THEMES[1].id);
   });
 
   it("selects an imported theme by its file id", () => {
-    customPresets.value = [IMPORTED];
+    customThemes.value = [IMPORTED];
     mount();
 
     const themeCards = cards();
@@ -158,7 +163,7 @@ describe("ThemeGallery", () => {
         ?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     });
 
-    expect(settings.value.themeId).toBe(THEME_PRESETS[THEME_PRESETS.length - 1].id);
+    expect(settings.value.themeId).toBe(BUILT_IN_THEMES[BUILT_IN_THEMES.length - 1].id);
   });
 
   it("names the file and the reason when one does not parse", () => {

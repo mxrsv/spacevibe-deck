@@ -2,6 +2,7 @@ import { changedKeys, keysFor } from "../../settings/settings-changes";
 import { settings } from "../../settings/settings-store";
 import type { SettingsPage } from "../../settings/settings-registry";
 import { confirmReset, resetPromptOpen } from "./confirm-reset";
+import { Button } from "../controls/button";
 
 /**
  * Under the page title: how many of this page's preferences differ from the
@@ -16,9 +17,10 @@ export function PageResetBar({ page, label }: { page: SettingsPage; label: strin
   return (
     <div class="settings-screen__changed">
       <span>{keys.length} changed</span>
-      <button
+      <Button
         type="button"
-        class="cfg-btn"
+        variant="outline"
+        size="sm"
         disabled={resetPromptOpen.value}
         title="Reset this page — asks for confirmation"
         onClick={() =>
@@ -26,7 +28,7 @@ export function PageResetBar({ page, label }: { page: SettingsPage; label: strin
         }
       >
         reset page
-      </button>
+      </Button>
     </div>
   );
 }

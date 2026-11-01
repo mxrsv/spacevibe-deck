@@ -11,9 +11,11 @@ import {
 export function rendererReleaseSwitches() {
   const host = globalThis as { __deckHost?: unknown; __TAURI_INTERNALS?: unknown };
   const desktop = host.__deckHost !== undefined || host.__TAURI_INTERNALS !== undefined;
+  // Vitest reports DEV too, so without a host a unit test would run every unfinished region;
+  // a suite that wants one on pins the host identity (see action-availability.test.ts).
   const development = desktop
     ? getDesktopEnvironment().isDevelopment === true
-    : import.meta.env.DEV;
+    : import.meta.env.DEV && import.meta.env.MODE !== "test";
   return resolveReleaseSwitches(development);
 }
 

@@ -42,6 +42,108 @@ function deferred<T>(): {
 }
 
 describe("settings persistence", () => {
+  it.each([{ agentNotifications: false }, {}])(
+    "persists the one-time notification default for %j",
+    async (initial) => {
+      let saved: unknown = initial;
+      let broadcast: (value: unknown) => void = () => {};
+      getMock.mockImplementation(async () => saved);
+      const sendPatch = vi.fn(async (patch) => {
+        saved = mergeSettings(saved, patch);
+        broadcast(saved);
+        return saved;
+      });
+      configureSettingsSync({
+        sendPatch,
+        listenMerged: async (handler) => {
+          broadcast = handler;
+          return () => {};
+        },
+      });
+      await initSettings();
+      expect(settingsLoadState.value.status).toBe("ready");
+      expect(settings.value.agentNotifications).toBe(true);
+      expect(saved).toMatchObject({ agentNotifications: true, agentNotificationsDefaultOn: true });
+      expect(sendPatch).toHaveBeenCalledExactlyOnceWith({ agentNotificationsDefaultOn: true });
+      updateSettings({ agentNotifications: false });
+      await flushSettingsSave();
+      await initSettings();
+      expect(settings.value.agentNotifications).toBe(false);
+      expect(saved).toMatchObject({ agentNotifications: false, agentNotificationsDefaultOn: true });
+      expect(sendPatch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("does not migrate an off choice that already carries the marker", async () => {
+    getMock.mockResolvedValue({ agentNotifications: false, agentNotificationsDefaultOn: true });
+    const sendPatch = vi.fn(async () => ({}));
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
+    await initSettings();
+    expect(settings.value.agentNotifications).toBe(false);
+    expect(sendPatch).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failed notification migration retryable without overwriting the store", async () => {
+    let saved: unknown = { agentNotifications: false, fontSize: 16 };
+    getMock.mockImplementation(async () => saved);
+    let broadcast: (value: unknown) => void = () => {};
+    const sendPatch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockImplementation(async (patch) => {
+        saved = mergeSettings(saved, patch);
+        broadcast(saved);
+        return saved;
+      });
+    configureSettingsSync({
+      sendPatch,
+      listenMerged: async (handler) => {
+        broadcast = handler;
+        return () => {};
+      },
+    });
+    await initSettings();
+    expect(settingsLoadState.value.status).toBe("error");
+    expect(saved).toEqual({ agentNotifications: false, fontSize: 16 });
+    updateSettings({ agentNotifications: false });
+    expect(sendPatch).toHaveBeenCalledTimes(1);
+    expect(setMock).not.toHaveBeenCalled();
+    await initSettings();
+    expect(settingsLoadState.value.status).toBe("ready");
+    expect(saved).toMatchObject({
+      agentNotifications: true,
+      agentNotificationsDefaultOn: true,
+      fontSize: 16,
+    });
+    updateSettings({ agentNotifications: false });
+    await flushSettingsSave();
+    await initSettings();
+    expect(settings.value.agentNotifications).toBe(false);
+  });
+
+  it("retries a cached migration marker after the host's disk save failed", async () => {
+    let cached: unknown = { agentNotifications: false };
+    let persisted: unknown = cached;
+    getMock.mockImplementation(async () => cached);
+    let fail = true;
+    const sendPatch = vi.fn(async (patch) => {
+      // JsonStore.set updates memory before save attempts the atomic write.
+      cached = mergeSettings(cached, patch);
+      if (fail) throw new Error("disk full");
+      persisted = cached;
+      return cached;
+    });
+    configureSettingsSync({ sendPatch, listenMerged: async () => () => {} });
+    await initSettings();
+    expect(settingsLoadState.value.status).toBe("error");
+    expect(persisted).toEqual({ agentNotifications: false });
+    fail = false;
+    await initSettings();
+    expect(settingsLoadState.value.status).toBe("ready");
+    expect(persisted).toEqual({ agentNotifications: true, agentNotificationsDefaultOn: true });
+    expect(sendPatch).toHaveBeenCalledTimes(2);
+  });
+
   beforeEach(async () => {
     loadMock.mockClear();
     loadMock.mockImplementation(async () => ({

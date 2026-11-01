@@ -3,7 +3,7 @@
  *
  * One module owns the round trip: ask the host for the folder's files, parse
  * each one through `theme-formats/`, publish the good ones on
- * `customPresets` (declared in `themes.ts`, where the lookup is) and keep the
+ * `customThemes` (declared in `themes.ts`, where the lookup is) and keep the
  * bad ones as reasons the settings surface can show.
  *
  * Window-scoped module state, per R5. Nothing here is per-tab or per-pane: the
@@ -17,7 +17,7 @@ import {
   type ThemeScan,
 } from "../host/theme-host";
 import { parseThemeFile } from "./theme-formats/parse-theme-file";
-import { customPresets, type ThemePreset } from "./themes";
+import { customThemes, themeFromTerminalColors, type ImportedTheme } from "./themes";
 import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
 
 export interface ThemeImportFailure {
@@ -78,17 +78,15 @@ async function collect(read: () => Promise<ThemeScan>): Promise<void> {
   themeLoadState.value = LOAD_LOADING;
   try {
     const { entries, rejected } = await read();
-    const presets: ThemePreset[] = [];
+    const themes: ImportedTheme[] = [];
     // Host refusals first: they are the files the user just picked, so they
     // are the rows that answer "where did my import go".
     const failures: ThemeImportFailure[] = [...rejected];
     for (const entry of entries) {
       const parsed = parseThemeFile(entry.fileName, entry.content);
       if (parsed.result.ok) {
-        presets.push({
-          id: parsed.id,
-          label: parsed.result.label,
-          theme: parsed.result.colors,
+        themes.push({
+          theme: themeFromTerminalColors(parsed.id, parsed.result.label, parsed.result.colors),
           fileName: entry.fileName,
         });
       } else {
@@ -102,7 +100,7 @@ async function collect(read: () => Promise<ThemeScan>): Promise<void> {
       return;
     }
     batch(() => {
-      customPresets.value = presets;
+      customThemes.value = themes;
       themeImportFailures.value = failures;
       themeLoadState.value = LOAD_READY;
     });

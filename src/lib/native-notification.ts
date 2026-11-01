@@ -1,17 +1,5 @@
-/**
- * Thin wrapper around `@tauri-apps/plugin-notification`. Requesting
- * permission and sending a notification are deliberately separate
- * operations — callers decide when to prompt (e.g. once, on first agent
- * completion) independently of when they actually send.
- *
- * The plugin's `sendNotification` returns `void` — there is no delivery
- * receipt from the OS. `send()` therefore only guarantees the call was
- * made without throwing; it never claims the notification was shown.
- *
- * Everything the OS-facing plugin functions live behind is expressed as
- * `NotificationClient` so tests can inject a fake and never touch the real
- * Tauri API.
- */
+/** Electron notification adapter. Support checks do not reveal OS authorization;
+ * the OS owns permission and delivery. A successful send is not a delivery receipt. */
 import {
   isPermissionGranted as pluginIsPermissionGranted,
   requestPermission as pluginRequestPermission,
@@ -19,11 +7,11 @@ import {
 } from "../host/shell-host";
 
 /** Seam over the plugin's permission + send functions — injected so tests
- * never call the real Tauri API. */
+ * never call the real host. */
 export interface NotificationClient {
   isPermissionGranted: () => Promise<boolean>;
   requestPermission: () => Promise<"granted" | "denied" | "default">;
-  sendNotification: (options: { title: string; body?: string }) => void;
+  sendNotification: (options: AgentNotificationPayload) => void | Promise<void>;
 }
 
 /**
@@ -35,6 +23,7 @@ export interface NotificationClient {
 export interface AgentNotificationPayload {
   title: string;
   body?: string;
+  paneId?: number;
 }
 
 const realClient: NotificationClient = {
@@ -45,7 +34,7 @@ const realClient: NotificationClient = {
 
 /**
  * Build the agent-notification adapter. Pass a fake `client` in tests;
- * production callers omit it and get the real Tauri-backed client.
+ * production callers omit it and get the real Electron-backed client.
  */
 export function createAgentNotificationAdapter(client: NotificationClient = realClient): {
   requestPermission(): Promise<boolean>;
@@ -71,10 +60,9 @@ export function createAgentNotificationAdapter(client: NotificationClient = real
     },
 
     /**
-     * Sends an agent-attention notification. Re-checks permission at send
-     * time (it may have been granted earlier and revoked since) rather than
-     * trusting a cached flag — if not granted, this is a controlled no-op.
-     * `sendNotification` returns void, so a resolved promise here means only
+     * Re-checks host support before sending. Electron cannot read macOS
+     * authorization; the OS may suppress an otherwise supported alert.
+     * A resolved promise here means only
      * "the call was made without throwing", not "the OS displayed it".
      */
     async send(payload: AgentNotificationPayload): Promise<void> {
@@ -82,9 +70,9 @@ export function createAgentNotificationAdapter(client: NotificationClient = real
         if (!(await client.isPermissionGranted())) {
           return;
         }
-        client.sendNotification({ title: payload.title, body: payload.body });
+        await client.sendNotification(payload);
       } catch {
-        // Controlled no-op: a synchronous throw from the plugin must not
+        // Controlled no-op: a rejected host call must not
         // propagate to callers.
       }
     },

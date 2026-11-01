@@ -1,0 +1,4 @@
+# Arbitrary font sizes (`text-[11px]`) that predate deck/no-arbitrary-font-size (R11), per file.
+# A file may hold at most its count. Lower a count when you move a use onto a step of
+# src/ui/type-scale.css, and remove the line at zero; never raise one or add a file.
+src/gallery/shadcn-preview/deck-preview.tsx 3

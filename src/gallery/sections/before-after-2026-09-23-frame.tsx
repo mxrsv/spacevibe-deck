@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { applyThemeVars } from "../../lib/theme-vars";
-import { settings } from "../../settings/settings-store";
-import { resolveTheme } from "../../settings/themes";
+import { getTheme } from "../../settings/themes";
 import "./before-after-2026-09-23.css";
 
 /**
@@ -61,7 +60,7 @@ export function ThemeScope({
   useLayoutEffect(() => {
     const node = ref.current;
     if (node !== null) {
-      applyThemeVars(node.style, resolveTheme({ ...settings.peek(), themeId, colorOverrides: {} }));
+      applyThemeVars(node.style, getTheme(themeId));
     }
   }, [themeId]);
   return (

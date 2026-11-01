@@ -1,5 +1,5 @@
 ---
-translated-from: a3d49202
+translated-from: 63ba2cfc
 ---
 
 # Cài đặt
@@ -51,8 +51,19 @@ tắt của menu tạm ngưng để phím bạn bấm tới được ô ghi.
 
 ## Notifications
 
-- **Agent notifications** — thông báo của hệ thống khi một agent chạy nền làm xong hoặc cần bạn
-  (mặc định tắt).
+- **Agent notifications** — mặc định bật. Khi cửa sổ nằm ở nền, Deck thông báo khi agent làm
+  xong, hỏi bạn hoặc chờ duyệt, hay gặp lỗi. Bấm thông báo để quay về đúng pane đó.
+  Nếu pane đã đóng hoặc chuyển sang cửa sổ khác, thông báo mở lại cửa sổ ban đầu.
+  Bản cập nhật này bật lại một lần nếu trước đó bạn đã tắt; nếu bạn tắt sau đó, Deck sẽ nhớ.
+  Xem [thông báo của agent](../../src/terminal/agent-notifier.ts).
+- **Open System Settings** mở phần thông báo của macOS hoặc Windows, nơi hệ điều hành kiểm soát
+  việc hiện thông báo. Trên macOS, cho phép thông báo khi lời nhắc đầu tiên xuất hiện; dùng công
+  tắc **Badges** của hệ thống để kiểm soát số trên Dock.
+  Xem [cài đặt thông báo](../../src/ui/settings/sections/notifications-section.tsx).
+- **Dock badge (macOS)** — tổng số **N need you** của mọi cửa sổ đang mở, gồm cả pane đã xong
+  mà bạn chưa xem. Số này biến mất khi về 0 và không phụ thuộc công tắc thông báo trong Deck.
+  Windows có thông báo nhưng không có Dock badge.
+  Xem [số pane cần bạn](../../src/ui/attention/attention-badge-sync.ts).
 
 ## About
 

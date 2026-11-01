@@ -10,6 +10,34 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 - **Clone errors name the real cause.** A clone into a folder whose name contains words like
   `proxy`, `ssl` or `tls` no longer reports a failed connection when the folder could not be
   written.
+- **Older Codex conversations are back.** Codex compresses conversations it has not touched
+  for a week, and Deck stopped seeing them. Session history, resume and usage now include them
+  again.
+- **opencode 2 panes reopen the right conversation.** Deck could not see sessions started in
+  opencode 2 and reopened an older one from the same folder instead. It now resumes the
+  session the pane last had, and the sidebar shows what opencode 2 last said.
+- **Idle bash and fish panes count as idle.** Deck read every bash and fish pane as running a
+  command, so quitting always asked for confirmation and closing an idle pane did too.
+- **fish panes no longer open on a failed status.** The first prompt of a new fish pane showed
+  `[1]`, or a red prompt character, although nothing had failed.
+- **opencode keeps its status after an install or upgrade.** The first launch of a new opencode
+  binary could start without Deck's status and leave a background opencode server running.
+- **Agent alerts reach you outside Deck.** Background agents notify when they finish, need
+  input or approval, or fail. Click an alert to return to its pane; the macOS Dock badge sums
+  the panes that need you across windows. Alerts are on by default, including a one-time
+  enable for older settings; turning them off afterward is remembered. Open system
+  notification settings from Deck's [Notifications settings](docs/user/settings.md#notifications).
+- **Deck stays lighter when it runs all day.** Closing a terminal tab or switching away from
+  it no longer leaves its memory behind. Deck stops starting a login shell every minute or so
+  to look for installed agents, and the sidebar reads far less from your session history to
+  show what each agent last said.
+- **Settings switches and buttons have a new look.** Toggles in Settings are now switches
+  instead of an on/off button, and the text buttons on Settings pages share one style.
+  Nothing moves and no setting changes.
+- **Retired themes open in Dark.** Tokyo Night, Dracula, One Dark and Catppuccin Mocha are
+  gone, and a profile still set to one of them opens in Dark. Colour overrides saved by an
+  older version no longer apply. A terminal theme file from the themes folder now recolours
+  only the terminal; Deck's own chrome and editor stay on Dark or Light.
 
 ## 2.13.0
 

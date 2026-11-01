@@ -1,12 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync, openSync, closeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { zstdCompressSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   LineReader,
   MAX_LINE_BYTES,
   daysFromCivil,
   parseRfc3339Ms,
+  readCompressedLines,
   type LineEvent,
 } from "./reader";
 
@@ -129,6 +131,44 @@ describe("LineReader", () => {
 
   it("freezes the production cap", () => {
     expect(MAX_LINE_BYTES).toBe(8 * 1024 * 1024);
+  });
+});
+
+describe("readCompressedLines", () => {
+  // Lines that cross the decompression stream's chunks, one over the cap, and
+  // a partial trailing line: every rule the plain reader holds a file to.
+  const content = Buffer.from(
+    `one\n${"y".repeat(40_000)}\n${"x".repeat(MAX_LINE_BYTES + 1)}\ntwo\nthree`,
+  );
+
+  async function compressedEvents(start: number): Promise<LineEvent[]> {
+    const dir = mkdtempSync(path.join(tmpdir(), "usage-reader-zst-"));
+    temps.push(dir);
+    const file = path.join(dir, "rollout-a.jsonl.zst");
+    writeFileSync(file, zstdCompressSync(content));
+    const events: LineEvent[] = [];
+    await readCompressedLines(file, start, (event) => events.push(event));
+    return events;
+  }
+
+  it("yields the lines and offsets the plain reader yields for the same content", async () => {
+    const plain = readAll(content, 0, MAX_LINE_BYTES).filter((event) => event.kind !== "end");
+    expect(plain.map((event) => event.kind)).toEqual(["line", "line", "oversized", "line"]);
+    expect(await compressedEvents(0)).toEqual(plain);
+  });
+
+  it("resumes from a committed offset into the decompressed content", async () => {
+    const events = await compressedEvents(4);
+    expect(events[0]).toMatchObject({ kind: "line", offset: 4 + 40_001 });
+    expect(events.at(-1)).toMatchObject({ kind: "line", offset: content.length - "three".length });
+  });
+
+  it("rejects a file that is not a zstd frame", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "usage-reader-zst-"));
+    temps.push(dir);
+    const file = path.join(dir, "rollout-b.jsonl.zst");
+    writeFileSync(file, "{}\n");
+    await expect(readCompressedLines(file, 0, () => {})).rejects.toThrow(/frame descriptor/);
   });
 });
 

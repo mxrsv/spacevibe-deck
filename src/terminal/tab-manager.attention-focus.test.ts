@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
-import { agentQuickPickerOpen } from "../chrome/events";
+import { agentQuickPickerOpen, settingsOpen } from "../chrome/events";
+import { installNotificationActivation } from "../ui/attention/notification-activation";
+import { listenNotificationActivated } from "../host/shell-host";
+import { runAttentionFocus } from "../ui/attention-focus-coordinator";
+
+vi.mock("../host/shell-host", async (original) => ({
+  ...(await original<typeof import("../host/shell-host")>()),
+  listenNotificationActivated: vi.fn(async (_handler: (paneId: number) => void) => () => {}),
+}));
 import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -127,7 +135,7 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
     }
   });
 
-  it("cross-tab: switches tabs without acknowledging the target's own active pane, only the candidate", async () => {
+  it("notification activation crosses spaces, dismisses Settings, and acknowledges only its pane", async () => {
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
@@ -135,7 +143,8 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
         [2, processInfo(2, "/b", "claude", "agent", "claude")],
         [3, processInfo(3, "/b", "claude", "agent", "claude")],
       ]);
-      const { tm, pty } = setup({ infos });
+      const onTabSwitch = vi.fn();
+      const { tm, pty } = setup({ infos, deps: { onTabSwitch } });
       await tm.init();
       await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 → pane 1
       await tm.materialize({ layout: null, cwds: ["/b"] }); // tab 1 → pane 2 (active)
@@ -152,7 +161,36 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
       // ONE call: switches to tab 1 AND acknowledges only the candidate (B).
       // If this went through show({focus:true}) or a second focus call, A's
       // warning would also clear — it must not.
-      tm.activateForAttention(1, 2);
+      settingsOpen.value = true;
+      const stop = installNotificationActivation((index, paneId) =>
+        runAttentionFocus({
+          tabIndex: index,
+          hasCandidate: true,
+          overlays: {
+            board: false,
+            settings: settingsOpen.value,
+            presetEditor: false,
+            savePresetDialog: false,
+          },
+          dismissBoard: () => {},
+          dismissSettings: () => {
+            settingsOpen.value = false;
+          },
+          focusAttention: () => {
+            expect(settingsOpen.value).toBe(false);
+            tm.activateForAttention(index, paneId);
+          },
+        }),
+      );
+      await Promise.resolve();
+      const activated = vi.mocked(listenNotificationActivated).mock.lastCall![0];
+      activated(999);
+      expect(settingsOpen.value).toBe(true);
+      expect(activeTabIndex.value).toBe(0);
+      onTabSwitch.mockClear();
+      activated(2);
+      expect(onTabSwitch).toHaveBeenCalledExactlyOnceWith(0, 1);
+      stop();
 
       expect(activeTabIndex.value).toBe(1); // the tab DID switch
       expect(tabViews.value[1].attention?.actionableCount).toBe(1); // only B cleared

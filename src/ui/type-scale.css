@@ -1,0 +1,14 @@
+/* The shell's text sizes, declared once (LAY-13). `text-xs` (12px) and `text-sm` (14px) come
+   from the preset; the three below are the steps it lacks. Change a size here and every use
+   follows; a font-size written at a use site (`text-[11px]`) is a defect.
+
+   2xs: captions, uppercase labels          3xs: badges, pills
+   code: monospace text (paths, diff lines, tool output), set with `font-mono`
+
+   No line-height is declared, so a step inherits the 1.5 the preset's base sets, as the
+   arbitrary sizes it replaces did. */
+@theme {
+  --text-2xs: 11px;
+  --text-3xs: 10px;
+  --text-code: 12px;
+}

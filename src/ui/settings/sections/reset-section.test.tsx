@@ -73,7 +73,7 @@ describe("ResetSection — scoped resets", () => {
   };
 
   const buttons = (): HTMLButtonElement[] =>
-    Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn--danger"));
+    Array.from(host.querySelectorAll<HTMLButtonElement>('[data-slot="button"]'));
 
   const click = async (button: HTMLButtonElement): Promise<void> => {
     await act(async () => {

@@ -9,11 +9,13 @@ import {
   themesLoading,
 } from "../../settings/custom-themes-store";
 import { settings, updateSettings } from "../../settings/settings-store";
-import { allPresets, getPreset, type ThemePreset } from "../../settings/themes";
+import { allThemes, getTheme } from "../../settings/themes";
+import type { Theme } from "../../settings/theme-schema";
 import { ConfigGroup, ConfigRow } from "../controls/config-row";
 import { CHROME_ICON, DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { ThemeCardPreview } from "./theme-card-preview";
 import { LoadError } from "../controls/load-error";
+import { Button } from "../controls/button";
 
 /**
  * The theme gallery (DL-24).
@@ -30,18 +32,18 @@ import { LoadError } from "../controls/load-error";
  */
 export function ThemeGallery() {
   const current = settings.value;
-  const presets = allPresets();
+  const themes = allThemes();
   const failures = themeImportFailures.value;
   const groupRef = useRef<HTMLDivElement>(null);
 
-  // Through `getPreset`, never the raw `themeId`. A saved `file:` id whose file
+  // Through `getTheme`, never the raw `themeId`. A saved `file:` id whose file
   // the user deleted resolves to the fallback everywhere else in the app — the
-  // status bar and the colour rows both go through this same call — so
-  // comparing the raw id here would leave the grid with NO card checked while
-  // the running terminal and the status bar agree on a theme. A radio group
-  // with nothing selected reads as broken; this is the app's one answer to
-  // "which theme is on", so the picker has to give the same one.
-  const activeId = getPreset(current.themeId).id;
+  // status bar goes through this same call — so comparing the raw id here would
+  // leave the grid with NO card checked while the running terminal and the
+  // status bar agree on a theme. A radio group with nothing selected reads as
+  // broken; this is the app's one answer to "which theme is on", so the picker
+  // has to give the same one.
+  const activeId = getTheme(current.themeId).id;
 
   // The folder is re-read on every mount of this section, never cached for the
   // session: the documented way to remove a theme is deleting the file in
@@ -51,15 +53,11 @@ export function ThemeGallery() {
     void loadCustomThemes();
   }, []);
 
-  const select = (preset: ThemePreset): void => {
-    if (preset.id === activeId) {
+  const select = (theme: Theme): void => {
+    if (theme.id === activeId) {
       return;
     }
-    // Switching theme clears the per-colour overrides, exactly as the cycle
-    // button this replaced did: an override is an edit to ONE theme, and
-    // carrying it onto the next one silently corrupts the theme the user just
-    // picked from a picture of it.
-    updateSettings({ themeId: preset.id, colorOverrides: {} });
+    updateSettings({ themeId: theme.id });
   };
 
   // Arrow keys move selection, which is what `role="radiogroup"` promises. The
@@ -67,14 +65,14 @@ export function ThemeGallery() {
   // focus and moving selection are the same gesture here.
   const onKeyDown = (event: KeyboardEvent): void => {
     const step = KEY_STEPS[event.key];
-    if (step === undefined || presets.length === 0) {
+    if (step === undefined || themes.length === 0) {
       return;
     }
     event.preventDefault();
-    const index = presets.findIndex((preset) => preset.id === activeId);
+    const index = themes.findIndex((theme) => theme.id === activeId);
     const from = index === -1 ? 0 : index;
-    const next = (from + step + presets.length) % presets.length;
-    select(presets[next]);
+    const next = (from + step + themes.length) % themes.length;
+    select(themes[next]);
     focusCard(groupRef.current, next);
   };
 
@@ -88,26 +86,26 @@ export function ThemeGallery() {
         ref={groupRef}
         onKeyDown={onKeyDown}
       >
-        {presets.map((preset) => {
-          const active = preset.id === activeId;
+        {themes.map((theme) => {
+          const active = theme.id === activeId;
           return (
             <button
-              key={preset.id}
+              key={theme.id}
               type="button"
               role="radio"
               aria-checked={active}
               tabIndex={active ? 0 : -1}
               class={`theme-card ${active ? "theme-card--active" : ""}`}
-              onClick={() => select(preset)}
+              onClick={() => select(theme)}
             >
-              <ThemeCardPreview preset={preset} />
+              <ThemeCardPreview theme={theme} />
               <span class="theme-card__foot">
                 {/* The card is a thumbnail now, so a long theme name ellipses
                     in the footer. The full one stays in the DOM (screen
                     readers read it whole) and `title` gives it back to the
                     pointer. */}
-                <span class="theme-card__name" title={preset.label}>
-                  {preset.label}
+                <span class="theme-card__name" title={theme.name}>
+                  {theme.name}
                 </span>
                 {/* CHROME_ICON, the smallest size the scale has (DL-14.1) —
                     the card shrank but the icon scale did not, so the mark's
@@ -124,25 +122,22 @@ export function ThemeGallery() {
         <LoadError message={themeLoadState.value.message} onRetry={() => void loadCustomThemes()} />
       ) : null}
       <ConfigRow label="Import theme" desc="iTerm2, Windows Terminal, Ghostty, Alacritty">
-        <button
+        <Button
           type="button"
-          class="cfg-btn"
+          variant="outline"
+          size="sm"
           disabled={themesLoading.value || themeLoadState.value.status === "error"}
           onClick={() => void importCustomThemes()}
         >
           {themesLoading.value ? "reading…" : "choose files"}
-          <span class="cfg-btn__hint">
-            <DeckIcon icon={ArrowSquareIn} size={ROW_ICON} />
-          </span>
-        </button>
+          <DeckIcon icon={ArrowSquareIn} size={ROW_ICON} />
+        </Button>
       </ConfigRow>
       <ConfigRow label="Themes folder" desc="Delete a file here to remove its theme">
-        <button type="button" class="cfg-btn" onClick={() => void openThemesFolder()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void openThemesFolder()}>
           reveal
-          <span class="cfg-btn__hint">
-            <DeckIcon icon={FolderOpen} size={ROW_ICON} />
-          </span>
-        </button>
+          <DeckIcon icon={FolderOpen} size={ROW_ICON} />
+        </Button>
       </ConfigRow>
       {/* DL-24.6. The pill reads `skipped` rather than `not a theme` because
           the list holds two kinds of file now: one the parser rejected, and one

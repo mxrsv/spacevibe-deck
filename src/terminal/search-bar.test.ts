@@ -14,8 +14,7 @@ import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from ".
 vi.mock("../settings/settings-store", () => ({
   settings: {
     value: {
-      themeId: "tokyo-night",
-      colorOverrides: {},
+      themeId: "deck-dark",
     },
   },
 }));

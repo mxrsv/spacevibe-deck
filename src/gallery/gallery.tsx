@@ -4,8 +4,8 @@ import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { GALLERY_SECTIONS } from "./section-registry";
 import { unhandledCommands } from "./host-stub";
 import { applyThemeVars } from "../lib/theme-vars";
-import { settings } from "../settings/settings-store";
-import { resolveTheme, THEME_PRESETS } from "../settings/themes";
+import { BUILT_IN_THEMES } from "../settings/built-in-themes";
+import { getTheme } from "../settings/themes";
 
 const DEFAULT_SECTION_ID = "chrome";
 
@@ -27,7 +27,7 @@ export function Gallery() {
     GALLERY_SECTIONS.find((section) => section.id === requestedSection)?.id ?? DEFAULT_SECTION_ID,
   );
   const themeId = useSignal(
-    THEME_PRESETS.find((theme) => theme.id === params.get("theme"))?.id ?? THEME_PRESETS[0].id,
+    BUILT_IN_THEMES.find((theme) => theme.id === params.get("theme"))?.id ?? BUILT_IN_THEMES[0].id,
   );
   const contentRef = useRef<HTMLElement>(null);
 
@@ -35,14 +35,7 @@ export function Gallery() {
   // specimens read it through the identical cascade the app uses. The state
   // matrix overrides it per cell — that is the one place four themes coexist.
   useLayoutEffect(() => {
-    applyThemeVars(
-      document.documentElement.style,
-      resolveTheme({
-        ...settings.peek(),
-        themeId: themeId.value,
-        colorOverrides: {},
-      }),
-    );
+    applyThemeVars(document.documentElement.style, getTheme(themeId.value));
   }, [themeId.value]);
 
   const active =
@@ -70,9 +63,9 @@ export function Gallery() {
               themeId.value = (event.currentTarget as HTMLSelectElement).value;
             }}
           >
-            {THEME_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.id}
+            {BUILT_IN_THEMES.map((theme) => (
+              <option key={theme.id} value={theme.id}>
+                {theme.id}
               </option>
             ))}
           </select>

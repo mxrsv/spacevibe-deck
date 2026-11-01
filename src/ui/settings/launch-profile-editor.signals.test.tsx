@@ -121,9 +121,8 @@ describe("LaunchProfileEditor Signals switch", () => {
       await mountSettled();
 
       const control = toggle(id);
-      expect(control.className).toBe("cfg-btn lp-signals cfg-btn--on");
+      expect(control.dataset.checked).not.toBeUndefined();
       expect(control.getAttribute("aria-checked")).toBe("true");
-      expect(control.textContent).toBe("on");
       expect(control.hasAttribute("aria-disabled")).toBe(false);
       expect(control.hasAttribute("disabled")).toBe(false);
       expect(control.hasAttribute("title")).toBe(false);
@@ -137,7 +136,7 @@ describe("LaunchProfileEditor Signals switch", () => {
       hostSays(true);
       await mountSettled();
 
-      expect(toggle("claude").className).toBe("cfg-btn lp-signals cfg-btn--off");
+      expect(toggle("claude").dataset.checked).toBeUndefined();
       expect(toggle("claude").hasAttribute("aria-disabled")).toBe(false);
     });
 
@@ -157,7 +156,7 @@ describe("LaunchProfileEditor Signals switch", () => {
       await mountSettled();
 
       for (const id of AGENTS) {
-        expect(toggle(id).className).toBe("cfg-btn lp-signals cfg-btn--on");
+        expect(toggle(id).dataset.checked).not.toBeUndefined();
         expect(toggle(id).hasAttribute("aria-disabled")).toBe(false);
         expect(toggle(id).hasAttribute("title")).toBe(false);
       }
@@ -174,7 +173,6 @@ describe("LaunchProfileEditor Signals switch", () => {
         const control = toggle(id);
         expect(control.getAttribute("aria-disabled")).toBe("true");
         expect(control.getAttribute("title")).toBe(UNAVAILABLE);
-        expect(control.classList.contains("cfg-btn--disabled")).toBe(true);
         // DL-23.6: it keeps its tab stop, or the reason is unreachable by keyboard.
         expect(control.hasAttribute("disabled")).toBe(false);
         expect(control.tabIndex).toBeGreaterThanOrEqual(0);
@@ -190,8 +188,7 @@ describe("LaunchProfileEditor Signals switch", () => {
 
         const control = toggle(id);
         expect(control.getAttribute("aria-checked")).toBe("false");
-        expect(control.textContent).toBe("off");
-        expect(control.classList.contains("cfg-btn--on")).toBe(false);
+        expect(control.dataset.checked).toBeUndefined();
         expect(settings.value.agentSignalAdapters[id]).toBe(true);
       },
     );
@@ -214,7 +211,7 @@ describe("LaunchProfileEditor Signals switch", () => {
       await mountSettled();
 
       const control = toggle("codex");
-      expect(control.className).toBe("cfg-btn lp-signals cfg-btn--on");
+      expect(control.dataset.checked).not.toBeUndefined();
       expect(control.getAttribute("aria-checked")).toBe("true");
       expect(control.hasAttribute("aria-disabled")).toBe(false);
       expect(control.hasAttribute("disabled")).toBe(false);
@@ -235,7 +232,7 @@ describe("LaunchProfileEditor Signals switch", () => {
       await mountSettled();
 
       const control = toggle("codex");
-      expect(control.className).toBe("cfg-btn lp-signals cfg-btn--off");
+      expect(control.dataset.checked).toBeUndefined();
       expect(control.hasAttribute("aria-disabled")).toBe(false);
 
       press(control);

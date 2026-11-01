@@ -39,8 +39,11 @@
 }
 
 /* The usage summary draws its own hairline and gap for the days it closed the
-   rail alone; behind the tools row it shares theirs. */
-.sidebar-actions + .agent-usage-summary {
+   rail alone; behind the tools row it shares theirs. The project rail's foot
+   (`project-rail-footer.tsx`) holds the summary inside its slot, under the
+   buttons, and draws the hairline itself. */
+.sidebar-actions + .agent-usage-summary,
+.sidebar-actions__slot > .agent-usage-summary {
   margin-top: 0;
   border-top: 0;
 }

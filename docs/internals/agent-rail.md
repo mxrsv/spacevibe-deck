@@ -158,7 +158,9 @@ to agent names.
   A new fact discards any previous guessed pairing and its text, including late replies.
 - **Open writer locks identify Codex before its first prompt.** On Electron macOS/Linux,
   [one background `lsof` batch](../../electron/platform/codex-thread-locks.ts) reads each
-  Codex foreground pid's open `~/.codex/thread-writer-locks/<thread-id>.lock` files.
+  Codex foreground pid's open `~/.codex/thread-writer-locks/<thread-id>.lock` files, plus those
+  of any other `codex` process in its foreground group: npm's `codex` is a `node` launcher, and
+  the native child it spawns holds the lock.
   One unique lock supplies the id. A process can also hold subagent locks: multiple locks
   require exactly one matching rollout with an explicit interactive string `source`;
   object-valued subagent sources and `exec` are excluded. Missing tools, unreadable metadata

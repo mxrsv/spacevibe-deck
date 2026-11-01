@@ -13,9 +13,8 @@ describe("normalizeHex", () => {
   });
 
   it("drops the alpha channel", () => {
-    // An 8-digit value would reach `--bg`, and every derived chrome colour is
-    // a mix against an opaque background — a translucent one shows the
-    // desktop through the sidebar.
+    // An 8-digit value would reach the terminal's background, and a
+    // translucent one shows the desktop through the pane.
     expect(normalizeHex("#1d1f2180")).toBe("#1d1f21");
   });
 

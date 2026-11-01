@@ -226,12 +226,47 @@ function escapeFishDoubleQuoted(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("$", "\\$");
 }
 
+const FISH_BIN_PREFIX = 'set -l _deck_bin "';
+
+/**
+ * An `if` block, not `contains …; or set …`: fish's `set` passes the previous
+ * status through, so that form left `$status` at 1 and the first prompt of
+ * every pane showed a failed command.
+ */
+const FISH_PREPEND = [
+  'if not contains -- "$_deck_bin" $PATH',
+  'set -gx PATH "$_deck_bin" $PATH',
+  "end",
+].join("; ");
+
 function fishInitCommand(binDir: string): string {
-  return [
-    `set -l _deck_bin "${escapeFishDoubleQuoted(binDir)}"`,
-    'contains -- "$_deck_bin" $PATH',
-    'or set -gx PATH "$_deck_bin" $PATH',
-  ].join("; ");
+  return `${FISH_BIN_PREFIX}${escapeFishDoubleQuoted(binDir)}"; ${FISH_PREPEND}`;
+}
+
+const BASH_RCFILE_TAIL = `/${AGENT_SHELL_DIR}/bash/rcfile`;
+
+/**
+ * Whether `commandLine`, as `ps` prints it, is a pane shell exactly as
+ * `bootstrapLaunch` started it and nothing more. `ps` drops the quoting, so a
+ * generic argument parse reads the spaces in `Application Support`, or the
+ * fish init text, as a command, and an idle pane looks busy. Anything after
+ * Deck's own arguments (`-c`, a script) is not this launch, and falls back to
+ * that parse.
+ */
+export function isBootstrapCommandLine(shell: string, commandLine: string): boolean {
+  const onlyExecutableBefore = (at: number) => at > 0 && !/\s[-+]/.test(commandLine.slice(0, at));
+  switch (shellName(shell)) {
+    case "bash": {
+      const at = commandLine.indexOf(" --rcfile ");
+      return onlyExecutableBefore(at) && commandLine.endsWith(BASH_RCFILE_TAIL);
+    }
+    case "fish": {
+      const at = commandLine.indexOf(` -l --init-command ${FISH_BIN_PREFIX}`);
+      return onlyExecutableBefore(at) && commandLine.endsWith(`"; ${FISH_PREPEND}`);
+    }
+    default:
+      return false;
+  }
 }
 
 /**

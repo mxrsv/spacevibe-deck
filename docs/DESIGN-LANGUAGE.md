@@ -31,10 +31,14 @@ cites it.
 
 ## 1. Hard constraints (resource frugality)
 
-- **DL-1.1** Chrome adds no runtime dependency beyond CSS and Preact. One exception: one icon
+- **DL-1.1** Chrome adds no runtime dependency beyond CSS and Preact. Two exceptions. One icon
   package, `@phosphor-icons/react`, supplies every functional icon (§14). It is reached
   through the `preact/compat` alias and tree-shakes to the icons imported by name
-  (`sideEffects: false`). A second icon package is not covered.
+  (`sideEffects: false`). A second icon package is not covered: the preset's Hugeicons are
+  not shipped, and the controls draw their glyphs through `DeckIcon`. The other is the Base UI
+  preset (DL-1.6): Tailwind, Base UI, `cn`, `class-variance-authority`, `tw-animate-css`, the
+  stylesheet of `shadcn` and the `@fontsource-variable/inter` font files. All are
+  `devDependencies` that Vite bundles into the renderer, and none loads from a network.
 - **DL-1.2** Chrome animates only `transform`, `opacity`, `color`, `border-color` and
   `background-color`, for at most 300ms, with no infinite loop and nothing moving while the
   user is idle. Three scoped exceptions loop, each only while its state exists, each with
@@ -50,45 +54,81 @@ cites it.
   No other surface inherits them. Panes draw no top-edge activity motion (DL-18.11).
   Why: an unread or live state exists precisely while nobody is watching, which is the
   only case that pays for a loop.
+  Inside the preset boundary (DL-1.6) the controls move as the preset draws them:
+  `transition-all` on state changes and the `tw-animate-css` enter and exit of popups (fade,
+  zoom, slide), each 100–150ms, never looping and never while idle. Reduced motion shortens
+  all of it to 0.01ms by scope.
 - **DL-1.3** No blurred or offset `box-shadow`, no `filter`, no `backdrop-filter`, no
   `requestAnimationFrame` loop and no timer that exists only to drive visuals. Depth comes
   from background steps and 1px lines; `box-shadow: inset 0 0 0 1px <color>` is a hairline
   and allowed. One exception: `.modal-scrim` uses `backdrop-filter` (DL-29.5), because its
-  layer exists only while a modal is open.
+  layer exists only while a modal is open. Inside the preset boundary (DL-1.6) popups carry
+  the preset's `shadow-md` and `ring-1`, and the dialog's overlay blurs what is behind it.
 - **DL-1.4** Native inputs (`<select>`, `<input type="color">`) laid invisibly over a styled
-  pill are preferred to custom pickers: no JS, no extra DOM, native accessibility.
+  pill are preferred to custom pickers: no JS, no extra DOM, native accessibility. Inside the
+  preset boundary (DL-1.6) the picker is the preset's Base UI `Select`.
 - **DL-1.5** `prefers-reduced-motion: reduce` disables chrome transitions; panels appear
   instantly.
+- **DL-1.6** The Base UI preset is a second system with a fence round it. A surface that carries
+  `.ui-preset`, and the shared controls of
+  [`preset-controls.ts`](../src/ui/controls/preset-controls.ts) with the popups they portal
+  (each control root has a `data-slot`), are drawn by the preset
+  ([`preset.css`](../src/ui/preset.css), generated from preset `b1a09kDGF`): its tokens,
+  Inter, its radius, shadows and motion. Every other surface keeps the rules in this document
+  unchanged. The sections below name what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1,
+  DL-4.1, DL-14.3, DL-20.1 and DL-21.3.
+  - `.dark` on the root element is the preset's dark mode, so portals follow it.
+  - The preset's tokens never alias a chrome token, and chrome CSS never reads one (UI-2); the
+    preset's accent is declared `--ui-accent` because `--accent` is the chrome's.
+  - A control takes `className`, not `class`; a wrapper is made with `withRef`
+    ([`with-ref.ts`](../src/ui/controls/with-ref.ts)) because Preact strips `ref` from a
+    function component's props.
+  - Contrast on a migrated surface is WCAG 2.2 AA, 4.5:1 for text and 3:1 for the boundary of a
+    control, in both modes. A few stock pairs fall short and are named, each with where it
+    appears, in [`ui-preset-contrast.test.ts`](../scripts/ui-preset-contrast.test.ts); DL-3.5's
+    floors stay the chrome's.
+  - [`ui-preset-boundary.test.ts`](../scripts/ui-preset-boundary.test.ts) holds the fence: no
+    global rule, no custom property or utility class the chrome also uses, no real React in the
+    production bundle.
+  Why: the migration replaces the chrome's look one surface at a time; until a surface moves it
+  must not change by a pixel, and after it moves it must not be half Deck, half preset.
 
 ## 2. Tokens
 
-One source: `:root` in [`styles.css`](../src/styles.css), fed by
-[`derive-colors.ts`](../src/lib/derive-colors.ts). The active terminal theme injects
-`--bg --fg --accent --red --green --yellow --magenta --cyan`; every other color derives
-through `color-mix`.
+One source: `:root` in [`styles.css`](../src/styles.css), published by
+[`applyThemeVars`](../src/lib/theme-vars.ts) from the active theme. A theme declares its
+chrome colours itself in its `ui` group ([`theme-schema.ts`](../src/settings/theme-schema.ts)),
+keyed by the role names below without their `--`; the washes and seams are formulas on top
+of them ([`derive-colors.ts`](../src/lib/derive-colors.ts)). The literals in `:root` are
+only the pre-JS fallbacks.
 
-| token                                                                                         | role                                     |
-| --------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `--sidebar-bg` / `--sidebar-seam`                                                             | the side columns and their boundary      |
-| `--chrome-1` / `--chrome-2`                                                                   | background steps for bars / panels       |
-| `--input-bg`                                                                                  | recessed input surfaces                  |
-| `--hair` / `--hair-strong`                                                                    | 1px lines inside a surface               |
-| `--seam-recessed` / `--seam-divider` / `--seam-split` / `--seam-raised`                       | the boundaries BETWEEN surfaces (DL-2.3) |
-| `--text-primary` / `--text-muted` / `--text-faint`                                            | text hierarchy                           |
-| `--ui-font`                                                                                   | the one chrome typeface (DL-4.1)         |
-| `--type-title` … `--type-micro`                                                               | the four standard text sizes (DL-4.4)    |
-| `--radius-flat` / `--radius-tab` / `--radius-tight` / `--radius-control` / `--radius-surface` | the five radius roles (DL-20.1)          |
-| `--duration` / `--ease`                                                                       | chrome state-change motion (DL-20.2)     |
+| token                                                                                         | role                                         | source  |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------- | ------- |
+| `--bg` / `--fg`                                                                               | the stage and its ink                        | theme   |
+| `--accent` / `--red` / `--green` / `--yellow` / `--magenta` / `--cyan`                        | the role inks (§3)                           | theme   |
+| `--sidebar-bg`                                                                                | the side columns                             | theme   |
+| `--chrome-1` / `--chrome-2`                                                                   | background steps for bars / panels           | theme   |
+| `--input-bg`                                                                                  | recessed input surfaces                      | theme   |
+| `--text-primary` / `--text-muted` / `--text-faint`                                            | text hierarchy                               | theme   |
+| `--tone`                                                                                      | white on a dark theme, black on a light one  | derived |
+| `--tab-active-bg` / `--state-hover-bg` / `--tab-rest-bg`                                      | the selection, hover and rest washes (DL-21) | derived |
+| `--hair` / `--hair-strong`                                                                    | 1px lines inside a surface                   | derived |
+| `--sidebar-seam` / `--seam-recessed` / `--seam-divider` / `--seam-split` / `--seam-raised`    | the boundaries BETWEEN surfaces (DL-2.3)     | derived |
+| `--ui-font`                                                                                   | the one chrome typeface (DL-4.1)             | fixed   |
+| `--type-title` … `--type-micro`                                                               | the four standard text sizes (DL-4.4)        | fixed   |
+| `--radius-flat` / `--radius-tab` / `--radius-tight` / `--radius-control` / `--radius-surface` | the five radius roles (DL-20.1)              | fixed   |
+| `--duration` / `--ease`                                                                       | chrome state-change motion (DL-20.2)         | fixed   |
 
 - **DL-2.1** Components never hardcode a color. Every color is a token, or comes from the
-  live theme object (a swatch previewing a theme's own colors).
+  live theme object (a swatch previewing a theme's own colors). Inside the preset boundary
+  (DL-1.6) the tokens are the preset's, not the theme's.
 - **DL-2.2** The theme drives all chrome: switching theme restyles everything with no
-  component change. Every chrome tone is a function of `(background, foreground)` only, not
-  of a preset id or a setting, so the gallery, the editor host and a theme card show the
-  same chrome as the app. One exception: a background may pin a hand-picked sidebar,
-  keyed by that background ([`PINNED_SIDEBAR_BG`](../src/lib/derive-colors.ts)). Deck's dark
-  mode pins a `#141414` sidebar to its `#0a0a0a` pane; `#17181c` pins `#161b22` for legacy
-  overrides. Overriding the background drops its pin.
+  component change. A theme declares every surface, ink and text tone itself, and chrome
+  reads only the theme, never a theme id or a setting, so the gallery, the editor host and a
+  theme card show the same chrome as the app. What stays a formula is what must not drift
+  between themes: the washes (DL-21) and the seams and hairlines (DL-2.3), functions of the
+  theme's type, `--bg` and `--sidebar-bg` alone. An imported terminal theme replaces only
+  the terminal; its chrome and editor are Deck Dark's or Deck Light's, by its background.
 - **DL-2.3** A boundary between two surfaces is a seam; a line inside one surface is a
   hairline. All of them mix from `--tone`, never `--fg`, so the terminal's text hue never
   tints chrome. `--seam-recessed` (shell boundaries: the command-row frame, sidebar, status
@@ -124,16 +164,21 @@ through `color-mix`.
   label is `--text-faint` at `--type-meta` (DL-34.5).
 - **DL-3.5** The text tones have app-wide WCAG contrast floors: `--text-primary` ≥ 8:1,
   `--text-muted` ≥ 6:1, `--text-faint` ≥ 4.5:1, each measured on every surface it may sit
-  on (`sidebarBg`, `chrome1`, `chrome2`, `tabActiveBg`, plus `inputBg` for primary). The
-  three stay ordered (primary ≥ muted ≥ faint) and visibly distinct on every surface.
-  Locked by [`derive-colors.test.ts`](../src/lib/derive-colors.test.ts).
+  on (`--bg`, `--sidebar-bg`, `--chrome-1`, `--chrome-2`, `--tab-active-bg`, plus
+  `--input-bg` for primary). The three stay ordered (primary > muted > faint) and distinct
+  on every surface. The terminal has floors of its own on its background: foreground and
+  the six normal ANSI colours ≥ 4.5:1, with the text-side neutrals (`white` and
+  `brightWhite` on a dark theme, `black` on a light one); the cursor, `brightBlack` and the
+  bright colours ≥ 3:1. Every built-in theme declares values that meet them, locked by
+  [`built-in-themes.test.ts`](../src/settings/built-in-themes.test.ts); nothing raises a
+  colour at runtime.
   Why: faint styles 10.5–11px text, which WCAG AA rates as normal text.
-- **DL-3.6** A built-in theme's `foreground` is a neutral gray of the same WCAG relative
-  luminance as its palette's tinted ink, so the derived `--text-*` ladder stays neutral
-  (6% saturation ceiling, tested). The ANSI sixteen are untouched; `cursor` follows
-  `foreground` only where the palette had them equal. `deck-dark` ships `#e7e7e7` and
-  `deck-light` `#272727`. Imported themes keep their own foreground. Anchor:
-  [`THEME_PRESETS`](../src/settings/themes.ts).
+- **DL-3.6** A built-in theme's text ladder is neutral: `--text-primary`, `--text-muted` and
+  `--text-faint` stay under a 6% saturation ceiling (tested), so a tinted theme tints its
+  surfaces and its accent, never its words. The terminal and the editor carry the palette's
+  colour. Deck Dark's ladder is `#e7e7e7` / `#ababab` / `#949494` and Deck Light's
+  `#272727` / `#464647` / `#585959`. Anchor:
+  [`BUILT_IN_THEMES`](../src/settings/built-in-themes.ts).
 - **DL-3.7** _(pattern)_ Settings chrome is achromatic: inside `.settings-screen` an
   enabled toggle, a selected segment, a step icon, hover and the focus ring sit on the
   neutral `--text-*` / `--tone` / `--hair-*` ladders, overriding `--green` and `--accent`.
@@ -149,7 +194,9 @@ through `color-mix`.
   [`toFontStack`](../src/terminal/pane.ts); no chrome token reads it, and `--board-font`
   never does either. One exception in chrome: the launch page's command preview (DL-32.6)
   prints the exact command in `--board-font`, because a shell line's flags, quotes and spaces
-  must read exactly as they will run.
+  must read exactly as they will run. Inside the preset boundary (DL-1.6) the typeface is the
+  preset's Inter, bundled with the app, and the sizes are the controls' own (`text-xs`, 0.625rem
+  for badges and keys); `--ui-font` and the DL-4.4 ladder do not reach it.
 - **DL-4.2** Values use `font-variant-numeric: tabular-nums` so changing numbers do not
   jitter.
 - **DL-4.3** No `text-transform: uppercase`, no all-caps spelling used as styling and no
@@ -222,7 +269,8 @@ through `color-mix`.
   of 28px or less at `--radius-control` without a matching width; a control whose height
   comes from padding is held by review.
   Why: on a 24px box a 10px corner is most of the half-height and the control reads as a
-  pill.
+  pill. Inside the preset boundary (DL-1.6) the radius is the preset's `--radius` and its
+  derived steps (`rounded-md`, `rounded-lg`, `rounded-full`), and the five roles do not apply.
 - **DL-20.2** One motion pair for chrome state change: `--duration` (150ms) and `--ease`
   (`cubic-bezier(0.4, 0, 0.2, 1)`). The slide-over's 0.28s stays inside DL-1.2's 300ms.
 - **DL-20.3** Type sizes are not a numeric scale here; DL-4.4 is their only authority.
@@ -246,7 +294,9 @@ through `color-mix`.
   value. Why: a hover that paints "selected" tells the user they chose something they did
   not.
 - **DL-21.3** Focus-visible is a 2px `--accent` outline that composes with either wash.
-  Inside `.settings-screen` the outline is `--text-muted` (DL-3.7).
+  Inside `.settings-screen` the outline is `--text-muted` (DL-3.7). Inside the preset boundary
+  (DL-1.6) a control draws its own indicator: a 2px ring in the preset's `--ring`, solid and
+  inset, so a neighbour or a clipping parent never hides it.
 - **DL-21.4** Disabled is `--text-faint` on the unchanged surface.
 - **DL-21.5** State changes use DL-20.2's `--duration` / `--ease` and only DL-1.2's
   properties. Reduced motion is handled by scope (§9).
@@ -477,7 +527,8 @@ Functional icons come from one package, `@phosphor-icons/react`, drawn through o
   (`src/ui/controls/deck-icon.tsx`) the only place its presentation is set: `color="currentColor"`,
   the weight, `aria-hidden`, `focusable="false"` and the unconditional `deck-icon` class. Icons are
   imported by name; nothing else authors an `<svg>` and no glyph character stands in for an
-  action (`scripts/icon-system.test.ts`).
+  action (`scripts/icon-system.test.ts`). The preset's controls draw their chevrons, check
+  marks and close glyphs through `DeckIcon` too.
   - Weight is `bold` (24/256, about 1.2px) for every icon and `fill` for icons with a body whose
     silhouette survives filling: folders, files, `Robot`, `Gear`, `Trash`, `TerminalWindow`,
     `ChatText`, `ClipboardText`, `PaperPlaneTilt`, the pins, `Play`, `Stop`, `Gauge`,
@@ -502,7 +553,9 @@ Functional icons come from one package, `@phosphor-icons/react`, drawn through o
   never the icon.
 - **DL-14.3** CSS does not set `width`, `height`, `fill`, `stroke` or `stroke-width` on an icon:
   those declarations beat SVG attributes and silently disable DL-14.1, and a stray `fill` erases
-  the icon. Colour is `color`, reaching the icon through `currentColor`.
+  the icon. Colour is `color`, reaching the icon through `currentColor`. Inside the preset
+  boundary (DL-1.6) a control sizes the icons it holds (`[&_svg]:size-3.5`), which is the one
+  place CSS sets an icon's size; the `size` attribute stays as the fallback.
 - **DL-14.4** Icon-only controls are for familiar, repeated actions that carry a hover tooltip
   (close, add, split, next). Consequential or rare actions keep their word beside the icon:
   Restore Defaults reads `reset`, the Open Board's button reads `Open Folder…`.
@@ -695,9 +748,9 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
   `--bg` with no line under it, parted from the work area by the pane cards' edges alone. Its right edge stops at the docked panel when one is open (DL-19.1, `--explorer-w`).
   The rail lists no documents; documents stay in the Explorer and the strip names stage surfaces.
 - **DL-18.7** The navigation column is the one surface with a colour of its own (owner,
-  2026-10-15). The navigation frame and rail paint the derived `--sidebar-bg`, which never
-  equals `--bg` (light and pure-black overrides included;
-  [`derive-colors.ts`](../src/lib/derive-colors.ts)); the terminal, the document surface,
+  2026-10-15). The navigation frame and rail paint the theme's `--sidebar-bg`, which never
+  equals `--bg` (tested for every built-in in
+  [`derive-colors.test.ts`](../src/lib/derive-colors.test.ts)); the terminal, the document surface,
   the stage gutter, every docked side panel and the full-window pages share the theme's
   `--bg`. On a dark theme the navigation column rises off the stage: `--sidebar-bg`, then
   `--chrome-1`, `--chrome-2` and `--tab-active-bg` stand above it, each measured from the
@@ -933,8 +986,8 @@ The component still builds and passes its tests, and the rules below describe it
 - **DL-24.1** The gallery is the only grid in a settings section and exists only for the theme.
 - **DL-24.2** A card is a miniature of Deck, not a strip of swatches: the command row, the
   navigation rail and the stage in the window's proportions, with an agent line for the accent.
-- **DL-24.3** Card colours are inline styles from that theme's own object, passed through
-  `deriveChromeColors` ([`theme-card-preview.tsx`](../src/ui/settings/theme-card-preview.tsx)),
+- **DL-24.3** Card colours are inline styles from that theme's own `ui` group and its
+  `deriveChromeColors` washes ([`theme-card-preview.tsx`](../src/ui/settings/theme-card-preview.tsx)),
   as DL-2.1's swatch exception. Why: a card shows a theme that is not running, while every
   `--token` resolves to the one that is.
 - **DL-24.4** The selected card is marked by an `--accent` border and a check in its footer, an

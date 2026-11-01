@@ -1,10 +1,6 @@
 import { Minus, Plus } from "@phosphor-icons/react";
-import {
-  clampFontSize,
-  FONT_SIZE_MAX,
-  FONT_SIZE_MIN,
-  type TabBarPosition,
-} from "../../../settings/settings-schema";
+import { clampFontSize, type TabBarPosition } from "../../../settings/settings-schema";
+import { FONT_SIZE_STEPPER, TAB_BAR_CHOICES } from "../../../settings/settings-rows";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigRow, ToggleRow } from "../../controls/config-row";
@@ -14,11 +10,6 @@ import { SettingsGroup } from "../settings-group";
 import { AppearancePreview } from "../appearance-preview";
 import { AgentChoiceValue } from "../agent-choice-value";
 import { ThemeModeSelector } from "../theme-mode-selector";
-
-const TAB_BAR_CHOICES = [
-  { value: "left", label: "Left" },
-  { value: "top", label: "Top" },
-] as const;
 
 export function AppearanceSection() {
   const current = settings.value;
@@ -44,18 +35,18 @@ export function AppearanceSection() {
                 type="button"
                 class="cfg-step__btn"
                 aria-label="Decrease font size"
-                disabled={current.fontSize <= FONT_SIZE_MIN}
-                onClick={() => stepFontSize(-1)}
+                disabled={current.fontSize <= FONT_SIZE_STEPPER.min}
+                onClick={() => stepFontSize(-FONT_SIZE_STEPPER.step)}
               >
                 <DeckIcon icon={Minus} size={ROW_ICON} />
               </button>
-              <span class="cfg-step__val">{current.fontSize}px</span>
+              <span class="cfg-step__val">{`${current.fontSize}${FONT_SIZE_STEPPER.unit}`}</span>
               <button
                 type="button"
                 class="cfg-step__btn"
                 aria-label="Increase font size"
-                disabled={current.fontSize >= FONT_SIZE_MAX}
-                onClick={() => stepFontSize(1)}
+                disabled={current.fontSize >= FONT_SIZE_STEPPER.max}
+                onClick={() => stepFontSize(FONT_SIZE_STEPPER.step)}
               >
                 <DeckIcon icon={Plus} size={ROW_ICON} />
               </button>

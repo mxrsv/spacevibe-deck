@@ -8,7 +8,7 @@ import {
   conversionDiscardsData,
   themeModeOf,
   type ThemeMode,
-  getPreset,
+  getTheme,
 } from "../../settings/themes";
 import { ThemeCardPreview } from "./theme-card-preview";
 import { ConfigRow } from "../controls/config-row";
@@ -30,18 +30,15 @@ const MODE_OPTIONS: readonly ModeOption[] = [
  * value. Studio shows the same choice as two visual cards.
  *
  * What it does NOT do is as load-bearing as what it does. It never writes on
- * mount. A user arriving with `tokyo-night`, an imported file, or colour
- * overrides sees the segment their current background already belongs to and
- * keeps every one of those things until they click — opening Settings is not
- * consent to be converted. A click IS consent, and it is total: the canonical
- * id replaces whatever was stored, and the hidden colour overrides go with it,
- * because an override that survived would keep editing the mode the user just
- * chose from a surface that no longer shows it (design spec §6).
+ * mount. A user arriving with another built-in or an imported file sees the
+ * segment of that theme's type and keeps it until they click — opening
+ * Settings is not consent to be converted. A click IS consent: the canonical
+ * id replaces whatever was stored.
  *
- * The confirmation is therefore scoped to the cases where something
- * unrecoverable is on the line — an imported file's selection, or overrides
- * the user can no longer see — and stays out of the way for a legacy built-in,
- * where nothing is lost that re-picking cannot restore.
+ * The confirmation is therefore scoped to the one case where something
+ * unrecoverable is on the line — an imported file's selection — and stays out
+ * of the way for a built-in, where nothing is lost that re-picking cannot
+ * restore.
  */
 export function ThemeModeSelector({
   presentation = "segments",
@@ -72,7 +69,7 @@ export function ThemeModeSelector({
     try {
       if (discardsData) {
         const confirmed = await ask(
-          `Switching to ${next === "light" ? "Light" : "Dark"} replaces your current theme and clears any colour overrides saved with it. Imported theme files stay on disk.`,
+          `Switching to ${next === "light" ? "Light" : "Dark"} replaces your current theme. Imported theme files stay on disk.`,
           {
             title: "Change appearance",
             kind: "warning",
@@ -84,7 +81,7 @@ export function ThemeModeSelector({
           return;
         }
       }
-      updateSettings({ themeId, colorOverrides: {} });
+      updateSettings({ themeId });
     } catch {
       // Fail safe, exactly like the reset row: a prompt that could not be
       // shown must not be treated as an answer.
@@ -140,7 +137,7 @@ export function ThemeModeSelector({
           >
             {presentation === "cards" && (
               <span aria-hidden="true">
-                <ThemeCardPreview preset={getPreset(CANONICAL_THEME_IDS[option.value])} />
+                <ThemeCardPreview theme={getTheme(CANONICAL_THEME_IDS[option.value])} />
               </span>
             )}
             <span>{option.label}</span>

@@ -304,9 +304,10 @@ export interface SessionTailAnswer {
  * (each tail belongs to the pane at the same index), so a `null` request (one
  * `validateResumeRequests` could not make sense of) answers `null` at that
  * position rather than being dropped and shifting every later sentence onto
- * the wrong pane. Each needed agent is scanned at most once per call, cached
- * locally rather than across calls, so every invocation sees the current state
- * of disk.
+ * the wrong pane. Each needed agent is scanned at most once per call, its candidate
+ * list cached locally rather than across calls, so every invocation lists the
+ * current state of disk (the Claude scanner reuses head reads of files it has
+ * already identified, never their mtimes).
  *
  * Allocation is TWO passes over the batch, and the order matters more than it
  * looks. Pass 1 honours every `preferredId`; pass 2 ranks whatever is left for

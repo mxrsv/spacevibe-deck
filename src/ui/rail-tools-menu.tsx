@@ -67,7 +67,7 @@ export function RailToolsMenu({ items, rect, trigger, onClose }: RailToolsMenuPr
     if (placed) {
       rows()[0]?.focus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only placement re-runs this; rows() reads the live DOM
   }, [placed]);
 
   return (

@@ -46,8 +46,19 @@ a chord temporarily suspends the menu accelerators so the key reaches the record
 
 ## Notifications
 
-- **Agent notifications** — a native alert when a background agent finishes or needs you
-  (off by default).
+- **Agent notifications** — on by default. A window in the background alerts when an agent
+  finishes, asks for input or approval, or fails. Click the alert to return to that pane.
+  If the pane has closed or moved to another window, the alert opens its original window.
+  An older off setting is enabled once by this update; turning it off afterward is remembered.
+  See [agent alerts](../../src/terminal/agent-notifier.ts).
+- **Open System Settings** opens the notifications settings on macOS or Windows, where the OS
+  controls delivery. On macOS, allow notifications when the first alert prompts, and use the
+  system's **Badges** switch to control the Dock count.
+  See [notification settings](../../src/ui/settings/sections/notifications-section.tsx).
+- **Dock badge (macOS)** — the total **N need you** count across open windows, including finished
+  panes you have not looked at yet. It clears at zero and stays independent of Deck's alert
+  toggle. Windows has alerts but no Dock badge.
+  See [attention count](../../src/ui/attention/attention-badge-sync.ts).
 
 ## About
 

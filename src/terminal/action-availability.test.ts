@@ -63,6 +63,10 @@ describe("feature action entrances share host-owned development identity", () =>
       expect(dispatch.mock.calls).toEqual(isDevelopment ? [["find"]] : []);
     },
   );
+  it("keeps every switch off in a unit test that pins no host, so unfinished regions stay out of unrelated suites", () => {
+    expect(import.meta.env.DEV).toBe(true);
+    expect(rendererReleaseSwitches().preview).toBe(false);
+  });
   it("does not capture a development value at import time", () => {
     vi.stubGlobal("__deckHost", {});
     expect(isRegisteredActionAvailable("find")).toBe(false);

@@ -225,7 +225,9 @@ function resolveOne(
  * scanned, rather than being skipped and shifting every later answer onto
  * the wrong pane. Each needed agent is scanned at most once per call — the
  * scan result is cached in a local map, not shared across calls, so every
- * `resolveResume` invocation sees the current state of disk.
+ * `resolveResume` invocation lists the current state of disk (the Claude
+ * scanner reuses head reads of files it has already identified, never their
+ * mtimes).
  */
 export function resolveResume(
   home: string,

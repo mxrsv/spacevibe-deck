@@ -100,6 +100,28 @@ export function shortcutLabel(
   return binding ? formatShortcutBinding(binding, platform) : null;
 }
 
+/**
+ * `shortcutLabel` as key caps for a `Chord`: `⌘⇧A` is three, `Ctrl+Shift+A` is three. Null when
+ * the action has no chord. A Windows chord ending in the `+` key keeps it as the last cap.
+ */
+export function shortcutCaps(
+  action: ActionId,
+  platform: DesktopPlatform = getDesktopEnvironment().platform,
+  keymap: readonly KeyBinding[] = keymapForOverrides(platform),
+): string[] | null {
+  const label = shortcutLabel(action, platform, keymap);
+  if (label === null) {
+    return null;
+  }
+  if (platform === "windows") {
+    return label.endsWith("+")
+      ? [...label.slice(0, -1).split("+").filter(Boolean), "+"]
+      : label.split("+");
+  }
+  const [, modifiers = "", key = ""] = /^([⌘⌥⇧⌃]*)(.*)$/u.exec(label) ?? [];
+  return [...Array.from(modifiers), key].filter(Boolean);
+}
+
 export function primaryModifierName(
   platform: DesktopPlatform = getDesktopEnvironment().platform,
 ): "Cmd" | "Ctrl" {

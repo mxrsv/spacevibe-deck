@@ -44,7 +44,7 @@ describe("createAgentNotifier", () => {
     const { deps, send } = makeDeps({ isEnabled: () => false });
     const notifier = createAgentNotifier(deps);
 
-    notifier.maybeNotify(makeNotification({ kind: "warning" }));
+    notifier.maybeNotify(makeNotification({ kind: "requested" }));
 
     expect(send).not.toHaveBeenCalled();
   });
@@ -63,6 +63,7 @@ describe("createAgentNotifier", () => {
 
     expect(send).toHaveBeenCalledOnce();
     const payload = send.mock.calls[0][0];
+    expect(payload.paneId).toBe(1);
     expect(payload.title).toContain("stackgrid");
     expect(payload.body).toContain("claude-code");
     expect(payload.body).toContain("finished");
@@ -70,7 +71,7 @@ describe("createAgentNotifier", () => {
 
   it.each([
     ["requested", "needs attention"],
-    ["warning", "warning"],
+    ["completed", "finished"],
     ["error", "error"],
   ] as const)("uses the fixed phrase for kind=%s", (kind, phrase) => {
     const { deps, send } = makeDeps();
@@ -90,6 +91,20 @@ describe("createAgentNotifier", () => {
 
     expect(send).toHaveBeenCalledOnce();
     expect(send.mock.calls[0][0].body).toBe("Agent finished");
+  });
+
+  it("never alerts for ongoing warning work, but alerts if it escalates", () => {
+    const { deps, send } = makeDeps();
+    const notifier = createAgentNotifier(deps);
+    notifier.maybeNotify(makeNotification({ kind: "warning" }));
+    notifier.notifyLatchTransition(makeNotification({ kind: "warning", revision: 2 }));
+    expect(send).not.toHaveBeenCalled();
+    notifier.notifyLatchTransition(makeNotification({ kind: "error", revision: 3 }));
+    expect(send).toHaveBeenCalledExactlyOnceWith({
+      title: "my-workspace",
+      body: "claude-code error",
+      paneId: 1,
+    });
   });
 
   it("never notifies for the non-actionable 'none' kind", () => {
@@ -169,7 +184,7 @@ describe("createAgentNotifier", () => {
 
     notifier.maybeNotify(
       makeNotification({
-        kind: "warning",
+        kind: "requested",
         workspaceLabel: "my-workspace",
         agentLabel: "claude-code",
       }),
@@ -180,7 +195,7 @@ describe("createAgentNotifier", () => {
     // Exact equality, not `.toContain` — this fails if the notifier ever
     // injects any extra/other content beyond the two labels + fixed phrase.
     expect(payload.title).toBe("my-workspace");
-    expect(payload.body).toBe("claude-code warning");
+    expect(payload.body).toBe("claude-code needs attention");
   });
 
   it("carries an OSC-like string placed in workspaceLabel (an actual field) verbatim into the title, with nothing else appended", () => {
@@ -215,7 +230,7 @@ describe("createAgentNotifier", () => {
     expect(send).toHaveBeenCalledOnce();
 
     // A lower, out-of-order revision must not fire.
-    notifier.maybeNotify(makeNotification({ paneId: 4, revision: 4, kind: "warning" }));
+    notifier.maybeNotify(makeNotification({ paneId: 4, revision: 4, kind: "requested" }));
     expect(send).toHaveBeenCalledOnce();
 
     // If the lower revision had overwritten the stored value downward, a
@@ -229,8 +244,12 @@ describe("createAgentNotifier", () => {
       const { deps, send } = makeDeps();
       const notifier = createAgentNotifier(deps);
 
-      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "warning" }));
-      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "warning" }));
+      notifier.notifyLatchTransition(
+        makeNotification({ paneId: 1, revision: 1, kind: "requested" }),
+      );
+      notifier.notifyLatchTransition(
+        makeNotification({ paneId: 1, revision: 2, kind: "requested" }),
+      );
 
       expect(send).toHaveBeenCalledOnce();
     });
@@ -239,9 +258,13 @@ describe("createAgentNotifier", () => {
       const { deps, send } = makeDeps();
       const notifier = createAgentNotifier(deps);
 
-      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 1, kind: "warning" }));
+      notifier.notifyLatchTransition(
+        makeNotification({ paneId: 1, revision: 1, kind: "requested" }),
+      );
       notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 2, kind: "none" }));
-      notifier.notifyLatchTransition(makeNotification({ paneId: 1, revision: 3, kind: "warning" }));
+      notifier.notifyLatchTransition(
+        makeNotification({ paneId: 1, revision: 3, kind: "requested" }),
+      );
 
       expect(send).toHaveBeenCalledTimes(2);
     });
@@ -262,7 +285,7 @@ describe("createAgentNotifier", () => {
     it("prune clears stale latch and revision state", () => {
       const { deps, send } = makeDeps();
       const notifier = createAgentNotifier(deps);
-      const transition = makeNotification({ paneId: 1, revision: 1, kind: "warning" });
+      const transition = makeNotification({ paneId: 1, revision: 1, kind: "requested" });
 
       notifier.notifyLatchTransition(transition);
       notifier.prune([]);
@@ -283,14 +306,14 @@ describe("createAgentNotifier", () => {
         const notifier = createAgentNotifier(deps);
 
         notifier.notifyLatchTransition(
-          makeNotification({ paneId: 1, revision: 1, kind: "warning" }),
+          makeNotification({ paneId: 1, revision: 1, kind: "requested" }),
         );
         expect(send).not.toHaveBeenCalled();
 
         enabled = true;
         focused = false;
         notifier.notifyLatchTransition(
-          makeNotification({ paneId: 1, revision: 2, kind: "warning" }),
+          makeNotification({ paneId: 1, revision: 2, kind: "requested" }),
         );
         expect(send).not.toHaveBeenCalled();
 

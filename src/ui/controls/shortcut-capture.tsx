@@ -49,23 +49,20 @@ export function formatChords(
     .join(" · ");
 }
 
-interface ShortcutCaptureProps {
+interface ChordRecordingOptions {
   readonly action: ActionId;
-  /** Action name, for the control's accessible label. */
-  readonly label: string;
-  readonly chords: readonly Chord[];
   readonly platform: DesktopPlatform;
   /** An empty array unbinds; the caller decides how to persist it. */
   readonly onCommit: (chords: readonly Chord[]) => void;
 }
 
-export function ShortcutCapture({
-  action,
-  label,
-  chords,
-  platform,
-  onCommit,
-}: ShortcutCaptureProps) {
+/**
+ * The recorder behind every chord control, the pill below and the Command Settings row.
+ * While `listening` it owns the keyboard: keys reach it in the capture phase and go no
+ * further, so they never reach the PTY, the app's shortcut handler or a surface's own
+ * Escape. A control wires `toggle` to its press and `cancel` to its blur.
+ */
+export function useChordRecording({ action, platform, onCommit }: ChordRecordingOptions) {
   const listening = useSignal(false);
   const hint = useSignal<string>("press keys…");
   // Held in a ref so it is NOT an effect dependency. `onCommit` is a fresh
@@ -140,6 +137,43 @@ export function ShortcutCapture({
   }, [listening.value, action, platform]);
   /* oxlint-enable react-hooks/exhaustive-deps */
 
+  return {
+    listening,
+    hint,
+    toggle: (): void => {
+      // Reset the hint on the way IN, not in the effect cleanup: doing it on
+      // teardown wiped "add ⌘, ⌃ or ⌥" the instant it was shown.
+      hint.value = "press keys…";
+      listening.value = !listening.value;
+    },
+    // Clicking elsewhere, or tabbing away, ends the recording. Without this
+    // the flag survives the user losing interest, and every shortcut in the
+    // app stays dead until they come back and press Escape.
+    cancel: (): void => {
+      listening.value = false;
+    },
+  };
+}
+
+interface ShortcutCaptureProps {
+  readonly action: ActionId;
+  /** Action name, for the control's accessible label. */
+  readonly label: string;
+  readonly chords: readonly Chord[];
+  readonly platform: DesktopPlatform;
+  /** An empty array unbinds; the caller decides how to persist it. */
+  readonly onCommit: (chords: readonly Chord[]) => void;
+}
+
+export function ShortcutCapture({
+  action,
+  label,
+  chords,
+  platform,
+  onCommit,
+}: ShortcutCaptureProps) {
+  const { listening, hint, toggle, cancel } = useChordRecording({ action, platform, onCommit });
+
   const text = listening.value ? hint.value : formatChords(chords, action, platform);
 
   return (
@@ -149,18 +183,8 @@ export function ShortcutCapture({
         chords.length === 0 ? "cfg-chord--unbound" : ""
       }`}
       aria-label={`${label} shortcut: ${formatChords(chords, action, platform)}`}
-      onClick={() => {
-        // Reset the hint on the way IN, not in the effect cleanup: doing it on
-        // teardown wiped "add ⌘, ⌃ or ⌥" the instant it was shown.
-        hint.value = "press keys…";
-        listening.value = !listening.value;
-      }}
-      // Clicking elsewhere, or tabbing away, ends the recording. Without this
-      // the flag survives the user losing interest, and every shortcut in the
-      // app stays dead until they come back and press Escape.
-      onBlur={() => {
-        listening.value = false;
-      }}
+      onClick={toggle}
+      onBlur={cancel}
     >
       {text}
     </button>

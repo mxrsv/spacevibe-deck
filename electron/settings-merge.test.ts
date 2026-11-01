@@ -3,6 +3,23 @@ import { describe, expect, it } from "vitest";
 import { mergeSettings } from "./settings-merge";
 
 describe("mergeSettings", () => {
+  it("migrates notifications once and ignores a late window's migration after opt-out", () => {
+    const migrated = mergeSettings(
+      { agentNotifications: false, fontSize: 16 },
+      { agentNotificationsDefaultOn: true },
+    );
+    expect(migrated).toEqual({
+      agentNotifications: true,
+      agentNotificationsDefaultOn: true,
+      fontSize: 16,
+    });
+    const disabled = mergeSettings(migrated, { agentNotifications: false });
+    expect(mergeSettings(disabled, { agentNotificationsDefaultOn: true })).toEqual({
+      agentNotifications: false,
+      agentNotificationsDefaultOn: true,
+      fontSize: 16,
+    });
+  });
   it("replaces a patched key and keeps the rest", () => {
     expect(mergeSettings({ fontSize: 13, theme: "dark" }, { fontSize: 15 })).toEqual({
       fontSize: 15,
@@ -60,6 +77,15 @@ describe("mergeSettings", () => {
     expect(
       mergeSettings({ fontSize: 13, explorerOpen: true, explorerWidth: 260 }, { fontSize: 15 }),
     ).toEqual({ fontSize: 15 });
+  });
+
+  it("drops the colour overrides the explicit theme model retired", () => {
+    expect(
+      mergeSettings(
+        { themeId: "tokyo-night", colorOverrides: { background: "#101014" } },
+        { fontSize: 15 },
+      ),
+    ).toEqual({ themeId: "tokyo-night", fontSize: 15 });
   });
 
   it("keeps unknown keys that are not retired", () => {

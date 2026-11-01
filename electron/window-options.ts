@@ -15,8 +15,8 @@ export interface OverlayColors {
 /**
  * The overlay's colours until the renderer publishes the theme's own. They
  * mirror the pre-render ground: `color` is `--bg`'s default (`backgroundColor`
- * in `main.ts`, `FALLBACK_BG` in `src/lib/theme-vars.ts`) and `symbolColor` is
- * `--fg`'s (`FALLBACK_FG`). Same drift rule as `backgroundColor`: change one
+ * in `main.ts`, `DECK_DARK_THEME` in `src/settings/built-in-themes.ts`) and
+ * `symbolColor` is `--fg`'s in `:root`. Same drift rule as `backgroundColor`: change one
  * without the others and the caption buttons flash a colour the app never
  * shows again between window open and the first theme sync.
  */
@@ -29,8 +29,8 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 /**
  * Whether a renderer-supplied value may reach `setTitleBarOverlay`: `#rrggbb`
- * and nothing else. That is all the renderer derives (presets, validated
- * colour overrides and `mixHex`), and it leaves out `#rrggbbaa`, which
+ * and nothing else. That is all the renderer sends (a theme declares only
+ * opaque `#rrggbb`), and it leaves out `#rrggbbaa`, which
  * Electron reads as AARRGGBB. A strict allowlist rather than a CSS parser —
  * the renderer is not the trust boundary, and a colour the OS cannot parse
  * falls back to system defaults instead of failing loudly.

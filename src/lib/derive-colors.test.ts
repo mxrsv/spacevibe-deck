@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  checkChromeTextContrast,
-  contrastRatio,
-  DARK_LUMINANCE_THRESHOLD,
-  deriveChromeColors,
-  luminance,
-  mixHex,
-} from "./derive-colors";
-import { THEME_PRESETS } from "../settings/themes";
+import { contrastRatio, deriveChromeColors, luminance, mixHex } from "./derive-colors";
+import { BUILT_IN_THEMES, DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
+import type { Theme } from "../settings/theme-schema";
 
 describe("luminance", () => {
   it("is 1 for white and 0 for black", () => {
@@ -41,325 +35,160 @@ describe("mixHex", () => {
   });
 });
 
+const lum = (color: string): number => luminance(color);
+
+/**
+ * Distance travelled ALONG the tone, not up the luminance axis.
+ *
+ * `tone` flips with the type: white on a dark theme, black on a light one.
+ * Written as a raw luminance difference the ladder reads backwards on a light
+ * theme — every surface sits BELOW its background there — and an assertion
+ * would fail a palette that is in fact perfectly ordered.
+ */
+const towardTone = (theme: Theme, color: string): number =>
+  theme.type === "dark" ? lum(color) - lum(theme.ui.bg) : lum(theme.ui.bg) - lum(color);
+
 describe("deriveChromeColors", () => {
-  it("mixes toward white on dark backgrounds, black on light ones", () => {
-    expect(deriveChromeColors("#16161e", "#c0caf5").tone).toBe("#ffffff");
-    expect(deriveChromeColors("#ffffff", "#333333").tone).toBe("#000000");
+  it("mixes toward white on dark themes, black on light ones", () => {
+    expect(deriveChromeColors(DECK_DARK_THEME).tone).toBe("#ffffff");
+    expect(deriveChromeColors(DECK_LIGHT_THEME).tone).toBe("#000000");
   });
 
   it("emits alpha hairlines from the tone, not the foreground", () => {
     // A line inside a surface belongs to the background ladder for the same
-    // reason a seam does (DL-2.3). The fg below is strongly tinted on purpose,
-    // so a foreground mix would show up in the assertion rather than being a
-    // matter of taste.
-    const chrome = deriveChromeColors("#16161e", "#c0caf5");
-    expect(chrome.hair).toBe("rgba(255, 255, 255, 0.12)");
-    expect(chrome.hairStrong).toBe("rgba(255, 255, 255, 0.2)");
-    const light = deriveChromeColors("#ffffff", "#333333");
+    // reason a seam does (DL-2.3).
+    const dark = deriveChromeColors(DECK_DARK_THEME);
+    expect(dark.hair).toBe("rgba(255, 255, 255, 0.12)");
+    expect(dark.hairStrong).toBe("rgba(255, 255, 255, 0.2)");
+    const light = deriveChromeColors(DECK_LIGHT_THEME);
     expect(light.hair).toBe("rgba(0, 0, 0, 0.12)");
     expect(light.hairStrong).toBe("rgba(0, 0, 0, 0.2)");
   });
 
+  it("is a function of the type and the two lowest surfaces only", () => {
+    // Every other declared token can move without moving a wash or a seam.
+    const recoloured: Theme = {
+      ...DECK_DARK_THEME,
+      ui: { ...DECK_DARK_THEME.ui, fg: "#c0caf5", accent: "#ff00ff", "chrome-1": "#333333" },
+    };
+    expect(deriveChromeColors(recoloured)).toEqual(deriveChromeColors(DECK_DARK_THEME));
+  });
+
+  // Literals, so the default theme's selection wash and frames cannot move as a
+  // side effect of a formula change.
+  it("keeps Deck Dark's washes and frames where they were reviewed", () => {
+    const chrome = deriveChromeColors(DECK_DARK_THEME);
+    expect(chrome.tabActiveBg).toBe("#2c2c2c");
+    expect(chrome.seamRaised).toBe("#292929");
+    expect(chrome.seamRecessed).toBe("#0f0f0f");
+    expect(chrome.sidebarSeam).toBe("#0f0f0f");
+  });
+
   describe("the focused stage surface", () => {
-    it("keeps both sidebar tokens distinct from the stage on every preset", () => {
-      for (const preset of THEME_PRESETS) {
-        const bg = preset.theme.background ?? "#16161e";
-        const fg = preset.theme.foreground ?? "#c0caf5";
-        const chrome = deriveChromeColors(bg, fg);
-        expect(chrome.sidebarBg).not.toBe(bg);
-        expect(chrome.sidebarSeam).not.toBe(bg);
-        expect(chrome.sidebarSeam).not.toBe(chrome.sidebarBg);
-      }
+    it.each(BUILT_IN_THEMES)(
+      "keeps both sidebar tokens distinct from the stage on $id",
+      (theme) => {
+        const chrome = deriveChromeColors(theme);
+        expect(theme.ui["sidebar-bg"]).not.toBe(theme.ui.bg);
+        expect(chrome.sidebarSeam).not.toBe(theme.ui.bg);
+        expect(chrome.sidebarSeam).not.toBe(theme.ui["sidebar-bg"]);
+      },
+    );
+
+    /**
+     * DL-18.7: on a dark theme the side columns rise off the stage, on a light
+     * one they recede below it. Signed by type rather than "distinct", because
+     * "distinct" alone would pass a theme that quietly swings the sidebar back
+     * under the stage.
+     */
+    it.each(BUILT_IN_THEMES)("raises $id's sidebar toward the tone", (theme) => {
+      expect(towardTone(theme, theme.ui["sidebar-bg"])).toBeGreaterThan(0);
     });
 
     /**
-     * The direction REVERSED for dark themes on 2026-08-19 (DL-18.7): the side
-     * columns used to be the darkest plane in the window and are now the first
-     * plane above the stage. The assertion is signed by mode rather than
-     * dropped, because "distinct from the stage" alone would pass a build that
-     * quietly swings the sidebar back under it.
+     * The dark chrome ladder stacks on the sidebar: a popover and the column
+     * behind it must not read as one smudged plane.
      */
-    it("raises a dark theme's sidebar off the stage and sinks a light one's", () => {
-      for (const preset of THEME_PRESETS) {
-        const bg = preset.theme.background ?? "#16161e";
-        const fg = preset.theme.foreground ?? "#c0caf5";
-        const chrome = deriveChromeColors(bg, fg);
-        if (luminance(bg) < DARK_LUMINANCE_THRESHOLD) {
-          expect(luminance(chrome.sidebarBg)).toBeGreaterThan(luminance(bg));
-        } else {
-          expect(luminance(chrome.sidebarBg)).toBeLessThan(luminance(bg));
-        }
-      }
-    });
-
-    /**
-     * The reason the dark chrome ladder is measured from `sidebarBg` rather
-     * than from `bg`: at the old offsets a raised sidebar would have landed
-     * between `chrome1` and `chrome2`, so a popover and the column behind it
-     * read as one smudged plane. Ordering is what the change bought, so
-     * ordering is what is locked.
-     */
-    it("stacks every dark chrome surface above the sidebar", () => {
-      for (const preset of THEME_PRESETS) {
-        const bg = preset.theme.background ?? "#16161e";
-        const fg = preset.theme.foreground ?? "#c0caf5";
-        if (luminance(bg) >= DARK_LUMINANCE_THRESHOLD) {
-          continue;
-        }
-        const c = deriveChromeColors(bg, fg);
-        const ladder = [c.inputBg, c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg].map(luminance);
+    it.each(BUILT_IN_THEMES.filter((theme) => theme.type === "dark"))(
+      "stacks every chrome surface of $id above the sidebar",
+      (theme) => {
+        const { ui } = theme;
+        const ladder = [
+          ui["input-bg"],
+          ui["sidebar-bg"],
+          ui["chrome-1"],
+          ui["chrome-2"],
+          deriveChromeColors(theme).tabActiveBg,
+        ].map(lum);
         for (let step = 1; step < ladder.length; step += 1) {
           expect(ladder[step]).toBeGreaterThan(ladder[step - 1]);
         }
         // The input recedes toward the stage but never falls into it.
-        expect(luminance(c.inputBg)).toBeGreaterThan(luminance(bg));
-      }
-    });
-
-    /**
-     * The owner's neutral-black sidebar stays above the deepest pane.
-     * Pinned on the background, not the preset id: override that background
-     * and the pin correctly stops applying (DL-2.2).
-     */
-    it("pins the sidebar Deck's own dark background was given", () => {
-      // Read off the preset rather than written twice: the pin is keyed on
-      // deck-dark's background, so a literal here would stay green on the day
-      // somebody edits that background and silently retires the pin.
-      const deckDark = THEME_PRESETS[0];
-      expect(deckDark.id).toBe("deck-dark");
-      const bg = deckDark.theme.background;
-      expect(deriveChromeColors(bg, deckDark.theme.foreground).sidebarBg).toBe("#141414");
-      // And it is the BACKGROUND that claims it, not the preset: one channel
-      // away is a different theme, which derives its own sidebar.
-      expect(deriveChromeColors("#0a0a0b", "#e7e7e7").sidebarBg).not.toBe("#141414");
-    });
-
-    it("keeps the legacy pin for backgrounds that still use it", () => {
-      // `#17181c` is no preset's background any more, so nothing else in the
-      // suite reaches this entry: deleting it would turn no test red while
-      // silently changing the sidebar of every theme still set to that colour.
-      expect(deriveChromeColors("#17181c", "#c0caf5").sidebarBg).toBe("#161b22");
-    });
-
-    it("preserves the distinction for light and pure-black overrides", () => {
-      for (const [bg, fg] of [
-        ["#ffffff", "#333333"],
-        ["#000000", "#ffffff"],
-      ] as const) {
-        expect(deriveChromeColors(bg, fg).sidebarBg).not.toBe(bg);
-      }
-    });
+        expect(lum(ui["input-bg"])).toBeGreaterThan(lum(ui.bg));
+      },
+    );
   });
 
   /**
    * The seam ladder is a set of RELATIONSHIPS, not four hex literals: what was
    * wrong before was never a particular value, it was that a structural line
-   * sat further from its surface than the surface sat from its neighbour. A
-   * literal assertion would pass the day someone reintroduces exactly that.
+   * sat further from its surface than the surface sat from its neighbour.
    */
   describe("the seam ladder", () => {
-    const lum = (color: string): number => luminance(color);
-
-    /**
-     * Distance travelled ALONG the tone, not up the luminance axis.
-     *
-     * Every chrome surface is `bg` mixed toward `tone`, and `tone` flips with
-     * the background: white on a dark theme, black on a light one. Written as
-     * a raw luminance difference this ladder reads backwards on a light theme
-     * — every surface sits BELOW its background there — and the assertion
-     * would fail a palette that is in fact perfectly ordered. Signing it by
-     * the tone states the relationship the ladder actually claims, and it was
-     * only ever exercised on dark presets until `deck-light` arrived
-     * (2026-08-19).
-     */
-    const towardTone = (bg: string, color: string): number =>
-      luminance(bg) < DARK_LUMINANCE_THRESHOLD ? lum(color) - lum(bg) : lum(bg) - lum(color);
-
-    it("puts a shell seam BELOW the surface it edges, on every preset", () => {
-      for (const preset of THEME_PRESETS) {
-        const bg = preset.theme.background ?? "#16161e";
-        const fg = preset.theme.foreground ?? "#c0caf5";
-        const c = deriveChromeColors(bg, fg);
-        const towardChrome = towardTone(bg, c.chrome1);
-        const towardSeam = towardTone(bg, c.seamRecessed);
-        // Between the two surfaces, and nearer the darker one — a gutter, not
-        // a stroke laid on top.
-        expect(towardSeam).toBeGreaterThan(0);
-        expect(towardSeam).toBeLessThan(towardChrome);
-      }
+    it.each(BUILT_IN_THEMES)("puts a shell seam BELOW the surface it edges on $id", (theme) => {
+      const c = deriveChromeColors(theme);
+      const towardSeam = towardTone(theme, c.seamRecessed);
+      // Between the two surfaces, and nearer the stage — a gutter, not a stroke
+      // laid on top.
+      expect(towardSeam).toBeGreaterThan(0);
+      expect(towardSeam).toBeLessThan(towardTone(theme, theme.ui["chrome-1"]));
     });
 
-    it("keeps the surface step louder than the seam that marks it", () => {
-      for (const preset of THEME_PRESETS) {
-        const bg = preset.theme.background ?? "#16161e";
-        const fg = preset.theme.foreground ?? "#c0caf5";
-        const c = deriveChromeColors(bg, fg);
-        const step = Math.abs(lum(c.chrome1) - lum(bg));
-        const seam = Math.abs(lum(c.seamRecessed) - lum(c.chrome1));
+    it.each(BUILT_IN_THEMES)(
+      "keeps the surface step louder than the seam that marks it on $id",
+      (theme) => {
+        const c = deriveChromeColors(theme);
+        const step = Math.abs(lum(theme.ui["chrome-1"]) - lum(theme.ui.bg));
+        const seam = Math.abs(lum(c.seamRecessed) - lum(theme.ui["chrome-1"]));
         expect(seam).toBeLessThan(step);
-      }
-    });
+      },
+    );
 
-    it("raises a floating frame above the surface it frames", () => {
-      const c = deriveChromeColors("#16161e", "#c0caf5");
-      expect(lum(c.seamRaised)).toBeGreaterThan(lum(c.chrome2));
-    });
+    it.each(BUILT_IN_THEMES)(
+      "raises a floating frame above the panel it frames on $id",
+      (theme) => {
+        const c = deriveChromeColors(theme);
+        expect(towardTone(theme, c.seamRaised)).toBeGreaterThan(
+          towardTone(theme, theme.ui["chrome-2"]),
+        );
+      },
+    );
 
     it("keeps the in-surface divider alpha, so it adapts to its ground", () => {
-      const c = deriveChromeColors("#16161e", "#c0caf5");
-      expect(c.seamDivider).toBe("rgba(255, 255, 255, 0.12)");
-      expect(deriveChromeColors("#ffffff", "#333333").seamDivider).toBe("rgba(0, 0, 0, 0.12)");
+      expect(deriveChromeColors(DECK_DARK_THEME).seamDivider).toBe("rgba(255, 255, 255, 0.12)");
+      expect(deriveChromeColors(DECK_LIGHT_THEME).seamDivider).toBe("rgba(0, 0, 0, 0.12)");
     });
 
     it("draws the pane split one step louder than the strip's edge", () => {
-      const c = deriveChromeColors("#16161e", "#c0caf5");
-      expect(c.seamSplit).toBe("rgba(255, 255, 255, 0.2)");
-      expect(deriveChromeColors("#ffffff", "#333333").seamSplit).toBe("rgba(0, 0, 0, 0.2)");
+      expect(deriveChromeColors(DECK_DARK_THEME).seamSplit).toBe("rgba(255, 255, 255, 0.2)");
+      expect(deriveChromeColors(DECK_LIGHT_THEME).seamSplit).toBe("rgba(0, 0, 0, 0.2)");
     });
   });
 
   describe("the interaction-state pair (DL-21)", () => {
-    // The rule §21 exists to prevent is one declaration serving both states,
-    // which is what the reviewed direction sheet shipped on the rail and the
-    // settings nav: hovering an unselected row painted "selected".
-    it("keeps hover quieter than selection on every preset", () => {
-      const pairs: readonly (readonly [string, string])[] = [
-        ...THEME_PRESETS.map(
-          (preset) => [preset.theme.background, preset.theme.foreground] as const,
-        ),
-        ["#ffffff", "#333333"],
-      ];
-      for (const [bg, fg] of pairs) {
-        const c = deriveChromeColors(bg, fg);
-        expect(c.stateHoverBg).not.toBe(c.tabActiveBg);
-      }
+    // The rule §21 exists to prevent is one declaration serving both states:
+    // hovering an unselected row painted "selected".
+    it.each(BUILT_IN_THEMES)("keeps hover quieter than selection on $id", (theme) => {
+      const c = deriveChromeColors(theme);
+      expect(c.stateHoverBg).not.toBe(c.tabActiveBg);
+      expect(towardTone(theme, c.tabActiveBg)).toBeGreaterThan(
+        towardTone(theme, theme.ui["chrome-2"]),
+      );
     });
 
     it("mixes the hover wash from the tone, not the foreground", () => {
-      // From `fg` it would carry the terminal's text hue into a wash that is
-      // meant to be colourless — the mistake DL-2.3 corrected for seams. The
-      // fg below is a strongly tinted one (an imported theme's, since the
-      // built-ins are neutral now), so a foreground mix would be visible in
-      // the assertion rather than a matter of taste.
-      expect(deriveChromeColors("#16161e", "#c0caf5").stateHoverBg).toBe(
-        "rgba(255, 255, 255, 0.06)",
-      );
-      expect(deriveChromeColors("#ffffff", "#333333").stateHoverBg).toBe("rgba(0, 0, 0, 0.06)");
+      expect(deriveChromeColors(DECK_DARK_THEME).stateHoverBg).toBe("rgba(255, 255, 255, 0.06)");
+      expect(deriveChromeColors(DECK_LIGHT_THEME).stateHoverBg).toBe("rgba(0, 0, 0, 0.06)");
     });
-  });
-
-  // The spec's contrast floors — the app-wide standard. Every preset plus
-  // the known-bad overrides must pass.
-  const cases: Array<{ label: string; bg: string; fg: string }> = [
-    ...THEME_PRESETS.map((preset) => ({
-      label: preset.label,
-      bg: preset.theme.background,
-      fg: preset.theme.foreground,
-    })),
-    // Tokyo Night comment color used as fg override (1.02:1 raw on inputs)
-    { label: "low-contrast fg override", bg: "#1a1b26", fg: "#565f89" },
-    // Light background override that broke the old white-mix chrome
-    { label: "light bg override", bg: "#ffffff", fg: "#c0caf5" },
-    { label: "light bg, light fg", bg: "#fafafa", fg: "#e0e0e0" },
-  ];
-
-  for (const { label, bg, fg } of cases) {
-    it(`meets all contrast floors for ${label}`, () => {
-      const c = deriveChromeColors(bg, fg);
-      // Checked against EVERY surface, not just chrome1: the panel body is
-      // chrome2 and the active row is tabActiveBg, and both are lighter.
-      const surfaces = [c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg];
-      for (const surface of [c.inputBg, ...surfaces]) {
-        expect(contrastRatio(c.textPrimary, surface)).toBeGreaterThanOrEqual(8);
-      }
-      for (const surface of surfaces) {
-        expect(contrastRatio(c.textMuted, surface)).toBeGreaterThanOrEqual(6);
-        // 4.5, not 3 — this token styles 10.5px text (WCAG AA "normal").
-        expect(contrastRatio(c.textFaint, surface)).toBeGreaterThanOrEqual(4.5);
-      }
-    });
-
-    it(`keeps the text ladder ordered for ${label}`, () => {
-      // Regression guard: deriving each tone from `bg` independently used to
-      // inverse the ladder on a dim-foreground theme — textMuted came out
-      // LOUDER than textPrimary. primary >= muted >= faint, on every surface.
-      const c = deriveChromeColors(bg, fg);
-      for (const surface of [c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg]) {
-        const primary = contrastRatio(c.textPrimary, surface);
-        const muted = contrastRatio(c.textMuted, surface);
-        const faint = contrastRatio(c.textFaint, surface);
-        expect(primary).toBeGreaterThanOrEqual(muted);
-        expect(muted).toBeGreaterThanOrEqual(faint);
-      }
-    });
-  }
-
-  it("keeps the three tones visually distinct on every preset", () => {
-    // The floors are stacked (8 / 6 / 4.5) so the label/description
-    // hierarchy in a config row survives; guard they never converge.
-    for (const preset of THEME_PRESETS) {
-      const c = deriveChromeColors(preset.theme.background, preset.theme.foreground);
-      expect(new Set([c.textPrimary, c.textMuted, c.textFaint]).size).toBe(3);
-    }
-  });
-
-  it("raises Tokyo Night's fg the few steps the 8:1 primary floor needs", () => {
-    // Its raw contrast falls short of 8:1 on the tightest surface (6.54:1 on
-    // tabActiveBg), so `ensureContrast` steps it toward `tone` — an
-    // intentional consequence of the floor, not a regression. The result is
-    // still neutral: the fg it starts from is now a gray, so raising it toward
-    // white cannot reintroduce a hue. The literal rose from `#d9d9d9` on
-    // 2026-08-19 with the raised sidebar: the active row is lighter than it
-    // was, so the ink has to climb further to clear it.
-    expect(deriveChromeColors("#16161e", "#cbcbcb").textPrimary).toBe("#e0e0e0");
-  });
-
-  it("keeps the built-in text ladder neutral", () => {
-    // The whole point of the 2026-08-17 change: chrome ink must not carry the
-    // palette's blue. Any residue comes from mixing back toward a tinted
-    // background, which is a fraction of a percent, so hold every tone under a
-    // 6% saturation ceiling rather than demanding a literal gray.
-    const saturation = (hex: string): number => {
-      const v = Number.parseInt(hex.slice(1), 16);
-      const channels = [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
-      const max = Math.max(...channels);
-      const min = Math.min(...channels);
-      return max === 0 ? 0 : (max - min) / max;
-    };
-    for (const preset of THEME_PRESETS) {
-      const c = deriveChromeColors(preset.theme.background, preset.theme.foreground);
-      for (const tone of [c.textPrimary, c.textMuted, c.textFaint]) {
-        expect(saturation(tone)).toBeLessThan(0.06);
-      }
-    }
-  });
-});
-
-describe("checkChromeTextContrast", () => {
-  it("accepts every built-in theme", () => {
-    for (const preset of THEME_PRESETS) {
-      expect(checkChromeTextContrast(preset.theme.background, preset.theme.foreground)).toEqual({
-        ok: true,
-      });
-    }
-  });
-
-  it("rejects a mid-gray theme whose derived text cannot meet DL-3.5", () => {
-    const result = checkChromeTextContrast("#777777", "#777777");
-
-    expect(result.ok).toBe(false);
-    if (result.ok) {
-      return;
-    }
-    expect(result.failures).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          token: "textPrimary",
-          surface: "inputBg",
-          required: 8,
-        }),
-      ]),
-    );
-    expect(result.reason).toContain("DL-3.5");
   });
 });

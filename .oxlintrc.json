@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "plugins": ["react", "react_perf", "typescript", "import", "jest", "vitest"],
+  "jsPlugins": ["./scripts/oxlint-plugin-deck/index.mjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -24,7 +25,16 @@
     "import/no-duplicates": ["error", { "prefer-inline": true }],
     "import/no-named-as-default-member": "off",
     "import/no-unassigned-import": "off",
-    "max-lines": ["warn", 300]
+    "max-lines": ["warn", 300],
+    // React Compiler checks, on by default since oxlint 1.80. The renderer is Preact with
+    // signals and no compiler, so their findings (mutating a ref, reading one in render)
+    // describe idioms this code relies on, not bugs.
+    "react/immutability": "off",
+    "react/purity": "off",
+    "react/refs": "off",
+    "deck/require-suppression-reason": "error",
+    "deck/no-unreasoned-skip": "error",
+    "deck/no-arbitrary-font-size": "error"
   },
   "overrides": [
     {
@@ -41,6 +51,10 @@
               {
                 "name": "node-pty",
                 "message": "PTYs belong to the main process; the renderer goes through src/host/."
+              },
+              {
+                "name": "cn",
+                "message": "Import cn from @/lib/cn: the bare package drops Deck's type-scale sizes such as text-code."
               }
             ],
             "patterns": [
