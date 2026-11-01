@@ -26,12 +26,11 @@ import { WorkspaceIcon } from "./workspace-icon";
 import { buildRailAvatars } from "./agent-rail-collapsed-model";
 import { RailAvatarColumn } from "./agent-rail-column";
 import { RailCreate } from "./rail-create";
-import { isReleaseSwitchEnabled } from "../lib/release-switches";
-import { rendererReleaseSwitches } from "../terminal/action-availability";
 import { ProjectRail } from "./project-rail/project-rail";
 import { ProjectRailAttentionPill } from "./project-rail/project-rail-attention-pill";
 import { stageAttentionPillEnabled } from "./shell-stage";
 import { onProjectRailKeyDown, ProjectRailControls } from "./project-rail/project-rail-controls";
+import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { ProjectRailFooter } from "./project-rail/project-rail-footer";
 import type { SidebarActionsProps } from "./sidebar-actions";
 
@@ -144,14 +143,15 @@ export interface AgentRailProps {
   footer?: ComponentChildren;
   /**
    * What `footer` was built from. The project-first rail (`projectRail` switch) draws its own
-   * foot from these callbacks instead of mounting `footer`, with `usageSummary` beneath its
-   * buttons; omitted, it mounts `footer` as the cluster rail does.
+   * foot from these callbacks instead of mounting `footer`, with `usageSummary` as rings between
+   * its buttons; omitted, it mounts `footer` as the cluster rail does.
    */
   readonly tools?: SidebarActionsProps;
   /**
    * The sidebar is collapsed (DL-27.29): the rail draws a column of project
    * avatars instead of the tree. Electron only — Tauri's `RepositoryRail`
-   * ignores it and the column is hidden there (DL-18.9).
+   * ignores it and the column is hidden there (DL-18.9). The project rail (`projectRail`
+   * switch) has no column: collapsed hides it.
    */
   readonly collapsed?: boolean;
   /**
@@ -313,7 +313,10 @@ function WorktreeCardRail(props: AgentRailProps) {
     />
   );
 
-  if (props.collapsed === true) {
+  // The project rail has no avatar column: collapsed hides it (`App` writes the hidden state to
+  // `:root`), and the strip's sidebar control is the way back. It stays mounted, so its folds
+  // and focus survive.
+  if (props.collapsed === true && !projectRailEnabled()) {
     return (
       <RailAvatarColumn
         create={create("column")}
@@ -334,9 +337,9 @@ function WorktreeCardRail(props: AgentRailProps) {
 
   // Read at render time, never at import (release-switch convention). On, the project-first
   // rail replaces the create row, the cluster list and the tools row; the usage summary moves
-  // into the new foot, and the collapsed avatar column above is still the old one. Rows and
-  // tools call the same callbacks.
-  if (isReleaseSwitchEnabled("projectRail", rendererReleaseSwitches())) {
+  // into the new foot, and collapsed hides the rail instead of drawing the avatar column. Rows
+  // and tools call the same callbacks.
+  if (projectRailEnabled()) {
     return (
       <nav class="asr-rail asr-rail--mounted" aria-label="Agents" onKeyDown={onProjectRailKeyDown}>
         <ProjectRailControls

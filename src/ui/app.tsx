@@ -219,6 +219,7 @@ import { available as gitChangesAvailable } from "../host/git-changes-host";
 import { installChangesTriggers } from "../files/changes/changes-controller";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { RailAgentLimits } from "./usage/agent-usage-summary";
+import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { DockPanel } from "./dock/dock-panel";
 import { AgentDock } from "./agent-dock/agent-dock";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
@@ -1703,7 +1704,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     applySidebarShell(document.documentElement, {
       width: sidebarPaintWidth(),
       collapsed: effectiveSidebarCollapsed(),
-      column: railAvailable,
+      // The project rail has no avatar column: collapsed hides the rail, the strip's control returns it.
+      column: railAvailable && !projectRailEnabled(),
       sidebar,
     });
   });

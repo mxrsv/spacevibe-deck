@@ -86,13 +86,22 @@ describe("AgentRail behind the projectRail switch", () => {
     expect(host.querySelector('input[aria-label="Search sessions"]')).toBeNull();
   });
 
-  it("leaves the collapsed avatar column alone when the switch is on", async () => {
+  it("draws no avatar column when collapsed with the switch on: the rail stays mounted for the stylesheet to hide", async () => {
     pinHost(true);
     mount({ collapsed: true });
     await settle();
 
+    expect(host.querySelector(".asr-rail--column")).toBeNull();
+    expect(rows().length).toBeGreaterThan(0);
+  });
+
+  it("keeps the avatar column when collapsed with the switch off", async () => {
+    pinHost(false);
+    mount({ collapsed: true });
+    await settle();
+
+    expect(host.querySelector(".asr-rail--column")).not.toBeNull();
     expect(rows()).toHaveLength(0);
-    expect(host.querySelector(".asr-cluster")).toBeNull();
   });
 
   it("raises the same callback with the same arguments as the shipped rows", async () => {
