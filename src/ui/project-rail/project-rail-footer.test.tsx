@@ -160,7 +160,7 @@ describe("the project rail's foot", () => {
     expect(props.onOpenPrompts).not.toHaveBeenCalled();
   });
 
-  it("holds the Prompt Board popover and the usage line inside the foot, buttons first", async () => {
+  it("holds the Prompt Board popover and the usage summary inside the foot, rings between the buttons", async () => {
     mount({
       tools: tools({ promptsOpen: true, promptPopover: <div data-testid="popover" /> }),
       usageSummary: <div data-testid="usage">Claude 77% · 7d</div>,
@@ -171,8 +171,14 @@ describe("the project rail's foot", () => {
     const usage = slot?.querySelector('[data-testid="usage"]');
     expect(slot?.querySelector('[data-testid="popover"]')).not.toBeNull();
     expect(usage?.textContent).toBe("Claude 77% · 7d");
+    // Inside the preset row, so the ring's `text-*` utilities resolve; Settings before it, Tools after.
+    expect(usage?.closest(".ui-preset")).not.toBeNull();
     expect(
-      toolsButton()?.compareDocumentPosition(usage as Node) === Node.DOCUMENT_POSITION_FOLLOWING,
+      iconButton("Settings")?.compareDocumentPosition(usage as Node) ===
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(true);
+    expect(
+      toolsButton()?.compareDocumentPosition(usage as Node) === Node.DOCUMENT_POSITION_PRECEDING,
     ).toBe(true);
     // Beside the foot, not twice: the rail does not mount the summary again.
     expect(host.querySelectorAll('[data-testid="usage"]')).toHaveLength(1);

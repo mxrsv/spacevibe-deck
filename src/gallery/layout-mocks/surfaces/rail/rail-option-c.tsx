@@ -22,6 +22,7 @@ import {
 import { Input } from "../../../../ui/controls/input";
 import { Chord } from "../../../../ui/blocks/chord";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../ui/controls/tooltip";
+import { ProjectRailUsageRings } from "../../../../ui/project-rail/project-rail-usage-rings";
 import { AgentStateMark, TrafficLights } from "../../agent-parts";
 import { AGENTS } from "../../layout-fixture";
 import type { PanelOption } from "../surface-types";
@@ -38,6 +39,26 @@ import { ArchivedSection, HiddenSection, ProjectSection } from "./rail-option-c-
 
 const DRAG = "[-webkit-app-region:drag]";
 const NO_DRAG = "[-webkit-app-region:no-drag]";
+
+const HOUR_MS = 60 * 60_000;
+
+/** Illustrative allowance for the footer's rings; the same shape the usage summary reads. */
+function limitsSpecimen(now: number) {
+  return [
+    {
+      agent: "claude" as const,
+      state: "ready" as const,
+      observedAtMs: now,
+      windows: [{ durationMinutes: 10080, usedPercent: 23, resetsAtMs: now + 72 * HOUR_MS }],
+    },
+    {
+      agent: "codex" as const,
+      state: "ready" as const,
+      observedAtMs: now,
+      windows: [{ durationMinutes: 10080, usedPercent: 1, resetsAtMs: now + 96 * HOUR_MS }],
+    },
+  ];
+}
 
 const TOOLS = [
   { label: "Session history", keys: "⌘⇧Y", icon: Clock01Icon },
@@ -107,6 +128,10 @@ function Footer({
           <Chord keys={["⌘", ","]} />
         </TooltipContent>
       </Tooltip>
+      <ProjectRailUsageRings
+        snapshot={limitsSpecimen(Date.now())}
+        onOpenUsage={() => onTool("Token usage")}
+      />
       <div className="flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger
