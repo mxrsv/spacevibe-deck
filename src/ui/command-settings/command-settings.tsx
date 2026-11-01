@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { activeKeyIn, isNavigable, type CommandItem } from "../../settings/command-hits";
 import { initSettings, settingsLoadState } from "../../settings/settings-store";
 import { useNoteAgentListWhileSettingsOpen } from "../../launcher/agent-install-control";
 import { LoadError } from "../controls/load-error";
 import { settingsTarget } from "../settings/settings-focus-store";
 import { AreaChips, Footer, ResultsStatus, SearchField } from "./command-settings-frame";
+import { clearFieldDrafts } from "./command-settings-field";
 import { handleCommandKey } from "./command-settings-keys";
 import { enterLabel, List } from "./command-settings-list";
 import { rowDomId } from "./command-settings-live";
@@ -41,6 +42,9 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
   const rootRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const itemsRef = useRef<readonly CommandItem[]>([]);
+  const pressedScrim = useRef(false);
+  // Drafts kept for a collapsed row belong to this opening only: cleared before any field reads them.
+  useState(clearFieldDrafts);
 
   const query = commandQuery.value;
   const scope = commandScope.value;
@@ -105,18 +109,25 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
   }, [activeKey]);
 
   const focusSearch = (): void => searchRef.current?.focus({ preventScroll: true });
-  const esc = query !== "" ? "Clear" : scope !== null ? "Back" : "Close";
   return (
-    // The scrim is the pointer's way out: it covers the whole window, and a press that lands on
-    // it (not on the panel it holds) closes. `pointerdown`, not `click`, so a drag that starts
-    // in a field and ends on the scrim does not close. `fixed`, not `absolute`: this mounts
-    // inside the stage, and the dim has to reach the rail and the frame row too. `no-drag`
-    // because the frame row's drag strip would otherwise swallow a press on the top 34px
-    // (which also means the window cannot be dragged while Settings is open).
+    // The scrim is the pointer's way out: it covers the whole window, and a press that starts on
+    // it (not on the panel it holds) and ends there closes. Close on `click`, not `pointerdown`:
+    // the press's own mousedown then lands on the scrim, which cannot take focus, so focus goes
+    // to the body and the close hands it back to where it came from; closing on pointerdown let
+    // the same mousedown focus whatever sat behind the scrim. A drag that starts in a field and
+    // ends on the scrim does not close. `fixed`, not `absolute`: this mounts inside the stage,
+    // and the dim has to reach the rail and the frame row too. `no-drag` because the frame row's
+    // drag strip would otherwise swallow a press on the top 34px (which also means the window
+    // cannot be dragged while Settings is open).
     <div
       className="fixed inset-0 z-35 flex items-start justify-center bg-black/55 pt-[64px] [-webkit-app-region:no-drag]"
       onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        pressedScrim.current = event.target === event.currentTarget;
+      }}
+      onClick={(event) => {
+        const pressed = pressedScrim.current;
+        pressedScrim.current = false;
+        if (pressed && event.target === event.currentTarget) onClose();
       }}
     >
       <section
@@ -155,7 +166,7 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
             />
           </fieldset>
         </div>
-        <Footer move={items.some(isNavigable)} enter={enterLabel(current)} esc={esc} />
+        <Footer move={items.some(isNavigable)} enter={enterLabel(current)} esc="Close" />
       </section>
     </div>
   );

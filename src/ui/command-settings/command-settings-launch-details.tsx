@@ -79,6 +79,7 @@ export function LaunchDetails({ agent, command, locked }: LaunchDetailsProps) {
           allowEmpty
           keepRefused
           aria-label={`Command for ${agent.label}`}
+          draftKey={`launch:${agent.id}`}
           className="w-72"
           disabled={locked}
           spellcheck={false}
@@ -230,6 +231,7 @@ export function RuntimeDetails({
               allowEmpty
               keepRefused
               aria-label={`Additional models for ${agent.label}`}
+              draftKey={`models:${agent.id}`}
               className="w-72"
               disabled={locked}
               spellcheck={false}

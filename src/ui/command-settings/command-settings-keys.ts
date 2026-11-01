@@ -49,26 +49,19 @@ function inLiveRow(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(`[${LIVE_ROW_ATTRIBUTE}]`) !== null;
 }
 
-/** Escape: a control hands focus back to the search, then the query, the area, the surface. */
+/**
+ * Escape: a control hands focus back to the search; anywhere else it closes, in one press.
+ * A typed query or a chosen area is not an edit in progress (a draft in a field claims its own
+ * Escape before this runs), so neither of them makes the key a ladder.
+ */
 function escape(event: KeyboardEvent, context: CommandKeyContext): void {
   const { search } = context;
   const target = event.target;
   event.preventDefault();
   if ((isField(target) && target !== search) || inLiveRow(target)) {
     // Blur first: a text field commits its draft on blur, so leaving never drops what was typed.
-    // An UNCOMMITTED draft never gets here; the field reverts it and stops the event. Without
-    // this step the ladder below would clear the query or leave the area under a focused
-    // control, unmount the row, and strand focus on the body.
+    // An UNCOMMITTED draft never gets here; the field reverts it and stops the event.
     if (target instanceof HTMLElement) target.blur();
-    search?.focus({ preventScroll: true });
-    return;
-  }
-  if (commandQuery.peek() !== "") {
-    commandQuery.value = "";
-    return;
-  }
-  if (commandScope.peek() !== null) {
-    chooseArea(null);
     search?.focus({ preventScroll: true });
     return;
   }

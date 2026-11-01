@@ -39,6 +39,7 @@ export function CustomAgentDetails({
       <div className="flex min-h-7 items-center gap-2">
         <CommitField
           aria-label={`Name for ${agent.label}`}
+          draftKey={`name:${agent.id}`}
           className="w-40"
           disabled={locked}
           value={agent.label}
@@ -54,6 +55,7 @@ export function CustomAgentDetails({
         />
         <CommitField
           aria-label={`Command for ${agent.label}`}
+          draftKey={`identity-command:${agent.id}`}
           className="min-w-0 flex-1"
           disabled={locked}
           spellcheck={false}

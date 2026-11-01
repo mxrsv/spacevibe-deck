@@ -45,15 +45,18 @@ import { agentLaunchCommand } from "../../lib/launch-command";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
 import { agentsProbed, detectedAgents } from "../../terminal/agent-detection-store";
+import { CommandSettings } from "./command-settings";
 import { press, waitUntil } from "../controls/preset-test-kit";
 import { commandScope } from "./command-settings-state";
+
+let surface: Awaited<ReturnType<typeof open>>;
 
 beforeEach(async () => {
   resetCommandSettings();
   commandScope.value = "agents";
   detectedAgents.value = [{ name: "claude", path: "/bin/claude" }];
   agentsProbed.value = true;
-  await open();
+  surface = await open();
   await clickIn(rowOf("agent:claude")?.querySelector('[aria-label="Configure Claude Code"]'));
 });
 
@@ -162,5 +165,38 @@ describe("an installed agent's model list", () => {
     await pick("Default effort for Claude Code", "CLI default");
     await pick("Default model for Claude Code", "CLI default");
     expect(settings.value.agentRuntimeDefaults.claude).toBeUndefined();
+  });
+});
+
+describe("a draft in a row that folds", () => {
+  const configure = (): Promise<void> =>
+    clickIn(rowOf("agent:claude")?.querySelector('[aria-label="Configure Claude Code"]'));
+
+  it("is still there when the row opens again, unsaved", async () => {
+    const saved = command().value;
+    await typeInto(command(), "claude --half-typed");
+    await configure();
+    expect(document.querySelector('input[aria-label="Command for Claude Code"]')).toBeNull();
+
+    await configure();
+    expect(command().value).toBe("claude --half-typed");
+    expect(launched()).toBe(saved);
+  });
+
+  it("is dropped once Settings closes, and a saved value is never shadowed by an old draft", async () => {
+    await typeInto(command(), "claude --half-typed");
+    await configure();
+    await surface.view.update(<CommandSettings open={false} onClose={vi.fn()} />);
+    await surface.view.update(<CommandSettings open onClose={vi.fn()} />);
+    await configure();
+    expect(command().value).toBe(launched());
+  });
+
+  it("is not kept when the draft was committed before folding", async () => {
+    await typeInto(command(), "claude --verbose");
+    await press(command(), { key: "Enter" });
+    await configure();
+    await configure();
+    expect(command().value).toBe("claude --verbose");
   });
 });

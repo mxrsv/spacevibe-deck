@@ -109,8 +109,25 @@ describe("Command Settings frame", () => {
     await act(async () => {
       scrim.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
     });
+    // The press is not over until it is released: closing on the press itself let its mousedown
+    // focus whatever sat behind the scrim.
+    expect(onClose).not.toHaveBeenCalled();
+    await act(async () => {
+      scrim.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
     await settle();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not close when a press starts in the panel and is released over the scrim", async () => {
+    const { onClose } = await open();
+    const scrim = (byRole("dialog") as HTMLElement).parentElement as HTMLElement;
+    await act(async () => {
+      search().dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      scrim.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("stays open for a press inside the panel, in a field or on a row", async () => {
@@ -220,22 +237,23 @@ describe("Command Settings frame", () => {
 });
 
 describe("Command Settings keyboard", () => {
-  it("Escape clears the query, then leaves the area, then closes", async () => {
+  it("Escape closes in one press, whatever is typed or chosen, when nothing is being edited", async () => {
     commandScope.value = "terminal";
     const { onClose } = await open();
     await typeInto(search(), "scroll");
 
     await press(search(), { key: "Escape" });
-    expect(commandQuery.value).toBe("");
-    expect(commandScope.value).toBe("terminal");
-    expect(onClose).not.toHaveBeenCalled();
-
-    await press(search(), { key: "Escape" });
-    expect(commandScope.value).toBeNull();
-    expect(onClose).not.toHaveBeenCalled();
-
-    await press(search(), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels the footer's Escape as Close at every depth", async () => {
+    commandScope.value = "terminal";
+    await open();
+    await typeInto(search(), "scroll");
+    expect(document.querySelector("footer")?.textContent).toContain("Esc");
+    expect(document.querySelector("footer")?.textContent).toContain("Close");
+    expect(document.querySelector("footer")?.textContent).not.toContain("Clear");
+    expect(document.querySelector("footer")?.textContent).not.toContain("Back");
   });
 
   it("Backspace on an empty field leaves the area", async () => {

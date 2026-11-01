@@ -2,6 +2,17 @@ import type { ComponentProps } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Input } from "../controls/input";
 
+/**
+ * What a field's draft was when its row unmounted (an agent row folded), by the key its owner
+ * gave it. Memory only, never persisted: it lives from one opening of Settings to the next
+ * (`clearFieldDrafts`), so a half-typed command survives folding the row and nothing else.
+ */
+const drafts = new Map<string, string>();
+
+export function clearFieldDrafts(): void {
+  drafts.clear();
+}
+
 type FieldProps = Omit<
   ComponentProps<typeof Input>,
   "value" | "onInput" | "onBlur" | "onKeyDown" | "aria-invalid"
@@ -24,6 +35,8 @@ interface CommitFieldProps extends FieldProps {
   readonly invalid?: boolean;
   /** A refused draft stays on screen beside its reason; Escape then restores the saved value. */
   readonly keepRefused?: boolean;
+  /** Keep an unsaved draft while this field is unmounted, under this key. */
+  readonly draftKey?: string;
 }
 
 /**
@@ -42,10 +55,15 @@ export function CommitField({
   onDraft,
   invalid,
   keepRefused = false,
+  draftKey,
   ...input
 }: CommitFieldProps) {
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(
+    () => (draftKey === undefined ? undefined : drafts.get(draftKey)) ?? value,
+  );
   const committed = useRef(value);
+  const latest = useRef(draft);
+  latest.current = draft;
   const lastReset = useRef(resetRevision);
 
   // Adopt a change made elsewhere (a reset, another window) without touching a draft in progress:
@@ -57,6 +75,15 @@ export function CommitField({
       setDraft(value);
     }
   }, [value, resetRevision]);
+
+  useEffect(
+    () => () => {
+      if (draftKey === undefined) return;
+      if (latest.current !== committed.current) drafts.set(draftKey, latest.current);
+      else drafts.delete(draftKey);
+    },
+    [draftKey],
+  );
 
   const commit = (raw: string): boolean => {
     const next = raw.trim();
