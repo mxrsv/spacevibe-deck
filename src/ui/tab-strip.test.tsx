@@ -407,6 +407,9 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
     const chip = host.querySelector<HTMLElement>(".tab--browser")!;
     expect(chip.textContent).toContain("Academy — Home");
+    // The flush stage draws the chip as an icon alone, so its name rides these two.
+    expect(chip.getAttribute("aria-label")).toBe("Academy — Home");
+    expect(chip.title).toBe("Academy — Home");
     expect(chip.getAttribute("aria-selected")).toBe("false");
 
     chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));

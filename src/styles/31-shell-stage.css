@@ -91,6 +91,18 @@
   border-radius: 0;
 }
 
+/* The browser's and the board's chips are icons. The chip keeps its name for a screen reader
+   (`aria-label`) and for a hover (`title`), so the label only costs width; the close button and
+   the selection frame are unchanged. At most two such chips exist, so icons stay distinct. */
+.stage--flush .tabbar__tabs .tab__label {
+  display: none;
+}
+
+.stage--flush .tabbar__tabs .tab {
+  gap: 2px;
+  padding: 0 3px 0 5px;
+}
+
 /* ── The pane identity header (LAY-5) ─────────────────────────────────────────
    Logo, name, state mark, latest sentence. The header keeps its surface in every state: the
    focused pane no longer drops its lid, because the ring and the bar above say focus. 32px

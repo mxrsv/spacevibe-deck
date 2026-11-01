@@ -55,4 +55,8 @@ describe("the flush stage stylesheet", () => {
     expect(value(".stage--flush .space-bar", "margin-left")).toBe("4px");
     expect(value(".stage--flush .stage__strip-actions", "margin-right")).toBe("4px");
   });
+
+  it("draws the browser and board chips as icons", () => {
+    expect(value(".stage--flush .tabbar__tabs .tab__label", "display")).toBe("none");
+  });
 });
