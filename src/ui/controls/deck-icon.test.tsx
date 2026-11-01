@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { Cancel01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { Folder, Gear, Plus, SidebarSimple, Trash } from "@phosphor-icons/react";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
-import { DeckIcon } from "./deck-icon";
+import { DeckIcon, GLYPH_FEATURE, GLYPH_INLINE, GLYPH_ROW } from "./deck-icon";
 
 describe("DeckIcon", () => {
   let host: HTMLDivElement;
@@ -120,5 +121,41 @@ describe("DeckIcon", () => {
 
     act(() => render(<DeckIcon icon={SidebarSimple} mirrored />, host));
     expect(host.querySelector("svg")?.getAttribute("transform")).toBe("scale(-1, 1)");
+  });
+
+  describe("a Hugeicons glyph", () => {
+    // Hugeicons glyphs carry no name, so what was drawn is pinned by comparing path data.
+    const drawnPaths = (node: ParentNode): string[] =>
+      Array.from(node.querySelectorAll("path")).map((path) => path.getAttribute("d") ?? "");
+    const glyphPaths = (glyph: typeof Delete02Icon): string[] =>
+      glyph.flatMap(([, attributes]) => (typeof attributes.d === "string" ? [attributes.d] : []));
+
+    it("draws the glyph it was given, with the shared chrome contract", () => {
+      act(() => render(<DeckIcon icon={Delete02Icon} />, host));
+
+      const svg = host.querySelector("svg");
+      expect(drawnPaths(host)).toEqual(glyphPaths(Delete02Icon));
+      expect(drawnPaths(host)).not.toEqual(glyphPaths(Cancel01Icon));
+      expect(svg?.getAttribute("width")).toBe("16");
+      expect(svg?.getAttribute("height")).toBe("16");
+      expect(svg?.getAttribute("stroke-width")).toBe("2");
+      expect(svg?.getAttribute("stroke")).toBe("currentColor");
+      expect(svg?.getAttribute("aria-hidden")).toBe("true");
+      expect(svg?.getAttribute("focusable")).toBe("false");
+      expect(svg?.classList.contains("deck-icon")).toBe(true);
+    });
+
+    it("draws at the three standalone sizes and keeps the caller's class", () => {
+      for (const size of [GLYPH_INLINE, GLYPH_ROW, GLYPH_FEATURE]) {
+        act(() => render(<DeckIcon icon={Cancel01Icon} size={size} class="shrink-0" />, host));
+
+        const svg = host.querySelector("svg");
+        expect(svg?.getAttribute("width")).toBe(String(size));
+        expect(svg?.getAttribute("height")).toBe(String(size));
+        expect(svg?.classList.contains("shrink-0")).toBe(true);
+        expect(svg?.classList.contains("deck-icon")).toBe(true);
+      }
+      expect([GLYPH_INLINE, GLYPH_ROW, GLYPH_FEATURE]).toEqual([12, 14, 16]);
+    });
   });
 });

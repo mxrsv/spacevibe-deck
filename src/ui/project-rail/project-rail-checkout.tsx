@@ -1,14 +1,13 @@
 import {
-  Folder,
-  FolderOpen,
-  Gear,
-  GitBranch,
-  GitFork,
-  Plus,
-  SquareHalf,
-  TerminalWindow,
-  type Icon,
-} from "@phosphor-icons/react";
+  ComputerTerminal01Icon,
+  Folder01Icon,
+  FolderOpenIcon,
+  GitBranchIcon,
+  GitForkIcon,
+  PlusSignIcon,
+  Settings02Icon,
+  SquareSplitHorizontalIcon,
+} from "@hugeicons/core-free-icons";
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
@@ -17,7 +16,7 @@ import { checkoutLine, subjectOf } from "../agent-rail-card-model";
 import type { RailWorktreeGroup } from "../agent-rail-model";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE, type DeckGlyph } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,11 +32,11 @@ import { recoverRailFocus } from "./project-rail-focus";
 import { RailPopupGuard, REVEAL, Tip } from "./project-rail-menu-parts";
 
 /** The shipped menu's non-agent rows, drawn with the rail's own glyphs. */
-const ROW_ICONS: Readonly<Record<string, Icon>> = {
-  shell: TerminalWindow,
-  split: SquareHalf,
-  finder: FolderOpen,
-  "agents-settings": Gear,
+const ROW_ICONS: Readonly<Record<string, DeckGlyph>> = {
+  shell: ComputerTerminal01Icon,
+  split: SquareSplitHorizontalIcon,
+  finder: FolderOpenIcon,
+  "agents-settings": Settings02Icon,
 };
 
 /**
@@ -59,7 +58,7 @@ export function ProjectRailCheckoutRows({ groups }: { readonly groups: CheckoutA
             ) : (
               <DropdownMenuItem key={row.id} onClick={row.run}>
                 {row.agent === undefined ? (
-                  <DeckIcon icon={ROW_ICONS[row.id] ?? TerminalWindow} size={ROW_ICON} />
+                  <DeckIcon icon={ROW_ICONS[row.id] ?? ComputerTerminal01Icon} />
                 ) : (
                   <AgentGlyph agent={row.agent as PaneAgent} className="size-3.5 shrink-0" />
                 )}
@@ -102,7 +101,11 @@ export function ProjectRailCheckout({
   const [menuOpen, setMenuOpen] = useState(false);
   const line = checkoutLine(checkout);
   const where = whereOf(project, checkout);
-  const GlyphIcon = !checkout.labelled ? Folder : checkout.primary ? GitBranch : GitFork;
+  const GlyphIcon = !checkout.labelled
+    ? Folder01Icon
+    : checkout.primary
+      ? GitBranchIcon
+      : GitForkIcon;
   const launcher = actions?.onOpenAgentLauncher;
   const hasRows = checkout.entries.length > 0;
   const press = hasRows
@@ -132,7 +135,7 @@ export function ProjectRailCheckout({
         onClick={press}
         className="flex h-6 w-full items-center gap-1.5 rounded-md pr-8 pl-7 text-left text-2xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <DeckIcon icon={GlyphIcon} size={ROW_ICON} class="size-3 shrink-0" />
+        <DeckIcon icon={GlyphIcon} size={GLYPH_INLINE} class="shrink-0" />
         <span className="min-w-0 truncate">{line.name}</span>
         {/* The tag is a word for assistive technology only: the glyph says it to the eye. */}
         {line.tag === null ? null : <span className="sr-only">{line.tag}</span>}
@@ -163,7 +166,7 @@ export function ProjectRailCheckout({
                 />
               }
             >
-              <DeckIcon icon={Plus} size={ROW_ICON} />
+              <DeckIcon icon={PlusSignIcon} />
             </Tip>
             <DropdownMenuContent align="end" className="min-w-44">
               <RailPopupGuard />

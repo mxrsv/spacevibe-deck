@@ -1,3 +1,7 @@
+// Loaded first, on purpose: the grapheme addon reads its tables when it is first imported, and
+// under jsdom that read fails ("Data error", tiny-inflate) when it comes after the graph below.
+// Any change to the icons or controls this graph pulls in can move it past that point.
+import "@xterm/addon-unicode-graphemes";
 import { act } from "preact/test-utils";
 import { vi } from "vitest";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";

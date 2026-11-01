@@ -3,8 +3,8 @@ import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { cn } from "@/lib/cn";
 
 import { Button } from "./button";
-import { X } from "@phosphor-icons/react";
-import { DeckIcon, ROW_ICON } from "./deck-icon";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { DeckIcon } from "./deck-icon";
 import { withRef } from "./with-ref";
 
 function Sheet({ ...props }: Omit<SheetPrimitive.Root.Props, "ref">) {
@@ -73,7 +73,7 @@ const SheetContent = withRef(function SheetContent({
             data-slot="sheet-close"
             render={<Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />}
           >
-            <DeckIcon icon={X} size={ROW_ICON} />
+            <DeckIcon icon={Cancel01Icon} />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         )}

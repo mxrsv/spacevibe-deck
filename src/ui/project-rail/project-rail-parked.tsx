@@ -1,8 +1,8 @@
-import { CaretDown } from "@phosphor-icons/react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { cn } from "@/lib/cn";
 import { Button } from "../controls/button";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import type { RailItem, RailProject } from "../rail-view-model";
 import { RailRows, type RailRowEnv } from "./project-rail-sections";
 import { hiddenOpen, setRailProjectHidden, showArchived } from "./project-rail-state";
@@ -32,9 +32,9 @@ function Disclosure({
         className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <DeckIcon
-          icon={CaretDown}
-          size={CHROME_ICON}
-          class={cn("size-2.5 shrink-0 transition-transform", !open && "-rotate-90")}
+          icon={ArrowDown01Icon}
+          size={GLYPH_INLINE}
+          class={cn("shrink-0 transition-transform", !open && "-rotate-90")}
         />
         {label}
         <span className="tabular-nums">{count}</span>

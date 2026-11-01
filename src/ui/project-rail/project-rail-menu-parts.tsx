@@ -1,7 +1,6 @@
-import type { Icon } from "@phosphor-icons/react";
 import type { ComponentChildren, JSX } from "preact";
 import { agentLaunchPage } from "../../launcher/agent-launch-page-store";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
 import { DropdownMenuItem } from "../controls/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { useStageOverlayFlag } from "../worktree-card-menus";
@@ -43,7 +42,7 @@ export function MenuEntry({
   variant,
   children,
 }: {
-  readonly icon: Icon;
+  readonly icon: DeckGlyph;
   readonly onClick: () => void;
   readonly disabled?: boolean;
   readonly variant?: "destructive";
@@ -51,7 +50,7 @@ export function MenuEntry({
 }) {
   return (
     <DropdownMenuItem onClick={onClick} disabled={disabled} variant={variant}>
-      <DeckIcon icon={icon} size={ROW_ICON} />
+      <DeckIcon icon={icon} />
       {children}
     </DropdownMenuItem>
   );

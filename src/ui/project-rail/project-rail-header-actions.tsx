@@ -1,8 +1,15 @@
-import { ArrowDown, ArrowUp, DotsThree, EyeSlash, Plus, Trash } from "@phosphor-icons/react";
+import {
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  Delete02Icon,
+  MoreHorizontalIcon,
+  PlusSignIcon,
+  ViewOffIcon,
+} from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +61,7 @@ export function ProjectRailHeaderActions({
           />
         }
       >
-        <DeckIcon icon={Plus} size={ROW_ICON} />
+        <DeckIcon icon={PlusSignIcon} />
       </Tip>
       <DropdownMenu
         open={menuOpen}
@@ -86,23 +93,27 @@ export function ProjectRailHeaderActions({
             />
           }
         >
-          <DeckIcon icon={DotsThree} size={ROW_ICON} />
+          <DeckIcon icon={MoreHorizontalIcon} />
         </Tip>
         <DropdownMenuContent align="end" className="min-w-40">
           <RailPopupGuard />
-          <MenuEntry icon={ArrowUp} disabled={!commands.canMoveUp} onClick={commands.moveUp}>
+          <MenuEntry icon={ArrowUp01Icon} disabled={!commands.canMoveUp} onClick={commands.moveUp}>
             Move up
           </MenuEntry>
-          <MenuEntry icon={ArrowDown} disabled={!commands.canMoveDown} onClick={commands.moveDown}>
+          <MenuEntry
+            icon={ArrowDown01Icon}
+            disabled={!commands.canMoveDown}
+            onClick={commands.moveDown}
+          >
             Move down
           </MenuEntry>
           <DropdownMenuSeparator />
-          <MenuEntry icon={EyeSlash} onClick={commands.hide}>
+          <MenuEntry icon={ViewOffIcon} onClick={commands.hide}>
             Hide
           </MenuEntry>
           {commands.removal === undefined ? null : (
             <MenuEntry
-              icon={Trash}
+              icon={Delete02Icon}
               variant="destructive"
               onClick={() => {
                 removeWhenClosed.current = true;

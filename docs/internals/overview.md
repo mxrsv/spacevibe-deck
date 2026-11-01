@@ -168,8 +168,9 @@ Each is described in [terminal.md](terminal.md), [file-surface.md](file-surface.
 - Chrome styling is held to the invariants in [`DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md);
   its patterns describe today's surfaces and change with a redesign (R2). The numbers are cited
   from code and parsed by a test, so the file does not move.
-- Every icon comes from `@phosphor-icons/react` through one `DeckIcon` primitive; CSS never
-  sets an icon's geometry.
+- Every icon is drawn through one `DeckIcon` primitive: Hugeicons in the new shell, Phosphor in
+  surfaces not yet cut over (DL-14.1). A control sets the size of an icon it holds; CSS
+  never sets an icon's geometry anywhere else.
 - Everything in the repository is English (R1).
 - `marketing/` shares the renderer's components and a virtual clock for its stage and video,
   ships nothing into the app, and has no lint signal of its own.

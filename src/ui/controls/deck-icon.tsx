@@ -25,9 +25,14 @@ import {
   Trash,
   type Icon,
 } from "@phosphor-icons/react";
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 /**
- * The one place Phosphor's presentation defaults are set (`DL-14.1`). Surfaces
+ * The one place icon presentation is set (`DL-14.1`). It draws two kinds of source: a Hugeicons
+ * glyph (`DeckGlyph`, the new shell) and a Phosphor `Icon` (surfaces not yet cut over). The
+ * rest of this comment is about Phosphor's half.
+ *
+ * Presentation defaults of the Phosphor half (`DL-14.1`). Surfaces
  * choose *which* icon means what and own the accessible name on the button
  * around it; this component owns only how every icon is drawn.
  *
@@ -129,11 +134,33 @@ function iconModifier(icon: Icon): string {
   return ` deck-icon--${slug}`;
 }
 
-export interface DeckIconProps {
+/** A Hugeicons glyph: the type the new shell's maps and props carry, apart from `DeckIconComponent`. */
+export type DeckGlyph = IconSvgElement;
+
+/** The sizes a glyph draws at outside a control: Nova's 12/14/16 ladder. */
+export type DeckGlyphSize = 12 | 14 | 16;
+
+/** Beside text, where the mark supports a label: disclosure carets, a lens inside a field. */
+export const GLYPH_INLINE: DeckGlyphSize = 12;
+/** A standalone action or mark that sits in a row without a control around it. */
+export const GLYPH_ROW: DeckGlyphSize = 14;
+/** A standalone mark with its own weight in the layout. */
+export const GLYPH_FEATURE: DeckGlyphSize = 16;
+
+/**
+ * The stroke every glyph draws with, the layout mocks' value. Stroke width lives in one place so
+ * a surface cannot thicken one icon by hand.
+ */
+const GLYPH_STROKE = 2;
+
+interface DeckIconBaseProps {
+  readonly class?: string;
+}
+
+export interface PhosphorIconProps extends DeckIconBaseProps {
   /** A named import from `@phosphor-icons/react` — never a locally drawn SVG. */
   readonly icon: Icon;
   readonly size?: DeckIconSize;
-  readonly class?: string;
   /** A surface-scoped solid treatment; omitted icons keep their shared weight. */
   readonly filled?: boolean;
   /**
@@ -144,13 +171,43 @@ export interface DeckIconProps {
   readonly mirrored?: boolean;
 }
 
-export function DeckIcon({
+export interface GlyphIconProps extends DeckIconBaseProps {
+  /** A named import from `@hugeicons/core-free-icons`. */
+  readonly icon: DeckGlyph;
+  /**
+   * Only an icon that stands outside a control passes a size. Inside one the control's
+   * `[&_svg:not([class*='size-'])]:size-*` rule wins over this attribute, which stays as the
+   * fallback (DL-14.3).
+   */
+  readonly size?: DeckGlyphSize;
+}
+
+export type DeckIconProps = PhosphorIconProps | GlyphIconProps;
+
+function isGlyph(props: DeckIconProps): props is GlyphIconProps {
+  return Array.isArray(props.icon);
+}
+
+function GlyphIcon({ icon, size = 16, class: className }: GlyphIconProps) {
+  return (
+    <HugeiconsIcon
+      icon={icon}
+      size={size}
+      strokeWidth={GLYPH_STROKE}
+      aria-hidden="true"
+      focusable="false"
+      className={`deck-icon${className === undefined ? "" : ` ${className}`}`}
+    />
+  );
+}
+
+function PhosphorIcon({
   icon: Icon,
   size = 16,
   class: className,
   filled = false,
   mirrored = false,
-}: DeckIconProps) {
+}: PhosphorIconProps) {
   return (
     <Icon
       size={size}
@@ -162,4 +219,8 @@ export function DeckIcon({
       className={`deck-icon${iconModifier(Icon)}${className === undefined ? "" : ` ${className}`}`}
     />
   );
+}
+
+export function DeckIcon(props: DeckIconProps) {
+  return isGlyph(props) ? <GlyphIcon {...props} /> : <PhosphorIcon {...props} />;
 }

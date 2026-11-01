@@ -1,10 +1,15 @@
-import { FolderPlus, GitFork, Plus, UserPlus } from "@phosphor-icons/react";
+import {
+  FolderAddIcon,
+  GitBranchIcon,
+  PlusSignIcon,
+  UserAdd01Icon,
+} from "@hugeicons/core-free-icons";
 import type { RefObject } from "preact";
 import { useRef } from "preact/hooks";
 import { available as worktreeHostAvailable } from "../../host/worktree-host";
 import type { RailStreamGroup } from "../agent-rail-model";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../controls/dropdown-menu";
 import { addFolderToRail } from "../rail-add-folder";
 import { activeTabWorkspace, focusedCheckout } from "../rail-create";
@@ -71,16 +76,16 @@ export function ProjectRailCreate({
             <DropdownMenuTrigger render={<Button ref={plusRef} size="icon" aria-label="New" />} />
           }
         >
-          <DeckIcon icon={Plus} size={ROW_ICON} />
+          <DeckIcon icon={PlusSignIcon} />
         </Tip>
         <DropdownMenuContent align="end" className="min-w-44" finalFocus={() => !chosen.current}>
           <RailPopupGuard />
-          <MenuEntry icon={UserPlus} disabled={disabled} onClick={openAgent}>
+          <MenuEntry icon={UserAdd01Icon} disabled={disabled} onClick={openAgent}>
             New agent
           </MenuEntry>
           {worktreeHostAvailable ? (
             <MenuEntry
-              icon={GitFork}
+              icon={GitBranchIcon}
               onClick={() => {
                 onNotice(null);
                 formDue.current = true;
@@ -91,7 +96,7 @@ export function ProjectRailCreate({
             </MenuEntry>
           ) : null}
           <MenuEntry
-            icon={FolderPlus}
+            icon={FolderAddIcon}
             onClick={() => {
               onNotice(null);
               void addFolderToRail().then(onNotice);

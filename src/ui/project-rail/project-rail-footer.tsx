@@ -1,19 +1,19 @@
 import {
-  Browser,
-  CaretDown,
-  ChartBar,
-  ChatText,
-  ClockCounterClockwise,
-  FolderSimple,
-  Gear,
-} from "@phosphor-icons/react";
+  ArrowDown01Icon,
+  BrowserIcon,
+  ChartHistogramIcon,
+  Clock01Icon,
+  Folder01Icon,
+  Message01Icon,
+  Settings02Icon,
+} from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { useRef } from "preact/hooks";
 import { shortcutCaps } from "../../lib/shortcut-label";
 import type { ActionId } from "../../terminal/action-registry";
 import { Chord } from "../blocks/chord";
 import { Button } from "../controls/button";
-import { CHROME_ICON, DeckIcon, ROW_ICON, type DeckIconComponent } from "../controls/deck-icon";
+import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,17 +29,20 @@ import { RailPopupGuard } from "./project-rail-menu-parts";
 import { ProjectRailUsageRings } from "./project-rail-usage-rings";
 
 /** The mock's glyphs; the tools row keeps its own icons for what the mock draws differently. */
-const ICON: Readonly<Partial<Record<ActionId, DeckIconComponent>>> = {
-  "toggle-settings": Gear,
-  "toggle-sessions": ClockCounterClockwise,
-  "toggle-explorer": FolderSimple,
-  "toggle-prompts": ChatText,
-  "toggle-browser": Browser,
-  "toggle-usage": ChartBar,
-};
+const ICON = {
+  "toggle-settings": Settings02Icon,
+  "toggle-sessions": Clock01Icon,
+  "toggle-explorer": Folder01Icon,
+  "toggle-prompts": Message01Icon,
+  "toggle-browser": BrowserIcon,
+  "toggle-usage": ChartHistogramIcon,
+} as const satisfies Readonly<Partial<Record<ActionId, DeckGlyph>>>;
+
+/** An action the foot draws a glyph for; the rest of the registry has none here. */
+type FooterId = keyof typeof ICON;
 
 /** The Tools menu, in the order LAY-3 lists it. Settings and Session history stand beside it. */
-const MENU: readonly ActionId[] = [
+const MENU: readonly FooterId[] = [
   "toggle-explorer",
   "toggle-prompts",
   "toggle-browser",
@@ -52,7 +55,7 @@ export interface ProjectRailFooterProps extends SidebarActionsProps {
 }
 
 /** An icon button with its name and chord in a tooltip. */
-function FooterIconButton({ item, id }: { readonly item: ToolbarItem; readonly id: ActionId }) {
+function FooterIconButton({ item, id }: { readonly item: ToolbarItem; readonly id: FooterId }) {
   const caps = shortcutCaps(id);
   return (
     <Tooltip>
@@ -61,7 +64,7 @@ function FooterIconButton({ item, id }: { readonly item: ToolbarItem; readonly i
           <Button variant="ghost" size="icon" aria-label={item.label} onClick={item.onActivate} />
         }
       >
-        <DeckIcon icon={ICON[id] ?? item.icon} size={ROW_ICON} />
+        <DeckIcon icon={ICON[id]} />
       </TooltipTrigger>
       <TooltipContent>
         {item.label}
@@ -121,7 +124,7 @@ export function ProjectRailFooter({ usage, ...tools }: ProjectRailFooterProps) {
           >
             <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
               Tools
-              <DeckIcon icon={CaretDown} size={CHROME_ICON} />
+              <DeckIcon icon={ArrowDown01Icon} />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
@@ -141,7 +144,7 @@ export function ProjectRailFooter({ usage, ...tools }: ProjectRailFooterProps) {
                       item.onActivate();
                     }}
                   >
-                    <DeckIcon icon={ICON[id] ?? item.icon} size={ROW_ICON} />
+                    <DeckIcon icon={ICON[id]} />
                     {item.label}
                     <DropdownMenuShortcut>{reason ?? item.shortcut}</DropdownMenuShortcut>
                   </DropdownMenuItem>

@@ -1,4 +1,4 @@
-import { CaretDown, CaretRight } from "@phosphor-icons/react";
+import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import type { ChangeEntry, ChangeStatus } from "../../host/git-changes-host";
@@ -11,7 +11,7 @@ import {
   type ChangeFolder,
 } from "../../files/changes/changes-tree-model";
 import { ChangeCounts } from "../blocks/change-counts";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
 
 const INDENT = 10;
@@ -112,7 +112,7 @@ function FolderRow({
         className={ROW}
       >
         <span className="text-muted-foreground">
-          <DeckIcon icon={open ? CaretDown : CaretRight} size={CHROME_ICON} />
+          <DeckIcon icon={open ? ArrowDown01Icon : ArrowRight01Icon} size={GLYPH_INLINE} />
         </span>
         <span className="min-w-0 flex-1 truncate font-mono text-code text-foreground">
           {folder.label}

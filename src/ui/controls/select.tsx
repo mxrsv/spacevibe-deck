@@ -3,8 +3,13 @@
 import * as React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { cn } from "@/lib/cn";
-import { CaretDown, CaretUp, CaretUpDown, Check } from "@phosphor-icons/react";
-import { DeckIcon, ROW_ICON } from "./deck-icon";
+import {
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  Tick02Icon,
+  UnfoldMoreIcon,
+} from "@hugeicons/core-free-icons";
+import { DeckIcon } from "./deck-icon";
 import { withRef } from "./with-ref";
 
 const Select = SelectPrimitive.Root;
@@ -55,7 +60,7 @@ const SelectTrigger = withRef(function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon className="pointer-events-none flex items-center text-muted-foreground">
-        <DeckIcon icon={CaretUpDown} size={ROW_ICON} />
+        <DeckIcon icon={UnfoldMoreIcon} />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -138,7 +143,7 @@ const SelectItem = withRef(function SelectItem({
           <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
         }
       >
-        <DeckIcon icon={Check} size={ROW_ICON} class="pointer-events-none" />
+        <DeckIcon icon={Tick02Icon} class="pointer-events-none" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   );
@@ -170,7 +175,7 @@ const SelectScrollUpButton = withRef(function SelectScrollUpButton({
       )}
       {...props}
     >
-      <DeckIcon icon={CaretUp} size={ROW_ICON} />
+      <DeckIcon icon={ArrowUp01Icon} />
     </SelectPrimitive.ScrollUpArrow>
   );
 });
@@ -188,7 +193,7 @@ const SelectScrollDownButton = withRef(function SelectScrollDownButton({
       )}
       {...props}
     >
-      <DeckIcon icon={CaretDown} size={ROW_ICON} />
+      <DeckIcon icon={ArrowDown01Icon} />
     </SelectPrimitive.ScrollDownArrow>
   );
 });

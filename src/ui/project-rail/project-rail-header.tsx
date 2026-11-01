@@ -1,7 +1,7 @@
-import { CaretDown } from "@phosphor-icons/react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { AgentStateMark } from "../blocks/agent-state-mark";
 import type { RailGroup } from "../rail-view-model";
 import { ProjectRailHeaderActions } from "./project-rail-header-actions";
@@ -62,12 +62,9 @@ export function ProjectRailHeader({
         </span>
         <span className="min-w-0 truncate text-sm font-medium text-foreground">{group.label}</span>
         <DeckIcon
-          icon={CaretDown}
-          size={CHROME_ICON}
-          class={cn(
-            "size-2.5 shrink-0 text-muted-foreground transition-transform",
-            folded && "-rotate-90",
-          )}
+          icon={ArrowDown01Icon}
+          size={GLYPH_INLINE}
+          class={cn("shrink-0 text-muted-foreground transition-transform", folded && "-rotate-90")}
         />
         {folded ? (
           <span className="ml-auto flex shrink-0 items-center gap-1.5 text-2xs text-muted-foreground tabular-nums group-hover/item:invisible group-has-[:focus-visible]/item:invisible group-has-[[data-popup-open]]/item:invisible">

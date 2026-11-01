@@ -31,11 +31,12 @@ cites it.
 
 ## 1. Hard constraints (resource frugality)
 
-- **DL-1.1** Chrome adds no runtime dependency beyond CSS and Preact. Two exceptions. One icon
-  package, `@phosphor-icons/react`, supplies every functional icon (§14). It is reached
-  through the `preact/compat` alias and tree-shakes to the icons imported by name
-  (`sideEffects: false`). A second icon package is not covered: the preset's Hugeicons are
-  not shipped, and the controls draw their glyphs through `DeckIcon`. The other is the Base UI
+- **DL-1.1** Chrome adds no runtime dependency beyond CSS and Preact. Two exceptions. Two
+  icon packages supply every functional icon (§14): `@hugeicons/react` with
+  `@hugeicons/core-free-icons` for the new shell, and `@phosphor-icons/react` for surfaces
+  not yet cut over, which leaves when the last of them does. Both are reached through the
+  `preact/compat` alias and tree-shake to the icons imported by name (`sideEffects: false`).
+  A third icon package is not covered, and neither is drawn except through `DeckIcon`. The other is the Base UI
   preset (DL-1.6): Tailwind, Base UI, `cn`, `class-variance-authority`, `tw-animate-css`, the
   stylesheet of `shadcn` and the `@fontsource-variable/inter` font files. All are
   `devDependencies` that Vite bundles into the renderer, and none loads from a network.
@@ -337,7 +338,7 @@ Open places where shipped CSS breaks an invariant. Fix one when its surface is r
 | `.usage-range__option.is-active`   | DL-21.1        | 4% `--fg` wash instead of `--tab-active-bg`                   |
 | `.toolbar-menu__row.is-active`     | DL-21.1        | `--accent` ink, no wash                                       |
 | `.worktree-agents__item.is-active` | DL-21.1        | correct wash plus an `--accent` border                        |
-| `@phosphor-icons/react`            | DL-1.1         | the gzip cost of the icon package has never been measured     |
+| icon packages (Hugeicons, Phosphor) | DL-1.1         | the gzip cost of the icon packages has never been measured    |
 
 # Part II — Patterns
 
@@ -521,30 +522,47 @@ popover and the rail worktree card's segment and actions menus (`docs/internals/
 
 ## 14. Icons
 
-Functional icons come from one package, `@phosphor-icons/react`, drawn through one primitive.
+Functional icons come from two packages through one primitive. The new shell draws Hugeicons;
+Phosphor stays in surfaces not yet cut over and goes when the last one is.
 
-- **DL-14.1** `@phosphor-icons/react` is the only source of functional icons and `DeckIcon`
-  (`src/ui/controls/deck-icon.tsx`) the only place its presentation is set: `color="currentColor"`,
-  the weight, `aria-hidden`, `focusable="false"` and the unconditional `deck-icon` class. Icons are
-  imported by name; nothing else authors an `<svg>` and no glyph character stands in for an
-  action (`scripts/icon-system.test.ts`). The preset's controls draw their chevrons, check
-  marks and close glyphs through `DeckIcon` too.
-  - Weight is `bold` (24/256, about 1.2px) for every icon and `fill` for icons with a body whose
-    silhouette survives filling: folders, files, `Robot`, `Gear`, `Trash`, `TerminalWindow`,
-    `ChatText`, `ClipboardText`, `PaperPlaneTilt`, the pins, `Play`, `Stop`, `Gauge`,
-    `GithubLogo` and `SidebarSimple` (both panel toggles). Glyphs, arrows, carets, layout pictures
-    and stroke figures stay outlines: `fill` turns `X`, `Plus`, `Minus` and `Check` into solid
-    tiles with the mark knocked out, carets into solid triangles, `Globe` and `Info` into a
-    half-solid disc, and a solid `Star` reads as already starred.
-  - The surface-scoped `filled` prop is a closed boolean, not a `weight` escape hatch. It is used
-    by the rail's fallback project `Folder` in live and remembered headers
+- **DL-14.1** `DeckIcon` (`src/ui/controls/deck-icon.tsx`) is the only place an icon's
+  presentation is set, and glyphs are imported by name; nothing else authors an `<svg>` and no
+  glyph character stands in for an action (`scripts/icon-system.test.ts`).
+  - **Hugeicons** (`@hugeicons/core-free-icons`, passed as `icon`) is the source for the new
+    shell: the project rail, the agent dock, Command Settings, the shared blocks and the
+    preset controls' own chevrons, check marks and close glyphs. `DeckIcon` renders it with
+    `strokeWidth={2}`, `aria-hidden`, `focusable="false"` and the unconditional `deck-icon`
+    class. Nothing outside `deck-icon.tsx` imports `@hugeicons/react` except the gallery's
+    layout mocks, and the test fails when a cut-over directory imports Phosphor. Which glyph
+    means what follows the layout mock for that surface; an action the mock does not draw
+    takes the nearest Hugeicons glyph, and a pin and an unpin share one glyph.
+  - **Phosphor** (`@phosphor-icons/react`) is the source for every surface not yet cut over.
+    `DeckIcon` sets `color="currentColor"`, the weight, `aria-hidden`, `focusable="false"` and
+    the `deck-icon` class, and adds a per-icon `deck-icon--<name>` modifier for tests.
+  - Phosphor weight is `bold` (24/256, about 1.2px) for every icon and `fill` for icons with a
+    body whose silhouette survives filling: folders, files, `Robot`, `Gear`, `Trash`,
+    `TerminalWindow`, `ChatText`, `ClipboardText`, `PaperPlaneTilt`, the pins, `Play`, `Stop`,
+    `Gauge`, `GithubLogo` and `SidebarSimple` (both panel toggles). Glyphs, arrows, carets,
+    layout pictures and stroke figures stay outlines: `fill` turns `X`, `Plus`, `Minus` and
+    `Check` into solid tiles with the mark knocked out, carets into solid triangles, `Globe`
+    and `Info` into a half-solid disc, and a solid `Star` reads as already starred.
+  - The surface-scoped `filled` prop (Phosphor only) is a closed boolean, not a `weight` escape
+    hatch. It is used by the rail's fallback project `Folder` in live and remembered headers
     ([`agent-rail.tsx`](../src/ui/agent-rail.tsx), DL-27.17), the three icon-only dock tabs
     (`TreeView`, `Gauge`, `ClockCounterClockwise`) and the toolbar's `More` trigger
-    (`DotsThreeOutline`). `mirrored` flips a one-sided mark: the dock's toggle is `SidebarSimple`
-    mirrored. The class is Deck's own `.deck-icon`, never a vendor name.
-  - Why: weight lives in path data, not an attribute, so `deck-icon.test.tsx` compares drawn
-    output against the library's `bold` / `fill`, and `dock-tabs.test.tsx` pins the dock icons.
-- **DL-14.2** Four sizes are exported from `deck-icon.tsx` and used by name: `CHROME_ICON` 13
+    (`DotsThreeOutline`). `mirrored` (Phosphor only) flips a one-sided mark: the old dock's toggle
+    is `SidebarSimple` mirrored. The class is Deck's own `.deck-icon`, never a vendor name.
+  - Why: Phosphor's weight lives in path data, not an attribute, so `deck-icon.test.tsx`
+    compares drawn output against the library's `bold` / `fill`, and `dock-tabs.test.tsx` pins
+    the dock icons. A Hugeicons glyph has no name to derive a class from, so a test pins one by
+    its path data.
+- **DL-14.2** A Hugeicons glyph inside a control takes the control's size: the control's
+  `[&_svg:not([class*='size-'])]:size-*` rule beats the `size` attribute, so a caller passes no
+  `size`. A `size-*` class on the icon opts out of that rule (a fold caret in a header button).
+  An icon that stands outside a control passes one of three sizes by role, exported from
+  `deck-icon.tsx`: `GLYPH_INLINE` 12 (a mark beside text: a disclosure caret, a lens inside a
+  field), `GLYPH_ROW` 14 (a standalone action or mark in a row) and `GLYPH_FEATURE` 16. Phosphor
+  keeps its four sizes, used by name and only by surfaces not yet cut over: `CHROME_ICON` 13
   (tab bar, titlebar), `ROW_ICON` 14 (config-row and popover actions), `BOARD_ICON` 15 (Open
   Board rows) and `RAIL_ICON` 16 (the `More` menu's rows, DL-23.9). `FEATURE_ICON` is the same 15
   for entry-point controls: the dock header's tab chips and panel toggle, and the toolbar's `More`
@@ -562,7 +580,8 @@ Functional icons come from one package, `@phosphor-icons/react`, drawn through o
 - **DL-14.5** `Trash` deletes something the user declared and stored, `X` dismisses something
   transient, and actions that differ in consequence do not share an icon (Prompt Board uses
   `ClipboardText` and `PaperPlaneTilt`). Phosphor has no folder-with-git or branch-with-plus, so
-  the create-worktree action keeps `GitBranch` and the rail's repository row uses `GitFork`.
+  the create-worktree action keeps `GitBranch` and the rail's repository row uses `GitFork`;
+  the new shell's create-worktree action draws `GitBranchIcon`, as the mock does.
 - **DL-14.6** Outside the library by intent: the Deck brand mark, agent and OS logos, keyboard
   and terminal notation (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`.
   Every rail status mark is CSS (DL-27.3).

@@ -1,20 +1,19 @@
 import {
-  Archive,
-  ArrowUUpLeft,
-  Copy,
-  DotsThree,
-  FolderOpen,
-  GitBranch,
-  PencilSimple,
-  Plus,
-  PushPin,
-  PushPinSlash,
-  X,
-} from "@phosphor-icons/react";
+  Archive02Icon,
+  Cancel01Icon,
+  Copy01Icon,
+  Edit02Icon,
+  FolderOpenIcon,
+  GitBranchIcon,
+  MoreHorizontalIcon,
+  Pin02Icon,
+  PlusSignIcon,
+  Unarchive03Icon,
+} from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +55,7 @@ export function ProjectRailRowActions({
   const tabIndex = tabStop ? 0 : -1;
   const pinLabel = pinned ? "Unpin" : "Pin";
   const archiveLabel = commands.archived ? "Unarchive" : "Archive";
-  const archiveIcon = commands.archived ? ArrowUUpLeft : Archive;
+  const archiveIcon = commands.archived ? Unarchive03Icon : Archive02Icon;
   // The menu hands focus back to its trigger as it closes, and the field would lose it to that.
   const renameWhenClosed = useRef(false);
   return (
@@ -79,7 +78,7 @@ export function ProjectRailRowActions({
             />
           }
         >
-          <DeckIcon icon={pinned ? PushPinSlash : PushPin} size={ROW_ICON} />
+          <DeckIcon icon={Pin02Icon} />
         </Tip>
       )}
       <Tip
@@ -94,7 +93,7 @@ export function ProjectRailRowActions({
           />
         }
       >
-        <DeckIcon icon={archiveIcon} size={ROW_ICON} />
+        <DeckIcon icon={archiveIcon} />
       </Tip>
       <DropdownMenu
         open={menuOpen}
@@ -126,13 +125,13 @@ export function ProjectRailRowActions({
             />
           }
         >
-          <DeckIcon icon={DotsThree} size={ROW_ICON} />
+          <DeckIcon icon={MoreHorizontalIcon} />
         </Tip>
         <DropdownMenuContent align="end" className="min-w-44">
           <RailPopupGuard />
           {commands.rename === undefined ? null : (
             <MenuEntry
-              icon={PencilSimple}
+              icon={Edit02Icon}
               onClick={() => {
                 renameWhenClosed.current = true;
               }}
@@ -141,30 +140,30 @@ export function ProjectRailRowActions({
             </MenuEntry>
           )}
           {commands.pin === undefined ? null : (
-            <MenuEntry icon={pinned ? PushPinSlash : PushPin} onClick={commands.pin}>
+            <MenuEntry icon={Pin02Icon} onClick={commands.pin}>
               {pinLabel}
             </MenuEntry>
           )}
           <DropdownMenuSeparator />
-          <MenuEntry icon={Copy} onClick={commands.copyPath}>
+          <MenuEntry icon={Copy01Icon} onClick={commands.copyPath}>
             Copy path
           </MenuEntry>
           <MenuEntry
-            icon={GitBranch}
+            icon={GitBranchIcon}
             disabled={commands.copyBranch === undefined}
             onClick={() => commands.copyBranch?.()}
           >
             Copy branch
           </MenuEntry>
           {commands.openFolder === undefined ? null : (
-            <MenuEntry icon={FolderOpen} onClick={commands.openFolder}>
+            <MenuEntry icon={FolderOpenIcon} onClick={commands.openFolder}>
               Open in {commands.openFolderLabel}
             </MenuEntry>
           )}
           {commands.checkoutActions.length === 0 ? null : (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <DeckIcon icon={Plus} size={ROW_ICON} />
+                <DeckIcon icon={PlusSignIcon} />
                 New here
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -176,7 +175,7 @@ export function ProjectRailRowActions({
           <MenuEntry icon={archiveIcon} onClick={commands.archive}>
             {archiveLabel}
           </MenuEntry>
-          <MenuEntry icon={X} variant="destructive" onClick={commands.close}>
+          <MenuEntry icon={Cancel01Icon} variant="destructive" onClick={commands.close}>
             Close
           </MenuEntry>
         </DropdownMenuContent>

@@ -126,6 +126,12 @@ classes as chrome class names the preset must not generate. Chrome outside the f
   from the mock takes that comment, naming why no control variant spans the row. A hand-built
   row, section header, setting row, theme card or panel surface is not detected; review holds
   those to the library.
+- **Icons go through `DeckIcon`, and a control sizes the icon it holds.** The mocks pass
+  `HugeiconsIcon` no size inside a `Button`, `DropdownMenuItem` or `Select`, and the control's
+  `[&_svg:not([class*='size-'])]:size-*` rule wins over any `size` attribute. Shipping code
+  passes `DeckIcon` a size (12, 14 or 16) only for an icon outside a control (DL-14.2). A
+  `size-*` class on the icon switches that rule off for it, so removing one from a caret in a
+  button makes the caret 16px.
 - **`<a href>` for navigation.** The mocks have no navigation target (0 `<a>`). The shipping
   example is the install link at
   [`src/launcher/agent-install-control.tsx:44`](../../src/launcher/agent-install-control.tsx),

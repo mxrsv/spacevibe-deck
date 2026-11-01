@@ -1,12 +1,11 @@
 import {
-  CaretRight,
-  Coins,
-  CurrencyDollar,
-  Info,
-  Timer,
-  UsersThree,
-  type Icon,
-} from "@phosphor-icons/react";
+  ArrowRight01Icon,
+  Coins01Icon,
+  DollarCircleIcon,
+  InformationCircleIcon,
+  Timer01Icon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons";
 import { useEffect } from "preact/hooks";
 import { formatUsd } from "../../lib/usage-pricing";
 import { tabViews } from "../../terminal/tabs-store";
@@ -19,7 +18,7 @@ import {
 } from "../../usage/usage-store";
 import { displayAgent } from "../agent-rail-card-model";
 import { Button } from "../controls/button";
-import { CHROME_ICON, DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_ROW, type DeckGlyph } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { railNow, runRailClock } from "../project-rail/project-rail-state";
 import type { RailItem } from "../rail-view-model";
@@ -48,13 +47,13 @@ function Fact({
 }: {
   readonly label: string;
   readonly value: string;
-  readonly icon: Icon;
+  readonly icon: DeckGlyph;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger render={<div className="inline-flex h-7 items-center gap-1" />}>
         <dt className="sr-only">{label}</dt>
-        <DeckIcon icon={icon} size={ROW_ICON} class="size-3.5 text-muted-foreground" />
+        <DeckIcon icon={icon} size={GLYPH_ROW} class="text-muted-foreground" />
         <dd className="tabular-nums text-foreground">{value}</dd>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
@@ -133,20 +132,20 @@ export function DockUsage({ item, space, onOpenDetails }: DockUsageProps) {
       ) : (
         <div className="flex items-center gap-3 py-1">
           <dl className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3">
-            <Fact label="Tokens today" value={tokensOf(own)} icon={Coins} />
-            <Fact label="Cost today" value={costOf(own)} icon={CurrencyDollar} />
+            <Fact label="Tokens today" value={tokensOf(own)} icon={Coins01Icon} />
+            <Fact label="Cost today" value={costOf(own)} icon={DollarCircleIcon} />
             {space.length > 0 ? (
-              <Fact label="Space cost today" value={costOf(together)} icon={UsersThree} />
+              <Fact label="Space cost today" value={costOf(together)} icon={UserGroupIcon} />
             ) : null}
             <Fact
               label="Running for"
               value={startedAt === null ? EM_DASH : runningFor(startedAt, now)}
-              icon={Timer}
+              icon={Timer01Icon}
             />
           </dl>
           <Tooltip>
             <TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label={scope} />}>
-              <DeckIcon icon={Info} size={ROW_ICON} />
+              <DeckIcon icon={InformationCircleIcon} />
             </TooltipTrigger>
             <TooltipContent className="max-w-64">{scope}</TooltipContent>
           </Tooltip>
@@ -164,7 +163,7 @@ export function DockUsage({ item, space, onOpenDetails }: DockUsageProps) {
             />
           }
         >
-          <DeckIcon icon={CaretRight} size={CHROME_ICON} />
+          <DeckIcon icon={ArrowRight01Icon} />
         </TooltipTrigger>
         <TooltipContent>Usage details</TooltipContent>
       </Tooltip>

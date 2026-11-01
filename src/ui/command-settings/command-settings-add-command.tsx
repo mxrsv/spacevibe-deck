@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { Plus } from "@phosphor-icons/react";
+import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import {
   commandAgentId,
   commandProblem,
@@ -9,7 +9,7 @@ import {
 import type { Settings } from "../../settings/settings-schema";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Input } from "../controls/input";
 import { RowShell } from "./command-settings-live-row";
 
@@ -105,7 +105,7 @@ export function AddCommandRow({ locked }: { readonly locked: boolean }) {
             disabled={locked || draft.value.trim() === ""}
             onClick={add}
           >
-            <DeckIcon icon={Plus} size={ROW_ICON} />
+            <DeckIcon icon={PlusSignIcon} />
           </Button>
         </>
       }

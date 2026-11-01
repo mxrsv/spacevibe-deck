@@ -1,11 +1,11 @@
 import { signal } from "@preact/signals";
-import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { Undo02Icon } from "@hugeicons/core-free-icons";
 import { useEffect } from "preact/hooks";
 import { changedKeys, keysFor } from "../../settings/settings-changes";
 import { SETTINGS_REGISTRY, type SettingScope } from "../../settings/settings-registry";
 import { settings } from "../../settings/settings-store";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import {
   Dialog,
   DialogClose,
@@ -92,7 +92,7 @@ export function ResetRows() {
                 aria-label={row.label}
                 onClick={() => openReset(row.scope)}
               >
-                <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
+                <DeckIcon icon={Undo02Icon} />
                 Reset…
               </Button>
             }

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// First, on purpose: see the note at the top of `command-settings-test-kit.tsx`.
+import "@xterm/addon-unicode-graphemes";
 
 // The sections an area mounts pull in host-backed stores; stub them so the tree mounts in jsdom.
 vi.mock("../../host/store-host", () => ({

@@ -1,8 +1,8 @@
-import { SidebarSimple } from "@phosphor-icons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { displayAgent } from "../agent-rail-card-model";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Kbd } from "../controls/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import type { RailItem } from "../rail-view-model";
@@ -45,7 +45,7 @@ export function DockHeader({ item, closeLabel, closeChord, onClose }: DockHeader
             <Button variant="ghost" size="icon-sm" aria-label={closeLabel} onClick={onClose} />
           }
         >
-          <DeckIcon icon={SidebarSimple} size={ROW_ICON} mirrored />
+          <DeckIcon icon={ArrowRight01Icon} />
         </TooltipTrigger>
         <TooltipContent side="left">
           {closeLabel}

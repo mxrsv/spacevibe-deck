@@ -82,7 +82,7 @@ constants that currently switch behaviour off and are meant to be flipped back.
   is neither wrapped nor listed as rootless.
 - **Base UI under Vitest loads real React unless the controls come from the test bundle.** Its
   `use-sync-external-store` is CommonJS and calls `require("react")`, which Node resolves to
-  the React 19 that Phosphor pulls in as a peer. Control tests import
+  the React 19 that Phosphor and Hugeicons pull in as a peer. Control tests import
   `loadPresetControls()`, a bundle built with the `preact/compat` aliases by
   [`preset-controls-bundle.mjs`](../../scripts/preset-controls-bundle.mjs); inlining the package or the
   dependency optimizer does not fix it (the optimizer keeps `import "react"` in its chunks). The

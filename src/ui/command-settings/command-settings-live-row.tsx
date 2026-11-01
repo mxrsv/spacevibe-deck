@@ -1,11 +1,11 @@
 import { cn } from "@/lib/cn";
-import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { Undo02Icon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { DEFAULT_SETTINGS, type Settings } from "../../settings/settings-schema";
 import { settingRow } from "../../settings/settings-rows";
 import { resetSettingsKeys } from "../../settings/settings-store";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { SettingControl } from "./command-settings-controls";
 import { LIVE_ROW_ATTRIBUTE, rowDomId } from "./command-settings-live";
@@ -96,7 +96,7 @@ export function RowReset({ label, to, locked, onReset }: RowResetProps) {
           />
         }
       >
-        <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
+        <DeckIcon icon={Undo02Icon} />
       </TooltipTrigger>
       <TooltipContent>Reset to {to}</TooltipContent>
     </Tooltip>

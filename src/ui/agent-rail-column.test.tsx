@@ -24,6 +24,9 @@ vi.mock("../terminal/file-drop", () => ({
 // Phosphor components are React `forwardRef` objects; see `agent-rail.test.tsx`.
 vi.mock("./controls/deck-icon", () => ({
   CHROME_ICON: 13,
+  GLYPH_INLINE: 12,
+  GLYPH_ROW: 14,
+  GLYPH_FEATURE: 16,
   ROW_ICON: 14,
   FEATURE_ICON: 15,
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,

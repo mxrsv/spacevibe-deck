@@ -1,10 +1,10 @@
 import { useSignal } from "@preact/signals";
-import { Plus, Trash } from "@phosphor-icons/react";
+import { Delete02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import type { CustomAgent } from "../../lib/agent-catalog";
 import { forgetWorkspaceAgent } from "../../open-board/workspaces-store";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Input } from "../controls/input";
 import { CommitField } from "./command-settings-field";
 import {
@@ -72,7 +72,7 @@ export function CustomAgentDetails({
             forgetWorkspaceAgent(agent.id);
           }}
         >
-          <DeckIcon icon={Trash} size={ROW_ICON} />
+          <DeckIcon icon={Delete02Icon} />
         </Button>
       </div>
       {error.value === null ? null : (
@@ -162,7 +162,7 @@ export function AddAgentRow({ locked }: { readonly locked: boolean }) {
             disabled={locked || (name.value.trim() === "" && command.value.trim() === "")}
             onClick={add}
           >
-            <DeckIcon icon={Plus} size={ROW_ICON} />
+            <DeckIcon icon={PlusSignIcon} />
           </Button>
         </>
       }

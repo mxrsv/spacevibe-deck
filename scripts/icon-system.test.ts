@@ -4,13 +4,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * The migration to one icon library is only worth anything if it holds. It has
- * outlived the library it was written for — `lucide-preact` in 2026-08-09,
- * `@phosphor-icons/react` since 2026-08-16 — which is the point: this test
- * asserts that icons come from a package at all, never which one. Nothing
- * stops a later change from hand-drawing one more icon or typing one more
- * arrow into a button, and each of those is invisible in review — this test is
- * what makes them loud.
+ * The migration to one icon library is only worth anything if it holds. Icons have outlived two
+ * libraries already — `lucide-preact` until 2026-08-09, `@phosphor-icons/react` since — and a third
+ * is arriving surface by surface: the new shell draws Hugeicons through `DeckIcon`, and Phosphor
+ * stays only in surfaces not yet cut over (DL-14.1). So this test holds the package boundary of
+ * each half as well as the rule that icons come from a package at all. Nothing stops a later
+ * change from hand-drawing one more icon or typing one more arrow into a button, and each of
+ * those is invisible in review — this test is what makes them loud.
  *
  * It scans `.ts` as well as `.tsx`: `search-bar.ts` builds its controls with
  * imperative DOM, so "icons live in components" is a habit, not a guarantee.
@@ -78,6 +78,38 @@ const GLYPH_EXEMPT = (path: string): boolean =>
   // Sample terminal transcripts: `›` is Codex's own prompt in PTY text, not a UI icon.
   path === "gallery/layout-mocks/layout-fixture.ts";
 
+/** The one module that renders a Hugeicons glyph, so the stroke and the a11y attributes live once. */
+const GLYPH_RENDERER = "ui/controls/deck-icon.tsx";
+
+/**
+ * Files that import `@hugeicons/react` without going through `DeckIcon`. The layout mocks are the
+ * gallery's specimens of the shell; they are not shipping UI and they set their own stroke.
+ */
+const HUGEICONS_REACT_EXEMPT = (path: string): boolean => path.startsWith("gallery/");
+
+/**
+ * The cut-over set: surfaces that now draw Hugeicons only. A path ending in `/` is a directory,
+ * anything else is a file. A surface joins this list in the change that converts it; a shared
+ * file that an old surface still renders (`font-row`, `logo-row`, `github-star-button`, the
+ * space bar's shipped caret) stays out until that surface is cut over.
+ */
+const HUGEICONS_ONLY: readonly string[] = [
+  "ui/project-rail/",
+  "ui/agent-dock/",
+  "ui/command-settings/",
+  "ui/blocks/",
+  "terminal/pane-agent-header.tsx",
+  // The preset controls' own chevrons, checks and close glyphs.
+  "ui/controls/button.tsx",
+  "ui/controls/select.tsx",
+  "ui/controls/dropdown-menu.tsx",
+  "ui/controls/dialog.tsx",
+  "ui/controls/sheet.tsx",
+];
+
+const inCutOverSet = (path: string): boolean =>
+  HUGEICONS_ONLY.some((entry) => (entry.endsWith("/") ? path.startsWith(entry) : path === entry));
+
 function sourceFiles(dir = SOURCE_ROOT): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
@@ -141,5 +173,32 @@ describe("icon system", () => {
       );
 
     expect(offenders).toEqual([]);
+  });
+
+  it("renders Hugeicons only through DeckIcon", () => {
+    const offenders = files
+      .filter(({ path }) => path !== GLYPH_RENDERER && !HUGEICONS_REACT_EXEMPT(path))
+      .filter(({ text }) => text.includes("@hugeicons/react"))
+      .map(({ path }) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps Phosphor out of every surface that has been cut over to Hugeicons", () => {
+    const cutOver = files.filter(({ path }) => inCutOverSet(path));
+    // A silently empty set would pass everything.
+    expect(cutOver.length).toBeGreaterThan(30);
+
+    const offenders = cutOver
+      .filter(({ text }) => text.includes("@phosphor-icons/react"))
+      .map(({ path }) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps every cut-over entry pointing at something", () => {
+    for (const entry of HUGEICONS_ONLY) {
+      expect(files.some(({ path }) => inCutOverSet(path) && path.startsWith(entry))).toBe(true);
+    }
   });
 });

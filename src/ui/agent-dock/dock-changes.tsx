@@ -1,4 +1,4 @@
-import { ArrowClockwise } from "@phosphor-icons/react";
+import { Refresh01Icon } from "@hugeicons/core-free-icons";
 import { requestDiffFocus } from "../../files/changes/diff-column-focus";
 import {
   changesController,
@@ -10,7 +10,7 @@ import { diffSelection, type DiffSelectionStore } from "../../files/changes/diff
 import { repositoryScans } from "../../repositories/repositories-store";
 import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockNarrow } from "./agent-dock-layout";
 import { closeDockSheetThen } from "./agent-dock-state";
@@ -98,7 +98,7 @@ function DockChangesBody({
               />
             }
           >
-            <DeckIcon icon={ArrowClockwise} size={ROW_ICON} />
+            <DeckIcon icon={Refresh01Icon} />
           </TooltipTrigger>
           <TooltipContent side="left">Refresh changes</TooltipContent>
         </Tooltip>

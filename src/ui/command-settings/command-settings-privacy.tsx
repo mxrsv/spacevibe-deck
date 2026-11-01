@@ -1,8 +1,8 @@
 import { useSignal } from "@preact/signals";
-import { CaretDown, CaretRight } from "@phosphor-icons/react";
+import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Badge } from "../controls/badge";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { PrivacySection } from "../settings/sections/privacy-section";
 import { RowShell } from "./command-settings-live-row";
 
@@ -34,7 +34,7 @@ export function PrivacyRow({ open: initiallyOpen }: { readonly open: boolean }) 
               open.value = !open.value;
             }}
           >
-            <DeckIcon icon={open.value ? CaretDown : CaretRight} size={ROW_ICON} />
+            <DeckIcon icon={open.value ? ArrowDown01Icon : ArrowRight01Icon} />
           </Button>
         </>
       }

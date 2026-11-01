@@ -1,26 +1,25 @@
 import {
-  CaretDown,
-  CaretRight,
-  ChartBar,
-  ClockCounterClockwise,
-  FolderSimple,
-  GitDiff,
-  UsersThree,
-  type Icon,
-} from "@phosphor-icons/react";
+  ArrowDown01Icon,
+  ArrowRight01Icon,
+  ChartHistogramIcon,
+  Clock01Icon,
+  FileEditIcon,
+  Folder01Icon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { Button } from "../controls/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
 import { dockSectionsOpen, setDockSectionOpen, type DockSectionId } from "./agent-dock-state";
 
 /** The glyph that leads each header, so a folded section is told apart at a glance. */
-const SECTION_ICON: Readonly<Record<DockSectionId, Icon>> = {
-  changes: GitDiff,
-  space: UsersThree,
-  usage: ChartBar,
-  files: FolderSimple,
-  history: ClockCounterClockwise,
+const SECTION_ICON: Readonly<Record<DockSectionId, DeckGlyph>> = {
+  changes: FileEditIcon,
+  space: UserGroupIcon,
+  usage: ChartHistogramIcon,
+  files: Folder01Icon,
+  history: Clock01Icon,
 };
 
 export interface DockSectionProps {
@@ -46,17 +45,17 @@ export function DockSection({ id, title, count, children }: DockSectionProps) {
               <Button variant="ghost" size="lg" className="w-full justify-start gap-1.5 px-3" />
             }
           >
-            <DeckIcon icon={SECTION_ICON[id]} size={CHROME_ICON} class="text-muted-foreground" />
+            <DeckIcon icon={SECTION_ICON[id]} class="text-muted-foreground" />
             <span className="flex-1 text-left text-2xs font-medium text-muted-foreground">
               {title}
             </span>
             {count === undefined ? null : (
               <span className="text-2xs tabular-nums text-foreground">{count}</span>
             )}
+            {/* `size-3` opts the caret out of the button's 16px rule: a fold mark, not an action. */}
             <DeckIcon
-              icon={open ? CaretDown : CaretRight}
-              size={CHROME_ICON}
-              class="size-2.5 text-muted-foreground"
+              icon={open ? ArrowDown01Icon : ArrowRight01Icon}
+              class="size-3 text-muted-foreground"
             />
           </CollapsibleTrigger>
         </h3>

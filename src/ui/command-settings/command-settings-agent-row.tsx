@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { ArrowClockwise, CaretDown, CaretRight } from "@phosphor-icons/react";
+import { ArrowDown01Icon, ArrowRight01Icon, Refresh01Icon } from "@hugeicons/core-free-icons";
 import { useEffect } from "preact/hooks";
 import { signalAdaptersPatch } from "../../settings/signal-adapter-choice";
 import { quickAgentChoices, toggleQuickAgent } from "../../settings/quick-agent-choices";
@@ -12,7 +12,7 @@ import { probeAgentsNow } from "../../launcher/agent-install-store";
 import { detectedAgents } from "../../terminal/agent-detection-store";
 import { Button } from "../controls/button";
 import { NOT_AVAILABLE_ON_WINDOWS } from "../controls/config-row";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Switch } from "../controls/switch";
 import { AgentMark, CommandLine } from "../settings/launch-profile-editor";
 import { agentRowData, type AgentRowData } from "./command-settings-agents";
@@ -157,7 +157,7 @@ export function AgentRow({ itemKey, agentId, settings, crumb, active, locked }: 
               open.value = !open.value;
             }}
           >
-            <DeckIcon icon={open.value ? CaretDown : CaretRight} size={ROW_ICON} />
+            <DeckIcon icon={open.value ? ArrowDown01Icon : ArrowRight01Icon} />
           </Button>
         </>
       }
@@ -196,7 +196,7 @@ export function AgentsRefresh() {
           });
         }}
       >
-        <DeckIcon icon={ArrowClockwise} size={ROW_ICON} />
+        <DeckIcon icon={Refresh01Icon} />
         Refresh
       </Button>
     </li>

@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { Undo02Icon } from "@hugeicons/core-free-icons";
 import type { BuiltinAgent } from "../../lib/agent-catalog";
 import {
   composeLaunchFlags,
@@ -18,7 +18,7 @@ import {
 import { modelsFor, runtimeFor, type AgentRuntimeDefault } from "../../launcher/runtime-catalog";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Switch } from "../controls/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { ChoiceSelect, CLI_DEFAULT } from "./command-settings-choice";
@@ -113,7 +113,7 @@ export function LaunchDetails({ agent, command, locked }: LaunchDetailsProps) {
                 />
               }
             >
-              <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
+              <DeckIcon icon={Undo02Icon} />
             </TooltipTrigger>
             <TooltipContent>Reset to {fallback}</TooltipContent>
           </Tooltip>

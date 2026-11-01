@@ -1,10 +1,10 @@
 import { cn } from "@/lib/cn";
-import { CaretRight } from "@phosphor-icons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import type { AttentionIssue, CommandAreaId, CommandHit } from "../../settings/command-hits";
 import { SETTINGS_PAGES, type SettingsPage } from "../../settings/settings-registry";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../controls/deck-icon";
 import { LogoRow } from "../controls/logo-row";
 import { AppearancePreview } from "../settings/appearance-preview";
 import { PageResetBar } from "../settings/page-reset-bar";
@@ -94,7 +94,7 @@ export function HitRow({ itemKey, hit, value, crumb, active, onOpen }: HitRowPro
         {crumb ? <span className="shrink-0 text-muted-foreground">{crumb}</span> : null}
       </span>
       {hit.kind === "area" ? (
-        <DeckIcon icon={CaretRight} size={ROW_ICON} class="text-muted-foreground" />
+        <DeckIcon icon={ArrowRight01Icon} size={GLYPH_ROW} class="text-muted-foreground" />
       ) : (
         <span className="max-w-64 truncate text-muted-foreground">{value}</span>
       )}

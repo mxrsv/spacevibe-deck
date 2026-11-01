@@ -1,8 +1,8 @@
-import { SidebarSimple, X } from "@phosphor-icons/react";
+import { Cancel01Icon, SidebarRightIcon } from "@hugeicons/core-free-icons";
 import { AgentStateMark } from "../blocks/agent-state-mark";
 import { displayAgent } from "../agent-rail-card-model";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "../controls/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { shortcutLabel } from "../../lib/shortcut-label";
@@ -61,7 +61,7 @@ export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: 
                 />
               }
             >
-              <DeckIcon icon={SidebarSimple} size={ROW_ICON} mirrored />
+              <DeckIcon icon={SidebarRightIcon} />
             </TooltipTrigger>
             <TooltipContent side="left">{OPEN_LABEL}</TooltipContent>
           </Tooltip>
@@ -86,7 +86,7 @@ export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: 
               />
             }
           >
-            <DeckIcon icon={X} size={ROW_ICON} />
+            <DeckIcon icon={Cancel01Icon} />
           </TooltipTrigger>
           <TooltipContent side="left">
             {HIDE_LABEL}

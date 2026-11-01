@@ -1,7 +1,7 @@
-import { MagnifyingGlass } from "@phosphor-icons/react";
+import { Search01Icon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { useRef, useState } from "preact/hooks";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Input } from "../controls/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../controls/popover";
 import { railRepositories, focusedCheckout } from "../rail-create";
@@ -95,9 +95,9 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
       <div className="flex items-center gap-1">
         <div className="relative min-w-0 flex-1">
           <DeckIcon
-            icon={MagnifyingGlass}
-            size={CHROME_ICON}
-            class="pointer-events-none absolute top-2 left-2 size-3 text-muted-foreground"
+            icon={Search01Icon}
+            size={GLYPH_INLINE}
+            class="pointer-events-none absolute top-2 left-2 text-muted-foreground"
           />
           <Input
             data-rail-search=""

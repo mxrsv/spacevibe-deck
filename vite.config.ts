@@ -64,8 +64,9 @@ export default defineConfig(async () => ({
         // that draws an icon died with
         // `InvalidCharacterError: "[object Object]" did not match the QName
         // production`. Inlining the package puts it back through the
-        // transform pipeline, where the alias reaches it.
-        inline: [/@phosphor-icons\/react/],
+        // transform pipeline, where the alias reaches it. `@hugeicons/react` imports
+        // `forwardRef` from "react" the same way and fails the same way.
+        inline: [/@phosphor-icons\/react/, /@hugeicons\/react/],
       },
     },
   },

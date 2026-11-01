@@ -1,8 +1,13 @@
-import { Folder, GitBranch, PushPin, TerminalWindow } from "@phosphor-icons/react";
+import {
+  ComputerTerminal01Icon,
+  Folder01Icon,
+  GitBranchIcon,
+  Pin02Icon,
+} from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { AgentGlyph } from "../controls/agent-glyph";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { AgentStateMark } from "../blocks/agent-state-mark";
 import { displayAgent } from "../agent-rail-card-model";
 import { formatShortAge } from "../agent-rail-model";
@@ -126,7 +131,7 @@ export function ProjectRailRow({
               {entry.kind === "agent" ? (
                 <AgentGlyph agent={entry.agent} className="size-3 shrink-0" />
               ) : (
-                <DeckIcon icon={TerminalWindow} size={CHROME_ICON} class="size-3 shrink-0" />
+                <DeckIcon icon={ComputerTerminal01Icon} size={GLYPH_INLINE} class="shrink-0" />
               )}
               {/* Opacity, not display: the chip keeps its place and stays in the accessible
                   name, so the line does not move between hover states. */}
@@ -141,15 +146,15 @@ export function ProjectRailRow({
                 )}
                 <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-muted px-1.5">
                   <DeckIcon
-                    icon={item.checkout.labelled ? GitBranch : Folder}
-                    size={CHROME_ICON}
-                    class="size-2.5 shrink-0"
+                    icon={item.checkout.labelled ? GitBranchIcon : Folder01Icon}
+                    size={GLYPH_INLINE}
+                    class="shrink-0"
                   />
                   <span className="truncate">{item.branch}</span>
                 </span>
               </span>
               <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
-                {pinned ? <DeckIcon icon={PushPin} size={CHROME_ICON} class="size-2.5" /> : null}
+                {pinned ? <DeckIcon icon={Pin02Icon} size={GLYPH_INLINE} /> : null}
                 <StateAge changedAt={item.changedAt} />
               </span>
             </span>

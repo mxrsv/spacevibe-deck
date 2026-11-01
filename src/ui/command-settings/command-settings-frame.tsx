@@ -1,9 +1,9 @@
-import { MagnifyingGlass, X } from "@phosphor-icons/react";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import type { RefObject } from "preact";
 import type { CommandAreaId } from "../../settings/command-hits";
 import { Badge } from "../controls/badge";
 import { Button } from "../controls/button";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Input } from "../controls/input";
 import { Kbd } from "../controls/kbd";
 import { ToggleGroup, ToggleGroupItem } from "../controls/toggle-group";
@@ -22,7 +22,7 @@ interface SearchFieldProps {
 export function SearchField({ inputRef, scope, scopeLabel }: SearchFieldProps) {
   return (
     <div className="flex items-center gap-2">
-      <DeckIcon icon={MagnifyingGlass} size={CHROME_ICON} class="shrink-0 text-muted-foreground" />
+      <DeckIcon icon={Search01Icon} size={GLYPH_INLINE} class="shrink-0 text-muted-foreground" />
       {scope !== null && scopeLabel !== null ? (
         <span className="flex shrink-0 items-center gap-0.5">
           <Badge variant="secondary">{scopeLabel}</Badge>
@@ -35,7 +35,7 @@ export function SearchField({ inputRef, scope, scopeLabel }: SearchFieldProps) {
               inputRef.current?.focus({ preventScroll: true });
             }}
           >
-            <DeckIcon icon={X} size={CHROME_ICON} />
+            <DeckIcon icon={Cancel01Icon} />
           </Button>
         </span>
       ) : null}

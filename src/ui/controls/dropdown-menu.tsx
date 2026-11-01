@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { cn } from "@/lib/cn";
-import { CaretRight, Check } from "@phosphor-icons/react";
-import { DeckIcon, ROW_ICON } from "./deck-icon";
+import { ArrowRight01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { DeckIcon } from "./deck-icon";
 import { withRef } from "./with-ref";
 
 function DropdownMenu({ ...props }: Omit<MenuPrimitive.Root.Props, "ref">) {
@@ -125,7 +125,7 @@ const DropdownMenuSubTrigger = withRef(function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <DeckIcon icon={CaretRight} size={ROW_ICON} class="ml-auto" />
+      <DeckIcon icon={ArrowRight01Icon} class="ml-auto" />
     </MenuPrimitive.SubmenuTrigger>
   );
 });
@@ -179,7 +179,7 @@ const DropdownMenuCheckboxItem = withRef(function DropdownMenuCheckboxItem({
         data-slot="dropdown-menu-checkbox-item-indicator"
       >
         <MenuPrimitive.CheckboxItemIndicator>
-          <DeckIcon icon={Check} size={ROW_ICON} />
+          <DeckIcon icon={Tick02Icon} />
         </MenuPrimitive.CheckboxItemIndicator>
       </span>
       {children}
@@ -216,7 +216,7 @@ const DropdownMenuRadioItem = withRef(function DropdownMenuRadioItem({
         data-slot="dropdown-menu-radio-item-indicator"
       >
         <MenuPrimitive.RadioItemIndicator>
-          <DeckIcon icon={Check} size={ROW_ICON} />
+          <DeckIcon icon={Tick02Icon} />
         </MenuPrimitive.RadioItemIndicator>
       </span>
       {children}

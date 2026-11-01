@@ -1,6 +1,6 @@
-import { SlidersHorizontal } from "@phosphor-icons/react";
+import { FilterHorizontalIcon } from "@hugeicons/core-free-icons";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -44,7 +44,7 @@ export function ProjectRailOrganize() {
           />
         }
       >
-        <DeckIcon icon={SlidersHorizontal} size={ROW_ICON} />
+        <DeckIcon icon={FilterHorizontalIcon} />
       </Tip>
       <DropdownMenuContent align="end" className="min-w-44">
         <RailPopupGuard />

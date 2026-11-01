@@ -1,8 +1,8 @@
-import { ChartBar } from "@phosphor-icons/react";
+import { ChartHistogramIcon } from "@hugeicons/core-free-icons";
 import { settingsOpen } from "../../chrome/events";
 import { openDockTab } from "../../settings/settings-store";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { RowShell } from "./command-settings-live-row";
 
@@ -37,7 +37,7 @@ export function UsageRow() {
               />
             }
           >
-            <DeckIcon icon={ChartBar} size={ROW_ICON} />
+            <DeckIcon icon={ChartHistogramIcon} />
           </TooltipTrigger>
           <TooltipContent>Tokens and estimated cost for Claude Code and Codex</TooltipContent>
         </Tooltip>
