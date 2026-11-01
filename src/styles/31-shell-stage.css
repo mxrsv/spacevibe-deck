@@ -77,21 +77,38 @@
 
 .stage--flush .pane {
   border-color: transparent;
-  /* The ring moves with the bar above it, which cannot fade. */
   transition: none;
 }
 
-/* The focused pane: a quiet 1px ring and a 2px bar on its top edge, whichever part of the window
-   holds the keyboard. In a split `is-active` names it. `is-active` is set only while the tab holds
-   more than one pane (layout, R4), so a lone pane is the focused one by having no such ancestor.
-   The bar is `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
-.stage--flush .pane-slot.is-active > .pane,
-.stage--flush .pane-slot:not(.has-multiple-panes .pane-slot) > .pane {
-  border-color: var(--ring);
+/* Focus draws no ring (owner, 2026-11-02). A rail press flashes one on the pane it landed on
+   (`flashPane`, DL §7). The edge stays a real border so xterm's canvases cannot paint over it. */
+.stage--flush .pane-slot.is-active > .pane {
+  border-color: transparent;
 }
 
-.stage--flush .pane-slot.is-active::after,
-.stage--flush .pane-slot:not(.has-multiple-panes .pane-slot)::after {
+.stage--flush .pane-slot.is-flashing > .pane {
+  animation: stage-pane-flash 600ms ease-out;
+}
+
+@keyframes stage-pane-flash {
+  from {
+    border-color: var(--foreground);
+  }
+  to {
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage--flush .pane-slot.is-flashing > .pane {
+    animation: none;
+  }
+}
+
+/* In a split a 2px bar on the top edge names the focused pane. `is-active` is set only while the
+   tab holds more than one pane (layout, R4), so a lone pane has nothing to tell apart and no bar.
+   The bar is `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
+.stage--flush .pane-slot.is-active::after {
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -124,7 +141,7 @@
 
 /* ── The pane identity header (LAY-5) ─────────────────────────────────────────
    Logo, name, state mark, latest sentence. The header keeps its surface in every state: the
-   focused pane no longer drops its lid, because the ring and the bar above say focus. 32px
+   focused pane no longer drops its lid, because the bar above says focus. 32px
    including the seam under it. */
 .stage--flush .pane--agent-header > .pane__bar,
 .stage--flush .pane-slot.is-active .pane--agent-header > .pane__bar {

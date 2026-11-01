@@ -61,16 +61,20 @@ describe("the flush stage stylesheet", () => {
     expect(value(".stage--flush .tabbar__tabs .tab__label", "display")).toBe("none");
   });
 
-  it("rings a lone pane wherever the keyboard is, like the active pane of a split", () => {
-    const lone = ".stage--flush .pane-slot:not(.has-multiple-panes .pane-slot)";
-    expect(value(`${lone} > .pane`, "border-color")).toBe("var(--ring)");
-    expect(value(`${lone}::after`, "height")).toBe("2px");
-    expect(value(".stage--flush .pane-slot.is-active > .pane", "border-color")).toBe("var(--ring)");
-  });
-
-  it("marks only one pane in a split when the keyboard sits in another", () => {
+  it("draws no ring on a focused pane, only the bar in a split", () => {
+    expect(value(".stage--flush .pane-slot.is-active > .pane", "border-color")).toBe("transparent");
+    expect(value(".stage--flush .pane-slot.is-active::after", "height")).toBe("2px");
     const selectors = rules.flatMap((rule) => rule.selectors);
     expect(selectors.filter((selector) => selector.includes(":focus-within"))).toEqual([]);
+  });
+
+  it("flashes the ring on a marked slot, and not under reduced motion", () => {
+    const animations = rules
+      .filter((rule) => rule.selectors.includes(".stage--flush .pane-slot.is-flashing > .pane"))
+      .flatMap((rule) => rule.declarations)
+      .filter((declaration) => declaration.prop === "animation")
+      .map((declaration) => declaration.value);
+    expect(animations).toEqual(["stage-pane-flash 600ms ease-out", "none"]);
   });
 
   it("keeps the sentence for a screen reader without drawing it", () => {

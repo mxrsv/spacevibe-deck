@@ -250,6 +250,8 @@ only the pre-JS fallbacks.
 - State changes (hover/active): `--duration` / `--ease` (DL-20.2).
 - Spaces: Mission Control's zoom (DL-35.1) and the space slide (DL-35.2), `transform` +
   `opacity` at 0.28s.
+- A rail press flashes the ring of the pane it landed on, once: `border-color` to transparent at
+  0.6s (owner, 2026-11-02). Behind the `shellStage` switch.
 - Nothing else moves except DL-1.2's scoped loops. See DL-1.5 for reduced motion.
 
 ## 20. Numeric scales

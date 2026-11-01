@@ -7,6 +7,9 @@ export const STAGE_FLUSH_CLASS = "stage--flush";
 /** The `:root` class carrying the mock's taller frame row (`31-shell-stage.css`). */
 export const SHELL_FRAME_CLASS = "shell-frame";
 
+/** On a `.pane-slot` while its ring flashes (`31-shell-stage.css`). */
+const PANE_FLASH_CLASS = "is-flashing";
+
 /** Read at render time, never into a constant (release-switch convention). */
 export function shellStageEnabled(): boolean {
   return isReleaseSwitchEnabled("shellStage", rendererReleaseSwitches());
@@ -19,6 +22,29 @@ export function shellStageEnabled(): boolean {
  */
 export function stageAttentionPillEnabled(): boolean {
   return shellStageEnabled() && isReleaseSwitchEnabled("projectRail", rendererReleaseSwitches());
+}
+
+/**
+ * Shows where a rail press landed: the pane's ring lights up once and fades. The next frame, because
+ * the press may have just switched tab, and a tab builds its slots when it is first shown.
+ */
+export function flashPane(paneId: number): void {
+  requestAnimationFrame(() => {
+    const slot = document.querySelector<HTMLElement>(`.pane-slot[data-pane-id="${paneId}"]`);
+    const pane = slot?.querySelector<HTMLElement>(":scope > .pane");
+    if (!slot || !pane) return;
+    slot.classList.remove(PANE_FLASH_CLASS);
+    void slot.offsetWidth; // A second press during the fade restarts it.
+    slot.classList.add(PANE_FLASH_CLASS);
+    const stop = new AbortController();
+    const settle = (event: AnimationEvent): void => {
+      if (event.target !== pane) return;
+      slot.classList.remove(PANE_FLASH_CLASS);
+      stop.abort();
+    };
+    pane.addEventListener("animationend", settle, { signal: stop.signal });
+    pane.addEventListener("animationcancel", settle, { signal: stop.signal });
+  });
 }
 
 /**

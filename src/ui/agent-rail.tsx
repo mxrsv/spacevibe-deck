@@ -28,7 +28,7 @@ import { RailAvatarColumn } from "./agent-rail-column";
 import { RailCreate } from "./rail-create";
 import { ProjectRail } from "./project-rail/project-rail";
 import { ProjectRailAttentionPill } from "./project-rail/project-rail-attention-pill";
-import { stageAttentionPillEnabled } from "./shell-stage";
+import { flashPane, stageAttentionPillEnabled } from "./shell-stage";
 import { onProjectRailKeyDown, ProjectRailControls } from "./project-rail/project-rail-controls";
 import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { ProjectRailFooter } from "./project-rail/project-rail-footer";
@@ -361,7 +361,10 @@ function WorktreeCardRail(props: AgentRailProps) {
         <div class="asr-rail__list">
           <ProjectRail
             view={view}
-            onFocusPane={props.onFocusPane}
+            onFocusPane={(tabIndex, paneId) => {
+              props.onFocusPane(tabIndex, paneId);
+              flashPane(paneId);
+            }}
             onSelectTab={props.onSelectTab}
             onClosePane={props.onClosePane}
             onCloseTab={props.onCloseTab}
