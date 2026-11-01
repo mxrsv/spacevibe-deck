@@ -233,7 +233,7 @@ import { DockToggle } from "./dock/dock-toggle";
 import { useDockPresence } from "./dock/dock-presence";
 import { useTitleBarOverlaySync } from "./title-bar-overlay-sync";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
-import { STAGE_FLUSH_CLASS, shellStageEnabled } from "./shell-stage";
+import { applyShellFrame, STAGE_FLUSH_CLASS, shellStageEnabled } from "./shell-stage";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { applySidebarShell } from "./sidebar-shell";
@@ -1701,6 +1701,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       sidebar,
     });
   });
+  useLayoutEffect(() => applyShellFrame(document.documentElement), []);
   const toggleSidebarCollapsed = (): void => {
     // Straight at the setting, unlike `toggle-explorer`: the explorer's chord
     // owns a focus guard because that panel can take focus off a pane, and a

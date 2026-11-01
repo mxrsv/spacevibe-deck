@@ -32,6 +32,9 @@ const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
   // The agent-pending ring: ticks positioned by hand and spun by CSS. No
   // library icon expresses it, and it is a status visual, not an action.
   ["ui/workspace-spinner.tsx", 1],
+  // A limit's remaining share, drawn from a live number. No library icon has a
+  // value, and it is a status visual, not an action.
+  ["ui/blocks/usage-ring.tsx", 1],
   // The single-colour agent marks, inlined by design review F1 (2026-09-18).
   // Their assets are `fill="#fff"`, so as an `<img>` they vanished on the light
   // theme; an inline `<svg fill="currentColor">` follows the chrome tone

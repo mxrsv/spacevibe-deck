@@ -17,16 +17,20 @@ const value = (selector: string, prop: string): string | undefined =>
     .findLast((declaration) => declaration.prop === prop)?.value;
 
 describe("the flush stage stylesheet", () => {
-  it("reaches nothing outside a stage that carries the switch's class", () => {
+  it("reaches nothing outside the switch's two classes", () => {
     const prefix = ".stage--flush";
+    const frame = ":root.shell-frame";
     const loose = rules.flatMap((rule) =>
       rule.selectors.filter(
-        (selector) => selector !== prefix && !selector.startsWith(`${prefix} `),
+        (selector) =>
+          selector !== prefix && selector !== frame && !selector.startsWith(`${prefix} `),
       ),
     );
-    expect(loose, "every selector must start with `.stage--flush` or the old look changes").toEqual(
-      [],
-    );
+    expect(loose, "a selector without the switch's class changes the old look").toEqual([]);
+  });
+
+  it("raises the frame row to the mock's 40px only under the switch's root class", () => {
+    expect(value(":root.shell-frame", "--frame-h")).toBe("40px");
   });
 
   it("closes the gutter, the corners and the card edge", () => {

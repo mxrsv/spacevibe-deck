@@ -19,6 +19,13 @@
   --stage-gutter: 0px;
 }
 
+/* The mock's 40px bar. Every consumer of `--frame-h` follows, so the rail's top row, the stage
+   bar and the dock header keep meeting on one line. The cut-over moves this value to
+   `01-tokens.css` with `FRAME_HEIGHT_PX`, the Windows caption overlay's height. */
+:root.shell-frame {
+  --frame-h: 40px;
+}
+
 /* The bar above the panes. The strip is border-box, so the seam costs no height. */
 .stage--flush .stage__strip {
   border-bottom: 1px solid var(--seam-divider);
