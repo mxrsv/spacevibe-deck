@@ -59,7 +59,7 @@ function ProjectHeader({
         aria-expanded={open}
         aria-label={`${project.name}, ${count} sessions${loud ? `, ${STATE_LABEL[loud.state]}` : ""}`}
         onClick={() => state.toggleCollapsed(project.id)}
-        className="flex h-8 w-full cursor-default items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span
           aria-hidden="true"
@@ -199,7 +199,7 @@ function Disclosure({
         type="button"
         aria-expanded={open}
         onClick={onToggle}
-        className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] cursor-default items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <HugeiconsIcon
           icon={ArrowDown01Icon}

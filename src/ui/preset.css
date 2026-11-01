@@ -219,6 +219,37 @@
     color: var(--foreground);
   }
 
+  /* Everything pressable says so (owner, 2026-11-01). Tailwind's preflight leaves the arrow. */
+  :is(.ui-preset, [data-slot]) {
+    &:is(
+      button,
+      [role="button"],
+      [role="combobox"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="option"],
+      [role="switch"],
+      [role="tab"]
+    ),
+    &
+      :is(
+        button,
+        [role="button"],
+        [role="combobox"],
+        [role="menuitem"],
+        [role="menuitemcheckbox"],
+        [role="menuitemradio"],
+        [role="option"],
+        [role="switch"],
+        [role="tab"]
+      ) {
+      &:not(:disabled, [aria-disabled="true"], [data-disabled]) {
+        cursor: pointer;
+      }
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     :is(.ui-preset, [data-slot]),
     :is(.ui-preset, [data-slot]) * {

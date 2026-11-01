@@ -192,7 +192,7 @@ export function DiffQueue({
                   aria-current={index === at.value ? "step" : undefined}
                   onClick={() => go(index)}
                   className={cn(
-                    "flex h-8 w-full cursor-default items-center gap-2 rounded-md px-2 text-left font-mono text-code outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-mono text-code outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     index === at.value ? "bg-accent" : "hover:bg-muted",
                   )}
                 >

@@ -182,7 +182,7 @@ export function ThreadRow({
           aria-current={selected ? "true" : undefined}
           aria-label={`${thread.title}, ${AGENT_NAME[thread.kind]}, ${STATE_LABEL[thread.state]}${detail}, ${thread.since}`}
           className={cn(
-            "grid w-full cursor-default grid-cols-[10px_minmax(0,1fr)] gap-x-2 gap-y-0.5 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+            "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 gap-y-0.5 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
             selected ? "bg-accent ring-1 ring-ring/40 ring-inset" : "hover:bg-accent/50",
           )}
         >

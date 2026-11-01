@@ -36,7 +36,7 @@ export function FileButton({
       title={path}
       onClick={onOpen}
       className={cn(
-        "flex w-full cursor-default items-center gap-2 px-3 text-left font-mono text-code outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        "flex w-full items-center gap-2 px-3 text-left font-mono text-code outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         rail ? "min-h-9 flex-wrap py-1.5" : "h-7",
         active ? "bg-accent" : "hover:bg-muted",
       )}

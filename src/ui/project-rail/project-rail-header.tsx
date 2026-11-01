@@ -52,7 +52,7 @@ export function ProjectRailHeader({
         data-rail-project={group.key}
         aria-expanded={!folded}
         onClick={onToggle}
-        className="flex h-8 w-full cursor-default items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span
           aria-hidden="true"

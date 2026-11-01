@@ -108,7 +108,7 @@ function InboxRow({
       aria-label={`${AGENT_NAME[agent.kind]}, ${STATE_LABEL[agent.state]}${agent.sentence ? `: ${agent.sentence}` : ""}, ${agent.since}`}
       title={checkout.branch ?? undefined}
       className={cn(
-        "relative mx-1.5 grid w-[calc(100%-0.75rem)] cursor-default grid-cols-[10px_16px_minmax(0,1fr)_2rem] gap-x-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+        "relative mx-1.5 grid w-[calc(100%-0.75rem)] grid-cols-[10px_16px_minmax(0,1fr)_2rem] gap-x-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
         selected ? "bg-accent ring-1 ring-ring/40 ring-inset" : "hover:bg-accent/50",
       )}
     >
@@ -181,7 +181,7 @@ function SectionHeader({
       onClick={onToggle}
       className={cn(
         cls,
-        "mx-1.5 w-[calc(100%-0.75rem)] cursor-default rounded-md px-2.5 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+        "mx-1.5 w-[calc(100%-0.75rem)] rounded-md px-2.5 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
       {body}

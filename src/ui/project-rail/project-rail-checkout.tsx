@@ -130,7 +130,7 @@ export function ProjectRailCheckout({
         aria-label={hasRows ? `Focus ${where}` : `New agent in ${where}`}
         disabled={press === undefined}
         onClick={press}
-        className="flex h-6 w-full cursor-default items-center gap-1.5 rounded-md pr-8 pl-7 text-left text-2xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-6 w-full items-center gap-1.5 rounded-md pr-8 pl-7 text-left text-2xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <DeckIcon icon={GlyphIcon} size={ROW_ICON} class="size-3 shrink-0" />
         <span className="min-w-0 truncate">{line.name}</span>

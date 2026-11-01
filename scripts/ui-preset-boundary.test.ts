@@ -170,6 +170,18 @@ describe("the preset leaks nothing into a surface that does not carry it", () =>
     expect(offenders, "preset rules must hang off .ui-preset or [data-slot]").toEqual([]);
   });
 
+  it("gives enabled pressable elements a pointer, only inside the preset's scope", () => {
+    const pointer = rules.filter((rule) =>
+      rule.declarations.some(({ prop, value }) => prop === "cursor" && value === "pointer"),
+    );
+    const selectors = pointer.flatMap((rule) => rule.selectors).join(" ");
+    expect(selectors).toContain("[role=menuitem]");
+    expect(selectors).toContain(":disabled");
+    for (const selector of pointer.flatMap((rule) => rule.selectors)) {
+      expect(selector).toMatch(/\.ui-preset|\[data-slot/);
+    }
+  });
+
   it("scopes the reset to .ui-preset and the controls' data-slot", () => {
     const reset = rules.filter((rule) =>
       rule.selectors.some((s) => s.startsWith(":is(.ui-preset")),

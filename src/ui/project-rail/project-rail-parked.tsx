@@ -29,7 +29,7 @@ function Disclosure({
         data-rail-section={label}
         aria-expanded={open}
         onClick={onToggle}
-        className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] cursor-default items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <DeckIcon
           icon={CaretDown}

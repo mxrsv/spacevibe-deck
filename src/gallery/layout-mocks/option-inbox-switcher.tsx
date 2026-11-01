@@ -86,7 +86,7 @@ export function InboxSwitcher({
                         onPointerMove={() => !selected && onHighlight(agent.id)}
                         onClick={() => onOpen(agent.id)}
                         className={cn(
-                          "flex h-8 cursor-default items-center gap-2 rounded-md px-2 text-xs",
+                          "flex h-8 items-center gap-2 rounded-md px-2 text-xs",
                           selected ? "bg-accent text-foreground" : "text-foreground",
                         )}
                       >
