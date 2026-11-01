@@ -31,6 +31,18 @@
   border-bottom: 1px solid var(--seam-divider);
 }
 
+/* The mock's `px-3`: 12px of air at each end, text 12px. The strip's own padding is 8px and
+   other sheets override it per state (traffic-light inset, caption controls, the collapsed
+   column), so the extra 4px sits on the first and last occupant instead of replacing the
+   padding those rules compute. */
+.stage--flush .space-bar {
+  margin-left: 4px;
+}
+
+.stage--flush .stage__strip-actions {
+  margin-right: 4px;
+}
+
 /* The divider IS the seam: it keeps the drag and its grab zone, and draws one pixel. */
 .stage--flush .split__divider {
   flex-basis: 1px;
@@ -121,6 +133,7 @@
    session crumb is not drawn (space-bar.tsx), so the shrink order in 20-mission-control.css
    still holds for the three that remain. */
 .stage--flush .space-bar__name {
+  font-size: 12px;
   font-weight: 400;
 }
 

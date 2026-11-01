@@ -49,4 +49,10 @@ describe("the flush stage stylesheet", () => {
       "1px solid var(--seam-divider)",
     );
   });
+
+  it("sets the bar's text at the mock's 12px with 12px of air at each end", () => {
+    expect(value(".stage--flush .space-bar__name", "font-size")).toBe("12px");
+    expect(value(".stage--flush .space-bar", "margin-left")).toBe("4px");
+    expect(value(".stage--flush .stage__strip-actions", "margin-right")).toBe("4px");
+  });
 });
