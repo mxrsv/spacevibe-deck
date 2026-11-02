@@ -31,6 +31,14 @@ describe("bindGuiZoom", () => {
     stop();
   });
 
+  it("leaves the host alone when another setting changes", () => {
+    const stop = bindGuiZoom();
+    invoke.mockClear();
+    settings.value = { ...settings.value, fontSize: settings.value.fontSize + 1 };
+    expect(invoke).not.toHaveBeenCalled();
+    stop();
+  });
+
   it("applies a bad stored value as 1", () => {
     settings.value = { ...DEFAULT_SETTINGS, guiZoom: 7 };
     const stop = bindGuiZoom();

@@ -112,8 +112,12 @@ export function ProjectRailRow({
               }
             }}
             className={cn(
-              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:bg-sidebar-accent/50",
-              focused ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50",
+              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors",
+              // Focus paints as hover does on an idle row; the selected row has no hover step, so
+              // focus takes one step beyond its fill instead of lightening it.
+              focused
+                ? "bg-sidebar-accent focus-visible:bg-[color-mix(in_oklch,var(--sidebar-accent),var(--foreground)_6%)]"
+                : "hover:bg-sidebar-accent/50 focus-visible:bg-sidebar-accent/50",
             )}
           >
             <span className="flex h-5 items-center">
@@ -145,7 +149,7 @@ export function ProjectRailRow({
                 {projectName === undefined ? null : (
                   <span className="min-w-0 shrink truncate">{projectName}</span>
                 )}
-                <Badge variant="secondary" className="min-w-0 justify-start">
+                <Badge variant="secondary" className="min-w-0 shrink justify-start">
                   <DeckIcon
                     icon={item.checkout.labelled ? GitBranchIcon : Folder01Icon}
                     size={GLYPH_INLINE}

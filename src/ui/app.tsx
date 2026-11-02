@@ -36,6 +36,7 @@ import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import type { DockTab } from "../settings/settings-schema";
 import { agentOptions, agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { activeTheme } from "../settings/themes";
+import { textFontSize } from "../settings/gui-zoom";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
@@ -639,7 +640,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     surfaceActive: () => fileController.activeIndex() >= 0 || browserSurfaceActive.value,
     font: () => ({
       family: toFontStack(settings.value.fontFamily),
-      size: settings.value.fontSize,
+      size: textFontSize(settings.value),
     }),
   });
   // The TabManager is built once, so its seams read the latest handle.

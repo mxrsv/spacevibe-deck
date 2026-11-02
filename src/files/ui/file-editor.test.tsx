@@ -311,6 +311,55 @@ describe("FileEditor", () => {
     expect(stub.options.fontFamily).toBe("JetBrains Mono, Menlo, Monaco, monospace");
   });
 
+  describe("under GUI zoom", () => {
+    // `useSignalEffect` re-runs on an animation frame, not in the act that set the signal.
+    const frame = () =>
+      act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+    const before = settings.value;
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      settings.value = before;
+      editorSettings.value = null;
+    });
+
+    it("starts at the font size divided by the zoom, so glyphs keep their physical size", async () => {
+      vi.stubGlobal("__deckHost", {});
+      settings.value = { ...before, fontSize: 14, guiZoom: 1.25 };
+      await mountWithDocument();
+
+      expect(stub.options.fontSize).toBe(11.2);
+    });
+
+    it("recompensates when the zoom changes while the editor is open", async () => {
+      vi.stubGlobal("__deckHost", {});
+      settings.value = { ...before, fontSize: 14, guiZoom: 1.25 };
+      await mountWithDocument();
+
+      await act(async () => {
+        settings.value = { ...settings.value, guiZoom: 0.9 };
+        editorSettings.value = settings.value;
+      });
+      await frame();
+
+      expect(stub.options.fontSize).toBe(15.556);
+    });
+
+    it("leaves the size alone without the Electron host, where nothing zooms the page", async () => {
+      settings.value = { ...before, fontSize: 14, guiZoom: 1.25 };
+      await mountWithDocument();
+      expect(stub.options.fontSize).toBe(14);
+
+      await act(async () => {
+        editorSettings.value = { ...settings.value, guiZoom: 0.9 };
+      });
+      await frame();
+      expect(stub.options.fontSize).toBe(14);
+    });
+  });
+
   it("reports a user edit but NOT its own reload", async () => {
     // Deck's reload writes the model directly; reporting that as an edit would
     // mark a freshly reloaded file dirty and promote its preview tab.

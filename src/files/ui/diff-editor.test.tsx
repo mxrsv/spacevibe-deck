@@ -10,6 +10,8 @@ vi.mock("../editor-host", async () => {
   return { ...actual, loadMonaco: loadStubbedMonaco };
 });
 
+import { editorSettings } from "../file-surface-controller";
+import { settings } from "../../settings/settings-store";
 import { DiffEditor, type DiffEditorControls, type TextSides } from "./diff-editor";
 import { resetStub, stub } from "./monaco-diff-stub";
 
@@ -166,6 +168,55 @@ describe("the models' lifetimes", () => {
     await mount({ sides: sides({ original: side(""), oneSided: true }) });
     expect(stub.log.slice(0, 3)).toEqual(["dispose-editor", "dispose-model", "dispose-model"]);
     expect(stub.log).toContain("create-whole");
+  });
+});
+
+describe("under GUI zoom", () => {
+  // `useSignalEffect` re-runs on an animation frame, not in the act that set the signal.
+  const frame = () =>
+    act(async () => void (await new Promise((resolve) => setTimeout(resolve, 50))));
+  const before = settings.value;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    settings.value = before;
+    editorSettings.value = null;
+  });
+
+  it.each([
+    ["two sides", () => sides(), () => stub.diffOptions],
+    ["one side", () => sides({ original: side(""), oneSided: true }), () => stub.wholeOptions],
+  ])("starts a %s at the font size divided by the zoom", async (_name, make, options) => {
+    vi.stubGlobal("__deckHost", {});
+    settings.value = { ...before, fontSize: 14, guiZoom: 1.25 };
+    await mount({ sides: make() });
+    expect(options()!.fontSize).toBe(11.2);
+  });
+
+  it("recompensates when the zoom changes while the diff is open", async () => {
+    vi.stubGlobal("__deckHost", {});
+    settings.value = { ...before, fontSize: 14, guiZoom: 1.25 };
+    await mount({ sides: sides() });
+
+    await act(async () => {
+      settings.value = { ...settings.value, guiZoom: 0.9 };
+      editorSettings.value = settings.value;
+    });
+    await frame();
+
+    expect(stub.updates.at(-1)?.fontSize).toBe(15.556);
+  });
+
+  it("leaves the size alone without the Electron host", async () => {
+    settings.value = { ...before, fontSize: 14, guiZoom: 1.25 };
+    await mount({ sides: sides() });
+    expect(stub.diffOptions!.fontSize).toBe(14);
+
+    await act(async () => {
+      editorSettings.value = { ...settings.value, guiZoom: 0.9 };
+    });
+    await frame();
+    expect(stub.updates.at(-1)?.fontSize).toBe(14);
   });
 });
 

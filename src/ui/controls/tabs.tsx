@@ -60,7 +60,9 @@ const TabsTrigger = withRef(function TabsTrigger({
       className={cn(
         "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-colors duration-150 outline-none group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-[calc(--spacing(1.25))] hover:bg-foreground/8 focus-visible:bg-foreground/8 disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "group-data-[variant=default]/tabs-list:data-active:shadow-sm data-active:bg-background data-active:text-foreground dark:data-active:bg-input/30 dark:data-active:text-foreground",
-        "group-data-[variant=line]/tabs-list:data-active:bg-muted group-data-[variant=line]/tabs-list:data-active:shadow-none dark:group-data-[variant=line]/tabs-list:data-active:bg-muted",
+        // Focus on the selected tab goes one step past its fill, or it would show nothing.
+        "group-data-[variant=default]/tabs-list:data-active:focus-visible:bg-[color-mix(in_oklch,var(--background)_92%,var(--foreground))] dark:group-data-[variant=default]/tabs-list:data-active:focus-visible:bg-input/50",
+        "group-data-[variant=line]/tabs-list:data-active:bg-muted group-data-[variant=line]/tabs-list:data-active:shadow-none dark:group-data-[variant=line]/tabs-list:data-active:bg-muted group-data-[variant=line]/tabs-list:data-active:focus-visible:bg-[color-mix(in_oklch,var(--muted)_90%,var(--foreground))]",
         className,
       )}
       {...props}

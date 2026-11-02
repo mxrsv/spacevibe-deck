@@ -3,6 +3,7 @@ import { createRef } from "preact";
 import { describe, expect, it } from "vitest";
 import { loadPresetControls } from "./load-preset-controls";
 import { expectRefsToHoldElements, mount } from "./preset-test-kit";
+import { ringClasses } from "./ring-classes";
 
 const ui = await loadPresetControls();
 const { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend } =
@@ -36,6 +37,21 @@ describe("Field and Label", () => {
     const field = view.host.querySelector('[data-slot="field"]') as HTMLElement;
     expect(field.getAttribute("data-orientation")).toBe("horizontal");
     expect(field.hasAttribute("data-invalid")).toBe(true);
+    await view.unmount();
+  });
+
+  it("draws no focus ring on a label that wraps a control", async () => {
+    const view = await mount(
+      <FieldLabel htmlFor="notify">
+        <Field orientation="horizontal">
+          <FieldContent>Notify</FieldContent>
+          <Switch id="notify" />
+        </Field>
+      </FieldLabel>,
+    );
+    const label = view.host.querySelector('[data-slot="field-label"]') as HTMLElement;
+    expect(ringClasses(label.className)).toEqual([]);
+    expect(label.className).toContain("has-[:focus-visible]:bg-");
     await view.unmount();
   });
 

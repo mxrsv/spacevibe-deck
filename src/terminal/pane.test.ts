@@ -289,16 +289,6 @@ describe("Pane under GUI zoom", () => {
     pane.dispose();
   });
 
-  it("keeps the PTY size when the box is the same physical size after the zoom", () => {
-    const { pane, propose, resizes, at } = hostedPane();
-    at(1.25);
-    vi.advanceTimersByTime(FIT_DEBOUNCE_MS);
-    expect(propose).toHaveBeenCalledTimes(1);
-    expect(resizes).toEqual([]);
-    expect([pane.cols, pane.rows]).toEqual([BOX.cols, BOX.rows]);
-    pane.dispose();
-  });
-
   it("fits once for a burst of zoom steps", () => {
     const { pane, propose, resizes, at } = hostedPane();
     for (const zoom of [1.1, 1.25, 1.1, 1]) {

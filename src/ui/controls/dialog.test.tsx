@@ -53,6 +53,25 @@ describe("Dialog", () => {
     await view.unmount();
   });
 
+  it("sets its footer apart by fill alone, with no rule above it", async () => {
+    const view = await mount(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>T</DialogTitle>
+          <DialogFooter>
+            <DialogClose>Cancel</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>,
+    );
+    const footer = document.body.querySelector('[data-slot="dialog-footer"]') as HTMLElement;
+    expect(footer).not.toBeNull();
+    expect(
+      footer.className.split(/\s+/).filter((entry) => /(^|:)border-t(-|$)/.test(entry)),
+    ).toEqual([]);
+    await view.unmount();
+  });
+
   it("returns focus to the trigger that opened it", async () => {
     const view = await mount(<Harness />);
     const trigger = view.host.querySelector("button") as HTMLElement;

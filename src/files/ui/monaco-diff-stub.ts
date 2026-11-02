@@ -29,6 +29,8 @@ export const stub = {
   viewStatesRestored: 0,
   themes: [] as string[],
   loads: 0,
+  /** Every `updateOptions` call, from either editor, in order. */
+  updates: [] as Record<string, unknown>[],
 };
 
 export function resetStub(): void {
@@ -44,6 +46,7 @@ export function resetStub(): void {
   stub.viewStatesRestored = 0;
   stub.themes = [];
   stub.loads = 0;
+  stub.updates = [];
 }
 
 function makeModel(text: string, language: string | undefined): StubModel {
@@ -93,7 +96,9 @@ export const fakeMonaco = {
         restoreViewState: () => {
           stub.viewStatesRestored += 1;
         },
-        updateOptions: () => {},
+        updateOptions: (next: Record<string, unknown>) => {
+          stub.updates.push(next);
+        },
         goToDiff: (direction: string) => {
           stub.goToDiff.push(direction);
         },
@@ -122,7 +127,9 @@ export const fakeMonaco = {
         restoreViewState: () => {
           stub.viewStatesRestored += 1;
         },
-        updateOptions: () => {},
+        updateOptions: (next: Record<string, unknown>) => {
+          stub.updates.push(next);
+        },
         createDecorationsCollection: (decorations: readonly unknown[]) => {
           stub.decorations = decorations;
           return {
