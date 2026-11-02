@@ -1,8 +1,8 @@
 # UI composition: buttons, small UI, input, type, focus and zoom
 
 Date: 2026-11-03
-Status: Decisions approved by the owner in conversation on 2026-11-03. Nothing here is built yet,
-and this specification does not claim shipped behavior.
+Status: Decisions approved by the owner in conversation on 2026-11-03. Built on an unmerged branch,
+awaiting the owner's eye review; this specification does not claim shipped behavior.
 Parent: [Deck-wide shadcn and Base UI migration](2026-10-21-shadcn-base-ui-migration.md), which
 keeps owning component technology. Layout stays with the
 [agent-first shell layout](2026-10-22-agent-first-shell-layout.md).
@@ -60,7 +60,7 @@ scale, so most of this is a narrow change on top of them.
 - **CMP-11 Focus.** Only inputs have a ring. Any other control shows keyboard focus the way it
   shows hover, with no ring or outline. Focus still reaches every control by Tab.
 - **CMP-12 Accepted limit.** The state change in CMP-11 measures about 1.09 to 1.19:1, under the 3:1
-  floor of the parent's gate G3. The owner accepts this; it is a named exception, not a defect.
+  floor of the parent's UI-7. The owner accepts this; it is a named exception, not a defect.
 - **CMP-13 Other states.** Hover changes background colour only, in 150ms. Pressed is one step
   darker. Selected is one neutral background step with no bar or border. Disabled is 50% opacity.
   A state change never shifts layout.
@@ -71,7 +71,8 @@ scale, so most of this is a narrow change on top of them.
   regions separate by background steps, and a line returns between two regions only if eye review
   finds they merge. Light mode needs new steps because the preset's `--card` equals `--background`.
 - **CMP-15 Spacing.** A 2px step with the values 0, 2, 4, 6, 8, 10, 12, 16 and 24, assigned by role.
-  Functional sizes stay outside it: hairlines, tree indent, window controls and the frame height.
+  Functional sizes stay outside it: hairlines, tree indent, window controls, the frame height and
+  the padding of the 36 button (14).
 
 ### Zoom and size
 

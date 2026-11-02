@@ -13,7 +13,8 @@ terminal text, workspace chrome and identity.
   Midnight, Forest and Dusk. It applies at once. Deck Dark is the default.
 - **Import theme** — add an iTerm2, Windows Terminal, Ghostty or Alacritty file; it appears under
   Custom and changes the terminal colors only. Delete its file from **Themes folder** to remove it.
-- **Font and size** — shared by terminals and the built-in editor (default size 13).
+- **Font and size** — shared by terminals and the built-in editor (default size 13). Zooming the
+  window scales the app around them and leaves this text size alone.
 - **Tab bar position** — the chips live in the sidebar layout (default) or along the top.
 - **Show pane bar** — a name bar inside each split (off by default).
 - **Show status bar** — branch, path and window readout along the bottom (off by default).

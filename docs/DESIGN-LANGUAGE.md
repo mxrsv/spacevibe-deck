@@ -77,19 +77,23 @@ cites it.
   ([`preset.css`](../src/ui/preset.css), generated from preset `b1a09kDGF`): its tokens,
   Inter, its radius, shadows and motion. Every other surface keeps the rules in this document
   unchanged. The sections below name what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1,
-  DL-4.1, DL-14.3, DL-20.1 and DL-21.3.
+  DL-3.3, DL-4.1, DL-4.4, DL-14.3, DL-20.1, DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where the
+  [UI composition spec](specs/2026-11-03-ui-composition.md) (`CMP-n`) names a value, it takes
+  precedence over the preset's own.
   - `.dark` on the root element is the preset's dark mode, so portals follow it.
-  - Deck Dark and Deck Light wear the preset's own tokens; every other theme publishes them from
-    its roles in [`theme-vars.ts`](../src/lib/theme-vars.ts) (UI-2). Chrome CSS reads them only in
+  - Deck Dark and Deck Light wear the preset's own tokens, except the primary role, which is the
+    ivory of CMP-4 in [`preset.css`](../src/ui/preset.css); every other theme publishes the tokens
+    from its roles in [`theme-vars.ts`](../src/lib/theme-vars.ts) (UI-2). Chrome CSS reads them only in
     the new shell's two stylesheets; the preset's accent is declared `--ui-accent` because
     `--accent` is the chrome's.
   - A control takes `className`, not `class`; a wrapper is made with `withRef`
     ([`with-ref.ts`](../src/ui/controls/with-ref.ts)) because Preact strips `ref` from a
     function component's props.
   - Contrast on a migrated surface is WCAG 2.2 AA, 4.5:1 for text and 3:1 for the boundary of a
-    control, in both modes. A few stock pairs fall short and are named, each with where it
-    appears, in [`ui-preset-contrast.test.ts`](../scripts/ui-preset-contrast.test.ts); DL-3.5's
-    floors stay the chrome's.
+    control, in both modes, with one accepted exception for keyboard focus (DL-21.3). A few stock
+    pairs fall short and are named, each with where it appears, in
+    [`ui-preset-contrast.test.ts`](../scripts/ui-preset-contrast.test.ts); DL-3.5's floors stay
+    the chrome's.
   - [`ui-preset-boundary.test.ts`](../scripts/ui-preset-boundary.test.ts) holds the fence: no
     global rule, no custom property or utility class the chrome also uses, no real React in the
     production bundle.
@@ -159,8 +163,10 @@ only the pre-JS fallbacks.
   top.
   Why: the owner wants the two counts apart at a glance (2026-10-10), as every diff tool shows
   them.
-- **DL-3.3** Structure comes from hairlines and background steps, not from color or
-  shadow.
+- **DL-3.3** Structure comes from spacing and background steps, not from color or shadow. A
+  line between two large regions appears only when they would otherwise merge, and none between
+  rows, groups or section headers. Inside the preset boundary (DL-1.6) that is the whole rule;
+  legacy surfaces keep their `--hair` hairlines (§15, DL-19.2) until their region cuts over.
 - **DL-3.4** `--text-primary` carries keys and values; `--text-muted` carries secondary
   value text and a group label heading a list of rows; `--text-faint` carries
   descriptions, hints, column headers and disabled states. Inside `.agent-board` a group
@@ -198,8 +204,8 @@ only the pre-JS fallbacks.
   never does either. One exception in chrome: the launch page's command preview (DL-32.6)
   prints the exact command in `--board-font`, because a shell line's flags, quotes and spaces
   must read exactly as they will run. Inside the preset boundary (DL-1.6) the typeface is the
-  preset's Inter, bundled with the app, and the sizes are the controls' own (`text-xs`, 0.625rem
-  for badges and keys); `--ui-font` and the DL-4.4 ladder do not reach it.
+  preset's Inter, bundled with the app, and the sizes are DL-20.3's scale; `--ui-font` and the
+  DL-4.4 ladder do not reach it.
 - **DL-4.2** Values use `font-variant-numeric: tabular-nums` so changing numbers do not
   jitter.
 - **DL-4.3** No `text-transform: uppercase`, no all-caps spelling used as styling and no
@@ -224,6 +230,9 @@ only the pre-JS fallbacks.
   Two scoped exceptions use the metadata rung for a group label: Recent activity's heading
   (DL-33.2) and the Board's `STATUS` / `PROJECTS` (DL-34.5). Keys, labels, column headers,
   descriptions and empty states are sentence-case; values are lowercase.
+
+  This ladder is the legacy surfaces' scale. It stays for every surface outside the preset
+  boundary (DL-1.6) until its region cuts over; inside the boundary DL-20.3 replaces it.
 - **DL-4.5** Sizes come from the `--type-*` variables declared once in `:root`, never from
   a px literal at the use site. The closed list of exceptions, none of them standard chrome
   text:
@@ -274,17 +283,30 @@ only the pre-JS fallbacks.
   of 28px or less at `--radius-control` without a matching width; a control whose height
   comes from padding is held by review.
   Why: on a 24px box a 10px corner is most of the half-height and the control reads as a
-  pill. Inside the preset boundary (DL-1.6) the radius is the preset's `--radius` and its
-  derived steps (`rounded-md`, `rounded-lg`, `rounded-full`), and the five roles do not apply.
+  pill. Inside the preset boundary (DL-1.6) the five roles do not apply; the radius follows
+  CMP-2, CMP-5 and CMP-7: 4px on a control 28 or 32 high and 3px on a 20px one, 6px on a
+  control 36 or 40 high, and a pill for a badge. The values derive from the preset's `--radius`
+  (`rounded-md`, `rounded-sm`, `rounded-button-lg` in
+  [`preset.css`](../src/ui/preset.css)).
 - **DL-20.2** One motion pair for chrome state change: `--duration` (150ms) and `--ease`
   (`cubic-bezier(0.4, 0, 0.2, 1)`). The slide-over's 0.28s stays inside DL-1.2's 300ms.
-- **DL-20.3** Type sizes are not a numeric scale here; DL-4.4 is their only authority.
+- **DL-20.3** Outside the preset boundary (DL-1.6) type sizes are not a numeric scale here;
+  DL-4.4 is their only authority. Inside it the scale is 16px for a dialog title, 14px for
+  buttons, inputs, labels and row titles, and 12px for chips, badges and metadata (branch, time,
+  path, counts, group titles). Nothing is below 12px; terminal text is outside the scale (CMP-10).
+  Until a region cuts over, its legacy surfaces keep DL-4.4's ladder, including the 11px and
+  10.5px rungs.
 - **DL-20.4** Frame height is not a numeric scale either. DL-18.2's 34px is window
   geometry: `hiddenInset` and `--frame-lights-w` centre the macOS traffic lights in it, and
-  the Windows overlay opens at the same height (`FRAME_HEIGHT_PX`, held to `--frame-h` by a
-  test).
-- **DL-20.5** There is no spacing, weight, border-width or layer scale. The z-index order
-  is behavioural (Settings under the modal scrim depends on 40 > 35), not a token.
+  the Windows overlay opens at the same height (`FRAME_HEIGHT_PX`). It stays physical under GUI
+  zoom, so `--frame-h` is `calc(34px / var(--gui-zoom, 1))`;
+  [`window-options.test.ts`](../electron/window-options.test.ts) holds the two together.
+- **DL-20.5** Outside the preset boundary there is no spacing, weight, border-width or layer
+  scale. Inside it spacing moves in 2px steps, with the values and roles of CMP-15; sizes that
+  are functional geometry (hairlines, tree indent, window controls, the frame height) stay
+  outside it. Legacy surfaces keep no scale until they migrate. No token declares the steps.
+  The z-index order is behavioural (Settings under the modal scrim depends on 40 > 35), not a
+  token.
 
 ## 21. Interaction states
 
@@ -300,9 +322,14 @@ only the pre-JS fallbacks.
   not.
 - **DL-21.3** Focus-visible is a 2px `--accent` outline that composes with either wash.
   Inside `.settings-screen` the outline is `--text-muted` (DL-3.7). Inside the preset boundary
-  (DL-1.6) a control draws its own indicator: a 2px ring in the preset's `--ring`, solid and
-  inset, so a neighbour or a clipping parent never hides it.
-- **DL-21.4** Disabled is `--text-faint` on the unchanged surface.
+  (DL-1.6) only a text input has a ring: 3px, outside the input, `--foreground` at 14%, with
+  the border turning to the muted text colour. The container must leave room for it, since a
+  clipping ancestor hides it. Every other control shows keyboard focus as its hover and has no
+  ring or outline; Tab still reaches it. This is an owner-accepted exception to the AA non-text
+  floor of DL-1.6: that state change measures 1.09 to 1.19:1 against 3:1 (CMP-12), a named
+  limit, not a defect. Legacy surfaces keep their `--accent` outline until they migrate.
+- **DL-21.4** Disabled is `--text-faint` on the unchanged surface. Inside the preset boundary
+  (DL-1.6) it is the control at 50% opacity.
 - **DL-21.5** State changes use DL-20.2's `--duration` / `--ease` and only DL-1.2's
   properties. Reduced motion is handled by scope (§9).
 - **DL-21.6** No accent bar beside the wash: one state, one signifier.
@@ -348,9 +375,11 @@ Open places where shipped CSS breaks an invariant. Fix one when its surface is r
 
 ## 0. Current direction
 
-Today's chrome reads like a well-kept config file: quiet rows of key → value in the
-terminal's own colors. The terminal is the content and chrome recedes. This is a direction,
-not a rule; a redesign may change it. The resource budget behind it is an invariant (§1).
+Clean, small UI. One filled button on screen at a time, and it answers whatever needs the
+user. Icons and progress carry meaning in place of text, and no divider lines run between
+rows, groups or headers: spacing and background steps do that work. Legacy surfaces still wear
+the older quiet key → value rows until their region migrates. This is a direction, not a
+rule; a redesign may change it. The resource budget behind it is an invariant (§1).
 
 ## 8. Copy
 
@@ -575,8 +604,8 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
 - **DL-14.3** CSS does not set `width`, `height`, `fill`, `stroke` or `stroke-width` on an icon:
   those declarations beat SVG attributes and silently disable DL-14.1, and a stray `fill` erases
   the icon. Colour is `color`, reaching the icon through `currentColor`. Inside the preset
-  boundary (DL-1.6) a control sizes the icons it holds (`[&_svg]:size-3.5`), which is the one
-  place CSS sets an icon's size; the `size` attribute stays as the fallback.
+  boundary (DL-1.6) a control sizes the icons it holds (`[&_svg]:size-3.5`, 16, 14 or 12px by
+  CMP-7), which is the one place CSS sets an icon's size; the `size` attribute stays as the fallback.
 - **DL-14.4** Icon-only controls are for familiar, repeated actions that carry a hover tooltip
   (close, add, split, next). Consequential or rare actions keep their word beside the icon:
   Restore Defaults reads `reset`, the Open Board's button reads `Open Folder…`.

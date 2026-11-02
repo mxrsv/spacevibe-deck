@@ -15,6 +15,10 @@ constants that currently switch behaviour off and are meant to be flipped back.
   Form controls get `border-box` from the user agent; a plain element does not, which is how
   `.session-row` grew a horizontal scrollbar the moment it stopped being a `<button>`.
   Declare it on any element you give a percentage size and a padding.
+- **A text input's focus ring is outside the input.** The preset's ring was inset; the
+  [`Input`](../../src/ui/controls/input.tsx) ring is 3px beyond its edge, so a `ScrollArea`
+  viewport or any ancestor with `overflow` and no padding round the input clips it, and the
+  input then shows focus by its border alone. Leave room in the container.
 - **A 1px overflow in the rail moves the whole column.** `.asr-rail__list` clips
   horizontally without removing the scroll container, so a border bled by `margin: 0 -1px`
   slid the column on the first focus. The multi-agent frame is an inset `box-shadow` for

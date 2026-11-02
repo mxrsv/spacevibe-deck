@@ -59,11 +59,14 @@ in implementation evidence; do not silently re-resolve `latest` between waves.
   Keep its variants, sizing, spacing, typography, colors, border, radius, shadow and state
   treatment. Adapt imports, renderer types, asset paths and portal integration only where
   required by Deck, recording each adaptation. Do not hand-draw a "shadcn-like" replacement.
+  [UI composition](2026-11-03-ui-composition.md) takes precedence for button sizes and radius,
+  focus and the type scale.
 - **UI-2 One palette (owner, 2026-11-02).** Migrated UI reads the preset's tokens. Deck Dark and
   Deck Light keep the preset's own light/dark values; any other theme publishes those tokens from
   its own roles, so the chrome and the terminal beside it never disagree. Namespacing to prevent
   collisions is allowed. Terminal ANSI and editor syntax colors are separate content concerns and
-  retain their stored values and behavior.
+  retain their stored values and behavior. [UI composition](2026-11-03-ui-composition.md) takes
+  precedence for the primary colour and muted text in Deck Light.
 - **UI-3 Controlled coexistence.** Before a surface moves, it keeps its existing appearance
   and behavior. No global reset, selector or colliding variable may restyle it accidentally.
   A migrated surface and its portals must use the same preset, mode, font and reset rules;
@@ -89,6 +92,9 @@ in implementation evidence; do not silently re-resolve `latest` between waves.
   visible focus, reduced motion, disabled semantics and error association remain mandatory.
   Verify overlay focus trap/return, nested dismissal, pointer outside and IME composition.
   Adopting a library is not evidence that Deck's composition satisfies these requirements.
+  One named exception: CMP-12 of [UI composition](2026-11-03-ui-composition.md) accepts that
+  keyboard focus on a control other than a text input shows as its hover, measured 1.09 to
+  1.19:1 against the 3:1 non-text floor.
 - **UI-8 Wave completion.** Every wave includes its actual consumers, deletion of the old
   rules no longer used, relevant tests and documentation, a real-component visual specimen,
   and recorded checks. A test/count ratchet prevents new legacy controls on migrated surfaces.
