@@ -52,6 +52,7 @@ export default defineConfig(async () => ({
     // tests to import; Node would otherwise resolve Base UI's CommonJS `require("react")`
     // to the real React (scripts/preset-controls-bundle.mjs).
     globalSetup: ["./scripts/preset-controls-bundle.mjs"],
+    setupFiles: ["./scripts/vitest-buffer-pool.ts"],
     server: {
       deps: {
         // `@preact/preset-vite` aliases react -> preact/compat through
