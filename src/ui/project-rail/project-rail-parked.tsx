@@ -1,7 +1,7 @@
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { cn } from "@/lib/cn";
-import { Button } from "../controls/button";
+import { Chip } from "../blocks/chip";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import type { RailItem, RailProject } from "../rail-view-model";
 import { RailRows, type RailRowEnv } from "./project-rail-sections";
@@ -89,14 +89,13 @@ export function HiddenSection({ projects }: { readonly projects: readonly RailPr
           className="mx-1.5 flex h-7 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground hover:bg-accent/50"
         >
           <span className="min-w-0 flex-1 truncate">{project.name}</span>
-          <Button
-            size="xs"
-            variant="ghost"
+          <Chip
+            quiet
             aria-label={`Show ${project.name}`}
             onClick={() => setRailProjectHidden(project.key, false)}
           >
             Show
-          </Button>
+          </Chip>
         </div>
       ))}
     </Disclosure>

@@ -12,10 +12,10 @@ import { PRESET_CONTROLS_FILE } from "./scripts/preset-controls-bundle.mjs";
  * Under vitest a component that imports a shared Base UI control would load it through Node,
  * where Base UI's CommonJS `require("react")` reaches the real React instead of Preact
  * (scripts/preset-controls-bundle.mjs says why). So a test run resolves every shared control to
- * the bundle that script builds with the aliases applied; the build and dev server never see it.
+ * the bundle that script builds with the aliases applied (`blocks/chip` is the one block built on a Base UI primitive); the build and dev server never see it.
  */
 const PRESET_CONTROL_FILE =
-  /[\\/]src[\\/]ui[\\/]controls[\\/](badge|button|collapsible|dialog|dropdown-menu|field|input|kbd|label|popover|scroll-area|select|separator|sheet|switch|tabs|toggle|toggle-group|tooltip)\.tsx$/;
+  /[\\/]src[\\/]ui[\\/](?:controls[\\/](?:badge|button|collapsible|dialog|dropdown-menu|field|input|kbd|label|popover|scroll-area|select|separator|sheet|switch|tabs|toggle|toggle-group|tooltip)|blocks[\\/]chip)\.tsx$/;
 const presetControlsInTests: Plugin = {
   name: "deck-preset-controls-in-tests",
   enforce: "pre",

@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/cn";
 import { useEffect } from "preact/hooks";
+import { Chip } from "../../../../ui/blocks/chip";
 import { Badge } from "../../../../ui/controls/badge";
 import { Button } from "../../../../ui/controls/button";
 import { Input } from "../../../../ui/controls/input";
@@ -58,9 +59,7 @@ function SaveStatus() {
         <>
           <span aria-hidden="true" className="size-1.5 rounded-full bg-red-600 dark:bg-red-500" />
           Couldn't save
-          <Button variant="outline" size="xs" onClick={retrySave}>
-            Retry
-          </Button>
+          <Chip onClick={retrySave}>Retry</Chip>
         </>
       )}
     </span>

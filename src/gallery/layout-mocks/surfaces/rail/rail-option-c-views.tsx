@@ -8,6 +8,7 @@ import {
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/cn";
+import { Chip } from "../../../../ui/blocks/chip";
 import { Button } from "../../../../ui/controls/button";
 import {
   DropdownMenu,
@@ -246,9 +247,9 @@ export function HiddenSection({ state }: { readonly state: RailState }) {
           className="mx-1.5 flex h-7 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground hover:bg-accent/50"
         >
           <span className="min-w-0 flex-1 truncate">{project.name}</span>
-          <Button size="xs" variant="ghost" onClick={() => state.setHidden(project.id, false)}>
+          <Chip quiet onClick={() => state.setHidden(project.id, false)}>
             Show
-          </Button>
+          </Chip>
         </div>
       ))}
     </Disclosure>

@@ -2,6 +2,7 @@ import { chordsForAction, isOverridden, withOverride, type Chord } from "../../l
 import { settings, updateSettings } from "../../settings/settings-store";
 import type { ActionId } from "../../terminal/action-registry";
 import { Chord as ChordCaps } from "../blocks/chord";
+import { Chip } from "../blocks/chip";
 import { Button } from "../controls/button";
 import { useChordRecording } from "../controls/shortcut-capture";
 import { RowReset, RowShell } from "./command-settings-live-row";
@@ -104,15 +105,13 @@ export function ShortcutRow({
         rivals.length === 0 ? null : (
           <div className="flex items-center gap-2 text-muted-foreground">
             <span className="flex-1">Also bound to {rivals.join(", ")}</span>
-            <Button
-              variant="outline"
-              size="xs"
+            <Chip
               disabled={locked}
               aria-label={`Reassign ${label} shortcut`}
               onClick={() => updateSettings({ keybindings: reassignChords(context, action) })}
             >
               Reassign
-            </Button>
+            </Chip>
           </div>
         )
       }

@@ -20,3 +20,6 @@ export * from "./tabs";
 export * from "./toggle";
 export * from "./toggle-group";
 export * from "./tooltip";
+// The one block built on a Base UI primitive rather than on a control above; the bundle carries it
+// so tests that render it load Base UI through the aliased bundle too.
+export * from "../blocks/chip";

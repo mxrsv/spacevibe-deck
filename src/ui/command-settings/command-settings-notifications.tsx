@@ -1,5 +1,5 @@
 import { getDesktopEnvironment } from "../../lib/platform";
-import { Button } from "../controls/button";
+import { Chip } from "../blocks/chip";
 import { Switch } from "../controls/switch";
 import {
   openingNotificationSettings,
@@ -25,14 +25,12 @@ export function NotificationsControl({ label, checked, disabled }: Notifications
         onCheckedChange={() => void toggleAgentNotifications()}
       />
       {getDesktopEnvironment().platform !== "unsupported" ? (
-        <Button
-          variant="outline"
-          size="xs"
+        <Chip
           disabled={disabled || openingNotificationSettings.value}
           onClick={openSystemNotificationSettings}
         >
           Open System Settings
-        </Button>
+        </Chip>
       ) : null}
     </span>
   );

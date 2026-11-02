@@ -61,7 +61,7 @@ import {
 
 const VARIANTS = ["default", "secondary", "outline", "ghost", "destructive"] as const;
 const BADGE_VARIANTS = ["default", "secondary", "outline"] as const;
-const SIZES = ["xs", "sm", "default", "lg"] as const;
+const SIZES = ["sm", "default", "lg", "xl"] as const;
 const ICON_SIZES = ["icon-xs", "icon-sm", "icon"] as const;
 const MODES = [
   { value: "system", label: "System" },

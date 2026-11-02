@@ -82,7 +82,7 @@ interface Pair {
   readonly id: string;
   readonly kind: "text" | "boundary";
   /** The ink and the ground it sits on, resolved against the mode's tokens. */
-  readonly pair: (t: Map<string, Color>) => readonly [Rgb, Rgb];
+  readonly pair: (t: Map<string, Color>, mode: Mode) => readonly [Rgb, Rgb];
 }
 
 const solid = (t: Map<string, Color>, name: string): Rgb => {
@@ -93,6 +93,13 @@ const solid = (t: Map<string, Color>, name: string): Rgb => {
 /** A token with alpha, laid over the page background. */
 const onPage = (t: Map<string, Color>, name: string): Rgb =>
   over(t.get(name) as Color, solid(t, "--background"));
+/** The outline Button's fill: `--background` or `--muted` in light, `--input` at 30% or 50% in dark. */
+const outlineFill = (t: Map<string, Color>, mode: Mode, share: number, light: string): Rgb => {
+  const input = t.get("--input") as Color;
+  return mode === "light"
+    ? solid(t, light)
+    : over(input, solid(t, "--background"), input.alpha * share);
+};
 const ink = (foreground: string, ground: string): Pair["pair"] => {
   return (t) => [solid(t, foreground), solid(t, ground)];
 };
@@ -182,6 +189,16 @@ const PAIRS: readonly Pair[] = [
     pair: (t) => [onPage(t, "--input"), solid(t, "--background")],
   },
   {
+    id: "secondary button frame on its fill",
+    kind: "boundary",
+    pair: (t, mode) => [solid(t, "--control-frame"), outlineFill(t, mode, 0.3, "--background")],
+  },
+  {
+    id: "secondary button hover frame on its hover fill",
+    kind: "boundary",
+    pair: (t, mode) => [solid(t, "--control-frame-hover"), outlineFill(t, mode, 0.5, "--muted")],
+  },
+  {
     id: "switch track off on background",
     kind: "boundary",
     pair: (t) => [onPage(t, "--input"), solid(t, "--background")],
@@ -198,8 +215,6 @@ const PAIRS: readonly Pair[] = [
  * change the preset (UI-2); forbidding the variants would leave no destructive Button.
  */
 const EXCEPTIONS: ReadonlyMap<string, string> = new Map([
-  ["dark|primary as link text on background", "Button and Badge `link` variant"],
-  ["dark|switch track on (primary) on background", "the thumb, not the track, carries the state"],
   ["light|destructive on its 10% tint", "Button and Badge `destructive` variants"],
   ["light|destructive on its 20% hover tint", "Button and Badge `destructive` hover (3.31:1)"],
   ["light|muted-foreground on muted", "Kbd, and muted text on a muted fill"],
@@ -226,7 +241,7 @@ describe("G3: the preset's pairs against the WCAG 2.2 AA floor", () => {
         const named = EXCEPTIONS.has(`${mode}|${id}`);
         const floor = kind === "text" ? TEXT : BOUNDARY;
         it(`${id}${named ? " (named exception)" : ""}`, () => {
-          const [ink, ground] = pair(modes[mode]);
+          const [ink, ground] = pair(modes[mode], mode);
           const ratio = contrast(ink, ground);
           if (named) {
             expect(ratio, `${id} now clears ${floor}:1; delete it from EXCEPTIONS`).toBeLessThan(
@@ -248,7 +263,7 @@ describe("G3: the preset's pairs against the WCAG 2.2 AA floor", () => {
   it("reads the plan's measured stock figures", () => {
     // Anchors the converter to the figures in the migration plan (WCAG 2.x from computed colours).
     const dark = modes.dark;
-    const link = contrast(solid(dark, "--primary"), solid(dark, "--background"));
+    const link = contrast(oklchToSrgb(0.424, 0.199, 265.638), solid(dark, "--background"));
     expect(link).toBeGreaterThan(2.1);
     expect(link).toBeLessThan(2.4);
     const muted = contrast(solid(modes.light, "--muted-foreground"), solid(modes.light, "--muted"));

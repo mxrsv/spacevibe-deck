@@ -36,10 +36,37 @@ describe("Button", () => {
     expect(plain.className).toContain("bg-primary");
     expect(plain.className).toContain("h-8");
     expect(destructive.className).toContain("text-destructive");
-    expect(destructive.className).toContain("size-6");
+    expect(destructive.className).toContain("size-5");
     expect(destructive.className).not.toContain("bg-primary");
     expect(buttonVariants({ variant: "ghost" })).toContain("hover:bg-muted");
     await view.unmount();
+  });
+
+  it("measures 28, 32, 36 and 40 high, with the 6px radius only on the two large sizes", async () => {
+    const heights = { sm: "h-7", default: "h-8", lg: "h-9", xl: "h-10" } as const;
+    for (const [size, height] of Object.entries(heights)) {
+      const classes = buttonVariants({ size: size as keyof typeof heights }).split(" ");
+      expect(classes, size).toContain(height);
+      expect(classes.includes("rounded-button-lg"), size).toBe(size === "lg" || size === "xl");
+      expect(classes, size).not.toContain("text-xs");
+    }
+    expect(buttonVariants({ size: "xs" as never })).not.toContain("h-6");
+  });
+
+  it("draws no focus ring or border on any variant, and shows focus as hover does", () => {
+    for (const variant of ["default", "outline", "secondary", "ghost", "destructive"] as const) {
+      const classes = buttonVariants({ variant });
+      expect(classes, variant).not.toMatch(/focus-visible:(ring|border-ring|border-destructive)/);
+      expect(classes, variant).toContain("focus-visible:bg-");
+    }
+    expect(buttonVariants({})).not.toContain("transition-all");
+  });
+
+  it("gives the 20px icon box a 24px hit area without taking layout", () => {
+    const classes = buttonVariants({ size: "icon-xs" }).split(" ");
+    expect(classes).toContain("size-5");
+    expect(classes).toContain("relative");
+    expect(classes).toContain("after:-inset-0.5");
   });
 
   it("lets a caller's class override a variant utility instead of stacking beside it", async () => {

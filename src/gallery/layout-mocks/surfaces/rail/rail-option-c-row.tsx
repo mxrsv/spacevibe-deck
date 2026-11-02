@@ -13,6 +13,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/cn";
 import { useEffect, useRef } from "preact/hooks";
+import { Chip } from "../../../../ui/blocks/chip";
 import { Button } from "../../../../ui/controls/button";
 import {
   DropdownMenu,
@@ -285,9 +286,9 @@ export function ArchivedRow({
     <div className="mx-1.5 flex h-7 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground hover:bg-accent/50">
       <AgentLogo kind={thread.kind} className="size-3.5" />
       <span className="min-w-0 flex-1 truncate">{thread.title}</span>
-      <Button size="xs" variant="ghost" onClick={() => state.setArchived(thread.id, false)}>
+      <Chip quiet onClick={() => state.setArchived(thread.id, false)}>
         Unarchive
-      </Button>
+      </Chip>
     </div>
   );
 }
