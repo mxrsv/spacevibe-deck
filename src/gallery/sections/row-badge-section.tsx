@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
-import { applyThemeVars } from "../../lib/theme-vars";
+import { applyScopedTheme } from "../scoped-theme";
 import { DECK_DARK_ID, DECK_LIGHT_ID, getTheme } from "../../settings/themes";
 import type { RailCardPane, RailState, RailWorktreeGroup } from "../../ui/agent-rail-model";
 import { WorktreeCard } from "../../ui/worktree-card";
@@ -91,7 +91,7 @@ function ThemeScope({
   useLayoutEffect(() => {
     const node = ref.current;
     if (node !== null) {
-      applyThemeVars(node.style, getTheme(themeId));
+      applyScopedTheme(node, getTheme(themeId));
     }
   }, [themeId]);
   return (

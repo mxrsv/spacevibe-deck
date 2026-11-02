@@ -24,7 +24,7 @@ interface Color {
 type Mode = "light" | "dark";
 
 /** `--name: oklch(L C H / A)` declarations of one block of the stylesheet. */
-function tokens(block: ":root" | ".dark"): Map<string, Color> {
+function tokens(block: ":root,\n.preset-light" | ".dark"): Map<string, Color> {
   const start = css.indexOf(`\n${block} {`);
   const body = css.slice(start, css.indexOf("\n}", start));
   const found = new Map<string, Color>();
@@ -216,7 +216,7 @@ const EXCEPTIONS: ReadonlyMap<string, string> = new Map([
 
 describe("G3: the preset's pairs against the WCAG 2.2 AA floor", () => {
   const modes: Record<Mode, Map<string, Color>> = {
-    light: tokens(":root"),
+    light: tokens(":root,\n.preset-light"),
     dark: tokens(".dark"),
   };
 

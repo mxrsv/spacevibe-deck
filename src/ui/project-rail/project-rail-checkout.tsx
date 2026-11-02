@@ -60,7 +60,7 @@ export function ProjectRailCheckoutRows({ groups }: { readonly groups: CheckoutA
                 {row.agent === undefined ? (
                   <DeckIcon icon={ROW_ICONS[row.id] ?? ComputerTerminal01Icon} />
                 ) : (
-                  <AgentGlyph agent={row.agent as PaneAgent} className="size-3.5 shrink-0" />
+                  <AgentGlyph agent={row.agent as PaneAgent} className="size-4 shrink-0" />
                 )}
                 {row.title}
               </DropdownMenuItem>
@@ -141,7 +141,7 @@ export function ProjectRailCheckout({
         {line.tag === null ? null : <span className="sr-only">{line.tag}</span>}
       </button>
       {groups.length === 0 ? null : (
-        <div className={cn("absolute top-0.5 right-1.5 flex items-center", REVEAL)}>
+        <div className={cn("absolute top-0 right-1.5 flex items-center", REVEAL)}>
           <DropdownMenu
             open={menuOpen}
             onOpenChange={setMenuOpen}

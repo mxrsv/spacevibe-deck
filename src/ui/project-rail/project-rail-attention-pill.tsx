@@ -1,3 +1,4 @@
+import { withPaneFlash } from "../shell-stage";
 import { useMemo } from "preact/hooks";
 import { workspacesData } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
@@ -45,7 +46,7 @@ export function ProjectRailAttentionPill({
       return;
     }
     unfoldProject(next.projectKey);
-    selectRailItem(next, { onFocusPane, onSelectTab });
+    selectRailItem(next, withPaneFlash({ onFocusPane, onSelectTab }));
   };
   if (compact) {
     // A question and a failure count together; the mark takes the louder of the two.

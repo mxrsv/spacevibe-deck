@@ -7,7 +7,7 @@ import {
   TEXT_MUTED_FLOOR,
   TEXT_PRIMARY_FLOOR,
 } from "../../lib/derive-colors";
-import { applyThemeVars } from "../../lib/theme-vars";
+import { applyScopedTheme } from "../scoped-theme";
 import { BUILT_IN_THEMES } from "../../settings/built-in-themes";
 import type { Theme } from "../../settings/theme-schema";
 import { getTheme } from "../../settings/themes";
@@ -170,7 +170,7 @@ function ThemeCell({
   useLayoutEffect(() => {
     const node = ref.current;
     if (node !== null) {
-      applyThemeVars(node.style, getTheme(themeId));
+      applyScopedTheme(node, getTheme(themeId));
     }
   }, [themeId]);
   return (

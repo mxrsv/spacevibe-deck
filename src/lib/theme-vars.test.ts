@@ -98,6 +98,13 @@ describe("applyThemeVars", () => {
     ).toEqual([]);
   });
 
+  it("keeps a primary button readable on a theme whose accent sits on its background", () => {
+    const [other] = NON_DEFAULT_THEMES;
+    const theme = { ...other, ui: { ...other.ui, accent: other.ui.bg } };
+    const written = recordProperties(theme);
+    expect(written.get("--primary-foreground")).toBe(theme.ui["text-primary"]);
+  });
+
   it.each(NON_DEFAULT_THEMES)("keeps the preset's text readable on $id", (theme) => {
     const written = recordProperties(theme);
     const ink = (name: string): string => written.get(name) ?? "";

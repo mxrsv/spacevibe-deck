@@ -1,7 +1,7 @@
-/* The Base UI preset b1a09kDGF (shadcn@4.22.1, base-mira) inside Deck's migration boundary.
+/* The Base UI preset b1a09kDGF (shadcn@4.22.1, base-nova) inside Deck's migration boundary.
 
-   Everything below the tokens is the generated stylesheet except the five adaptations,
-   each of which keeps the computed result of an upstream control (UI-1, UI-3):
+   Everything below the tokens is the generated stylesheet except the adaptations below;
+   the first five keep the computed result of an upstream control (UI-1, UI-3):
 
    1. No Tailwind preflight. Its `*`, `html` and `body` rules would restyle every unmigrated
       surface, and AGENTS.md forbids a global box-sizing reset. The same reset, scoped, is in
@@ -13,6 +13,8 @@
    4. The preset's `@layer base` rules for `*`, `html` and `body` apply to `.ui-preset`
       and `[data-slot]` instead.
    5. Reduced motion is handled in this file, scoped, not with the pilot's global override.
+   6. Everything pressable takes the pointer cursor (owner, 2026-11-01).
+   7. `.preset-light` carries the light tokens, so a gallery cell can show them under any root.
 
    Dark mode is a `.dark` class on an ancestor (the root element, so portals inherit it).
    `scripts/ui-preset-boundary.test.ts` holds this file to the list above. */
@@ -73,7 +75,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+:root,
+.preset-light {
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);

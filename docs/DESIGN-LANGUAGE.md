@@ -539,7 +539,7 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
     class. Nothing outside `deck-icon.tsx` imports `@hugeicons/react` except the gallery's
     layout mocks, and the test fails when a cut-over directory imports Phosphor. Which glyph
     means what follows the layout mock for that surface; an action the mock does not draw
-    takes the nearest Hugeicons glyph, and a pin and an unpin share one glyph.
+    takes the nearest Hugeicons glyph.
   - **Phosphor** (`@phosphor-icons/react`) is the source for every surface not yet cut over.
     `DeckIcon` sets `color="currentColor"`, the weight, `aria-hidden`, `focusable="false"` and
     the `deck-icon` class, and adds a per-icon `deck-icon--<name>` modifier for tests.

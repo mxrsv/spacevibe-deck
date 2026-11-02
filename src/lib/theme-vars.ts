@@ -1,6 +1,6 @@
 import { UI_TOKEN_KEYS, type Theme } from "../settings/theme-schema";
 import { DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
-import { deriveChromeColors, type ChromeColors } from "./derive-colors";
+import { contrastRatio, deriveChromeColors, type ChromeColors } from "./derive-colors";
 
 /**
  * Deck's two default themes wear the preset's own values, which `preset.css` declares and which
@@ -20,6 +20,8 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
   const text = ui["text-primary"];
   const raised = ui["chrome-1"];
   const muted = ui["chrome-2"];
+  // A file theme's accent has no contrast floor, and it may sit close to its own background.
+  const onAccent = contrastRatio(ui.bg, ui.accent) >= contrastRatio(text, ui.accent) ? ui.bg : text;
   return {
     background: ui.bg,
     foreground: text,
@@ -28,7 +30,7 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
     popover: raised,
     "popover-foreground": text,
     primary: ui.accent,
-    "primary-foreground": ui.bg,
+    "primary-foreground": onAccent,
     secondary: muted,
     "secondary-foreground": text,
     muted,
@@ -42,10 +44,10 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
     sidebar: ui["sidebar-bg"],
     "sidebar-foreground": text,
     "sidebar-primary": ui.accent,
-    "sidebar-primary-foreground": ui.bg,
+    "sidebar-primary-foreground": onAccent,
     "sidebar-accent": muted,
     "sidebar-accent-foreground": text,
-    "sidebar-border": chrome.sidebarSeam,
+    "sidebar-border": chrome.hair,
     "sidebar-ring": ui["text-muted"],
   };
 }

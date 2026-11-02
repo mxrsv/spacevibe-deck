@@ -7,6 +7,7 @@ import {
   GitBranchIcon,
   MoreHorizontalIcon,
   Pin02Icon,
+  PinOffIcon,
   PlusSignIcon,
   Unarchive03Icon,
 } from "@hugeicons/core-free-icons";
@@ -78,7 +79,7 @@ export function ProjectRailRowActions({
             />
           }
         >
-          <DeckIcon icon={Pin02Icon} />
+          <DeckIcon icon={pinned ? PinOffIcon : Pin02Icon} />
         </Tip>
       )}
       <Tip
@@ -140,7 +141,7 @@ export function ProjectRailRowActions({
             </MenuEntry>
           )}
           {commands.pin === undefined ? null : (
-            <MenuEntry icon={Pin02Icon} onClick={commands.pin}>
+            <MenuEntry icon={pinned ? PinOffIcon : Pin02Icon} onClick={commands.pin}>
               {pinLabel}
             </MenuEntry>
           )}

@@ -1116,8 +1116,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     tabsRef.current?.applySettings(current);
     const theme = activeTheme(current);
     applyThemeVars(document.documentElement.style, theme);
-    // The preset's own light/dark tokens follow the theme's mode, not its palette (UI-2). The
-    // class sits on the root so a portalled popup inherits it.
+    // The mode drives the preset's `dark:` variants; a palette arrives through `applyThemeVars`
+    // (UI-2). The class sits on the root so a portalled popup inherits it.
     document.documentElement.classList.toggle("dark", theme.type === "dark");
   });
 

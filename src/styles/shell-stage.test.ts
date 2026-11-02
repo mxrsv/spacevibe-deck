@@ -68,15 +68,6 @@ describe("the flush stage stylesheet", () => {
     expect(selectors.filter((selector) => selector.includes(":focus-within"))).toEqual([]);
   });
 
-  it("flashes the ring on a marked slot, and not under reduced motion", () => {
-    const animations = rules
-      .filter((rule) => rule.selectors.includes(".stage--flush .pane-slot.is-flashing > .pane"))
-      .flatMap((rule) => rule.declarations)
-      .filter((declaration) => declaration.prop === "animation")
-      .map((declaration) => declaration.value);
-    expect(animations).toEqual(["stage-pane-flash 600ms ease-out", "none"]);
-  });
-
   it("keeps the sentence for a screen reader without drawing it", () => {
     expect(value(".stage--flush .pane-agent-header__message--hidden", "clip-path")).toBe(
       "inset(50%)",

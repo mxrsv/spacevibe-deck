@@ -97,7 +97,7 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
           <DeckIcon
             icon={Search01Icon}
             size={GLYPH_INLINE}
-            class="pointer-events-none absolute top-2 left-2 text-muted-foreground"
+            class="pointer-events-none absolute top-2.5 left-2 text-muted-foreground"
           />
           <Input
             data-rail-search=""

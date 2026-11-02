@@ -25,12 +25,13 @@
   --frame-h: 40px;
 }
 
-/* The frame and the rail are one side surface with the dock, painted from the preset. The stage
-   keeps `--bg`, so the terminal stays the focal plane. */
+/* The frame and the rail are one side surface with the dock, painted from the preset. Their old
+   stylesheets keep reading these two names, so everything in the column moves together: surface,
+   badge cutouts, footer seam. The stage keeps `--bg`, so the terminal stays the focal plane. */
 :root.shell-frame .deck-frame,
 :root.shell-frame .asr-rail {
-  --asr-cutout: var(--sidebar);
-  background: var(--sidebar);
+  --sidebar-bg: var(--sidebar);
+  --sidebar-seam: var(--sidebar-border);
 }
 
 :root.shell-frame .stage {
@@ -84,25 +85,6 @@
    (`flashPane`, DL §7). The edge stays a real border so xterm's canvases cannot paint over it. */
 .stage--flush .pane-slot.is-active > .pane {
   border-color: transparent;
-}
-
-.stage--flush .pane-slot.is-flashing > .pane {
-  animation: stage-pane-flash 600ms ease-out;
-}
-
-@keyframes stage-pane-flash {
-  from {
-    border-color: var(--foreground);
-  }
-  to {
-    border-color: transparent;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .stage--flush .pane-slot.is-flashing > .pane {
-    animation: none;
-  }
 }
 
 /* In a split a 2px bar on the top edge names the focused pane. `is-active` is set only while the
