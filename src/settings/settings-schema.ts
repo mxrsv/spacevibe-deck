@@ -21,6 +21,7 @@ import {
   SIGNAL_ADAPTERS_REVISION,
   resolveSignalAdapters,
 } from "./signal-adapter-choice";
+import { DEFAULT_GUI_ZOOM, parseGuiZoom } from "../lib/gui-zoom";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -43,6 +44,12 @@ export const DOCK_TABS: readonly DockTab[] = Object.freeze(["explorer", "usage",
 export interface Settings {
   fontFamily: string;
   fontSize: number;
+  /**
+   * The window's zoom factor, one of `GUI_ZOOM_STEPS`. No Settings row edits it:
+   * the View menu and its chords do. It scales the GUI only; a terminal or the
+   * editor divides its font by it so their text keeps its size.
+   */
+  guiZoom: number;
   themeId: string;
   focusExpand: boolean;
   showPaneBar: boolean;
@@ -218,6 +225,7 @@ export const FONT_FALLBACK = "Menlo, Monaco, monospace";
 export const DEFAULT_SETTINGS: Settings = {
   fontFamily: "SF Mono",
   fontSize: 13,
+  guiZoom: DEFAULT_GUI_ZOOM,
   // A NEW install only. Written as a literal rather than imported from
   // `themes.ts` on purpose — that module imports this one for the `Settings`
   // type, and closing the loop would make the schema depend on the palette
@@ -529,6 +537,7 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.fontSize === "number" && Number.isFinite(source.fontSize)
         ? clampFontSize(source.fontSize)
         : DEFAULT_SETTINGS.fontSize,
+    guiZoom: parseGuiZoom(source.guiZoom),
     themeId: typeof source.themeId === "string" ? source.themeId : DEFAULT_SETTINGS.themeId,
     focusExpand:
       typeof source.focusExpand === "boolean" ? source.focusExpand : DEFAULT_SETTINGS.focusExpand,

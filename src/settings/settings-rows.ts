@@ -73,6 +73,7 @@ const NONE: SettingControl = { kind: "none" };
 export const SETTING_CONTROLS: Readonly<Record<SettingKey, SettingControl>> = {
   fontFamily: { kind: "menu", source: "fonts" },
   fontSize: FONT_SIZE_STEPPER,
+  guiZoom: NONE,
   themeId: { kind: "theme" },
   focusExpand: NONE,
   showPaneBar: SWITCH,

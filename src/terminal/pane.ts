@@ -7,6 +7,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { disposeWebglAddon } from "./webgl-addon-dispose";
 import type { Settings } from "../settings/settings-schema";
 import { monoFontFallback } from "../settings/mono-font-fallback";
+import { effectiveGuiZoom, textFontSize } from "../settings/gui-zoom";
 import { applyHiddenPaneRenderFix } from "./hidden-pane-render-fix";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
@@ -225,7 +226,7 @@ export function createPane(
     // below 1 throws. On a Retina panel 1 CSS px still paints as 2 device
     // pixels, so this is the hairline floor without patching the renderer.
     cursorWidth: 1,
-    fontSize: initial.fontSize,
+    fontSize: textFontSize(initial),
     fontFamily: toFontStack(initial.fontFamily),
     // Stays 1.25 on purpose. Flush rows are NOT what joins OpenCode's block
     // and box-drawing glyphs — the WebGL renderer draws those to the full cell
@@ -399,7 +400,7 @@ export function createPane(
   // settles. Direct fit() calls (mount, show, applySettings) stay immediate.
   const RESIZE_DEBOUNCE_MS = 90;
   let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-  const observer = new ResizeObserver(() => {
+  function fitSoon(): void {
     if (resizeTimer !== null) {
       clearTimeout(resizeTimer);
     }
@@ -407,7 +408,8 @@ export function createPane(
       resizeTimer = null;
       fit();
     }, RESIZE_DEBOUNCE_MS);
-  });
+  }
+  const observer = new ResizeObserver(fitSoon);
   let opened = false;
   let webglAddon: WebglAddon | undefined;
   // Authoritative over `webglAddon`, and settable before `mount()` — that is
@@ -535,11 +537,24 @@ export function createPane(
     }
   }
 
+  let appliedZoom = effectiveGuiZoom(initial);
+
   function applySettings(next: Settings): void {
     term.options.fontFamily = toFontStack(next.fontFamily);
-    term.options.fontSize = next.fontSize;
+    term.options.fontSize = textFontSize(next);
     term.options.theme = resolveTheme(next);
     term.options.scrollback = next.scrollback;
+    // A zoom change moves three things on different channels: the page's zoom,
+    // devicePixelRatio (xterm re-derives its cell size from it on its own
+    // event) and this font. A fit between them measures a mix and resizes the
+    // PTY to a size that is wrong a frame later. The debounce lets all three
+    // land, and a burst of steps still costs one fit.
+    const zoom = effectiveGuiZoom(next);
+    if (zoom !== appliedZoom) {
+      appliedZoom = zoom;
+      fitSoon();
+      return;
+    }
     fit();
   }
 

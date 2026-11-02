@@ -42,7 +42,8 @@ describe("windowChromeOptions", () => {
 
 describe("window chrome constants", () => {
   it("keeps the overlay height equal to --frame-h", () => {
-    expect(`${FRAME_HEIGHT_PX}px`).toBe(token("--frame-h"));
+    // The token divides by the page zoom, so the row keeps this physical height.
+    expect(`calc(${FRAME_HEIGHT_PX}px / var(--gui-zoom, 1))`).toBe(token("--frame-h"));
   });
 
   it("starts the overlay on the pre-render ground", () => {

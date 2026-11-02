@@ -21,6 +21,7 @@ import path from "node:path";
 import { shell, WebContentsView, type BrowserWindow, type Rectangle } from "electron";
 import { isLoadableUrl } from "./url";
 import { buildInjection, GRAB_EVENT, inspectCall, parseGrabPayload } from "./inject";
+import { cssRectToWindow } from "../../src/lib/gui-zoom";
 
 /** Every window's browser panel shares one persistent session. */
 const PARTITION = "persist:deck-browser";
@@ -88,6 +89,7 @@ export interface BrowserPanelDeps {
 
 interface Panel {
   readonly view: WebContentsView;
+  /** As the renderer measured it: CSS pixels of the zoomed page. */
   bounds: Rectangle;
   visible: boolean;
   inspect: boolean;
@@ -169,27 +171,45 @@ export class BrowserPanels {
   /**
    * Position the view over the renderer's placeholder.
    *
-   * Bounds are window-relative CSS pixels. That matches
-   * `getBoundingClientRect()` in the renderer because Deck never changes the
-   * renderer's zoom factor — its own zoom actions change the terminal font
-   * size, not the page (`tab-manager.ts`). Values are rounded and floored at
-   * zero: a fractional or negative rectangle is rejected by the native view.
+   * Bounds arrive as CSS pixels (`getBoundingClientRect()`), and the view is
+   * placed in window pixels. They differ by the page's zoom factor (GUI zoom),
+   * so the rectangle is kept as measured and scaled at every placement; see
+   * `placed`. Values are rounded and floored at zero: a fractional or negative
+   * size is rejected by the native view.
    */
   setBounds(label: string, bounds: Rectangle): void {
     const panel = this.panels.get(label);
     if (panel === undefined) {
       return;
     }
-    const next: Rectangle = {
-      x: Math.round(bounds.x),
-      y: Math.round(bounds.y),
-      width: Math.max(0, Math.round(bounds.width)),
-      height: Math.max(0, Math.round(bounds.height)),
-    };
-    panel.bounds = next;
+    panel.bounds = bounds;
     if (panel.visible) {
-      panel.view.setBounds(next);
+      panel.view.setBounds(this.placed(label, panel));
     }
+  }
+
+  /**
+   * Place the view again from the stored rectangle. A zoom change calls this:
+   * the placeholder may keep its CSS rectangle (no layout change, so no new
+   * measurement arrives) while the factor that maps it to window pixels moved.
+   */
+  refreshBounds(label: string): void {
+    const panel = this.panels.get(label);
+    if (panel !== undefined && panel.visible) {
+      panel.view.setBounds(this.placed(label, panel));
+    }
+  }
+
+  /**
+   * The panel's rectangle in window pixels. The factor is read from the Deck
+   * window's page, never the view's own, because the measured rectangle belongs
+   * to the window's page.
+   */
+  private placed(label: string, panel: Panel): Rectangle {
+    const window = this.deps.windowFor(label);
+    const contents = window?.isDestroyed() === false ? window.webContents : undefined;
+    const zoom = typeof contents?.getZoomFactor === "function" ? contents.getZoomFactor() : 1;
+    return cssRectToWindow(panel.bounds, zoom);
   }
 
   /**
@@ -207,7 +227,7 @@ export class BrowserPanels {
     panel.visible = visible;
     panel.view.setVisible(visible);
     if (visible) {
-      panel.view.setBounds(panel.bounds);
+      panel.view.setBounds(this.placed(label, panel));
       return;
     }
     if (panel.inspect) {

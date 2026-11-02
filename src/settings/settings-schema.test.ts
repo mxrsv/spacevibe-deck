@@ -579,3 +579,21 @@ describe("FONT_FALLBACK", () => {
     expect(FONT_FALLBACK).toBe("Menlo, Monaco, monospace");
   });
 });
+
+describe("guiZoom", () => {
+  it("defaults to 1 for a file that predates it", () => {
+    expect(validateSettings({}).guiZoom).toBe(1);
+    expect(DEFAULT_SETTINGS.guiZoom).toBe(1);
+  });
+
+  it.each([0.85, 0.9, 1, 1.1, 1.25])("keeps the stored step %f", (guiZoom) => {
+    expect(validateSettings({ guiZoom }).guiZoom).toBe(guiZoom);
+  });
+
+  it.each([0, -1, 0.95, 3, Number.NaN, "1.25", null, [], {}])(
+    "reads a bad stored value (%s) as 1, never as a clamp",
+    (guiZoom) => {
+      expect(validateSettings({ guiZoom }).guiZoom).toBe(1);
+    },
+  );
+});

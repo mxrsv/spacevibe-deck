@@ -127,16 +127,21 @@
   --md-h3: calc(var(--type-body) + 2px);
   --md-measure: 72ch;
 
+  /* GUI zoom scales the page, but the frame row is window geometry: the native
+     traffic lights and the Windows caption overlay keep their physical size. So
+     the frame's lengths divide by the page zoom (`--gui-zoom`, set on the root
+     by `settings/gui-zoom-binding.ts`) and render at the same physical size at
+     every step. */
   /* DL-18: the single command row. 34px carries a 26px control comfortably
      and clears the macOS traffic lights, which need ~28px of vertical room. */
-  --frame-h: 34px;
+  --frame-h: calc(34px / var(--gui-zoom, 1));
   /* DL-30.2: the migration notice's row. Taller than the frame row because it
      carries a sentence rather than controls, and it is the one surface in the
      window whose whole job is to be read. */
   --notice-h: 38px;
   /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
      plus breathing room before the first tab. */
-  --frame-lights-w: 78px;
+  --frame-lights-w: calc(78px / var(--gui-zoom, 1));
   /* The mirror of the above on the RIGHT: the Windows caption buttons the
      Electron host paints over the frame row (Window Controls Overlay).
      Zero here, so macOS and every host that paints nothing there reserves
@@ -144,7 +149,7 @@
      only there. `-fallback-w` is the buttons' size when the browser reports
      no title-bar area: three 46px buttons at 100% scale. */
   --frame-controls-w: 0px;
-  --frame-controls-fallback-w: 138px;
+  --frame-controls-fallback-w: calc(138px / var(--gui-zoom, 1));
   --status-h: 28px;
   /* 275px, up from 200px on 2026-08-14, and it is a drag-affordance figure
      before it is a taste one. The frame moved into this column (DL-18.3), so

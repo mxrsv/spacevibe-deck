@@ -90,8 +90,10 @@ scale, so most of this is a narrow change on top of them.
 1. Each requirement is visible on the migrated surfaces in dark and light, and the owner has approved
    them by eye against the comparison sheet.
 2. Tabbing through a dialog and Settings reaches every control, and focus can be followed.
-3. At every zoom step, the terminal keeps its column and row count, the browser tab's view stays
-   aligned with its panel, and the window controls stay aligned with the frame.
+3. At every zoom step, a terminal's text keeps its visual size, its PTY resizes only when its box
+   really changes and at most once per zoom change, the browser tab's view stays aligned with its
+   panel, and the window controls stay aligned with the frame. Columns can still change, since rail
+   and dock scale with the GUI and take a different share of the window.
 4. A test fails on a new chip-like control outside the sizes above and on a new font size below 12
    in the migrated surfaces. Existing use is counted as debt.
 5. `docs/DESIGN-LANGUAGE.md` and the parent specification state these decisions, so neither pulls

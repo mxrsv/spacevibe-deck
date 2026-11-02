@@ -49,6 +49,17 @@ constants that currently switch behaviour off and are meant to be flipped back.
   [`title-bar-overlay-colors.ts`](../../src/lib/title-bar-overlay-colors.ts) so the buttons
   keep its colour. How the buttons render, theme and scale is unverified, and the 138px
   fallback is what applies if `env(titlebar-area-*)` is undefined.
+- **GUI zoom scales the page, not window geometry or text.** `settings.guiZoom` is applied with
+  `webContents.setZoomFactor` ([`window_set_gui_zoom`](../../electron/ipc/register-browser.ts)) and
+  mirrored to `--gui-zoom` on the root by [the binding](../../src/settings/gui-zoom-binding.ts).
+  Three things stay physical and must divide by it: the frame row (`--frame-h`,
+  `--frame-lights-w`, the caption fallback, all `calc(N / var(--gui-zoom, 1))`; the Windows overlay
+  height `FRAME_HEIGHT_PX` is window pixels), the terminal and editor font ([`textFontSize`](../../src/settings/gui-zoom.ts)
+  is the setting over the zoom), and the browser tab's native view, whose bounds
+  [arrive in CSS pixels and are scaled](../../electron/browser/view.ts) at every placement. A pane's
+  font change from a zoom is fitted through the resize debounce, never at once, so the PTY is not
+  resized from a half-applied zoom. A pane's box still follows the layout: the chrome grows in
+  physical pixels, so columns can drop.
 - **A pane's terminal never goes below 24 columns, even when its box does.** opencode 1.18.31 stops
   painting for good once its pty drops to 20 columns or fewer, also under tmux, and Deck
   panes get that narrow easily. [`fit()`](../../src/terminal/pane.ts) clamps the size there,

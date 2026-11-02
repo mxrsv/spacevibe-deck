@@ -103,13 +103,14 @@ describe("the caption-button inset's stylesheet", () => {
  * fallback). Only `calc`, `env`, `var`, `vw` and `px` appear in the token, so
  * the expression becomes plain JavaScript arithmetic.
  */
-function footprint(vw: number, env: Readonly<Record<string, number>>): number {
+function footprint(vw: number, env: Readonly<Record<string, number>>, guiZoom = 1): number {
   const marker = overlayRules.find((rule) => rule.selectors.includes(MARKER));
   let value = declarationsOf(marker!, TOKEN)[0].value;
   const fallback = allRules
     .flatMap((rule) => declarationsOf(rule, FALLBACK_TOKEN))
     .map((d) => d.value)[0];
   value = value.replaceAll(`var(${FALLBACK_TOKEN})`, fallback);
+  value = value.replaceAll("var(--gui-zoom, 1)", `(${guiZoom})`);
   const js = value
     .replace(/calc\(/g, "(")
     .replace(/(\d+(?:\.\d+)?)vw/g, (_, n) => `(${n}/100*VW)`)
@@ -124,7 +125,12 @@ describe("the footprint arithmetic", () => {
     const values = allRules
       .flatMap((rule) => declarationsOf(rule, FALLBACK_TOKEN))
       .map((d) => d.value);
-    expect(values).toEqual([`${FOOTPRINT_PX}px`]);
+    // Divided by the page zoom: the buttons are window pixels, the token is CSS pixels.
+    expect(values).toEqual([`calc(${FOOTPRINT_PX}px / var(--gui-zoom, 1))`]);
+  });
+
+  it.each([0.85, 1.25])("keeps the fallback at 138 window pixels at zoom %f", (zoom) => {
+    expect(footprint(1280, {}, zoom) * zoom).toBeCloseTo(FOOTPRINT_PX, 6);
   });
 
   it.each([800, 1280, 1920])("is 138px at %ipx wide when env() is undefined", (vw) => {

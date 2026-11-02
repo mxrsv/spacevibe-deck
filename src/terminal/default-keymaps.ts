@@ -150,6 +150,14 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { key: "+", meta: true, shift: true, action: "zoom-in" },
   { key: "-", meta: true, action: "zoom-out" },
   { key: "0", meta: true, action: "zoom-reset" },
+  // GUI zoom (CMP-16): the same three keys with Option. Menu items, so
+  // CharKeyBinding (RULE above). On macOS the menu accelerator consumes these
+  // before the webview, which matters: with Option held `event.key` is a
+  // composed character ("≠", "–", "º"), so this binding is only the fallback
+  // for a keydown the menu did not take.
+  { key: "=", meta: true, alt: true, action: "gui-zoom-in" },
+  { key: "-", meta: true, alt: true, action: "gui-zoom-out" },
+  { key: "0", meta: true, alt: true, action: "gui-zoom-reset" },
   // Maximize the active pane over the whole tab (tmux zoom), toggle to restore
   { key: "enter", meta: true, shift: true, action: "toggle-zoom-pane" },
   { key: "f", meta: true, action: "find" },
@@ -414,6 +422,11 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "+", ctrl: true, shift: true, action: "zoom-in" },
   { key: "-", ctrl: true, action: "zoom-out" },
   { key: "0", ctrl: true, action: "zoom-reset" },
+  // GUI zoom (CMP-16). Ctrl+Alt chords: `matchBinding` skips them while AltGr
+  // is down, so a layout that types characters with AltGr keeps them.
+  { key: "=", ctrl: true, alt: true, action: "gui-zoom-in" },
+  { key: "-", ctrl: true, alt: true, action: "gui-zoom-out" },
+  { key: "0", ctrl: true, alt: true, action: "gui-zoom-reset" },
   { key: "f", ctrl: true, shift: true, action: "find" },
   { key: "f3", action: "find-next" },
   { key: "f3", shift: true, action: "find-previous" },

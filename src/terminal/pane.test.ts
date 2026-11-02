@@ -217,3 +217,113 @@ describe("Pane interrupt keys (INT1)", () => {
     onKey.mockRestore();
   });
 });
+
+describe("Pane under GUI zoom", () => {
+  const BOX = { cols: 90, rows: 30 };
+  const FIT_DEBOUNCE_MS = 90;
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function hostedPane() {
+    vi.useFakeTimers();
+    vi.stubGlobal("__deckHost", {});
+    const propose = vi.spyOn(FitAddon.prototype, "proposeDimensions").mockReturnValue(BOX);
+    // The pane keeps its xterm private; the fit addon is handed the terminal.
+    let term: Terminal | undefined;
+    const activate = FitAddon.prototype.activate;
+    vi.spyOn(FitAddon.prototype, "activate").mockImplementation(function (this: FitAddon, t) {
+      term = t;
+      return activate.call(this, t);
+    });
+    const resizes: Array<[number, number]> = [];
+    const pane = createPane(
+      40,
+      { ...DEFAULT_SETTINGS, fontSize: 13 } as Settings,
+      { ...silentEvents, onResize: (_id, cols, rows) => resizes.push([cols, rows]) },
+      BOX,
+    );
+    const at = (guiZoom: number, fontSize = 13) =>
+      pane.applySettings({ ...DEFAULT_SETTINGS, fontSize, guiZoom } as Settings);
+    return { pane, propose, resizes, at, fontSize: () => term!.options.fontSize };
+  }
+
+  it.each([
+    [0.85, 15.294],
+    [0.9, 14.444],
+    [1, 13],
+    [1.1, 11.818],
+    [1.25, 10.4],
+  ])("draws the terminal at the setting divided by the zoom (%f -> %f)", (zoom, expected) => {
+    const { pane, at, fontSize } = hostedPane();
+    at(zoom);
+    expect(fontSize()).toBe(expected);
+    pane.dispose();
+  });
+
+  it("starts a new pane at the compensated size", () => {
+    vi.stubGlobal("__deckHost", {});
+    let term: Terminal | undefined;
+    const activate = FitAddon.prototype.activate;
+    vi.spyOn(FitAddon.prototype, "activate").mockImplementation(function (this: FitAddon, t) {
+      term = t;
+      return activate.call(this, t);
+    });
+    const pane = createPane(
+      41,
+      { ...DEFAULT_SETTINGS, fontSize: 13, guiZoom: 1.25 } as Settings,
+      silentEvents,
+    );
+    expect(term!.options.fontSize).toBe(10.4);
+    pane.dispose();
+  });
+
+  it("does not measure or resize the PTY while a zoom change is still landing", () => {
+    const { pane, propose, resizes, at } = hostedPane();
+    at(1.25);
+    expect(propose).not.toHaveBeenCalled();
+    expect(resizes).toEqual([]);
+    pane.dispose();
+  });
+
+  it("keeps the PTY size when the box is the same physical size after the zoom", () => {
+    const { pane, propose, resizes, at } = hostedPane();
+    at(1.25);
+    vi.advanceTimersByTime(FIT_DEBOUNCE_MS);
+    expect(propose).toHaveBeenCalledTimes(1);
+    expect(resizes).toEqual([]);
+    expect([pane.cols, pane.rows]).toEqual([BOX.cols, BOX.rows]);
+    pane.dispose();
+  });
+
+  it("fits once for a burst of zoom steps", () => {
+    const { pane, propose, resizes, at } = hostedPane();
+    for (const zoom of [1.1, 1.25, 1.1, 1]) {
+      at(zoom);
+      vi.advanceTimersByTime(FIT_DEBOUNCE_MS / 3);
+    }
+    vi.advanceTimersByTime(FIT_DEBOUNCE_MS);
+    expect(propose).toHaveBeenCalledTimes(1);
+    expect(resizes).toEqual([]);
+    pane.dispose();
+  });
+
+  it("sends the PTY one resize when the box really changed with the zoom", () => {
+    const { pane, propose, resizes, at } = hostedPane();
+    at(1.25);
+    propose.mockReturnValue({ cols: 70, rows: 30 });
+    vi.advanceTimersByTime(FIT_DEBOUNCE_MS);
+    expect(resizes).toEqual([[70, 30]]);
+    pane.dispose();
+  });
+
+  it("still fits at once for a change that is not a zoom", () => {
+    const { pane, propose, at } = hostedPane();
+    at(1, 15);
+    expect(propose).toHaveBeenCalledTimes(1);
+    pane.dispose();
+  });
+});

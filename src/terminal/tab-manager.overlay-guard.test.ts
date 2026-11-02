@@ -583,6 +583,10 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
         "undo",
         "redo",
         "toggle-settings",
+        // GUI zoom acts on the window, so it works under Settings too (CMP-16).
+        "gui-zoom-in",
+        "gui-zoom-out",
+        "gui-zoom-reset",
         // The usage details page (2026-10-15): it ranks as an overlay while open,
         // so a tier would let the open page block its own chord (spec R3).
         "open-usage",

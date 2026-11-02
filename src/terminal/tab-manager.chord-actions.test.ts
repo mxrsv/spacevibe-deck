@@ -611,3 +611,72 @@ describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", 
     tm.dispose();
   });
 });
+
+describe("createTabManager GUI zoom actions (⌘⌥= / ⌘⌥- / ⌘⌥0)", () => {
+  afterEach(() => {
+    settingsOpen.value = false;
+  });
+
+  it("steps the window zoom up and down the ladder and clamps at both ends", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    const seen: number[] = [];
+    for (let press = 0; press < 4; press += 1) {
+      tm.runAction("gui-zoom-in");
+      seen.push(settings.value.guiZoom);
+    }
+    expect(seen).toEqual([1.1, 1.25, 1.25, 1.25]);
+
+    for (let press = 0; press < 6; press += 1) {
+      tm.runAction("gui-zoom-out");
+    }
+    expect(settings.value.guiZoom).toBe(0.85);
+
+    tm.runAction("gui-zoom-reset");
+    expect(settings.value.guiZoom).toBe(1);
+
+    tm.dispose();
+  });
+
+  it("leaves the terminal font size alone, and the font actions leave the zoom alone", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    tm.runAction("gui-zoom-in");
+    expect(settings.value.fontSize).toBe(DEFAULT_SETTINGS.fontSize);
+
+    tm.runAction("zoom-in");
+    expect(settings.value.fontSize).toBe(DEFAULT_SETTINGS.fontSize + 1);
+    expect(settings.value.guiZoom).toBe(1.1);
+
+    tm.dispose();
+  });
+
+  it("still runs while Settings is open", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    settingsOpen.value = true;
+
+    tm.runAction("gui-zoom-in");
+
+    expect(settings.value.guiZoom).toBe(1.1);
+    tm.dispose();
+  });
+
+  it("answers the Option chord on the keydown path", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "=", metaKey: true, altKey: true, bubbles: true }),
+    );
+
+    expect(settings.value.guiZoom).toBe(1.1);
+    tm.dispose();
+  });
+});

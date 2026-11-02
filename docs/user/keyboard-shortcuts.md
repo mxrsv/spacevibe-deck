@@ -55,6 +55,7 @@ straight to it, or press Esc to go back unchanged. Nothing stops or restarts whi
 | Paste                      | ⌘V         | Ctrl+V, Ctrl+Shift+V, Shift+Insert |
 | Copy working directory     | ⌘⇧C        | Ctrl+Alt+Shift+C                 |
 | Zoom in / out / reset      | ⌘= / ⌘- / ⌘0 | Ctrl+= / Ctrl+- / Ctrl+0       |
+| Zoom the window in / out / reset (text size stays) | ⌘⌥= / ⌘⌥- / ⌘⌥0 | Ctrl+Alt+= / Ctrl+Alt+- / Ctrl+Alt+0 |
 | Scroll a page up / down    | ⇧PageUp / ⇧PageDown | Shift+PageUp / Shift+PageDown |
 | Scroll to top / bottom     | ⇧Home / ⇧End | Shift+Home / Shift+End         |
 

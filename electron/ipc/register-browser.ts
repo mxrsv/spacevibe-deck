@@ -8,10 +8,11 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { CHANNELS } from "./channels";
 import type { BrowserPanels } from "../browser/view";
 import { normalizeBrowserUrl } from "../browser/url";
+import { GUI_ZOOM_STEPS } from "../../src/lib/gui-zoom";
 
 /**
  * The vendored react-grab bundle, read once and kept.
@@ -46,6 +47,21 @@ export interface RegisterBrowserDeps {
 }
 
 export function registerBrowser(deps: RegisterBrowserDeps): void {
+  // Lives here because the zoom and the native view must change together: the
+  // view's bounds are window pixels, so a zoom without a re-place leaves it
+  // over the wrong part of the panel until the next layout change.
+  ipcMain.handle(CHANNELS.windowSetGuiZoom, (event, { factor }: { factor?: unknown }) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window === null || window.isDestroyed()) {
+      return null;
+    }
+    // Untrusted: only a step is applied, anything else leaves the zoom alone.
+    if (typeof factor === "number" && GUI_ZOOM_STEPS.includes(factor)) {
+      window.webContents.setZoomFactor(factor);
+      deps.browserPanels.refreshBounds(deps.labelOf(event));
+    }
+    return window.webContents.getZoomFactor();
+  });
   ipcMain.handle(CHANNELS.browserOpen, (event, { url }: { url?: string }) => {
     // A stored URL that no longer normalizes (an old setting, a typo the user
     // saved) opens a blank panel instead of failing the whole open.

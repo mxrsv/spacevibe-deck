@@ -18,6 +18,7 @@ import { useSignal, useSignalEffect } from "@preact/signals";
 import { baseName } from "../../lib/path-name";
 import { settings } from "../../settings/settings-store";
 import { monoFontFallback } from "../../settings/mono-font-fallback";
+import { textFontSize } from "../../settings/gui-zoom";
 import {
   applyMonacoTheme,
   DECK_THEME_ID,
@@ -113,7 +114,7 @@ export function FileEditor(props: FileEditorProps) {
           scrollbar: { useShadows: false },
           renderLineHighlight: "line",
           fontFamily: `${settings.value.fontFamily}, ${monoFontFallback()}`,
-          fontSize: settings.value.fontSize,
+          fontSize: textFontSize(settings.value),
           tabSize: 2,
           // The file's own ending is restored on save (`applyEol`); the editor
           // works in LF throughout so nothing rewrites endings silently.
@@ -287,7 +288,7 @@ export function FileEditor(props: FileEditorProps) {
     applyMonacoTheme(handle.monaco, next);
     handle.editor.updateOptions({
       fontFamily: `${next.fontFamily}, ${monoFontFallback()}`,
-      fontSize: next.fontSize,
+      fontSize: textFontSize(next),
     });
   });
 

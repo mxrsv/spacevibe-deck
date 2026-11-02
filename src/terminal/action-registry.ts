@@ -414,6 +414,26 @@ export const ACTION_REGISTRY = [
     scope: "pane",
     menu: { submenu: "View", group: "font" },
   },
+  // GUI zoom (CMP-16): the whole window, not the terminal font above. `always`
+  // because it acts on the window and must work under Settings or any overlay.
+  {
+    id: "gui-zoom-in",
+    label: "Zoom In",
+    scope: "always",
+    menu: { submenu: "View", group: "gui-zoom" },
+  },
+  {
+    id: "gui-zoom-out",
+    label: "Zoom Out",
+    scope: "always",
+    menu: { submenu: "View", group: "gui-zoom" },
+  },
+  {
+    id: "gui-zoom-reset",
+    label: "Reset Zoom",
+    scope: "always",
+    menu: { submenu: "View", group: "gui-zoom" },
+  },
   {
     id: "focus-next-attention",
     label: "Next Agent Needing Attention",

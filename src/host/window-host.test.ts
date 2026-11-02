@@ -203,3 +203,57 @@ describe("setTitleBarOverlay", () => {
     warn.mockRestore();
   });
 });
+
+describe("setGuiZoom", () => {
+  it("sends the factor as one flat key and resolves to the factor in force", async () => {
+    const invoke = vi.fn().mockResolvedValue(1.25);
+    vi.stubGlobal("__deckHost", { invoke, listen: vi.fn() });
+
+    await expect(getCurrentWindow().setGuiZoom(1.25)).resolves.toBe(1.25);
+
+    expect(invoke).toHaveBeenCalledWith("window_set_gui_zoom", { factor: 1.25 });
+  });
+
+  it("resolves null without a host", async () => {
+    await expect(getCurrentWindow().setGuiZoom(1.25)).resolves.toBeNull();
+  });
+
+  it("resolves null and warns once when the host refuses", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("__deckHost", {
+      invoke: vi.fn().mockRejectedValue(new Error("no handler")),
+      listen: vi.fn(),
+    });
+
+    await expect(getCurrentWindow().setGuiZoom(1.25)).resolves.toBeNull();
+
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+});
+
+describe("a drop after a zoom change", () => {
+  // Page zoom moves devicePixelRatio. The drop path multiplies by the ratio it
+  // read when it installed and `installFileDrop` divides by the one it read at
+  // the same moment, so the position handed on is the pointer's CSS position at
+  // any zoom. A zoom between install and drop must not skew it.
+  it("lands at the pointer's CSS position when devicePixelRatio changed since install", async () => {
+    vi.stubGlobal("__deckHost", { getPathForFile: () => "/x" });
+    vi.stubGlobal("devicePixelRatio", 2);
+    const scaleFactor = await getCurrentWindow().scaleFactor();
+    const seen: Array<{ x: number; y: number }> = [];
+    const unlisten = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "over") {
+        seen.push(payload.position.toLogical(scaleFactor));
+      }
+    });
+
+    vi.stubGlobal("devicePixelRatio", 2.5);
+    const event = new Event("dragover", { bubbles: true, cancelable: true });
+    Object.assign(event, { clientX: 100, clientY: 40 });
+    globalThis.dispatchEvent(event);
+
+    expect(seen).toEqual([{ x: 100, y: 40 }]);
+    unlisten();
+  });
+});

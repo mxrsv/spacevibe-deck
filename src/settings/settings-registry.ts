@@ -58,6 +58,7 @@ export const SETTINGS_REGISTRY: Readonly<Record<keyof Settings, SettingEntry>> =
     label: "Font size",
     keywords: ["text", "zoom"],
   },
+  guiZoom: { page: null, scope: "layout", label: "Interface zoom", keywords: [] },
   themeId: {
     page: "appearance",
     scope: "preference",

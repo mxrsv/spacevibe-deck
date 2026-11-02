@@ -106,6 +106,24 @@ class DeckWindow {
     }
   }
 
+  /**
+   * Zoom this window's page by `factor` (one of `GUI_ZOOM_STEPS`; the host
+   * ignores anything else) and re-place the native browser view over it.
+   * Resolves to the factor now in force, or null without the host or on a
+   * refusal, which only logs: the zoom is a view of the settings, not a gate.
+   */
+  async setGuiZoom(factor: number): Promise<number | null> {
+    if (hostBridge() === undefined) {
+      return null;
+    }
+    try {
+      return await invoke<number>("window_set_gui_zoom", { factor });
+    } catch (error) {
+      console.warn("window_set_gui_zoom failed:", error);
+      return null;
+    }
+  }
+
   async isFocused(): Promise<boolean> {
     return globalThis.document?.hasFocus() ?? true;
   }

@@ -22,7 +22,7 @@
    bar and the dock header keep meeting on one line. The cut-over moves this value to
    `01-tokens.css` with `FRAME_HEIGHT_PX`, the Windows caption overlay's height. */
 :root.shell-frame {
-  --frame-h: 40px;
+  --frame-h: calc(40px / var(--gui-zoom, 1));
 }
 
 /* The frame and the rail are one side surface with the dock, painted from the preset. Their old

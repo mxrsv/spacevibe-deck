@@ -74,6 +74,11 @@ export const CHANNELS = {
   // frame corner's colour changes; flat `{ color, symbolColor }` per R6, both
   // `#rrggbb` and validated in `register-shell.ts` before they reach the window.
   windowSetTitleBarOverlay: "window_set_title_bar_overlay",
+  // GUI zoom (spec 2026-11-03-ui-composition CMP-16). The renderer asks, the
+  // host zooms the sender's page and re-places that window's native browser
+  // view, which sits outside the page's zoom. Flat `{ factor }` per R6, one of
+  // `GUI_ZOOM_STEPS`; the reply is the factor in force.
+  windowSetGuiZoom: "window_set_gui_zoom",
   detectAgents: "detect_agents",
   dirsExist: "dirs_exist",
   desktopEnvironment: "desktop_environment",

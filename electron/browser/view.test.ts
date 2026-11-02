@@ -125,12 +125,14 @@ function setup() {
   const removed: unknown[] = [];
   const view = new FakeView();
   let windowFocused = false;
+  let zoom = 1;
   const window = {
     isDestroyed: () => false,
     webContents: {
       focus: () => {
         windowFocused = true;
       },
+      getZoomFactor: () => zoom,
     },
     contentView: {
       addChildView: (child: unknown) => added.push(child),
@@ -149,7 +151,17 @@ function setup() {
     events: EVENTS,
     createView: () => view as never,
   });
-  return { panels, view, emitted, added, removed, focusedWindow: () => windowFocused };
+  return {
+    panels,
+    view,
+    emitted,
+    added,
+    removed,
+    focusedWindow: () => windowFocused,
+    setZoom: (next: number) => {
+      zoom = next;
+    },
+  };
 }
 
 beforeEach(() => {
@@ -186,6 +198,49 @@ describe("BrowserPanels", () => {
     panels.open(LABEL, null);
     panels.setBounds(LABEL, { x: 10.4, y: 20.6, width: 300.5, height: -8 });
     expect(view.bounds).toEqual({ x: 10, y: 21, width: 301, height: 0 });
+  });
+
+  it("places the view in window pixels: CSS bounds times the window's zoom", () => {
+    const { panels, view, setZoom } = setup();
+    panels.open(LABEL, null);
+    setZoom(1.25);
+    panels.setBounds(LABEL, { x: 275, y: 40, width: 600, height: 400 });
+    expect(view.bounds).toEqual({ x: 344, y: 50, width: 750, height: 500 });
+  });
+
+  it("re-places the view after a zoom change with no new measurement", () => {
+    const { panels, view, setZoom } = setup();
+    panels.open(LABEL, null);
+    panels.setBounds(LABEL, { x: 275, y: 40, width: 600, height: 400 });
+    expect(view.bounds).toEqual({ x: 275, y: 40, width: 600, height: 400 });
+
+    setZoom(0.85);
+    panels.refreshBounds(LABEL);
+
+    expect(view.bounds).toEqual({ x: 234, y: 34, width: 510, height: 340 });
+  });
+
+  it("restores a hidden view at the zoom in force when it comes back", () => {
+    const { panels, view, setZoom } = setup();
+    panels.open(LABEL, null);
+    panels.setBounds(LABEL, { x: 100, y: 100, width: 200, height: 200 });
+    panels.setVisible(LABEL, false);
+    setZoom(1.1);
+    panels.refreshBounds(LABEL);
+    view.bounds = null;
+    panels.setVisible(LABEL, true);
+    expect(view.bounds).toEqual({ x: 110, y: 110, width: 220, height: 220 });
+  });
+
+  it("leaves a hidden view where it was on a zoom change", () => {
+    const { panels, view, setZoom } = setup();
+    panels.open(LABEL, null);
+    panels.setBounds(LABEL, { x: 100, y: 100, width: 200, height: 200 });
+    panels.setVisible(LABEL, false);
+    view.bounds = null;
+    setZoom(1.25);
+    panels.refreshBounds(LABEL);
+    expect(view.bounds).toBeNull();
   });
 
   it("hides without discarding the page, and disarms Inspect", () => {

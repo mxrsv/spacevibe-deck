@@ -11,6 +11,7 @@ import { detectedAgents, ensureAgentsDetected } from "./agent-detection-store";
 import { getCurrentWindow } from "../host/window-host";
 import type { UnlistenFn } from "../host/bridge";
 import { clampFontSize, DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { DEFAULT_GUI_ZOOM, stepGuiZoom } from "../lib/gui-zoom";
 import { settings, revealDockTab, toggleDock, updateSettings } from "../settings/settings-store";
 import { type Direction, type Edge, type SerializedNode } from "../lib/split-tree";
 import { chooseTilePlacement, type TilePlacement, type TileViewport } from "../lib/pane-tiling";
@@ -2614,6 +2615,9 @@ export function createTabManager(
     "zoom-in": () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize + 1) }),
     "zoom-out": () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize - 1) }),
     "zoom-reset": () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
+    "gui-zoom-in": () => updateSettings({ guiZoom: stepGuiZoom(settings.value.guiZoom, 1) }),
+    "gui-zoom-out": () => updateSettings({ guiZoom: stepGuiZoom(settings.value.guiZoom, -1) }),
+    "gui-zoom-reset": () => updateSettings({ guiZoom: DEFAULT_GUI_ZOOM }),
     "toggle-zoom-pane": () => activeManager()?.toggleZoom(),
     "clear-buffer": () => activeManager()?.clearActive(),
     "copy-selection": () => activeManager()?.copyActiveSelection(),

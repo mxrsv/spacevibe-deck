@@ -3,6 +3,7 @@ import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
 import "./ui/preset-entry.css";
 import { initSettings, listenStoreWriteFailures } from "./settings/settings-store";
+import { bindGuiZoom } from "./settings/gui-zoom-binding";
 import { loadCustomThemes } from "./settings/custom-themes-store";
 import { initLogo } from "./settings/logo-store";
 import { initPresets } from "./presets/presets-store";
@@ -25,6 +26,8 @@ async function main(): Promise<void> {
   // job is to show an adopted pane.
   const boot = await defaultTransferClient.windowBootMode();
   await initSettings();
+  // Before the first render, so the frame is laid out at the stored zoom.
+  bindGuiZoom();
   // A failed background write is otherwise completely silent.
   await listenStoreWriteFailures();
   await Promise.all([

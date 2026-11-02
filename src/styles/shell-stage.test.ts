@@ -33,7 +33,7 @@ describe("the flush stage stylesheet", () => {
   });
 
   it("raises the frame row to the mock's 40px only under the switch's root class", () => {
-    expect(value(":root.shell-frame", "--frame-h")).toBe("40px");
+    expect(value(":root.shell-frame", "--frame-h")).toBe("calc(40px / var(--gui-zoom, 1))");
   });
 
   it("closes the gutter, the corners and the card edge", () => {

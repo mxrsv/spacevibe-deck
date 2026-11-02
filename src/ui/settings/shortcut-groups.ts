@@ -95,6 +95,9 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "zoom-in": "display",
   "zoom-out": "display",
   "zoom-reset": "display",
+  "gui-zoom-in": "display",
+  "gui-zoom-out": "display",
+  "gui-zoom-reset": "display",
 
   // "files", not "app": it changes how the open DOCUMENT draws, which is the
   // same subject as Save (design 2026-08-23 §4).

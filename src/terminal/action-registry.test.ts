@@ -37,6 +37,42 @@ describe("ACTION_REGISTRY", () => {
   // ACTION_REGISTRY in action-registry.ts for the earlier 25→27 correction).
   // 38 = 28 + swap-left/right/up/down + open-tab-options + copy-cwd +
   // scroll-page-up/down, scroll-to-top/bottom (the keyboard-parity batch).
+  it("binds GUI zoom to the Option/Alt twins of the font-size chords", () => {
+    const pick = (keymap: readonly KeyBinding[], action: string) =>
+      keymap.filter((binding) => binding.action === action);
+    expect(pick(MACOS_KEYMAP, "gui-zoom-in")).toEqual([
+      { key: "=", meta: true, alt: true, action: "gui-zoom-in" },
+    ]);
+    expect(pick(MACOS_KEYMAP, "gui-zoom-out")).toEqual([
+      { key: "-", meta: true, alt: true, action: "gui-zoom-out" },
+    ]);
+    expect(pick(MACOS_KEYMAP, "gui-zoom-reset")).toEqual([
+      { key: "0", meta: true, alt: true, action: "gui-zoom-reset" },
+    ]);
+    expect(pick(WINDOWS_KEYMAP, "gui-zoom-in")).toEqual([
+      { key: "=", ctrl: true, alt: true, action: "gui-zoom-in" },
+    ]);
+    expect(pick(WINDOWS_KEYMAP, "gui-zoom-out")).toEqual([
+      { key: "-", ctrl: true, alt: true, action: "gui-zoom-out" },
+    ]);
+    expect(pick(WINDOWS_KEYMAP, "gui-zoom-reset")).toEqual([
+      { key: "0", ctrl: true, alt: true, action: "gui-zoom-reset" },
+    ]);
+    // Menu items, so the RULE in default-keymaps.ts requires `key`, not `code`.
+    for (const id of ["gui-zoom-in", "gui-zoom-out", "gui-zoom-reset"]) {
+      expect(pick(MACOS_KEYMAP, id)[0]).not.toHaveProperty("code");
+      const entry = ACTION_REGISTRY.find((action) => action.id === id);
+      expect(entry).toMatchObject({ scope: "always", menu: { submenu: "View" } });
+    }
+    // The font-size actions keep their chords and labels.
+    expect(pick(MACOS_KEYMAP, "zoom-in")).toContainEqual({
+      key: "=",
+      meta: true,
+      action: "zoom-in",
+    });
+    expect(ACTION_REGISTRY.find((action) => action.id === "zoom-reset")?.label).toBe("Actual Size");
+  });
+
   it("binds toggle-prompts on both platforms without colliding", () => {
     const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-prompts");
     const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-prompts");
@@ -140,7 +176,7 @@ describe("ACTION_REGISTRY", () => {
   // renderer because their native Cocoa roles cannot reach Monaco.
   // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
   // copy-selection — see docs/internals/terminal.md.
-  it("has exactly the 59 action ids including updater menu actions", () => {
+  it("has exactly the 62 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -182,6 +218,10 @@ describe("ACTION_REGISTRY", () => {
         "zoom-in",
         "zoom-out",
         "zoom-reset",
+        // GUI zoom (CMP-16), beside the three font-size actions above.
+        "gui-zoom-in",
+        "gui-zoom-out",
+        "gui-zoom-reset",
         "focus-next-attention",
         "new-preset",
         "save-preset",

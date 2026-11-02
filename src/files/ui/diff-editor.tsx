@@ -21,6 +21,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { settings } from "../../settings/settings-store";
 import { monoFontFallback } from "../../settings/mono-font-fallback";
+import { textFontSize } from "../../settings/gui-zoom";
 import { applyMonacoTheme, DECK_THEME_ID, loadMonaco, type MonacoApi } from "../editor-host";
 import { editorSettings } from "../file-surface-controller";
 import type { DiffSide, DiffSidesView } from "../changes/diff-sides";
@@ -69,9 +70,9 @@ interface EditorHandle {
   fileKey: string | null;
 }
 
-const fontOptions = (next: { fontFamily: string; fontSize: number }) => ({
+const fontOptions = (next: { fontFamily: string; fontSize: number; guiZoom: number }) => ({
   fontFamily: `${next.fontFamily}, ${monoFontFallback()}`,
-  fontSize: next.fontSize,
+  fontSize: textFontSize(next),
 });
 
 /** Options both editors share: read-only to the DOM, no chrome, no shadows. */
