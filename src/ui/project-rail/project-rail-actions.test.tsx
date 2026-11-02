@@ -209,6 +209,22 @@ describe("row menu", () => {
     await closeMenu();
   });
 
+  it("draws a project's logo when the scan finds one, and its initials when not", async () => {
+    vi.mocked(invoke).mockImplementation(async (name: string) => {
+      if (name === "activate_image_workspace_root") return true;
+      return name === "scan_workspace_favicon" ? "data:image/png;base64,AA==" : null;
+    });
+    mount();
+    await settle();
+    expect(document.querySelector("[data-rail-project] img")).not.toBeNull();
+    document.body.replaceChildren();
+
+    vi.mocked(invoke).mockImplementation(async () => null);
+    mount();
+    await settle();
+    expect(document.querySelector("[data-rail-project] img")).toBeNull();
+  });
+
   it("copies the checkout's path and branch, and offers no branch for a plain folder", async () => {
     mount();
     await settle();
@@ -227,7 +243,8 @@ describe("row menu", () => {
     const branch = menuItems().find((entry) => text(entry) === "Copy branch");
     expect(branch?.hasAttribute("data-disabled")).toBe(true);
     await pick("Copy branch");
-    expect(vi.mocked(invoke)).toHaveBeenCalledTimes(2);
+    const copies = vi.mocked(invoke).mock.calls.filter(([name]) => name === "clipboard_write_text");
+    expect(copies).toHaveLength(2);
     await closeMenu();
   });
 

@@ -16,9 +16,14 @@ import { DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
 export function WorkspaceIcon({
   path,
   fallback,
+  className = "asr-cluster__folder",
+  size = FEATURE_ICON,
 }: {
   readonly path: string | null;
   readonly fallback?: ComponentChildren;
+  /** The slot's box; the project rail draws its own instead of the old rail's. */
+  readonly className?: string;
+  readonly size?: number;
 }) {
   const favicon = useSignal("");
   useEffect(() => {
@@ -50,13 +55,13 @@ export function WorkspaceIcon({
   }, [path]);
 
   return (
-    <span class="asr-cluster__folder" aria-hidden="true">
+    <span class={className} aria-hidden="true">
       {favicon.value ? (
         <img
           src={favicon.value}
           alt=""
-          width={FEATURE_ICON}
-          height={FEATURE_ICON}
+          width={size}
+          height={size}
           draggable={false}
           style={{ objectFit: "contain" }}
           onError={() => {

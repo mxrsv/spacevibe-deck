@@ -81,6 +81,7 @@ export function ProjectSection({
 }) {
   const { onFocusPane, onSelectTab } = env.selection;
   const rowless = rowlessCheckouts(group, env);
+  const firstCheckout = env.checkouts.get(group.key)?.[0];
   // As the shipped header: a press focuses the project (its active checkout, else the first
   // with something open) and then folds or unfolds it.
   const focusProject = (): void => {
@@ -96,6 +97,7 @@ export function ProjectSection({
     <section aria-label={group.label}>
       <ProjectRailHeader
         group={group}
+        markPath={firstCheckout?.repositoryPath ?? firstCheckout?.path ?? null}
         folded={folded}
         commands={env.projects.get(group.key) as ProjectCommands}
         active={env.activeId === `project:${group.key}`}
