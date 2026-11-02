@@ -111,7 +111,7 @@ export function AddCommandRow({ locked }: { readonly locked: boolean }) {
       }
       below={
         error.value === null ? null : (
-          <p role="alert" className="text-destructive">
+          <p role="alert" className="text-xs text-destructive">
             {error.value}
           </p>
         )

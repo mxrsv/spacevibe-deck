@@ -53,7 +53,7 @@ function Row({ itemKey, active, onOpen, children }: RowProps) {
         data-active={active || undefined}
         aria-current={active || undefined}
         className={cn(
-          "grid min-h-9 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-3 py-1 text-left text-xs text-foreground outline-none",
+          "grid min-h-9 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-3 py-1 text-left text-sm text-foreground outline-none",
           active && "bg-muted",
         )}
         onPointerMove={() => {
@@ -70,7 +70,7 @@ function Row({ itemKey, active, onOpen, children }: RowProps) {
 export function Head({ title }: { readonly title: string }) {
   return (
     <li role="presentation">
-      <h3 className="px-3 pt-3 pb-1 text-2xs font-medium text-muted-foreground">{title}</h3>
+      <h3 className="px-3 pt-3 pb-1 text-xs font-medium text-muted-foreground">{title}</h3>
     </li>
   );
 }
@@ -90,7 +90,7 @@ export function HitRow({ itemKey, hit, value, crumb, active, onOpen }: HitRowPro
     <Row itemKey={itemKey} active={active} onOpen={onOpen}>
       <span className="flex min-w-0 items-baseline gap-2">
         <span className="truncate">{hit.label}</span>
-        {crumb ? <span className="shrink-0 text-muted-foreground">{crumb}</span> : null}
+        {crumb ? <span className="shrink-0 text-xs text-muted-foreground">{crumb}</span> : null}
       </span>
       {hit.kind === "area" ? (
         <DeckIcon icon={ArrowRight01Icon} size={GLYPH_ROW} class="text-muted-foreground" />
@@ -120,7 +120,7 @@ export function AttentionRow({ itemKey, issue, text, crumb, active, onOpen }: At
         />
         <span className="truncate">{text}</span>
       </span>
-      <span className="text-muted-foreground">{crumb}</span>
+      <span className="text-xs text-muted-foreground">{crumb}</span>
     </Row>
   );
 }
@@ -133,7 +133,7 @@ export function EmptyRow({
   readonly onClear: () => void;
 }) {
   return (
-    <li className="flex flex-col items-center gap-2 px-5 py-10 text-xs text-foreground">
+    <li className="flex flex-col items-center gap-2 px-6 py-6 text-sm text-foreground">
       <span>
         Nothing matches <span className="font-medium">“{query}”</span>
       </span>

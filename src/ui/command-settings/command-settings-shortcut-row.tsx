@@ -103,7 +103,7 @@ export function ShortcutRow({
       }
       below={
         rivals.length === 0 ? null : (
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="flex-1">Also bound to {rivals.join(", ")}</span>
             <Chip
               disabled={locked}

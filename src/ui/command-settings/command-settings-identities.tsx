@@ -35,7 +35,7 @@ export function CustomAgentDetails({
     return true;
   };
   return (
-    <div className="flex flex-col gap-1 text-xs">
+    <div className="flex flex-col gap-1 text-sm">
       <div className="flex min-h-7 items-center gap-2">
         <CommitField
           aria-label={`Name for ${agent.label}`}
@@ -76,7 +76,7 @@ export function CustomAgentDetails({
         </Button>
       </div>
       {error.value === null ? null : (
-        <p role="status" className="text-destructive">
+        <p role="status" className="text-xs text-destructive">
           {error.value}
         </p>
       )}
@@ -168,7 +168,7 @@ export function AddAgentRow({ locked }: { readonly locked: boolean }) {
       }
       below={
         error.value === null ? null : (
-          <p role="status" className="text-destructive">
+          <p role="status" className="text-xs text-destructive">
             {error.value}
           </p>
         )

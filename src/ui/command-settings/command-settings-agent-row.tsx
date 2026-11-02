@@ -46,7 +46,7 @@ function AgentDetails({ data, locked }: { readonly data: AgentRowData; readonly 
   const pin = quickAgentChoices().find((choice) => choice.id === data.id);
   const agent = data.builtin;
   return (
-    <div className="flex flex-col gap-1 border-l pl-3 text-xs">
+    <div className="flex flex-col gap-1 border-l pl-3 text-sm">
       {pin === undefined ? null : (
         <DetailRow
           label="Quick launch"
@@ -126,11 +126,11 @@ export function AgentRow({ itemKey, agentId, settings, crumb, active, locked }: 
           <AgentMark id={data.id} label={data.label} />
           <span className="truncate">{data.label}</span>
           {status === null ? (
-            <span className="min-w-0 truncate text-muted-foreground">
+            <span className="min-w-0 truncate text-xs text-muted-foreground">
               <CommandLine command={data.command} />
             </span>
           ) : (
-            <span className="shrink-0 text-muted-foreground">{status}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{status}</span>
           )}
         </span>
       }

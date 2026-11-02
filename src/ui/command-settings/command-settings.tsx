@@ -137,7 +137,7 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
         aria-label="Settings"
         className="ui-preset flex max-h-[calc(100%-128px)] w-[760px] max-w-[calc(100%-48px)] flex-col overflow-hidden rounded-xl bg-background text-foreground ring-1 ring-foreground/15"
       >
-        <header className="flex shrink-0 flex-col gap-2 border-b p-3">
+        <header className="flex shrink-0 flex-col gap-2 p-3">
           <SearchField
             inputRef={searchRef}
             scope={scope}

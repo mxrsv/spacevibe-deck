@@ -140,7 +140,7 @@ export function Footer({
   readonly esc: string;
 }) {
   return (
-    <footer className="flex h-9 shrink-0 items-center justify-end gap-4 border-t px-4 text-xs text-muted-foreground">
+    <footer className="flex h-9 shrink-0 items-center justify-end gap-4 bg-muted/50 px-4 text-xs text-muted-foreground">
       {move ? <Hint keys="↑↓" label="Move" /> : null}
       {enter ? <Hint keys="↵" label={enter} /> : null}
       <Hint keys="Esc" label={esc} />

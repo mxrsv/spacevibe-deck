@@ -120,7 +120,7 @@ export function LaunchDetails({ agent, command, locked }: LaunchDetailsProps) {
         )}
       </DetailRow>
       {error.value === null ? null : (
-        <p role="alert" className="text-destructive">
+        <p role="alert" className="text-xs text-destructive">
           {error.value}
         </p>
       )}
@@ -246,7 +246,7 @@ export function RuntimeDetails({
             />
           </DetailRow>
           {modelError.value === null ? null : (
-            <p role="alert" className="text-destructive">
+            <p role="alert" className="text-xs text-destructive">
               {modelError.value}
             </p>
           )}
