@@ -19,10 +19,6 @@ vi.mock("../../host/dialog-host", () => ({
   ask: vi.fn(async () => false),
 }));
 
-// Navigation reads the real registry but never renders a section. Keep the
-// preview's xterm initialization out of this navigation-only test.
-vi.mock("./appearance-preview", () => ({ AppearancePreview: () => null }));
-
 import { SettingsNav } from "./settings-nav";
 import { activeCategory } from "./active-category-store";
 import { settingsQuery } from "./settings-focus-store";

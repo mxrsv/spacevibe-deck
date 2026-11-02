@@ -271,7 +271,7 @@ describe("an area view", () => {
     settings.value = { ...DEFAULT_SETTINGS, fontSize: 16 };
     commandScope.value = "appearance";
     await open();
-    for (const name of ["Color mode", "Typography preview", "Identity"]) {
+    for (const name of ["Theme", "Identity"]) {
       expect(document.querySelector(`section[aria-label="${name}"]`), name).not.toBeNull();
     }
     expect(document.body.textContent).toContain("1 changed");

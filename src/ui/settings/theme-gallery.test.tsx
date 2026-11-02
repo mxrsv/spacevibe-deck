@@ -137,9 +137,13 @@ describe("ThemeGallery", () => {
   it("selects a built-in theme by its id", () => {
     mount();
 
-    act(() => cards()[1].click());
+    act(() =>
+      cards()
+        .find((card) => card.textContent?.includes("Paper"))
+        ?.click(),
+    );
 
-    expect(settings.value.themeId).toBe(BUILT_IN_THEMES[1].id);
+    expect(settings.value.themeId).toBe("paper");
   });
 
   it("selects an imported theme by its file id", () => {
@@ -154,16 +158,48 @@ describe("ThemeGallery", () => {
     expect(settings.value.themeId).toBe("file:orange.json");
   });
 
-  it("moves selection with the arrow keys and wraps", () => {
+  it("groups the built-ins by type, Custom only once a file exists", () => {
+    const names = (): (string | null | undefined)[][] =>
+      Array.from(host.querySelectorAll('[role="group"]')).map((group) => [
+        group.getAttribute("aria-label"),
+        ...Array.from(group.querySelectorAll(".theme-card__name")).map((n) => n.textContent),
+      ]);
     mount();
 
+    expect(names()).toEqual([
+      ["Light", "Deck Light", "Paper", "Mist"],
+      ["Dark", "Deck Dark", "Graphite", "Midnight", "Forest", "Dusk"],
+    ]);
+
     act(() => {
-      host
-        .querySelector(".theme-gallery")
-        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+      customThemes.value = [IMPORTED];
     });
 
-    expect(settings.value.themeId).toBe(BUILT_IN_THEMES[BUILT_IN_THEMES.length - 1].id);
+    expect(names().at(-1)).toEqual(["Custom", "Orange Mechanic"]);
+  });
+
+  it("walks the arrow keys across the groups and wraps, focus on the selected card", () => {
+    const press = (key: string): void => {
+      act(() => {
+        host
+          .querySelector(".theme-gallery")
+          ?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+    };
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "mist" };
+    mount();
+
+    // Last of Light to first of Dark.
+    press("ArrowRight");
+    expect(settings.value.themeId).toBe("deck-dark");
+    expect(document.activeElement?.textContent).toContain("Deck Dark");
+
+    act(() => {
+      settings.value = { ...DEFAULT_SETTINGS, themeId: "deck-light" };
+    });
+    press("ArrowLeft");
+    expect(settings.value.themeId).toBe("dusk");
+    expect(document.activeElement?.textContent).toContain("Dusk");
   });
 
   it("names the file and the reason when one does not parse", () => {

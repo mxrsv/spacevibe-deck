@@ -147,14 +147,13 @@ describe("the list for a query and a scope", () => {
     ]);
   });
 
-  it("puts the colour mode, the preview and the logo into Appearance as legacy pieces", () => {
+  it("puts the theme and the logo into Appearance as legacy pieces", () => {
     const keys = commandListItems("", "appearance", commandSources()).map((item) => item.key);
     expect(keys).toEqual([
       "piece:appearance:reset",
       "piece:appearance:theme",
       "setting:fontFamily",
       "setting:fontSize",
-      "piece:appearance:preview",
       "setting:showPaneBar",
       "setting:showStatusBar",
       "setting:tabBarPosition",

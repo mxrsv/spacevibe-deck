@@ -37,7 +37,6 @@ export function commandSources(): CommandSources {
 export type LegacyPiece =
   | "reset"
   | "theme"
-  | "preview"
   | "logo"
   | "refresh"
   | "commands"
@@ -79,7 +78,7 @@ function areaItems(area: CommandAreaId, sources: CommandSources): readonly ListI
   if (area === "privacy") {
     return [piece("privacy")];
   }
-  // The colour mode is edited by its cards, not by a row.
+  // The theme is edited by its cards, not by a row.
   const rows = buildCommandItems("", area, sources).filter(
     (item) => item.key !== "setting:themeId",
   );
@@ -98,15 +97,7 @@ function areaItems(area: CommandAreaId, sources: CommandSources): readonly ListI
   if (area !== "appearance") {
     return [piece("reset"), ...rows];
   }
-  const afterType = rows.findIndex((item) => item.key === "setting:fontSize") + 1;
-  return [
-    piece("reset"),
-    piece("theme"),
-    ...rows.slice(0, afterType),
-    piece("preview"),
-    ...rows.slice(afterType),
-    piece("logo"),
-  ];
+  return [piece("reset"), piece("theme"), ...rows, piece("logo")];
 }
 
 /** What the field shows: results for a query, else the area's rows, else the home lists. */

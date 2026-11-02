@@ -6,12 +6,13 @@ and apply to every Deck window.
 
 ## Appearance
 
-[Appearance](../../src/ui/settings/sections/appearance-section.tsx) groups color mode,
-terminal text, workspace chrome and identity. Its read-only preview updates as you
-choose settings; it does not launch a terminal session.
+[Appearance](../../src/ui/settings/sections/appearance-section.tsx) groups the theme,
+terminal text, workspace chrome and identity.
 
-- **Theme** — Light or Dark. Dark is the default. On Dark, the terminal is the deepest surface
-  in the window and the chrome stands above it.
+- **Theme** — pick a card under Light or Dark: Deck Light, Paper and Mist, or Deck Dark, Graphite,
+  Midnight, Forest and Dusk. It applies at once. Deck Dark is the default.
+- **Import theme** — add an iTerm2, Windows Terminal, Ghostty or Alacritty file; it appears under
+  Custom and changes the terminal colors only. Delete its file from **Themes folder** to remove it.
 - **Font and size** — shared by terminals and the built-in editor (default size 13).
 - **Tab bar position** — the chips live in the sidebar layout (default) or along the top.
 - **Show pane bar** — a name bar inside each split (off by default).
@@ -111,7 +112,7 @@ session logs stay.
 | `update-attempt.json` | The last update install attempt, so a failed relaunch is reported    |
 | `telemetry.json`      | Analytics state and pending daily counters                           |
 | `usage-cache.json`    | Parsed token-usage results and the project folders they ran in       |
-| `themes/`             | Theme files from earlier releases; Settings has no import control    |
+| `themes/`             | Imported theme files, listed under Custom in Appearance              |
 
 On macOS the folder is `~/Library/Application Support/SpaceVibe Deck`; on Windows it is
 `%APPDATA%\SpaceVibe Deck`.

@@ -110,6 +110,7 @@ function wt(path: string, branch: string, extra: { locked?: string; prunable?: s
  */
 const SHARED: Readonly<Record<string, CannedHandler>> = {
   desktop_environment: () => ({ platform: "macos", homeDir: "/Users/deck" }),
+  themes_list: () => ({ entries: [], rejected: [] }),
   window_boot_mode: () => ({ kind: "normal" }),
 
   // Two of the five built-ins "missing" is deliberate: the agents section

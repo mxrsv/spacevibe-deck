@@ -3,8 +3,6 @@ import { BUILT_IN_THEMES, DECK_DARK_THEME, DECK_LIGHT_THEME } from "./built-in-t
 import { DEFAULT_SETTINGS } from "./settings-schema";
 import {
   activeTheme,
-  conversionDiscardsData,
-  customThemes,
   DECK_DARK_ID,
   DECK_LIGHT_ID,
   getTheme,
@@ -129,31 +127,5 @@ describe("themeFromTerminalColors", () => {
 
     expect(theme.type).toBe("dark");
     expect(theme.ui).toEqual(DECK_DARK_THEME.ui);
-  });
-});
-
-describe("conversionDiscardsData", () => {
-  it("is false for a built-in or a retired id", () => {
-    expect(conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "paper" })).toBe(false);
-    expect(conversionDiscardsData({ ...DEFAULT_SETTINGS, themeId: "tokyo-night" })).toBe(false);
-  });
-
-  it("is true for an imported theme, which lives in a file", () => {
-    customThemes.value = [
-      {
-        fileName: "solarized.json",
-        theme: { ...DECK_DARK_THEME, id: "file:solarized.json", name: "Solarized" },
-      },
-    ];
-    try {
-      expect(
-        conversionDiscardsData({
-          ...DEFAULT_SETTINGS,
-          themeId: "file:solarized.json",
-        }),
-      ).toBe(true);
-    } finally {
-      customThemes.value = [];
-    }
   });
 });

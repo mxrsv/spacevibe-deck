@@ -6,11 +6,10 @@ import { SETTINGS_PAGES, type SettingsPage } from "../../settings/settings-regis
 import { Button } from "../controls/button";
 import { DeckIcon, GLYPH_ROW } from "../controls/deck-icon";
 import { LogoRow } from "../controls/logo-row";
-import { AppearancePreview } from "../settings/appearance-preview";
 import { PageResetBar } from "../settings/page-reset-bar";
 import { SETTINGS_CATEGORIES } from "../settings/settings-categories";
 import { SettingsGroup } from "../settings/settings-group";
-import { ThemeModeSelector } from "../settings/theme-mode-selector";
+import { ThemeGallery } from "../settings/theme-gallery";
 import { AboutRows } from "./command-settings-about";
 import { AddCommandRow } from "./command-settings-add-command";
 import { AgentsRefresh } from "./command-settings-agent-row";
@@ -215,16 +214,10 @@ export function PieceMount({
       );
     case "theme":
       return (
-        <LegacyBox area={area} label="Color mode">
+        <LegacyBox area={area} label="Theme">
           <SettingsGroup settingKey="themeId">
-            <ThemeModeSelector presentation="cards" />
+            <ThemeGallery />
           </SettingsGroup>
-        </LegacyBox>
-      );
-    case "preview":
-      return (
-        <LegacyBox area={area} label="Typography preview">
-          <AppearancePreview />
         </LegacyBox>
       );
     case "logo":

@@ -99,7 +99,7 @@ describe("ResetSection — scoped resets", () => {
     await click(buttons()[0]);
 
     expect(mockedAsk).toHaveBeenCalledWith(
-      expect.stringMatching(/Resets: .*Font size.*Color mode.*\nKeeps: layout/s),
+      expect.stringMatching(/Resets: .*Font size.*Theme.*\nKeeps: layout/s),
       expect.objectContaining({ title: "Reset preferences" }),
     );
     expect(settings.value.fontSize).toBe(DEFAULT_SETTINGS.fontSize);

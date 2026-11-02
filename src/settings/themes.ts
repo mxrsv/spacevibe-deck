@@ -13,23 +13,12 @@ import {
 import type { ThemeColors } from "./theme-formats/theme-draft";
 
 /**
- * The two modes Settings offers, and the only ids it ever writes.
- *
- * The other built-ins resolve and render, but no surface offers them until the
- * Appearance area lists them. The four palettes the explicit theme model
- * retired (`tokyo-night`, `dracula`, `one-dark`, `catppuccin-mocha`) were all
- * dark, so they need no migration: like any id nothing answers to, they fall
- * back to Deck Dark.
+ * The four palettes the explicit theme model retired (`tokyo-night`, `dracula`,
+ * `one-dark`, `catppuccin-mocha`) were all dark, so they need no migration: like
+ * any id nothing answers to, they fall back to Deck Dark.
  */
 export const DECK_DARK_ID = DECK_DARK_THEME.id;
 export const DECK_LIGHT_ID = DECK_LIGHT_THEME.id;
-
-export type ThemeMode = ThemeType;
-
-export const CANONICAL_THEME_IDS: Readonly<Record<ThemeMode, string>> = Object.freeze({
-  light: DECK_LIGHT_ID,
-  dark: DECK_DARK_ID,
-});
 
 /** A theme parsed from a file in the themes folder. */
 export interface ImportedTheme {
@@ -112,17 +101,7 @@ export function themeFromTerminalColors(id: string, name: string, colors: ThemeC
   };
 }
 
-/** Which of the two visible modes a stored settings object is currently wearing. */
-export function themeModeOf(settings: Settings): ThemeMode {
+/** Whether a stored settings object is wearing a light or a dark theme. */
+export function themeModeOf(settings: Settings): ThemeType {
   return activeTheme(settings).type;
-}
-
-/**
- * Whether choosing a canonical mode would discard something the user cannot
- * get back from Settings: an IMPORTED theme's selection, which no surface can
- * pick again. A built-in, or a retired id, is not in this class — nothing about
- * it is unrecoverable, so asking would be ceremony.
- */
-export function conversionDiscardsData(settings: Settings): boolean {
-  return customThemes.value.some((entry) => entry.theme.id === settings.themeId);
 }

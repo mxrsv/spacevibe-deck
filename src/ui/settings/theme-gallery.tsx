@@ -9,30 +9,47 @@ import {
   themesLoading,
 } from "../../settings/custom-themes-store";
 import { settings, updateSettings } from "../../settings/settings-store";
-import { allThemes, getTheme } from "../../settings/themes";
+import { BUILT_IN_THEMES } from "../../settings/built-in-themes";
+import { customThemes, getTheme } from "../../settings/themes";
 import type { Theme } from "../../settings/theme-schema";
-import { ConfigGroup, ConfigRow } from "../controls/config-row";
+import { ConfigRow } from "../controls/config-row";
 import { CHROME_ICON, DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { ThemeCardPreview } from "./theme-card-preview";
 import { LoadError } from "../controls/load-error";
 import { Button } from "../controls/button";
 
+interface ThemeGroup {
+  readonly label: string;
+  readonly themes: readonly Theme[];
+}
+
+/** Light first, as the mode pair ran; an empty Custom group draws nothing. */
+function themeGroups(imported: readonly Theme[]): readonly ThemeGroup[] {
+  const groups: readonly ThemeGroup[] = [
+    { label: "Light", themes: BUILT_IN_THEMES.filter((theme) => theme.type === "light") },
+    { label: "Dark", themes: BUILT_IN_THEMES.filter((theme) => theme.type === "dark") },
+    { label: "Custom", themes: imported },
+  ];
+  return groups.filter((group) => group.themes.length > 0);
+}
+
 /**
  * The theme gallery (DL-24).
  *
  * §5's row is the wrong control for this one setting and only this one: a
- * theme's value IS a picture, so a pill reading `tokyo-night` asks the user to
- * remember what four words look like. Everything around the grid stays rows —
+ * theme's value IS a picture, so a pill reading `midnight` asks the user to
+ * remember what a word looks like. Everything around the grid stays rows —
  * import and the folder are ordinary `action` pills (DL-24.5) — so the section
  * gains one widget, not a second grammar.
  *
- * The grid is a radio group rather than a list of buttons: exactly one theme is
- * active, arrow keys are what a radio group promises, and screen readers get
- * "3 of 7, selected" out of it for free.
+ * All the groups are one radio group rather than a list of buttons: exactly one
+ * theme is active, whichever group it is in, and arrow keys walk across them.
  */
 export function ThemeGallery() {
   const current = settings.value;
-  const themes = allThemes();
+  const groups = themeGroups(customThemes.value.map((entry) => entry.theme));
+  // Render order, which is the order the arrow keys walk.
+  const themes = groups.flatMap((group) => group.themes);
   const failures = themeImportFailures.value;
   const groupRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +95,6 @@ export function ThemeGallery() {
 
   return (
     <>
-      <ConfigGroup label="Theme" />
       <div
         class="theme-gallery"
         role="radiogroup"
@@ -86,37 +102,46 @@ export function ThemeGallery() {
         ref={groupRef}
         onKeyDown={onKeyDown}
       >
-        {themes.map((theme) => {
-          const active = theme.id === activeId;
-          return (
-            <button
-              key={theme.id}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              tabIndex={active ? 0 : -1}
-              class={`theme-card ${active ? "theme-card--active" : ""}`}
-              onClick={() => select(theme)}
-            >
-              <ThemeCardPreview theme={theme} />
-              <span class="theme-card__foot">
-                {/* The card is a thumbnail now, so a long theme name ellipses
-                    in the footer. The full one stays in the DOM (screen
-                    readers read it whole) and `title` gives it back to the
-                    pointer. */}
-                <span class="theme-card__name" title={theme.name}>
-                  {theme.name}
-                </span>
-                {/* CHROME_ICON, the smallest size the scale has (DL-14.1) —
-                    the card shrank but the icon scale did not, so the mark's
-                    circle is what tightened around it, not the check. */}
-                <span class="theme-card__mark" aria-hidden="true">
-                  {active && <DeckIcon icon={Check} size={CHROME_ICON} />}
-                </span>
-              </span>
-            </button>
-          );
-        })}
+        {groups.map((group) => (
+          <div key={group.label} class="theme-gallery__group" role="group" aria-label={group.label}>
+            <span class="theme-gallery__label" aria-hidden="true">
+              {group.label}
+            </span>
+            <div class="theme-gallery__cards">
+              {group.themes.map((theme) => {
+                const active = theme.id === activeId;
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    tabIndex={active ? 0 : -1}
+                    class={`theme-card ${active ? "theme-card--active" : ""}`}
+                    onClick={() => select(theme)}
+                  >
+                    <ThemeCardPreview theme={theme} />
+                    <span class="theme-card__foot">
+                      {/* The card is a thumbnail now, so a long theme name ellipses
+                          in the footer. The full one stays in the DOM (screen
+                          readers read it whole) and `title` gives it back to the
+                          pointer. */}
+                      <span class="theme-card__name" title={theme.name}>
+                        {theme.name}
+                      </span>
+                      {/* CHROME_ICON, the smallest size the scale has (DL-14.1) —
+                          the card shrank but the icon scale did not, so the mark's
+                          circle is what tightened around it, not the check. */}
+                      <span class="theme-card__mark" aria-hidden="true">
+                        {active && <DeckIcon icon={Check} size={CHROME_ICON} />}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
       {themeLoadState.value.status === "error" ? (
         <LoadError message={themeLoadState.value.message} onRetry={() => void loadCustomThemes()} />

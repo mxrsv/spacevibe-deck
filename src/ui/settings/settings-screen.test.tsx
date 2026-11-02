@@ -334,12 +334,10 @@ describe("SettingsScreen — the interaction foundation", () => {
  * even after a row is dropped.
  */
 const EXPECTED_ROWS = [
-  // appearance. The theme is one row again since 2026-08-19 — a Light/Dark
-  // segmented pair. The gallery grid (DL-24) and the two rows it brought with
-  // it ("Import theme", "Themes folder") are UNMOUNTED, not deleted:
-  // `theme-gallery.test.tsx` still stands, and their absence from this walk is
-  // the assertion that Settings no longer reaches them.
+  // appearance. The gallery grid (DL-24) stands in for the theme's row.
   "Appearance",
+  "Import theme",
+  "Themes folder",
   "Font",
   "Font size",
   "App logo",
@@ -428,8 +426,7 @@ describe("SettingsScreen — every setting survived the move", () => {
 
     const seen = new Set<string>();
     const collect = (): void => {
-      if (host.querySelector('[role="radiogroup"][aria-label="Appearance mode"]'))
-        seen.add("Appearance");
+      if (host.querySelector('[role="radiogroup"][aria-label="Theme"]')) seen.add("Appearance");
       for (const label of host.querySelectorAll(".cfg-row__label")) {
         // Quick-agent choices are catalog-driven; their interaction tests
         // assert selection and limits without duplicating the catalog here.
@@ -458,7 +455,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     expect([...seen].sort()).toEqual([...EXPECTED_ROWS].sort());
   });
 
-  it("updates the preview from the real appearance controls", () => {
+  it("writes settings from the real appearance controls", () => {
     configureSettingsSync(createMemorySettingsSync());
     settings.value = {
       ...DEFAULT_SETTINGS,
@@ -477,18 +474,12 @@ describe("SettingsScreen — every setting survived the move", () => {
     };
     click('[aria-label="Increase font size"]');
     expect(settings.value.fontSize).toBe(14);
-    expect(host.querySelector<HTMLElement>(".appearance-preview__terminal")?.style.fontSize).toBe(
-      "14px",
-    );
     click('[role="switch"][aria-label="Show pane bar"]');
+    expect(settings.value.showPaneBar).toBe(true);
     click('[role="switch"][aria-label="Show status bar"]');
-    expect(host.querySelector(".appearance-preview__pane-bar")?.textContent).toContain("Terminal");
-    expect(host.querySelector(".appearance-preview__status")?.textContent).toContain("main");
+    expect(settings.value.showStatusBar).toBe(true);
     click('[aria-label="Tab bar position"] button:last-child');
     expect(settings.value.tabBarPosition).toBe("top");
-    expect(host.querySelector(".appearance-preview__window")?.classList.contains("is-top")).toBe(
-      true,
-    );
   });
 
   it("visits every registered category on the walk", () => {
@@ -509,33 +500,28 @@ describe("SettingsScreen — every setting survived the move", () => {
     expect(visited).toEqual(SETTINGS_CATEGORIES.map((c) => c.id));
   });
 
-  /**
-   * The other half of the two-mode decision, and the half a row walk cannot
-   * see: the theme CARDS were never `cfg-row` labels, so dropping them from
-   * `EXPECTED_ROWS` proves nothing on its own. Appearance has to be checked
-   * for their absence directly.
-   */
-  it("offers only the two appearance modes without theme imports or colour overrides", () => {
+  /** A row walk cannot see this: the theme cards were never `cfg-row` labels. */
+  it("offers every built-in theme on Appearance, and no colour overrides", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
 
-    expect(host.querySelector(".theme-gallery")).toBeNull();
-    expect(host.querySelector(".theme-card")).toBeNull();
     expect(host.querySelector('input[type="color"], .cfg-btn__hex')).toBeNull();
-    const labels = [...host.querySelectorAll(".cfg-row__label")].map((label) =>
-      label.textContent?.trim(),
-    );
-    expect(labels).not.toContain("Import theme");
-    expect(labels).not.toContain("Themes folder");
-    // …and the one control that replaced all of it is present and complete.
-    const group = host.querySelector('[role="radiogroup"]');
-    expect(group?.getAttribute("aria-label")).toBe("Appearance mode");
+    const group = host.querySelector('[role="radiogroup"][aria-label="Theme"]');
     expect(
-      [...(group?.querySelectorAll('[role="radio"]') ?? [])].map((option) =>
-        option.textContent?.trim(),
+      [...(group?.querySelectorAll('[role="radio"] .theme-card__name') ?? [])].map(
+        (name) => name.textContent,
       ),
-    ).toEqual(["Light", "Dark"]);
+    ).toEqual([
+      "Deck Light",
+      "Paper",
+      "Mist",
+      "Deck Dark",
+      "Graphite",
+      "Midnight",
+      "Forest",
+      "Dusk",
+    ]);
   });
 
   it("heads every section with its own title and description", () => {

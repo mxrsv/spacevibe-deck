@@ -392,10 +392,9 @@ A row's value is one of eight kinds.
 
 `picker` reads `default` / `custom`. Appearance and Agents draw booleans as neutral
 rail-and-thumb switches (`role="switch"`, `aria-checked`); other categories use text pills.
-Appearance mode is a labelled radiogroup of pictured cards rather than a config row (§24), with
-the segmented picker's keyboard and conversion-confirmation behaviour and a neutral frame plus
-selection wash on the selected card. Anchors: [Studio styles](../src/styles/11-settings-studio.css),
-[mode selector](../src/ui/settings/theme-mode-selector.tsx).
+The theme is a labelled radiogroup of pictured cards rather than a config row (§24). Anchors:
+[Studio styles](../src/styles/11-settings-studio.css),
+[theme gallery](../src/ui/settings/theme-gallery.tsx).
 
 - **DL-6.1** An overridden-from-default value, including a custom `picker` pick, may show a small
   `↺` clear button beside the pill, the one second element a value slot holds.
@@ -461,7 +460,7 @@ the rail.
   (Deck's minimum is 480px).
 - **DL-11.8** A setting that differs from its default carries a 5px `--text-muted` dot after its
   label, so the mark stays achromatic (DL-3.7). The same dot sits on a Studio group title that is
-  one setting (colour mode) and on an agent's name; it marks exactly what the page's **reset
+  one setting (the theme) and on an agent's name; it marks exactly what the page's **reset
   page** action would restore, so layout and data keys never carry it. The rail's search field
   matches the label text the rows print (the registry is their one source), washes matching
   rows with the selection wash (DL-21.1), and `Esc` clears it before it closes Settings. Anchors:
@@ -1002,9 +1001,8 @@ overflow menu and the permanent home of the pane group.
 
 ## 24. The theme gallery
 
-A grid of theme cards in [`theme-gallery.tsx`](../src/ui/settings/theme-gallery.tsx), mounted by
-nothing: Appearance in Settings is a binary group (DL-6.5) over `deck-light` and `deck-dark`.
-The component still builds and passes its tests, and the rules below describe it.
+Theme cards in [`theme-gallery.tsx`](../src/ui/settings/theme-gallery.tsx), grouped Light, Dark
+and, once a file exists, Custom. All the groups are one radio group, since one theme is active.
 
 - **DL-24.1** The gallery is the only grid in a settings section and exists only for the theme.
 - **DL-24.2** A card is a miniature of Deck, not a strip of swatches: the command row, the

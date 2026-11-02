@@ -197,11 +197,27 @@
    at a glance next to its neighbours, not admired — so the track stops growing
    at 132px and the leftover space stays leftover. */
 .theme-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.theme-gallery__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.theme-gallery__label {
+  font-size: var(--type-meta);
+  color: var(--text-muted);
+}
+
+.theme-gallery__cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(108px, 132px));
   gap: 8px;
-  padding: 2px 10px 10px;
-  margin: 0 4px;
 }
 
 /* The card frame is a seam: a card is a surface floating on the section, not a

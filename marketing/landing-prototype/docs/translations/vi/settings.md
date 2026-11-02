@@ -1,5 +1,5 @@
 ---
-translated-from: 63ba2cfc
+translated-from: 422f6511
 ---
 
 # Cài đặt
@@ -10,11 +10,12 @@ hoặc Escape. Cài đặt được lưu theo từng máy, trong thư mục dữ
 
 ## Appearance
 
-Appearance gom chế độ màu, chữ trong terminal, khung giao diện của workspace và phần nhận diện. Bản
-xem trước (chỉ để xem) cập nhật ngay khi bạn chọn; nó không mở phiên terminal nào cả.
+Appearance gom theme, chữ trong terminal, khung giao diện của workspace và phần nhận diện.
 
-- **Theme** — Light hoặc Dark. Mặc định là Dark. Ở Dark, terminal là lớp nền sâu nhất trong cửa
-  sổ, còn khung giao diện nổi lên phía trên.
+- **Theme** — chọn một thẻ trong nhóm Light hoặc Dark: Deck Light, Paper và Mist, hoặc Deck Dark,
+  Graphite, Midnight, Forest và Dusk. Theme đổi ngay khi chọn. Mặc định là Deck Dark.
+- **Import theme** — thêm file từ iTerm2, Windows Terminal, Ghostty hoặc Alacritty; theme sẽ nằm
+  trong nhóm Custom và chỉ đổi màu terminal. Muốn gỡ thì xoá file của nó trong **Themes folder**.
 - **Font and size** — dùng chung cho terminal và editor có sẵn (cỡ chữ mặc định là 13).
 - **Tab bar position** — dải chip nằm trong sidebar (mặc định) hoặc chạy dọc phía trên.
 - **Show pane bar** — thanh tên bên trong mỗi pane đã chia (mặc định tắt).
@@ -115,7 +116,7 @@ việc của chính các agent vẫn được giữ nguyên.
 | `update-attempt.json` | Lần cài cập nhật gần nhất, để báo lại nếu mở lại sau cập nhật bị lỗi       |
 | `telemetry.json`      | Trạng thái analytics và các bộ đếm trong ngày chưa gửi                     |
 | `usage-cache.json`    | Kết quả đã phân tích về token usage và các thư mục project nơi chúng chạy  |
-| `themes/`             | File theme từ các bản trước; Settings không có chỗ nhập theme              |
+| `themes/`             | File theme đã nhập, hiện trong nhóm Custom ở Appearance                    |
 
 Trên macOS, thư mục đó là `~/Library/Application Support/SpaceVibe Deck`; trên Windows là
 `%APPDATA%\SpaceVibe Deck`.

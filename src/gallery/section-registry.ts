@@ -30,6 +30,7 @@ const RowBadgeSection = lazy(() =>
 const OverlaysSection = lazy(() =>
   import("./sections/overlays-section").then((m) => m.OverlaysSection),
 );
+const ThemesSection = lazy(() => import("./sections/themes-section").then((m) => m.ThemesSection));
 const PopoversSection = lazy(() =>
   import("./sections/popovers-section").then((m) => m.PopoversSection),
 );
@@ -92,6 +93,7 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
+  { id: "themes", label: "themes", Section: ThemesSection },
   { id: "board", label: "open board", Section: BoardSection },
   { id: "agent-board", label: "agent board", Section: AgentBoardSection },
   { id: "explorer-tree", label: "explorer tree", Section: ExplorerTreeSection },

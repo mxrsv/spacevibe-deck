@@ -1,5 +1,5 @@
-/* The stylesheet for this specimen and the one place the gallery pulls in the Base UI preset.
-   The composition below (rows, grids) is written in utilities, so its file is scanned too. */
+/* The stylesheet for this specimen, which pulls in the Base UI preset for itself. The composition
+   below (rows, grids) is written in utilities, so its file is scanned too. */
 @import "../../ui/preset.css";
 @source "./preset-controls-section.tsx";
 @source "./preset-controls-groups.tsx";

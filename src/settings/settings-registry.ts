@@ -61,8 +61,8 @@ export const SETTINGS_REGISTRY: Readonly<Record<keyof Settings, SettingEntry>> =
   themeId: {
     page: "appearance",
     scope: "preference",
-    label: "Color mode",
-    keywords: ["theme", "dark", "light", "palette"],
+    label: "Theme",
+    keywords: ["color", "mode", "dark", "light", "palette"],
   },
   focusExpand: { page: null, scope: "layout", label: "Expand focused pane", keywords: [] },
   showPaneBar: {
