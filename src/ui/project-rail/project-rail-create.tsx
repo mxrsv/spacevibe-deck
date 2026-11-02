@@ -73,7 +73,9 @@ export function ProjectRailCreate({
         <Tip
           label="New"
           button={
-            <DropdownMenuTrigger render={<Button ref={plusRef} size="icon" aria-label="New" />} />
+            <DropdownMenuTrigger
+              render={<Button ref={plusRef} variant="outline" size="icon" aria-label="New" />}
+            />
           }
         >
           <DeckIcon icon={PlusSignIcon} />

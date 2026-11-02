@@ -102,7 +102,7 @@ export function ProjectRailFooter({ usage, ...tools }: ProjectRailFooterProps) {
     // controls takes the preset, and the rings sit in that row so their `text-*` utilities
     // resolve.
     <div className="sidebar-actions__slot relative shrink-0 pb-1.5">
-      <div className="ui-preset flex items-center justify-between border-t border-sidebar-border bg-transparent px-2 pt-1.5">
+      <div className="ui-preset flex items-center justify-between bg-transparent px-2 pt-1.5">
         {settings === undefined ? (
           <span />
         ) : (

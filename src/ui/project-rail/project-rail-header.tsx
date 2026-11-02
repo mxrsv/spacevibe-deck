@@ -59,7 +59,7 @@ export function ProjectRailHeader({
         data-rail-project={group.key}
         aria-expanded={!folded}
         onClick={onToggle}
-        className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-sidebar-accent/50 focus-visible:bg-sidebar-accent/50"
       >
         <WorkspaceIcon
           key={markPath}
@@ -68,7 +68,7 @@ export function ProjectRailHeader({
           size={PROJECT_MARK_PX}
           className="flex size-5 shrink-0 overflow-hidden rounded-md"
           fallback={
-            <span className="flex size-full items-center justify-center bg-muted text-3xs font-semibold text-muted-foreground">
+            <span className="flex size-full items-center justify-center bg-muted text-xs font-semibold text-muted-foreground">
               {projectInitials(group.label)}
             </span>
           }

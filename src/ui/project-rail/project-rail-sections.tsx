@@ -122,7 +122,7 @@ export function ProjectSection({
             />
           ))}
       {!folded && group.items.length === 0 && rowless.length === 0 ? (
-        <p className="px-5 py-2 text-xs text-muted-foreground">No sessions</p>
+        <p className="px-6 py-2 text-xs text-muted-foreground">No sessions</p>
       ) : null}
     </section>
   );
@@ -138,7 +138,7 @@ export function FlatSection({
 }) {
   return (
     <section aria-label={group.label}>
-      <h3 className="mx-3.5 mt-3 mb-0.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <h3 className="mx-3 mt-3 mb-0.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         {group.label}
         <span className="tabular-nums">{group.count}</span>
       </h3>

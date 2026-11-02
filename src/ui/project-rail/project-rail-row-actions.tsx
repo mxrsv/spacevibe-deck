@@ -62,7 +62,7 @@ export function ProjectRailRowActions({
   return (
     <div
       className={cn(
-        "absolute top-1 right-1.5 flex items-center gap-0.5 rounded-md bg-accent p-0.5",
+        "absolute top-1 right-1.5 flex items-center gap-0.5 rounded-md bg-sidebar-accent p-0.5",
         REVEAL,
       )}
     >

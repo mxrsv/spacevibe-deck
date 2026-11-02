@@ -47,8 +47,12 @@ describe("the flush stage stylesheet", () => {
     expect(value(".stage--flush .split__divider", "background")).toBe("var(--border)");
   });
 
-  it("puts a 1px border under the bar above the stage", () => {
-    expect(value(".stage--flush .stage__strip", "border-bottom")).toBe("1px solid var(--border)");
+  it("parts the bar above the stage from the panes by a background step, not a line", () => {
+    expect(value(".stage--flush .stage__strip", "background")).toBe("var(--stage-ground)");
+    expect(value(".stage--flush .stage__strip", "border-bottom")).toBeUndefined();
+    expect(value(".stage--flush .pane--agent-header > .pane__bar", "border-bottom-color")).toBe(
+      "transparent",
+    );
   });
 
   it("sets the bar's text on the type scale's xs step with 12px of air at each end", () => {

@@ -21,15 +21,10 @@ export function DockAsk({ item, selection }: DockAskProps) {
   const detail = item.entry.detail?.trim() ?? "";
   const waiting = item.confidence === "inferred" ? "Probably waiting for you" : "Waiting for you";
   return (
-    <section aria-label="Ask" className="border-b px-3 py-2">
-      <div className="rounded-md border border-(--term-warn)/50 bg-muted p-2">
-        <p className="font-mono text-code text-foreground">{detail === "" ? waiting : detail}</p>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="mt-2"
-          onClick={() => selectRailItem(item, selection)}
-        >
+    <section aria-label="Ask" className="px-3 py-2">
+      <div className="rounded-md bg-(--term-warn)/10 p-2.5">
+        <p className="text-sm text-foreground">{detail === "" ? waiting : detail}</p>
+        <Button size="sm" className="mt-2" onClick={() => selectRailItem(item, selection)}>
           Open pane
         </Button>
       </div>

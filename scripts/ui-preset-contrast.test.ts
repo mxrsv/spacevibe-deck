@@ -134,6 +134,25 @@ const PAIRS: readonly Pair[] = [
     pair: ink("--sidebar-foreground", "--sidebar"),
   },
   {
+    id: "muted-foreground on sidebar (a rail row's branch and time)",
+    kind: "text",
+    pair: ink("--muted-foreground", "--sidebar"),
+  },
+  {
+    id: "muted-foreground on sidebar-accent (a selected rail row)",
+    kind: "text",
+    pair: ink("--muted-foreground", "--sidebar-accent"),
+  },
+  {
+    id: "muted-foreground on the stage ground (the stage bar's breadcrumb)",
+    kind: "text",
+    // Dark publishes `--stage-ground: var(--bg)`, which is the page background here.
+    pair: (t) => [
+      solid(t, "--muted-foreground"),
+      solid(t, t.has("--stage-ground") ? "--stage-ground" : "--background"),
+    ],
+  },
+  {
     id: "muted-foreground on background",
     kind: "text",
     pair: ink("--muted-foreground", "--background"),
@@ -217,8 +236,6 @@ const PAIRS: readonly Pair[] = [
 const EXCEPTIONS: ReadonlyMap<string, string> = new Map([
   ["light|destructive on its 10% tint", "Button and Badge `destructive` variants"],
   ["light|destructive on its 20% hover tint", "Button and Badge `destructive` hover (3.31:1)"],
-  ["light|muted-foreground on muted", "Kbd, and muted text on a muted fill"],
-  ["light|muted-foreground on secondary", "text on a secondary fill"],
   ["light|input border on background", "Input, Select and outline Button borders"],
   ["dark|input border on background", "Input, Select and outline Button borders"],
   ["light|switch track off on background", "the thumb position carries the state"],
@@ -266,7 +283,7 @@ describe("G3: the preset's pairs against the WCAG 2.2 AA floor", () => {
     const link = contrast(oklchToSrgb(0.424, 0.199, 265.638), solid(dark, "--background"));
     expect(link).toBeGreaterThan(2.1);
     expect(link).toBeLessThan(2.4);
-    const muted = contrast(solid(modes.light, "--muted-foreground"), solid(modes.light, "--muted"));
+    const muted = contrast(oklchToSrgb(0.553, 0.013, 58.071), solid(modes.light, "--muted"));
     expect(muted).toBeGreaterThan(4.3);
     expect(muted).toBeLessThan(4.5);
   });

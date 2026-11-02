@@ -166,7 +166,7 @@ export function ProjectRail({ view, onFocusPane, onSelectTab, ...deps }: Project
         ),
       )}
       {model.groups.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-xs text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 px-4 py-6 text-center text-xs text-muted-foreground">
           <p>{searching ? "No sessions match" : "Nothing here"}</p>
           {searching ? (
             <Button variant="outline" size="sm" onClick={() => setRailQuery("")}>

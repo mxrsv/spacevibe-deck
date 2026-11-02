@@ -43,6 +43,7 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
     input: chrome.hairStrong,
     ring: ui["text-muted"],
     sidebar: ui["sidebar-bg"],
+    "stage-ground": ui.bg,
     "sidebar-foreground": text,
     "sidebar-primary": ui.accent,
     "sidebar-primary-foreground": onAccent,

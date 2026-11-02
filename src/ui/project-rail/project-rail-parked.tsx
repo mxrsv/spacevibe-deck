@@ -22,14 +22,14 @@ function Disclosure({
   readonly children: ComponentChildren;
 }) {
   return (
-    <section aria-label={label} className="mt-2 border-t border-sidebar-border pt-1">
+    <section aria-label={label} className="mt-3">
       {/* raw-control: a whole-row disclosure target, like a project header; no Button variant spans it */}
       <button
         type="button"
         data-rail-section={label}
         aria-expanded={open}
         onClick={onToggle}
-        className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="mx-1.5 flex h-7 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none hover:bg-sidebar-accent/50 focus-visible:bg-sidebar-accent/50"
       >
         <DeckIcon
           icon={ArrowDown01Icon}
@@ -86,7 +86,7 @@ export function HiddenSection({ projects }: { readonly projects: readonly RailPr
         <div
           key={project.key}
           data-rail-item={`hidden:${project.key}`}
-          className="mx-1.5 flex h-7 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground hover:bg-accent/50"
+          className="mx-1.5 flex h-7 items-center gap-2 rounded-md px-2.5 text-xs text-muted-foreground hover:bg-sidebar-accent/50"
         >
           <span className="min-w-0 flex-1 truncate">{project.name}</span>
           <Chip

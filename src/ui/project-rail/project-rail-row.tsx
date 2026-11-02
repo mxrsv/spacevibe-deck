@@ -7,6 +7,7 @@ import {
 import { useEffect, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { AgentGlyph } from "../controls/agent-glyph";
+import { Badge } from "../controls/badge";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { AgentStateMark } from "../blocks/agent-state-mark";
 import { displayAgent } from "../agent-rail-card-model";
@@ -81,7 +82,7 @@ export function ProjectRailRow({
       }}
     >
       {editing && rename !== undefined ? (
-        <div className="grid grid-cols-[10px_minmax(0,1fr)] items-center gap-x-2 rounded-md bg-accent px-2.5 py-1.5">
+        <div className="grid grid-cols-[10px_minmax(0,1fr)] items-center gap-x-2 rounded-md bg-sidebar-accent px-2.5 py-1.5">
           <AgentStateMark status={item.status} confidence={item.confidence} />
           <ProjectRailRenameField
             initial={entry.kind === "agent" ? (entry.tabName ?? "") : ""}
@@ -111,8 +112,8 @@ export function ProjectRailRow({
               }
             }}
             className={cn(
-              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-              focused ? "bg-accent ring-1 ring-ring/40 ring-inset" : "hover:bg-accent/50",
+              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:bg-sidebar-accent/50",
+              focused ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50",
             )}
           >
             <span className="flex h-5 items-center">
@@ -127,7 +128,7 @@ export function ProjectRailRow({
             >
               {item.title}
             </span>
-            <span className="col-start-2 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground">
+            <span className="col-start-2 flex min-h-5 min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground">
               {entry.kind === "agent" ? (
                 <AgentGlyph agent={entry.agent} className="size-3 shrink-0" />
               ) : (
@@ -144,14 +145,14 @@ export function ProjectRailRow({
                 {projectName === undefined ? null : (
                   <span className="min-w-0 shrink truncate">{projectName}</span>
                 )}
-                <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-muted px-1.5">
+                <Badge variant="secondary" className="min-w-0 justify-start">
                   <DeckIcon
                     icon={item.checkout.labelled ? GitBranchIcon : Folder01Icon}
                     size={GLYPH_INLINE}
                     class="shrink-0"
                   />
                   <span className="truncate">{item.branch}</span>
-                </span>
+                </Badge>
               </span>
               <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
                 {pinned ? <DeckIcon icon={Pin02Icon} size={GLYPH_INLINE} /> : null}
