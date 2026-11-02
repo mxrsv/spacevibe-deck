@@ -65,4 +65,18 @@ describe("Input", () => {
     expect(userRef.current).toBe(field(view.host));
     await view.unmount();
   });
+
+  it("wears the secondary button's frame and one 3px ring outside, never inset (CMP-8, CMP-9)", async () => {
+    const view = await mount(<Input aria-label="Name" />);
+    const classes = field(view.host).className;
+    expect(classes).toContain("border-control-frame");
+    expect(classes).toContain("hover:border-control-frame-hover");
+    expect(classes).toContain("focus-visible:border-muted-foreground");
+    expect(classes).toContain("focus-visible:ring-[3px]");
+    expect(classes).toContain("focus-visible:ring-foreground/14");
+    expect(classes).not.toContain("ring-inset");
+    expect(classes).not.toContain("aria-invalid:ring");
+    expect(classes).toContain("aria-invalid:border-destructive");
+    await view.unmount();
+  });
 });

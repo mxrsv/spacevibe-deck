@@ -46,8 +46,8 @@ export function AgentStateMark({
               status === "failed" && "bg-destructive",
               status === "needs-input" &&
                 (hollow
-                  ? "border-[1.5px] border-amber-500 dark:border-amber-400"
-                  : "bg-amber-500 dark:bg-amber-400"),
+                  ? "border-[1.5px] border-amber-600 dark:border-amber-400"
+                  : "bg-amber-600 dark:bg-amber-400"),
               status === "unread" &&
                 (hollow
                   ? "border-[1.5px] border-sky-600 dark:border-sky-400"
