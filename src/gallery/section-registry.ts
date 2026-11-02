@@ -55,6 +55,9 @@ const LaunchProfilesSection = lazy(() =>
 const PresetControlsSection = lazy(() =>
   import("./sections/preset-controls-section").then((m) => m.PresetControlsSection),
 );
+const ControlStatesSection = lazy(() =>
+  import("./sections/control-states-section").then((m) => m.ControlStatesSection),
+);
 
 export interface GallerySection {
   readonly id: string;
@@ -85,6 +88,7 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "rows", label: "config rows", Section: RowsSection },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "shared-controls", label: "shared controls · Base UI", Section: PresetControlsSection },
+  { id: "small-ui", label: "small UI · states", Section: ControlStatesSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection, scopedThemes: true },
   { id: "navigation", label: "navigation", Section: NavigationSection },
   { id: "row-badge", label: "row badge", Section: RowBadgeSection, scopedThemes: true },

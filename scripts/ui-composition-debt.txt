@@ -1,0 +1,8 @@
+# Small text and hand-drawn chips in shipping src/**/*.tsx that predate
+# scripts/ui-composition-gate.test.ts (spec 2026-11-03-ui-composition, CMP-5 to CMP-7, CMP-10),
+# one `path rule count` line each, rule being `small-text` or `chip-like`. A file may hold at most
+# its count. Lower a count when you move an element onto Chip, Badge or Button or a text size onto
+# `text-xs` or larger, and remove the line at zero; never raise one or add a file.
+#
+# Empty on 2026-11-03: the tree held no size under 12px and, once a block `<div>` row is not
+# counted as a chip, no hand-drawn chip.

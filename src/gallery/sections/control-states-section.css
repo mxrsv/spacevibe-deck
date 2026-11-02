@@ -1,0 +1,12 @@
+/* The stylesheet for the small-UI section, which pulls in the Base UI preset for itself. Its
+   layout is written in utilities, so the section's files are scanned. `control-states-force.ts`
+   finds this sheet by its file name: renaming it needs the constant there to follow. */
+@import "../../ui/preset.css";
+@source "./control-states-section.tsx";
+@source "./control-states-grid.tsx";
+
+/* `.gx-app--chatgpt` declares the gallery's own `--radius`, the one name the chrome and the
+   preset share. A panel takes the preset's value back (`:root` in preset.css). */
+.ui-preset {
+  --radius: 0.3125rem;
+}
