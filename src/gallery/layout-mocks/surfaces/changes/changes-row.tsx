@@ -48,7 +48,7 @@ export function FileRow({
             aria-label={`${expanded ? "Hide" : "Show"} preview of ${file}`}
             aria-expanded={expanded}
             onClick={onToggle}
-            className="flex h-full w-6 shrink-0 items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="flex h-full w-6 shrink-0 items-center justify-center text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground"
           >
             <Chevron open={expanded} />
           </button>

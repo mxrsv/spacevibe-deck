@@ -149,7 +149,7 @@ export function InspectBar({
   if (mode === "off") return null;
   return (
     <div
-      className={cn("flex h-9 shrink-0 items-center gap-2 border-b px-2 text-xs", className)}
+      className={cn("flex h-9 shrink-0 items-center gap-2 px-2 text-xs", className)}
       role="status"
     >
       {mode === "pick" ? (
@@ -163,13 +163,14 @@ export function InspectBar({
       ) : picked ? (
         <>
           <code
-            className="min-w-0 flex-1 truncate rounded-sm bg-muted px-1.5 py-0.5 font-mono text-2xs text-foreground"
+            className="min-w-0 flex-1 truncate rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground"
             title={picked.selector}
           >
             {picked.selector}
           </code>
           <Button
             size="sm"
+            variant="outline"
             onClick={() => {
               onSend?.(picked.summary);
               browser.clearPick();
@@ -235,7 +236,7 @@ export function NativeView({
           />
         </div>
       </div>
-      <p className="m-0 text-center font-mono text-2xs text-muted-foreground tabular-nums">
+      <p className="m-0 text-center font-mono text-xs text-muted-foreground tabular-nums">
         Native view {width} x {height}
         {scaled < 1 ? ` · ${emulate} px emulated` : ""}
       </p>

@@ -65,13 +65,13 @@ export function ImportPanel({
         spellcheck={false}
         aria-label="Theme JSON"
         aria-invalid={error !== null}
-        className="h-24 resize-none rounded-md border border-input bg-background p-2 font-mono text-2xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive"
+        className="h-24 resize-none rounded-md border border-input bg-background p-2 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-invalid:border-destructive"
       />
       <div className="flex items-start justify-between gap-2">
-        <p role="alert" className="min-h-4 flex-1 text-2xs text-destructive">
+        <p role="alert" className="min-h-4 flex-1 text-xs text-destructive">
           {error}
         </p>
-        <Button size="sm" disabled={!text.trim()} onClick={submit}>
+        <Button size="sm" variant="outline" disabled={!text.trim()} onClick={submit}>
           Add
         </Button>
       </div>

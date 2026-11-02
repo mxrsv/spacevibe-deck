@@ -77,7 +77,7 @@ function Hint({ keys, label }: { readonly keys: string; readonly label: string }
 
 function Footer({ enter, esc }: { readonly enter: string | null; readonly esc: string }) {
   return (
-    <footer className="flex h-9 shrink-0 items-center gap-4 border-t px-4 text-xs text-muted-foreground">
+    <footer className="flex h-9 shrink-0 items-center gap-4 px-4 text-xs text-muted-foreground">
       <SaveStatus />
       <span className="ml-auto flex items-center gap-4">
         <Hint keys="↑↓" label="Move" />
@@ -233,7 +233,7 @@ function Panel() {
           "flex max-h-[calc(100%-128px)] w-[760px] max-w-[calc(100%-48px)] flex-col overflow-hidden rounded-xl bg-background text-foreground ring-1 ring-foreground/15",
         )}
       >
-        <header className="flex shrink-0 flex-col gap-2 border-b p-3">
+        <header className="flex shrink-0 flex-col gap-2 p-3">
           <SearchField />
           <AreaChips />
         </header>

@@ -44,7 +44,7 @@ function Section({
 }) {
   const closed = folded.value[id];
   return (
-    <section aria-label={title} className="border-b">
+    <section aria-label={title} className="pb-1">
       <h3 className="m-0 sticky top-0 z-10 bg-sidebar">
         <button
           type="button"
@@ -52,7 +52,7 @@ function Section({
           onClick={() => {
             folded.value = { ...folded.value, [id]: !closed };
           }}
-          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground"
         >
           <DockIcon name={closed ? "right" : "down"} size={11} />
           <span className="flex-1">{title}</span>
@@ -76,7 +76,7 @@ function Sections({ agent, onFocus, changes }: DockProps) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       {agent.state === "needs-you" ? (
-        <div className="border-b">
+        <div className="pb-1">
           <AskBlock agent={agent} onFocus={onFocus} />
         </div>
       ) : null}
@@ -115,7 +115,7 @@ function Column({
       style={{ width: WIDTH }}
       className={cn("flex shrink-0 flex-col border-l bg-sidebar", className)}
     >
-      <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b px-3">
+      <header className="flex h-10 shrink-0 items-center justify-between gap-2 px-3">
         <AgentIdentity agent={agent} />
         {onClose ? (
           <Button variant="ghost" size="icon-sm" aria-label="Close dock" onClick={onClose}>

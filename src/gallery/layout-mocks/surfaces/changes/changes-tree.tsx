@@ -72,7 +72,7 @@ export function TreeChanges({
           aria-expanded={open}
           onClick={() => (closed.value = flipped(closed.value, node.path))}
           style={{ paddingLeft: INDENT + depth * STEP }}
-          className="flex h-7 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="flex h-7 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:bg-muted"
         >
           <span className="text-muted-foreground">
             <Chevron open={open} />

@@ -89,11 +89,11 @@ export function DiffStageShell({
   }
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-view="terminals">
-      <div className="flex h-9 shrink-0 items-center justify-between border-b px-3">
+      <div className="flex h-9 shrink-0 items-center justify-between px-3">
         <span className="text-xs text-muted-foreground">{review.notice.value}</span>
         <Button
           size="sm"
-          variant="secondary"
+          variant="outline"
           onClick={() => {
             showDiff.value = true;
           }}

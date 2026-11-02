@@ -71,7 +71,7 @@ export function InboxSwitcher({
               if (items.length === 0) return null;
               return (
                 <div key={section} role="group" aria-label={SECTION_LABEL[section]}>
-                  <div className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground">
+                  <div className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground">
                     {SECTION_LABEL[section]}
                     <span className="tabular-nums">{items.length}</span>
                   </div>
@@ -101,7 +101,7 @@ export function InboxSwitcher({
             })}
           </div>
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3 text-xs">
+            <div className="flex h-10 shrink-0 items-center gap-2 px-3 text-xs">
               <AgentLogo kind={current.kind} />
               <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                 {placeLine(current)}
@@ -116,7 +116,7 @@ export function InboxSwitcher({
             />
           </div>
         </div>
-        <div className="flex h-9 shrink-0 items-center gap-4 border-t px-3 text-2xs text-muted-foreground">
+        <div className="flex h-9 shrink-0 items-center gap-4 px-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Chord keys={["⌘", "⇧", "A"]} />
             next

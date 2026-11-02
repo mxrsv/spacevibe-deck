@@ -89,7 +89,7 @@ export function DiffQueue({
   const zoneRange = review.range.value;
   return (
     <DiffStageShell agent={agent} review={review} label="Back to review" onClose={onClose}>
-      <header className="flex h-12 shrink-0 items-center gap-4 border-b px-4">
+      <header className="flex h-12 shrink-0 items-center gap-4 px-4">
         <span className="shrink-0 text-xs font-medium text-foreground tabular-nums">
           Hunk {at.value + 1} of {steps.length}
         </span>
@@ -133,7 +133,12 @@ export function DiffQueue({
             Next
             <Kbd>→</Kbd>
           </Button>
-          <Button size="lg" onClick={markReviewed} aria-label="Mark hunk reviewed">
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={markReviewed}
+            aria-label="Mark hunk reviewed"
+          >
             Mark reviewed
             <Kbd>R</Kbd>
           </Button>
@@ -145,7 +150,7 @@ export function DiffQueue({
             aria-label={`Hunk in ${file.change.path}`}
             className="flex min-h-0 flex-col overflow-hidden rounded-md border"
           >
-            <header className="flex h-9 shrink-0 items-center gap-3 border-b px-3 text-xs">
+            <header className="flex h-9 shrink-0 items-center gap-3 px-3 text-xs">
               <span className="min-w-0 truncate font-mono text-foreground">{file.change.path}</span>
               <ChangeCounts added={file.change.added} removed={file.change.removed} />
               <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
@@ -180,7 +185,7 @@ export function DiffQueue({
             </div>
           )}
           <nav aria-label="Hunk queue" className="flex flex-col">
-            <h3 className="m-0 px-1 pb-1 text-2xs font-medium text-muted-foreground">Queue</h3>
+            <h3 className="m-0 px-1 pb-1 text-xs font-medium text-muted-foreground">Queue</h3>
             {steps.map((item, index) => {
               const f = review.files[item.file];
               const name = f.change.path.slice(f.change.path.lastIndexOf("/") + 1);
@@ -192,8 +197,8 @@ export function DiffQueue({
                   aria-current={index === at.value ? "step" : undefined}
                   onClick={() => go(index)}
                   className={cn(
-                    "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-mono text-code outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    index === at.value ? "bg-accent" : "hover:bg-muted",
+                    "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-mono text-code outline-none",
+                    index === at.value ? "bg-accent" : "hover:bg-muted focus-visible:bg-muted",
                   )}
                 >
                   <span aria-hidden="true" className="w-3 shrink-0 text-center text-foreground">

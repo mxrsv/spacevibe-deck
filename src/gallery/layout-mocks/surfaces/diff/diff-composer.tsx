@@ -137,7 +137,7 @@ export function DiffComposer({
         "flex flex-col gap-2 bg-card p-2 font-sans text-xs text-card-foreground",
         variant === "inline" &&
           "mx-3 my-1 rounded-md border shadow-[inset_2px_0_0_var(--foreground)]",
-        variant === "bar" && "border-t px-3 py-2.5",
+        variant === "bar" && "px-3 py-2.5",
         variant === "panel" && "rounded-md border p-3",
       )}
     >
@@ -154,7 +154,7 @@ export function DiffComposer({
         </div>
       ) : null}
       {variant === "inline" ? null : (
-        <p className="m-0 truncate font-mono text-2xs text-muted-foreground" title={review.payload}>
+        <p className="m-0 truncate font-mono text-xs text-muted-foreground" title={review.payload}>
           {review.payload}
         </p>
       )}

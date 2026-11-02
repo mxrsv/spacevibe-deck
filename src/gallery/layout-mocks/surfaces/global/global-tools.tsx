@@ -33,7 +33,7 @@ export function GlobalTool({
 }) {
   return (
     <section aria-label={TITLE[tool]} className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
+      <header className="flex h-9 shrink-0 items-center gap-2 px-3 text-xs">
         <DockIcon name={tool} size={14} />
         <h2 className="m-0 flex-1 text-xs font-medium">{TITLE[tool]}</h2>
         <span className="text-muted-foreground">All projects</span>
@@ -53,7 +53,7 @@ function UsageTable() {
   return (
     <table className="w-full border-collapse text-xs">
       <thead>
-        <tr className="h-8 border-b text-left text-muted-foreground">
+        <tr className="h-8 text-left text-muted-foreground">
           <th className="px-3 font-normal">Agent</th>
           <th className="px-3 font-normal">Space</th>
           <th className="px-3 text-right font-normal">Tokens</th>
@@ -64,7 +64,7 @@ function UsageTable() {
         {AGENTS.map((agent) => {
           const scanned = SCANNED.has(agent.kind);
           return (
-            <tr key={agent.id} className="h-8 border-b">
+            <tr key={agent.id} className="h-8">
               <td className="px-3">
                 <span className="flex items-center gap-2">
                   <AgentLogo kind={agent.kind} className="size-3.5" />

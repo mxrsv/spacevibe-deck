@@ -37,7 +37,7 @@ function Section({ title, children }: { title: string; children: preact.Componen
 function Slot({ label, theme }: { label: string; theme: ThemeDef }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col rounded-md border border-border bg-card px-3 py-1.5">
-      <span className="text-2xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <span className="truncate text-sm font-medium">{theme.label}</span>
     </div>
   );

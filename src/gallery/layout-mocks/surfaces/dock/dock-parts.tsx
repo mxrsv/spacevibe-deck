@@ -149,7 +149,7 @@ export function ChangesList({ agent }: { readonly agent: MockAgent }) {
           );
         })}
       </ul>
-      <p className="m-0 flex h-8 items-center justify-between border-t px-3 text-xs tabular-nums">
+      <p className="m-0 flex h-8 items-center justify-between px-3 text-xs tabular-nums">
         <span className="text-foreground">
           {sum.files} {sum.files === 1 ? "file" : "files"}
         </span>
@@ -224,7 +224,7 @@ function TreeRows({
                 if (node.children) open.value = { ...open.value, [node.path]: !expanded };
               }}
               style={{ paddingLeft: 12 + depth * 14 }}
-              className="flex h-7 w-full items-center gap-1.5 pr-3 text-left font-mono text-code text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="flex h-7 w-full items-center gap-1.5 pr-3 text-left font-mono text-code text-foreground outline-none hover:bg-muted focus-visible:bg-muted"
             >
               {node.children ? (
                 <DockIcon name={expanded ? "down" : "right"} size={11} />
@@ -323,7 +323,7 @@ export function AskBlock({
       <div className="rounded-md border border-amber-600/50 bg-muted p-2 dark:border-amber-400/50">
         <p className="m-0 font-mono text-code text-foreground">{ask}</p>
         <div className="mt-2 flex gap-1.5">
-          <Button size="sm" variant="secondary" onClick={() => onFocus(agent.id)}>
+          <Button size="sm" onClick={() => onFocus(agent.id)}>
             Open pane
           </Button>
           <Button

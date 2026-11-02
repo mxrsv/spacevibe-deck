@@ -108,8 +108,8 @@ function InboxRow({
       aria-label={`${AGENT_NAME[agent.kind]}, ${STATE_LABEL[agent.state]}${agent.sentence ? `: ${agent.sentence}` : ""}, ${agent.since}`}
       title={checkout.branch ?? undefined}
       className={cn(
-        "relative mx-1.5 grid w-[calc(100%-0.75rem)] grid-cols-[10px_16px_minmax(0,1fr)_2rem] gap-x-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-        selected ? "bg-accent ring-1 ring-ring/40 ring-inset" : "hover:bg-accent/50",
+        "relative mx-1.5 grid w-[calc(100%-0.75rem)] grid-cols-[10px_16px_minmax(0,1fr)_2rem] gap-x-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors",
+        selected ? "bg-accent" : "hover:bg-accent/50 focus-visible:bg-accent/50",
       )}
     >
       <span className="flex h-[18px] items-center">
@@ -128,7 +128,7 @@ function InboxRow({
       </span>
       <span
         className={cn(
-          "text-right text-2xs leading-[18px] tabular-nums",
+          "text-right text-xs leading-[18px] tabular-nums",
           selected ? "text-foreground" : "text-muted-foreground",
         )}
       >
@@ -136,7 +136,7 @@ function InboxRow({
       </span>
       <span
         className={cn(
-          "col-span-2 col-start-3 mt-0.5 truncate text-2xs leading-4",
+          "col-span-2 col-start-3 mt-0.5 truncate text-xs leading-4",
           asking || selected ? "text-foreground" : "text-muted-foreground",
         )}
       >
@@ -173,7 +173,7 @@ function SectionHeader({
       <span className="tabular-nums">{count}</span>
     </>
   );
-  const cls = "flex h-6 items-center gap-1.5 text-2xs font-medium text-muted-foreground";
+  const cls = "flex h-6 items-center gap-1.5 text-xs font-medium text-muted-foreground";
   return collapsible ? (
     <button
       type="button"
@@ -181,7 +181,7 @@ function SectionHeader({
       onClick={onToggle}
       className={cn(
         cls,
-        "mx-1.5 w-[calc(100%-0.75rem)] rounded-md px-2.5 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+        "mx-1.5 w-[calc(100%-0.75rem)] rounded-md px-2.5 outline-none hover:text-foreground focus-visible:text-foreground",
       )}
     >
       {body}
@@ -208,7 +208,7 @@ function Pane({
       onFocus={onFocus}
       className="relative flex min-h-0 min-w-0 flex-1 flex-col outline-none"
     >
-      <header className="flex h-8 shrink-0 items-center gap-2 border-b bg-card px-3 text-xs">
+      <header className="flex h-8 shrink-0 items-center gap-2 bg-card px-3 text-xs">
         <AgentLogo kind={agent.kind} className="size-3.5" />
         <span
           className={cn(
@@ -392,7 +392,7 @@ export function OptionInbox({
               );
             })}
           </nav>
-          <div className="flex h-10 shrink-0 items-center border-t border-sidebar-border px-2">
+          <div className="flex h-10 shrink-0 items-center px-2">
             <IconButton label="Settings" keys={["⌘", ","]}>
               <HugeiconsIcon icon={Settings02Icon} strokeWidth={2} aria-hidden="true" />
             </IconButton>
@@ -402,7 +402,7 @@ export function OptionInbox({
       )}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className={cn("flex h-10 shrink-0 items-center gap-2 border-b px-3 text-xs", DRAG)}>
+        <header className={cn("flex h-10 shrink-0 items-center gap-2 px-3 text-xs", DRAG)}>
           <nav aria-label="Focused space" className="flex min-w-0 flex-1 items-center gap-1.5">
             <span className="shrink-0 text-muted-foreground">{project.name}</span>
             {checkout.branch ? (

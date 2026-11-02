@@ -107,7 +107,7 @@ export function BrowserPaired({
   }
 
   const toolbar = (
-    <div className="flex h-9 shrink-0 items-center gap-1 border-b px-1.5">
+    <div className="flex h-9 shrink-0 items-center gap-1 px-1.5">
       {stage ? (
         <>
           <Button

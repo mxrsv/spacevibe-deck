@@ -225,8 +225,8 @@ export function EmptyChanges() {
   return <p className="m-0 px-3 py-6 text-xs text-muted-foreground">No changes against HEAD.</p>;
 }
 
-export const ROW_BASE = "group/row relative flex h-7 items-center pr-2 hover:bg-muted";
-export const ROW_SELECTED = "bg-muted shadow-[inset_2px_0_0_var(--foreground)]";
-export const ROW_PRESS =
-  "flex h-full min-w-0 flex-1 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+export const ROW_BASE =
+  "group/row relative flex h-7 items-center pr-2 hover:bg-muted focus-within:bg-muted";
+export const ROW_SELECTED = "bg-accent";
+export const ROW_PRESS = "flex h-full min-w-0 flex-1 items-center gap-2 text-left outline-none";
 export const ROW_ACTIONS = "absolute top-1/2 right-1.5 -translate-y-1/2 rounded-md bg-muted";

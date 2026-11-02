@@ -66,14 +66,14 @@ export function ThemeCard({ theme, selected, custom, onPick, onHover }: CardProp
       onFocus={() => onHover(true)}
       onBlur={() => onHover(false)}
       className={cn(
-        "flex flex-col gap-1.5 rounded-md border bg-card p-1.5 text-left text-xs text-card-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50",
-        selected ? "border-ring ring-1 ring-ring" : "border-border",
+        "flex flex-col gap-1.5 rounded-md border bg-card p-1.5 text-left text-xs text-card-foreground outline-none transition-colors hover:bg-muted focus-visible:bg-muted",
+        selected ? "border-transparent bg-accent" : "border-border",
       )}
     >
       <Preview theme={theme} />
       <span className="flex items-center justify-between gap-1 px-0.5">
         <span className="truncate font-medium">{theme.label}</span>
-        {custom && <span className="text-3xs text-muted-foreground">Custom</span>}
+        {custom && <span className="text-xs text-muted-foreground">Custom</span>}
         {selected && (
           <HugeiconsIcon
             icon={Tick02Icon}

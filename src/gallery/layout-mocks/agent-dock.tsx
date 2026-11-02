@@ -54,7 +54,7 @@ function Fact({
   );
 }
 
-const SECTION_LABEL = "px-3 pt-2.5 pb-1 text-2xs font-medium text-muted-foreground";
+const SECTION_LABEL = "px-3 pt-2.5 pb-1 text-xs font-medium text-muted-foreground";
 
 function AttentionStrip({
   agent,
@@ -75,7 +75,7 @@ function AttentionStrip({
           <div className="mx-3 rounded-md border border-amber-600/50 bg-muted p-2 dark:border-amber-400/50">
             <p className="m-0 font-mono text-code text-foreground">{ask}</p>
             <div className="mt-2 flex gap-1.5">
-              <Button size="sm" variant="secondary" onClick={() => onFocus(agent.id)}>
+              <Button size="sm" onClick={() => onFocus(agent.id)}>
                 Open pane
               </Button>
               <Button
@@ -134,13 +134,13 @@ export function AgentDock({
       className="flex w-[340px] shrink-0 flex-col border-l bg-background"
     >
       {/* 40px, so its seam continues the stage bar's when the dock reaches the window top. */}
-      <header className="flex h-10 shrink-0 items-center gap-2.5 border-b px-3">
+      <header className="flex h-10 shrink-0 items-center gap-2.5 px-3">
         <AgentLogo kind={agent.kind} className="size-5" />
         <div className="flex min-w-0 flex-col leading-tight">
           <span className="truncate text-xs font-medium text-foreground">
             {AGENT_NAME[agent.kind]}
           </span>
-          <span className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
             <span className="truncate">
               {project.name} / {checkout.branch ?? "no branch"}
             </span>
@@ -149,7 +149,7 @@ export function AgentDock({
         </div>
       </header>
       <Tabs defaultValue="changes" className="min-h-0 flex-1 gap-0">
-        <TabsList variant="line" className="h-9 w-full justify-start gap-3 border-b px-3">
+        <TabsList variant="line" className="h-9 w-full justify-start gap-3 px-3">
           <TabsTrigger value="changes" className="h-8 flex-none px-0.5 after:bottom-0">
             Changes
             {sum.files ? (

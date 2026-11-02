@@ -36,9 +36,9 @@ export function FileButton({
       title={path}
       onClick={onOpen}
       className={cn(
-        "flex w-full items-center gap-2 px-3 text-left font-mono text-code outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        "flex w-full items-center gap-2 px-3 text-left font-mono text-code outline-none",
         rail ? "min-h-9 flex-wrap py-1.5" : "h-7",
-        active ? "bg-accent" : "hover:bg-muted",
+        active ? "bg-accent" : "hover:bg-muted focus-visible:bg-muted",
       )}
     >
       <span className={cn("w-3 shrink-0 text-center font-semibold", STATUS_CLASS[status])}>
@@ -50,7 +50,7 @@ export function FileButton({
       </span>
       <ChangeCounts added={file.change.added} removed={file.change.removed} />
       {rail && dir ? (
-        <span className="w-full truncate pl-5 text-2xs text-foreground">{dir}</span>
+        <span className="w-full truncate pl-5 text-xs text-foreground">{dir}</span>
       ) : null}
     </button>
   );
@@ -78,7 +78,7 @@ export function CommentButton({ review }: { readonly review: Review }) {
   return (
     <Button
       size="sm"
-      variant="secondary"
+      variant="outline"
       disabled={review.range.value === null || review.composing.value}
       onClick={review.open}
     >

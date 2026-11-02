@@ -34,7 +34,7 @@ export function AgentTerminal({
   const name = AGENT_NAME[agent.kind];
   return (
     <section aria-label={`${name} terminal`} className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
+      <div className="flex h-9 shrink-0 items-center gap-2 px-3 text-xs">
         <AgentLogo kind={agent.kind} className="size-3.5" />
         <span className="font-medium text-foreground">{name}</span>
         <AgentStateMark state={agent.state} confidence={agent.confidence} />
@@ -66,7 +66,7 @@ export function BrowserBeside({ agent }: { readonly agent: MockAgent }) {
 
   const browserColumn = (
     <section aria-label="Preview" className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b px-1.5">
+      <div className="flex h-9 shrink-0 items-center gap-1 px-1.5">
         <DevServerSelect browser={browser} pair />
         <Input
           aria-label="Address"

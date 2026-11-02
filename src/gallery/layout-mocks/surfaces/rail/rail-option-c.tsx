@@ -90,7 +90,7 @@ function AttentionPill({ state, chord }: { readonly state: RailState; readonly c
       <TooltipTrigger
         render={
           <Button
-            variant="secondary"
+            variant="outline"
             size="sm"
             className={NO_DRAG}
             onClick={() => jumpToAttention(state)}
@@ -116,7 +116,7 @@ function Footer({
   readonly onSettings: () => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center justify-between border-t border-sidebar-border px-2 py-1.5">
+    <div className="flex shrink-0 items-center justify-between px-2 py-1.5">
       <Tooltip>
         <TooltipTrigger
           render={<Button variant="ghost" size="icon" aria-label="Settings" onClick={onSettings} />}

@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useEffect, useRef } from "preact/hooks";
 import { Chip } from "../../../../ui/blocks/chip";
+import { Badge } from "../../../../ui/controls/badge";
 import { Button } from "../../../../ui/controls/button";
 import {
   DropdownMenu,
@@ -183,8 +184,8 @@ export function ThreadRow({
           aria-current={selected ? "true" : undefined}
           aria-label={`${thread.title}, ${AGENT_NAME[thread.kind]}, ${STATE_LABEL[thread.state]}${detail}, ${thread.since}`}
           className={cn(
-            "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-            selected ? "bg-accent ring-1 ring-ring/40 ring-inset" : "hover:bg-accent/50",
+            "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors",
+            selected ? "bg-accent" : "hover:bg-accent/50 focus-visible:bg-accent/50",
           )}
         >
           <span className="flex h-5 items-center">
@@ -200,7 +201,7 @@ export function ThreadRow({
             {projectName === undefined ? null : (
               <span className="min-w-0 shrink truncate">{projectName}</span>
             )}
-            <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-muted px-1.5">
+            <Badge variant="secondary" className="min-w-0 justify-start font-normal">
               <HugeiconsIcon
                 icon={thread.branch === null ? Folder01Icon : GitBranchIcon}
                 size={10}
@@ -209,7 +210,7 @@ export function ThreadRow({
                 className="shrink-0"
               />
               <span className="truncate">{thread.branch ?? folderName(thread.path)}</span>
-            </span>
+            </Badge>
             <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
               {thread.pinned ? (
                 <HugeiconsIcon icon={Pin02Icon} size={10} strokeWidth={2} aria-hidden="true" />

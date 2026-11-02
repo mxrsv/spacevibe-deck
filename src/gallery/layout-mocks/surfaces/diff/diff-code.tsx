@@ -42,7 +42,7 @@ function LineButton({
       onClick={(event) => {
         if (event.detail === 0) handlers.onSelect(row.id, event.shiftKey);
       }}
-      className="absolute inset-y-0 left-0 w-10 cursor-default rounded-none outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      className="absolute inset-y-0 left-0 w-10 cursor-default rounded-none outline-none focus-visible:bg-muted"
     />
   );
 }

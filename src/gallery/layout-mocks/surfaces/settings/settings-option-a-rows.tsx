@@ -233,7 +233,7 @@ export function HealthRow({
         <span className="shrink-0 text-muted-foreground">{areaById(issue.area).label}</span>
       </span>
       <Button
-        variant={issue.severity === "error" ? "default" : "outline"}
+        variant="outline"
 
         disabled={done}
         onClick={() => resolveHealth(issue)}
@@ -528,7 +528,9 @@ export function UpdateRow({
             <span className="text-muted-foreground tabular-nums">
               {ABOUT.update.version} · {ABOUT.update.size}
             </span>
-            <Button onClick={onUpdate}>Restart to update</Button>
+            <Button variant="outline" onClick={onUpdate}>
+              Restart to update
+            </Button>
           </>
         )
       }
