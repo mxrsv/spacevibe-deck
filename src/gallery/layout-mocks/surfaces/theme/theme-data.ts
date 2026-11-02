@@ -80,6 +80,8 @@ export interface ThemeSeed {
   /** Accent hue and chroma. */
   readonly accentHue: number;
   readonly accentChroma: number;
+  /** CMP-4: fill and label of the primary button when they are not the accent. */
+  readonly primary?: readonly [fill: string, label: string];
 }
 
 /** Authoring helper only: expands two colours into every token, stored as explicit values. */
@@ -109,8 +111,8 @@ export function makeTheme(seed: ThemeSeed): ThemeDef {
     "sidebar-foreground": fg,
     "muted-foreground": ink(dark ? 0.72 : 0.48),
     "secondary-foreground": fg,
-    primary: accent,
-    "primary-foreground": onAccent,
+    primary: seed.primary?.[0] ?? accent,
+    "primary-foreground": seed.primary?.[1] ?? onAccent,
     accent: hover,
     "accent-foreground": fg,
     ring,
@@ -150,6 +152,7 @@ export const THEMES: readonly ThemeDef[] = [
     chroma: 0.004,
     accentHue: 264,
     accentChroma: 0.19,
+    primary: ["oklch(0.93 0.025 85)", "oklch(0.2 0.01 60)"],
   }),
   makeTheme({
     id: "graphite",
@@ -195,6 +198,7 @@ export const THEMES: readonly ThemeDef[] = [
     chroma: 0.004,
     accentHue: 264,
     accentChroma: 0.2,
+    primary: ["oklch(0.24 0.012 60)", "oklch(0.97 0.012 85)"],
   }),
   makeTheme({
     id: "paper",
