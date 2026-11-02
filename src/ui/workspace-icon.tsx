@@ -18,12 +18,15 @@ export function WorkspaceIcon({
   fallback,
   className = "asr-cluster__folder",
   size = FEATURE_ICON,
+  marks = false,
 }: {
   readonly path: string | null;
   readonly fallback?: ComponentChildren;
   /** The slot's box; the project rail draws its own instead of the old rail's. */
   readonly className?: string;
   readonly size?: number;
+  /** Also accept a logo or an app icon: the project rail, which is behind its release switch. */
+  readonly marks?: boolean;
 }) {
   const favicon = useSignal("");
   useEffect(() => {
@@ -40,7 +43,7 @@ export function WorkspaceIcon({
           });
           if (!authorized) return;
         }
-        const result = await invoke<unknown>("scan_workspace_favicon", { dir: path });
+        const result = await invoke<unknown>("scan_workspace_favicon", { dir: path, marks });
         if (!cancelled) favicon.value = validateLogoDataUrl(result);
       } catch (error) {
         console.warn("Failed to load workspace favicon:", path, error);

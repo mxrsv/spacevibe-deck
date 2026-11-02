@@ -1,8 +1,7 @@
 import { useSignalEffect } from "@preact/signals";
-import { useEffect } from "preact/hooks";
 import { applyThemeVars } from "../../lib/theme-vars";
 import { settings } from "../../settings/settings-store";
-import { activeTheme, getTheme } from "../../settings/themes";
+import { activeTheme } from "../../settings/themes";
 import { AppearanceSection } from "../../ui/settings/sections/appearance-section";
 import { SectionHead, Specimen } from "../specimen";
 import "../../ui/preset-entry.css";
@@ -17,16 +16,6 @@ export function ThemesSection() {
     applyThemeVars(document.documentElement.style, theme);
     document.documentElement.classList.toggle("dark", theme.type === "dark");
   });
-  // The gallery's own picker owns every other section, so a pick must not outlive this one.
-  useEffect(() => {
-    const root = document.documentElement;
-    const wasDark = root.classList.contains("dark");
-    const shown = new URLSearchParams(window.location.search).get("theme") ?? "";
-    return () => {
-      applyThemeVars(root.style, getTheme(shown));
-      root.classList.toggle("dark", wasDark);
-    };
-  }, []);
 
   return (
     <>

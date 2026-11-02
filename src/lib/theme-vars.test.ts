@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUILT_IN_THEMES, DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
 import { UI_TOKEN_KEYS, type Theme } from "../settings/theme-schema";
+import { themeFromTerminalColors } from "../settings/themes";
 import { contrastRatio, deriveChromeColors } from "./derive-colors";
 import { applyThemeVars } from "./theme-vars";
 
@@ -87,6 +88,14 @@ describe("applyThemeVars", () => {
       expect(written.has("--background"), theme.id).toBe(false);
       expect(written.has("--sidebar"), theme.id).toBe(false);
     }
+  });
+
+  it("leaves the preset alone on an imported theme, which changes only the terminal", () => {
+    const theme = themeFromTerminalColors("file:solarized.json", "Solarized", {
+      ...DECK_DARK_THEME.terminal,
+      background: "#002b36",
+    });
+    expect(recordProperties(theme).has("--background")).toBe(false);
   });
 
   it("gives the preset back when a theme switch returns to a default theme", () => {

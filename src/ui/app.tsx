@@ -446,8 +446,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * it, never `focusNextAttention`, which would pick the loudest pane in the
    * window instead of the one that was pressed.
    */
-  const focusRailPane = (index: number, paneId: number): void => {
-    runAttentionFocus({
+  const focusRailPane = (index: number, paneId: number): boolean => {
+    return runAttentionFocus({
       dismissAgentLauncher: dismissStageOverlays,
       tabIndex: index,
       hasCandidate: true,

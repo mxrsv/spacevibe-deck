@@ -60,6 +60,8 @@ export interface GallerySection {
   readonly id: string;
   readonly label: string;
   readonly Section: ComponentType;
+  /** Draws cells on their own themes through `applyScopedTheme`, light ones included. */
+  readonly scopedThemes?: boolean;
 }
 
 /**
@@ -83,13 +85,13 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "rows", label: "config rows", Section: RowsSection },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "shared-controls", label: "shared controls · Base UI", Section: PresetControlsSection },
-  { id: "matrix", label: "native detail matrix", Section: MatrixSection },
+  { id: "matrix", label: "native detail matrix", Section: MatrixSection, scopedThemes: true },
   { id: "navigation", label: "navigation", Section: NavigationSection },
-  { id: "row-badge", label: "row badge", Section: RowBadgeSection },
+  { id: "row-badge", label: "row badge", Section: RowBadgeSection, scopedThemes: true },
   { id: "agent-usage", label: "agent usage", Section: AgentUsageSection },
   { id: "usage-repos", label: "usage by repository", Section: UsageReposSection },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
-  { id: "attention", label: "needs-you chip", Section: AttentionSection },
+  { id: "attention", label: "needs-you chip", Section: AttentionSection, scopedThemes: true },
   { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },

@@ -146,9 +146,19 @@ const LOGO_CANDIDATES = [
 
 const APP_ICON_SET = "AppIcon.appiconset";
 const APP_ICON_SEARCH_DEPTH = 3;
-/** Twice the rail's mark on a Retina display, so the smallest file that stays sharp is chosen. */
+/** The rail's 20px mark at a 3x display, so the smallest file that stays sharp is chosen. */
 const APP_ICON_TARGET_PX = 64;
-const APP_ICON_SKIPPED_DIRS = new Set(["node_modules", "build", "dist", "DerivedData", "Pods"]);
+/** Besides generated folders, a sample app's icon is not the project's own. */
+const APP_ICON_SKIPPED_DIRS = new Set([
+  "node_modules",
+  "build",
+  "dist",
+  "DerivedData",
+  "Pods",
+  "Example",
+  "Examples",
+  "Samples",
+]);
 
 /** A data URL of `target` when it is a regular file resolving inside `root`, else null. */
 async function readContainedImage(root: string, target: string): Promise<string | null> {
@@ -191,26 +201,35 @@ async function isAppleProject(dir: string): Promise<boolean> {
   );
 }
 
-/** Symlinks are not followed, so the walk stays inside the project. */
-async function findAppIconSet(dir: string, depth: number): Promise<string | null> {
+/**
+ * The first set's image, depth first. A set with no usable file (a widget's empty one) does not end
+ * the search. Symlinks are not followed, so the walk stays inside the project.
+ */
+async function findAppIcon(root: string, dir: string, depth: number): Promise<string | null> {
   const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
   const folders = entries.filter(
     (entry) =>
       entry.isDirectory() && !entry.name.startsWith(".") && !APP_ICON_SKIPPED_DIRS.has(entry.name),
   );
   if (folders.some((entry) => entry.name === APP_ICON_SET)) {
-    return path.join(dir, APP_ICON_SET);
+    const iconSet = path.join(dir, APP_ICON_SET);
+    const files = await appIconFiles(iconSet).catch(() => []);
+    const image = await firstContainedImage(root, iconSet, files);
+    if (image !== null) return image;
   }
   if (depth === 0) return null;
   for (const folder of folders) {
-    // oxlint-disable-next-line no-await-in-loop -- a depth-first search stops at the first set.
-    const found = await findAppIconSet(path.join(dir, folder.name), depth - 1);
+    // oxlint-disable-next-line no-await-in-loop -- a depth-first search stops at the first image.
+    const found = await findAppIcon(root, path.join(dir, folder.name), depth - 1);
     if (found !== null) return found;
   }
   return null;
 }
 
-/** The set's PNG files from its manifest, the smallest that reaches the target first. */
+/**
+ * The set's PNG files from its manifest, the smallest that reaches the target first. An entry with
+ * no `scale` is Xcode 14's single-size format: one file at 1x.
+ */
 async function appIconFiles(iconSet: string): Promise<string[]> {
   const manifest: unknown = JSON.parse(
     await fs.readFile(path.join(iconSet, "Contents.json"), "utf8"),
@@ -219,7 +238,7 @@ async function appIconFiles(iconSet: string): Promise<string[]> {
   if (!Array.isArray(images)) return [];
   const sized = images.flatMap((image: { filename?: unknown; size?: unknown; scale?: unknown }) => {
     if (typeof image.filename !== "string" || !image.filename.endsWith(".png")) return [];
-    const px = Number.parseFloat(String(image.size)) * Number.parseFloat(String(image.scale));
+    const px = Number.parseFloat(String(image.size)) * Number.parseFloat(String(image.scale ?? 1));
     return Number.isFinite(px) ? [{ file: image.filename, px }] : [];
   });
   const rank = (px: number): number =>
@@ -229,15 +248,13 @@ async function appIconFiles(iconSet: string): Promise<string[]> {
 
 async function scanAppIcon(root: string, dir: string): Promise<string | null> {
   if (!(await isAppleProject(dir))) return null;
-  const iconSet = await findAppIconSet(dir, APP_ICON_SEARCH_DEPTH);
-  if (iconSet === null) return null;
-  const files = await appIconFiles(iconSet).catch(() => []);
-  return firstContainedImage(root, iconSet, files);
+  return findAppIcon(root, dir, APP_ICON_SEARCH_DEPTH);
 }
 
 /**
- * A project's mark under `dir` as a data URL, or null: its favicon, else its logo, else its macOS
- * app icon. Default workspace logo.
+ * A project's mark under `dir` as a data URL, or null: its favicon, and with `marks` (the project
+ * rail, behind its release switch) else its logo, else its macOS app icon. The old rail keeps asking
+ * for the favicon alone, so a released build draws what it always drew. Default workspace logo.
  *
  * Every candidate must resolve to a real file INSIDE `dir`. The rail scans
  * this for every project it draws, with no user gesture, so a repository
@@ -246,14 +263,14 @@ async function scanAppIcon(root: string, dir: string): Promise<string | null> {
  * checked on the RESOLVED path, so a link that stays inside still works and a
  * link planted higher up the candidate's own path is caught too.
  */
-export async function scanWorkspaceFavicon(dir: string): Promise<string | null> {
+export async function scanWorkspaceFavicon(dir: string, marks = false): Promise<string | null> {
   const root = await fs.realpath(dir).catch(() => null);
   if (root === null) {
     return null;
   }
-  return (
-    (await firstContainedImage(root, dir, FAVICON_CANDIDATES)) ??
-    (await firstContainedImage(root, dir, LOGO_CANDIDATES)) ??
-    (await scanAppIcon(root, dir))
-  );
+  const favicon = await firstContainedImage(root, dir, FAVICON_CANDIDATES);
+  if (favicon !== null || !marks) {
+    return favicon;
+  }
+  return (await firstContainedImage(root, dir, LOGO_CANDIDATES)) ?? (await scanAppIcon(root, dir));
 }

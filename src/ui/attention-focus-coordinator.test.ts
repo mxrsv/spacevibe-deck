@@ -178,7 +178,7 @@ describe.each([
 
   it("a draft outranks everything: nothing called, the draft stays up", () => {
     const spies = makeSpies();
-    runAttentionFocus(
+    const focused = runAttentionFocus(
       request(spies, {
         tabIndex,
         hasCandidate: true,
@@ -186,6 +186,7 @@ describe.each([
       }),
     );
     expect(spies.focusAttention).not.toHaveBeenCalled();
+    expect(focused).toBe(false);
   });
 
   it("presetEditor open (alone, and combined with board/settings): nothing called — draft preserved", () => {

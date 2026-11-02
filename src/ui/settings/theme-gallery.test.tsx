@@ -134,6 +134,37 @@ describe("ThemeGallery", () => {
     expect(stage?.style.background).toBe("rgb(16, 16, 20)");
   });
 
+  it("clears a dead file id when the checked fallback card is pressed", () => {
+    settings.value = { ...DEFAULT_SETTINGS, themeId: "file:deleted.json" };
+    mount();
+
+    act(() =>
+      cards()
+        .find((card) => card.getAttribute("aria-checked") === "true")
+        ?.click(),
+    );
+
+    expect(settings.value.themeId).toBe("deck-dark");
+  });
+
+  it("jumps to the first and last card with Home and End", () => {
+    const press = (key: string): void => {
+      act(() => {
+        host
+          .querySelector(".theme-gallery")
+          ?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+    };
+    mount();
+
+    press("End");
+    expect(settings.value.themeId).toBe("dusk");
+    expect(document.activeElement?.textContent).toContain("Dusk");
+    press("Home");
+    expect(settings.value.themeId).toBe("deck-light");
+    expect(document.activeElement?.textContent).toContain("Deck Light");
+  });
+
   it("selects a built-in theme by its id", () => {
     mount();
 

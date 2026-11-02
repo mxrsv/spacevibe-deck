@@ -70,8 +70,9 @@ export function ThemeGallery() {
     void loadCustomThemes();
   }, []);
 
+  // The raw id, not `activeId`: pressing the checked fallback card clears a dead `file:` id.
   const select = (theme: Theme): void => {
-    if (theme.id === activeId) {
+    if (theme.id === current.themeId) {
       return;
     }
     updateSettings({ themeId: theme.id });
@@ -82,13 +83,18 @@ export function ThemeGallery() {
   // focus and moving selection are the same gesture here.
   const onKeyDown = (event: KeyboardEvent): void => {
     const step = KEY_STEPS[event.key];
-    if (step === undefined || themes.length === 0) {
+    const edge = event.key === "Home" || event.key === "End";
+    if ((step === undefined && !edge) || themes.length === 0) {
       return;
     }
     event.preventDefault();
     const index = themes.findIndex((theme) => theme.id === activeId);
     const from = index === -1 ? 0 : index;
-    const next = (from + step + themes.length) % themes.length;
+    const next = edge
+      ? event.key === "Home"
+        ? 0
+        : themes.length - 1
+      : (from + step + themes.length) % themes.length;
     select(themes[next]);
     focusCard(groupRef.current, next);
   };

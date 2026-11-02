@@ -47,6 +47,24 @@ describe("DropdownMenu", () => {
     await view.unmount();
   });
 
+  it("follows a theme switched after the menu first rendered", async () => {
+    const root = document.documentElement.style;
+    const popup = (): Element | null =>
+      document.body.querySelector('[data-slot="dropdown-menu-content"]');
+    const view = await mount(<Actions onRename={() => {}} />);
+
+    root.setProperty("--background", "#faf4e9");
+    await click(trigger(view.host));
+    expect(popup()?.classList.contains("dark")).toBe(false);
+    await press(byRole("menu") as HTMLElement, { key: "Escape" });
+    await waitUntil(() => byRole("menu") === null);
+
+    root.removeProperty("--background");
+    await click(trigger(view.host));
+    expect(popup()?.classList.contains("dark")).toBe(true);
+    await view.unmount();
+  });
+
   it("closes on Escape and returns focus to the trigger", async () => {
     const view = await mount(<Actions onRename={() => {}} />);
     trigger(view.host).focus();

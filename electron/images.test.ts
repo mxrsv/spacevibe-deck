@@ -109,10 +109,61 @@ describe("scanWorkspaceFavicon", () => {
     const dir = tempDir();
     mkdirSync(join(dir, "public"));
     writeFileSync(join(dir, "public", "logo.svg"), "logo");
-    await expect(scanWorkspaceFavicon(dir)).resolves.toContain("image/svg+xml");
+    await expect(scanWorkspaceFavicon(dir, true)).resolves.toContain("image/svg+xml");
 
     writeFileSync(join(dir, "favicon.ico"), "x");
-    await expect(scanWorkspaceFavicon(dir)).resolves.toContain("data:image/x-icon");
+    await expect(scanWorkspaceFavicon(dir, true)).resolves.toContain("data:image/x-icon");
+  });
+
+  it("answers the old rail with the favicon alone", async () => {
+    const logoOnly = tempDir();
+    writeFileSync(join(logoOnly, "logo.svg"), "logo");
+    await expect(scanWorkspaceFavicon(logoOnly)).resolves.toBe(null);
+
+    const { dir } = appIconProject("Package.swift");
+    await expect(scanWorkspaceFavicon(dir)).resolves.toBe(null);
+  });
+
+  it("reads an Xcode 14 single-size icon, whose entry has no scale", async () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, "Package.swift"), "");
+    const iconSet = join(dir, "App", "Assets.xcassets", "AppIcon.appiconset");
+    mkdirSync(iconSet, { recursive: true });
+    writeFileSync(
+      join(iconSet, "Contents.json"),
+      JSON.stringify({
+        images: [{ filename: "icon.png", idiom: "universal", platform: "ios", size: "1024x1024" }],
+      }),
+    );
+    writeFileSync(join(iconSet, "icon.png"), "single");
+
+    await expect(scanWorkspaceFavicon(dir, true)).resolves.toBe(
+      `data:image/png;base64,${Buffer.from("single").toString("base64")}`,
+    );
+  });
+
+  it("keeps looking past a set with no usable file, and skips a sample app's", async () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, "Package.swift"), "");
+    const emptySet = join(dir, "AWidget", "Assets.xcassets", "AppIcon.appiconset");
+    mkdirSync(emptySet, { recursive: true });
+    writeFileSync(join(emptySet, "Contents.json"), JSON.stringify({ images: [{ size: "64x64" }] }));
+    for (const [folder, bytes] of [
+      ["Examples", "sample"],
+      ["Sources", "real"],
+    ] as const) {
+      const iconSet = join(dir, folder, "Assets.xcassets", "AppIcon.appiconset");
+      mkdirSync(iconSet, { recursive: true });
+      writeFileSync(
+        join(iconSet, "Contents.json"),
+        JSON.stringify({ images: [{ filename: "icon.png", size: "64x64", scale: "1x" }] }),
+      );
+      writeFileSync(join(iconSet, "icon.png"), bytes);
+    }
+
+    await expect(scanWorkspaceFavicon(dir, true)).resolves.toBe(
+      `data:image/png;base64,${Buffer.from("real").toString("base64")}`,
+    );
   });
 
   function appIconProject(marker: string | null): { dir: string; iconSet: string } {
@@ -142,13 +193,13 @@ describe("scanWorkspaceFavicon", () => {
 
   it("reads a macOS app icon at the smallest size that stays sharp", async () => {
     const { dir } = appIconProject("Package.swift");
-    const image = await scanWorkspaceFavicon(dir);
+    const image = await scanWorkspaceFavicon(dir, true);
     expect(image).toBe(`data:image/png;base64,${Buffer.from("target").toString("base64")}`);
   });
 
   it("does not walk a folder that is not an Apple project", async () => {
     const { dir } = appIconProject(null);
-    await expect(scanWorkspaceFavicon(dir)).resolves.toBe(null);
+    await expect(scanWorkspaceFavicon(dir, true)).resolves.toBe(null);
   });
 
   it("does not read an app icon linked out of the project", async () => {
@@ -157,7 +208,7 @@ describe("scanWorkspaceFavicon", () => {
     writeFileSync(outside, "secret");
     for (const file of ["16.png", "64.png", "1024.png"]) rmSync(join(iconSet, file));
     symlinkSync(outside, join(iconSet, "64.png"));
-    await expect(scanWorkspaceFavicon(dir)).resolves.toBe(null);
+    await expect(scanWorkspaceFavicon(dir, true)).resolves.toBe(null);
   });
 
   it("returns null for a folder with no favicon", async () => {

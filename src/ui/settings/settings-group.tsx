@@ -11,7 +11,7 @@ interface SettingsGroupProps {
 
 /**
  * DL-11.6: Studio groups share the existing settings controls. A group that
- * IS one setting (the colour mode cards) names it with `settingKey`: the title
+ * IS one setting (the theme cards) names it with `settingKey`: the title
  * then comes from the registry and carries the same changed mark a row would.
  */
 export function SettingsGroup(

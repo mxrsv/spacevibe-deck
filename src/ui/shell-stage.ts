@@ -11,7 +11,8 @@ export const SHELL_FRAME_CLASS = "shell-frame";
 const PANE_FLASH_MS = 600;
 
 interface PaneFlashSelection {
-  readonly onFocusPane: (tabIndex: number, paneId: number) => void;
+  /** `false` when the press was refused, so no pane is shown as where it landed. */
+  readonly onFocusPane: (tabIndex: number, paneId: number) => boolean | void;
   readonly onSelectTab: (tabIndex: number) => void;
 }
 
@@ -75,8 +76,9 @@ export function flashActivePane(): void {
 export function withPaneFlash(selection: PaneFlashSelection): PaneFlashSelection {
   return {
     onFocusPane: (tabIndex, paneId) => {
-      selection.onFocusPane(tabIndex, paneId);
-      flashPane(paneId);
+      if (selection.onFocusPane(tabIndex, paneId) !== false) {
+        flashPane(paneId);
+      }
     },
     onSelectTab: (tabIndex) => {
       selection.onSelectTab(tabIndex);

@@ -31,15 +31,20 @@ export function Gallery() {
   );
   const contentRef = useRef<HTMLElement>(null);
 
+  const active =
+    GALLERY_SECTIONS.find((section) => section.id === activeId.value) ?? GALLERY_SECTIONS[0];
+
   // Published on `:root`, the same place `app.tsx` publishes it, so the
   // specimens read it through the identical cascade the app uses. The state
   // matrix overrides it per cell — that is the one place four themes coexist.
+  // The section is a dependency because Themes publishes its own pick and leaves it behind.
   useLayoutEffect(() => {
-    applyThemeVars(document.documentElement.style, getTheme(themeId.value));
-  }, [themeId.value]);
-
-  const active =
-    GALLERY_SECTIONS.find((section) => section.id === activeId.value) ?? GALLERY_SECTIONS[0];
+    const root = document.documentElement;
+    const theme = getTheme(themeId.value);
+    applyThemeVars(root.style, theme);
+    // A `dark:` variant matches any `.dark` ancestor, so a light cell needs a root without it.
+    root.classList.toggle("dark", theme.type === "dark" && active.scopedThemes !== true);
+  }, [themeId.value, active]);
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, left: 0 });

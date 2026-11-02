@@ -64,6 +64,7 @@ export function ProjectRailHeader({
         <WorkspaceIcon
           key={markPath}
           path={markPath}
+          marks
           size={PROJECT_MARK_PX}
           className="flex size-5 shrink-0 overflow-hidden rounded-md"
           fallback={

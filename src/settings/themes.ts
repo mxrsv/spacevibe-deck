@@ -40,7 +40,7 @@ export interface ImportedTheme {
  */
 export const customThemes = signal<readonly ImportedTheme[]>([]);
 
-/** Built-ins first, imports after — the gallery renders in this order. */
+/** Every theme a stored id can name: built-ins first, so an import cannot shadow one. */
 export function allThemes(): readonly Theme[] {
   return [...BUILT_IN_THEMES, ...customThemes.value.map((entry) => entry.theme)];
 }

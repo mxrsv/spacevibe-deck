@@ -64,15 +64,15 @@ export interface AttentionFocusRequest {
  * There is no `await` anywhere in this function — dismissal and focus run
  * back-to-back in the same synchronous tick.
  */
-export function runAttentionFocus(req: AttentionFocusRequest): void {
+export function runAttentionFocus(req: AttentionFocusRequest): boolean {
   const { tabIndex, hasCandidate, overlays, dismissBoard, dismissSettings, focusAttention } = req;
 
   if (!hasCandidate) {
-    return; // nothing to focus — leave every overlay exactly as-is
+    return false; // nothing to focus — leave every overlay exactly as-is
   }
 
   if (overlays.presetEditor || overlays.savePresetDialog) {
-    return; // draft in flight — blocked, no dismissal, no focus
+    return false; // draft in flight — blocked, no dismissal, no focus
   }
 
   req.dismissAgentLauncher?.();
@@ -83,4 +83,5 @@ export function runAttentionFocus(req: AttentionFocusRequest): void {
     dismissSettings();
   }
   focusAttention(tabIndex);
+  return true;
 }

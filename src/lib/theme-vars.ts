@@ -4,12 +4,13 @@ import { contrastRatio, deriveChromeColors, type ChromeColors } from "./derive-c
 
 /**
  * Deck's two default themes wear the preset's own values, which `preset.css` declares and which
- * carry alpha a theme's opaque hex cannot hold. Every other theme publishes `presetTokens`.
+ * carry alpha a theme's opaque hex cannot hold. Every other theme publishes `presetTokens`. Decided
+ * by the `ui` group, not the id: an imported terminal palette borrows a default's chrome whole
+ * (`themeFromTerminalColors`) and changes only the terminal.
  */
-const PRESET_NATIVE_THEME_IDS: ReadonlySet<string> = new Set([
-  DECK_DARK_THEME.id,
-  DECK_LIGHT_THEME.id,
-]);
+function wearsPresetValues({ ui }: Theme): boolean {
+  return ui === DECK_DARK_THEME.ui || ui === DECK_LIGHT_THEME.ui;
+}
 
 /**
  * The preset's token names, without their `--`, read from a theme's own roles so the shadcn chrome
@@ -20,7 +21,7 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
   const text = ui["text-primary"];
   const raised = ui["chrome-1"];
   const muted = ui["chrome-2"];
-  // A file theme's accent has no contrast floor, and it may sit close to its own background.
+  // Whichever reads better: an accent may sit close to the theme's own background.
   const onAccent = contrastRatio(ui.bg, ui.accent) >= contrastRatio(text, ui.accent) ? ui.bg : text;
   return {
     background: ui.bg,
@@ -87,7 +88,7 @@ export function applyThemeVars(rootStyle: CSSStyleDeclaration, theme: Theme): vo
   rootStyle.setProperty("--seam-raised", chrome.seamRaised);
   // Inline beats `.dark` in preset.css, so going back to a default theme has to clear these.
   const preset = presetTokens(theme, chrome);
-  const native = PRESET_NATIVE_THEME_IDS.has(theme.id);
+  const native = wearsPresetValues(theme);
   for (const [key, value] of Object.entries(preset)) {
     if (native) rootStyle.removeProperty(`--${key}`);
     else rootStyle.setProperty(`--${key}`, value);

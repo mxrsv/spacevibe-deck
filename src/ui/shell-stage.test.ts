@@ -108,6 +108,14 @@ describe("the flash of a rail press", () => {
     expect(focusPane).toHaveBeenCalledWith(0, 7);
     expect(animate).toHaveBeenCalledOnce();
   });
+
+  it("flashes nothing when the focus was refused", async () => {
+    devHost();
+    const { animate } = mountSlot(7);
+    withPaneFlash({ onFocusPane: () => false, onSelectTab: vi.fn() }).onFocusPane(0, 7);
+    await nextFrame();
+    expect(animate).not.toHaveBeenCalled();
+  });
 });
 
 describe("the flush stage switch", () => {

@@ -121,10 +121,10 @@ export function registerServices(deps: RegisterServicesDeps): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     return pickImageAsDataUrl(window ?? undefined);
   });
-  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, async (event, { dir }) => {
+  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, async (event, { dir, marks }) => {
     const roots = await deps.imageRootsFor(event.sender.id);
     if (!roots.some((root) => workspaceForPath({ path: dir, roots: [root] }) !== null)) return null;
-    return scanWorkspaceFavicon(dir);
+    return scanWorkspaceFavicon(dir, marks === true);
   });
   // Token usage: one command, no payload — the scan takes no renderer input.
   // Failures inside the scan are in-band (`sources[].state`, `skippedLines`);

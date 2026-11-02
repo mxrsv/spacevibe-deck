@@ -47,7 +47,7 @@ describe("WorkspaceIcon", () => {
 
     expect(invoke.mock.calls).toEqual([
       ["activate_image_workspace_root", { root: ROOT }],
-      ["scan_workspace_favicon", { dir: ROOT }],
+      ["scan_workspace_favicon", { dir: ROOT, marks: false }],
     ]);
     await vi.waitFor(() => expect(host.querySelector("img")?.getAttribute("src")).toBe(FAVICON));
   });
@@ -67,7 +67,7 @@ describe("WorkspaceIcon", () => {
     vi.stubGlobal("__deckHost", undefined);
     await mount();
 
-    expect(invoke.mock.calls).toEqual([["scan_workspace_favicon", { dir: ROOT }]]);
+    expect(invoke.mock.calls).toEqual([["scan_workspace_favicon", { dir: ROOT, marks: false }]]);
     await vi.waitFor(() => expect(host.querySelector("img")?.getAttribute("src")).toBe(FAVICON));
   });
 });
