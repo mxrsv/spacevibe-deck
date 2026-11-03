@@ -33,7 +33,6 @@ import { resetAgentDockState } from "./agent-dock-state";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
 
 const NOW = 1_800_000_000_000;
-const MINUTE = 60_000;
 
 const pane = (overrides: Partial<PaneView> = {}): PaneView => ({
   paneId: 11,
@@ -89,9 +88,6 @@ const sections = (): (string | null)[] =>
   [...document.body.querySelectorAll("section[aria-label]")].map((s) =>
     s.getAttribute("aria-label"),
   );
-const spaceRows = (): HTMLElement[] => [
-  ...document.body.querySelectorAll<HTMLElement>('section[aria-label="In this space"] li button'),
-];
 
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -213,105 +209,8 @@ describe("Ask", () => {
   });
 });
 
-describe("In this space", () => {
-  const space = (): TabView =>
-    tab({
-      panes: [
-        pane({ paneId: 11, focused: true }),
-        pane({ paneId: 12, agent: "codex", phase: "working", changedAt: NOW - 5 * MINUTE }),
-        pane({ paneId: 13, agent: "gemini", attention: "requested", changedAt: NOW - 2 * MINUTE }),
-      ],
-    });
-
-  it("lists the other agents of the focused agent's tab with state, agent, branch and age", async () => {
-    tabViews.value = [space()];
-    const view = await mount(dock());
-    const rows = spaceRows();
-    expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain("5m");
-    expect(rows[0].textContent).toContain("Codex, working");
-    expect(rows[0].querySelector('[data-state="working"]')).not.toBeNull();
-    expect(rows[0].querySelector("svg, img")).not.toBeNull();
-    expect(rows[0].textContent).toContain("Codex · main");
-    expect(rows[1].textContent).toContain("Gemini, needs you");
-    expect(
-      document.body.querySelector(
-        'section[aria-label="In this space"] [data-slot="collapsible-trigger"]',
-      )?.textContent,
-    ).toContain("2");
-    await view.unmount();
-  });
-
-  it("is left out when the focused agent is alone in its tab, or no agent is focused", async () => {
-    tabViews.value = [tab({ panes: [pane({ focused: true })] })];
-    const view = await mount(dock());
-    expect(sections()).not.toContain("In this space");
-
-    await act(async () => {
-      tabViews.value = [
-        space().panes
-          ? { ...space(), panes: space().panes!.map((p) => ({ ...p, focused: false })) }
-          : space(),
-      ];
-    });
-    await settle();
-    expect(sections()).not.toContain("In this space");
-    await view.unmount();
-  });
-
-  it("does not list agents of other tabs", async () => {
-    tabViews.value = [
-      space(),
-      tab({ key: 2, workspacePath: "/w/api", panes: [pane({ paneId: 21, agent: "opencode" })] }),
-    ];
-    const view = await mount(dock());
-    expect(spaceRows()).toHaveLength(2);
-    expect(
-      spaceRows()
-        .map((r) => r.textContent)
-        .join()
-        .toLowerCase(),
-    ).not.toContain("opencode");
-    await view.unmount();
-  });
-
-  it("takes the keyboard to the pressed agent's pane through the same path the rail uses", async () => {
-    tabViews.value = [
-      tab({ key: 1, panes: [pane({ paneId: 5 })] }),
-      { ...space(), key: 2, panes: space().panes },
-    ];
-    activeTabIndex.value = 1;
-    const view = await mount(dock());
-    await click(spaceRows()[1]);
-    expect(focusPane).toHaveBeenCalledWith(1, 13);
-    await click(spaceRows()[0]);
-    expect(focusPane).toHaveBeenLastCalledWith(1, 12);
-    await view.unmount();
-  });
-
-  it("follows the focused agent: a space-mate becomes the dock's agent and the old one a row", async () => {
-    tabViews.value = [space()];
-    const view = await mount(dock());
-    await act(async () => {
-      tabViews.value = [
-        tab({
-          panes: space().panes!.map((p) => ({ ...p, focused: p.paneId === 12 })),
-        }),
-      ];
-    });
-    await settle();
-    expect(document.body.querySelector("header")?.textContent).toContain("Codex");
-    expect(
-      spaceRows()
-        .map((r) => r.textContent)
-        .join(),
-    ).toContain("Claude, ");
-    await view.unmount();
-  });
-});
-
-describe("the order of the sections", () => {
-  it("is the mock's: Ask, Changes, In this space, Usage, Files, History", async () => {
+describe("the order of the dock", () => {
+  it("is Ask above the strip, and the strip above the body, with no space list", async () => {
     tabViews.value = [
       tab({
         panes: [
@@ -328,7 +227,7 @@ describe("the order of the sections", () => {
         bodies={{
           changes: {
             watch: () => null,
-            section: () => <section aria-label="Changes" />,
+            section: () => <p>changes body</p>,
             count: () => null,
           },
           files: () => <p>files body</p>,
@@ -337,7 +236,13 @@ describe("the order of the sections", () => {
         }}
       />,
     );
-    expect(sections()).toEqual(["Ask", "Changes", "In this space", "Usage", "Files", "History"]);
+    expect(sections()).toEqual(["Ask"]);
+    const column = document.body.querySelector(".agent-dock__column") as HTMLElement;
+    const order = [...column.children].map(
+      (child) => child.getAttribute("aria-label") ?? child.tagName.toLowerCase(),
+    );
+    expect(order).toEqual(["header", "Ask", "Dock views", "div"]);
+    expect(document.body.textContent).not.toContain("In this space");
     await view.unmount();
   });
 });

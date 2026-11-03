@@ -1,36 +1,31 @@
 /**
- * Window-scoped state of the stacked dock (R5): which sections are unfolded, and whether the
- * narrow-window sheet is open. Module-level so folding survives focus moving between agents, and
+ * Window-scoped state of the tabbed dock (R5): which view the body shows, and whether the
+ * narrow-window sheet is open. Module-level so the choice survives focus moving between agents, and
  * so `App` can read the sheet flag for `browserPanelObscured`.
  */
 import { signal } from "@preact/signals";
 import type { DockTab } from "../../settings/settings-schema";
 
-export type DockSectionId = "changes" | "space" | "files" | "usage" | "history";
+export type DockViewId = "changes" | "usage" | "files" | "history";
 
-/**
- * What a fresh window shows (the mock's own defaults): the checkout's Changes, the thing an agent's
- * work leaves behind. Usage polls while it is unfolded, so it waits for a press.
- */
-const DEFAULT_OPEN: Readonly<Record<DockSectionId, boolean>> = {
-  changes: true,
-  space: true,
-  files: false,
-  usage: false,
-  history: false,
-};
+/** The strip's fixed order (DOCK-1). */
+export const DOCK_VIEWS: readonly DockViewId[] = ["changes", "usage", "files", "history"];
 
-/** The section each legacy dock tab (and its chord) names. */
-export const SECTION_OF_TAB: Readonly<Record<DockTab, DockSectionId>> = {
+/** What a fresh window shows: the checkout's Changes, the thing an agent's work leaves behind. */
+const DEFAULT_VIEW: DockViewId = "changes";
+
+/** The view each legacy dock tab (and its chord) names. */
+export const VIEW_OF_TAB: Readonly<Record<DockTab, DockViewId>> = {
   explorer: "files",
   usage: "usage",
   sessions: "history",
 };
 
-export const dockSectionsOpen = signal<Readonly<Record<DockSectionId, boolean>>>(DEFAULT_OPEN);
+/** The view the user chose; `DockColumn` falls back from it when it is unavailable. */
+export const dockView = signal<DockViewId>(DEFAULT_VIEW);
 
-export function setDockSectionOpen(id: DockSectionId, open: boolean): void {
-  dockSectionsOpen.value = { ...dockSectionsOpen.value, [id]: open };
+export function setDockView(view: DockViewId): void {
+  dockView.value = view;
 }
 
 /**
@@ -60,6 +55,6 @@ export function takeAfterSheetClose(): (() => void) | null {
 
 export function resetAgentDockState(): void {
   afterSheetClose = null;
-  dockSectionsOpen.value = DEFAULT_OPEN;
+  dockView.value = DEFAULT_VIEW;
   dockSheetOpen.value = false;
 }
