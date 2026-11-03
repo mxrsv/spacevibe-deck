@@ -86,10 +86,21 @@ scale, so most of this is a narrow change on top of them.
 
 - **CMP-18 English.** Every string in the app, and in its mocks and specimens, is English.
 
+### Whole app (owner, 2026-11-03)
+
+- **CMP-19 Every surface.** CMP-1 to CMP-18 apply to every surface the new shell shows, not only to
+  surfaces built from the shared controls. Step 1 keeps the legacy stylesheets and changes their
+  tokens and rules to match; step 2 moves each surface to Tailwind and the shared controls and
+  deletes its legacy stylesheet. This replaces the parent's UI-3 (a surface keeps its old look until
+  it moves), and legacy stylesheets may read the preset's tokens.
+- **CMP-20 Not restyled.** Surfaces the new shell has replaced or that are due for removal keep their
+  look until deleted: the old agent rail and its cards, the old dock column, the Agent Board and
+  Mission Control.
+
 ## Acceptance criteria
 
-1. Each requirement is visible on the migrated surfaces in dark and light, and the owner has approved
-   them by eye against the comparison sheet.
+1. Each requirement is visible on every surface the new shell shows (CMP-19), in dark and light, and
+   the owner has approved them by eye against the comparison sheet.
 2. Tabbing through a dialog and Settings reaches every control, and focus can be followed.
 3. At every zoom step, a terminal's text keeps its visual size, its PTY resizes only when its box
    really changes and at most once per zoom change, the browser tab's view stays aligned with its
@@ -102,5 +113,4 @@ scale, so most of this is a narrow change on top of them.
 
 ## Out of scope
 
-Terminal rendering and colours, the layout of rail, stage and dock, and legacy surfaces until their
-region cuts over.
+Terminal rendering and colours, the layout of rail, stage and dock, and the surfaces in CMP-20.
