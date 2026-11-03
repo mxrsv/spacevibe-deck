@@ -98,8 +98,11 @@
   --border: oklch(0.923 0.003 48.717);
   --input: oklch(0.923 0.003 48.717);
   --ring: oklch(0.709 0.01 56.259);
-  --control-frame: oklch(0.627 0 0);
-  --control-frame-hover: oklch(0.545 0 0);
+  /* The frame of an input and a secondary button (CMP-8): a soft step of the tone, alpha so it
+     lands the same on the rail, the top bar, a dialog and every theme. It stays under 3:1 by the
+     owner's call (2026-11-03); a focused input's border carries the contrast (CMP-9). */
+  --control-frame: oklch(0 0 0 / 12%);
+  --control-frame-hover: oklch(0 0 0 / 22%);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -140,8 +143,8 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.553 0.013 58.071);
-  --control-frame: oklch(0.569 0 0);
-  --control-frame-hover: oklch(0.657 0 0);
+  --control-frame: oklch(1 0 0 / 15%);
+  --control-frame-hover: oklch(1 0 0 / 25%);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);

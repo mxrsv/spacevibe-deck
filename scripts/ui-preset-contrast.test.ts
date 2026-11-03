@@ -210,12 +210,12 @@ const PAIRS: readonly Pair[] = [
   {
     id: "secondary button frame on its fill",
     kind: "boundary",
-    pair: (t, mode) => [solid(t, "--control-frame"), outlineFill(t, mode, 0.3, "--background")],
+    pair: (t, mode) => [onPage(t, "--control-frame"), outlineFill(t, mode, 0.3, "--background")],
   },
   {
     id: "secondary button hover frame on its hover fill",
     kind: "boundary",
-    pair: (t, mode) => [solid(t, "--control-frame-hover"), outlineFill(t, mode, 0.5, "--muted")],
+    pair: (t, mode) => [onPage(t, "--control-frame-hover"), outlineFill(t, mode, 0.5, "--muted")],
   },
   {
     id: "switch track off on background",
@@ -236,8 +236,14 @@ const PAIRS: readonly Pair[] = [
 const EXCEPTIONS: ReadonlyMap<string, string> = new Map([
   ["light|destructive on its 10% tint", "Button and Badge `destructive` variants"],
   ["light|destructive on its 20% hover tint", "Button and Badge `destructive` hover (3.31:1)"],
-  ["light|input border on background", "Input, Select and outline Button borders"],
-  ["dark|input border on background", "Input, Select and outline Button borders"],
+  ["light|input border on background", "the stock token; the controls frame with --control-frame"],
+  ["dark|input border on background", "the stock token; the controls frame with --control-frame"],
+  // The owner asked for a soft frame (2026-11-03): the rest and hover frames sit under 3:1 and
+  // a focused input's border, `--muted-foreground`, carries the boundary (CMP-9).
+  ["light|secondary button frame on its fill", "Input, Select and outline Button frames"],
+  ["dark|secondary button frame on its fill", "Input, Select and outline Button frames"],
+  ["light|secondary button hover frame on its hover fill", "the same frames on hover"],
+  ["dark|secondary button hover frame on its hover fill", "the same frames on hover"],
   ["light|switch track off on background", "the thumb position carries the state"],
   ["dark|switch track off on background", "the thumb position carries the state"],
   [

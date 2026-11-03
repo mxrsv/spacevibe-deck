@@ -94,8 +94,11 @@ cites it.
     ([`with-ref.ts`](../src/ui/controls/with-ref.ts)) because Preact strips `ref` from a
     function component's props.
   - Contrast on a migrated surface is WCAG 2.2 AA, 4.5:1 for text and 3:1 for the boundary of a
-    control, in both modes, with one accepted exception for keyboard focus (DL-21.3). A few stock
-    pairs fall short and are named, each with where it appears, in
+    control, in both modes, with two accepted exceptions: keyboard focus (DL-21.3), and the soft
+    frame `--control-frame` an input, a select and a secondary button wear at rest and on hover,
+    an alpha step of the tone that lands the same on every surface and theme, while a focused
+    input's border carries the contrast (owner, 2026-11-03). A few stock pairs fall short too and
+    are named, each with where it appears, in
     [`ui-preset-contrast.test.ts`](../scripts/ui-preset-contrast.test.ts); DL-3.5's floors stay
     the chrome's.
   - [`ui-preset-boundary.test.ts`](../scripts/ui-preset-boundary.test.ts) holds the fence: no

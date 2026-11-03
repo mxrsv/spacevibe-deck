@@ -45,6 +45,10 @@ scale, so most of this is a narrow change on top of them.
 ### Input
 
 - **CMP-8 Construction.** An input uses the secondary button's frame and sits at button heights.
+  The frame is soft (owner, 2026-11-03, after seeing the first build): a low-alpha step of the
+  tone, one value for every framed control (input, select, secondary button, split button), so
+  it blends with whichever surface it sits on. The sheet's opaque grey read as a hard outline in
+  the app.
 - **CMP-9 Focus ring.** A focused input has a 3px ring outside it, the text colour at 14%, with the
   border in the muted text colour. The border carries the 3:1 contrast; the ring is decoration.
   A container must leave room for the ring, since a clipping ancestor hides it.
@@ -60,7 +64,9 @@ scale, so most of this is a narrow change on top of them.
 - **CMP-11 Focus.** Only inputs have a ring. Any other control shows keyboard focus the way it
   shows hover, with no ring or outline. Focus still reaches every control by Tab.
 - **CMP-12 Accepted limit.** The state change in CMP-11 measures about 1.09 to 1.19:1, under the 3:1
-  floor of the parent's UI-7. The owner accepts this; it is a named exception, not a defect.
+  floor of the parent's UI-7. The owner accepts this; it is a named exception, not a defect. The
+  soft frame of CMP-8 at rest and on hover is a second one; a focused input's border, CMP-9,
+  still clears 3:1.
 - **CMP-13 Other states.** Hover changes background colour only, in 150ms. Pressed is one step
   darker. Selected is one neutral background step with no bar or border. Disabled is 50% opacity.
   A state change never shifts layout.
