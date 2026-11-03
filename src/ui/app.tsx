@@ -2805,7 +2805,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               stacked={
                 <AgentDock
                   entered={dockPresence.entered}
-                  selection={{ onFocusPane: focusRailPane, onSelectTab: selectTab }}
                   onClose={() => tabsRef.current?.runAction("toggle-dock")}
                   bodies={{
                     changes: gitChangesAvailable

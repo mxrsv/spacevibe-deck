@@ -94,15 +94,7 @@ const BODIES = {
 };
 
 function dock(overrides: Partial<Parameters<typeof AgentDock>[0]> = {}) {
-  return (
-    <AgentDock
-      entered
-      onClose={() => {}}
-      bodies={BODIES}
-      selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
-      {...overrides}
-    />
-  );
+  return <AgentDock entered onClose={() => {}} bodies={BODIES} {...overrides} />;
 }
 
 /** Pin the host the way `action-availability.test.ts` does; the switch follows `isDevelopment`. */

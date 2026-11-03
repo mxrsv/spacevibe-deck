@@ -127,7 +127,6 @@ function dock() {
     <AgentDock
       entered
       onClose={() => {}}
-      selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
       bodies={{
         changes: {
           watch: (root) => <DockChangesWatch root={root} changes={controller} diff={diff} />,

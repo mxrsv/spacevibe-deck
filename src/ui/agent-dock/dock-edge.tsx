@@ -25,10 +25,7 @@ function handleLabel(item: RailItem | null, changed: number | null): string {
   return `${OPEN_LABEL}, ${displayAgent(item.entry.agent)}, ${statusLabel(item)}${changes}`;
 }
 
-type DockEdgeProps = Pick<
-  DockColumnProps,
-  "item" | "space" | "selection" | "root" | "cwd" | "bodies"
-> & {
+type DockEdgeProps = Pick<DockColumnProps, "item" | "space" | "root" | "cwd" | "bodies"> & {
   /** Hides the whole dock, as the toggle does: the sheet's own control closes the sheet only. */
   readonly onHide: () => void;
 };
@@ -41,7 +38,7 @@ type DockEdgeProps = Pick<
  * The sheet's own header control closes the sheet only; the handle's own "x" hides the dock, through
  * the same action as the toggle, so a narrow window needs no chord to put the column away.
  */
-export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: DockEdgeProps) {
+export function DockEdge({ item, space, root, cwd, bodies, onHide }: DockEdgeProps) {
   const changed = bodies.changes?.count(root) ?? null;
   const setOpen = (open: boolean): void => {
     dockSheetOpen.value = open;
@@ -109,7 +106,6 @@ export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: 
         <DockColumn
           item={item}
           space={space}
-          selection={selection}
           root={root}
           cwd={cwd}
           bodies={bodies}

@@ -66,7 +66,6 @@ function dock(files = testFileBodies()) {
         usage: () => <p>usage body</p>,
         history: null,
       }}
-      selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
     />
   );
 }

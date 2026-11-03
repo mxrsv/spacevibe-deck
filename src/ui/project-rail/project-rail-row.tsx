@@ -14,7 +14,7 @@ import { displayAgent } from "../agent-rail-card-model";
 import { formatShortAge } from "../agent-rail-model";
 import type { RailItem } from "../rail-view-model";
 import type { RowCommands } from "./project-rail-commands";
-import { isRailItemFocused, statusLabel } from "./project-rail-model";
+import { askLine, isRailItemFocused, statusLabel } from "./project-rail-model";
 import { ProjectRailRenameField } from "./project-rail-rename-field";
 import { ProjectRailRowActions } from "./project-rail-row-actions";
 import { railNow } from "./project-rail-state";
@@ -42,6 +42,10 @@ export interface ProjectRailRowProps {
  * chip (and the project, in a flat list) shows on hover or focus; it holds its place, so the
  * line does not move. Hover or focus also adds pin, archive and the more menu over the
  * trailing edge; the same menu opens on right-click. F2 or a double-click renames in place.
+ *
+ * While the agent needs the user, a third line says what it waits on (DOCK-9, the dock's old Ask
+ * banner). The row's own press is that line's action: it takes the keyboard to the pane, where the
+ * answer is typed, so the line adds no control of its own.
  */
 export function ProjectRailRow({
   item,
@@ -53,6 +57,7 @@ export function ProjectRailRow({
   onSelect,
 }: ProjectRailRowProps) {
   const focused = isRailItemFocused(item);
+  const ask = askLine(item);
   const { entry } = item;
   const { rename } = commands;
   const [editing, setEditing] = useState(false);
@@ -163,6 +168,15 @@ export function ProjectRailRow({
                 <StateAge changedAt={item.changedAt} />
               </span>
             </span>
+            {/* Hidden from the accessible name, which `statusLabel` already gives the detail. */}
+            {ask === null ? null : (
+              <span
+                aria-hidden="true"
+                className="col-start-2 truncate text-xs leading-5 text-foreground"
+              >
+                {ask}
+              </span>
+            )}
             <span className="sr-only">
               {entry.kind === "agent" ? `${displayAgent(entry.agent)}, ` : "shell, "}
               {statusLabel(item)}

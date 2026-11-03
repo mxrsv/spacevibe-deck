@@ -37,6 +37,22 @@ export function statusLabel(item: Pick<RailItem, "status" | "confidence" | "entr
     : word;
 }
 
+/**
+ * The line a row adds while its agent needs the user (DOCK-9): what it waits on when a
+ * contract-layer source says so, else a plain "Waiting for you", hedged when Deck inferred the
+ * state from output timing. Null for every other row, a shell row included.
+ */
+export function askLine(item: Pick<RailItem, "status" | "confidence" | "entry">): string | null {
+  if (item.status !== "needs-input" || item.entry.kind !== "agent") {
+    return null;
+  }
+  const detail = item.entry.detail?.trim() ?? "";
+  if (detail !== "") {
+    return detail;
+  }
+  return item.confidence === "inferred" ? "Probably waiting for you" : "Waiting for you";
+}
+
 /** Up to two initials of the project's name: `spacevibe-deck` is `SD`, `notes` is `N`. */
 export function projectInitials(name: string): string {
   const words = name.split(/[^\p{L}\p{N}]+/u).filter((word) => word !== "");

@@ -125,7 +125,6 @@ function dock() {
     <AgentDock
       entered
       onClose={() => {}}
-      selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
       bodies={{
         changes: null,
         files: testFileBodies(),

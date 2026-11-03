@@ -2,9 +2,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect } from "preact/hooks";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
 import { surfaceFor } from "../../files/file-surface-store";
-import type { RailSelection } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
-import { DockAsk } from "./dock-ask";
 import {
   DOCK_VIEWS,
   dockSurface,
@@ -63,8 +61,6 @@ export interface DockColumnProps {
   readonly item: RailItem | null;
   /** The focused agent's space-mates, for the Usage and History bodies. */
   readonly space: readonly RailItem[];
-  /** How the Ask banner takes the keyboard to an agent's pane: the rail's own focus path. */
-  readonly selection: RailSelection;
   /** The folder the views show (`dock-root.ts`). */
   readonly root: string | null;
   readonly cwd: string | null;
@@ -104,7 +100,6 @@ export function effectiveDockSurface(root: string | null): DockSurface {
 export function DockColumn({
   item,
   space,
-  selection,
   root,
   cwd,
   bodies,
@@ -133,7 +128,6 @@ export function DockColumn({
         closeChord={closeChord}
         onClose={onClose}
       />
-      <DockAsk item={item} selection={selection} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {surface === "file" && root !== null ? (
           <div className="h-full min-h-0">{bodies.files.document(root)}</div>
