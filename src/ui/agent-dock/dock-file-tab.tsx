@@ -31,7 +31,7 @@ export interface DockFileTabProps {
 
 /**
  * One file tab: type glyph, name (italic while it is the preview), an unsaved dot and a close
- * mark on the active or hovered tab. A right-click or the menu key opens Close, Close others,
+ * mark on the active tab only. A right-click or the menu key opens Close, Close others,
  * Close to the right, Close all and Copy path. No count or badge sits on it (DOCK-7).
  */
 export function DockFileTab({
@@ -57,7 +57,7 @@ export function DockFileTab({
       title={path}
       data-path={path}
       className={cn(
-        "group/tab relative flex h-6 min-w-0 max-w-40 shrink-0 cursor-default items-center gap-1 rounded-md px-1.5 text-xs",
+        "group/tab relative flex h-7 min-w-0 max-w-40 shrink-0 cursor-default items-center gap-1 rounded-md px-1.5 text-xs",
         active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50",
       )}
       onClick={onSelect}
@@ -84,19 +84,21 @@ export function DockFileTab({
       {dirty ? (
         <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-foreground/60" />
       ) : null}
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        aria-label={`Close ${name}`}
-        tabIndex={-1}
-        className={cn("shrink-0", active ? "" : "opacity-0 group-hover/tab:opacity-100")}
-        onClick={(event: MouseEvent) => {
-          event.stopPropagation();
-          run("one");
-        }}
-      >
-        <DeckIcon icon={Cancel01Icon} />
-      </Button>
+      {active ? (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={`Close ${name}`}
+          tabIndex={-1}
+          className="shrink-0"
+          onClick={(event: MouseEvent) => {
+            event.stopPropagation();
+            run("one");
+          }}
+        >
+          <DeckIcon icon={Cancel01Icon} />
+        </Button>
+      ) : null}
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           nativeButton={false}

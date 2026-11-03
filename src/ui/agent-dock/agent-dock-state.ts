@@ -5,6 +5,7 @@
  */
 import { signal } from "@preact/signals";
 import type { DockTab } from "../../settings/settings-schema";
+import { dockWideRequested } from "./agent-dock-layout";
 
 export type DockViewId = "changes" | "usage" | "history";
 
@@ -69,6 +70,7 @@ let afterSheetClose: (() => void) | null = null;
 export function closeDockSheetThen(action: () => void): void {
   afterSheetClose = action;
   dockSheetOpen.value = false;
+  dockWideRequested.value = false;
 }
 
 /** The action `closeDockSheetThen` left for the sheet's close, once; null for any other close. */
@@ -84,4 +86,5 @@ export function resetAgentDockState(): void {
   dockSurface.value = "view";
   dockTreePane.value = null;
   dockSheetOpen.value = false;
+  dockWideRequested.value = false;
 }

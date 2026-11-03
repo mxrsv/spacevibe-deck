@@ -1,12 +1,16 @@
 import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
   Cancel01Icon,
   Folder01Icon,
   PlusSignIcon,
   ChartHistogramIcon,
   Clock01Icon,
   FileEditIcon,
+  Maximize01Icon,
+  Minimize01Icon,
 } from "@hugeicons/core-free-icons";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
 import { documentFor, promoteFileTab, surfaceFor } from "../../files/file-surface-store";
 import { cn } from "@/lib/cn";
@@ -14,6 +18,12 @@ import { Button } from "../controls/button";
 import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
 import { Separator } from "../controls/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
+import {
+  dockMaximized,
+  dockNarrow,
+  dockWideAffordable,
+  toggleDockMaximized,
+} from "./agent-dock-layout";
 import {
   selectDockExplorer,
   selectDockFile,
@@ -35,6 +45,57 @@ const VIEW_LABEL: Readonly<Record<DockViewId, string>> = {
   usage: "Usage",
   history: "History",
 };
+
+/** What one arrow press moves when no tab is there to measure. */
+const FALLBACK_SCROLL_STEP = 120;
+
+/** Whether the file tabs run past their region, and which way they can still move. */
+interface TabOverflow {
+  readonly overflowing: boolean;
+  readonly atStart: boolean;
+  readonly atEnd: boolean;
+}
+
+const NO_OVERFLOW: TabOverflow = { overflowing: false, atStart: true, atEnd: true };
+
+/** Reads the tab region's overflow on resize and scroll; no polling. `watch` re-reads on a change. */
+function useTabOverflow(
+  list: { readonly current: HTMLElement | null },
+  watch: readonly unknown[],
+): { readonly overflow: TabOverflow; readonly measure: () => void } {
+  const [overflow, setOverflow] = useState<TabOverflow>(NO_OVERFLOW);
+  const measure = (): void => {
+    const node = list.current;
+    if (node === null) {
+      return;
+    }
+    const next: TabOverflow = {
+      overflowing: node.scrollWidth > node.clientWidth,
+      atStart: node.scrollLeft <= 0,
+      atEnd: node.scrollLeft + node.clientWidth >= node.scrollWidth - 1,
+    };
+    setOverflow((prev) =>
+      prev.overflowing === next.overflowing &&
+      prev.atStart === next.atStart &&
+      prev.atEnd === next.atEnd
+        ? prev
+        : next,
+    );
+  };
+  useLayoutEffect(() => {
+    measure();
+    const node = list.current;
+    if (node === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+    // `measure` closes over refs and a setter only; the watch list is what makes it re-run.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, watch);
+  return { overflow, measure };
+}
 
 export interface DockTabStripProps {
   /** The fixed views this host offers, in order. */
@@ -58,6 +119,20 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
   const paths = tabs.map((tab) => tab.path);
   const activePath = surface === "file" ? surfaceState.activePath : null;
   const list = useRef<HTMLDivElement>(null);
+  const explorerOpen = surface === "explorer";
+  const { overflow, measure } = useTabOverflow(list, [tabs.length, explorerOpen, root]);
+  const maximized = dockMaximized.value;
+  const canWiden = dockWideAffordable.value;
+
+  const scrollTabs = (direction: 1 | -1): void => {
+    const container = list.current;
+    if (container === null) {
+      return;
+    }
+    const step = container.querySelector<HTMLElement>('[role="tab"]')?.offsetWidth;
+    container.scrollLeft += direction * (step || FALLBACK_SCROLL_STEP);
+    measure();
+  };
 
   // Only this region scrolls, so bring the selected tab in by its own offsets.
   useEffect(() => {
@@ -87,7 +162,7 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
     <div
       role="toolbar"
       aria-label="Dock views"
-      className="flex shrink-0 items-center gap-1 border-b px-2 py-1"
+      className="flex h-[38px] shrink-0 items-center gap-1 border-b px-2"
     >
       {views.map((id) => (
         <Tooltip key={id}>
@@ -118,6 +193,7 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
         role="tablist"
         aria-label="Open files"
         className="relative flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]"
+        onScroll={measure}
       >
         {root === null
           ? null
@@ -143,7 +219,7 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
             aria-selected="true"
             aria-label="Explorer"
             className={cn(
-              "group/tab flex h-6 shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 text-xs",
+              "group/tab flex h-7 shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 text-xs",
               "text-foreground",
             )}
           >
@@ -161,6 +237,22 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
           </div>
         ) : null}
       </div>
+      {overflow.overflowing ? (
+        <>
+          <ScrollArrow
+            label="Scroll tabs left"
+            icon={ArrowLeft01Icon}
+            disabled={overflow.atStart}
+            onPress={() => scrollTabs(-1)}
+          />
+          <ScrollArrow
+            label="Scroll tabs right"
+            icon={ArrowRight01Icon}
+            disabled={overflow.atEnd}
+            onPress={() => scrollTabs(1)}
+          />
+        </>
+      ) : null}
       <Tooltip>
         <TooltipTrigger
           render={
@@ -178,6 +270,66 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
         </TooltipTrigger>
         <TooltipContent side="bottom">Open a file</TooltipContent>
       </Tooltip>
+      {dockNarrow.value ? null : (
+        <>
+          <Separator orientation="vertical" className="mx-1 h-4 self-center" />
+          <Tooltip>
+            {/* A disabled button takes no pointer events, so the span carries the tooltip. */}
+            <TooltipTrigger render={<span className="shrink-0" />}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={maximized ? "Restore the panel width" : "Widen the panel"}
+                aria-pressed={maximized}
+                disabled={!maximized && !canWiden}
+                className="text-muted-foreground"
+                onClick={toggleDockMaximized}
+              >
+                <DeckIcon icon={maximized ? Minimize01Icon : Maximize01Icon} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {maximized
+                ? "Restore the panel width"
+                : canWiden
+                  ? "Widen the panel"
+                  : "The window is too narrow to widen the panel"}
+            </TooltipContent>
+          </Tooltip>
+        </>
+      )}
     </div>
+  );
+}
+
+function ScrollArrow({
+  label,
+  icon,
+  disabled,
+  onPress,
+}: {
+  readonly label: string;
+  readonly icon: DeckGlyph;
+  readonly disabled: boolean;
+  onPress(): void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={label}
+            disabled={disabled}
+            className="shrink-0 text-muted-foreground"
+            onClick={onPress}
+          />
+        }
+      >
+        <DeckIcon icon={icon} />
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
   );
 }

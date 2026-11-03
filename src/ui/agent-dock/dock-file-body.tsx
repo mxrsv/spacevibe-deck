@@ -1,4 +1,4 @@
-import { FolderTreeIcon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, FolderTreeIcon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
 import {
@@ -13,7 +13,7 @@ import { isMarkdownPath } from "../../files/markdown-policy";
 import { FilePanel } from "../../files/ui/file-panel";
 import { ViewModeToggle } from "../../files/ui/view-mode-toggle";
 import { Button } from "../controls/button";
-import { DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockTreePane } from "./agent-dock-state";
 import { crumbsFor, foldersTo } from "./dock-file-crumbs";
@@ -90,7 +90,7 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   return (
     <div ref={body} className="dock-file flex h-full min-h-0 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b px-2 text-xs">
-        <nav aria-label="File path" className="flex min-w-0 flex-1 items-center gap-0.5">
+        <nav aria-label="File path" className="flex min-w-0 flex-1 items-center gap-0.5 font-sans">
           {hidden === 0 ? null : (
             <>
               <Button
@@ -102,9 +102,11 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
               >
                 …
               </Button>
-              <span aria-hidden="true" className="text-muted-foreground/50">
-                /
-              </span>
+              <DeckIcon
+                icon={ArrowRight01Icon}
+                size={GLYPH_INLINE}
+                class="shrink-0 text-muted-foreground"
+              />
             </>
           )}
           {shown.map((crumb) =>
@@ -122,9 +124,11 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
                 >
                   {crumb.name}
                 </Button>
-                <span aria-hidden="true" className="text-muted-foreground/50">
-                  /
-                </span>
+                <DeckIcon
+                  icon={ArrowRight01Icon}
+                  size={GLYPH_INLINE}
+                  class="shrink-0 text-muted-foreground"
+                />
               </span>
             ),
           )}
