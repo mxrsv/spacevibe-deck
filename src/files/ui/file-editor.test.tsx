@@ -129,6 +129,7 @@ vi.mock("../editor-host", async () => {
 });
 
 import { FileEditor } from "./file-editor";
+import { editorWordWrap } from "../editor-wrap";
 import {
   createFileSurfaceController,
   editorSettings,
@@ -263,6 +264,24 @@ describe("FileEditor", () => {
     mount();
     await act(async () => {});
   }
+
+  it("wraps long lines while the wrap toggle is on, from the first paint and as it flips", async () => {
+    editorWordWrap.value = true;
+    await mountWithDocument();
+    expect(stub.options.wordWrap).toBe("on");
+
+    await act(async () => {
+      editorWordWrap.value = false;
+    });
+    expect(stub.options.wordWrap).toBe("off");
+    await act(async () => {
+      editorWordWrap.value = true;
+    });
+    expect(stub.options.wordWrap).toBe("on");
+    await act(async () => {
+      editorWordWrap.value = false;
+    });
+  });
 
   it("is the original font-family string byte for byte on macOS", async () => {
     initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });

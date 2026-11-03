@@ -1,4 +1,9 @@
-import { ArrowRight01Icon, FolderTreeIcon, FloppyDiskIcon } from "@hugeicons/core-free-icons";
+import {
+  ArrowRight01Icon,
+  FloppyDiskIcon,
+  FolderTreeIcon,
+  TextWrapIcon,
+} from "@hugeicons/core-free-icons";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
 import {
@@ -9,6 +14,7 @@ import {
   viewModeFor,
   visibleDirectories,
 } from "../../files/file-surface-store";
+import { editorWordWrap, toggleEditorWordWrap } from "../../files/editor-wrap";
 import { isMarkdownPath } from "../../files/markdown-policy";
 import { FilePanel } from "../../files/ui/file-panel";
 import { ViewModeToggle } from "../../files/ui/view-mode-toggle";
@@ -17,6 +23,7 @@ import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockTreePane } from "./agent-dock-state";
 import { crumbsFor, foldersTo } from "./dock-file-crumbs";
+import { DockOpenIn, type DockOpenInApps } from "./dock-open-in";
 import { StripCell } from "./dock-strip-cell";
 import { DockFileTree } from "./dock-file-tree";
 
@@ -50,6 +57,8 @@ export interface DockFileBodyProps {
   readonly controller: FileSurfaceController;
   readonly workspacePath: string;
   readonly canCreate: boolean;
+  /** The open-in split button's apps; absent (a host with no app catalog) leaves it out. */
+  readonly openIn?: DockOpenInApps;
 }
 
 /** The width of `ref`'s element, or null before the first measure (and where nothing measures). */
@@ -83,7 +92,7 @@ function useWidth(ref: { readonly current: HTMLElement | null }, mounted: boolea
 const CRUMB_CELL =
   "h-auto min-w-0 self-center px-1 hover:bg-transparent focus-visible:bg-transparent";
 
-export function DockFileBody({ controller, workspacePath, canCreate }: DockFileBodyProps) {
+export function DockFileBody({ controller, workspacePath, canCreate, openIn }: DockFileBodyProps) {
   const body = useRef<HTMLDivElement>(null);
   const path = surfaceFor(workspacePath).activePath;
   // The element exists only while a file is active, so the measure follows that.
@@ -100,6 +109,9 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   const shown = crumbs.slice(hidden);
   const document = documentFor(path);
   const markdown = isMarkdownPath(path);
+  // A rendered Markdown view is no editor, so there is nothing to wrap.
+  const editing = !markdown || viewModeFor(path) === "source";
+  const wrap = editorWordWrap.value;
 
   /** Show the tree with `folder` open and its row marked for the keyboard. */
   const reveal = (folder: string): void => {
@@ -181,6 +193,26 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
           </TooltipTrigger>
           <TooltipContent side="bottom">Save</TooltipContent>
         </Tooltip>
+        {openIn === undefined ? null : <DockOpenIn path={path} apps={openIn} />}
+        {editing ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Wrap lines"
+                  aria-pressed={wrap}
+                  className={wrap ? "bg-muted text-foreground" : "text-muted-foreground"}
+                  onClick={toggleEditorWordWrap}
+                />
+              }
+            >
+              <DeckIcon icon={TextWrapIcon} />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Wrap lines</TooltipContent>
+          </Tooltip>
+        ) : null}
         <Tooltip>
           <TooltipTrigger
             render={

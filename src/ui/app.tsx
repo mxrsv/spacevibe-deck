@@ -222,6 +222,7 @@ import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { DockPanel } from "./dock/dock-panel";
 import { AgentDock } from "./agent-dock/agent-dock";
 import { DockFileBody } from "./agent-dock/dock-file-body";
+import type { DockOpenInApps } from "./agent-dock/dock-open-in";
 import { DockFileTree } from "./agent-dock/dock-file-tree";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
 import { dockSheetOpen, selectDockFile } from "./agent-dock/agent-dock-state";
@@ -2292,6 +2293,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     />
   );
 
+  /**
+   * The dock breadcrumb's open-in split button: the toolbar's apps and selection, opening the
+   * file rather than the workspace. Empty where the host cannot answer, so the control is absent.
+   */
+  const dockOpenIn: DockOpenInApps = {
+    choices:
+      externalAppsAvailable && externalAppsScanned.value
+        ? externalAppChoices(installedExternalApps.value, true)
+        : [],
+    selected: settings.value.externalAppId,
+    onOpen: (path, appId) => {
+      void openInApp({ appId, path, isDirectory: false, line: 1, column: 1 }).catch(
+        (error: unknown) => {
+          reportPersistError(`Couldn't open ${externalAppLabel(appId)}: ${String(error)}`);
+        },
+      );
+    },
+    onSelect: (externalAppId) => updateSettings({ externalAppId }),
+  };
+
   const chromeActions = (
     <DeckToolbar
       missionControl={
@@ -2829,6 +2850,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                           controller={fileController}
                           workspacePath={root}
                           canCreate={fileCreateAvailable}
+                          openIn={dockOpenIn}
                         />
                       ),
                     },

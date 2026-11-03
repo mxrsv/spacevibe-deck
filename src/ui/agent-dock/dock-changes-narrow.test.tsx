@@ -160,8 +160,6 @@ const scrim = (): HTMLElement =>
 
 beforeEach(async () => {
   vi.stubGlobal("__deckHost", {});
-  // jsdom has no layout; a list press scrolls to its card.
-  Element.prototype.scrollIntoView = vi.fn();
   initializeDesktopEnvironment({ platform: "macos", homeDir: "/home/test", isDevelopment: true });
   settings.value = DEFAULT_SETTINGS;
   tabViews.value = [tab()];

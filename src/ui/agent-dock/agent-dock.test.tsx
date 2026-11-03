@@ -119,10 +119,11 @@ const icons = (): (string | null)[] =>
   [...(strip()?.querySelectorAll("button") ?? [])].map((button) =>
     button.getAttribute("aria-label"),
   );
+/** Which of the strip's choices reads as selected; the panel toggle at its end always does. */
 const pressed = (): (string | null)[] =>
-  [...(strip()?.querySelectorAll('button[aria-pressed="true"]') ?? [])].map((button) =>
-    button.getAttribute("aria-label"),
-  );
+  [...(strip()?.querySelectorAll('button[aria-pressed="true"]') ?? [])]
+    .map((button) => button.getAttribute("aria-label"))
+    .filter((label) => label !== "Hide the side panel");
 const bodyText = (): string => document.body.textContent ?? "";
 const named = (label: string): HTMLElement | null =>
   document.body.querySelector<HTMLElement>(`[aria-label^="${label}"]`);

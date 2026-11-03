@@ -20,13 +20,34 @@ const ROW =
   "flex h-7 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
 /** A file's mark and its ink: new files read as added, rewritten ones as modified. */
-export const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {
+const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {
   modified: { letter: "M", ink: "text-(--term-warn)" },
   added: { letter: "A", ink: "text-(--term-ok)" },
   deleted: { letter: "D", ink: "text-(--term-err)" },
   renamed: { letter: "R", ink: "text-(--term-warn)" },
   untracked: { letter: "U", ink: "text-(--term-ok)" },
 };
+
+/**
+ * A file's status letter in a 16px square washed with its own ink (the mock's `.st`, its letter at
+ * CMP-10's 12px floor rather than 9.5px), so the letter reads as a mark and not as part of the
+ * name. The word is its accessible name.
+ */
+export function StatusMark({ status }: { readonly status: ChangeStatus }) {
+  const mark = STATUS_LOOK[status];
+  return (
+    <span
+      role="img"
+      aria-label={STATUS_WORD[status]}
+      className={cn(
+        "grid size-4 shrink-0 place-items-center rounded-sm bg-current/20 font-mono text-code leading-none font-semibold",
+        mark.ink,
+      )}
+    >
+      {mark.letter}
+    </span>
+  );
+}
 
 export interface DockChangesTreeProps {
   readonly entries: readonly ChangeEntry[];
@@ -49,7 +70,6 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
   const key = fileKey(entry);
   const selected = entry.path === tree.selectedPath;
   const counts = countsFor(entry);
-  const mark = STATUS_LOOK[entry.status];
   return (
     <>
       {/* raw-control: a whole-row press target; no Button variant spans a tree row */}
@@ -63,13 +83,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         style={{ paddingLeft: INDENT + depth * STEP + 18 }}
         className={cn(ROW, "gap-2", selected && "bg-muted")}
       >
-        <span
-          role="img"
-          aria-label={STATUS_WORD[entry.status]}
-          className={cn("w-3 shrink-0 text-center font-mono text-code font-semibold", mark.ink)}
-        >
-          {mark.letter}
-        </span>
+        <StatusMark status={entry.status} />
         <span
           className={cn(
             "min-w-0 flex-1 truncate text-xs",

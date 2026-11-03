@@ -16,6 +16,7 @@ vi.mock("../../host/store-host", () => ({
 vi.mock("../../host/dialog-host", () => ({ open: vi.fn(async () => null) }));
 vi.mock("../../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
 
+import type { ColorizeLines } from "../../files/changes/colorize-lines";
 import type { DiffSidesPorts } from "../../files/changes/diff-sides";
 import type { ReadFileResponse } from "../../files/file-client";
 import type { ChangeEntry } from "../../host/git-changes-host";
@@ -83,6 +84,8 @@ const okRead = (content: string): ReadFileResponse => ({
 });
 
 let ports: DiffSidesPorts;
+/** Monaco's colorizer stand-in: never answers unless a test says how it colours. */
+let colorize: ColorizeLines;
 const files = testFileBodies().controller;
 
 function stack(entries: ChangeEntry[]) {
@@ -95,12 +98,20 @@ function stack(entries: ChangeEntry[]) {
       reads={1}
       markedPath={null}
       ports={ports}
+      colorize={colorize}
     />
   );
 }
 
+/** A loaded card's lines as `[old number, new number, sign, code]`, what the eye reads. */
+const lineCells = (path: string): string[][] =>
+  [...card(path).querySelectorAll<HTMLElement>("[data-line]")].map((line) =>
+    [...line.children].map((cell) => cell.textContent ?? ""),
+  );
+
 beforeEach(() => {
   resetAgentDockState();
+  colorize = vi.fn(async () => new Promise<readonly string[]>(() => {}));
   vi.stubGlobal("IntersectionObserver", StubObserver);
   ports = {
     statFiles: vi.fn(async (_root: string, paths: readonly string[]) =>
@@ -138,16 +149,62 @@ describe("the Changes stack", () => {
     await view.unmount();
   });
 
-  it("shows a loaded card's added and removed lines under a hunk header", async () => {
+  it("shows a loaded card's lines under a hunk header, numbered on the side each is on", async () => {
     const view = await mount(stack([entry("src/a.ts")]));
     await reveal("src/a.ts");
-    const kinds = (kind: string) =>
-      [...card("src/a.ts").querySelectorAll(`[data-line="${kind}"]`)].map((line) =>
-        line.textContent?.slice(1),
-      );
-    expect(kinds("add")).toEqual(["new line"]);
-    expect(kinds("del")).toEqual(["old line"]);
     expect(card("src/a.ts").textContent).toContain("@@ -1,3 +1,3 @@");
+    expect(lineCells("src/a.ts")).toEqual([
+      ["1", "1", " ", "keep"],
+      ["2", "", "-", "old line"],
+      ["", "2", "+", "new line"],
+      ["3", "3", " ", "end"],
+    ]);
+    await view.unmount();
+  });
+
+  it("colours each line from its own side once the colorizer answers, plain until then", async () => {
+    // Both sides colour as TypeScript, each answer held until the test lets it through.
+    const pending: (() => void)[] = [];
+    colorize = vi.fn(
+      (text: string, language: string) =>
+        new Promise<readonly string[]>((resolve) => {
+          expect(language).toBe("typescript");
+          pending.push(() =>
+            resolve(
+              text.split("\n").map((line) => `<span><span class="mtk5">${line}</span></span>`),
+            ),
+          );
+        }),
+    );
+    const view = await mount(stack([entry("src/a.ts")]));
+    await reveal("src/a.ts");
+    const code = (kind: string): HTMLElement =>
+      card("src/a.ts").querySelector(`[data-line="${kind}"]`)?.lastElementChild as HTMLElement;
+    expect(code("del").querySelector(".mtk5")).toBeNull();
+    expect(code("del").textContent).toBe("old line");
+
+    await act(async () => {
+      for (const resolve of pending) {
+        resolve();
+      }
+    });
+    await settle();
+    expect(code("del").querySelector(".mtk5")?.textContent).toBe("old line");
+    expect(code("add").querySelector(".mtk5")?.textContent).toBe("new line");
+    expect(code("context").querySelector(".mtk5")?.textContent).toBe("keep");
+    await view.unmount();
+  });
+
+  it("leaves a file with no known language plain and asks no colorizer", async () => {
+    const view = await mount(stack([entry("notes.unknownext")]));
+    await reveal("notes.unknownext");
+    expect(lineCells("notes.unknownext").map((cells) => cells[3])).toEqual([
+      "keep",
+      "old line",
+      "new line",
+      "end",
+    ]);
+    expect(colorize).not.toHaveBeenCalled();
     await view.unmount();
   });
 

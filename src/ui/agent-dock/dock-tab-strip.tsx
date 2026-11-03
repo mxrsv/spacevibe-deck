@@ -9,6 +9,7 @@ import {
   FileEditIcon,
   Maximize01Icon,
   Minimize01Icon,
+  SidebarRightIcon,
 } from "@hugeicons/core-free-icons";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
@@ -136,6 +137,8 @@ export function DockTabStrip({
   const explorerOpen = surface === "explorer";
   const { overflow, measure } = useTabOverflow(list, [tabs.length, explorerOpen, root]);
   const maximized = dockMaximized.value;
+  // In a narrow window the strip heads the sheet, whose end control closes the sheet only.
+  const sheet = dockNarrow.value;
   const canWiden = dockWideAffordable.value;
 
   const scrollTabs = (direction: 1 | -1): void => {
@@ -286,7 +289,7 @@ export function DockTabStrip({
         </TooltipTrigger>
         <TooltipContent side="bottom">Open a file</TooltipContent>
       </Tooltip>
-      {dockNarrow.value ? null : (
+      {sheet ? null : (
         <>
           <Tooltip>
             {/* A disabled button takes no pointer events, so the span carries the tooltip. */}
@@ -316,16 +319,22 @@ export function DockTabStrip({
       <Tooltip>
         <TooltipTrigger
           render={
+            // The column's end is the side-panel toggle, pressed while the panel shows, as the
+            // stage strip's toggle is unpressed while it is hidden; the sheet's is a plain close.
             <Button
               variant="ghost"
               size="icon-sm"
               aria-label={closeLabel}
-              className="shrink-0 text-muted-foreground"
+              aria-pressed={sheet ? undefined : true}
+              className={cn(
+                "shrink-0",
+                sheet ? "text-muted-foreground" : "bg-muted text-foreground",
+              )}
               onClick={onClose}
             />
           }
         >
-          <DeckIcon icon={ArrowRight01Icon} />
+          <DeckIcon icon={sheet ? Cancel01Icon : SidebarRightIcon} />
         </TooltipTrigger>
         <TooltipContent side="left">
           {closeLabel}

@@ -61,7 +61,7 @@ export function DockFileTab({
         "group/tab relative flex h-full min-w-0 max-w-full shrink-0 items-center gap-1.5 px-2.5 text-xs",
         active
           ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
-          : "text-muted-foreground hover:bg-muted/50",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
       onClick={onSelect}
       onDblClick={onKeep}
@@ -93,7 +93,8 @@ export function DockFileTab({
           size="icon-xs"
           aria-label={`Close ${name}`}
           tabIndex={-1}
-          className="shrink-0"
+          // The mock's 16px box; `icon-xs` keeps its 24px hit area around it.
+          className="size-4 shrink-0"
           onClick={(event: MouseEvent) => {
             event.stopPropagation();
             run("one");

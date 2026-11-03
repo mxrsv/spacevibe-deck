@@ -2,20 +2,31 @@ import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { readHeadFile, type ChangeEntry } from "../../host/git-changes-host";
-import { absolutePath, baseName, countsFor, STATUS_WORD } from "../../files/changes/changes-model";
+import { absolutePath, baseName, countsFor } from "../../files/changes/changes-model";
 import {
   createDiffSides,
   type DiffSidesPorts,
   type DiffSidesView,
 } from "../../files/changes/diff-sides";
-import { diffLines, type DiffHunk, type DiffLine } from "../../files/changes/line-diff";
+import {
+  colorizeLines,
+  MAX_COLORIZED_CHARS,
+  type ColorizeLines,
+} from "../../files/changes/colorize-lines";
+import {
+  diffLines,
+  numberLines,
+  type DiffHunk,
+  type DiffLine,
+} from "../../files/changes/line-diff";
 import { defaultFileClient } from "../../files/file-client";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
+import { settings } from "../../settings/settings-store";
 import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import { dockFoldedCards, selectDockFile, toggleDockCardFold } from "./agent-dock-state";
-import { STATUS_LOOK } from "./dock-changes-tree";
+import { StatusMark } from "./dock-changes-tree";
 
 /** How far past the viewport a card starts reading its two sides. */
 const NEAR_MARGIN = "600px 0px";
@@ -29,34 +40,87 @@ export const defaultStackPorts: DiffSidesPorts = {
 
 export const cardKey = (root: string, path: string): string => `${root}\0${path}`;
 
+/** A line's sign and its wash (mock F: 13% of the diff ink); context lines carry neither. */
 const LINE_LOOK: Readonly<Record<DiffLine["kind"], { sign: string; tint: string }>> = {
   context: { sign: " ", tint: "" },
-  add: { sign: "+", tint: "bg-[color-mix(in_oklch,var(--term-ok)_9%,transparent)]" },
-  del: { sign: "-", tint: "bg-[color-mix(in_oklch,var(--term-err)_9%,transparent)]" },
+  add: { sign: "+", tint: "bg-[color-mix(in_oklch,var(--term-ok)_13%,transparent)]" },
+  del: { sign: "-", tint: "bg-[color-mix(in_oklch,var(--term-err)_13%,transparent)]" },
 };
 
 const range = (start: number, lines: number): string =>
   lines === 1 ? `${start}` : `${start},${lines}`;
 
-function Hunk({ hunk }: { hunk: DiffHunk }) {
+/** Each side's lines as the colorizer marked them up; null while plain. */
+interface LitSides {
+  readonly original: readonly string[];
+  readonly modified: readonly string[];
+}
+
+/** The widest line number a card prints, in digits, so both gutters fit it and line up. */
+function gutterDigits(hunks: readonly DiffHunk[]): number {
+  const last = hunks.reduce(
+    (widest, hunk) =>
+      Math.max(widest, hunk.oldStart + hunk.oldLines, hunk.newStart + hunk.newLines),
+    1,
+  );
+  return String(last).length;
+}
+
+const GUTTER =
+  "box-content shrink-0 pr-2 text-right text-muted-foreground tabular-nums select-none";
+
+function Hunk({
+  hunk,
+  digits,
+  lit,
+}: {
+  readonly hunk: DiffHunk;
+  readonly digits: number;
+  readonly lit: LitSides | null;
+}) {
+  const gutter = { width: `${digits}ch` };
   return (
     <>
-      <div className="min-w-max px-3 text-muted-foreground">
+      <div className="min-w-max bg-primary/8 px-3 text-primary">
         @@ -{range(hunk.oldStart, hunk.oldLines)} +{range(hunk.newStart, hunk.newLines)} @@
       </div>
-      {hunk.lines.map((line, index) => (
-        <div
-          // A hunk is never reordered: the position is the identity.
-          key={index}
-          data-line={line.kind}
-          className={cn("min-w-max px-3", LINE_LOOK[line.kind].tint)}
-        >
-          <span className="inline-block w-4 select-none text-muted-foreground">
-            {LINE_LOOK[line.kind].sign}
-          </span>
-          {line.text}
-        </div>
-      ))}
+      {numberLines(hunk).map((line, index) => {
+        // A removed line is coloured from the old text, every other line from the new one.
+        const html =
+          lit === null
+            ? undefined
+            : line.oldLine !== null && line.newLine === null
+              ? lit.original[line.oldLine - 1]
+              : line.newLine !== null
+                ? lit.modified[line.newLine - 1]
+                : undefined;
+        return (
+          <div
+            // A hunk is never reordered: the position is the identity.
+            key={index}
+            data-line={line.kind}
+            className={cn("flex min-w-max pl-1", LINE_LOOK[line.kind].tint)}
+          >
+            <span aria-hidden="true" className={GUTTER} style={gutter}>
+              {line.oldLine ?? ""}
+            </span>
+            <span aria-hidden="true" className={GUTTER} style={gutter}>
+              {line.newLine ?? ""}
+            </span>
+            <span className="w-4 shrink-0 text-center text-muted-foreground select-none">
+              {LINE_LOOK[line.kind].sign}
+            </span>
+            {html === undefined ? (
+              <span className={cn("pr-3", line.kind === "context" && "text-muted-foreground")}>
+                {line.text}
+              </span>
+            ) : (
+              // Monaco's colorizer escapes the text it marks up (`colorize-lines.ts`).
+              <span className="pr-3" dangerouslySetInnerHTML={{ __html: html }} />
+            )}
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -67,11 +131,52 @@ const Line = ({ children }: { children: string }) => (
   </p>
 );
 
-function CardBody({ view }: { view: DiffSidesView | null }) {
+/** Colours a loaded text card once, again for a new read or a theme change; plain until then. */
+function useLitSides(view: DiffSidesView | null, colorize: ColorizeLines): LitSides | null {
+  const [lit, setLit] = useState<LitSides | null>(null);
+  const theme = settings.value.themeId;
+  useEffect(() => {
+    setLit(null);
+    if (view?.kind !== "text") {
+      return;
+    }
+    const language = view.modified.language ?? view.original.language;
+    const { original, modified } = view;
+    if (
+      language === null ||
+      original.text.length > MAX_COLORIZED_CHARS ||
+      modified.text.length > MAX_COLORIZED_CHARS
+    ) {
+      return;
+    }
+    let current = true;
+    Promise.all([colorize(original.text, language), colorize(modified.text, language)])
+      .then(([oldLines, newLines]) => {
+        if (current) {
+          setLit({ original: oldLines, modified: newLines });
+        }
+      })
+      // The plain text is already right; a tokenizer that refused this text is not worth a line.
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [view, colorize, theme]);
+  return lit;
+}
+
+function CardBody({
+  view,
+  colorize,
+}: {
+  readonly view: DiffSidesView | null;
+  readonly colorize: ColorizeLines;
+}) {
   const shown = useMemo(
     () => (view?.kind === "text" ? diffLines(view.original.text, view.modified.text) : null),
     [view],
   );
+  const lit = useLitSides(view, colorize);
   if (view === null) {
     return <Line>Reading…</Line>;
   }
@@ -90,10 +195,11 @@ function CardBody({ view }: { view: DiffSidesView | null }) {
   if (shown.hunks.length === 0) {
     return <Line>No line changes.</Line>;
   }
+  const digits = gutterDigits(shown.hunks);
   return (
-    <div className="overflow-x-auto py-1 font-mono text-code leading-5 whitespace-pre">
+    <div className="overflow-x-auto bg-[color-mix(in_oklch,var(--background)_70%,var(--sidebar))] py-1 font-mono text-code leading-4.5 whitespace-pre">
       {shown.hunks.map((hunk) => (
-        <Hunk key={`${hunk.oldStart}:${hunk.newStart}`} hunk={hunk} />
+        <Hunk key={`${hunk.oldStart}:${hunk.newStart}`} hunk={hunk} digits={digits} lit={lit} />
       ))}
     </div>
   );
@@ -105,6 +211,7 @@ interface CardProps {
   readonly initial: boolean;
   readonly controller: FileSurfaceController;
   readonly ports: DiffSidesPorts;
+  readonly colorize: ColorizeLines;
   /** The controller's read counter: a read that left the entry's counts alone can still change its text. */
   readonly reads: number;
   readonly marked: boolean;
@@ -113,7 +220,7 @@ interface CardProps {
 const stampOf = (entry: ChangeEntry): string =>
   [entry.status, entry.oldPath, entry.added, entry.removed, entry.binary].join("\0");
 
-function Card({ root, entry, initial, controller, ports, reads, marked }: CardProps) {
+function Card({ root, entry, initial, controller, ports, colorize, reads, marked }: CardProps) {
   const key = cardKey(root, entry.path);
   const folded = dockFoldedCards.value.has(key);
   const sides = useMemo(() => createDiffSides(ports), [ports]);
@@ -147,7 +254,6 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
   }, [near, folded, tag, sides]);
 
   const counts = countsFor(entry);
-  const mark = STATUS_LOOK[entry.status];
   const label = folded ? "Unfold" : "Fold";
   return (
     <div
@@ -166,13 +272,7 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
         >
           <DeckIcon icon={folded ? ArrowRight01Icon : ArrowDown01Icon} />
         </Button>
-        <span
-          role="img"
-          aria-label={STATUS_WORD[entry.status]}
-          className={cn("w-3 shrink-0 text-center font-mono text-code font-semibold", mark.ink)}
-        >
-          {mark.letter}
-        </span>
+        <StatusMark status={entry.status} />
         <Button
           variant="ghost"
           size="sm"
@@ -198,7 +298,7 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
         ) : null}
       </div>
       {folded ? null : near || loadedFor.current !== null ? (
-        <CardBody view={sides.view.value} />
+        <CardBody view={sides.view.value} colorize={colorize} />
       ) : null}
     </div>
   );
@@ -214,6 +314,8 @@ export interface DockChangesStackProps {
   readonly markedPath: string | null;
   /** Test seam; the window's file and git channels otherwise. */
   readonly ports?: DiffSidesPorts;
+  /** Test seam; Monaco's colorizer otherwise. */
+  readonly colorize?: ColorizeLines;
 }
 
 /**
@@ -229,6 +331,7 @@ export function DockChangesStack({
   reads,
   markedPath,
   ports = defaultStackPorts,
+  colorize = colorizeLines,
 }: DockChangesStackProps) {
   return (
     <div role="group" aria-label="File diffs">
@@ -240,6 +343,7 @@ export function DockChangesStack({
           initial={initial}
           controller={controller}
           ports={ports}
+          colorize={colorize}
           reads={reads}
           marked={entry.path === markedPath}
         />

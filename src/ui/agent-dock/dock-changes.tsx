@@ -30,6 +30,18 @@ export interface DockChangesProps {
   readonly ports?: DiffSidesPorts;
 }
 
+/**
+ * Where the stack must scroll so `card` starts at its top edge. Measured against the stack's own
+ * scroller, not with `scrollIntoView`, which scrolls every scrolling ancestor too, `overflow:
+ * hidden` ones included (the dock body, the column, the panel), and a one-pixel shift of one of
+ * those moves the whole dock (traps.md, Layout and CSS).
+ */
+function cardScrollTop(scroller: HTMLElement, card: HTMLElement): number {
+  return (
+    scroller.scrollTop + card.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+  );
+}
+
 const Note = ({ children, failure = false }: { children: string; failure?: boolean }) => (
   <p
     role="status"
@@ -93,14 +105,18 @@ function DockChangesBody({
   // A press in the list pane brings that file's card up and marks it; nothing opens.
   const scrollToCard = (path: string): void => {
     setMarkedPath(path);
-    [...(stack.current?.querySelectorAll<HTMLElement>("[data-card-path]") ?? [])]
-      .find((card) => card.dataset.cardPath === path)
-      ?.scrollIntoView({ block: "start" });
+    const scroller = stack.current;
+    const card = [...(scroller?.querySelectorAll<HTMLElement>("[data-card-path]") ?? [])].find(
+      (element) => element.dataset.cardPath === path,
+    );
+    if (scroller !== null && card !== undefined) {
+      scroller.scrollTop = cardScrollTop(scroller, card);
+    }
   };
   return (
     <div className="flex h-full min-h-0 flex-col">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
-      <div className="flex h-8 items-center gap-2 pr-2 pl-3">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b pr-2.5 pl-3">
         <span className="text-xs font-medium text-foreground">Uncommitted</span>
         {snapshot !== null && entries.length > 0 ? (
           <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-muted-foreground">

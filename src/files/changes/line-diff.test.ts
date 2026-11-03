@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diffLines } from "./line-diff";
+import { diffLines, numberLines } from "./line-diff";
 
 const text = (lines: readonly string[]): string => `${lines.join("\n")}\n`;
 const numbered = (count: number): string[] => Array.from({ length: count }, (_, i) => `l${i + 1}`);
@@ -68,5 +68,47 @@ describe("diffLines", () => {
     expect(diffLines(before, after, 3, 20)).toEqual({ hunks: [], tooLarge: true });
     expect(diffLines("", before, 3, 20)).toEqual({ hunks: [], tooLarge: true });
     expect(diffLines(before, after, 3, 100).tooLarge).toBe(false);
+  });
+});
+
+describe("numberLines", () => {
+  const numbers = (diff: ReturnType<typeof diffLines>, hunk = 0) =>
+    numberLines(diff.hunks[hunk]).map((line) => [line.oldLine, line.newLine]);
+
+  it("numbers context on both sides, a removal on the old side and an addition on the new", () => {
+    const diff = diffLines(
+      text(numbered(10)),
+      text([...numbered(5), "new", ...numbered(10).slice(6)]),
+    );
+    // l6 became `new`: three lines of context either side, from line 3.
+    expect(numbers(diff)).toEqual([
+      [3, 3],
+      [4, 4],
+      [5, 5],
+      [6, null],
+      [null, 6],
+      [7, 7],
+      [8, 8],
+      [9, 9],
+    ]);
+  });
+
+  it("numbers an added file from 1 on the new side only, and a deleted one on the old side", () => {
+    expect(numbers(diffLines("", text(["x", "y"])))).toEqual([
+      [null, 1],
+      [null, 2],
+    ]);
+    expect(numbers(diffLines(text(["x", "y"]), ""))).toEqual([
+      [1, null],
+      [2, null],
+    ]);
+  });
+
+  it("keeps counting across a second hunk from its own start", () => {
+    const after = numbered(30).map((line, i) => (i === 1 || i === 25 ? `${line}!` : line));
+    const diff = diffLines(text(numbered(30)), text(after));
+    expect(diff.hunks).toHaveLength(2);
+    expect(numbers(diff, 1)[0]).toEqual([23, 23]);
+    expect(numberLines(diff.hunks[1]).find((line) => line.kind === "add")?.newLine).toBe(26);
   });
 });

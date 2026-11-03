@@ -257,16 +257,32 @@ describe("the list pane", () => {
   });
 
   it("scrolls to the card of a pressed file and marks it, opening no tab", async () => {
-    const scrolled: (string | undefined)[] = [];
+    const scrollIntoView = vi.fn();
     const original = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function (this: Element) {
-      scrolled.push((this as HTMLElement).dataset.cardPath);
-    };
+    Element.prototype.scrollIntoView = scrollIntoView;
     const openFile = vi.spyOn(files, "openFile");
     const { controller } = fakeChanges();
     const view = await mount(changesView(controller));
+    // jsdom has no layout: the stack's scroller sits at 100px, scrolled 40px, and the card 360px
+    // below its top edge.
+    const scroller = (document.body.querySelector('[aria-label="File diffs"]') as HTMLElement)
+      .parentElement as HTMLElement;
+    let top = 40;
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => top,
+      set: (value: number) => {
+        top = value;
+      },
+    });
+    scroller.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    const target = document.body.querySelector('[data-card-path="src/lib/c.ts"]') as HTMLElement;
+    target.getBoundingClientRect = () => ({ top: 460 }) as DOMRect;
+
     await click(row("file:src/lib/c.ts"));
-    expect(scrolled).toEqual(["src/lib/c.ts"]);
+    expect(top).toBe(400);
+    // Only the stack scrolls: no ancestor is asked to move.
+    expect(scrollIntoView).not.toHaveBeenCalled();
     expect(document.body.querySelector("[data-marked]")?.getAttribute("data-card-path")).toBe(
       "src/lib/c.ts",
     );

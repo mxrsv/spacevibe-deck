@@ -36,7 +36,11 @@ import { activeTabIndex, statusInfo, tabViews } from "../../terminal/tabs-store"
 import { byRole, click, mount, settle, waitUntil } from "../controls/preset-test-kit";
 import { AgentDock } from "./agent-dock";
 import { dockSurface, resetAgentDockState, setDockView } from "./agent-dock-state";
+import { editorWordWrap } from "../../files/editor-wrap";
+import type { ExternalAppChoice } from "../../links/external-app-choices";
+import type { ExternalAppGroup, ExternalAppId } from "../../lib/external-app-catalog";
 import { DockFileBody } from "./dock-file-body";
+import type { DockOpenInApps } from "./dock-open-in";
 import { DockFileTree } from "./dock-file-tree";
 import { fakeFileClient, testFileBodies } from "./dock-files-test-kit";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
@@ -147,8 +151,12 @@ describe("file tabs in the dock strip", () => {
       divider.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(strip().querySelector('button[aria-label="Usage"]')).not.toBeNull();
-    // A file holds the body, so no fixed icon reads as pressed.
-    expect(strip().querySelectorAll('button[aria-pressed="true"]')).toHaveLength(0);
+    // A file holds the body, so no fixed icon reads as pressed; the panel toggle at the end does.
+    expect(
+      [...strip().querySelectorAll('button[aria-pressed="true"]')].map((pressed) =>
+        pressed.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Hide the side panel"]);
 
     await click(tabs()[0]);
     expect(selected()).toEqual(["a.ts"]);
@@ -353,17 +361,82 @@ describe("the file body", () => {
     );
   }
 
-  async function mountBody() {
+  async function mountBody(openIn?: DockOpenInApps, path = A) {
     const files = testFileBodies({ client: treeClient });
     const view = await mount(
-      <DockFileBody controller={files.controller} workspacePath={ROOT} canCreate={false} />,
+      <DockFileBody
+        controller={files.controller}
+        workspacePath={ROOT}
+        canCreate={false}
+        openIn={openIn}
+      />,
     );
     await act(async () => {
-      await files.controller.openFile(ROOT, A, true);
+      await files.controller.openFile(ROOT, path, true);
     });
     await settle();
     return view;
   }
+
+  const app = (id: ExternalAppId, label: string, group: ExternalAppGroup): ExternalAppChoice => ({
+    id,
+    label,
+    group,
+    iconDataUrl: null,
+  });
+
+  it("wraps the editor's lines from the row's toggle, and offers none on a rendered page", async () => {
+    observeWidth(700);
+    const view = await mountBody();
+    expect(button("Wrap lines").getAttribute("aria-pressed")).toBe("false");
+    await click(button("Wrap lines"));
+    expect(editorWordWrap.value).toBe(true);
+    expect(button("Wrap lines").getAttribute("aria-pressed")).toBe("true");
+    await click(button("Wrap lines"));
+    expect(editorWordWrap.value).toBe(false);
+    await view.unmount();
+
+    // Markdown opens rendered: no editor, so nothing to wrap.
+    const page = await mountBody(undefined, C);
+    expect(button("Wrap lines")).toBeNull();
+    await page.unmount();
+  });
+
+  it("hands the file to the chosen app, and the caret changes which app that is", async () => {
+    observeWidth(700);
+    const onOpen = vi.fn();
+    const onSelect = vi.fn();
+    const view = await mountBody({
+      choices: [app("vscode", "VS Code", "editor"), app("finder", "Finder", "files")],
+      selected: "vscode",
+      onOpen,
+      onSelect,
+    });
+    await click(button("Open in VS Code"));
+    expect(onOpen).toHaveBeenCalledWith(A, "vscode");
+
+    await click(button("Choose which app opens a path"));
+    await waitUntil(() => byRole("menu") !== null);
+    const finder = [...document.body.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+      (item) => item.textContent === "Finder",
+    );
+    await click(finder as HTMLElement);
+    expect(onSelect).toHaveBeenCalledWith("finder");
+    await view.unmount();
+  });
+
+  it("leaves the open-in control out where no app is installed", async () => {
+    observeWidth(700);
+    const view = await mountBody({
+      choices: [],
+      selected: null,
+      onOpen: vi.fn(),
+      onSelect: vi.fn(),
+    });
+    expect(button("Choose which app opens a path")).toBeNull();
+    expect(document.body.querySelector('[aria-label^="Open in "]')).toBeNull();
+    await view.unmount();
+  });
 
   const tree = (): Element | null => document.body.querySelector('[role="tree"]');
 

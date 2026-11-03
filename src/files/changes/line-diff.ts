@@ -199,3 +199,28 @@ export function diffLines(
     ? { hunks: [], tooLarge: true }
     : { hunks: hunksOf(script, context), tooLarge: false };
 }
+
+/** A hunk line with its line number on each side; null on the side it does not exist on. */
+export interface NumberedLine extends DiffLine {
+  readonly oldLine: number | null;
+  readonly newLine: number | null;
+}
+
+/**
+ * The hunk's lines numbered for a gutter, and so a card can colour each one from the side it
+ * comes from: a removed line has only an old number, an added line only a new one.
+ */
+export function numberLines(hunk: DiffHunk): readonly NumberedLine[] {
+  let oldLine = hunk.oldStart;
+  let newLine = hunk.newStart;
+  return hunk.lines.map((line) => {
+    const numbered: NumberedLine = {
+      ...line,
+      oldLine: line.kind === "add" ? null : oldLine,
+      newLine: line.kind === "del" ? null : newLine,
+    };
+    oldLine += line.kind === "add" ? 0 : 1;
+    newLine += line.kind === "del" ? 0 : 1;
+    return numbered;
+  });
+}
