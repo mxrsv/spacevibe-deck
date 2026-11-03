@@ -45,15 +45,18 @@ component is remounted; use disposable sessions for development.
 
 ## CI
 
-Each workflow runs on push to `main`, on pull requests and by hand, only for the paths it
-owns; a newer push cancels an older run of the same workflow on the same ref. A change that
-touches only `docs/**` or `*.md` runs nothing.
+`ci.yml`, `landing.yml` and `pr-shots.yml` run on push to `main`, on pull requests and by
+hand, only for the paths each owns; a newer push cancels an older run of the same workflow on
+the same ref. The release workflow runs on a tag push, and the preview and
+signing-credential workflows only by hand. A change that touches only `docs/**` or `*.md`
+runs no CI check, but a change under `docs/user/**` builds the landing, which renders those
+guides.
 
 - [`ci.yml`](../../.github/workflows/ci.yml) `check` (ubuntu): `lint`, `test`, `build`,
-  `electron:build`; plus `backend-check` for the ingest Worker. Skipped when
-  only `marketing/**` changed.
+  `electron:build`; plus `backend-check` for the ingest Worker. Skipped when the change
+  stays within `marketing/**`, `docs/**`, `**/*.md` or `landing.yml`.
 - [`landing.yml`](../../.github/workflows/landing.yml) (ubuntu): the landing's Vitest files
-  and `build:landing`, when `marketing/**` changes.
+  and `build:landing`, when `marketing/**`, `docs/user/**` or the workflow itself changes.
 - [`pr-shots.yml`](../../.github/workflows/pr-shots.yml) (ubuntu, pull requests touching the
   app): builds, runs `electron/shoot.ts` under Xvfb, pushes the PNGs to the `pr-assets` branch
   and keeps one comment on the PR linking them. Fork PRs get the artifact only. By hand on a

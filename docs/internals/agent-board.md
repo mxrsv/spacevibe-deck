@@ -2,8 +2,9 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
-> **Retired 2026-09-28.** [Mission Control](mission-control.md) took the Board's chord, menu
-> item and toolbar button. This page describes code that still builds behind
+> **Retired 2026-09-28.** [Mission Control](mission-control.md) took the Board's chord and
+> menu item; the toolbar button it also took has been hidden since 2026-10-04 (a constant in
+> [`deck-toolbar.tsx`](../../src/ui/toolbar/deck-toolbar.tsx)). This page describes code that still builds behind
 > `AGENT_BOARD_RETIRED` and is what a revert of that switch brings back; nothing on screen
 > raises the Board while it is on.
 
@@ -28,8 +29,9 @@ they last said, because only the layout differs.
   `view`, every effect leaves through `actions`. That is what lets the gallery mount the real
   component over a fixture.
 - `AgentBoardNav` (a STATUS/PROJECTS column) and `AgentBoardPanel` (a detail column quoting
-  the selected pane) still build and keep their suites, but nothing mounts them, so
-  `view.selected` stays null. This is the theme-gallery retirement pattern, not dead code.
+  the selected pane) still build and keep their suites, but nothing mounts them. A card press
+  still records the selection in the store; only these two unmounted columns would read it.
+  This is the retirement pattern the live switches use, not dead code.
 
 ## Seams it took
 

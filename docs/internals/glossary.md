@@ -90,9 +90,9 @@ a binary discovered on the login shell's `PATH` or a command the user declared.
 Not: process, bot.
 
 **Built-in agent** — One Deck ships, defined in its own file and listed in
-[`agent-registry.ts`](../../src/lib/agents/agent-registry.ts). Active: `claude`, `codex`,
-`opencode`, `agy`, `gemini`; withdrawn: `cursor-agent`. Its id, binary name and bare command
-are the same string.
+[`agent-registry.ts`](../../src/lib/agents/agent-registry.ts), which holds the fourteen
+definitions in reach order; the two withdrawn ones are `cursor-agent` and `crush`. Its id,
+binary name and bare command are the same string.
 
 **Withdrawn agent** — A built-in kept as data but switched off: not probed, listed,
 classified, resumed or counted. Not: disabled agent (a user setting).
@@ -205,7 +205,18 @@ opened, optionally with Claude Code or Codex skills and subagents referenced, an
 only behind a triple gate. Not: quick launch, composer.
 
 **Theme mode** — Whether the active theme is light or dark, read from its `type`. No setting
-holds it: choosing a theme in the gallery decides it. Not: theme gallery.
+holds it: choosing a theme under Settings → Appearance decides it. Not: theme gallery.
+
+**Release switch** — A temporary feature gate in
+[`release-switches.ts`](../../src/lib/release-switches.ts): off in a packaged release until
+its activation commit, on in every development build. The project-first rail, Command
+Settings, the stacked dock and the flush stage sit behind one each. Not: live switch (a
+typed constant kept for a safety, consent or retirement decision).
+
+**UI preset** — The generated shadcn/Base UI stylesheet in
+[`preset.css`](../../src/ui/preset.css) and the controls built on it under
+[`src/ui/controls`](../../src/ui/controls); it applies only inside an element carrying
+`.ui-preset`, the migration boundary. Not: layout preset, launch profile.
 
 **Quit** — Exiting Deck: ⌘Q, or the last window closing on Windows. Closing the last tab does
 not quit and does not close the window; it raises the Open board. Not: close tab.

@@ -5,7 +5,7 @@
 
 Deck is a terminal for running many agent CLIs side by side. The host is Electron, in
 `electron/`; the renderer is Preact + xterm.js and reaches it through the facades in
-`src/host/`. The Tauri host Electron replaced was removed on 2026-10-12, so a comment that
+`src/host/`. The Tauri host Electron replaced was removed on 2026-10-13, so a comment that
 still cites a `src-tauri/` file names where code was ported from, not a live twin. Everything
 in this repo — UI strings, comments, docs, and commits — is **English only**, except the
 landing's translated copy (R1).
@@ -87,7 +87,7 @@ and why — a fork nobody can reconstruct is a decision that will be re-litigate
 | `npm run electron:smoke`      | headed smoke test; needs a display server and a real PTY                                                                                                                |
 | `npm test`                    | Vitest suite                                                                                                                                                            |
 | `npm run build`               | TypeScript + shipping renderer bundle                                                                                                                                   |
-| `npm run lint`                | oxlint + prettier check; max-lines stays a warning (101 pre-existing over-length files are backlog)                                                                     |
+| `npm run lint`                | oxlint + prettier check; max-lines stays a warning (234 pre-existing over-length files as of 2026-11-03 are backlog)                                                                     |
 | [`scripts/check-changed.sh [files]`](scripts/check-changed.sh) | prettier, `tsc`, oxlint and the sibling tests on the files you touched (default: the whole working-tree diff) |
 | [`scripts/sync-origin.sh`](scripts/sync-origin.sh) | fetch, then dirty files, last commits and ahead/behind against `origin/main` — before a push or rebase |
 | `npm run prototype:gallery`   | visual comparison gallery at `127.0.0.1:5175`                                                                                                                           |

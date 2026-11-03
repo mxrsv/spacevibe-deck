@@ -8,7 +8,11 @@ switch, no consent question, and an "off" recorded by a development build is ove
 than honoured. The one state that still stops a send is a `telemetry.json` Deck cannot read.
 This page is the contract: what leaves the machine, who owns the state, and when a POST
 fires. Settings → Privacy states exactly what is sent. Electron only: 1.0.0 and the Tauri
-host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-09-12/index.html).
+host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-10-08/index.html).
+Crash and error reports are a separate channel, sent to Sentry by
+[`electron/crash-reporting/`](../../electron/crash-reporting/init.ts) and the renderer's
+[`crash-reporting.ts`](../../src/telemetry/crash-reporting.ts) with home paths scrubbed; the
+same notice discloses them, and nothing on this page covers them.
 
 ## The payload
 
@@ -68,7 +72,7 @@ out.
   (`cdc07a0` postdates 1.0.0), so a `declined` file can come from a development build,
   not from the published 1.0.0 or Tauri releases.
 - **Two constants, both in [`usage-notice.ts`](../../src/telemetry/usage-notice.ts), and both
-  the whole reversal.** `USAGE_CONSENT_ASKED` is `false`, so the consent modal mounts nowhere;
+  the whole reversal.** `USAGE_CONSENT_ASKED` is `false`, so the consent modal never opens;
   `USAGE_ANALYTICS_MANDATORY` is `true`, so there is nothing to answer. Neither surface was
   deleted — the modal stays in the tree, and the opt-out machinery below stays in
   `service.ts`, covered by tests that pass `mandatory: false`. `TelemetryDeps.mandatory`
@@ -103,7 +107,8 @@ out.
 The endpoint is `https://api.deck.spacevibe.dev/v1/ping`, POSTed as JSON with a 5-second
 timeout by [`register-telemetry.ts`](../../electron/ipc/register-telemetry.ts).
 
-- At boot when enabled, and once when the first window reports ready.
+- Once when the first window reports ready. Boot itself only resumes today's buffer and
+  starts the timer; it sends nothing.
 - On a 15-minute timer (`unref`'d, so it never keeps the process alive): a dirty buffer sends
   after 15 minutes since the last send; an unchanged one sends as a 6-hour heartbeat.
 - Immediately on `setEnabled(true)`.
@@ -135,11 +140,10 @@ settings-screen row inventory counts 18 rows rather than 19.
 ## Receiving service
 
 The independently deployed [Worker and D1 service](../../backend/README.md) `current` lives
-in this repository. [DECK-1](https://linear.app/mxrsv/issue/DECK-1) `decided` replaces the
-older separate-repository/session decision. Strict schema validation, cumulative upsert,
-closed historical dates, and atomic aggregate/delete retention are implemented in
-[backend/src](../../backend/src/worker.mjs) `current`. The dated
-[public privacy notice](../../marketing/public/privacy/2026-09-12/index.html) `current`
+in this repository, the owner's 2026-09 decision over a separate repository. Strict schema
+validation, cumulative upsert, closed historical dates, and atomic aggregate/delete retention
+are implemented in [backend/src](../../backend/src/worker.mjs) `current`. The dated
+[public privacy notice](../../marketing/public/privacy/2026-10-08/index.html) `current`
 is served at `/privacy` by the landing; earlier dated notices stay at their own paths.
 
 **A payload change ships Worker-first.** A 400 marks the client's buffer terminal, so a

@@ -32,7 +32,7 @@ the most common ways to start: **Open folder…**, **Clone repository…** and *
 The folder bar's menu holds **Create workspace…**, **Resume a session…** and **Manage agents**
 above your recent folders. The board offers:
 
-- **Open workspace…** — pick a folder. A workspace is a local folder that becomes the working
+- **Open folder…** — pick a folder. A workspace is a local folder that becomes the working
   root for a tab.
 - **Recent workspaces** — selecting a folder fills the workspace and agent choices.
   Review the selected agent, then choose **Open agent** to launch it, or double-click the

@@ -35,8 +35,8 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
 ## Explorer and editor
 
 - The tree ([`file-tree.ts`](../../src/files/file-tree.ts)) is virtualized by plain index
-  arithmetic, 22px rows, sorts directories first with a locale compare and a code-unit
-  tie-break, and walks with a visited set so a symlink cycle inside the root cannot loop. A
+  arithmetic over the 22px rows [`file-tree-view.tsx`](../../src/files/ui/file-tree-view.tsx)
+  declares, sorts directories first with a locale compare and a code-unit tie-break, and walks with a visited set so a symlink cycle inside the root cannot loop. A
   symlink out of the root renders as a leaf and does not open.
 - **What the tree hides is git's verdict, not a list.** Each listing asks
   [`ignored_paths`](../../electron/fs/ignored-names.ts) which of its entry names the
@@ -177,8 +177,11 @@ host cannot answer.
 ## Main-process file guards
 
 - **A path is legal only if, after `realpath`, it is inside the workspace root, itself
-  realpath'd** ([`path-guard.ts`](../../electron/fs/path-guard.ts)). Comparison is
-  `path.relative`, never `startsWith`; the root is resolved per call, not cached; a UNC-shaped
+  realpath'd** ([`path-guard.ts`](../../electron/fs/path-guard.ts)). Containment is judged
+  on `path.relative`, never by a string prefix of the raw path (which would accept
+  `/repo-backup` for `/repo`); a relative result starting with `..` counts as outside, so a
+  top-level entry whose own name starts with `..` is refused too. The root is resolved per
+  call, not cached; a UNC-shaped
   root is rejected before any filesystem call. `root` travels with every file channel
   rather than being remembered per window, because two windows can hold different
   workspaces.

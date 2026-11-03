@@ -50,8 +50,6 @@ translations at `/<locale>/docs` from `marketing/landing-prototype/docs/translat
 
 ## Elsewhere
 
-- [Public user documentation website](https://linear.app/mxrsv/issue/DECK-126) — feature plan
-  and acceptance criteria.
 - [`DESIGN-LANGUAGE.md`](DESIGN-LANGUAGE.md) — visual invariants (a fork to change) and
   current surface patterns (replaced by a redesign). Code cites its numbers, and
   `scripts/design-language.test.ts` resolves them, so it stays at this path.

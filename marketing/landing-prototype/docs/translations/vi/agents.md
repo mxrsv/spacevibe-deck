@@ -1,5 +1,5 @@
 ---
-translated-from: 97cece6f
+translated-from: d2278942
 ---
 
 # Agent
@@ -120,7 +120,7 @@ Dùng **New split here** nếu muốn một pane nằm cạnh tab hiện có.
 
 ## Agent tự thêm
 
-Trong **Declared**, bạn thêm được bất kỳ CLI nào bằng một cái tên và lệnh sẽ gõ vào mỗi pane. Bấm
+Trong **Agent identities**, bạn thêm được bất kỳ CLI nào bằng một cái tên và lệnh sẽ gõ vào mỗi pane. Bấm
 vào tên hoặc lệnh để sửa; ✕ để xoá. Agent đã khai báo vẫn nằm trong danh sách khi file chạy của
 nó không có trong `PATH`, để một tool chưa cài hiện là "thiếu" chứ không phải là mất dữ liệu.
 

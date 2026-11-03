@@ -31,10 +31,11 @@ Report the checks actually performed; omitted checks are not successful test res
   `v<version>` for the `version` in [`package.json`](../../package.json). Either mismatch
   fails the run before anything is built.
 - **The version is the channel.** A bare `X.Y.Z` is stable; `X.Y.Z-electron.N` is a
-  prerelease. Both halves of the update path derive the channel from that one string:
-  electron-builder from the version's prerelease component (`publish.channel` is deliberately
-  unset in [`electron-builder.release.yml`](../../electron-builder.release.yml)), and
-  electron-updater from the release tag on the client.
+  prerelease. Only the client derives the channel from that string: electron-updater reads
+  it off the release tag. electron-builder does not (for the GitHub provider app-builder-lib
+  derives a channel from the version only for `generic`), so with `publish.channel` unset in
+  [`electron-builder.release.yml`](../../electron-builder.release.yml) it always writes the
+  default manifest names, which step 2 below relies on.
 - **The design is fail-closed.** Every artifact lands in a draft release, and the draft goes
   public only after a downstream job has counted the full two-platform asset set on the
   release itself. A failure anywhere leaves a draft that no installed app can see. A run that
@@ -283,6 +284,7 @@ Stored on the repository; `GITHUB_TOKEN` is supplied by Actions.
 | `APPLE_ID`                   | Notarization account                                                                                          |
 | `APPLE_PASSWORD`             | App-specific password; exported to the build as `APPLE_APP_SPECIFIC_PASSWORD`, the name app-builder-lib reads |
 | `APPLE_TEAM_ID`              | Notarization team                                                                                             |
+| `DISCORD_WEBHOOK_URL`        | The release announcement; optional, the `promote` job warns and skips the post when it is unset              |
 
 Run [`verify-signing-credentials.yml`](../../.github/workflows/verify-signing-credentials.yml)
 (`workflow_dispatch`) before the first release and after rotating any credential. It imports

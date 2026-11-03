@@ -125,7 +125,7 @@ Use **New split here** for a pane beside the existing tab
 
 ## Custom agents
 
-Under **Declared**, add any CLI with a name and the command to type into each pane. Click
+Under **Agent identities**, add any CLI with a name and the command to type into each pane. Click
 the name or the command to edit either; ✕ removes it. A declared agent stays listed when its
 binary is missing from `PATH` so that an uninstalled tool reads as missing rather than as
 lost data.

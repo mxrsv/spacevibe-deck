@@ -1,6 +1,6 @@
 # Deck analytics service
 
-Specification and decisions: [DECK-1](https://linear.app/mxrsv/issue/DECK-1) `decided`.
+The desktop-side contract is [internals/telemetry.md](../docs/internals/telemetry.md) `current`.
 This directory is deployed independently from the desktop and landing. It shares no database
 with sibling SpaceVibe products. Entry point: [Worker](src/worker.mjs) `current`;
 [deployment configuration](wrangler.jsonc) `current`; [privacy notice](../marketing/public/privacy/2026-10-08/index.html) `current`.
@@ -174,9 +174,9 @@ of the scheduled handler; never delete raw data independently of aggregation. Th
 external failure alert configured. Verify scheduled execution after deployment and after any
 migration. Do not claim the retention SLA from deployment success alone.
 
-Current checkout's Electron client retains its Privacy switch. The upcoming always-on policy
-is the separate DECK-1 owner decision implemented at `d1531cb`; the public notice explicitly
-distinguishes these builds and the analytics-free public 1.0.0/Tauri releases.
+The Electron client has no Privacy switch: analytics is always on since `d1531cb`
+(2026-09-06), and Settings → Privacy only states what is sent. The public notice explicitly
+distinguishes these builds from the analytics-free public 1.0.0/Tauri releases.
 
 ## Chưa khớp thực tế
 

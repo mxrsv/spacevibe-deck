@@ -69,7 +69,8 @@ answer — whether another overlay covers the stage.
 - `toggle-mission-control` is scope `"always"`, like `toggle-settings`, because Mission
   Control ranks as an overlay at the Open board's tier while it is open (`openOverlayRanks`).
   A tier would let the chord open it and never close it. The open half has its own
-  preflight; the performable gate only asks whether a terminal tab exists.
+  preflight; the performable gate asks for a terminal tab and, while another overlay holds
+  the stage, that Mission Control is the one open — so its own close branch still consumes.
 - **An exit switches the tab under the surface first**, then the windows fly onto the rects
   `activeSlotRects()` answers for the new tab. The `exiting` ref covers the switch until the
   zoom lands, because `useSignalEffect` sees `activeTabIndex` move about a frame later and

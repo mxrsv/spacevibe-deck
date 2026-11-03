@@ -401,9 +401,9 @@ rule; a redesign may change it. The resource budget behind it is an invariant (Â
 Every setting is a row: key (optional one-line description) on the left, one interactive
 value on the right. Rows hold no checkbox lists, chip grids, sliders or boxed steppers; two or
 three equal options use the `binary` segmented group (DL-6.5). A `cfg-group` label is `--ui-font`
-14px muted, sentence-case. A `cfg-row` holds `cfg-row__key` (`cfg-row__label` 12.5px primary, an
-optional `cfg-row__desc` 10.5px faint) and `cfg-row__value`, a right-aligned slot with one
-`cfg-btn` pill.
+14px muted, sentence-case. A `cfg-row` holds `cfg-row__key` (`cfg-row__label` at `--type-body`
+14px primary, an optional `cfg-row__desc` at `--type-meta` 12px faint) and `cfg-row__value`, a
+right-aligned slot with one `cfg-btn` pill.
 
 - **DL-5.1** Row hover is DL-21.2's quiet wash and nothing else.
 - **DL-5.2** The pill (`.cfg-btn`) is the value inside a 1px `--control-frame` border at
@@ -650,8 +650,9 @@ counted, and the table has no interaction.
 - **DL-15.4** Numerals are right-aligned with `font-variant-numeric: tabular-nums` (DL-4.2); text
   columns are left-aligned. There is no `--mono` token: the monospace face is the terminal's
   (DL-4.1).
-- **DL-15.5** A column header is sentence-case `--ui-font` at 10.5px in `--text-faint` at normal
-  weight (DL-4.1, DL-4.3, DL-4.4), with no uppercase, bold or sort caret.
+- **DL-15.5** A column header is sentence-case `--ui-font` at `--type-micro` (12px) in
+  `--text-muted` at normal weight (DL-4.1, DL-4.3, DL-4.4), with no uppercase, bold or sort
+  caret.
 - **DL-15.6** An unknown, unavailable or not-applicable value renders as a single em dash `â€”` in
   `--text-faint`, never `0`, `n/a` or an empty cell.
 - **DL-15.7** The markup is a real `<table>` with `<thead>`, `<tbody>`, `<th scope="col">` on

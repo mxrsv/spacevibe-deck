@@ -10,7 +10,7 @@ the host only through the facades in `src/host/`.
 
 ## The Tauri host is gone
 
-Electron replaced a Tauri 2 + Rust host, removed from `main` on 2026-10-12. Its last release
+Electron replaced a Tauri 2 + Rust host, removed from `main` on 2026-10-13. Its last release
 is `v0.12.3`, whose updater endpoint answers 404; the tag keeps its source. Two traces remain on
 purpose:
 
@@ -47,11 +47,12 @@ keeps two processes from sharing one `userData`.
 | `electron/agents.ts`, `links.ts`, `external-apps.ts`, `images.ts`, `prompt-assets.ts`, `github-star.ts`, `themes.ts` | Discovery, path resolution, external apps, images, prompt assets, `gh`, the themes folder |
 | `electron/ipc/`        | The channel table and one `register-*.ts` per service                            |
 
-**Renderer** ([`src/main.tsx`](../../src/main.tsx)) boots in a fixed order: desktop
-environment, the window's boot mode (normal or adopting a transferred pane, read before
-anything renders), settings, store-failure listener, then presets, workspaces,
-repositories, logo, banner and custom themes in parallel, then `render`. Custom themes are
-awaited before first paint so an imported theme cannot flash.
+**Renderer** ([`src/main.tsx`](../../src/main.tsx)) boots in a fixed order: crash reporting
+(first, and a load failure only warns), desktop environment, the window's boot mode (normal or
+adopting a transferred pane, read before anything renders), settings, the GUI zoom binding,
+store-failure listener, then presets, workspaces, repositories, logo and custom themes in
+parallel, then `render`. Custom themes are awaited before first paint so an imported theme
+cannot flash.
 
 | Directory           | Owns                                                                                   |
 | ------------------- | -------------------------------------------------------------------------------------- |
@@ -116,15 +117,15 @@ bridge in a `sandbox: false` renderer was one injected script away from `spawn_s
 
 Everything lives under `app.getPath("userData")` (`SpaceVibe Deck` for the release identity).
 The renderer may open only the allowlisted stores `settings.json`, `workspaces.json`,
-`presets.json`, `logo.json`, `workspace-logos.json`, `sidebar-banner.json`,
-`update-attempt.json`, `repositories.json` and `session.json`. `telemetry.json` and
+`presets.json`, `logo.json`, `workspace-logos.json`, `update-attempt.json`,
+`repositories.json` and `session.json`. `telemetry.json` and
 `usage-cache.json` are main-only on purpose, and `themes/` is read as text.
 
 - A store that parses to a non-object, or fails to read for any reason but `ENOENT`, is
   **unreadable and write-locked**: a failed read never becomes permission to overwrite
   recoverable bytes with defaults. Settings' Retry re-reads it.
-- The settings patch is a shallow top-level merge that drops three named retired keys and
-  nothing else, then broadcasts `settings:merged` to every window including the sender,
+- The settings patch is a shallow top-level merge that drops the retired keys named in
+  [`settings-merge.ts`](../../electron/settings-merge.ts) and nothing else, then broadcasts `settings:merged` to every window including the sender,
   which is the one authoritative path; the reply exists only to detect a failed write.
 - Every write is atomic through one implementation in `electron/fs/write.ts`.
 - `saveAll` on quit uses `allSettled`, so one failing store cannot skip the rest.
@@ -152,8 +153,9 @@ These modules require a plan and cross-boundary verification, not a drive-by ref
 - PTY ownership and process classification (`electron/pty/`, `electron/platform/`).
 - The window coordinator and transfer protocol (`electron/coordinator.ts`).
 - Tab materialization (`MaterializeIntent`, `TabManager.materialize`, `AgentLauncher`).
-- Layout (`split-tree.ts`, `layout-engine.ts`).
-- Close and quit coordination (`quit-flow.ts`, `close-coordinator.ts`, the census).
+- Layout (`src/lib/split-tree.ts`, `src/terminal/layout-engine.ts`).
+- Close and quit coordination (`electron/quit-flow.ts`, `src/terminal/close-coordinator.ts`,
+  the census).
 - The `SurfaceStrip` seam between `TabManager` and the file and browser stores.
 - `ManagerCallbacks` between `TerminalManager` and the tab layer.
 

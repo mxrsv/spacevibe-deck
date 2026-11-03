@@ -153,7 +153,11 @@ untouched.
   it fits. Disposal constructs xterm's DOM fallback, which measures glyph widths: hiding
   first returns zero, prevents caching and can stall switching through repeated style reads.
   The [retirement check](../../src/terminal/terminal-manager.test.ts) keeps the outgoing tab
-  measurable until all its renderers retire. `display: none`
+  measurable until all its renderers retire. A WebGL addon is released through
+  [`disposeWebglAddon`](../../src/terminal/webgl-addon-dispose.ts), which clears xterm's
+  cursor blink manager first: `addon.dispose()` alone leaves a 600 ms interval whose closure
+  pins the whole terminal (delete the helper once a stable addon-webgl registers that
+  manager). `display: none`
   frees none of this on its own — a WebGL drawing buffer belongs to the GL context, not the
   compositor, so it survives at full pane size.
 
@@ -317,7 +321,14 @@ poll having classified the pane's foreground process as an agent.
   in that pane, turns it `idle`, so the `ended` row goes back to being a shell. Focus counts only when
   the window is foreground, the tab is active, and DOM focus rests inside the pane.
 - Notifications dedupe on the latch identity, so only a newly raised or escalated kind is
-  forwarded, and the OSC classifier never carries the payload's title or body text.
+  forwarded, and the OSC classifier never carries the payload's title or body text. The
+  forward is a native OS notification built by
+  [`agent-notifier.ts`](../../src/terminal/agent-notifier.ts) when the notifications setting
+  is on and the window is not focused; its copy is only the workspace label, the agent label
+  and one fixed phrase per kind. Clicking one returns to the pane
+  ([`notification-activation.ts`](../../src/ui/attention/notification-activation.ts)), and
+  the macOS Dock badge sums the panes that need attention across windows
+  ([`attention-badge-sync.ts`](../../src/ui/attention/attention-badge-sync.ts)).
 
 ### The contract layer
 

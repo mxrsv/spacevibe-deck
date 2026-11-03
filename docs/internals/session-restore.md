@@ -75,8 +75,8 @@ The main record remembers the Agent Board chip separately from whether its surfa
 stage. Restore its surface **after** terminal selection, which deactivates every surface;
 when it was active, do not activate a saved file over it. Records without the surface flag keep
 the chip-only behavior. Secondary records cannot raise the Board, and no Board restores unless
-at least one terminal tab survives. The decision is recorded in
-[DECK-33](https://linear.app/mxrsv/issue/DECK-33).
+at least one terminal tab survives. The decision landed with `49b14809` (2026-09-09) and
+lives in git history, not in a tracker.
 
 Scrollback, unsaved edits and window placement never restore. The rail's remembered rows use
 the same core for one workspace, without the marker; they also restore each pane's saved task
@@ -91,17 +91,19 @@ exact id, `latest`, or nothing, and never rejects.
 | -------------- | ----------------------------------------------------------- | ---------------------------------------- |
 | `claude`       | `~/.claude/projects/<project>/*.jsonl`, files directly in the project dir | exact id, else nothing      |
 | `codex`        | Codex rollouts, plain or compressed, interactive sources only, archived included | exact id, else nothing |
-| `opencode`     | `opencode.db` via `node:sqlite` (the 1.x and 2.x session tables) first, then the legacy JSON tree, deduplicated by id; sub-agent sessions excluded | exact id, else nothing |
+| `opencode`     | `opencode.db` via `node:sqlite` (the 1.x tables and 2.x's `session_v2`, which 2.0 copied the old sessions into and writes alone) first, then the legacy JSON tree, deduplicated by id; sub-agent sessions excluded | exact id, else nothing |
 | `gemini`       | none                                                        | always `latest`                          |
 | `agy`          | `~/.gemini/antigravity/conversations/*.pb` head bytes       | best-effort id, else `latest`            |
 | custom         | none                                                        | the declared command, unchanged          |
 
 - Candidates within 30 days of `lastSeenAt` whose cwd matches are ranked by mtime proximity;
   a candidate is marked taken on selection, not on success, so two panes cannot resume the
-  same conversation. Scans cap at 300 files and 64 KiB of head per file.
+  same conversation. Each scanner caps at 300 files; the head it reads per file is 64 KiB
+  for Claude and Codex, 256 KiB for opencode's legacy JSON tree and 512 KiB for agy.
 - The command comes from `COMMAND_TABLE` in [`agent-resume.ts`](../../src/lib/agent-resume.ts),
   built from each active agent's resume forms: `claude --resume <id>` / `--continue`,
-  `codex resume <id>` / `--last`, `opencode -s <id>` / `-c`, `gemini --resume latest`,
+  `codex resume <id>` / `--last` (each with Codex's `-c tui.animations=false`, so a restored
+  pane classifies like a launched one), `opencode -s <id>` / `-c`, `gemini --resume latest`,
   `agy --conversation <id>` / `--continue`. A withdrawn agent has no entry, so its journaled
   pane restores as a plain shell. An id is checked against
   `SESSION_REF_SAFE` (`[A-Za-z0-9._-]{1,128}`) in the one place before it can reach a PTY

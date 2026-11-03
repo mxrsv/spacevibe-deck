@@ -83,6 +83,15 @@ below the project scrollport. It is [one line of micro text](../../src/styles/15
 shows the one window closest to its limit; the tooltip and accessible label list every window and
 carry the unavailable state. A dash means missing, expired or failed data, never zero quota.
 Selecting an agent opens the existing [Usage dock](../../src/ui/usage/usage-dock-tab.tsx).
+The one-ring-per-agent drawing exists only in the project-first rail's foot, behind the
+`projectRail` release switch; the shipped rail keeps the text line.
+
+Behind that same switch, [`src/ui/project-rail/`](../../src/ui/project-rail/) replaces the
+create row, the cluster list and the tools row described on this page, and the needs-you
+count moves from the strip's chip to a stage-bar pill that also needs `shellStage`
+([`shell-stage.ts`](../../src/ui/shell-stage.ts)). Both switches are off in every packaged
+release, so this page describes the shipped rail; the branch point is the render-time read in
+[`agent-rail.tsx`](../../src/ui/agent-rail.tsx).
 
 [Electron's limit service](../../electron/agent-limits/service.ts) reads Codex's
 `account/rateLimits/read` using the installed CLI and its default login profile,

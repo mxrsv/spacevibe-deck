@@ -18,6 +18,7 @@ terminal text, workspace chrome and identity.
 - **Tab bar position** — the chips live in the sidebar layout (default) or along the top.
 - **Show pane bar** — a name bar inside each split (off by default).
 - **Show status bar** — branch, path and window readout along the bottom (off by default).
+- **App logo** — under Identity, choose an image to show on the Open board, or remove it.
 
 ## Browser
 
@@ -57,14 +58,15 @@ a chord temporarily suspends the menu accelerators so the key reaches the record
   controls delivery. On macOS, allow notifications when the first alert prompts, and use the
   system's **Badges** switch to control the Dock count.
   See [notification settings](../../src/ui/settings/sections/notifications-section.tsx).
-- **Dock badge (macOS)** — the total **N need you** count across open windows, including finished
-  panes you have not looked at yet. It clears at zero and stays independent of Deck's alert
+- **Dock badge (macOS)** — a number on the Dock icon: the panes that need you across open
+  windows, including finished panes you have not looked at yet. It clears at zero and stays independent of Deck's alert
   toggle. Windows has alerts but no Dock badge.
   See [attention count](../../src/ui/attention/attention-badge-sync.ts).
 
 ## About
 
-Deck's version, **Check for updates**, and **Release notes**. An update is never downloaded or
+Deck's version, **Check for updates**, **Release notes** and **Feedback**, which opens the
+feedback page in your browser for reporting a bug or suggesting an idea. An update is never downloaded or
 installed without your choice; Deck asks before closing panes to install.
 That confirmation includes busy work and unsaved files in every open window, as checked by
 the [update census](../../electron/ipc/register-updater.ts).
@@ -80,6 +82,12 @@ Analytics state and pending daily counters live in `telemetry.json` in Deck's da
 separate from `settings.json`. A stored off choice from a development build becomes enabled
 on launch. If `telemetry.json` cannot be read, Deck counts for that run in memory and leaves
 the file untouched; the day's counts are lost when you quit.
+
+The page also states that packaged builds send crash and error reports to Sentry
+automatically, with no opt-out: error messages, stack traces, Deck source lines and app and
+runtime details, with the home-directory part of paths replaced by `~`. Breadcrumbs, local
+variables, native crash dumps, console and request events are never included. See the
+[Privacy page copy](../../src/ui/settings/sections/privacy-section.tsx).
 
 ## Search and changed marks
 

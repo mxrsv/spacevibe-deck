@@ -272,12 +272,11 @@ pass cannot delete the half they exist to keep.
 | -------------------------- | ----------------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------- |
 | `GRAB_PASTE_DISABLED`      | [`src/browser/browser-store.ts`](../../src/browser/browser-store.ts) | `true`  | A browser grab stops at the clipboard and is never pasted into a pane                   |
 | `USAGE_CONSENT_ASKED`      | [`src/telemetry/usage-notice.ts`](../../src/telemetry/usage-notice.ts) | `false` | No consent question is asked; analytics is on by default and the modal mounts nowhere |
-| `PANE_TREE_HIDDEN`         | [`src/ui/agent-rail.tsx`](../../src/ui/agent-rail.tsx)             | `true`    | A multi-agent tab renders flat framed rows instead of a parent row with elbow guides    |
 | `AGENT_BOARD_RETIRED`      | [`src/ui/agent-board-store.ts`](../../src/ui/agent-board-store.ts) | `true`    | A journaled Agent Board is not restored; Mission Control owns the Board's entry points  |
 
-Two more retirements follow the same pattern without a constant: the theme gallery and theme
-import are unmounted from Settings but still build and still resolve a stored id; and
-`RepositoryRail` is mounted only in the gallery.
+One more retirement follows the same pattern without a constant: `RepositoryRail` is mounted
+only in the gallery. The Agent Board's unmounted nav and detail columns are the same shape
+([agent-board.md](agent-board.md)).
 
 ### Release switch convention
 
@@ -319,6 +318,6 @@ first publication date before removal; local activation alone does not start the
 [The cleanup predicate](../../src/lib/release-switches.ts) refuses to consider a switch due
 without an activation date. Removal is reviewed code work, never a timed runtime action.
 
-This rule applies to new temporary feature gates only. The five legacy controls above
+This rule applies to new temporary feature gates only. The legacy controls above
 retain their existing semantics: development-all-on and automatic retirement would invert
 safety/consent/retirement decisions. Migrating one requires its own approved scope.
