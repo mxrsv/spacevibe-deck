@@ -18,9 +18,8 @@
   height: 33px;
   /* DL-3.3: distinguish the header through a neutral surface step. */
   background: var(--chrome-2);
-  /* CMP-14: the step above separates header from terminal; the border keeps its 1px so the
-     bar's height is unchanged, it just no longer draws. */
-  border-bottom-color: transparent;
+  /* CMP-14: the step above separates header from terminal. The transparent 1px
+     border `.pane__bar` declares (06-stage-panes.css) keeps the bar at 34px. */
   /* DL-21.5: joining and leaving the focused sheet below is a colour change, not a snap. */
   transition: background-color var(--duration) var(--ease);
 }

@@ -442,6 +442,9 @@
   font-size: var(--type-meta);
   color: var(--text-faint);
   background: var(--chrome-1);
+  /* CMP-14: no line between bar and terminal; the 1px stays so the bar keeps
+     its height (the agent header's 34px is 33 + this border). */
+  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 

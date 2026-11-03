@@ -158,6 +158,7 @@
 }
 
 .nt-composer__prompt-collapsed:is(:hover, :focus-visible) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -347,6 +348,7 @@ img.nt-agent-mark {
 }
 
 .nt-primary-action:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   background: color-mix(in oklch, var(--primary) 92%, black);
 }
 
@@ -379,6 +381,7 @@ img.nt-agent-mark {
 }
 
 .nt-secondary-action:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -393,6 +396,7 @@ img.nt-agent-mark {
 }
 
 .nt-text-action:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-primary);
   background: var(--state-hover-bg);
 }
@@ -410,6 +414,7 @@ img.nt-agent-mark {
 }
 
 .nt-icon-action:is(:hover, :focus-visible) {
+  outline: none;
   background: var(--muted);
   color: var(--text-primary);
 }
@@ -437,6 +442,7 @@ img.nt-agent-mark {
 }
 
 .nt-board__shortcuts button:is(:hover, :focus-visible) {
+  outline: none;
   background: var(--muted);
   color: var(--text-primary);
 }
@@ -478,6 +484,7 @@ img.nt-agent-mark {
 }
 
 .nt-composer__recovery button:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
   color: var(--text-primary);
 }
@@ -596,6 +603,7 @@ img.nt-agent-mark {
 }
 
 .nt-quick-launch__foot button:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-primary);
 }
 

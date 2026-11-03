@@ -93,9 +93,10 @@ scale, so most of this is a narrow change on top of them.
   tokens and rules to match; step 2 moves each surface to Tailwind and the shared controls and
   deletes its legacy stylesheet. This replaces the parent's UI-3 (a surface keeps its old look until
   it moves), and legacy stylesheets may read the preset's tokens.
-- **CMP-20 Not restyled.** Surfaces the new shell has replaced or that are due for removal keep their
-  look until deleted: the old agent rail and its cards, the old dock column, the Agent Board and
-  Mission Control.
+- **CMP-20 Not restyled.** Surfaces the new shell has replaced or that are due for removal get no
+  rule changes of their own until deleted: the old agent rail and its cards, the old dock column, the
+  Agent Board and Mission Control. They follow the shared type and radius tokens, so in a packaged
+  build, where the old rail and dock still show, their text and corners change with everything else.
 
 ## Acceptance criteria
 

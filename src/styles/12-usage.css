@@ -281,6 +281,10 @@
   color: var(--text-primary);
 }
 
+.usage-range__option.is-active:focus-visible {
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+}
+
 .usage-hero__empty {
   margin: 12px 0 0;
   font-family: var(--ui-font);

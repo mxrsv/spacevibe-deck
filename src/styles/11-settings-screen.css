@@ -59,6 +59,12 @@
   color: var(--text-primary);
 }
 
+/* Tab lands only on the selected item (roving tabindex), so focus on it needs
+   a step of its own or it paints nothing. */
+.settings-nav__item.is-active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+}
+
 /* ── Settings screen: full-window shell (settings-screen.tsx, DL-11.1) ── */
 
 .settings-screen {
@@ -357,6 +363,10 @@
   color: var(--text-primary);
 }
 
+.segmented__option.is-selected:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+}
+
 /* ── Compact width (DL-11.7, 2026-08-19) ────────────────────────────────────
  * Deck's supported minimum is 480px, and at that width a fixed 220px rail
  * leaves 260px for a document with a 58ch measure. The rail becomes icons —
@@ -533,5 +543,6 @@
 
 .filebar__btn--primary:hover,
 .filebar__btn--primary:focus-visible {
+  outline: none;
   background: var(--tab-active-bg);
 }

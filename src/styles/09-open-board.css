@@ -115,6 +115,7 @@
 }
 /* Keyboard focus paints as hover does (CMP-11); only text fields carry a ring. */
 .home-action:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -134,6 +135,7 @@
   color: var(--primary-foreground);
 }
 .home-action--primary:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   border-color: transparent;
   background: color-mix(in oklch, var(--primary) 92%, black);
 }
@@ -165,6 +167,7 @@
   cursor: pointer;
 }
 .board-home__resume:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   color: var(--text-primary);
   background: var(--state-hover-bg);
 }
@@ -188,6 +191,7 @@
   transition: background var(--duration) var(--ease);
 }
 .board-home__star:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 .board-home__star:disabled {
@@ -261,6 +265,7 @@
 }
 .board-home__decision-go:is(:hover, :focus-visible),
 .board-home__decision-fix:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-primary);
 }
 .board-home__decision-go:disabled,
@@ -309,7 +314,14 @@
 .row.is-selected {
   background: var(--tab-active-bg);
 }
+
+.row.is-selected:focus-within {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+}
+
 .row__open {
+  /* The row's :focus-within wash is the focus paint (CMP-11). */
+  outline: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -427,6 +439,7 @@
   opacity: 1;
 }
 .row__x:is(:hover, :focus-visible) {
+  outline: none;
   background: color-mix(in srgb, var(--red) 22%, transparent);
   color: var(--red);
 }
@@ -466,6 +479,7 @@
   color: var(--text-faint);
 }
 .gsep button:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-primary);
 }
 
@@ -553,6 +567,7 @@
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 .wtf__select:is(:hover, :focus-visible) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -573,6 +588,7 @@
     border-color var(--duration) var(--ease);
 }
 .wtf__browse:is(:hover, :focus-visible) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -604,6 +620,7 @@
   cursor: pointer;
 }
 .board-back:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-primary);
 }
 
@@ -654,13 +671,17 @@
     border-color var(--duration) var(--ease);
 }
 .achip:is(:hover, :focus-visible) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
 /* Selected is one neutral step, with no accent edge (CMP-13). */
 .achip.is-selected,
-.achip.is-selected:is(:hover, :focus-visible) {
+.achip.is-selected:hover {
   background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+}
+.achip.is-selected:focus-visible {
+  background: color-mix(in oklch, var(--muted) 80%, var(--foreground));
 }
 .achip__logo {
   width: 15px;
@@ -780,6 +801,7 @@
     border-color var(--duration) var(--ease);
 }
 .btn:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -802,6 +824,7 @@
   padding: 0 16px;
 }
 .btn--primary:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   border-color: transparent;
   background: color-mix(in oklch, var(--primary) 92%, black);
 }

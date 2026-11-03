@@ -254,6 +254,10 @@ button.wsitem__state:focus-visible {
   color: var(--text-primary);
 }
 
+.worktree-agents__item.is-active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+}
+
 .worktree-agents__logo {
   display: block;
   width: 16px;

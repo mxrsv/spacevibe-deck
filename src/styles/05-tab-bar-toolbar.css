@@ -48,6 +48,10 @@
   color: var(--foreground);
 }
 
+.agent-view-switch .agent-view-switch__tab.is-active:focus-visible {
+  background: color-mix(in oklch, var(--background) 90%, var(--foreground));
+}
+
 /* The frame's existing spacer keeps the view choices beside the actions. */
 .tabbar > .agent-view-switch + .ftoolbar {
   flex-grow: 0;
@@ -95,6 +99,10 @@
 .tab.is-active {
   color: var(--text-primary);
   background: var(--tab-active-bg);
+}
+
+.tab.is-active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
 }
 
 /* DL-18.6: every chip leads with ONE glyph slot, whatever it opened — an
@@ -463,6 +471,10 @@
 .toolbar-menu__row.is-active {
   background: var(--tab-active-bg);
   color: var(--text-primary);
+}
+
+.toolbar-menu__row.is-active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
 }
 
 .toolbar-menu__row.is-unavailable,

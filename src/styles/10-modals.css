@@ -72,20 +72,21 @@
   border-color: transparent;
   color: var(--primary-foreground);
 }
-.preset-editor__actions button.is-primary:hover,
-.preset-editor__actions button.is-primary:focus-visible,
-.save-preset__actions button.is-primary:hover,
-.save-preset__actions button.is-primary:focus-visible,
-.create-entry__actions button.is-primary:hover,
-.create-entry__actions button.is-primary:focus-visible,
-.usage-consent__actions button.is-primary:hover,
-.usage-consent__actions button.is-primary:focus-visible {
+.preset-editor__actions button.is-primary:hover:not(:disabled),
+.preset-editor__actions button.is-primary:focus-visible:not(:disabled),
+.save-preset__actions button.is-primary:hover:not(:disabled),
+.save-preset__actions button.is-primary:focus-visible:not(:disabled),
+.create-entry__actions button.is-primary:hover:not(:disabled),
+.create-entry__actions button.is-primary:focus-visible:not(:disabled),
+.usage-consent__actions button.is-primary:hover:not(:disabled),
+.usage-consent__actions button.is-primary:focus-visible:not(:disabled) {
+  outline: none;
   background: color-mix(in oklch, var(--primary) 92%, black);
 }
-.preset-editor__actions button.is-primary:active,
-.save-preset__actions button.is-primary:active,
-.create-entry__actions button.is-primary:active,
-.usage-consent__actions button.is-primary:active {
+.preset-editor__actions button.is-primary:active:not(:disabled),
+.save-preset__actions button.is-primary:active:not(:disabled),
+.create-entry__actions button.is-primary:active:not(:disabled),
+.usage-consent__actions button.is-primary:active:not(:disabled) {
   background: color-mix(in oklch, var(--primary) 84%, black);
 }
 

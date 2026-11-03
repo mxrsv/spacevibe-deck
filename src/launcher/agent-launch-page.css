@@ -40,6 +40,8 @@
 }
 .agent-launch-page button:not(.sbtn),
 .nt-agent-launcher button:not(.sbtn) {
+  /* Every button here paints its own focus as its hover (CMP-11); the UA ring never shows. */
+  outline: none;
   cursor: pointer;
   font: inherit;
   color: inherit;
@@ -92,6 +94,7 @@
 }
 .agent-launch-page__context
   .nt-workspace-picker__trigger:is(:hover, :focus-visible):not([aria-disabled="true"]) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
 }
@@ -229,6 +232,7 @@
     background-color var(--duration) var(--ease);
 }
 .agent-launch-page__card .agent-launch-page__alt:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   background: var(--muted);
   color: var(--text-primary);
 }
@@ -332,6 +336,7 @@
     border-color var(--duration) var(--ease);
 }
 .agent-launch-page .launch-profile__trigger:is(:hover, :focus-visible) {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--muted);
   color: var(--text-primary);
@@ -372,6 +377,7 @@
 }
 .agent-launch-page .launch-profile__menu button:hover,
 .agent-launch-page .launch-profile__menu button:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
 }
 .launch-profile__section {
@@ -447,6 +453,7 @@
   transition: background-color var(--duration) var(--ease);
 }
 .agent-launch-page .agent-launch-page__notice button:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 /* "Choose agents" is the page's main action when no agent can run: its one filled button. */
@@ -461,6 +468,7 @@
   transition: background-color var(--duration) var(--ease);
 }
 .agent-launch-page .agent-launch-page__empty button:is(:hover, :focus-visible) {
+  outline: none;
   background: color-mix(in oklch, var(--primary) 92%, black);
 }
 .agent-launch-page .agent-launch-page__empty button:active {

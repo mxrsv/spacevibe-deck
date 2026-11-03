@@ -348,6 +348,10 @@
   background: var(--tab-active-bg);
 }
 
+.wsitem.is-active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+}
+
 /* The per-workspace logo (`.wsitem__logo*`) and the image drop target
    (`.wsitem.is-drag-over`) were removed on 2026-08-16 with `TabPopover` and
    the workspace-logo store — nothing sets a logo any more, and nothing drew

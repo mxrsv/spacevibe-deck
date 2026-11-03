@@ -92,6 +92,7 @@
 }
 .settings-screen__fields--studio .cfg-btn[role="switch"]:hover,
 .settings-screen__fields--studio .cfg-btn[role="switch"]:focus-visible {
+  outline: none;
   border-color: var(--control-frame-hover);
 }
 /* The narrower Studio document also narrows each agent's own container. */

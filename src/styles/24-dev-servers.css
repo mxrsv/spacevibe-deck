@@ -168,6 +168,7 @@
 }
 
 .dsv-select select:is(:hover, :focus-visible) {
+  outline: none;
   background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 
@@ -332,15 +333,21 @@
 }
 
 .dsv-pill:is(:hover, :focus-visible) {
+  outline: none;
   background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 
-/* DL-23.6: unavailable, not disabled — still focusable, quiet, no hover. */
+/* DL-23.6: unavailable, not disabled — still focusable and quiet. Hover stays
+   flat; focus keeps its step so the keyboard can see where it is. */
 .dsv-pill.is-unavailable,
-.dsv-pill.is-unavailable:is(:hover, :focus-visible) {
+.dsv-pill.is-unavailable:hover {
   background: var(--muted);
   color: var(--text-faint);
   cursor: default;
+}
+.dsv-pill.is-unavailable:focus-visible {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  color: var(--text-faint);
 }
 
 /* A narrow popover: the actions drop under the text instead of squeezing it. */
@@ -386,6 +393,7 @@
 }
 
 .dsv-link:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-primary);
 }
 

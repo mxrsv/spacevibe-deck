@@ -412,6 +412,7 @@
 }
 
 .lp-star:is(:hover, :focus-visible) {
+  outline: none;
   color: var(--text-muted);
 }
 

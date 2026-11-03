@@ -44,9 +44,10 @@
 }
 
 /* The document is focusable so it can be paged by the keyboard. It has no hover
-   state to borrow (CMP-11), so focus paints nothing and the scroll thumb is the cue. */
+   state to borrow (CMP-11), so focus is a faint wash instead of a ring. */
 .md-doc:focus-visible {
   outline: none;
+  background: color-mix(in oklch, var(--bg) 97%, var(--foreground));
 }
 
 /* The scroll thumb is VISIBLE AT REST here, unlike every other scroll
@@ -174,7 +175,9 @@
   cursor: pointer;
 }
 
-.md-link:hover {
+.md-link:hover,
+.md-link:focus-visible {
+  outline: none;
   text-decoration: underline;
 }
 
@@ -189,7 +192,9 @@
 
 .md-doc code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: var(--type-meta);
+  /* Inline code scales with its parent: a fixed 12px inside h1/h2/h3/th would
+     read smaller than the heading around it. Blocks below pin 12px. */
+  font-size: 0.92em;
 }
 
 /* Inline code: a tint of the chrome step the surface sits on, never a border
@@ -221,6 +226,11 @@
   /* `pre` inherits neither, and a fence must keep the author's own wrapping. */
   white-space: pre;
   tab-size: 2;
+}
+
+.md-code,
+.md-code code {
+  font-size: var(--type-meta);
 }
 
 /* Monaco's colorizer emits its own inline colours; the container only has to

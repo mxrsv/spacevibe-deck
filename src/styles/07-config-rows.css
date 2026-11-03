@@ -100,12 +100,14 @@
 .cfg-btn:hover,
 .cfg-btn:focus-visible,
 .cfg-btn--overlay:focus-within {
+  outline: none;
   border-color: var(--control-frame-hover);
   background: var(--state-hover-bg);
 }
 
 .cfg-step__btn:hover,
 .cfg-step__btn:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
 }
 
@@ -139,6 +141,7 @@
 
 .cfg-btn--danger:hover,
 .cfg-btn--danger:focus-visible {
+  outline: none;
   border-color: color-mix(in srgb, var(--red) 45%, transparent);
 }
 
@@ -229,15 +232,21 @@
 
 .theme-card:hover,
 .theme-card:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
 }
 
 /* DL-24.4: the selected card is one neutral background step AND carries its
    check (CMP-13) — no accent border. */
 .theme-card--active,
-.theme-card--active:hover,
-.theme-card--active:focus-visible {
+.theme-card--active:hover {
   background: var(--tab-active-bg);
+}
+
+/* The gallery is a roving tabindex, so Tab lands on the selected card: focus
+   there needs a step past the selection. */
+.theme-card--active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
 }
 
 .theme-card__foot {
@@ -416,6 +425,7 @@
 
 .cfg-clear:hover,
 .cfg-clear:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }

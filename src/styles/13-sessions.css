@@ -144,6 +144,10 @@
   color: var(--text-primary);
 }
 
+.sessions-nav__item.is-active:focus-visible {
+  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+}
+
 .sessions-nav__label {
   flex: 1;
   min-width: 0;

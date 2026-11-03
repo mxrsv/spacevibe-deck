@@ -318,11 +318,11 @@ only the pre-JS fallbacks.
 
 - **DL-21.1** Selection is a full wash on `--tab-active-bg` at `--radius-control`: no
   accent bar, border, `--accent` fill or shadow. One signifier for the active tab, rail
-  item, settings category, board row and workspace row. Two scoped exceptions:
-  - a selected tab-strip chip (DL-18.10) also carries a neutral 1px `--hair-strong` frame,
-    and every chip carries that border as `transparent` at rest so selection changes a
-    color, never geometry; the chip's wash follows its `--radius-tab` corner;
-  - the Electron card rail's focused agent row is an inverted fill (DL-27.22).
+  item, settings category, board row and workspace row. A tab-strip chip's wash follows its
+  `--radius-tab` corner and has no frame (DL-18.10). One scoped exception: the Electron card
+  rail's focused agent row is an inverted fill (DL-27.22). A selected item that also has
+  keyboard focus (a roving-tabindex group puts Tab on it) paints one step stronger than the
+  wash, `--tab-active-bg` mixed 10% toward `--foreground`; otherwise focus would paint nothing.
 - **DL-21.2** Hover is a 6% `--tone` wash, quieter than selection and never the same
   value. Why: a hover that paints "selected" tells the user they chose something they did
   not.
@@ -334,8 +334,9 @@ only the pre-JS fallbacks.
   exception to the AA non-text floor of DL-1.6: that state change measures 1.09 to 1.19:1
   against 3:1 (CMP-12), a named limit, not a defect. Only the surfaces CMP-20 names keep their
   2px `--accent` outline (`--text-muted` inside `.settings-screen`, DL-3.7), until deleted.
-- **DL-21.4** Disabled is `--text-faint` on the unchanged surface. Inside the preset boundary
-  (DL-1.6) it is the control at 50% opacity.
+- **DL-21.4** Disabled is the control at 50% opacity, in the preset boundary (DL-1.6) and in
+  legacy stylesheets alike, with no hover. A row that is unavailable rather than disabled
+  (DL-23.6) stays focusable and reads `--text-faint`.
 - **DL-21.5** State changes use DL-20.2's `--duration` / `--ease` and only DL-1.2's
   properties. Reduced motion is handled by scope (§9).
 - **DL-21.6** No accent bar beside the wash: one state, one signifier.
@@ -372,9 +373,7 @@ Open places where shipped CSS breaks an invariant. Fix one when its surface is r
 | ---------------------------------- | -------------- | ------------------------------------------------------------- |
 | `.wsitem__spinner`                 | DL-1.2         | `wschase`: an infinite opacity loop for the working ring      |
 | `button.attn-mark`                 | DL-1.3, DL-1.2 | `transition: filter`                                          |
-| `.usage-range__option.is-active`   | DL-21.1        | 4% `--fg` wash instead of `--tab-active-bg`                   |
-| `.toolbar-menu__row.is-active`     | DL-21.1        | `--accent` ink, no wash                                       |
-| `.worktree-agents__item.is-active` | DL-21.1        | correct wash plus an `--accent` border                        |
+| `.usage-range__option.is-active`   | DL-21.1        | 12% `--fg` wash instead of `--tab-active-bg`                  |
 | icon packages (Hugeicons, Phosphor) | DL-1.1         | the gzip cost of the icon packages has never been measured    |
 
 # Part II — Patterns
@@ -404,9 +403,9 @@ optional `cfg-row__desc` 10.5px faint) and `cfg-row__value`, a right-aligned slo
 `cfg-btn` pill.
 
 - **DL-5.1** Row hover is DL-21.2's quiet wash and nothing else.
-- **DL-5.2** The pill (`.cfg-btn`) is the value inside a 1px `--hair` border at `--radius-tab`
-  (DL-20.1). Hover raises the border to `--hair-strong`; focus-visible paints as hover
-  (DL-21.3); disabled uses `--text-faint` (DL-21.4).
+- **DL-5.2** The pill (`.cfg-btn`) is the value inside a 1px `--control-frame` border at
+  `--radius-control` (DL-20.1). Hover raises the border to `--control-frame-hover`;
+  focus-visible paints as hover (DL-21.3); disabled is 50% opacity (DL-21.4).
 - **DL-5.3** Affordance glyphs (`↹` cycle, `▾` menu, `…` picker, `↺` reset) sit inside the pill
   in `--text-faint` and turn `--accent` on pill hover.
 
@@ -1046,8 +1045,9 @@ and, once a file exists, Custom. All the groups are one radio group, since one t
   `deriveChromeColors` washes ([`theme-card-preview.tsx`](../src/ui/settings/theme-card-preview.tsx)),
   as DL-2.1's swatch exception. Why: a card shows a theme that is not running, while every
   `--token` resolves to the one that is.
-- **DL-24.4** The selected card is marked by an `--accent` border and a check in its footer, an
-  exception to DL-21.1's one signifier: a selection wash is invisible over any preview colour.
+- **DL-24.4** The selected card is marked by DL-21.1's `--tab-active-bg` wash and a check in
+  its footer; there is no `--accent` border. The check is there because a wash alone is easy to
+  miss around a preview's colours.
 - **DL-24.5** Actions are §5 `action` rows under the grid: import opens a native picker (§6's
   `picker` kind) and the folder row reveals the themes folder in the OS file manager. Removing
   an imported theme is deleting its file; there is no delete button.

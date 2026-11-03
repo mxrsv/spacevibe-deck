@@ -47,6 +47,7 @@
   font-size: var(--type-meta);
 }
 .nt-workspace-picker__trigger:is(:hover, :focus-visible):not([aria-disabled="true"]) {
+  outline: none;
   background: var(--muted);
 }
 .nt-workspace-picker__trigger > span,
@@ -106,6 +107,7 @@
 }
 .nt-workspace-picker__menu button:hover,
 .nt-workspace-picker__menu button:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
 }
 /* A gap between groups, not a rule (CMP-14). */
@@ -162,6 +164,7 @@
   transition: background var(--duration) var(--ease);
 }
 .nt-agent-launcher__action:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   color: var(--text-primary);
   background: var(--muted);
 }
@@ -191,10 +194,12 @@
   color: inherit;
 }
 .nt-board--agents .board-home__star:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
   background: transparent;
   color: var(--text-muted);
 }
 .nt-board--agents .board-home__star:is(:hover, :focus-visible) .board-home__star-text {
+  outline: none;
   text-decoration: underline;
 }
 .nt-board--folder-over .nt-agent-launcher__destination {
