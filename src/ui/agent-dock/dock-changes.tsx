@@ -81,10 +81,16 @@ function DockChangesBody({
   return (
     <div className="flex min-h-0 flex-col pb-1">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
-      <div className="flex h-8 items-center justify-end gap-1.5 pr-2 pl-3">
+      <div className="flex h-8 items-center gap-2 pr-2 pl-3">
+        <span className="text-xs font-medium text-foreground">Uncommitted</span>
         {snapshot !== null && entries.length > 0 ? (
-          <ChangeCounts added={snapshot.totals.added} removed={snapshot.totals.removed} />
-        ) : null}
+          <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-muted-foreground">
+            {entries.length} {entries.length === 1 ? "file" : "files"}{" "}
+            <ChangeCounts added={snapshot.totals.added} removed={snapshot.totals.removed} sans />
+          </span>
+        ) : (
+          <span className="flex-1" />
+        )}
         <Tooltip>
           <TooltipTrigger
             render={
