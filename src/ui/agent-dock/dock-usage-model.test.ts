@@ -128,13 +128,13 @@ describe("repoUsageToday", () => {
 describe("runningFor", () => {
   const minute = 60_000;
   it("reads minutes, hours and days", () => {
-    expect(runningFor(NOW - 10_000, NOW)).toBe("under a minute");
+    expect(runningFor(NOW - 10_000, NOW)).toBe("<1m");
     expect(runningFor(NOW - 42 * minute, NOW)).toBe("42m");
     expect(runningFor(NOW - (3 * 60 + 5) * minute, NOW)).toBe("3h 5m");
     expect(runningFor(NOW - 50 * 60 * minute, NOW)).toBe("2d");
   });
 
   it("never reads negative when a clock disagrees", () => {
-    expect(runningFor(NOW + minute, NOW)).toBe("under a minute");
+    expect(runningFor(NOW + minute, NOW)).toBe("<1m");
   });
 });

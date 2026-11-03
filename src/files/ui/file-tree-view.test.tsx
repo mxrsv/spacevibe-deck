@@ -3,6 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileTreeView } from "./file-tree-view";
+import { TreeMetricsContext } from "./tree-metrics";
 import {
   pendingTreeFocus,
   requestTreeFocus,
@@ -282,6 +283,27 @@ describe("FileTreeView", () => {
     // depth 3 since the root became row 0: 8px base + 3 * 14px indent tokens
     // (DL-19).
     expect(deepest?.style.paddingLeft).toBe("50px");
+    expect(deepest?.style.height).toBe("22px");
+  });
+
+  it("places its rows by the metrics of the surface hosting it", () => {
+    act(() => {
+      setListing(WS, WS, [
+        { name: "a.ts", path: `${WS}/a.ts`, directory: false, outOfRoot: false },
+      ]);
+    });
+    act(() => {
+      render(
+        <TreeMetricsContext.Provider value={{ rowHeight: 28, inset: 12 }}>
+          <FileTreeView controller={fakeController()} workspacePath={WS} canCreate />
+        </TreeMetricsContext.Provider>,
+        host,
+      );
+    });
+    const file = rows().find((row) => row.textContent === "a.ts");
+    expect(file?.style.top).toBe("28px");
+    expect(file?.style.height).toBe("28px");
+    expect(file?.style.paddingLeft).toBe("26px");
   });
 
   describe("keyboard focus and navigation (spec §3.1)", () => {
@@ -425,6 +447,60 @@ describe("FileTreeView", () => {
         expect(rows().length).toBeLessThan(50);
       },
     );
+
+    describe("at the row height its host gives it", () => {
+      const ROW = 28;
+
+      /** 40 files under the root, so 41 rows; the viewport above shows under 8 of them. */
+      function mountTallRows(): void {
+        act(() => {
+          setListing(
+            WS,
+            WS,
+            Array.from({ length: 40 }, (_, index) => ({
+              name: `file-${String(index).padStart(2, "0")}.ts`,
+              path: `${WS}/file-${index}.ts`,
+              directory: false,
+              outOfRoot: false,
+            })),
+          );
+        });
+        act(() => {
+          render(
+            <TreeMetricsContext.Provider value={{ rowHeight: ROW, inset: 12 }}>
+              <FileTreeView controller={fakeController()} workspacePath={WS} canCreate />
+            </TreeMetricsContext.Provider>,
+            host,
+          );
+        });
+      }
+
+      it("sizes the rows box and mounts the rows the scroll position reaches", () => {
+        mountTallRows();
+        expect(host.querySelector<HTMLElement>(".file-tree__rows")?.style.height).toBe(
+          `${41 * ROW}px`,
+        );
+
+        act(() => {
+          tree().scrollTop = 20 * ROW;
+          tree().dispatchEvent(new Event("scroll"));
+        });
+        // Row 20 is at the top, 8 of overscan above it; ceil((560 + 220) / 28) + 8 = 36 below.
+        expect(rows()[0].style.top).toBe(`${12 * ROW}px`);
+        expect(rows().at(-1)?.style.top).toBe(`${35 * ROW}px`);
+      });
+
+      it("scrolls a row the arrow keys reach past the viewport's bottom into view", () => {
+        mountTallRows();
+        for (let step = 0; step < 8; step += 1) {
+          act(() => {
+            tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+          });
+        }
+        // Row 8 ends at 252px, past the 220px viewport. At 22px rows it would still be on screen.
+        expect(tree().scrollTop).toBe(9 * ROW - 220);
+      });
+    });
   });
 });
 

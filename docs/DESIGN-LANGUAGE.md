@@ -909,7 +909,11 @@ covering it; the file explorer is the resident instance.
   `FunnelSimpleX` ignored entries hidden, `FunnelSimple` shown), with no wash; each tooltip is
   the name alone. An entry the repository ignores, shown by the second toggle, rests at
   `--text-faint` (DL-3.4's hint), is raised by hover and the mark like any row, and carries an
-  "Ignored" description so colour is not the only cue. The
+  "Ignored" description so colour is not the only cue. The stacked dock's Files section is the
+  one exception (owner, 2026-11-02): there the cluster rests hidden and shows while the pointer
+  is over the section or focus is in the tree, and the tree takes the Changes section's 28px
+  rows and code type, its height carried by `TreeMetricsContext`
+  ([`27-dock-stacked.css`](../src/styles/27-dock-stacked.css)). The
   Explorer has two views and shows its switch above that row: a `role="tablist"` of two
   chips, Files and Changes, in a 28px row with DL-21.1's wash on the active chip at
   `--radius-tab`, walked with ←/→ ([`ExplorerSwitch`](../src/files/ui/explorer-switch.tsx)).

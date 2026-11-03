@@ -54,17 +54,24 @@ function Fact({
       <TooltipTrigger render={<div className="inline-flex h-7 items-center gap-1" />}>
         <dt className="sr-only">{label}</dt>
         <DeckIcon icon={icon} size={GLYPH_ROW} class="text-muted-foreground" />
-        <dd className="tabular-nums text-foreground">{value}</dd>
+        <dd
+          className={value === EM_DASH ? "text-muted-foreground" : "tabular-nums text-foreground"}
+        >
+          {value}
+        </dd>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }
 
+/** A repository with no use today has no figure to show: a `0` and a `$0.00` read like data. */
 const tokensOf = (usage: RepoUsageToday | null): string =>
-  usage === null ? EM_DASH : formatTokensCompact(usage.tokens);
+  usage === null || usage.tokens === 0 ? EM_DASH : formatTokensCompact(usage.tokens);
 const costOf = (usage: RepoUsageToday | null): string =>
-  usage === null || usage.costUsd === null ? EM_DASH : formatUsd(usage.costUsd);
+  usage === null || usage.tokens === 0 || usage.costUsd === null
+    ? EM_DASH
+    : formatUsd(usage.costUsd);
 
 /** The repository's own folder name, for the note: the usage is that repository's, not a session's. */
 function repoName(path: string): string {
@@ -120,53 +127,54 @@ export function DockUsage({ item, space, onOpenDetails }: DockUsageProps) {
         : `Every ${displayAgent(agent)} session in ${repo === null ? "this folder" : repoName(repo)} today, not this one alone. Estimated at API prices.`;
 
   return (
-    <div className="flex flex-col px-3 pb-2 text-xs">
+    <div className="flex flex-col pr-2 pl-3 text-xs">
       {snapshot === null && usageLoading.value ? (
         <p className="pt-2 text-xs text-muted-foreground">Reading this machine's usage…</p>
       ) : null}
       {usageStale.value ? (
         <p className="pt-2 text-xs text-muted-foreground">Stale: showing the last good read.</p>
       ) : null}
-      {agent === null ? (
-        <p className="py-2 text-muted-foreground">Focus an agent to see its usage.</p>
-      ) : (
-        <div className="flex items-center gap-3 py-1">
-          <dl className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3">
-            <Fact label="Tokens today" value={tokensOf(own)} icon={Coins01Icon} />
-            <Fact label="Cost today" value={costOf(own)} icon={DollarCircleIcon} />
-            {space.length > 0 ? (
-              <Fact label="Space cost today" value={costOf(together)} icon={UserGroupIcon} />
-            ) : null}
-            <Fact
-              label="Running for"
-              value={startedAt === null ? EM_DASH : runningFor(startedAt, now)}
-              icon={Timer01Icon}
-            />
-          </dl>
-          <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label={scope} />}>
-              <DeckIcon icon={InformationCircleIcon} />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-64">{scope}</TooltipContent>
-          </Tooltip>
-        </div>
-      )}
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="self-end"
-              aria-label="Usage details"
-              onClick={onOpenDetails}
-            />
-          }
-        >
-          <DeckIcon icon={ArrowRight01Icon} />
-        </TooltipTrigger>
-        <TooltipContent>Usage details</TooltipContent>
-      </Tooltip>
+      <div className="flex items-center gap-1 py-1">
+        {agent === null ? (
+          <p className="min-w-0 flex-1 text-muted-foreground">Focus an agent to see its usage.</p>
+        ) : (
+          <>
+            <dl className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3">
+              <Fact label="Tokens today" value={tokensOf(own)} icon={Coins01Icon} />
+              <Fact label="Cost today" value={costOf(own)} icon={DollarCircleIcon} />
+              {space.length > 0 ? (
+                <Fact label="Space cost today" value={costOf(together)} icon={UserGroupIcon} />
+              ) : null}
+              <Fact
+                label="Running for"
+                value={startedAt === null ? EM_DASH : runningFor(startedAt, now)}
+                icon={Timer01Icon}
+              />
+            </dl>
+            <Tooltip>
+              <TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label={scope} />}>
+                <DeckIcon icon={InformationCircleIcon} />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64">{scope}</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Usage details"
+                onClick={onOpenDetails}
+              />
+            }
+          >
+            <DeckIcon icon={ArrowRight01Icon} />
+          </TooltipTrigger>
+          <TooltipContent>Usage details</TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }

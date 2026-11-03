@@ -60,11 +60,11 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** How long a pane's agent has been running: `under a minute`, `42m`, `3h 5m`, `2d`. */
+/** How long a pane's agent has been running: `<1m`, `42m`, `3h 5m`, `2d`. */
 export function runningFor(startedAt: number, nowMs: number): string {
   const age = Math.max(0, nowMs - startedAt);
   if (age < MINUTE) {
-    return "under a minute";
+    return "<1m";
   }
   if (age < HOUR) {
     return `${Math.floor(age / MINUTE)}m`;

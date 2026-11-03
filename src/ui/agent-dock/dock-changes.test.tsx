@@ -142,6 +142,28 @@ describe("the Changes section's tree", () => {
     await view.unmount();
   });
 
+  it("closes the list with the file count and the total lines", async () => {
+    const { controller } = fakeChanges({
+      snapshot: snapshot([
+        entry({ path: "src/a.ts", added: 5, removed: 2 }),
+        entry({ path: "b.ts", added: 3, removed: 1 }),
+      ]),
+    });
+    const view = await mount(section(controller));
+    expect(squash(text())).toMatch(/2 files\+8 −3$/);
+    await view.unmount();
+  });
+
+  it("counts one file in the singular, and does not announce the count", async () => {
+    const { controller } = fakeChanges({
+      snapshot: snapshot([entry({ path: "a.ts", added: 5, removed: 2 })]),
+    });
+    const view = await mount(section(controller));
+    expect(squash(text())).toMatch(/1 file\+5 −2$/);
+    expect(document.body.querySelector('[role="status"]')).toBeNull();
+    await view.unmount();
+  });
+
   it("rolls lines up through folders and folds a lone folder chain into one row", async () => {
     const { controller } = fakeChanges({
       snapshot: snapshot([
@@ -349,7 +371,9 @@ describe("empty, loading and error states", () => {
   it("says there is nothing against HEAD, or no files yet on an unborn branch", async () => {
     const { controller, state } = fakeChanges({ snapshot: snapshot([]) });
     const view = await mount(section(controller));
-    expect(text()).toContain("No changes against HEAD.");
+    expect(document.body.querySelector('[role="status"]')?.textContent).toBe(
+      "No changes against HEAD.",
+    );
     await act(async () => {
       state.value = { ...state.value, snapshot: snapshot([], { initial: true }) };
     });

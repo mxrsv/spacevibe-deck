@@ -1,4 +1,5 @@
 import type { ComponentChildren } from "preact";
+import { TreeMetricsContext, type TreeMetrics } from "../../files/ui/tree-metrics";
 import type { RailSelection } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
 import { DockAsk } from "./dock-ask";
@@ -57,9 +58,13 @@ export interface DockColumnProps {
   readonly onClose: () => void;
 }
 
+/** The Changes section's rows, whose left edge is the section header's. */
+const FILES_TREE_METRICS: TreeMetrics = { rowHeight: 28, inset: 12 };
+
 /**
  * The legacy bodies assume a column that owns the height: the file tree windows its rows against
- * its own scroller. Under one stacked scroll that height is undefined, so each body gets a box.
+ * its own scroller. Under one stacked scroll that height is undefined, so each body gets a box. The
+ * Files box hugs a short tree and caps a long one (`27-dock-stacked.css`).
  */
 export function DockColumn({
   item,
@@ -83,7 +88,11 @@ export function DockColumn({
           <div className="max-h-96 overflow-y-auto">{bodies.usage({ item, space, cwd })}</div>
         </DockSection>
         <DockSection id="files" title="Files">
-          <div className="h-96 min-h-0">{bodies.files(root)}</div>
+          <div className="agent-dock__files">
+            <TreeMetricsContext.Provider value={FILES_TREE_METRICS}>
+              {bodies.files(root)}
+            </TreeMetricsContext.Provider>
+          </div>
         </DockSection>
         {bodies.history === null ? null : (
           <DockSection id="history" title="History">

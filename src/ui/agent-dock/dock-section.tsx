@@ -8,9 +8,8 @@ import {
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
-import { Button } from "../controls/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
-import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE, GLYPH_ROW, type DeckGlyph } from "../controls/deck-icon";
 import { dockSectionsOpen, setDockSectionOpen, type DockSectionId } from "./agent-dock-state";
 
 /** The glyph that leads each header, so a folded section is told apart at a glance. */
@@ -31,8 +30,10 @@ export interface DockSectionProps {
 }
 
 /**
- * One fold of the dock's single scroll (LAY-6): a glyph, the name, a count and the fold caret. Its
- * header stays at the top of the scroll while its body is in view; folding unmounts the body, so a folded Usage polls nothing.
+ * One fold of the dock's single scroll (LAY-6): the fold caret, a glyph, the name and a count. Its
+ * header stays at the top of the scroll while its body is in view; folding unmounts the body, so a
+ * folded Usage polls nothing. The trigger is a whole-row target, as a Changes folder row is: the
+ * `Button` this used to render fills itself while `aria-expanded`, and every open section is.
  */
 export function DockSection({ id, title, count, children }: DockSectionProps) {
   const open = dockSectionsOpen.value[id];
@@ -40,21 +41,13 @@ export function DockSection({ id, title, count, children }: DockSectionProps) {
     <section aria-label={title} className="border-b">
       <Collapsible open={open} onOpenChange={(next) => setDockSectionOpen(id, next)}>
         <h3 className="sticky top-0 z-10 bg-sidebar">
-          <CollapsibleTrigger
-            render={<Button variant="ghost" className="w-full justify-start gap-1.5 px-3" />}
-          >
-            <DeckIcon icon={SECTION_ICON[id]} class="text-muted-foreground" />
-            <span className="flex-1 text-left text-xs font-medium text-muted-foreground">
-              {title}
-            </span>
+          <CollapsibleTrigger className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+            <DeckIcon icon={open ? ArrowDown01Icon : ArrowRight01Icon} size={GLYPH_INLINE} />
+            <DeckIcon icon={SECTION_ICON[id]} size={GLYPH_ROW} />
+            <span className="min-w-0 flex-1 truncate">{title}</span>
             {count === undefined ? null : (
-              <span className="text-xs tabular-nums text-foreground">{count}</span>
+              <span className="tabular-nums text-foreground">{count}</span>
             )}
-            {/* `size-3` opts the caret out of the button's 16px rule: a fold mark, not an action. */}
-            <DeckIcon
-              icon={open ? ArrowDown01Icon : ArrowRight01Icon}
-              class="size-3 text-muted-foreground"
-            />
           </CollapsibleTrigger>
         </h3>
         <CollapsibleContent>{children}</CollapsibleContent>

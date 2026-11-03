@@ -1,7 +1,6 @@
 import { SESSION_AGENT_LABELS, type SessionEntry } from "../../lib/session-history";
 import { getDesktopEnvironment } from "../../lib/platform";
 import { tildify } from "../../lib/process-info";
-import { formatRelativeTime } from "../../lib/workspace-recents";
 import { filterSessions } from "../../sessions/session-filters";
 import {
   deadProjects,
@@ -11,6 +10,7 @@ import {
   sessionsLoadState,
 } from "../../sessions/sessions-store";
 import { useEffect } from "preact/hooks";
+import { formatShortAge } from "../agent-rail-model";
 import { Button } from "../controls/button";
 import { LoadError } from "../controls/load-error";
 import type { RailItem } from "../rail-view-model";
@@ -23,6 +23,18 @@ export interface DockHistoryProps {
   readonly cwd: string | null;
   /** Resumes a past session: `App`'s `resumeSessionEntry`, the path the legacy History tab uses. */
   onResume(entry: SessionEntry): void;
+}
+
+/** What the agent's transcript writes in place of a pasted image. */
+const IMAGE_PLACEHOLDER = /\[Image #\d+\]\s*/g;
+
+/** A session's name on its row, without the placeholders a first prompt can open with. */
+export function sessionName(entry: SessionEntry): string {
+  const { title, sessionId } = entry;
+  if (title === null || title.trim() === "") {
+    return sessionId;
+  }
+  return title.replace(IMAGE_PLACEHOLDER, "").trim() || "Image";
 }
 
 const Note = ({ children }: { children: string }) => (
@@ -68,7 +80,7 @@ export function DockHistory({ item, cwd, onResume }: DockHistoryProps) {
       {rows.length > 0 ? (
         <ul className="p-1" aria-label={`Past ${label} sessions`}>
           {rows.map((entry) => {
-            const name = entry.title ?? entry.sessionId;
+            const name = sessionName(entry);
             return (
               <li key={entry.sessionId}>
                 <Button
@@ -82,11 +94,11 @@ export function DockHistory({ item, cwd, onResume }: DockHistoryProps) {
                     }
                   }}
                 >
-                  <span className="min-w-0 flex-1 truncate text-left font-normal text-foreground">
+                  <span className="min-w-0 flex-1 truncate text-left text-xs font-normal text-foreground">
                     {name}
                   </span>
-                  <span className="shrink-0 font-normal tabular-nums text-muted-foreground">
-                    {formatRelativeTime(entry.lastActivityMs, Date.now())}
+                  <span className="shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                    {formatShortAge(entry.lastActivityMs, Date.now())}
                   </span>
                 </Button>
               </li>

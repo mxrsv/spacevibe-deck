@@ -14,7 +14,7 @@ import { ChangeCounts } from "../blocks/change-counts";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
 
-const INDENT = 10;
+const INDENT = 12;
 const STEP = 14;
 const ROW =
   "flex h-7 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";

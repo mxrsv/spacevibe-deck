@@ -39,3 +39,84 @@
   box-sizing: border-box;
   border-bottom: 1px solid var(--sidebar-border);
 }
+
+/* Files hugs a short tree, so the sections under it stay close, and caps a long one, which scrolls
+   inside (`FileTreeView` windows against its own scroller; its rows box has an explicit height, so
+   the content sizes it). An open document splits the box and needs a real height. */
+.agent-dock__files .explorer-tab:not(.explorer-tab--document),
+.agent-dock__files .explorer-tab:not(.explorer-tab--document) .file-tree-shell {
+  height: auto;
+}
+
+.agent-dock__files .explorer-tab:not(.explorer-tab--document) .file-tree {
+  flex: none;
+  max-height: 24rem;
+}
+
+.agent-dock__files .explorer-tab--document {
+  height: 24rem;
+}
+
+/* The tree reads as the Changes tree above it: full-bleed square rows, code type, one ink. Its
+   height and left edge come from `TreeMetricsContext`, not from here. */
+.agent-dock__column .file-tree__row {
+  gap: 6px;
+  padding-right: 12px;
+  border-radius: 0;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+}
+
+.agent-dock__column .file-tree__row.is-ignored {
+  color: var(--muted-foreground);
+}
+
+.agent-dock__column .file-tree__row:hover,
+.agent-dock__column .file-tree__row.is-active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.agent-dock__column .file-tree__row:focus-visible {
+  outline-color: var(--ring);
+}
+
+.agent-dock__column .file-tree__chevron,
+.agent-dock__column .file-tree__icon {
+  color: var(--muted-foreground);
+}
+
+/* The caret of a Changes folder, so the two trees' names start on one column. */
+.agent-dock__column .file-tree__chevron svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* The tree's actions wait for the pointer here (owner, 2026-11-02), unlike the tabbed dock's
+   DL-19.9 cluster: six glyphs at rest was most of the root row. Keyboard focus shows them too. */
+.agent-dock__column .file-tree__actions {
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.agent-dock__column .agent-dock__files:hover .file-tree__actions,
+.agent-dock__column .file-tree__row:focus-visible .file-tree__actions,
+.agent-dock__column .file-tree__actions:focus-within {
+  opacity: 1;
+}
+
+.agent-dock__column .file-tree__action {
+  width: 20px;
+  height: 20px;
+  color: var(--muted-foreground);
+}
+
+.agent-dock__column .file-tree__action:hover {
+  color: var(--foreground);
+}
+
+.agent-dock__column .file-tree__action:focus-visible {
+  outline-color: var(--ring);
+}

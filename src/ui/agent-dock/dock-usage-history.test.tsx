@@ -239,6 +239,22 @@ describe("the Usage section", () => {
     await view.unmount();
   });
 
+  it("shows a dash, not a zero, for a repository with no use today", async () => {
+    usageSnapshot.value = snapshotOf([bucket({ agent: "claude", repo: "/r/other" })]);
+    const view = await mount(dock());
+    expect(usage()["Tokens today"]).toBe("—");
+    expect(usage()["Cost today"]).toBe("—");
+    await view.unmount();
+  });
+
+  it("shows a dash for a space with no use today", async () => {
+    tabViews.value = [tab([pane(), pane({ paneId: 12, agent: "codex", focused: false })])];
+    usageSnapshot.value = snapshotOf([bucket({ agent: "claude", repo: "/r/other" })]);
+    const view = await mount(dock());
+    expect(usage()["Space cost today"]).toBe("—");
+    await view.unmount();
+  });
+
   it("shows a dash for an agent the scanner does not read, and says why", async () => {
     tabViews.value = [tab([pane({ agent: "gemini" })])];
     usageSnapshot.value = snapshotOf([bucket({ agent: "claude" })]);
@@ -359,8 +375,26 @@ describe("the History section", () => {
       "Resume Fix the token refresh",
       "Resume Rename the rail ids",
     ]);
-    expect(rows[0].textContent).toContain("5 minutes ago");
-    expect(rows[1].textContent).toContain("Yesterday");
+    expect(rows[0].textContent).toContain("5m");
+    expect(rows[1].textContent).toContain("1d");
+    await view.unmount();
+  });
+
+  it("names a session without the placeholders its first prompt opens with", async () => {
+    sessionEntries.value = [
+      entry({ sessionId: "a", title: "[Image #1] [Image #2] the account was added" }),
+      entry({ sessionId: "b", title: "[Image #1]" }),
+      entry({ sessionId: "untitled", title: null }),
+      entry({ sessionId: "blank", title: "  " }),
+    ];
+    const view = await mount(dock());
+    expect(historyRows().map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Resume the account was added",
+      "Resume Image",
+      "Resume untitled",
+      "Resume blank",
+    ]);
+    expect(historyText()).not.toContain("[Image");
     await view.unmount();
   });
 

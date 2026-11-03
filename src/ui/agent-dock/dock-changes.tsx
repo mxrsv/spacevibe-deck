@@ -1,4 +1,5 @@
 import { Refresh01Icon } from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/cn";
 import { requestDiffFocus } from "../../files/changes/diff-column-focus";
 import {
   changesController,
@@ -38,6 +39,19 @@ const Note = ({ children, failure = false }: { children: string; failure?: boole
     {children}
   </p>
 );
+
+/** The section's last line: how many files, or why there is no list to count. */
+function summaryOf(live: ChangesState | null): string {
+  const snapshot = live?.snapshot ?? null;
+  if (snapshot === null) {
+    return live === null || live.reading ? "Reading changes…" : "";
+  }
+  const files = snapshot.entries.length;
+  if (files === 0) {
+    return snapshot.initial ? "No files yet." : "No changes against HEAD.";
+  }
+  return files === 1 ? "1 file" : `${files} files`;
+}
 
 /**
  * The Changes section of the stacked dock: the checkout's uncommitted changes as a folder tree,
@@ -81,32 +95,8 @@ function DockChangesBody({
   const selectedPath = open !== null && open.root === root ? open.path : null;
   const entries = snapshot?.entries ?? [];
   return (
-    <div className="flex min-h-0 flex-col pb-1">
+    <div className="flex min-h-0 flex-col">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
-      <div className="flex h-8 items-center justify-end gap-1.5 pr-2 pl-3">
-        {snapshot !== null && entries.length > 0 ? (
-          <ChangeCounts added={snapshot.totals.added} removed={snapshot.totals.removed} />
-        ) : null}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Refresh changes"
-                onClick={() => changes.trigger("refresh")}
-              />
-            }
-          >
-            <DeckIcon icon={Refresh01Icon} />
-          </TooltipTrigger>
-          <TooltipContent side="left">Refresh changes</TooltipContent>
-        </Tooltip>
-      </div>
-      {snapshot === null && (live === null || live.reading) ? <Note>Reading changes…</Note> : null}
-      {snapshot !== null && entries.length === 0 ? (
-        <Note>{snapshot.initial ? "No files yet." : "No changes against HEAD."}</Note>
-      ) : null}
       {entries.length > 0 ? (
         <DockChangesTree
           entries={entries}
@@ -127,6 +117,43 @@ function DockChangesBody({
       {snapshot !== null && snapshot.omitted > 0 ? (
         <Note>{omittedLabel(snapshot.omitted)}</Note>
       ) : null}
+      {/* The summary stays in view under a long list, as the header stays over it. */}
+      <div
+        className={cn(
+          "sticky bottom-0 z-10 flex h-8 items-center gap-2 bg-sidebar pr-2 pl-3 text-xs",
+          entries.length > 0 && "border-t",
+        )}
+      >
+        {/* A status only when it says why there is no list: a running agent moves the file count
+            too often to announce. */}
+        <span
+          role={entries.length > 0 ? undefined : "status"}
+          className={cn(
+            "min-w-0 flex-1 truncate",
+            entries.length > 0 ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {summaryOf(live)}
+        </span>
+        {snapshot !== null && entries.length > 0 ? (
+          <ChangeCounts added={snapshot.totals.added} removed={snapshot.totals.removed} />
+        ) : null}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Refresh changes"
+                onClick={() => changes.trigger("refresh")}
+              />
+            }
+          >
+            <DeckIcon icon={Refresh01Icon} />
+          </TooltipTrigger>
+          <TooltipContent side="left">Refresh changes</TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }

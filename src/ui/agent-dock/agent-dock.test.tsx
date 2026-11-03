@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useContext } from "preact/hooks";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +21,7 @@ import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from ".
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
 import { activeWorkspace, dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
+import { TreeMetricsContext } from "../../files/ui/tree-metrics";
 import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import {
@@ -173,17 +175,21 @@ afterEach(async () => {
 describe("the stacked dock in a wide window", () => {
   beforeEach(() => resizeTo(1440));
 
-  it("names the focused agent and its title, and follows focus", async () => {
+  it("names the focused agent and where it stands, and follows focus", async () => {
     const view = await mount(dock());
     const header = document.body.querySelector("header") as HTMLElement;
-    expect(header.textContent).toContain("Claude");
-    expect(header.textContent).toContain("token refresh");
+    expect(header.textContent).toContain("Claude Code");
+    // A folder git does not know: the project alone, not the same name twice.
+    expect(header.textContent).toContain("main");
+    expect(header.textContent).not.toContain("main / main");
+    expect(header.textContent).not.toContain("token refresh");
 
     tabViews.value = twoAgents(2);
     activeTabIndex.value = 1;
     await settle();
     expect(header.textContent).toContain("Codex");
-    expect(header.textContent).toContain("fix flaky test");
+    expect(header.textContent).toContain("api");
+    expect(header.textContent).not.toContain("fix flaky test");
     await view.unmount();
   });
 
@@ -387,6 +393,42 @@ describe("the folder the sections show", () => {
     await view.unmount();
   });
 
+  it("says the project and branch of a checkout git knows", async () => {
+    repositoryScans.value = new Map([["/r/main", repository("/r/main", "/r/main")]]);
+    tabViews.value = [tab({ key: 1, panes: [pane({ paneId: 11, focused: true })] })];
+    statusInfo.value = { ...statusInfo.value, cwd: "/r/main" };
+    const view = await mount(dock());
+    const header = document.body.querySelector("header");
+    expect(header?.textContent).toContain("main / b");
+    expect(header?.textContent).not.toContain("worktree");
+    await view.unmount();
+  });
+
+  it("says when the checkout is a linked worktree", async () => {
+    // Scans are keyed by the folder the tab was opened in.
+    repositoryScans.value = new Map([["/r/side", repository("/r/main", "/r/main", "/r/side")]]);
+    tabViews.value = [
+      tab({ key: 1, workspacePath: "/r/side", panes: [pane({ paneId: 11, focused: true })] }),
+    ];
+    statusInfo.value = { ...statusInfo.value, cwd: "/r/side" };
+    const view = await mount(dock());
+    const header = document.body.querySelector("header");
+    expect(header?.textContent).toContain("main / b");
+    expect(header?.textContent).toContain("worktree");
+    await view.unmount();
+  });
+
+  it("gives the Files body the rows of the Changes section", async () => {
+    const Probe = () => {
+      const { rowHeight, inset } = useContext(TreeMetricsContext);
+      return <p>{`tree metrics ${rowHeight}/${inset}`}</p>;
+    };
+    setDockSectionOpen("files", true);
+    const view = await mount(dock({ bodies: { ...BODIES, files: () => <Probe /> } }));
+    expect(bodyText()).toContain("tree metrics 28/12");
+    await view.unmount();
+  });
+
   it("follows focus between two agents of one project standing in different checkouts", async () => {
     repositoryScans.value = new Map([["/r/main", repository("/r/main", "/r/main", "/r/side")]]);
     tabViews.value = [
@@ -491,7 +533,7 @@ describe("the stacked dock under 1360px", () => {
     const view = await mount(dock());
     await click(named("Open the side panel") as HTMLElement);
     const sheet = byRole("dialog") as HTMLElement;
-    expect(sheet.textContent).toContain("token refresh");
+    expect(sheet.textContent).toContain("Claude Code");
     expect(triggers().map((text) => text?.trim())).toEqual([
       "Changes",
       "Usage",
