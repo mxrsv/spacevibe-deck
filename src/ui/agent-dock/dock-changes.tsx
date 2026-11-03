@@ -15,8 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockNarrow } from "./agent-dock-layout";
 import { closeDockSheetThen } from "./agent-dock-state";
 import { DockChangesTree } from "./dock-changes-tree";
-import { changedFileCount, watchedRoot } from "./dock-changes-watch";
-import { DockSection } from "./dock-section";
+import { watchedRoot } from "./dock-changes-watch";
 
 const NOT_A_REPOSITORY = "Not a git repository";
 
@@ -40,8 +39,8 @@ const Note = ({ children, failure = false }: { children: string; failure?: boole
 );
 
 /**
- * The Changes section of the stacked dock: the checkout's uncommitted changes as a folder tree,
- * the count of changed files in its header, and the same one press the legacy list has, which
+ * The Changes view of the tabbed dock: the checkout's uncommitted changes as a folder tree and the
+ * same one press the legacy list has, which
  * opens that file's diff in the diff column. What it reads is held by `DockChangesWatch`.
  */
 export function DockChanges({ root, changes: injected, diff: injectedDiff }: DockChangesProps) {
@@ -51,9 +50,8 @@ export function DockChanges({ root, changes: injected, diff: injectedDiff }: Doc
   const watched = watchedRoot(root);
   const state = changes.state.value;
   const live = watched !== null && state.root === watched ? state : null;
-  const count = changedFileCount(root, changes);
   return (
-    <DockSection id="changes" title="Changes" count={count === null ? undefined : String(count)}>
+    <>
       {root === null ? (
         <Note>This tab has no workspace to show.</Note>
       ) : plain ? (
@@ -61,7 +59,7 @@ export function DockChanges({ root, changes: injected, diff: injectedDiff }: Doc
       ) : (
         <DockChangesBody key={root} root={root} live={live} changes={changes} diff={diff} />
       )}
-    </DockSection>
+    </>
   );
 }
 

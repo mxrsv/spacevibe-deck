@@ -31,9 +31,9 @@ import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { tabViews, type TabView } from "../../terminal/tabs-store";
 import { click, mount, press } from "../controls/preset-test-kit";
-import { resetAgentDockState } from "./agent-dock-state";
+import { resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
-import { DockChangesWatch } from "./dock-changes-watch";
+import { changedFileCount, DockChangesWatch } from "./dock-changes-watch";
 
 const ROOT = "/work/repo";
 
@@ -110,8 +110,6 @@ const rowKeys = (): (string | null)[] =>
   [...document.body.querySelectorAll("[data-change-row]")].map((r) =>
     r.getAttribute("data-change-row"),
   );
-const header = (): HTMLElement =>
-  document.body.querySelector('[data-slot="collapsible-trigger"]') as HTMLElement;
 const text = (): string => document.body.textContent ?? "";
 const squash = (value: string | null | undefined): string => (value ?? "").replace(/\s+/g, " ");
 
@@ -134,11 +132,12 @@ afterEach(() => {
   resetAgentDockState();
 });
 
-describe("the Changes section's tree", () => {
-  it("counts the changed files in its header", async () => {
+describe("the Changes view's tree", () => {
+  it("counts the changed files for the handle", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
-    expect(squash(header().textContent)).toBe("Changes6");
+    expect(changedFileCount(ROOT, controller)).toBe(6);
+    expect(squash(document.body.textContent)).not.toContain("Changes");
     await view.unmount();
   });
 
@@ -218,12 +217,12 @@ describe("opening a diff from a row", () => {
     await view.unmount();
   });
 
-  it("ends the diff when the section folds, as leaving the legacy Changes view does", async () => {
+  it("ends the diff when another view is selected, as leaving the legacy Changes view does", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
     await click(row("file:src/ui/a.ts"));
     expect(diff.selection.value).not.toBeNull();
-    await click(header());
+    await act(async () => setDockView("usage"));
     expect(diff.selection.value).toBeNull();
     await view.unmount();
   });
@@ -237,7 +236,7 @@ describe("opening a diff from a row", () => {
     await view.unmount();
   });
 
-  it("ends the diff when the section unmounts: a closed dock, or a closed sheet", async () => {
+  it("ends the diff when the view unmounts: a closed dock, or a closed sheet", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
     await click(row("file:src/ui/a.ts"));
@@ -246,15 +245,15 @@ describe("opening a diff from a row", () => {
   });
 });
 
-describe("what the section watches", () => {
-  it("watches the root while mounted, folded or not, and releases it on unmount", async () => {
+describe("what the view watches", () => {
+  it("watches the root while mounted, selected or not, and releases it on unmount", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
     expect(controller.setShown).toHaveBeenLastCalledWith(ROOT);
-    await click(header());
-    // Folded: the count in the header stays live.
+    await act(async () => setDockView("usage"));
+    // Another view is selected: the count on the handle stays live.
     expect(controller.setShown).not.toHaveBeenCalledWith(null);
-    expect(squash(header().textContent)).toBe("Changes6");
+    expect(changedFileCount(ROOT, controller)).toBe(6);
     await view.unmount();
     expect(controller.setShown).toHaveBeenLastCalledWith(null);
   });
@@ -342,7 +341,6 @@ describe("empty, loading and error states", () => {
     const { controller } = fakeChanges({ snapshot: null, reading: true });
     const view = await mount(section(controller));
     expect(text()).toContain("Reading changes…");
-    expect(squash(header().textContent)).toBe("Changes");
     await view.unmount();
   });
 

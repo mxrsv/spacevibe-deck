@@ -222,7 +222,7 @@ import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { DockPanel } from "./dock/dock-panel";
 import { AgentDock } from "./agent-dock/agent-dock";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
-import { dockSheetOpen, setDockSectionOpen } from "./agent-dock/agent-dock-state";
+import { dockSheetOpen, setDockView } from "./agent-dock/agent-dock-state";
 import { dockShows, openDockTab, revealDockTab } from "./agent-dock/dock-reveal";
 import { DockChanges } from "./agent-dock/dock-changes";
 import { DockHistory } from "./agent-dock/dock-history";
@@ -336,8 +336,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         if (!settings.value.dockOpen || settings.value.dockTab !== "explorer") {
           updateSettings({ dockOpen: true, dockTab: "explorer" });
         }
-        // The stacked dock keeps the document inside its Files section.
-        if (agentDockEnabled()) setDockSectionOpen("files", true);
+        // The tabbed dock keeps the document inside its Files view.
+        if (agentDockEnabled()) setDockView("files");
       },
       canFocus: () =>
         agentLaunchPage.request.value === null &&
@@ -2798,7 +2798,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                       : dockBodies.history}
                 </DockPanel>
               }
-              // `agentDock` switch: sections on one scroll, no resize grip. Closing goes
+              // `agentDock` switch: one strip and one body. Closing goes
               // through the action too, so the focus guard stays the one way out.
               stacked={
                 <AgentDock
@@ -2813,7 +2813,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                           count: changedFileCount,
                         }
                       : null,
-                    // Changes is its own section here, so the Explorer keeps only the files.
+                    // Changes is its own view here, so the Explorer keeps only the files.
                     files: (root) => explorerAt(root, false),
                     usage: ({ item, space }) => (
                       <DockUsage

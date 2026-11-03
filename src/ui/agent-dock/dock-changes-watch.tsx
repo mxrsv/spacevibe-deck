@@ -3,7 +3,7 @@ import { changesController, type ChangesController } from "../../files/changes/c
 import { diffSelection, type DiffSelectionStore } from "../../files/changes/diff-selection";
 import { installTurnEndWatch } from "../../files/changes/turn-end";
 import { ensureRepositoriesScanned, repositoryScans } from "../../repositories/repositories-store";
-import { dockSectionsOpen } from "./agent-dock-state";
+import { dockView } from "./agent-dock-state";
 
 /**
  * The folder whose changes are read: the root, unless the rail's repository scan calls it plain
@@ -41,13 +41,13 @@ export interface DockChangesWatchProps {
 }
 
 /**
- * What the Changes section stands on, kept apart from the section so it outlives the sheet: the
+ * What the Changes view stands on, kept apart from the view so it outlives the sheet: the
  * controller's watch of the root, and the open diff. `AgentDock` mounts it at every window width,
  * so the narrow window's sheet closing releases neither (the diff column sits beside the handle,
  * not in the sheet). Renders nothing.
  *
- * The watch is held whether or not the section is unfolded, so the count stays true. The diff
- * ends when the section is folded, the root moves, or the dock goes, as leaving the legacy
+ * The watch is held whether or not the view is selected, so the count stays true. The diff
+ * ends when another view is selected, the root moves, or the dock goes, as leaving the legacy
  * Changes view does: the controller empties its state once nothing is shown, and nothing would
  * refresh a diff after.
  */
@@ -69,7 +69,7 @@ export function DockChangesWatch({
   }, [changes, watched]);
   useEffect(() => () => changes.setShown(null), [changes]);
 
-  const open = dockSectionsOpen.value.changes;
+  const open = dockView.value === "changes";
   useEffect(() => {
     if (!open) {
       void diff.close();
