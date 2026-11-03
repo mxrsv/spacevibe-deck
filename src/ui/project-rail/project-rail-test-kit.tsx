@@ -13,32 +13,13 @@ import {
 } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
-import {
-  createFileSurfaceController,
-  type FileSurfaceController,
-} from "../../files/file-surface-controller";
 import { resetFileSurfaces } from "../../files/file-surface-store";
-import type { FileClient } from "../../files/file-client";
 import { workspacesData } from "../../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../../lib/workspace-recents";
 import { sessionArchive } from "../../terminal/session-journal";
 import { paneModels, paneTails } from "../../terminal/session-tail-store";
 import { updateSettings } from "../../settings/settings-store";
 import { resetProjectRailState } from "./project-rail-state";
-
-const fileClient: FileClient = {
-  listDir: async () => [],
-  readFile: async () => ({ kind: "refused", reason: "unused in this test" }),
-  writeFile: async (_root, path) => ({ path, mtimeMs: 1, size: 1 }),
-  statFiles: async (_root, paths) =>
-    paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
-  watchPaths: async () => {},
-  setDirtyFiles: async () => {},
-  createEntry: async (_root: string, parent: string, name: string) => ({
-    path: `${parent}/${name}`,
-  }),
-  listenFileChanged: async () => () => {},
-};
 
 const checkout = (path: string, branch: string) => ({
   path,
@@ -133,7 +114,6 @@ export function workdayFocusing(key: number): TabView[] {
  * is open, and a mark a test left behind would keep the next one's fields from taking focus.
  */
 export let host = document.createElement("div");
-let fileController: FileSurfaceController;
 
 const NOOP = (): void => {};
 
@@ -151,8 +131,7 @@ export function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): voi
         onCloseTab={NOOP}
         onClosePane={NOOP}
         onFocusPane={NOOP}
-        legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
-        fileController={fileController}
+        legacy={{ onOpenWorkspace: NOOP }}
         {...props}
       />,
       host,
@@ -260,7 +239,6 @@ export function installRailHarness(): void {
     tabViews.value = workday();
     activeTabIndex.value = 0;
     resetFileSurfaces();
-    fileController = createFileSurfaceController({ client: fileClient });
     sessionArchive.value = {};
     paneTails.value = new Map();
     paneModels.value = new Map();
@@ -274,7 +252,6 @@ export function installRailHarness(): void {
     invalidateRepositoryScans();
     resetDesktopEnvironmentForTests();
     workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
-    fileController.dispose();
     resetFileSurfaces();
     sessionArchive.value = {};
     paneTails.value = new Map();

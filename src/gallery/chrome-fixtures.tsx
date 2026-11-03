@@ -187,9 +187,8 @@ export function agentRailNavigationSpecimen({
       onCloseTab={NOOP}
       onClosePane={NOOP}
       onFocusPane={onFocusPane}
-      legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
+      legacy={{ onOpenWorkspace: NOOP }}
       cardActions={GALLERY_CARD_ACTIONS}
-      fileController={fileControllerFixture}
       usageSummary={<AgentUsageSummary snapshot={agentLimitsFixture()} onOpenUsage={NOOP} />}
       footer={
         showFooter ? (

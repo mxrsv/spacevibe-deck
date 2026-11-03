@@ -159,14 +159,6 @@ import { TabBar } from "./tab-bar";
 import { DeckToolbar, MISSION_CONTROL_BUTTON_HIDDEN } from "./toolbar/deck-toolbar";
 import { AttentionStripChip } from "./attention/attention-strip-chip";
 import { DevServersStripChip } from "./dev-servers/dev-servers-strip-chip";
-// The sidebar slot's occupant. `RepositoryRail` and `WorkspaceSidebar` are
-// deliberately still in the tree with their tests: each successive rail keeps
-// its predecessor's callback contract, so swapping back is this one import and
-// the JSX tag below it. `AgentRail` added one prop to that contract —
-// `onFocusPane`, the pane-exact destination its chips and per-agent rows need —
-// and, since 2026-08-16 (DL-27.10), no longer takes `onFocusAttention`: the
-// pinned block whose count pressed it is gone, so a swap back re-wires that one
-// prop to `requestAttentionFocus`.
 import { AgentRail } from "./agent-rail";
 import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
 import { buildAgentRail, subjectForWorkspace } from "./agent-rail-model";
@@ -278,7 +270,7 @@ import {
   workspaceOrphanedByClose,
   workspacesOrphanedByClose,
 } from "./app-policy";
-import { restoreDeps, resumeArchivedWorktree } from "./app-restore-deps";
+import { restoreDeps } from "./app-restore-deps";
 
 interface TaskLaunchAttempt {
   readonly tabKey: number;
@@ -314,7 +306,6 @@ function attemptMatchesDraft(attempt: TaskLaunchAttempt, draft: NewTaskDraft): b
 
 export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
-  const resumingWorkspacesRef = useRef<ReadonlySet<string>>(new Set());
   const taskOperationPending = useSignal<LauncherPending | null>(null);
   const workspaceDropChecking = useSignal(false);
   const boardSelectionPending = useSignal(false);
@@ -684,16 +675,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
     return resumed;
   };
-
-  /** Restore the newest archived tab set belonging to one legacy rail row. */
-  const resumeArchivedWorktreeForRail = (path: string): void =>
-    resumeArchivedWorktree(path, {
-      manager: tabsRef.current,
-      resumingWorkspaces: resumingWorkspacesRef.current,
-      setResumingWorkspaces: (paths) => {
-        resumingWorkspacesRef.current = paths;
-      },
-    });
 
   // The rail's useful five-session snapshot: loaded at boot — the same request
   // that decides whether the host supports sessions at all — and kept current
@@ -2552,8 +2533,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             legacy={{
               onOpenWorkspace: openTaskBoard,
               openWorkspaceDisabled: taskOperationPending.value !== null,
-              onFocusAttention: requestAttentionFocus,
-              onResumeWorktree: resumeArchivedWorktreeForRail,
             }}
             onCloseTab={(index) => void closeTab(index)}
             // Close model table row 1: the agent row's ✕ closes that pane, and
@@ -2568,7 +2547,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // A remembered header's close: forget the folder by dropping its
             // history entries; the rail re-derives from `workspacesData`.
             onRemoveWorkspace={removeWorkspaceRecents}
-            fileController={fileController}
           />
         ) : null
       }

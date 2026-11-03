@@ -156,8 +156,7 @@ function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): void {
         onCloseTab={NOOP}
         onClosePane={NOOP}
         onFocusPane={NOOP}
-        legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
-        fileController={fileController}
+        legacy={{ onOpenWorkspace: NOOP }}
         {...props}
       />,
       host,
@@ -179,8 +178,7 @@ function mountSidebarLayout(): void {
           onCloseTab={NOOP}
           onClosePane={NOOP}
           onFocusPane={NOOP}
-          legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
-          fileController={fileController}
+          legacy={{ onOpenWorkspace: NOOP }}
         />
         <div class="stage__strip">
           <TabStrip
@@ -1890,7 +1888,7 @@ describe("AgentRail create row (DL-27.14, amended 2026-10-08)", () => {
     tabViews.value = [];
     mount({
       cardActions: withLauncher,
-      legacy: { onOpenWorkspace, onResumeWorktree: NOOP },
+      legacy: { onOpenWorkspace },
     });
     await settle();
 
@@ -1903,7 +1901,7 @@ describe("AgentRail create row (DL-27.14, amended 2026-10-08)", () => {
   it("disables Agent while a task operation is in flight", async () => {
     mount({
       cardActions: withLauncher,
-      legacy: { onOpenWorkspace: NOOP, onResumeWorktree: NOOP, openWorkspaceDisabled: true },
+      legacy: { onOpenWorkspace: NOOP, openWorkspaceDisabled: true },
     });
     await settle();
 

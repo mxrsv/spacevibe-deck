@@ -301,7 +301,7 @@ describe('the "+" menu', () => {
     pinHost(true);
     mount({
       cardActions: launcher(calls),
-      legacy: { onOpenWorkspace, onResumeWorktree: () => {} },
+      legacy: { onOpenWorkspace },
     });
     await settle();
     await activate(trigger("New"));
@@ -314,7 +314,7 @@ describe('the "+" menu', () => {
 
   it("falls back to the board where nothing wires the launch page, and honours a disabled board", async () => {
     const onOpenWorkspace = vi.fn();
-    mount({ legacy: { onOpenWorkspace, onResumeWorktree: () => {} } });
+    mount({ legacy: { onOpenWorkspace } });
     await settle();
 
     await activate(trigger("New"));
@@ -324,7 +324,7 @@ describe('the "+" menu', () => {
 
     unmount();
     mount({
-      legacy: { onOpenWorkspace, openWorkspaceDisabled: true, onResumeWorktree: () => {} },
+      legacy: { onOpenWorkspace, openWorkspaceDisabled: true },
     });
     await settle();
     await activate(trigger("New"));

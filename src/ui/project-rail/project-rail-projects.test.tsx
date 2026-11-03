@@ -117,14 +117,14 @@ describe("project header", () => {
 
   it("opens the board where nothing wires the launcher, and honours a disabled board", async () => {
     const onOpenWorkspace = vi.fn();
-    mount({ legacy: { onOpenWorkspace, onResumeWorktree: () => {} } });
+    mount({ legacy: { onOpenWorkspace } });
     await settle();
 
     click(headerButton(API, "New agent in"));
     expect(onOpenWorkspace).toHaveBeenCalledOnce();
 
     unmount();
-    mount({ legacy: { onOpenWorkspace, openWorkspaceDisabled: true, onResumeWorktree: () => {} } });
+    mount({ legacy: { onOpenWorkspace, openWorkspaceDisabled: true } });
     await settle();
     expect(headerButton(API, "New agent in")?.hasAttribute("disabled")).toBe(true);
   });

@@ -10,7 +10,6 @@ import {
   repositoryScans,
 } from "../repositories/repositories-store";
 import { paneTails } from "../terminal/session-tail-store";
-import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
@@ -38,10 +37,9 @@ import type { SidebarActionsProps } from "./sidebar-actions";
  * The agent status rail.
  *
  * See `docs/internals/agent-rail.md`; chrome rules `DL §27`. It replaces
- * `RepositoryRail` in `DesktopChrome`'s `sidebarNavigation` slot and keeps
- * that component's callback contract, so reverting is one line in `app.tsx`
- * — the rail changes what the list is ABOUT (a live agent rather than a
- * checkout), never what selecting or closing a tab means (R4).
+ * `RepositoryRail` in `DesktopChrome`'s `sidebarNavigation` slot. The rail
+ * changes what the list is ABOUT (a live agent rather than a checkout),
+ * never what selecting or closing a tab means (R4).
  *
  * One list, no mode switch: a cluster per project in the order the user opened
  * them. The `New` launcher is a small `+ New` on the sidebar identity row
@@ -71,17 +69,10 @@ export { RailStatusMark } from "./controls/rail-status-mark";
 
 export interface AgentRailProps {
   readonly newPaneDrop?: NewPaneDropDeps;
-  /** Stable Tauri fallback callbacks; worktree cards are Electron-only. */
+  /** Workspace creation callbacks shared by the rail layouts. */
   readonly legacy: {
     readonly onOpenWorkspace: () => void;
     readonly openWorkspaceDisabled?: boolean;
-    readonly onResumeWorktree: (path: string) => void;
-    /**
-     * Focus the pane that needs the user. With an index it targets that tab
-     * (the legacy rail's rows); without one it is ⌘⇧A's own preflight and
-     * picks the loudest pane in the window.
-     */
-    readonly onFocusAttention?: (index?: number) => void;
   };
   /**
    * Select an already-open tab by its global index. Every shell-only card row
@@ -159,17 +150,6 @@ export interface AgentRailProps {
    * owns its data and navigation; the rail only places the supplied surface.
    */
   usageSummary?: ComponentChildren;
-  /**
-   * The same `SurfaceStrip` wired into `TabManager`. Unread by this file's
-   * own render since the worktree card landed (2026-08-26): DL-27.22's
-   * focused-pane wash is no longer gated by whether a file or browser
-   * surface holds the stage (a stage surface does not change which pane
-   * holds the WINDOW's keyboard), so nothing here reads
-   * `fileController.activeIndex()` any more. Kept as a required prop because
-   * `AgentRailProps` and `RepositoryRailProps` share one contract and `App`
-   * passes it to both; the rail lists no file tabs and opens none regardless.
-   */
-  fileController: FileSurfaceController;
 }
 
 function WorktreeCardRail(props: AgentRailProps) {
