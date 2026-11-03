@@ -22,9 +22,29 @@ import { DockFileTree } from "./dock-file-tree";
 
 /** Below this body width the tree pane starts hidden (DOCK-6); the editor keeps the room. */
 export const TREE_PANE_MIN_BODY = 560;
-const TREE_PANE_WIDTH = "w-65";
-/** Crumbs shown before the earlier folders fold into one. */
-const VISIBLE_CRUMBS = 3;
+/** The tree pane's width in a body that affords it (the mock's 260px). */
+const TREE_PANE_WIDTH = 260;
+/** At most this share of the body goes to the tree pane, so the editor keeps the rest (DOCK-11). */
+const TREE_PANE_SHARE = 0.4;
+/** Folders spelled out before the file; the earlier ones fold into one `…`. */
+const VISIBLE_FOLDERS = 2;
+/** Below this body width (the 320px sheet) only the file's own folder is spelled out. */
+const NARROW_CRUMBS_BELOW = 400;
+
+/**
+ * The tree pane gives way first (DOCK-11): 260px where the body affords it, else 40% of the body,
+ * so a 320px sheet keeps 192px of editor. An unmeasured body counts as wide, as for the default.
+ */
+export function treePaneWidth(bodyWidth: number | null): number {
+  return bodyWidth === null
+    ? TREE_PANE_WIDTH
+    : Math.min(TREE_PANE_WIDTH, Math.round(bodyWidth * TREE_PANE_SHARE));
+}
+
+/** How many folders the breadcrumb spells out before the `…`. */
+export function visibleCrumbFolders(bodyWidth: number | null): number {
+  return bodyWidth !== null && bodyWidth < NARROW_CRUMBS_BELOW ? 1 : VISIBLE_FOLDERS;
+}
 
 export interface DockFileBodyProps {
   readonly controller: FileSurfaceController;
@@ -74,7 +94,9 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   // An unmeasured body (first paint, tests) counts as wide: hiding on a guess would flash.
   const treeOpen = dockTreePane.value ?? (width === null || width >= TREE_PANE_MIN_BODY);
   const crumbs = crumbsFor(path, workspacePath);
-  const hidden = crumbs.length > VISIBLE_CRUMBS ? crumbs.length - VISIBLE_CRUMBS : 0;
+  // The file's own crumb is always shown; `visible` counts the folders before it.
+  const visible = visibleCrumbFolders(width) + 1;
+  const hidden = crumbs.length > visible ? crumbs.length - visible : 0;
   const shown = crumbs.slice(hidden);
   const document = documentFor(path);
   const markdown = isMarkdownPath(path);
@@ -184,13 +206,17 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
           <FilePanel controller={controller} workspacePath={workspacePath} chrome="none" />
         </div>
         {treeOpen ? (
-          <div className={`${TREE_PANE_WIDTH} shrink-0 border-l`}>
+          <section
+            aria-label="Project files"
+            className="shrink-0 border-l"
+            style={{ width: `${treePaneWidth(width)}px` }}
+          >
             <DockFileTree
               controller={controller}
               workspacePath={workspacePath}
               canCreate={canCreate}
             />
-          </div>
+          </section>
         ) : null}
       </div>
     </div>

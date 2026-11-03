@@ -272,6 +272,35 @@ describe("file tabs in the dock strip", () => {
   });
 });
 
+describe("file tabs in the narrow window's sheet", () => {
+  it("carries the strip, the file tab and its body in the 320px sheet", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1000 });
+    await act(async () => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    const files = testFileBodies({
+      document: (root) => <p>editing {surfaceFor(root).activePath}</p>,
+    });
+    const view = await mount(dock(files));
+    await act(async () => {
+      await files.controller.openFile(ROOT, A, true);
+    });
+    await click(
+      document.body.querySelector<HTMLElement>(
+        '[aria-label^="Open the side panel"]',
+      ) as HTMLElement,
+    );
+    const sheet = byRole("dialog") as HTMLElement;
+    expect(sheet.querySelector('[aria-label="Dock views"]')).not.toBeNull();
+    expect(tabNames()).toEqual(["a.ts"]);
+    expect(selected()).toEqual(["a.ts"]);
+    expect(sheet.textContent).toContain(`editing ${A}`);
+    // Widening is the column's control; the sheet is already as wide as it goes.
+    expect(sheet.querySelector('[aria-label="Widen the panel"]')).toBeNull();
+    await view.unmount();
+  });
+});
+
 describe("the Explorer tab behind +", () => {
   it("shows the project tree full width, and opening a file from it makes a file tab", async () => {
     const files = testFileBodies({
@@ -356,6 +385,36 @@ describe("the file body", () => {
     observeWidth(700);
     const view = await mountBody();
     await waitUntil(() => tree() !== null);
+    await view.unmount();
+  });
+
+  const treePane = (): HTMLElement | null =>
+    document.body.querySelector<HTMLElement>('[aria-label="Project files"]');
+
+  it("gives the tree pane way in a 320px sheet: 2/5 of the body, 260px where there is room", async () => {
+    observeWidth(320);
+    const narrow = await mountBody();
+    await click(button("Show the file tree"));
+    expect(treePane()?.style.width).toBe("128px");
+    await narrow.unmount();
+
+    observeWidth(900);
+    const wide = await mountBody();
+    await waitUntil(() => treePane() !== null);
+    expect(treePane()?.style.width).toBe("260px");
+    await wide.unmount();
+  });
+
+  it("spells out only the file's own folder in a 320px body", async () => {
+    observeWidth(320);
+    const view = await mountBody();
+    const path = document.body.querySelector('[aria-label="File path"]') as HTMLElement;
+    expect([...path.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["…", "ui"]);
+    expect(path.querySelector("b")?.textContent).toBe("a.ts");
+
+    // The folded folders are one press away: it shows the pane with `src` open.
+    await click(button("Earlier folders"));
+    expect(tree()).not.toBeNull();
     await view.unmount();
   });
 

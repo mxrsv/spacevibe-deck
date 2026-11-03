@@ -57,7 +57,8 @@ export function DockFileTab({
       title={path}
       data-path={path}
       className={cn(
-        "group/tab relative flex h-full min-w-0 max-w-40 shrink-0 items-center gap-1.5 px-2.5 text-xs",
+        // Never wider than the tab region, so a 320px sheet truncates the name, not the tab.
+        "group/tab relative flex h-full min-w-0 max-w-full shrink-0 items-center gap-1.5 px-2.5 text-xs",
         active
           ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
           : "text-muted-foreground hover:bg-muted/50",
@@ -82,7 +83,7 @@ export function DockFileTab({
       }}
     >
       <DeckIcon icon={fileIcon(name)} size={ROW_ICON} />
-      <span className={cn("min-w-0 truncate", preview && "italic")}>{name}</span>
+      <span className={cn("min-w-0 max-w-32.5 truncate", preview && "italic")}>{name}</span>
       {dirty ? (
         <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-foreground/60" />
       ) : null}
