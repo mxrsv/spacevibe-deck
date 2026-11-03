@@ -7,6 +7,8 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Safer encrypted connections.** The [desktop runtime](package.json) now rejects
+  certificates issued through compromised eMudhra intermediates.
 - **Switch between agents without the pause.** Switching [agent tabs](docs/user/agents.md)
   no longer freezes the interface while the previous terminal is hidden.
 - **Choose from eight themes.** [Appearance](docs/user/settings.md#appearance) shows Deck Light,
