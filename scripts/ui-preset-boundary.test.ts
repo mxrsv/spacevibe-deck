@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { parseRules, type Rule } from "../src/styles/css-weight-sites";
 
 /**
- * The Base UI preset's migration boundary (spec UI-3, migration plan gates G2 and the
+ * The Base UI preset's migration boundary (spec UI-3, replaced by CMP-19; migration plan gates G2 and the
  * wave 1 "enforced migration boundary"). The preset is a second styling system next to
  * Deck's chrome: it may be imported by a migrated surface and must change nothing about a
  * surface that does not import it. Nothing shipping imports it yet, so this test builds the
@@ -118,11 +118,29 @@ function chromeCssFiles(): string[] {
 
 /**
  * The new shell's own stylesheets, keyed on its release switches and painted from the preset (UI-2).
- * Exempt from the token rule only, so a packaged build's old surfaces still cannot read the preset.
+ * Exempt from the token rule only: they may read any preset token, not just the CMP-19 list.
  */
 const PRESET_READING_SHELL_CSS = new Set([
   "styles/27-dock-stacked.css",
   "styles/31-shell-stage.css",
+]);
+
+/**
+ * Preset tokens a legacy stylesheet may read (CMP-19, replacing UI-3): the new look is a set of values
+ * the legacy rules paint with, not a second system. The rest of the preset's tokens stay off limits.
+ * This exemption protects only the READ: the other tests here still forbid the preset from restyling
+ * a page root or bare element, resetting globally, or redeclaring a custom property the chrome owns.
+ */
+const LEGACY_READABLE_TOKENS = new Set([
+  "--primary",
+  "--primary-foreground",
+  "--control-frame",
+  "--control-frame-hover",
+  "--muted",
+  "--muted-foreground",
+  "--foreground",
+  "--background",
+  "--ring",
 ]);
 
 /** The controls the barrel exports, as paths under `src/`; the rest of `ui/controls/` is chrome. */
@@ -278,7 +296,7 @@ describe("the preset leaks nothing into a surface that does not carry it", () =>
     expect(built.css).toContain("Inter Variable");
   });
 
-  it("keeps the chrome's stylesheets free of the preset's tokens", () => {
+  it("keeps the chrome's stylesheets to the preset tokens CMP-19 lists", () => {
     const presetTokens = new Set(
       [
         ...built.css.matchAll(
@@ -292,10 +310,11 @@ describe("the preset leaks nothing into a surface that does not carry it", () =>
       if (PRESET_READING_SHELL_CSS.has(posix(relative(SRC, file)))) continue;
       const text = readFileSync(file, "utf8");
       for (const token of presetTokens) {
+        if (LEGACY_READABLE_TOKENS.has(token)) continue;
         if (new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(text))
           usage.push(`${posix(relative(ROOT, file))} reads ${token}`);
       }
     }
-    expect(usage, "chrome CSS must not depend on the preset's tokens (UI-2)").toEqual([]);
+    expect(usage, "chrome CSS may read only the preset tokens CMP-19 lists").toEqual([]);
   });
 });

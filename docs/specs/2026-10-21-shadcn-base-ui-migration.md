@@ -67,11 +67,10 @@ in implementation evidence; do not silently re-resolve `latest` between waves.
   collisions is allowed. Terminal ANSI and editor syntax colors are separate content concerns and
   retain their stored values and behavior. [UI composition](2026-11-03-ui-composition.md) takes
   precedence for the primary colour and muted text in Deck Light.
-- **UI-3 Controlled coexistence.** Before a surface moves, it keeps its existing appearance
-  and behavior. No global reset, selector or colliding variable may restyle it accidentally.
-  A migrated surface and its portals must use the same preset, mode, font and reset rules;
-  legacy `.cfg-*`, modal and context selectors must not override it. A scoped reset must
-  reproduce the upstream component's computed result, not become a substitute Deck theme.
+- **UI-3 Replaced (owner, 2026-11-03).** Replaced by CMP-19 of
+  [UI composition](2026-11-03-ui-composition.md): legacy stylesheets follow the new values now
+  instead of keeping their old look. They may read the preset tokens that rule lists. No global
+  reset, selector or colliding variable may restyle a surface accidentally.
 - **UI-4 One component definition.** Shared primitives live in `src/ui/controls/`, which
   already owns controls. Compose product-specific controls from those primitives. Callers
   select upstream variants and sizes; they do not recreate control colors or geometry.

@@ -82,6 +82,8 @@ const RADIUS_VALUES = new Set([
   "var(--radius-tight)",
   "var(--radius-control)",
   "var(--radius-surface)",
+  // CMP-2: the radius of a control 36 or 40 high, the one value with no token.
+  "6px",
   "50%",
   "999px",
   "0",
@@ -187,30 +189,40 @@ function offScaleRadii(): string[] {
 }
 
 /**
- * DL-20.1's height cap (2026-10-09): a labelled control 28px tall or less takes
- * `--radius-tab`. The scan sees only blocks that declare their height; a
- * matching `width` marks a square icon button, which keeps the control role.
- * The two exemptions are not labelled controls: `.extapp` is an icon and a
- * caret, `.asr-avatar__badge` is a count.
+ * CMP-2 through DL-20.1: 4px on a control up to 32 high, 6px from 36. The scan sees only blocks
+ * that declare their height; a matching `width` marks a square icon button, which keeps the
+ * control role at any size. The two exemptions are not labelled controls: `.extapp` is an icon
+ * and a caret, `.asr-avatar__badge` is a count.
  */
-const RADIUS_CAP_HEIGHT = 28;
+const TALL_CONTROL_HEIGHT = 36;
+// Taller than a 40 button is a field, card or thumbnail, which DL-20.1 does not size by height.
+const TALLEST_CONTROL_HEIGHT = 40;
 const RADIUS_CAP_EXEMPT = new Set([".extapp", ".asr-avatar__badge"]);
 
-function pillShapedControls(): string[] {
+function wrongSizeRadius(): string[] {
   const css = readStylesheet().replace(CSS_COMMENT, "");
   const violations: string[] = [];
   for (const [, prelude, body] of css.matchAll(CSS_BLOCK)) {
     const selector = prelude.trim().replace(/\s+/g, " ");
     if (RADIUS_CAP_EXEMPT.has(selector)) continue;
     const declarations = body.split(";").map((raw) => raw.trim().replace(/\s+/g, " "));
-    if (!declarations.includes("border-radius: var(--radius-control)")) continue;
+    const radius = declarations.find((d) => RADIUS_DECLARATION.test(d))?.split(": ")[1];
+    if (radius !== "var(--radius-control)" && radius !== "6px") continue;
     const px = (pattern: RegExp): number | undefined => {
       const match = declarations.map((declaration) => declaration.match(pattern)).find(Boolean);
       return match ? Number(match[1]) : undefined;
     };
     const height = px(/^(?:min-)?height: (\d+(?:\.\d+)?)px$/);
     const width = px(/^width: (\d+(?:\.\d+)?)px$/);
-    if (height !== undefined && height <= RADIUS_CAP_HEIGHT && width !== height) {
+    if (height === undefined || width === height) continue;
+    if (radius === "6px" && height < TALL_CONTROL_HEIGHT) {
+      violations.push(`${selector}: ${height}px tall at 6px`);
+    }
+    if (
+      radius === "var(--radius-control)" &&
+      height >= TALL_CONTROL_HEIGHT &&
+      height <= TALLEST_CONTROL_HEIGHT
+    ) {
       violations.push(`${selector}: ${height}px tall at --radius-control`);
     }
   }
@@ -218,15 +230,15 @@ function pillShapedControls(): string[] {
 }
 
 describe("design-language radius scale", () => {
-  it("declares the DL-20.1 roles at 2/6/8/10/12", () => {
+  it("declares the DL-20.1 roles at 2/3/4/4/7 (CMP-2)", () => {
     const css = readStylesheet().replace(CSS_COMMENT, "");
     for (const [name, size] of Object.entries({
       // The dense-row role, added 2026-08-17 with the tab strip's turn text.
       "--radius-flat": "2px",
-      "--radius-tab": "6px",
-      "--radius-tight": "8px",
-      "--radius-control": "10px",
-      "--radius-surface": "12px",
+      "--radius-tab": "4px",
+      "--radius-tight": "3px",
+      "--radius-control": "4px",
+      "--radius-surface": "7px",
     })) {
       const declarations = [...css.matchAll(new RegExp(`${name}\\s*:`, "g"))];
       expect(
@@ -244,19 +256,19 @@ describe("design-language radius scale", () => {
     expect(offScaleRadii()).toEqual([]);
   });
 
-  it("caps a short labelled control at --radius-tab", () => {
-    expect(pillShapedControls()).toEqual([]);
+  it("gives a control 4px up to 32 high and 6px from 36 high", () => {
+    expect(wrongSizeRadius()).toEqual([]);
   });
 
-  it("keeps the rulebook synchronized with the 2/6/8/10/12 token contract", () => {
+  it("keeps the rulebook synchronized with the 2/3/4/4/7 token contract", () => {
     const rulebook = readFileSync(RULEBOOK, "utf8");
 
     expect(rulebook).toContain("Five radius roles");
     expect(rulebook).toContain("`--radius-flat` (2px)");
-    expect(rulebook).toContain("`--radius-tab` (6px)");
-    expect(rulebook).toContain("`--radius-tight` (8px)");
-    expect(rulebook).toContain("`--radius-control` (10px)");
-    expect(rulebook).toContain("`--radius-surface` (12px)");
+    expect(rulebook).toContain("`--radius-tab` (4px)");
+    expect(rulebook).toContain("`--radius-tight` (3px)");
+    expect(rulebook).toContain("`--radius-control` (4px)");
+    expect(rulebook).toContain("`--radius-surface` (7px)");
     expect(rulebook).not.toContain("the two radius roles");
     expect(rulebook).not.toContain("Two radius roles");
     // The count in the rule's own first sentence moved with the role; a
@@ -287,15 +299,16 @@ describe("design-language radius scale", () => {
 });
 
 /**
- * DL-4.4's Native balanced ladder, keyed by variable name to its exact size.
+ * DL-4.4's ladder, keyed by variable name to its exact size. CMP-10 folded it onto two values:
+ * 14 for what is read and pressed, 12 for metadata, and nothing below 12.
  * DL-4.5 requires each declared once in `:root`, never a second standard
  * ladder declared beside it.
  */
 const TYPE_LADDER: Record<string, string> = {
   "--type-title": "14px",
-  "--type-body": "12.5px",
-  "--type-meta": "11px",
-  "--type-micro": "10.5px",
+  "--type-body": "14px",
+  "--type-meta": "12px",
+  "--type-micro": "12px",
 };
 
 describe("design-language typography tokens", () => {

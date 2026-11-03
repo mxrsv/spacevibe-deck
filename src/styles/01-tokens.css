@@ -75,17 +75,18 @@
      Agent Board by DL-4.1's amendment. */
   --ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
-  /* DL-4.4 names the four standard chrome text sizes (Native balanced,
-     2026-08-16); DL-4.5 requires the ladder to live here as variables, once
-     each, never as a px literal repeated at a use site. Tasks 4-8 migrate
-     consumers onto these — this task only declares them. */
+  /* DL-4.4 (CMP-10, 2026-11-03): chrome text is 14 for buttons, inputs, labels
+     and row titles, and 12 for chips, badges and metadata. Nothing is below
+     12. --type-micro stays declared at 12 so existing consumers keep working
+     until step 2 deletes them. DL-4.5 requires the ladder to live here, once
+     each, never as a px literal repeated at a use site. */
   --type-title: 14px;
-  --type-body: 12.5px;
-  --type-meta: 11px;
-  --type-micro: 10.5px;
-  /* DL-27.9's one scoped chrome-text exception: the project header sits 1px
-     above the 14px title rung (owner, 2026-09-11), the largest word in the rail. */
-  --type-project: 15px;
+  --type-body: 14px;
+  --type-meta: 12px;
+  --type-micro: 12px;
+  /* DL-27.9's project header; it sat 1px above the title rung until CMP-10
+     folded it onto 14. */
+  --type-project: 14px;
   /* DL-4.1, amended 2026-09-03: the Agent Board's face. A SECOND face for
      chrome, scoped to `.agent-board` by DL-34.5 and to nothing else. It is
      the §31 code stack, so it costs no file and no dependency (DL-1.1), and
@@ -163,29 +164,22 @@
      drag-resize and the persisted setting arrive with the toggle chord. */
   --dock-w: 260px;
 
-  /* DL-20.1: three radius roles, and no fourth picked at a use site.
-     --radius-tight is anything drawn INSIDE a control or row — marks, bars,
-     scrollbar thumbs, the parts of a miniature. --radius-control is anything
-     the pointer acts on inside a surface — rows, pills, icon buttons, chips.
-     --radius-surface is anything that floats above chrome — popovers, dialogs,
-     the file view. The settings screen is not in this set: it is full-bleed
-     over the stage (DL-11), so it has no radius of its own.
-     Two roles replaced a single `--radius: 10px` on 2026-08-14; the third
-     arrived on 2026-08-16, when surface came down from 16px so the closed
-     scale reads 8/10/12. `border-radius: 50%` and the 999px capsule stay
-     shapes rather than scale values.
-     --radius-flat is the fourth role (owner, 2026-08-17): a control packed
-     into a DENSE row, where a 10px corner forces horizontal padding to keep
-     text off the curve and the padding is width the text needed. The tab
-     strip's chips now use --radius-tab, keeping compact details at 2px.
-     Since 2026-10-09 --radius-tab is also every labelled control 28px tall
-     or less (DL-20.1's height cap): 10px on a 24px box reads as a pill. */
-  --radius-tight: 8px;
-  --radius-control: 10px;
-  --radius-surface: 12px;
+  /* DL-20.1 (CMP-2, 2026-11-03): five radius roles, and no sixth picked at a
+     use site. --radius-tight is anything drawn INSIDE a control or row —
+     marks, bars, scrollbar thumbs. --radius-control (4px) is anything the
+     pointer acts on up to 32px tall; a control from 36px takes the literal 6px
+     CMP-2 names. --radius-surface is anything that floats above chrome —
+     popovers, dialogs, menus. The settings screen has no radius of its own: it
+     is full-bleed over the stage (DL-11). --radius-flat is a control packed
+     into a DENSE row. --radius-tab equals --radius-control now and stays so
+     existing consumers keep reading one name. `border-radius: 50%` and the
+     999px capsule stay shapes rather than scale values. */
+  --radius-tight: 3px;
+  --radius-control: 4px;
+  --radius-surface: 7px;
   --radius-flat: 2px;
-  /* DECK-39: tab chips and view buttons, owner-approved 2026-09-09. */
-  --radius-tab: 6px;
+  /* Tab chips and view buttons (DECK-39). */
+  --radius-tab: 4px;
 
   /* DL-20.2: one motion pair for chrome state change. §7 carried this as a
      bare "0.13s ease" figure until the scale gave it a name. The panel

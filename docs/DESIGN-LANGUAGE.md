@@ -75,17 +75,21 @@ cites it.
   [`preset-controls.ts`](../src/ui/controls/preset-controls.ts) with the popups they portal
   (each control root has a `data-slot`), are drawn by the preset
   ([`preset.css`](../src/ui/preset.css), generated from preset `b1a09kDGF`): its tokens,
-  Inter, its radius, shadows and motion. Every other surface keeps the rules in this document
-  unchanged. The sections below name what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1,
-  DL-3.3, DL-4.1, DL-4.4, DL-14.3, DL-20.1, DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where the
-  [UI composition spec](specs/2026-11-03-ui-composition.md) (`CMP-n`) names a value, it takes
+  Inter, its radius, shadows and motion. Every other surface keeps the rules in this document,
+  with the values of the [UI composition spec](specs/2026-11-03-ui-composition.md) (`CMP-n`):
+  its legacy stylesheets follow the same sizes, radii, focus and dividers now (CMP-19), and
+  the surfaces CMP-20 names keep their look until they are deleted. The sections below name
+  what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1, DL-3.3, DL-4.1, DL-4.4, DL-14.3, DL-20.1,
+  DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where a `CMP-n` rule names a value, it takes
   precedence over the preset's own.
   - `.dark` on the root element is the preset's dark mode, so portals follow it.
   - Deck Dark and Deck Light wear the preset's own tokens, except the primary role, which is the
     ivory of CMP-4 in [`preset.css`](../src/ui/preset.css); every other theme publishes the tokens
-    from its roles in [`theme-vars.ts`](../src/lib/theme-vars.ts) (UI-2). Chrome CSS reads them only in
-    the new shell's two stylesheets; the preset's accent is declared `--ui-accent` because
-    `--accent` is the chrome's.
+    from its roles in [`theme-vars.ts`](../src/lib/theme-vars.ts) (UI-2). Legacy stylesheets may
+    read `--primary`, `--primary-foreground`, `--control-frame`, `--control-frame-hover`,
+    `--muted`, `--muted-foreground`, `--foreground`, `--background` and `--ring` (CMP-19); the
+    new shell's two stylesheets may read any. The preset's accent is declared `--ui-accent`
+    because `--accent` is the chrome's.
   - A control takes `className`, not `class`; a wrapper is made with `withRef`
     ([`with-ref.ts`](../src/ui/controls/with-ref.ts)) because Preact strips `ref` from a
     function component's props.
@@ -97,8 +101,9 @@ cites it.
   - [`ui-preset-boundary.test.ts`](../scripts/ui-preset-boundary.test.ts) holds the fence: no
     global rule, no custom property or utility class the chrome also uses, no real React in the
     production bundle.
-  Why: the migration replaces the chrome's look one surface at a time; until a surface moves it
-  must not change by a pixel, and after it moves it must not be half Deck, half preset.
+  Why: the app takes one look on every surface at once (CMP-19). Step 1 moves the legacy
+  stylesheets' values; step 2 moves each surface into the preset and deletes its stylesheet. A
+  surface must not end up half Deck, half preset.
 
 ## 2. Tokens
 
@@ -165,8 +170,9 @@ only the pre-JS fallbacks.
   them.
 - **DL-3.3** Structure comes from spacing and background steps, not from color or shadow. A
   line between two large regions appears only when they would otherwise merge, and none between
-  rows, groups or section headers. Inside the preset boundary (DL-1.6) that is the whole rule;
-  legacy surfaces keep their `--hair` hairlines (§15, DL-19.2) until their region cuts over.
+  rows, groups or section headers (CMP-14). Legacy stylesheets follow the same rule now (CMP-19);
+  a horizontal line stays only where the structure would be unreadable without it, and the
+  surfaces CMP-20 names keep their `--hair` hairlines (§15, DL-19.2) until deleted.
 - **DL-3.4** `--text-primary` carries keys and values; `--text-muted` carries secondary
   value text and a group label heading a list of rows; `--text-faint` carries
   descriptions, hints, column headers and disabled states. Inside `.agent-board` a group
@@ -204,8 +210,8 @@ only the pre-JS fallbacks.
   never does either. One exception in chrome: the launch page's command preview (DL-32.6)
   prints the exact command in `--board-font`, because a shell line's flags, quotes and spaces
   must read exactly as they will run. Inside the preset boundary (DL-1.6) the typeface is the
-  preset's Inter, bundled with the app, and the sizes are DL-20.3's scale; `--ui-font` and the
-  DL-4.4 ladder do not reach it.
+  preset's Inter, bundled with the app, and the sizes are DL-20.3's scale; `--ui-font` does not
+  reach it. The DL-4.4 ladder carries the same sizes (CMP-10), so legacy surfaces and the preset agree.
 - **DL-4.2** Values use `font-variant-numeric: tabular-nums` so changing numbers do not
   jitter.
 - **DL-4.3** No `text-transform: uppercase`, no all-caps spelling used as styling and no
@@ -215,24 +221,25 @@ only the pre-JS fallbacks.
   - `.settings-screen__title`, `letter-spacing: -0.02em`: optical correction at 24px;
   - `.board-label` (Agent Board): uppercase with `var(--label-tracking)` (0.06em), weight
     400, `--text-faint`, for the nav's two group headings and the state word only.
-- **DL-4.4** Standard chrome text uses four named sizes:
+- **DL-4.4** Standard chrome text uses four named sizes, on two values (CMP-10):
 
-  | role      | variable       | size   | carries                                                 |
-  | --------- | -------------- | ------ | ------------------------------------------------------- |
-  | title     | `--type-title` | 14px   | screen and panel titles, `More` menu rows, group labels |
-  | body      | `--type-body`  | 12.5px | keys, row names, the text read as content               |
-  | metadata  | `--type-meta`  | 11px   | values, counts, paths, branches, status copy            |
-  | microcopy | `--type-micro` | 10.5px | descriptions, column headers, hints                     |
+  | role      | variable       | size | carries                                                 |
+  | --------- | -------------- | ---- | ------------------------------------------------------- |
+  | title     | `--type-title` | 14px | screen and panel titles, `More` menu rows, group labels |
+  | body      | `--type-body`  | 14px | keys, row names, the text read as content               |
+  | metadata  | `--type-meta`  | 12px | values, counts, paths, branches, status copy            |
+  | microcopy | `--type-micro` | 12px | descriptions, column headers, hints                     |
 
   A group label heading a list of rows is title-sized in `--text-muted` (the rail's
   cluster header via a local `--type-project` alias, DL-27.9; the footer's `Tools`; and
-  `.cfg-group`). A column header is not a group label and stays at 10.5px faint (DL-15.5).
+  `.cfg-group`). A column header is not a group label and stays at 12px faint (DL-15.5).
   Two scoped exceptions use the metadata rung for a group label: Recent activity's heading
   (DL-33.2) and the Board's `STATUS` / `PROJECTS` (DL-34.5). Keys, labels, column headers,
   descriptions and empty states are sentence-case; values are lowercase.
 
-  This ladder is the legacy surfaces' scale. It stays for every surface outside the preset
-  boundary (DL-1.6) until its region cuts over; inside the boundary DL-20.3 replaces it.
+  Legacy stylesheets read this ladder and it carries the values of DL-20.3 (CMP-19), so no
+  surface sits below 12px. The surfaces CMP-20 names keep their look, now on the same two
+  values, until they are deleted.
 - **DL-4.5** Sizes come from the `--type-*` variables declared once in `:root`, never from
   a px literal at the use site. The closed list of exceptions, none of them standard chrome
   text:
@@ -268,43 +275,42 @@ only the pre-JS fallbacks.
 - **DL-20.1** Five radius roles, and no sixth picked at a use site:
   - `--radius-flat` (2px): a control packed into a dense row, where a larger corner would
     cost the text its width;
-  - `--radius-tab` (6px): strip tabs and view buttons
+  - `--radius-tab` (4px): strip tabs and view buttons
     ([styles](../src/styles/05-tab-bar-toolbar.css)), the stage's panes and document surface
     (DL-18.12), and any control with a text label that is 28px tall or less;
-  - `--radius-tight` (8px): anything drawn inside a control or row — marks, bars, scrollbar
+  - `--radius-tight` (3px): anything drawn inside a control or row — marks, bars, scrollbar
     thumbs, miniature parts;
-  - `--radius-control` (10px): anything the pointer acts on inside a surface — rows, pills,
+  - `--radius-control` (4px): anything the pointer acts on inside a surface — rows, pills,
     square icon buttons, chips outside a dense row;
-  - `--radius-surface` (12px): anything that floats above chrome — popovers, dialogs, the
+  - `--radius-surface` (7px): anything that floats above chrome — popovers, dialogs, the
     file view.
 
-  `50%` and the 999px capsule are shapes, not scale values. Full-bleed screens such as
-  Settings have no radius. The design-language test fails a block that declares a height
-  of 28px or less at `--radius-control` without a matching width; a control whose height
-  comes from padding is held by review.
-  Why: on a 24px box a 10px corner is most of the half-height and the control reads as a
-  pill. Inside the preset boundary (DL-1.6) the five roles do not apply; the radius follows
-  CMP-2, CMP-5 and CMP-7: 4px on a control 28 or 32 high and 3px on a 20px one, 6px on a
-  control 36 or 40 high, and a pill for a badge. The values derive from the preset's `--radius`
-  (`rounded-md`, `rounded-sm`, `rounded-button-lg` in
-  [`preset.css`](../src/ui/preset.css)).
+  `50%` and the 999px capsule are shapes, not scale values, and `6px` is the one literal: the
+  radius of a control 36 or 40 high (CMP-2). Full-bleed screens such as Settings have no
+  radius. The design-language test fails a block that declares a height under 36px with `6px`, and
+  one that declares 36 to 40px with `--radius-control`, without a matching width;
+  a control whose height comes from padding is held by review.
+  Why: the roles carry the sizes of CMP-2, CMP-5 and CMP-7 (4px on a control 28 or 32 high, 3px
+  on a 20px one, 6px on a control 36 or 40 high, a pill for a badge), so a legacy surface and a
+  preset control share corners (CMP-19). The preset's values derive from its `--radius`
+  (`rounded-md`, `rounded-sm`, `rounded-button-lg` in [`preset.css`](../src/ui/preset.css)).
 - **DL-20.2** One motion pair for chrome state change: `--duration` (150ms) and `--ease`
   (`cubic-bezier(0.4, 0, 0.2, 1)`). The slide-over's 0.28s stays inside DL-1.2's 300ms.
-- **DL-20.3** Outside the preset boundary (DL-1.6) type sizes are not a numeric scale here;
-  DL-4.4 is their only authority. Inside it the scale is 16px for a dialog title, 14px for
-  buttons, inputs, labels and row titles, and 12px for chips, badges and metadata (branch, time,
-  path, counts, group titles). Nothing is below 12px; terminal text is outside the scale (CMP-10).
-  Until a region cuts over, its legacy surfaces keep DL-4.4's ladder, including the 11px and
-  10.5px rungs.
+- **DL-20.3** The scale is 16px for a dialog title, 14px for buttons, inputs, labels and row
+  titles, and 12px for chips, badges and metadata (branch, time, path, counts, group titles).
+  Nothing is below 12px; terminal text is outside the scale (CMP-10). Legacy stylesheets reach
+  it through DL-4.4's variables (CMP-19); the surfaces CMP-20 names keep their look until
+  deleted.
 - **DL-20.4** Frame height is not a numeric scale either. DL-18.2's 34px is window
   geometry: `hiddenInset` and `--frame-lights-w` centre the macOS traffic lights in it, and
   the Windows overlay opens at the same height (`FRAME_HEIGHT_PX`). It stays physical under GUI
   zoom, so `--frame-h` is `calc(34px / var(--gui-zoom, 1))`;
   [`window-options.test.ts`](../electron/window-options.test.ts) holds the two together.
-- **DL-20.5** Outside the preset boundary there is no spacing, weight, border-width or layer
-  scale. Inside it spacing moves in 2px steps, with the values and roles of CMP-15; sizes that
-  are functional geometry (hairlines, tree indent, window controls, the frame height) stay
-  outside it. Legacy surfaces keep no scale until they migrate. No token declares the steps.
+- **DL-20.5** There is no weight, border-width or layer scale. Spacing moves in 2px steps, with
+  the values and roles of CMP-15; sizes that are functional geometry (hairlines, tree indent,
+  window controls, the frame height) stay outside it. Legacy stylesheets follow the steps where
+  a value is a plain spacing choice (CMP-19); the surfaces CMP-20 names keep theirs until
+  deleted. No token declares the steps.
   The z-index order is behavioural (Settings under the modal scrim depends on 40 > 35), not a
   token.
 
@@ -320,14 +326,14 @@ only the pre-JS fallbacks.
 - **DL-21.2** Hover is a 6% `--tone` wash, quieter than selection and never the same
   value. Why: a hover that paints "selected" tells the user they chose something they did
   not.
-- **DL-21.3** Focus-visible is a 2px `--accent` outline that composes with either wash.
-  Inside `.settings-screen` the outline is `--text-muted` (DL-3.7). Inside the preset boundary
-  (DL-1.6) only a text input has a ring: 3px, outside the input, `--foreground` at 14%, with
-  the border turning to the muted text colour. The container must leave room for it, since a
-  clipping ancestor hides it. Every other control shows keyboard focus as its hover and has no
-  ring or outline; Tab still reaches it. This is an owner-accepted exception to the AA non-text
-  floor of DL-1.6: that state change measures 1.09 to 1.19:1 against 3:1 (CMP-12), a named
-  limit, not a defect. Legacy surfaces keep their `--accent` outline until they migrate.
+- **DL-21.3** Only a text input has a focus ring (CMP-9, CMP-11): 3px, outside the input,
+  `--foreground` at 14%, with the border turning to the muted text colour. The container must
+  leave room for it, since a clipping ancestor hides it. Every other control shows keyboard
+  focus as its hover and has no ring or outline; Tab still reaches it. This holds for the preset
+  boundary (DL-1.6) and, since CMP-19, for legacy stylesheets. This is an owner-accepted
+  exception to the AA non-text floor of DL-1.6: that state change measures 1.09 to 1.19:1
+  against 3:1 (CMP-12), a named limit, not a defect. Only the surfaces CMP-20 names keep their
+  2px `--accent` outline (`--text-muted` inside `.settings-screen`, DL-3.7), until deleted.
 - **DL-21.4** Disabled is `--text-faint` on the unchanged surface. Inside the preset boundary
   (DL-1.6) it is the control at 50% opacity.
 - **DL-21.5** State changes use DL-20.2's `--duration` / `--ease` and only DL-1.2's
@@ -377,8 +383,8 @@ Open places where shipped CSS breaks an invariant. Fix one when its surface is r
 
 Clean, small UI. One filled button on screen at a time, and it answers whatever needs the
 user. Icons and progress carry meaning in place of text, and no divider lines run between
-rows, groups or headers: spacing and background steps do that work. Legacy surfaces still wear
-the older quiet key → value rows until their region migrates. This is a direction, not a
+rows, groups or headers: spacing and background steps do that work. Legacy surfaces keep the older
+quiet key → value rows until their region migrates, on the same sizes, corners and focus (CMP-19). This is a direction, not a
 rule; a redesign may change it. The resource budget behind it is an invariant (§1).
 
 ## 8. Copy
@@ -399,8 +405,8 @@ optional `cfg-row__desc` 10.5px faint) and `cfg-row__value`, a right-aligned slo
 
 - **DL-5.1** Row hover is DL-21.2's quiet wash and nothing else.
 - **DL-5.2** The pill (`.cfg-btn`) is the value inside a 1px `--hair` border at `--radius-tab`
-  (DL-20.1). Hover raises the border to `--hair-strong`; focus-visible draws a 2px `--accent`
-  outline (DL-21.3); disabled uses `--text-faint` (DL-21.4).
+  (DL-20.1). Hover raises the border to `--hair-strong`; focus-visible paints as hover
+  (DL-21.3); disabled uses `--text-faint` (DL-21.4).
 - **DL-5.3** Affordance glyphs (`↹` cycle, `▾` menu, `…` picker, `↺` reset) sit inside the pill
   in `--text-faint` and turn `--accent` on pill hover.
 
@@ -954,7 +960,7 @@ covering it; the file explorer is the resident instance.
   selector retains access to kept and dirty files ([FilePanel](../src/files/ui/file-panel.tsx)).
   The row with the displayed document's path carries DL-21.1's wash at `--radius-tab`
   (DL-20.1's 28px clause; hover takes the same corner), its name and icon take
-  `--text-primary`, and it is `aria-selected`; DL-21.3's ring composes with it. When the
+  `--text-primary`, and it is `aria-selected`; keyboard focus paints as hover (DL-21.3). When the
   document changes, the tree opens the folders above it and scrolls only as far as the row
   needs, never moving keyboard focus or the roving tab stop and never opening the dock. A
   document outside the root, under an ignored path while Show ignored files is off, or a
@@ -1348,8 +1354,8 @@ mode do not mount the row ([`SidebarActions`](../src/ui/sidebar-actions.tsx)).
   region, so it stays in reach of the surfaces it opens.
 - **DL-28.2** The six buttons are `RAIL_ICON`-sized, in this order: Session history, Token
   usage, Explorer, Prompts, Browser, Settings. Each has DL-23's tooltip (name and chord)
-  opening above the button (DL-23.4). Hover takes DL-21.2's wash and keyboard focus DL-21.3's
-  outline; an action that cannot run follows DL-23.6.
+  opening above the button (DL-23.4). Hover takes DL-21.2's wash and keyboard focus paints the same
+  (DL-21.3); an action that cannot run follows DL-23.6.
 - **DL-28.3** The row carries everything that is not an operation on the focused pane: the
   surfaces Deck can open (Explorer is the dock's explorer tab, ⌘⇧B) and the window's own
   actions. Pane operations live in `More` (DL-23.8) and on their chords. A surface the running host cannot serve is omitted, not disabled (DL-19.7).
