@@ -169,12 +169,15 @@ gates are the named next round.
   max 2000) of the pane's scrollback as plain text, ANSI stripped, from the renderer's
   serializer. `--envelope` instead returns the last complete envelope (ORC21) as JSON, or
   `none`.
-- **ORC14 `deck pane wait <id> --for idle|needs-you|exited [--timeout <s>]`**: blocks until the
-  pane's mirrored state reaches the target, then prints the state (phase, attention, confidence)
-  and exits 0; exits 124 at the timeout (default 600 s, max 3600). `idle` is phase `idle` or
-  `exited` with no `requested`, `warning` or `error` attention; `needs-you` is attention
-  `requested`, `warning` or `error`, or phase `exited`; `exited` is phase `exited`. The shim
-  re-issues bounded requests until main answers, so no single HTTP call waits longer than 60 s.
+- **ORC14 `deck pane wait <id> --for idle|needs-you|exited|turn [--timeout <s>]`**: blocks until
+  the pane's mirrored state reaches the target, then prints the state (phase, attention,
+  confidence) and exits 0; exits 124 at the timeout (default 600 s, max 3600). `idle` is phase
+  `idle` or `exited` with no `requested`, `warning` or `error` attention; `needs-you` is
+  attention `requested`, `warning` or `error`, or phase `exited`; `exited` is phase `exited`;
+  `turn` is any of the three, the worker's turn ended one way or another, which is what the
+  guide waits for (a clean completion reads `idle` with a `completed` latch, not `needs-you`).
+  The shim re-issues bounded requests until main answers, so no single HTTP call waits longer
+  than 60 s.
 - **ORC15**: After `deck pane send` to a pane, a `wait --for idle` on that pane does not resolve on
   the idle that preceded the send: it resolves once the pane has been `working` since the send,
   or when 5 s pass without any phase change (the agent took no turn), in which case the reply
@@ -206,9 +209,10 @@ gates are the named next round.
   task id, objective, the files it may change, acceptance criteria and the commands that verify
   them, prior findings it needs, a warning not to broaden scope or touch other files, the
   reminder that the coordinator sees only its final output, and the envelope to end with;
-  (6) the loop: `wait --for needs-you` on every running worker, `read --envelope`, mark the
-  table, promote tasks whose dependencies completed, redispatch a failed task only after
-  changing the brief; (7) a `BLOCKED` envelope or a `requested` attention goes to the user, never
+  (6) the loop: `wait --for turn` on every running worker, `read --envelope`, mark the table,
+  promote tasks whose dependencies completed, redispatch a failed task only after changing the
+  brief, and read a pane whose `working` is older than 120 s (confidence `inferred`) instead of
+  trusting it; (7) a `BLOCKED` envelope or a `requested` attention goes to the user, never
   answered by the coordinator on its own; (8) verify a `DONE` envelope's checks before marking
   it completed, and report worker claims separately from checks the coordinator ran; (9) Deck
   does not merge: hand the user the list of branches; close workers only when asked.
@@ -235,9 +239,12 @@ gates are the named next round.
   needs: <decision, access or dependency>
   ```
 
-  `read --envelope` returns the last complete block whose header starts a line; a block with a
-  missing field, or none at all, is `none`. The parser lives in main and has unit tests for both
-  blocks, a truncated block, two blocks (the last wins) and a header inside a longer word.
+  `read --envelope` returns the last complete block whose header is a line of its own, after
+  the gutter a TUI draws in front of output (`⏺ `, `│ `, `> `, indentation) is ignored; a block
+  whose `task` is a placeholder such as `<task id>` (the brief's template echoed on screen) is
+  skipped; a block with a missing field, or none at all, is `none`. The parser lives in main and
+  has unit tests for both blocks, a truncated block, two blocks (the last wins), a header inside
+  a longer word, a decorated block and an echoed template.
 
 ### Safety
 
