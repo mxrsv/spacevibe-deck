@@ -40,6 +40,7 @@ export const CONTROL_REPLY_ERRORS = [
   "empty-text",
   "not-an-agent-pane",
   "invalid",
+  "expired",
   "renderer-error",
 ] as const;
 export type ControlReplyError = (typeof CONTROL_REPLY_ERRORS)[number];
@@ -60,6 +61,12 @@ export interface ControlCommandPayload {
   readonly expectedAgent: string | null;
   readonly lines: number | null;
   readonly force: boolean | null;
+  /**
+   * When main stops waiting for the reply, in epoch milliseconds (its clock and the window's are
+   * the same machine's). A window that reaches a `send` after this has nothing to answer to, so
+   * it types nothing and replies `expired`. Null where no such bound exists.
+   */
+  readonly deadline: number | null;
 }
 
 export interface ControlReplyPayload {
@@ -125,6 +132,7 @@ export function parseControlCommand(value: unknown): ControlCommandPayload | nul
   const expectedAgent = stringOrNull(node.expectedAgent, MAX_CODE_LENGTH);
   const lines = node.lines === null ? null : positiveInteger(node.lines);
   const force = booleanOrNull(node.force);
+  const deadline = node.deadline === null ? null : positiveInteger(node.deadline);
   if (
     requestId === null ||
     command === undefined ||
@@ -136,7 +144,8 @@ export function parseControlCommand(value: unknown): ControlCommandPayload | nul
     submit === undefined ||
     expectedAgent === undefined ||
     force === undefined ||
-    (node.lines !== null && lines === null)
+    (node.lines !== null && lines === null) ||
+    (node.deadline !== null && deadline === null)
   ) {
     return null;
   }
@@ -152,6 +161,7 @@ export function parseControlCommand(value: unknown): ControlCommandPayload | nul
     expectedAgent,
     lines,
     force,
+    deadline,
   };
 }
 

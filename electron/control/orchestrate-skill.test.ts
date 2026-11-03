@@ -150,8 +150,13 @@ describe("ORCHESTRATE_SKILL", () => {
     const loop = section(6);
     expect(loop).toMatch(/`pasted` means the text sits in the input/);
     expect(loop).toMatch(/`stale`.*exit 1.*unsubmitted/);
-    expect(loop).toMatch(/read the pane, ask the user to answer any question there themselves/);
+    // A stale send may never have typed anything, so "do not resend" holds only for text in the input.
+    expect(loop).toMatch(/was never typed if it came before/);
+    expect(loop).toMatch(
+      /read the pane\. If the text is in the input, ask the user to answer any question there themselves/,
+    );
     expect(loop).toMatch(/never send the same text again/);
+    expect(loop).toMatch(/If the input is empty after a `stale`, .*treat the task as `failed`/);
     expect(loop).toContain("no turn started after the send");
   });
 

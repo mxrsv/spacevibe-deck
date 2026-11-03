@@ -18,6 +18,7 @@ const COMMAND = {
   expectedAgent: null,
   lines: 40,
   force: null,
+  deadline: 1_700_000_015_000,
 };
 
 const REPLY: Readonly<Record<keyof ControlReplyPayload, unknown>> = {
@@ -43,8 +44,19 @@ describe("parseControlCommand", () => {
     ["a request id with a control character", { requestId: "a\u0007b" }],
     ["a non-boolean force", { force: 1 }],
     ["a numeric agent", { agent: 5 }],
+    ["a deadline of zero", { deadline: 0 }],
+    ["a fractional deadline", { deadline: 1.5 }],
+    ["a string deadline", { deadline: "1700000015000" }],
   ])("refuses %s", (_name, change) => {
     expect(parseControlCommand({ ...COMMAND, ...change })).toBeNull();
+  });
+
+  it("keeps a null deadline, and refuses a command with the key missing", () => {
+    expect(parseControlCommand({ ...COMMAND, deadline: null })).toMatchObject({ deadline: null });
+    const without = Object.fromEntries(
+      Object.entries(COMMAND).filter(([key]) => key !== "deadline"),
+    );
+    expect(parseControlCommand(without)).toBeNull();
   });
 
   it("refuses anything that is not an object", () => {

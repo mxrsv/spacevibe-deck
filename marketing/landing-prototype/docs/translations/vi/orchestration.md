@@ -1,5 +1,5 @@
 ---
-translated-from: 47529756
+translated-from: a467e4d3
 ---
 
 # Điều phối agent
@@ -66,22 +66,27 @@ gian.
 - **`exited`** — agent đã rời pane.
 - **`turn`** — một trong ba trường hợp trên: lượt làm đã kết thúc, bằng cách này hay cách khác.
 
-Sau một lệnh `send`, `wait` bỏ qua trạng thái `idle` có từ trước. Nếu agent không bắt đầu lượt nào
-trong năm giây, `wait` báo `no turn started after the send` và thoát với mã 0. Hết thời gian thì
-thoát với mã 124.
+Sau một lệnh `send`, lệnh `wait` với `idle` hoặc `turn` bỏ qua trạng thái `idle` có từ trước và chỉ
+xong khi agent đã bắt đầu một lượt làm. Nếu không có lượt nào bắt đầu trong năm giây kể từ lúc
+`send`, `wait` báo `no turn started after the send` và thoát với mã 0. Năm giây này tính từ lúc
+`send`, kể cả khi `wait` được gọi muộn hơn, và chỉ việc agent đang làm mới tính là một lượt: focus
+vào pane hay xoá attention thì không. `send` không ảnh hưởng tới `needs-you` và `exited`. Hết thời
+gian thì thoát với mã 124.
 
 ### Gửi
 
-`send` kết thúc theo một trong ba cách:
+`send` kết thúc theo một trong bốn cách:
 
 - **`sent`** — text đã được gõ và Enter đã được nhấn.
 - **`pasted`** — text nằm trong pane nhưng Enter bị giữ lại, vì agent đang bận hoặc đang hỏi gì đó.
-- **`stale`** — text nằm trong pane nhưng chưa được gửi đi, vì tiến trình agent đã đổi trước khi
-  nhấn Enter. Trường hợp này thoát với mã 1.
+- **`stale`** — tiến trình agent đã đổi trước khi text kịp được gõ hoặc gửi đi, nên chưa có gì được
+  gửi và có thể chưa có gì được gõ. Trường hợp này thoát với mã 1.
+- **`expired`** — lệnh gửi phải chờ sau một lệnh gửi khác cho tới khi quá hạn, nên bị bỏ. Chưa có gì
+  được gõ. Trường hợp này thoát với mã 1.
 
-Sau `pasted` hoặc `stale`, hãy đọc pane trước khi làm bất cứ việc gì khác. Đừng gửi lại cùng đoạn
-text: bản đầu vẫn còn nằm trong ô nhập. Ký tự điều khiển và escape sequence trong text bị loại bỏ.
-Các lệnh gửi vào cùng một pane chạy lần lượt từng cái.
+Sau `pasted` hoặc `stale`, hãy đọc pane trước khi làm bất cứ việc gì khác. Nếu text đang nằm trong
+ô nhập, đừng gửi lại: bản đầu vẫn còn ở đó. Ký tự điều khiển và escape sequence trong text bị loại
+bỏ. Các lệnh gửi vào cùng một pane chạy lần lượt từng cái.
 
 ### Đóng
 

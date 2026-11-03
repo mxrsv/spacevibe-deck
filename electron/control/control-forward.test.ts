@@ -20,6 +20,9 @@ const reply = (
   ...over,
 });
 
+/** The forwarder's clock in these tests: the moment every command is pushed. */
+const NOW = 1_700_000_000_000;
+
 function setup(windows: Record<number, string | null> = { 7: "main", 8: "main", 9: "other" }) {
   const deliver = vi.fn<(paneId: number, event: string, payload: unknown) => void>();
   const log = vi.fn<(message: string) => void>();
@@ -29,6 +32,7 @@ function setup(windows: Record<number, string | null> = { 7: "main", 8: "main", 
     windowOf: (paneId) => windows[paneId] ?? null,
     log,
     newRequestId: () => `req-${++counter}`,
+    now: () => NOW,
   });
   const pushed = () => deliver.mock.calls.map(([, , payload]) => payload);
   return { forwarder, deliver, log, pushed };
@@ -64,10 +68,29 @@ describe("control forwarder", () => {
       expectedAgent: null,
       lines: 40,
       force: null,
+      deadline: NOW + 15_000,
     });
     expect(forwarder.settle("main", reply("req-1", { text: "screen" }))).toBe(true);
     await expect(result).resolves.toEqual({ ok: true, reply: reply("req-1", { text: "screen" }) });
   });
+
+  it.each([
+    ["read", 15_000],
+    ["close", 80_000],
+  ] as const)(
+    "stamps a %s with the moment its own call gives up, so the window can tell it is too late",
+    (name, timeoutMs) => {
+      const { forwarder, pushed } = setup();
+      void forwarder.forward({
+        callerPaneId: 7,
+        fields: commandFields(name, 8),
+        timeoutMs,
+      });
+      expect(pushed()).toEqual([
+        expect.objectContaining({ command: name, deadline: NOW + timeoutMs }),
+      ]);
+    },
+  );
 
   it("refuses a reply from a window the command was not pushed to, and keeps waiting for the right one", async () => {
     const { forwarder, log } = setup();

@@ -450,6 +450,101 @@ describe("pane send (ORC12, ORC23)", () => {
     });
   });
 
+  describe("two sends to one pane", () => {
+    /** Each forward waits for the test to release it, and the order of events is recorded. */
+    function heldForwards() {
+      const order: string[] = [];
+      const release: Array<() => void> = [];
+      const built = worker();
+      let counter = 0;
+      built.markSent.mockImplementation((pane) => order.push(`markSent ${pane}`));
+      built.forward.mockImplementation(async () => {
+        const index = (counter += 1);
+        order.push(`forward ${index}`);
+        await new Promise<void>((resolve) => release.push(resolve));
+        order.push(`reply ${index}`);
+        return answered({ outcome: "sent" });
+      });
+      return { ...built, order, release };
+    }
+
+    it("marks the second only when it starts, after the first has been answered", async () => {
+      const { run, order, release } = heldForwards();
+
+      const first = run("pane/send", { id: String(WORKER), text: "one" });
+      const second = run("pane/send", { id: String(WORKER), text: "two" });
+      await vi.waitFor(() => expect(order).toEqual([`markSent ${WORKER}`, "forward 1"]));
+      // Both are in flight, yet only one has been marked: the second send has not begun.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(order).toEqual([`markSent ${WORKER}`, "forward 1"]);
+
+      release[0]();
+      await vi.waitFor(() => expect(release).toHaveLength(2));
+      expect(order).toEqual([
+        `markSent ${WORKER}`,
+        "forward 1",
+        "reply 1",
+        `markSent ${WORKER}`,
+        "forward 2",
+      ]);
+      release[1]();
+      await expect(Promise.all([first, second])).resolves.toEqual([
+        { status: 200, json: { ok: true, outcome: "sent" }, text: "sent" },
+        { status: 200, json: { ok: true, outcome: "sent" }, text: "sent" },
+      ]);
+    });
+
+    it("does not make a send to another pane wait", async () => {
+      const { run, order, release, openedBy, mirror } = heldForwards();
+      openedBy.record(OUTSIDER, CALLER);
+      mirror.report(OUTSIDER, CODEX_IDLE);
+
+      void run("pane/send", { id: String(WORKER), text: "one" });
+      void run("pane/send", { id: String(OUTSIDER), text: "two" });
+
+      await vi.waitFor(() => expect(release).toHaveLength(2));
+      expect(order).toEqual([
+        `markSent ${WORKER}`,
+        "forward 1",
+        `markSent ${OUTSIDER}`,
+        "forward 2",
+      ]);
+      release.forEach((resolve) => resolve());
+    });
+
+    it("lets the next send through after one failed", async () => {
+      const { run, forward, markSent } = worker();
+      forward.mockRejectedValueOnce(new Error("window exploded"));
+
+      await expect(run("pane/send", { id: String(WORKER), text: "one" })).rejects.toThrow(
+        "window exploded",
+      );
+      const next = await run("pane/send", { id: String(WORKER), text: "two" });
+
+      expect(next.status).toBe(200);
+      expect(markSent).toHaveBeenCalledTimes(2);
+    });
+
+    it("types nothing for a queued send whose caller hung up while it waited", async () => {
+      const { run, order, release, markSent } = heldForwards();
+      const hangup = new AbortController();
+
+      const first = run("pane/send", { id: String(WORKER), text: "one" });
+      const second = run("pane/send", { id: String(WORKER), text: "two" }, hangup.signal);
+      await vi.waitFor(() => expect(release).toHaveLength(1));
+      hangup.abort();
+      release[0]();
+
+      await expect(second).resolves.toMatchObject({
+        status: 422,
+        json: { ok: false, error: "aborted" },
+      });
+      await first;
+      expect(markSent).toHaveBeenCalledTimes(1);
+      expect(order).not.toContain("forward 2");
+    });
+  });
+
   it("pastes without Enter for --no-submit", async () => {
     const { run, forward } = worker();
     forward.mockResolvedValue(answered({ outcome: "pasted" }));
@@ -462,12 +557,22 @@ describe("pane send (ORC12, ORC23)", () => {
     });
   });
 
-  it("says a stale send left the text in the pane, so no one sends it twice", async () => {
+  it("says a stale send was not submitted and may have left the text in the pane, so no one assumes it was never typed", async () => {
     const { run, forward } = worker();
     forward.mockResolvedValue(answered({ ok: false, outcome: "stale" }));
     const result = await run("pane/send", { id: String(WORKER), text: "go" });
     expect(result.text).toContain("not submitted");
+    expect(result.text).toContain("may already be in the pane");
     expect(result.text).not.toContain("nothing was typed");
+  });
+
+  it("says an expired send typed nothing", async () => {
+    const { run, forward } = worker();
+    forward.mockResolvedValue(answered({ ok: false, error: "expired" }));
+    const result = await run("pane/send", { id: String(WORKER), text: "go" });
+    expect(result.status).toBe(422);
+    expect(result.json).toEqual({ ok: false, error: "expired" });
+    expect(result.text).toContain("nothing was typed");
   });
 
   it.each(["failed", "no-target", "stale", "busy"] as const)(

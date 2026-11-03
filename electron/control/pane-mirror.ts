@@ -14,7 +14,7 @@ import type { PaneAttentionReport } from "../../src/lib/pane-attention-report";
 
 /** A `working` report this old is likely a missed update, so it reads `inferred` (ORC18). */
 export const STALE_WORKING_MS = 120_000;
-/** After a send, this long with no report at all means the agent took no turn (ORC15). */
+/** After a send, this long with no `working` report means the agent took no turn (ORC15). */
 export const NO_TURN_MS = 5_000;
 
 export type PaneSnapshot = Omit<PaneAttentionReport, "paneId"> & {
@@ -36,6 +36,12 @@ export interface WaitOptions {
    * satisfy the wait: a turn must have started after it.
    */
   readonly afterRevision?: number;
+  /**
+   * When that send was made, on the mirror's clock. The no-turn deadline is `sentAt + NO_TURN_MS`,
+   * so a wait that starts late (the shim asks again in slices) gets no fresh grace period. Absent
+   * = the moment `wait` is called.
+   */
+  readonly sentAt?: number;
   /** Ends the wait early with `cap` and clears its timers, for a caller that hung up. */
   readonly signal?: AbortSignal;
 }
@@ -96,6 +102,16 @@ function turnStartedSince(record: PaneRecord | undefined, afterRevision: number)
   return last > 0 && last >= afterRevision;
 }
 
+/**
+ * Whether a report after the send left the agent or asked for the user. That ends a wait even
+ * with no `working` report in between, and it is not silence either: the agent did something.
+ */
+function endedSince(record: PaneRecord | undefined, afterRevision: number): boolean {
+  if (record === undefined) return false;
+  const { phase, attention } = record.snapshot;
+  return record.revision > afterRevision && (phase === "exited" || blocking(attention));
+}
+
 export function createPaneMirror(options: { readonly now: () => number }): PaneMirror {
   const records = new Map<number, PaneRecord>();
   const waiters = new Map<number, Set<Waiter>>();
@@ -117,11 +133,9 @@ export function createPaneMirror(options: { readonly now: () => number }): PaneM
     const state = view(record);
     if (!targetMet(state, target)) return null;
     if (afterRevision === undefined) return state;
-    // A pane that left the agent or asked for the user right after the send ended the wait too,
-    // even with no `working` report in between.
-    const endedAfterSend =
-      record.revision > afterRevision && (state.phase === "exited" || blocking(state.attention));
-    return turnStartedSince(record, afterRevision) || endedAfterSend ? state : null;
+    return turnStartedSince(record, afterRevision) || endedSince(record, afterRevision)
+      ? state
+      : null;
   }
 
   return {
@@ -150,11 +164,15 @@ export function createPaneMirror(options: { readonly now: () => number }): PaneM
     revisionOf(paneId) {
       return records.get(paneId)?.revision ?? 0;
     },
-    wait(paneId, target, { capMs, afterRevision, signal }) {
+    wait(paneId, target, { capMs, afterRevision, sentAt, signal }) {
       return new Promise<WaitResult>((resolve) => {
         let capTimer: ReturnType<typeof setTimeout> | undefined;
         let noTurnTimer: ReturnType<typeof setTimeout> | undefined;
         let settled = false;
+        // The agent has until here to start a turn. Counted from the send, not from this call.
+        const noTurnAt =
+          afterRevision === undefined ? null : (sentAt ?? options.now()) + NO_TURN_MS;
+        let noTurnDue = noTurnAt !== null && options.now() >= noTurnAt;
         const waiter: Waiter = { evaluate, gone: () => finish({ reached: false, reason: "gone" }) };
 
         function finish(result: WaitResult): void {
@@ -169,8 +187,24 @@ export function createPaneMirror(options: { readonly now: () => number }): PaneM
           resolve(result);
         }
         function evaluate(): void {
-          const state = satisfying(records.get(paneId), target, afterRevision);
-          if (state !== null) finish({ reached: true, state });
+          const record = records.get(paneId);
+          const state = satisfying(record, target, afterRevision);
+          if (state !== null) {
+            finish({ reached: true, state });
+            return;
+          }
+          // Past the deadline, the only thing that keeps the wait alive is a turn: a `working`
+          // report since the send (a pane already mid-turn at the send counts), or the agent
+          // leaving or asking for the user. An attention change alone, such as `completed` turning
+          // `none` when the user focuses the pane, is not a turn and cancels nothing.
+          if (
+            noTurnDue &&
+            afterRevision !== undefined &&
+            !turnStartedSince(record, afterRevision) &&
+            !endedSince(record, afterRevision)
+          ) {
+            finish({ reached: false, reason: "no-turn" });
+          }
         }
         function onAbort(): void {
           finish({ reached: false, reason: "cap" });
@@ -188,17 +222,13 @@ export function createPaneMirror(options: { readonly now: () => number }): PaneM
         set.add(waiter);
         signal?.addEventListener("abort", onAbort, { once: true });
         capTimer = setTimeout(() => finish({ reached: false, reason: "cap" }), capMs);
-        if (afterRevision !== undefined) {
+        if (noTurnAt !== null && !noTurnDue) {
           noTurnTimer = setTimeout(() => {
-            // Any report, even one that is not a turn, means the pane is alive and reporting;
-            // only total silence is "the agent took no turn". A pane already mid-turn when the
-            // text arrived is silent too, but it is taking one.
-            const record = records.get(paneId);
-            const silent = (record?.revision ?? 0) <= afterRevision;
-            if (silent && !turnStartedSince(record, afterRevision)) {
-              finish({ reached: false, reason: "no-turn" });
-            }
-          }, NO_TURN_MS);
+            // A flag, not a clock comparison: a timer may fire a hair before `now()` reaches the
+            // deadline, and a missed check would leave the wait to run to its cap.
+            noTurnDue = true;
+            evaluate();
+          }, noTurnAt - options.now());
         }
       });
     },

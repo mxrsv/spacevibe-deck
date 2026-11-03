@@ -61,22 +61,27 @@ Exit codes: 0 done, 1 refused or failed, 2 usage error, 3 outside a Deck pane, 1
 - **`exited`** — the agent left the pane.
 - **`turn`** — any of the three: the turn ended, one way or another.
 
-After a `send`, `wait` ignores the idle that came before it. If the agent starts no turn within
-five seconds, `wait` says `no turn started after the send` and exits 0. A timeout exits 124.
+After a `send`, an `idle` or `turn` wait ignores the idle that came before it and resolves once the
+agent is working on a turn. If no turn starts within five seconds of the send, `wait` says `no turn
+started after the send` and exits 0. The five seconds count from the send, even when `wait` is
+called later, and only the agent working counts as a turn: focusing the pane or clearing its
+attention does not. A send changes nothing for `needs-you` and `exited`. A timeout exits 124.
 
 ### Sending
 
-`send` ends in one of three ways:
+`send` ends in one of four ways:
 
 - **`sent`** — the text was typed and Enter was pressed.
 - **`pasted`** — the text is in the pane but Enter was withheld, because the agent was busy or was
   asking something.
-- **`stale`** — the text is in the pane but not submitted, because the agent process changed before
-  Enter. This one exits 1.
+- **`stale`** — the agent process changed before the text could be typed or submitted, so nothing
+  was submitted and nothing may have been typed. This one exits 1.
+- **`expired`** — the send waited behind another send until its deadline passed, so it was dropped.
+  Nothing was typed. This one exits 1.
 
-After `pasted` or `stale`, read the pane before doing anything else. Do not send the same text
-again: the first copy is still in the input. Control characters and escape sequences in the text
-are removed. Sends to one pane happen one at a time.
+After `pasted` or `stale`, read the pane before doing anything else. If the text is in the input,
+do not send it again: the first copy is still there. Control characters and escape sequences in the
+text are removed. Sends to one pane happen one at a time.
 
 ### Closing
 

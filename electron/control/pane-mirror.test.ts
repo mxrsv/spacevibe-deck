@@ -220,17 +220,19 @@ describe("pane mirror — wait after a send (ORC15)", () => {
     expect(mirror.revisionOf(7)).toBe(sentAt + 2);
   });
 
-  it("holds an idle that arrives with no working report before it", async () => {
+  it("holds an idle that arrives with no working report before it, and calls it no-turn at 5 s", async () => {
     mirror.report(7, COMPLETED);
     const outcome = mirror.wait(7, "idle", {
       capMs: CAP,
       afterRevision: mirror.revisionOf(7),
     });
     mirror.report(7, IDLE);
-    vi.advanceTimersByTime(NO_TURN_MS);
-    // A report came, so the pane is not silent: no "no-turn", the wait runs to its cap.
-    vi.advanceTimersByTime(CAP - NO_TURN_MS);
-    await expect(outcome).resolves.toEqual({ reached: false, reason: "cap" });
+    vi.advanceTimersByTime(NO_TURN_MS - 1);
+    // Before the deadline the idle is held back, not answered.
+    await expect(Promise.race([outcome, Promise.resolve("pending")])).resolves.toBe("pending");
+    vi.advanceTimersByTime(1);
+    // The report was not a turn: no `working` came after the send.
+    await expect(outcome).resolves.toEqual({ reached: false, reason: "no-turn" });
   });
 
   it("keeps waiting for a turn that starts just before 5 s", async () => {
@@ -249,12 +251,58 @@ describe("pane mirror — wait after a send (ORC15)", () => {
     await expect(outcome).resolves.toEqual({ reached: false, reason: "no-turn" });
   });
 
-  it("does not call a pane silent once it reported anything, even a non-turn", async () => {
+  it("does not let an attention-only report cancel no-turn, as when the user focuses the pane", async () => {
     mirror.report(7, COMPLETED);
     const outcome = mirror.wait(7, "idle", { capMs: CAP, afterRevision: mirror.revisionOf(7) });
     vi.advanceTimersByTime(NO_TURN_MS - 1);
+    // `completed` turns `none` on focus: the pane reported, but no turn started.
+    mirror.report(7, IDLE);
+    vi.advanceTimersByTime(1);
+    await expect(outcome).resolves.toEqual({ reached: false, reason: "no-turn" });
+  });
+
+  it("counts the 5 s from the send, so a wait that starts 20 s later answers no-turn at once", async () => {
     mirror.report(7, COMPLETED);
+    const afterRevision = mirror.revisionOf(7);
+    const sentAt = Date.now();
+    vi.advanceTimersByTime(20_000);
+    // The shim asked again after earlier slices; the agent's 5 s ran out long ago.
+    await expect(mirror.wait(7, "idle", { capMs: CAP, afterRevision, sentAt })).resolves.toEqual({
+      reached: false,
+      reason: "no-turn",
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("ends a late wait on the turn that did run, not on no-turn", async () => {
+    mirror.report(7, COMPLETED);
+    const afterRevision = mirror.revisionOf(7);
+    const sentAt = Date.now();
+    mirror.report(7, WORKING);
+    mirror.report(7, COMPLETED);
+    vi.advanceTimersByTime(20_000);
+    await expect(
+      mirror.wait(7, "idle", { capMs: CAP, afterRevision, sentAt }),
+    ).resolves.toMatchObject({ reached: true });
+  });
+
+  it("does not start a fresh 5 s when the wait begins partway through them", async () => {
+    mirror.report(7, COMPLETED);
+    const afterRevision = mirror.revisionOf(7);
+    const sentAt = Date.now();
+    vi.advanceTimersByTime(3_000);
+    const outcome = mirror.wait(7, "idle", { capMs: CAP, afterRevision, sentAt });
+    vi.advanceTimersByTime(NO_TURN_MS - 3_000);
+    await expect(outcome).resolves.toEqual({ reached: false, reason: "no-turn" });
+  });
+
+  it("does not call a pane that asked for the user right after the send a no-turn", async () => {
+    mirror.report(7, COMPLETED);
+    const afterRevision = mirror.revisionOf(7);
+    const outcome = mirror.wait(7, "idle", { capMs: CAP, afterRevision, sentAt: Date.now() });
+    mirror.report(7, REQUESTED);
     vi.advanceTimersByTime(CAP);
+    // It is not idle (it waits on a dialog), and it is not silent either.
     await expect(outcome).resolves.toEqual({ reached: false, reason: "cap" });
   });
 

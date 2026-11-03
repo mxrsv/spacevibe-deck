@@ -23,11 +23,14 @@ export const LATE_REPLY_MS = 120_000;
 /** Every key of a command except the request id, which the table mints. */
 export type ControlCommandFields = Omit<ControlCommandPayload, "requestId">;
 
-/** A command with every key present: the keys a command does not use are null (R6). */
+/**
+ * A command with every key present: the keys a command does not use are null (R6). `deadline` is
+ * never a caller's to set; `forward` stamps it when it pushes the command.
+ */
 export function commandFields(
   command: ControlCommandFields["command"],
   paneId: number,
-  used: Partial<Omit<ControlCommandFields, "command" | "paneId">> = {},
+  used: Partial<Omit<ControlCommandFields, "command" | "paneId" | "deadline">> = {},
 ): ControlCommandFields {
   return {
     command,
@@ -40,6 +43,7 @@ export function commandFields(
     expectedAgent: null,
     lines: null,
     force: null,
+    deadline: null,
     ...used,
   };
 }
@@ -65,6 +69,8 @@ export interface ControlForwarderDeps {
   readonly windowOf: (paneId: number) => string | null;
   readonly log: (message: string) => void;
   readonly newRequestId?: () => string;
+  /** The clock `deadline` is read from; defaults to `Date.now`. */
+  readonly now?: () => number;
 }
 
 export interface ControlForwarder {
@@ -91,6 +97,7 @@ interface Entry {
 export function createControlForwarder(deps: ControlForwarderDeps): ControlForwarder {
   const entries = new Map<string, Entry>();
   const newRequestId = deps.newRequestId ?? randomUUID;
+  const now = deps.now ?? Date.now;
 
   function drop(requestId: string): void {
     const entry = entries.get(requestId);
@@ -109,6 +116,10 @@ export function createControlForwarder(deps: ControlForwarderDeps): ControlForwa
         return Promise.resolve({ ok: false, error: "window-gone" });
       }
       const requestId = newRequestId();
+      // The moment this call stops listening. The window reads it before it types, so a command
+      // that waited in its queue past this point is dropped instead of acting on a call that was
+      // already answered with a timeout (and may have been retried).
+      const deadline = now() + timeoutMs;
       return new Promise<ForwardResult>((resolve) => {
         let settled = false;
         const entry: Entry = {
@@ -144,7 +155,7 @@ export function createControlForwarder(deps: ControlForwarderDeps): ControlForwa
         entries.set(requestId, entry);
         signal?.addEventListener("abort", onAbort, { once: true });
         try {
-          deps.deliver(fields.paneId, EVENTS.controlCommand, { requestId, ...fields });
+          deps.deliver(fields.paneId, EVENTS.controlCommand, { requestId, ...fields, deadline });
         } catch (error) {
           deps.log(`Deck: a control command could not be delivered to ${window}: ${String(error)}`);
           drop(requestId);

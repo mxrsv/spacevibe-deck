@@ -89,6 +89,7 @@ function command(
     expectedAgent: null,
     lines: null,
     force: null,
+    deadline: null,
     ...used,
   };
 }
@@ -344,6 +345,35 @@ describe("control commands in the tab manager — send (ORC12, ORC23)", () => {
   });
 });
 
+describe("control commands in the tab manager — a send that outlived its call (ORC11)", () => {
+  it("types nothing for a queued send whose deadline passed while the first held the pane", async () => {
+    const infos = new Map([[1, codexPane(1)]]);
+    const m = await mount(infos);
+    await openCodexPane(m);
+    m.pty.writes.length = 0;
+
+    // Main waits 300 ms for the second reply; the first send holds the pane for 500 ms.
+    m.push(command("send", 1, { text: "first", submit: true, expectedAgent: "codex" }, "r1"));
+    m.push(
+      command(
+        "send",
+        1,
+        { text: "second", submit: true, expectedAgent: "codex", deadline: Date.now() + 300 },
+        "r2",
+      ),
+    );
+    await m.tick(2000);
+
+    expect(m.pty.writes.some((write) => write.data.includes("first"))).toBe(true);
+    expect(m.pty.writes.some((write) => write.data.includes("second"))).toBe(false);
+    expect(m.replies.map((reply) => [reply.requestId, reply.outcome, reply.error])).toEqual([
+      ["r1", "sent", null],
+      ["r2", null, "expired"],
+    ]);
+    m.tm.dispose();
+  });
+});
+
 describe("control commands in the tab manager — read (ORC13)", () => {
   it("replies the last rows of the pane without escape sequences", async () => {
     const m = await mount(new Map([[1, codexPane(1)]]));
@@ -473,7 +503,31 @@ describe("injectIntoPane — the process check and the wait before Enter", () =>
     m.tm.dispose();
   });
 
-  it("answers stale, with the text already pasted, when the process id is not the expected one", async () => {
+  it.each([
+    ["submitting", true],
+    ["only pasting (--no-submit)", false],
+  ])(
+    "answers stale and pastes nothing when the process is not the expected one before the paste, %s",
+    async (_name, autoSend) => {
+      // The agent the request was gated on is gone: a shell has the pane now.
+      const infos = new Map<number, PaneProcessInfo>([[1, codexPane(1, 4242)]]);
+      const m = await agentPane(infos);
+      infos.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
+
+      const outcome = m.tm.injectIntoPane(1, "hello", {
+        autoSend,
+        expectedAgent: "codex",
+        expectedProcessId: 4242,
+      });
+      await m.tick(0);
+
+      await expect(outcome).resolves.toBe("stale");
+      expect(m.pty.writes).toEqual([]);
+      m.tm.dispose();
+    },
+  );
+
+  it("answers stale and pastes nothing when another process of the same agent has the pane", async () => {
     const m = await agentPane(new Map([[1, codexPane(1, 4242)]]));
 
     const outcome = m.tm.injectIntoPane(1, "hello", {
@@ -484,8 +538,61 @@ describe("injectIntoPane — the process check and the wait before Enter", () =>
     await m.tick(0);
 
     await expect(outcome).resolves.toBe("stale");
+    expect(m.pty.writes).toEqual([]);
+    m.tm.dispose();
+  });
+
+  it("answers stale, with the text already pasted, when the process changes during the wait before Enter", async () => {
+    const infos = new Map([[1, codexPane(1, 4242)]]);
+    const m = await agentPane(infos);
+
+    const outcome = m.tm.injectIntoPane(1, "hello", {
+      autoSend: true,
+      expectedAgent: "codex",
+      submitDelayMs: 500,
+      expectedProcessId: 4242,
+    });
+    await m.tick(200);
+    infos.set(1, codexPane(1, 9999));
+    await m.tick(300);
+
+    await expect(outcome).resolves.toBe("stale");
     expect(m.pty.writes.some((write) => write.data.includes("hello"))).toBe(true);
     expect(m.pty.writes.some((write) => write.data === "\r")).toBe(false);
+    m.tm.dispose();
+  });
+
+  it("withholds Enter, leaving the text pasted, when the deadline passes during the wait", async () => {
+    const m = await agentPane(new Map([[1, codexPane(1, 4242)]]));
+
+    const outcome = m.tm.injectIntoPane(1, "hello", {
+      autoSend: true,
+      expectedAgent: "codex",
+      submitDelayMs: 500,
+      expectedProcessId: 4242,
+      submitDeadline: Date.now() + 200,
+    });
+    await m.tick(500);
+
+    await expect(outcome).resolves.toBe("pasted");
+    expect(m.pty.writes.some((write) => write.data.includes("hello"))).toBe(true);
+    expect(m.pty.writes.some((write) => write.data === "\r")).toBe(false);
+    m.tm.dispose();
+  });
+
+  it("sends Enter when the deadline is still ahead after the wait", async () => {
+    const m = await agentPane(new Map([[1, codexPane(1, 4242)]]));
+
+    const outcome = m.tm.injectIntoPane(1, "hello", {
+      autoSend: true,
+      expectedAgent: "codex",
+      submitDelayMs: 500,
+      expectedProcessId: 4242,
+      submitDeadline: Date.now() + 5_000,
+    });
+    await m.tick(500);
+
+    await expect(outcome).resolves.toBe("sent");
     m.tm.dispose();
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONTROL_READ_DEFAULT_LINES,
   CONTROL_READ_MAX_LINES,
@@ -18,6 +18,7 @@ const NONE: Omit<ControlCommandPayload, "requestId" | "command" | "paneId"> = {
   expectedAgent: null,
   lines: null,
   force: null,
+  deadline: null,
 };
 
 function command(
@@ -271,6 +272,68 @@ describe("control command handler — send", () => {
     expect(seen).toEqual([
       { autoSend: true, expectedAgent: "codex", submitDelayMs: 500, expectedProcessId: 4242 },
     ]);
+  });
+
+  describe("a deadline main set (ORC11)", () => {
+    const NOW = 1_700_000_000_000;
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("drops a queued send whose deadline passed while it waited, typing nothing and replying expired", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(NOW);
+      const release: Array<() => void> = [];
+      const typed: string[] = [];
+      const { handler, replies } = build({
+        injectIntoPane: vi.fn(async (_pane: number, text: string): Promise<InjectOutcome> => {
+          typed.push(text);
+          await new Promise<void>((resolve) => release.push(resolve));
+          return "sent";
+        }),
+      });
+
+      // Main waits 15 s for each reply; the first send holds the pane for longer than that.
+      const first = handler.handle(send({ text: "one", deadline: NOW + 15_000 }, "req-1"));
+      const second = handler.handle(send({ text: "two", deadline: NOW + 15_000 }, "req-2"));
+      await vi.waitFor(() => expect(typed).toEqual(["one"]));
+      vi.setSystemTime(NOW + 15_001);
+      release[0]();
+      await Promise.all([first, second]);
+
+      expect(typed).toEqual(["one"]);
+      expect(replies.map((reply) => [reply.requestId, reply.ok, reply.error])).toEqual([
+        ["req-1", true, null],
+        ["req-2", false, "expired"],
+      ]);
+    });
+
+    it("still types a send that reaches the paste before its deadline", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(NOW);
+      const { handler, tabs, replies } = build();
+
+      await handler.handle(send({ deadline: NOW + 1 }));
+
+      expect(tabs.injectIntoPane).toHaveBeenCalledTimes(1);
+      expect(replies[0]).toMatchObject({ ok: true, outcome: "sent" });
+    });
+
+    it("hands the same deadline to the injection as the bound on Enter", async () => {
+      const seen: InjectOptions[] = [];
+      const { handler } = build({
+        injectIntoPane: async (_pane, _text, opts) => {
+          seen.push(opts);
+          return "pasted";
+        },
+      });
+      const deadline = Date.now() + 60_000;
+
+      await handler.handle(send({ deadline }));
+
+      expect(seen.map((opts) => opts.submitDeadline)).toEqual([deadline]);
+    });
   });
 });
 

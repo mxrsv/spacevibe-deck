@@ -55,6 +55,11 @@ export interface ControlRouterDeps {
   readonly panesOf: (window: string) => readonly ControlPane[];
   /** Refusals are logged with the pane id and a reason, never the token. */
   readonly log: (message: string) => void;
+  /**
+   * The clock a send is stamped with and a command's deadline is read from. It must be the
+   * mirror's clock, which a wait compares the stamp against; both default to `Date.now`.
+   */
+  readonly now?: () => number;
 }
 
 export interface ControlRouter {
@@ -65,8 +70,9 @@ export interface ControlRouter {
   recordOpened(childPaneId: number, openerPaneId: number): void;
   /**
    * Note that text is about to be sent to a pane (ORC15). Call it BEFORE the paste: from then
-   * on a `wait` on that pane ignores the state that preceded the send and needs a turn that
-   * started after it.
+   * on an `idle` or `turn` wait on that pane ignores the state that preceded the send and needs
+   * a turn that started after it. Sends to one pane are serialized by the caller, so the mark is
+   * taken when that send starts, not when it was asked for.
    */
   markSent(paneId: number): void;
   /**
@@ -163,15 +169,20 @@ function claimedPane(request: http.IncomingMessage): string {
 
 export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
   const openedBy = createOpenedBy();
-  /** The pane's report revision at its latest send; a `wait` needs a turn that began after it. */
-  const sentAtRevision = new Map<number, number>();
+  const now = deps.now ?? Date.now;
+  /**
+   * The pane's report revision and the time of its latest send. An `idle` or `turn` wait needs a
+   * turn that began after the revision, and gives the agent until the time plus `NO_TURN_MS`.
+   */
+  const lastSend = new Map<number, { readonly revision: number; readonly at: number }>();
   const forwarder = createControlForwarder({
     deliver: deps.deliver,
     windowOf: deps.windowOf,
     log: deps.log,
+    now,
   });
   const markSent = (paneId: number): void => {
-    sentAtRevision.set(paneId, deps.mirror.revisionOf(paneId));
+    lastSend.set(paneId, { revision: deps.mirror.revisionOf(paneId), at: now() });
   };
 
   const refused = (request: http.IncomingMessage, paneId: number | null, reason: string) =>
@@ -243,10 +254,13 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
       if (!openedBy.mayAct(caller, targetPane, "wait"))
         return failure(403, "forbidden", "no such pane");
       const remainingMs = Number(asked) * 1000;
-      const afterRevision = sentAtRevision.get(targetPane);
+      // Only `idle` and `turn` can be answered by the state that preceded a send, so only they
+      // need the guard against it. `exited` and `needs-you` keep their strict meaning and never
+      // answer "no turn": an exit does not depend on the agent having taken one.
+      const sent = target === "idle" || target === "turn" ? lastSend.get(targetPane) : undefined;
       const result = await deps.mirror.wait(targetPane, target, {
         capMs: Math.min(remainingMs, CONTROL_CALL_CAP_MS),
-        ...(afterRevision === undefined ? {} : { afterRevision }),
+        ...(sent === undefined ? {} : { afterRevision: sent.revision, sentAt: sent.at }),
         signal,
       });
       if (result.reached) {
@@ -336,6 +350,14 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     }
     const args = new URLSearchParams(body.text);
     const json = args.get("json") === "1";
+    // The head was authorized before the body arrived, and a caller can hold the body back for as
+    // long as it likes. A pane that closed in the meantime has no standing left: its request must
+    // not run, whatever the head said.
+    if (deps.tokenFor(head.paneId) === null) {
+      refused(request, head.paneId, "pane closed before the body arrived");
+      sendReply(response, failure(403, "forbidden", "no such pane"), json);
+      return;
+    }
     const command = commands[head.command];
     if (command === undefined) {
       refused(request, head.paneId, "unknown command");
@@ -372,7 +394,7 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     },
     forgetPane(paneId) {
       openedBy.forget(paneId);
-      sentAtRevision.delete(paneId);
+      lastSend.delete(paneId);
       forwarder.forgetCaller(paneId);
     },
     recordOpened(childPaneId, openerPaneId) {

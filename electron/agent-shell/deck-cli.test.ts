@@ -14,7 +14,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createHookServer, type HookServer } from "../agent-hooks/hook-server";
-import { createControlRouter } from "../control/control-routes";
+import { createControlRouter, type ControlRouter } from "../control/control-routes";
+import { createPaneMirror } from "../control/pane-mirror";
 import { deckCliSource } from "./deck-cli";
 
 /**
@@ -218,6 +219,28 @@ describe.each(SHELLS)("deck shim under %s", (shell) => {
       expect(run(["pane", "--help"], {}, { shell }).stdout).toContain("deck pane close");
       expect(run(["worktree", "--help"], {}, { shell }).stdout).toContain("--branch");
       expect(run(["skill", "orchestrate", "--help"], {}, { shell }).status).toBe(0);
+    });
+
+    it.each([
+      [
+        ["pane", "open", "--cwd", "/repo", "--agent", "codex", "--prompt", "--help"],
+        "prompt=--help",
+      ],
+      [["pane", "open", "--cwd", "/repo", "--agent", "codex", "--name", "-h"], "name=-h"],
+      [["worktree", "create", "--repo", "/repo", "--branch", "--help"], "branch=--help"],
+    ] as const)("treats --help as the value of a flag that takes one: deck %j", (args, field) => {
+      const result = run(args, PANE_ENV, { shell });
+      expect(result.status).toBe(0);
+      expect(result.stdout).not.toContain("usage:");
+      expect(result.curlCalls).toHaveLength(1);
+      expect(result.curlCalls[0]).toContain(field);
+    });
+
+    it("still prints help for a --help that follows a flag's value", () => {
+      const result = run(["pane", "open", "--prompt", "go", "--help"], {}, { shell });
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("usage: deck pane open");
+      expect(result.curlCalls).toEqual([]);
     });
 
     it("treats --help after a bare -- as text to send", () => {
@@ -501,12 +524,31 @@ describe.skipIf(!POSIX)("deck shim against the real hook server and the real cur
   });
 
   async function start(addWorktree?: Parameters<typeof createControlRouter>[0]["addWorktree"]) {
-    const router = createControlRouter({
+    const mirror = createPaneMirror({ now: () => Date.now() });
+    /** Every command the router pushed to the window, answered as a window that typed it would. */
+    const pushed: Array<Record<string, unknown>> = [];
+    const router: ControlRouter = createControlRouter({
       tokenFor: (paneId) => (paneId === 12 ? TOKEN : null),
       ttyFor: (paneId) => (paneId === 12 ? TTY : null),
       version: () => "9.9.9",
       windowOf: () => "main",
+      deliver: (_paneId, _event, payload) => {
+        const command = payload as { requestId: string } & Record<string, unknown>;
+        pushed.push(command);
+        setImmediate(() =>
+          router.settleReply("main", {
+            requestId: command.requestId,
+            ok: true,
+            paneId: null,
+            text: null,
+            outcome: "sent",
+            error: null,
+          }),
+        );
+      },
       addWorktree: addWorktree ?? (async (params) => ({ ok: true, path: params.destPath })),
+      mirror,
+      panesOf: () => [{ paneId: 12, cwd: "/work/app" }],
       log: () => {},
     });
     server = createHookServer({
@@ -545,7 +587,7 @@ describe.skipIf(!POSIX)("deck shim against the real hook server and the real cur
         );
         child.stdin?.end(input);
       });
-    return { shim };
+    return { shim, router, mirror, pushed };
   }
 
   it("answers status as text and as JSON", async () => {
@@ -553,7 +595,7 @@ describe.skipIf(!POSIX)("deck shim against the real hook server and the real cur
     const text = await shim(["status"]);
     expect(text).toEqual({
       status: 0,
-      stdout: "Deck 9.9.9\npane 12 in window main\nagent control: on\n",
+      stdout: "Deck 9.9.9\npane 12 in window main\nagent control: on\ncan open panes: yes\n",
       stderr: "",
     });
     const json = await shim(["status", "--json"]);
@@ -563,6 +605,7 @@ describe.skipIf(!POSIX)("deck shim against the real hook server and the real cur
       paneId: 12,
       window: "main",
       switch: "on",
+      canOpen: true,
     });
   });
 
@@ -614,22 +657,52 @@ describe.skipIf(!POSIX)("deck shim against the real hook server and the real cur
     expect(tty.stderr).toContain("forbidden");
   });
 
-  it("says a command is not implemented yet until its slice lands", async () => {
+  it("lists the window's panes as one aligned line each", async () => {
     const { shim } = await start();
     const result = await shim(["pane", "list"]);
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("not implemented yet");
+    expect(result).toEqual({
+      status: 0,
+      stdout: "12  shell  unknown  none  unknown  -  /work/app\n",
+      stderr: "",
+    });
   });
 
-  it("reaches the command table with a --stdin body of awkward characters", async () => {
-    const { shim } = await start();
+  it("delivers a --stdin body of awkward characters to the pane exactly as the window will type it", async () => {
+    const { shim, router, mirror, pushed } = await start();
+    // Pane 13 is an agent pane that pane 12 opened, so pane 12 may send to it.
+    router.recordOpened(13, 12);
+    mirror.report(13, {
+      phase: "idle",
+      attention: "none",
+      source: null,
+      confidence: "explicit",
+      agent: "codex",
+      pid: 5000,
+    });
+
     const result = await shim(
-      ["pane", "send", "12", "--stdin", "--json"],
+      ["pane", "send", "13", "--stdin", "--json"],
       {},
-      "a 'b' \"c\"\nđ=1&x=2",
+      "a 'b' \"c\"\nđ=1&x=2 +%",
     );
-    // The send route is not built yet, so only the framing is checked here: a malformed form body
-    // would have been refused before the command table, not answered not-implemented.
-    expect(JSON.parse(result.stdout)).toEqual({ ok: false, error: "not-implemented" });
+
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true, outcome: "sent" });
+    expect(pushed).toEqual([
+      expect.objectContaining({
+        command: "send",
+        paneId: 13,
+        text: "a 'b' \"c\"\nđ=1&x=2 +%",
+        submit: true,
+        expectedAgent: "codex",
+      }),
+    ]);
+  });
+
+  it("refuses a send to a pane the caller did not open, in the words of a missing pane", async () => {
+    const { shim, pushed } = await start();
+    const result = await shim(["pane", "send", "13", "go"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("no such pane");
+    expect(pushed).toEqual([]);
   });
 });

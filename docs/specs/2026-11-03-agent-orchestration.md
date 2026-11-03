@@ -165,9 +165,13 @@ gates are the named next round.
 - **ORC12 `deck pane send <id> [--no-submit] (<text> | --stdin)`**: pastes the text through the
   pane's existing paste path and, unless `--no-submit`, sends Enter 500 ms later only if the
   pane still runs the same agent process, reads idle, and raised no new attention since the
-  paste: the diff-comment delivery gate, unchanged. Terminal controls and escape sequences are
-  stripped first. Sends to one pane are serialized. The reply says `sent`, `pasted` or the
-  refusal.
+  paste: the diff-comment delivery gate, unchanged. The agent process is also checked before the
+  paste, whether or not the send submits: a pane that no longer runs it gets nothing typed and the
+  outcome `stale`. Terminal controls and escape sequences are stripped first. Sends to one pane
+  are serialized. A send that waited behind another until its deadline (the moment main stops
+  waiting for its reply) passed is dropped with nothing typed and answers `expired`; one whose
+  deadline passes during the 500 ms pause is pasted but not submitted. The reply says `sent`,
+  `pasted` or the refusal.
 - **ORC13 `deck pane read <id> [--lines <n>] [--envelope]`**: the last `n` lines (default 200,
   max 2000) of the pane's scrollback as plain text, ANSI stripped, from the renderer's
   serializer. `--envelope` instead returns the last complete envelope (ORC21) as JSON, or
@@ -181,10 +185,13 @@ gates are the named next round.
   guide waits for (a clean completion reads `idle` with a `completed` latch, not `needs-you`).
   The shim re-issues bounded requests until main answers, so no single HTTP call waits longer
   than 60 s.
-- **ORC15**: After `deck pane send` to a pane, a `wait --for idle` on that pane does not resolve on
-  the idle that preceded the send: it resolves once the pane has been `working` since the send,
-  or when 5 s pass without any phase change (the agent took no turn), in which case the reply
-  says so.
+- **ORC15**: After `deck pane send` to a pane, a `wait --for idle` or `--for turn` on that pane
+  does not resolve on the idle that preceded the send: it resolves once a `working` report
+  arrived after the send, or answers no-turn five seconds after the send, in which case the reply
+  says so. The five seconds count from the send even when `wait` is called later, and
+  attention-only reports do not count as a turn. A pane that exits or asks for the user after the
+  send ends the wait with that state. `--for exited` and `--for needs-you` are not affected by a
+  send.
 - **ORC16 `deck pane close <id> [--force]`**: closes a pane the caller opened, through the pane's
   normal close action. A pane whose agent is `working` or whose attention is `requested` is
   refused without `--force`; with it, the close proceeds without a census prompt for that pane.

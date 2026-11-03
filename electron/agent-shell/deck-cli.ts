@@ -150,11 +150,15 @@ outside_pane() {
   exit 3
 }
 
-# --help works anywhere, up to a bare -- that ends the options.
+# --help works anywhere, up to a bare -- that ends the options. The word after a flag that takes a
+# value is that value, whatever it says: "--prompt --help" sends the text "--help".
+skip_value=0
 for arg in "$@"; do
+  if [ "$skip_value" = 1 ]; then skip_value=0; continue; fi
   case $arg in
     --) break ;;
     --help | -h) show_help "$@"; exit 0 ;;
+    --repo | --branch | --dest | --cwd | --agent | --prompt | --name | --lines | --for | --timeout) skip_value=1 ;;
   esac
 done
 

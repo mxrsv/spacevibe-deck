@@ -6,6 +6,7 @@ import type { WorktreeAddParams, WorktreeAddResult } from "../git/worktree";
 import { CONTROL_CALL_CAP_MS, CONTROL_MAX_BODY_BYTES } from "./control-auth";
 import { createControlRouter, type ControlPane } from "./control-routes";
 import {
+  NO_TURN_MS,
   createPaneMirror,
   type PaneMirror,
   type PaneSnapshot,
@@ -62,6 +63,12 @@ async function start(
     panes?: readonly ControlPane[];
     /** The label of pane 7's window; null while it is being transferred. */
     window?: string | null;
+    /** Set `live.value` to false to close pane 7: its token is gone from then on. */
+    live?: { value: boolean };
+    /** Called each time the head of a request reaches the tty check, which is after the token. */
+    onTtyRead?: () => void;
+    /** The router's clock; a send is stamped with it. */
+    now?: () => number;
   } = {},
 ) {
   const log = vi.fn<(message: string) => void>();
@@ -70,8 +77,12 @@ async function start(
     window === "main" ? (options.panes ?? []) : [{ paneId: 99, cwd: "/other/window" }],
   );
   const router = createControlRouter({
-    tokenFor: (paneId) => (paneId === 7 ? TOKEN : null),
-    ttyFor: (paneId) => (paneId === 7 ? TTY : null),
+    tokenFor: (paneId) => (paneId === 7 && (options.live?.value ?? true) ? TOKEN : null),
+    ttyFor: (paneId) => {
+      if (paneId === 7) options.onTtyRead?.();
+      return paneId === 7 ? TTY : null;
+    },
+    ...(options.now === undefined ? {} : { now: options.now }),
     version: () => "9.9.9",
     windowOf: (paneId) =>
       paneId === 7 ? (options.window === undefined ? "main" : options.window) : null,
@@ -342,6 +353,53 @@ describe("control router — authorization", () => {
     expect(status).toBe(413);
   });
 
+  it("refuses a request whose pane closed while its body was still on the way, and runs nothing", async () => {
+    const addWorktree = vi.fn<(params: WorktreeAddParams) => Promise<WorktreeAddResult>>(
+      async (params) => ({ ok: true, path: params.destPath }),
+    );
+    const live = { value: true };
+    let headAuthorized: () => void = () => {};
+    const headSeen = new Promise<void>((resolve) => {
+      headAuthorized = resolve;
+    });
+    const { port, log } = await start(addWorktree, { live, onTtyRead: headAuthorized });
+
+    // Valid headers go first; the body is held back until the pane has been closed.
+    const reply = await new Promise<{ status: number; text: string }>((resolve, reject) => {
+      const request = http.request(
+        {
+          host: "127.0.0.1",
+          port,
+          method: "POST",
+          path: "/control/v1/worktree/create",
+          headers: {
+            "x-deck-pane": "7",
+            "x-deck-token": TOKEN,
+            "x-deck-tty": TTY,
+            "transfer-encoding": "chunked",
+          },
+        },
+        (response) => {
+          let text = "";
+          response.on("data", (chunk: Buffer) => (text += chunk.toString("utf8")));
+          response.on("end", () => resolve({ status: response.statusCode ?? 0, text }));
+        },
+      );
+      request.on("error", reject);
+      request.flushHeaders();
+      void headSeen.then(() => {
+        live.value = false;
+        request.end(new URLSearchParams({ repo: REPO, branch: "x", json: "1" }).toString());
+      });
+    });
+
+    expect(reply.status).toBe(403);
+    expect(JSON.parse(reply.text)).toEqual({ ok: false, error: "forbidden" });
+    expect(addWorktree).not.toHaveBeenCalled();
+    expect(log.mock.calls.at(-1)?.[0]).toContain("pane 7");
+    expect(log.mock.calls.at(-1)?.[0]).not.toContain(TOKEN);
+  });
+
   it("answers 500 JSON and stays up when a command throws", async () => {
     const { call, log } = await start(async () => {
       throw new Error("git exploded");
@@ -600,6 +658,71 @@ describe("control router — pane wait (ORC14-15)", () => {
     await call("pane/wait", waitFor({ timeout: "5" }));
     expect(wait.mock.calls[3]?.[2]).not.toHaveProperty("afterRevision");
   });
+
+  it("gives the wait the time of the send, so the agent's 5 s are counted from it", async () => {
+    const { mirror, wait } = recordingMirror({ reached: false, reason: "cap" });
+    let clock = 5_000_000;
+    const { call, router } = await start(undefined, { mirror, now: () => clock });
+    mirror.report(7, CLAUDE_IDLE);
+    router.markSent(7);
+    clock += 20_000;
+    await call("pane/wait", waitFor({ timeout: "5" }));
+    expect(wait.mock.calls[0]?.[2]).toMatchObject({ afterRevision: 1, sentAt: 5_000_000 });
+  });
+
+  it("answers no-turn at once for a wait that asks long after a send nothing came of", async () => {
+    // The router's clock runs 10 s behind the mirror's, as if the send were 10 s ago.
+    const { call, mirror, router } = await start(undefined, { now: () => Date.now() - 10_000 });
+    mirror.report(7, CLAUDE_IDLE);
+    router.markSent(7);
+    const started = Date.now();
+    const reply = await call("pane/wait", waitFor({ timeout: "30" }));
+    expect(reply.status).toBe(200);
+    expect(JSON.parse(reply.text)).toMatchObject({ reached: false, reason: "no-turn" });
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  it.each([["exited"], ["needs-you"]])(
+    "does not guard a %s wait with the send: its meaning does not depend on a turn",
+    async (target) => {
+      const { mirror, wait } = recordingMirror({ reached: false, reason: "cap" });
+      const { call, router } = await start(undefined, { mirror });
+      mirror.report(7, CLAUDE_IDLE);
+      router.markSent(7);
+      await call("pane/wait", waitFor({ for: target, timeout: "5" }));
+      expect(wait.mock.calls[0]?.[2]).not.toHaveProperty("afterRevision");
+      expect(wait.mock.calls[0]?.[2]).not.toHaveProperty("sentAt");
+    },
+  );
+
+  it.each([["idle"], ["turn"]])("still guards a %s wait with the send", async (target) => {
+    const { mirror, wait } = recordingMirror({ reached: false, reason: "cap" });
+    const { call, router } = await start(undefined, { mirror });
+    mirror.report(7, CLAUDE_IDLE);
+    router.markSent(7);
+    await call("pane/wait", waitFor({ for: target, timeout: "5" }));
+    expect(wait.mock.calls[0]?.[2]).toMatchObject({ afterRevision: 1, sentAt: expect.any(Number) });
+  });
+
+  it("holds an exited and a needs-you wait on an idle pane after a send until their timeout, never answering no-turn", async () => {
+    // A timeout past NO_TURN_MS: a wait guarded by the send answers 200 no-turn at 5 s (the
+    // send was made 10 s ago on this clock), an unguarded one runs on to 408 at its timeout.
+    const { call, mirror, router } = await start(undefined, { now: () => Date.now() - 10_000 });
+    mirror.report(7, CLAUDE_IDLE);
+    router.markSent(7);
+    const timeout = String(NO_TURN_MS / 1000 + 1);
+    const started = Date.now();
+
+    const replies = await Promise.all(
+      ["exited", "needs-you"].map((target) => call("pane/wait", waitFor({ for: target, timeout }))),
+    );
+
+    for (const reply of replies) {
+      expect(reply.status).toBe(408);
+      expect(JSON.parse(reply.text)).toEqual({ ok: false, error: "timeout" });
+    }
+    expect(Date.now() - started).toBeGreaterThanOrEqual(NO_TURN_MS);
+  }, 15_000);
 
   it("does not resolve on the idle that preceded a send, then resolves on the turn after it", async () => {
     const { call, mirror, router } = await start();

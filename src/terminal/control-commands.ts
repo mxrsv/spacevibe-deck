@@ -133,11 +133,18 @@ export function createControlCommandHandler(options: {
       if (running.agent !== expectedAgent || running.processId === null) {
         return refuse(command.requestId, "not-an-agent-pane");
       }
+      // Main answered this call with a timeout once `deadline` passed, and a coordinator that got
+      // one retries. Typing now would put the text in twice, so a send that waited in the queue
+      // past it is dropped; the same bound withholds Enter if it passes during the pause.
+      if (command.deadline !== null && Date.now() > command.deadline) {
+        return refuse(command.requestId, "expired");
+      }
       const outcome = await tabs.injectIntoPane(paneId, text, {
         autoSend: command.submit === true,
         expectedAgent,
         submitDelayMs: CONTROL_SUBMIT_DELAY_MS,
         expectedProcessId: running.processId,
+        ...(command.deadline === null ? {} : { submitDeadline: command.deadline }),
       });
       return answer(command.requestId, {
         ok: outcome === "sent" || outcome === "pasted",

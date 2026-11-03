@@ -2246,7 +2246,8 @@ export function createTabManager(
    * without executing); the `\r` is not. Ordering is guaranteed by the
    * per-pane write queue, not by waiting: the paste frame is already queued
    * before this function awaits anything, so a `\r` enqueued after the await
-   * can only ever land behind it.
+   * can only ever land behind it. (A caller that passes `expectedProcessId` gets one fresh read
+   * of the pane before the paste; that read precedes the paste frame, never the `\r`.)
    */
   async function injectIntoPane(
     paneId: number,
@@ -2258,6 +2259,20 @@ export function createTabManager(
     }
     injectingPanes.add(paneId);
     try {
+      // The process gate covers the paste, not only Enter: a send that waited in a queue while its
+      // agent exited would otherwise type into the shell that replaced it. Read before anything is
+      // written, so a mismatch leaves the pane untouched. A pane this window no longer holds falls
+      // through to the `no-target` below.
+      if (opts.expectedProcessId !== undefined && ownerOf(paneId) !== undefined) {
+        const [before] = await freshPaneInfo(
+          [paneId],
+          pty,
+          agentProcessMatchers(settings.value.customAgents),
+        );
+        if (before?.processId !== opts.expectedProcessId) {
+          return "stale";
+        }
+      }
       const owner = ownerOf(paneId);
       const attentionBeforePaste = paneAttention(paneId);
       const paste = owner?.manager.pasteIntoPane(paneId, text) ?? null;
@@ -2308,6 +2323,11 @@ export function createTabManager(
         return "stale";
       }
       if (!allowed) {
+        return "pasted";
+      }
+      // The call this injection answers gave up while it waited: the text stays as a draft and
+      // nothing is submitted for a caller that may already have retried.
+      if (opts.submitDeadline !== undefined && Date.now() > opts.submitDeadline) {
         return "pasted";
       }
       const submit = stillOwned.manager.submitPane(paneId);

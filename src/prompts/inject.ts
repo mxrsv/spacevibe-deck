@@ -20,8 +20,9 @@ export interface PromptTarget {
  * Result of one atomic, per-pane Prompt Board injection attempt.
  *
  * `stale` is only given when the caller asked for the process check (`expectedProcessId`): the
- * text was pasted, but the agent process that was there when the request was gated is gone, so
- * Enter was withheld.
+ * agent process that was there when the request was gated is gone, so nothing is submitted. The
+ * process is read before the paste as well as before Enter, so the text is in the pane only when
+ * the process changed between the two.
  */
 export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target" | "stale";
 
@@ -41,6 +42,11 @@ export interface InjectOptions {
    * agent name alone decides, as for every older caller.
    */
   readonly expectedProcessId?: number;
+  /**
+   * Epoch milliseconds after which Enter is withheld (the outcome is `pasted`): the call this
+   * injection answers has already given up. Absent = no bound, as for every older caller.
+   */
+  readonly submitDeadline?: number;
 }
 
 export interface SubmitGateInput {

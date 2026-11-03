@@ -547,23 +547,34 @@ listener, the pane token and the renderer's own paths. Five things are easy to g
   [`injectIntoPane`](../../src/terminal/tab-manager.ts), the Prompt Board's
   paste-then-gated-Enter, with two stricter options: `submitDelayMs` (500 ms, so the gate
   reads the pane just before Enter) and `expectedProcessId` (the agent process read right
-  before typing; a different one at Enter answers `stale`). `pasted` and `stale` leave the
-  text in the pane's input, and no command presses a bare Enter, so a retry would paste it
-  twice. Sends to one pane queue in
+  before typing). The process is checked twice, before the paste and again before Enter, and
+  a different one at either answers `stale`. So `stale` may mean nothing was typed, which is
+  why a coordinator reads the pane first. `pasted` leaves the text in the pane's input, and
+  no command presses a bare Enter, so a retry after it would paste the text twice. A send
+  also carries a deadline: main stamps every forwarded command with the moment its own call
+  gives up, and the window drops a send that reaches the paste after it (`expired`, nothing
+  typed) and withholds Enter if it passes during the pause. Without that, a caller that got
+  the timeout and retried would type the text twice. Sends to one pane are serialized twice:
+  in main around the whole `markSent`, forward and reply of each
+  ([`control-pane-commands.ts`](../../electron/control/control-pane-commands.ts)), so the
+  mark is taken when a send starts, and in
   [`control-commands.ts`](../../src/terminal/control-commands.ts) rather than answering
   `busy`. A new command that types must go through this path, not `write_pty`.
 - **Forwarding is one flat event and one reply.** `open`, `send`, `read` and `close` leave
   main as a single `control:command` event to the window that owns the pane (for `open`, the
   caller's pane, so the tab opens in the caller's window), and the window answers with the
-  `control_reply` command. [`control-forward.ts`](../../electron/control/control-forward.ts)
+  `control_reply` command. Every key is always present, and `deadline` (epoch milliseconds,
+  stamped as the push time plus that call's timeout) is the one `forward` sets itself.
+  [`control-forward.ts`](../../electron/control/control-forward.ts)
   holds the HTTP call until then and accepts a reply only for a request it still holds, from
   the window the request went to. Replies carry closed codes, because they end up printed in
   a terminal. The timeouts nest: the shim's `curl` waits 95 seconds, one `open` is
   budgeted 90, and a `wait` answers `202` after 60 so the shim asks again, which keeps every
   call under the `curl` limit. A late reply to an `open` is still handed to the router for
   two minutes, so the new tab is recorded as the caller's instead of being orphaned.
-  `markSent` has to run before the paste is pushed: it records the mirror revision that a
-  following `wait` must see a turn begin after.
+  `markSent` has to run before the paste is pushed: it records the mirror revision and the
+  time that a following `idle` or `turn` wait counts from, and five seconds after that time a
+  wait with no `working` report answers no turn.
 
 ## Actions, keymaps and the menu
 

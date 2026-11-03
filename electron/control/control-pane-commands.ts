@@ -84,7 +84,8 @@ function cleanText(text: string): string {
 const ERROR_TEXT: Readonly<Record<string, (pane: number) => string>> = {
   "not-an-agent-pane": (pane) => `pane ${pane} does not run an agent`,
   stale: (pane) =>
-    `the agent process in pane ${pane} changed after the paste; the text is in the pane, not submitted`,
+    `the agent process in pane ${pane} changed during the send; the text was not submitted and may already be in the pane`,
+  expired: (pane) => `the send to pane ${pane} waited past its deadline; nothing was typed`,
   busy: (pane) => `pane ${pane} is taking another paste`,
   "no-target": (pane) => `pane ${pane} is not available`,
   failed: (pane) => `the paste into pane ${pane} failed`,
@@ -114,11 +115,34 @@ export function createPaneCommands(deps: PaneCommandDeps): Readonly<Record<strin
   const now = deps.now ?? Date.now;
   const isDirectory = deps.isDirectory ?? directoryExists;
 
+  /** The tail of each target pane's send chain; it never rejects, so a failed send cannot jam it. */
+  const sendChains = new Map<number, Promise<void>>();
+
+  /**
+   * Run `job` once every earlier send to `target` has finished. The mark `wait` needs is taken
+   * when a send starts, so two sends in flight to one pane would record the same revision and the
+   * second `wait` could be answered by the first send's turn.
+   */
+  function serializeSends<T>(target: number, job: () => Promise<T>): Promise<T> {
+    const previous = sendChains.get(target) ?? Promise.resolve();
+    const ran = previous.then(job);
+    const tail = ran.then(
+      () => undefined,
+      () => undefined,
+    );
+    sendChains.set(target, tail);
+    void tail.then(() => {
+      if (sendChains.get(target) === tail) sendChains.delete(target);
+    });
+    return ran;
+  }
+
   /**
    * Type `text` into a pane the caller may act on, through the window that owns it. Shared by
    * `pane send` and the prompt of `pane open`, so there is one path and one set of refusals.
+   * Sends to one pane run one at a time, whole: mark, forward, reply.
    */
-  async function deliverText(
+  function deliverText(
     caller: number,
     target: number,
     text: string,
@@ -126,37 +150,43 @@ export function createPaneCommands(deps: PaneCommandDeps): Readonly<Record<strin
     signal: AbortSignal,
     timeoutMs: number,
   ): Promise<Delivery> {
-    // ORC23: only a pane main knows to run an agent, and the window re-checks the process.
-    const expectedAgent = deps.mirror.get(target)?.agent ?? null;
-    if (expectedAgent === null) {
-      return { ok: false, status: 422, error: "not-an-agent-pane" };
-    }
-    deps.markSent(target);
-    const result = await deps.forwarder.forward({
-      callerPaneId: caller,
-      fields: commandFields("send", target, { text, submit, expectedAgent }),
-      timeoutMs,
-      signal,
-    });
-    if (!result.ok) {
+    return serializeSends(target, async (): Promise<Delivery> => {
+      // A caller that hung up while this send waited its turn gets nothing typed.
+      if (signal.aborted) {
+        return { ok: false, status: 422, error: "aborted" };
+      }
+      // ORC23: only a pane main knows to run an agent, and the window re-checks the process.
+      const expectedAgent = deps.mirror.get(target)?.agent ?? null;
+      if (expectedAgent === null) {
+        return { ok: false, status: 422, error: "not-an-agent-pane" };
+      }
+      deps.markSent(target);
+      const result = await deps.forwarder.forward({
+        callerPaneId: caller,
+        fields: commandFields("send", target, { text, submit, expectedAgent }),
+        timeoutMs,
+        signal,
+      });
+      if (!result.ok) {
+        return {
+          ok: false,
+          status: result.error === "renderer-timeout" ? 504 : 422,
+          error: result.error,
+        };
+      }
+      const { reply } = result;
+      const outcome: ControlSendOutcome | null = closedCode(CONTROL_SEND_OUTCOMES, reply.outcome);
+      if (reply.ok && (outcome === "sent" || outcome === "pasted")) {
+        return { ok: true, outcome };
+      }
+      // A failed reply that still says "sent" is the window contradicting itself, not a delivery.
+      const failedWith = outcome === "sent" || outcome === "pasted" ? null : outcome;
       return {
         ok: false,
-        status: result.error === "renderer-timeout" ? 504 : 422,
-        error: result.error,
+        status: 422,
+        error: failedWith ?? closedCode(CONTROL_REPLY_ERRORS, reply.error) ?? "renderer-error",
       };
-    }
-    const { reply } = result;
-    const outcome: ControlSendOutcome | null = closedCode(CONTROL_SEND_OUTCOMES, reply.outcome);
-    if (reply.ok && (outcome === "sent" || outcome === "pasted")) {
-      return { ok: true, outcome };
-    }
-    // A failed reply that still says "sent" is the window contradicting itself, not a delivery.
-    const failedWith = outcome === "sent" || outcome === "pasted" ? null : outcome;
-    return {
-      ok: false,
-      status: 422,
-      error: failedWith ?? closedCode(CONTROL_REPLY_ERRORS, reply.error) ?? "renderer-error",
-    };
+    });
   }
 
   /** The target pane named by `id`, or the usage error to answer. */

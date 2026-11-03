@@ -110,6 +110,7 @@ describe("control:command", () => {
     "agent",
     "command",
     "cwd",
+    "deadline",
     "expectedAgent",
     "force",
     "lines",
@@ -126,20 +127,18 @@ describe("control:command", () => {
     // `deck` call waited out its timeout.
     expect(EVENTS.controlCommand).toBe("control:command");
     expect(readFileSync("electron/control/control-forward.ts", "utf8")).toContain(
-      "EVENTS.controlCommand, { requestId, ...fields }",
+      "EVENTS.controlCommand, { requestId, ...fields, deadline }",
     );
     expect(readFileSync("src/host/control-host.ts", "utf8")).toContain('"control:command"');
   });
 
   it.each(CONTROL_COMMAND_NAMES)(
-    "builds %s with all eleven keys, and the renderer accepts it",
+    "builds %s with all twelve keys, and the renderer accepts it",
     (name) => {
-      const fields = commandFields(name, 7);
-      expect(Object.keys({ requestId: "r-1", ...fields }).sort()).toEqual(KEYS);
-      expect(parseControlCommand({ requestId: "r-1", ...fields })).toEqual({
-        requestId: "r-1",
-        ...fields,
-      });
+      // `forward` stamps the deadline when it pushes; the table that builds the fields leaves it null.
+      const pushed = { requestId: "r-1", ...commandFields(name, 7), deadline: 1_700_000_015_000 };
+      expect(Object.keys(pushed).sort()).toEqual(KEYS);
+      expect(parseControlCommand(pushed)).toEqual(pushed);
     },
   );
 
@@ -154,6 +153,7 @@ describe("control:command", () => {
     expect(parseControlCommand({ ...whole, command: "run" })).toBeNull();
     expect(parseControlCommand({ ...whole, paneId: "7" })).toBeNull();
     expect(parseControlCommand({ ...whole, submit: "yes" })).toBeNull();
+    expect(parseControlCommand({ ...whole, deadline: "soon" })).toBeNull();
     expect(parseControlCommand("send")).toBeNull();
   });
 });
