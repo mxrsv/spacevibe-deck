@@ -670,10 +670,13 @@ export function createTerminalManager(
     },
     hide() {
       visible = false;
-      container.style.display = "none";
+      // Disposal creates xterm's DOM fallback, which measures glyph widths.
+      // Keep the tab measurable until then: hidden widths are zero and never
+      // cached, so the repeated style reads can stall the entire switch.
       for (const pane of life.panes.values()) {
         pane.suspendRenderer();
       }
+      container.style.display = "none";
     },
     splitActive,
     dockNewPaneAt,

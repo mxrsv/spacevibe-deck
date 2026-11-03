@@ -149,7 +149,11 @@ untouched.
 - **Pane** ([`pane.ts`](../../src/terminal/pane.ts)): xterm with fit, search, serialize,
   unicode-graphemes and WebGL addons. WebGL is scoped to the tab on screen: a pane mounted
   into a hidden tab never opens a context, [`hide()`](../../src/terminal/terminal-manager.ts)
-  releases the ones it has, and `show()` builds them back before it fits. `display: none`
+  releases the ones it has **before hiding the tab**, and `show()` builds them back before
+  it fits. Disposal constructs xterm's DOM fallback, which measures glyph widths: hiding
+  first returns zero, prevents caching and can stall switching through repeated style reads.
+  The [retirement check](../../src/terminal/terminal-manager.test.ts) keeps the outgoing tab
+  measurable until all its renderers retire. `display: none`
   frees none of this on its own — a WebGL drawing buffer belongs to the GL context, not the
   compositor, so it survives at full pane size.
 

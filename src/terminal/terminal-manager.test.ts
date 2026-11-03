@@ -519,16 +519,34 @@ describe("createTerminalManager renderer suspension", () => {
     }
   });
 
-  it("hide() suspends every pane", async () => {
-    const { tm, rendererLog } = setup();
+  it("hide() retires every renderer while its tab can still be measured", async () => {
+    const { tm, container, panesById, rendererLog } = setup();
     await tm.initFresh();
     await tm.splitActive("row");
     tm.show();
-    rendererLog.length = 0;
 
-    tm.hide();
+    const displaysAtRetirement: string[] = [];
+    for (const pane of panesById.values()) {
+      const suspend = pane.suspendRenderer;
+      vi.spyOn(pane, "suspendRenderer").mockImplementation(() => {
+        // xterm's disposal builds a DOM fallback; display:none makes every glyph measure 0.
+        displaysAtRetirement.push(getComputedStyle(container).display);
+        suspend();
+      });
+    }
 
-    expect(rendererLog).toEqual(tm.paneIds().map((id) => `${id}:suspend`));
+    for (let visit = 0; visit < 2; visit += 1) {
+      tm.show();
+      rendererLog.length = 0;
+      displaysAtRetirement.length = 0;
+
+      tm.hide();
+
+      expect(rendererLog).toEqual(tm.paneIds().map((id) => `${id}:suspend`));
+      expect(displaysAtRetirement).toHaveLength(2);
+      expect(displaysAtRetirement).not.toContain("none");
+      expect(getComputedStyle(container).display).toBe("none");
+    }
   });
 
   it("does not suspend a pane split into an already visible tab", async () => {
