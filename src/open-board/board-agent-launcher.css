@@ -6,20 +6,20 @@
   width: min(800px, calc(100% - 48px));
 }
 .nt-agent-launcher {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 .nt-agent-launcher__destination {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   box-sizing: border-box;
   height: 32px;
   padding: 0 10px;
   border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--chrome-1) 65%, var(--bg));
-  box-shadow: inset 0 0 0 1px var(--hair);
+  box-shadow: inset 0 0 0 1px var(--control-frame);
 }
 /* DL-13.1 / DL-13.3: the folder choice is a popover of single-line rows. */
 .nt-workspace-picker {
@@ -39,11 +39,15 @@
   background: transparent;
   font: 550 var(--type-body)/1.4 var(--ui-font);
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
 /* The board's folder bar is a compact control: the trigger fills it and reads at meta size. */
 .nt-agent-launcher__destination .nt-workspace-picker__trigger {
   padding: 0;
   font-size: var(--type-meta);
+}
+.nt-workspace-picker__trigger:is(:hover, :focus-visible):not([aria-disabled="true"]) {
+  background: var(--muted);
 }
 .nt-workspace-picker__trigger > span,
 .nt-workspace-picker__name,
@@ -67,7 +71,7 @@
   width: min(300px, calc(100cqw - 80px));
   max-height: min(360px, 60vh);
   overflow-y: auto;
-  padding: 5px;
+  padding: 4px;
   border-radius: var(--radius-surface);
   background: var(--chrome-2);
   box-shadow: inset 0 0 0 1px var(--seam-raised);
@@ -76,7 +80,7 @@
 .nt-workspace-picker__menu button {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   box-sizing: border-box;
   width: 100%;
   padding: 10px;
@@ -104,15 +108,9 @@
 .nt-workspace-picker__menu button:focus-visible {
   background: var(--state-hover-bg);
 }
-.nt-workspace-picker__trigger:focus-visible,
-.nt-workspace-picker__menu button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
+/* A gap between groups, not a rule (CMP-14). */
 .nt-workspace-picker__separator {
-  height: 1px;
-  margin: 5px 8px;
-  background: var(--hair);
+  height: 4px;
 }
 .nt-agent-launcher__hint {
   flex-shrink: 0;
@@ -134,7 +132,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .nt-agent-launcher__bar > .nt-agent-launcher__destination {
   flex: 1 1 0;
@@ -157,34 +155,31 @@
   border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--hair);
+  box-shadow: inset 0 0 0 1px var(--control-frame);
   font: 450 var(--type-meta)/1 var(--ui-font);
   white-space: nowrap;
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
-.nt-agent-launcher__action:hover:not(:disabled) {
+.nt-agent-launcher__action:is(:hover, :focus-visible):not(:disabled) {
   color: var(--text-primary);
-  background: var(--state-hover-bg);
+  background: var(--muted);
 }
 .nt-agent-launcher__action:disabled {
   opacity: 0.5;
   cursor: default;
 }
-.nt-agent-launcher__action:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 /* Recents and the GitHub ask recede below the primary folder/agent choice. */
 .nt-board--agents .board-home__recents {
   width: 100%;
-  margin-top: 26px;
+  margin-top: 24px;
 }
 .nt-board--agents .board-home__recents-head {
   padding: 0 8px 8px;
   color: var(--text-muted);
 }
 .nt-board--agents .board-home__star {
-  padding: 4px 8px;
+  padding: 0 8px;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -195,11 +190,11 @@
 .nt-board--agents .board-home__star-mark {
   color: inherit;
 }
-.nt-board--agents .board-home__star:hover:not(:disabled) {
+.nt-board--agents .board-home__star:is(:hover, :focus-visible):not(:disabled) {
   background: transparent;
   color: var(--text-muted);
 }
-.nt-board--agents .board-home__star:hover .board-home__star-text {
+.nt-board--agents .board-home__star:is(:hover, :focus-visible) .board-home__star-text {
   text-decoration: underline;
 }
 .nt-board--folder-over .nt-agent-launcher__destination {
@@ -226,7 +221,7 @@
     display: none;
   }
   .nt-agent-launcher__action {
-    padding: 0 9px;
+    padding: 0 8px;
   }
 }
 @container (max-width: 440px) {

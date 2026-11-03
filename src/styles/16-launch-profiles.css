@@ -123,13 +123,15 @@
   color: var(--text-muted);
 }
 
-/* The count is a fact about the list, not a control: a quiet pill, never a
-   badge that could be mistaken for something to press. */
+/* The count is a fact about the list, not a control: a read-only badge (CMP-6). */
 .lp-head__count {
-  padding: 1px 8px;
-  border-radius: var(--radius-control);
-  background: var(--chrome-2);
-  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
   font-size: var(--type-meta);
 }
 
@@ -155,13 +157,6 @@
   border-radius: var(--radius-control);
 }
 
-/* Between rows, not above the first: the heading already separates the list
-   from what precedes it, and a rule directly under a label reads as an
-   underline. */
-.lp-agent-item + .lp-agent-item {
-  border-top: 1px solid var(--seam-recessed);
-}
-
 /* A disabled agent stays fully legible — it is a choice the user made, not a
    failure — and says so by its toggle, not by being dimmed to unreadable. */
 .lp-agent.is-off .lp-agent__name {
@@ -171,7 +166,7 @@
 .lp-agent__text {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
@@ -199,7 +194,7 @@
 
 .lp-agent__disclosure {
   flex: 0 0 auto;
-  padding: 5px;
+  padding: 4px;
 }
 
 .lp-agent-item {
@@ -222,8 +217,8 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
   align-items: center;
   gap: 16px;
-  padding-top: 9px;
-  padding-bottom: 9px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .lp-agent-details .cfg-row__value {
@@ -261,7 +256,6 @@
 }
 
 .lp-agent-group {
-  border-top: 1px solid var(--seam-recessed);
   margin-top: 12px;
 }
 
@@ -391,13 +385,13 @@
 }
 
 .lp-runtime__error {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--red);
   font-size: var(--type-meta);
 }
 
 .lp-runtime-help {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--text-faint);
   font-size: var(--type-micro);
   line-height: 1.45;
@@ -417,7 +411,7 @@
   cursor: pointer;
 }
 
-.lp-star:hover {
+.lp-star:is(:hover, :focus-visible) {
   color: var(--text-muted);
 }
 

@@ -49,7 +49,7 @@
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
-  padding: 11vh 24px 40px;
+  padding: 11vh 24px 24px;
 }
 .applogo {
   width: 24px;
@@ -82,7 +82,7 @@
 }
 .board-home__title {
   margin: 16px 0 0;
-  font-size: var(--type-title);
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.2;
 }
@@ -90,15 +90,15 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 16px;
 }
 .home-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 33px;
+  gap: 6px;
+  height: 32px;
   padding: 0 16px;
   border-radius: var(--radius-control);
   cursor: pointer;
@@ -106,24 +106,20 @@
   font-size: var(--type-body);
   font-weight: 590;
   background: none;
-  border: 1px solid var(--hair-strong);
-  color: var(--text-muted);
+  border: 1px solid var(--control-frame);
+  color: var(--foreground);
   transition:
     background var(--duration) var(--ease),
     border-color var(--duration) var(--ease),
     color var(--duration) var(--ease);
 }
-.home-action:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--text-primary);
+/* Keyboard focus paints as hover does (CMP-11); only text fields carry a ring. */
+.home-action:is(:hover, :focus-visible):not(:disabled) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
 }
-.home-action:focus-visible,
-.board-home__resume:focus-visible,
-.board-home__missing-toggle:focus-visible,
-.row__open:focus-visible,
-.row__x:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.home-action:active:not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 .home-action:disabled,
 .board-home__resume:disabled,
@@ -131,14 +127,18 @@
   cursor: default;
   opacity: 0.5;
 }
+/* The one filled button on the start screen (CMP-3). */
 .home-action--primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--bg);
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
-.home-action--primary:hover:not(:disabled) {
-  border-color: var(--text-primary);
-  color: var(--bg);
+.home-action--primary:is(:hover, :focus-visible):not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in oklch, var(--primary) 92%, black);
+}
+.home-action--primary:active:not(:disabled) {
+  background: color-mix(in oklch, var(--primary) 84%, black);
 }
 .home-action kbd {
   font: inherit;
@@ -153,8 +153,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  height: 24px;
   margin-top: 12px;
-  padding: 4px 6px;
+  padding: 0 8px;
   border: 0;
   border-radius: var(--radius-tab);
   background: none;
@@ -163,51 +164,38 @@
   font-size: var(--type-meta);
   cursor: pointer;
 }
-.board-home__resume:hover:not(:disabled) {
+.board-home__resume:is(:hover, :focus-visible):not(:disabled) {
   color: var(--text-primary);
   background: var(--state-hover-bg);
 }
-/* The standing "Star on GitHub" row (2026-08-19, owner). A resting call to
-   action, NOT a state marker: the accent tint here is DL-3.1's "interactive",
-   the same reading `.home-action--primary`'s solid fill already has on this
-   screen, and nothing on the board is ever marked active this way. It is
-   quieter than the primary action above it (a 10% wash, not a fill) and
-   louder than `.board-home__resume` below it, which is the order the board's
-   own actions come in. */
+/* The standing "Star on GitHub" row (2026-08-19, owner): a resting call to action drawn as a
+   quiet chip, never a second filled button (CMP-3, CMP-5). */
 .board-home__star {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
-  padding: 6px 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: var(--radius-tab);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--text-primary);
+  height: 24px;
+  margin-top: 16px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--muted);
+  color: var(--foreground);
   font: inherit;
   font-size: var(--type-meta);
   font-weight: 590;
   cursor: pointer;
-  transition:
-    background var(--duration) var(--ease),
-    border-color var(--duration) var(--ease);
+  transition: background var(--duration) var(--ease);
 }
-.board-home__star:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-}
-.board-home__star:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.board-home__star:is(:hover, :focus-visible):not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 .board-home__star:disabled {
   cursor: default;
   opacity: 0.5;
 }
-/* The star is the only coloured mark: `--accent` on the glyph, so the row
-   reads as one object rather than as a warning (DL-3.2 owns `--yellow`). */
 .board-home__star-mark {
-  color: var(--accent);
+  color: inherit;
 }
 
 .board-home__opening {
@@ -220,7 +208,7 @@
    say this (2026-08-16). DL-3.2: yellow is "something needs your attention",
    and it only ever appears when an open did not happen. */
 .board-home__notice {
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   max-width: 460px;
   font-size: var(--type-body);
   color: var(--yellow);
@@ -235,10 +223,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
-  margin: 14px 0 0;
+  gap: 8px;
+  margin: 16px 0 0;
   max-width: 460px;
-  padding: 11px 14px;
+  padding: 12px 16px;
   border-radius: var(--radius-control);
   /* DL-1.3: an inset hairline, never a border — no layout, nothing to clip. */
   box-shadow: inset 0 0 0 1px var(--hair-strong);
@@ -253,7 +241,7 @@
 .board-home__decision-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 /* The board's own text-action shape (`.gsep button`), not a new one: bare
    copy, `--accent` on the one that acts (DL-3.1) and `--text-muted` on the
@@ -271,14 +259,9 @@
 .board-home__decision-fix {
   color: var(--text-muted);
 }
-.board-home__decision-go:hover,
-.board-home__decision-fix:hover {
+.board-home__decision-go:is(:hover, :focus-visible),
+.board-home__decision-fix:is(:hover, :focus-visible) {
   color: var(--text-primary);
-}
-.board-home__decision-go:focus-visible,
-.board-home__decision-fix:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 .board-home__decision-go:disabled,
 .board-home__decision-fix:disabled {
@@ -288,7 +271,7 @@
 
 .board-home__recents {
   width: min(480px, 100%);
-  margin-top: 34px;
+  margin-top: 24px;
 }
 .board-home__recents-head {
   padding: 0 8px 6px;
@@ -310,7 +293,7 @@
   transition: background var(--duration) var(--ease);
 }
 .row + .row {
-  margin-top: 1px;
+  margin-top: 2px;
 }
 .row:hover,
 .row:focus-within {
@@ -332,7 +315,7 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 7px 30px 7px 8px;
+  padding: 6px 30px 6px 8px;
   border: 0;
   border-radius: var(--radius-control);
   background: none;
@@ -353,7 +336,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 .row__name {
   min-width: 0;
@@ -366,16 +349,20 @@
   display: flex;
   align-items: baseline;
   min-width: 0;
-  gap: 7px;
+  gap: 8px;
 }
+/* A read-only badge (CMP-6): 20 high, a pill. */
 .row__state {
   flex: none;
-  padding: 1px 5px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
-  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
   font-size: var(--type-micro);
-  line-height: 1.2;
+  line-height: 1;
 }
 .row__meta {
   display: flex;
@@ -418,19 +405,19 @@
 }
 .row__x {
   position: absolute;
-  right: 5px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tight);
   background: none;
   color: var(--text-faint);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--type-body);
   line-height: 1;
   opacity: 0;
   padding: 0;
@@ -439,7 +426,7 @@
 .row:focus-within .row__x {
   opacity: 1;
 }
-.row__x:hover {
+.row__x:is(:hover, :focus-visible) {
   background: color-mix(in srgb, var(--red) 22%, transparent);
   color: var(--red);
 }
@@ -460,7 +447,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 9px 5px;
+  padding: 16px 8px 4px;
   font-size: var(--type-meta);
   font-weight: 600;
   color: var(--text-faint);
@@ -478,6 +465,9 @@
 .gsep .board-home__missing-toggle {
   color: var(--text-faint);
 }
+.gsep button:is(:hover, :focus-visible) {
+  color: var(--text-primary);
+}
 
 /* Session history is a dedicated Open Board view, never a second block under
    workspace recents. It reuses the dock-width Sessions body and its states. */
@@ -485,14 +475,14 @@
   width: min(640px, 100%);
   min-height: 0;
   margin: 0 auto;
-  padding: 34px 24px 40px;
+  padding: 24px;
   overflow-y: auto;
 }
 .board-sessions__head {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .board-sessions__head .board-back {
   margin: 0;
@@ -521,14 +511,14 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px 24px 18px;
+  padding: 24px 24px 16px;
 }
 .wtf__field {
   display: flex;
   flex-direction: column;
   gap: 6px;
   max-width: 520px;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 .wtf__label {
   font-size: var(--type-meta);
@@ -543,18 +533,28 @@
 .wtf__input {
   flex: 1;
   min-width: 0;
+  height: 32px;
+  box-sizing: border-box;
   font: inherit;
   font-size: var(--type-body);
-  padding: 7px 10px;
+  padding: 0 10px;
   background: var(--input-bg);
   color: var(--text-primary);
-  border: 1px solid var(--hair-strong);
+  border: 1px solid var(--control-frame);
   border-radius: var(--radius-control);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
-.wtf__select:focus,
+/* A text field is the one control with a ring (CMP-9); a select shows focus as hover. */
 .wtf__input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--muted-foreground);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
+}
+.wtf__select:is(:hover, :focus-visible) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
 }
 .wtf__browse {
   display: flex;
@@ -563,15 +563,18 @@
   padding: 0 12px;
   font: inherit;
   font-size: var(--type-body);
-  color: var(--text-muted);
+  color: var(--foreground);
   background: none;
-  border: 1px solid var(--hair-strong);
+  border: 1px solid var(--control-frame);
   border-radius: var(--radius-control);
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
-.wtf__browse:hover {
-  border-color: var(--accent);
-  color: var(--text-primary);
+.wtf__browse:is(:hover, :focus-visible) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
 }
 .wtf__error {
   margin-top: 16px;
@@ -591,7 +594,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   padding: 4px 2px;
   border: 0;
   background: none;
@@ -600,17 +603,16 @@
   color: var(--text-muted);
   cursor: pointer;
 }
-.board-back:hover {
+.board-back:is(:hover, :focus-visible) {
   color: var(--text-primary);
 }
 
 .wshead {
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--hair);
+  padding-bottom: 16px;
 }
 .wshead__title {
   margin: 0;
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -626,7 +628,7 @@
   text-overflow: ellipsis;
 }
 
-/* Agent: one row of chips. Digit keys 1-9/0 still pick, but the chips stopped
+/* Agent: one row of option buttons. Digit keys 1-9/0 still pick, but the chips stopped
    WEARING their number on 2026-08-16 — a chip is a mark and a name. */
 .agents {
   display: flex;
@@ -637,22 +639,28 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px 7px 9px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px 0 8px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--hair);
-  background: var(--chrome-1);
-  color: var(--text-primary);
+  border: 1px solid var(--control-frame);
+  background: none;
+  color: var(--foreground);
   cursor: pointer;
   font: inherit;
   font-size: var(--type-body);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
-.achip:hover {
-  background: var(--chrome-2);
+.achip:is(:hover, :focus-visible) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
 }
-.achip.is-selected {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--accent) 10%, var(--chrome-1));
-  box-shadow: inset 0 0 0 1px var(--accent);
+/* Selected is one neutral step, with no accent edge (CMP-13). */
+.achip.is-selected,
+.achip.is-selected:is(:hover, :focus-visible) {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 .achip__logo {
   width: 15px;
@@ -668,7 +676,7 @@
   flex: none;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: var(--type-meta);
   font-weight: 600;
   line-height: 1;
 }
@@ -687,7 +695,7 @@
   display: grid;
   place-items: center;
   font-family: var(--ui-font);
-  font-size: 11px;
+  font-size: var(--type-meta);
   color: var(--text-faint);
 }
 
@@ -740,15 +748,16 @@
 }
 /* Board footer: actions only — the summary line and its key hints went with
    the config view (2026-08-16); the worktree form is the last screen with a
-   footer and it has never had a lead. */
+   footer and it has never had a lead. A background step sets it off, not a line
+   (CMP-14). */
 .foot {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 9px 24px;
-  border-top: 1px solid var(--hair);
+  gap: 16px;
+  padding: 8px 24px;
+  background: var(--chrome-1);
 }
 .foot__act {
   flex: none;
@@ -759,34 +768,45 @@
   font: inherit;
   font-size: var(--type-body);
   font-weight: 510;
-  height: 29px;
-  padding: 0 14px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--hair-strong);
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
+  border: 1px solid var(--control-frame);
+  background: none;
+  color: var(--foreground);
   cursor: pointer;
-  transition: background var(--duration) var(--ease);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
-.btn:hover {
-  background: var(--tab-active-bg);
+.btn:is(:hover, :focus-visible):not(:disabled) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
+}
+.btn:active:not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
 }
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: default;
 }
+/* The worktree form's confirm: its screen's one filled button. */
 .btn--primary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border-color: color-mix(in srgb, var(--accent) 72%, #000);
-  background: var(--accent);
-  color: var(--bg);
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 590;
-  padding: 0 18px;
+  padding: 0 16px;
 }
-.btn--primary:hover {
-  background: color-mix(in srgb, var(--accent) 92%, var(--tone));
+.btn--primary:is(:hover, :focus-visible):not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in oklch, var(--primary) 92%, black);
+}
+.btn--primary:active:not(:disabled) {
+  background: color-mix(in oklch, var(--primary) 84%, black);
 }
 .btn--primary kbd {
   font: inherit;

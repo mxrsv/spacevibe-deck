@@ -21,7 +21,7 @@
 .nt-board__content {
   width: min(680px, calc(100% - 48px));
   margin: 0 auto;
-  padding: clamp(42px, 8vh, 76px) 0 48px;
+  padding: clamp(42px, 8vh, 76px) 0 24px;
 }
 
 .nt-board__content--subview {
@@ -36,7 +36,7 @@
 }
 
 .nt-board__head {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
 }
 
 /* The previous session's offer: one raised row above the composer, quieter
@@ -86,9 +86,9 @@
 }
 
 .nt-board__head h2 {
-  margin: 9px 0 7px;
+  margin: 8px 0;
   color: var(--text-primary);
-  font: 650 22px/1.08 var(--ui-font);
+  font: 650 16px/1.2 var(--ui-font);
 }
 
 .nt-board__head p {
@@ -111,7 +111,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 17px 0;
+  padding: 16px 16px 0;
 }
 
 .nt-composer__prompt-head label {
@@ -125,32 +125,41 @@
   min-height: 112px;
   box-sizing: border-box;
   resize: none;
-  padding: 12px 17px 18px;
+  padding: 12px 16px 16px;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text-primary);
-  font: 430 15px/1.55 var(--ui-font);
+  font: 430 var(--type-body)/1.55 var(--ui-font);
 }
 
 .nt-composer__textarea::selection {
   background: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
-.nt-composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 64%, var(--seam-raised));
+.nt-composer:has(.nt-composer__textarea:focus) {
+  border-color: var(--muted-foreground);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 
 .nt-composer__prompt-collapsed {
   width: calc(100% - 24px);
-  min-height: 44px;
+  min-height: 40px;
   margin: 8px 12px 12px;
-  border: 1px dashed var(--hair-strong);
-  border-radius: var(--radius-control);
+  border: 1px dashed var(--control-frame);
+  border-radius: 6px;
   background: var(--input-bg);
   color: var(--text-muted);
   font: 430 var(--type-body) / 1.4 var(--ui-font);
   cursor: text;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.nt-composer__prompt-collapsed:is(:hover, :focus-visible) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
 }
 
 .nt-composer__context {
@@ -158,8 +167,7 @@
   align-items: center;
   gap: 4px;
   min-height: 40px;
-  padding: 5px 7px;
-  border-top: 1px solid var(--hair);
+  padding: 4px 8px;
   background: color-mix(in srgb, var(--bg) 28%, transparent);
 }
 
@@ -167,23 +175,20 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
   height: 28px;
   box-sizing: border-box;
-  padding: 0 5px;
+  padding: 0 6px;
   border: 1px solid transparent;
-  border-radius: var(--radius-tight);
+  border-radius: var(--radius-control);
   color: var(--text-muted);
-  transition:
-    border-color var(--duration) var(--ease),
-    background var(--duration) var(--ease);
+  transition: background var(--duration) var(--ease);
 }
 
 .nt-context-control:hover,
 .nt-context-control:focus-within {
-  border-color: var(--hair-strong);
-  background: var(--state-hover-bg);
+  background: var(--muted);
 }
 
 .nt-context-control--workspace {
@@ -235,12 +240,12 @@
   position: relative;
   display: flex;
   width: 164px;
-  height: 26px;
+  height: 28px;
   min-width: 0;
   box-sizing: border-box;
   align-items: center;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tight);
+  border: 1px solid var(--control-frame);
+  border-radius: var(--radius-control);
   background: var(--input-bg);
   transition:
     border-color var(--duration) var(--ease),
@@ -249,8 +254,8 @@
 
 .nt-runtime-select:hover,
 .nt-runtime-select:focus-within {
-  border-color: var(--hair-strong);
-  background: var(--state-hover-bg);
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
 }
 
 .nt-runtime-select select {
@@ -258,7 +263,7 @@
   height: 100%;
   min-width: 0;
   appearance: none;
-  padding: 0 22px 0 7px;
+  padding: 0 24px 0 8px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -305,14 +310,15 @@ img.nt-agent-mark {
 }
 
 .nt-composer__context .nt-primary-action {
-  min-height: 30px;
-  padding: 0 10px;
-  font-size: var(--type-meta);
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
 }
 
 .nt-composer__context .nt-secondary-action {
-  min-height: 28px;
-  font-size: var(--type-micro);
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
 }
 
 .nt-primary-action,
@@ -324,33 +330,35 @@ img.nt-agent-mark {
   cursor: pointer;
 }
 
+/* The composer's start button is the screen's one filled button (CMP-3). */
 .nt-primary-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 0 13px;
-  border-radius: var(--radius-control);
-  background: var(--text-primary);
-  color: var(--bg);
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: var(--type-body);
   font-weight: 650;
-  transition:
-    opacity var(--duration) var(--ease),
-    transform var(--duration) var(--ease);
+  transition: background var(--duration) var(--ease);
 }
 
-.nt-primary-action:hover:not(:disabled) {
-  transform: translateY(-1px);
+.nt-primary-action:is(:hover, :focus-visible):not(:disabled) {
+  background: color-mix(in oklch, var(--primary) 92%, black);
+}
+
+.nt-primary-action:active:not(:disabled) {
+  background: color-mix(in oklch, var(--primary) 84%, black);
 }
 
 .nt-primary-action:disabled {
   cursor: default;
-  opacity: 0.36;
+  opacity: 0.5;
 }
 
-.nt-secondary-action,
 .nt-text-action {
   background: transparent;
   color: var(--text-muted);
@@ -358,74 +366,84 @@ img.nt-agent-mark {
 }
 
 .nt-secondary-action {
-  min-height: 34px;
-  padding: 0 9px;
-  border-radius: var(--radius-control);
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--control-frame);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: var(--type-body);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
 
-.nt-secondary-action:hover,
-.nt-text-action:hover {
+.nt-secondary-action:is(:hover, :focus-visible):not(:disabled) {
+  border-color: var(--control-frame-hover);
+  background: var(--muted);
+}
+
+.nt-secondary-action:active:not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+}
+
+.nt-secondary-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.nt-text-action:is(:hover, :focus-visible) {
   color: var(--text-primary);
   background: var(--state-hover-bg);
 }
 
 .nt-icon-action {
   display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   place-items: center;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
+  transition: background var(--duration) var(--ease);
 }
 
-.nt-icon-action:hover {
-  background: var(--state-hover-bg);
+.nt-icon-action:is(:hover, :focus-visible) {
+  background: var(--muted);
   color: var(--text-primary);
-}
-
-.nt-primary-action:focus-visible,
-.nt-secondary-action:focus-visible,
-.nt-icon-action:focus-visible,
-.nt-text-action:focus-visible,
-.nt-composer__prompt-collapsed:focus-visible,
-.nt-board__shortcuts button:focus-visible,
-.nt-quick-launch__foot button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 .nt-board__shortcuts {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 11px 2px 0;
+  margin: 12px 2px 0;
 }
 
 .nt-board__shortcuts button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
+  height: 28px;
   padding: 0 8px;
   border: 0;
-  border-radius: var(--radius-tight);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-faint);
   font: 450 var(--type-meta) / 1 var(--ui-font);
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
 
-.nt-board__shortcuts button:hover {
-  background: var(--state-hover-bg);
+.nt-board__shortcuts button:is(:hover, :focus-visible) {
+  background: var(--muted);
   color: var(--text-primary);
 }
 
 .nt-composer__notice {
   margin: 0;
-  padding: 8px 14px;
-  border-top: 1px solid var(--hair);
+  padding: 8px 16px;
   color: var(--red);
   font: 500 var(--type-meta) / 1.4 var(--ui-font);
 }
@@ -442,45 +460,39 @@ img.nt-agent-mark {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  padding: 7px 10px;
-  border-top: 1px solid var(--hair);
+  gap: 6px;
+  padding: 8px 12px;
   background: color-mix(in srgb, var(--bg) 18%, transparent);
 }
 
 .nt-composer__recovery button {
-  min-height: 27px;
+  height: 24px;
   padding: 0 8px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tight);
-  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--muted);
   color: var(--text-muted);
   font: 520 var(--type-micro) / 1 var(--ui-font);
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
 
-.nt-composer__recovery button:hover:not(:disabled) {
-  border-color: var(--hair-strong);
-  background: var(--state-hover-bg);
+.nt-composer__recovery button:is(:hover, :focus-visible):not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
   color: var(--text-primary);
 }
 
 .nt-composer__recovery button:disabled {
   cursor: default;
-  opacity: 0.45;
-}
-
-.nt-composer__recovery button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  opacity: 0.5;
 }
 
 .nt-quick-launch {
   position: absolute;
   z-index: 110;
-  top: 9px;
-  right: 10px;
-  width: min(430px, calc(100% - 20px));
+  top: 8px;
+  right: 8px;
+  width: min(430px, calc(100% - 16px));
   overflow: hidden;
   border: 1px solid var(--seam-raised);
   border-radius: var(--radius-surface);
@@ -490,16 +502,16 @@ img.nt-agent-mark {
 }
 
 .stage--strip .nt-quick-launch {
-  top: calc(var(--frame-h) + 9px);
+  top: calc(var(--frame-h) + 8px);
 }
 
 .nt-quick-launch__head {
   display: flex;
-  min-height: 50px;
+  min-height: 48px;
   align-items: center;
   gap: 8px;
-  padding: 0 9px 0 14px;
-  border-bottom: 1px solid var(--hair);
+  padding: 0 8px 0 16px;
+  background: color-mix(in srgb, var(--bg) 28%, transparent);
 }
 
 .nt-quick-launch__head > div {
@@ -512,7 +524,7 @@ img.nt-agent-mark {
 }
 
 .nt-quick-launch__head span {
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   color: var(--text-faint);
   font: 500 var(--type-micro) / 1 var(--ui-font);
 }
@@ -532,7 +544,12 @@ img.nt-agent-mark {
 }
 
 .nt-quick-launch .nt-composer__prompt-head {
-  padding-top: 13px;
+  padding-top: 12px;
+}
+
+/* The popover clips a ring drawn outside, so the ring is drawn inside it. */
+.nt-quick-launch .nt-composer:has(.nt-composer__textarea:focus) {
+  box-shadow: inset 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 
 .nt-quick-launch .nt-composer__textarea {
@@ -564,8 +581,8 @@ img.nt-agent-mark {
   min-height: 36px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 13px;
-  border-top: 1px solid var(--hair);
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--bg) 28%, transparent);
   color: var(--text-faint);
   font: 450 var(--type-micro) / 1 var(--ui-font);
 }
@@ -578,6 +595,10 @@ img.nt-agent-mark {
   cursor: pointer;
 }
 
+.nt-quick-launch__foot button:is(:hover, :focus-visible) {
+  color: var(--text-primary);
+}
+
 .nt-quick-launch__foot kbd {
   font: inherit;
 }
@@ -585,12 +606,12 @@ img.nt-agent-mark {
 .nt-create-workspace__body {
   display: grid;
   gap: 16px;
-  padding: 18px;
+  padding: 16px;
 }
 
 .nt-create-workspace__body label > span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   color: var(--text-faint);
   font: 520 var(--type-meta) / 1 var(--ui-font);
 }
@@ -600,8 +621,8 @@ img.nt-agent-mark {
   width: 100%;
   min-height: 40px;
   box-sizing: border-box;
-  border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-control);
+  border: 1px solid var(--control-frame);
+  border-radius: 6px;
   background: var(--input-bg);
   color: var(--text-primary);
   font: 450 var(--type-body) / 1 var(--ui-font);
@@ -634,16 +655,17 @@ img.nt-agent-mark {
 }
 
 .nt-create-workspace__body input {
-  padding: 0 11px;
+  padding: 0 12px;
   outline: 0;
 }
 
 .nt-create-workspace__body input:focus {
-  border-color: var(--accent);
+  border-color: var(--muted-foreground);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 
 .nt-create-workspace__body p {
-  margin: -3px 0 0;
+  margin: -4px 0 0;
   color: var(--text-faint);
   font: 430 var(--type-meta) / 1.5 var(--ui-font);
 }
@@ -651,9 +673,9 @@ img.nt-agent-mark {
 .nt-create-workspace__foot {
   display: flex;
   justify-content: flex-end;
-  gap: 7px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--hair);
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--bg) 28%, transparent);
 }
 
 .nt-quick-launch--subview .board-worktree {
@@ -665,7 +687,7 @@ img.nt-agent-mark {
 }
 
 .nt-quick-launch--subview .board-worktree__scroll {
-  padding: 16px 18px 14px;
+  padding: 16px 16px 12px;
 }
 
 .nt-quick-launch--subview .wshead__title {
@@ -673,7 +695,7 @@ img.nt-agent-mark {
 }
 
 .nt-quick-launch--subview .wtf__field {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 @keyframes nt-composer-enter {
@@ -692,8 +714,8 @@ img.nt-agent-mark {
 
 @media (max-width: 720px) {
   .nt-board__content {
-    width: min(430px, calc(100% - 30px));
-    padding-top: 36px;
+    width: min(430px, calc(100% - 32px));
+    padding-top: 24px;
   }
 
   .nt-board__head p,
