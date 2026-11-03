@@ -34,7 +34,6 @@ import {
 } from "./agent-dock-state";
 import { DockFileTab } from "./dock-file-tab";
 import { closeGuarded } from "./dock-file-tabs-close";
-import { StripCell } from "./dock-strip-cell";
 
 const VIEW_ICON: Readonly<Record<DockViewId, DeckGlyph>> = {
   changes: FileEditIcon,
@@ -177,15 +176,22 @@ export function DockTabStrip({
     <div
       role="toolbar"
       aria-label="Dock views"
-      className="agent-dock__strip box-border flex h-[var(--frame-h)] shrink-0 items-stretch border-b"
+      className="agent-dock__strip box-border flex h-[var(--frame-h)] shrink-0 items-center gap-0.5 border-b px-2"
     >
       {views.map((id) => (
         <Tooltip key={id}>
           <TooltipTrigger
             render={
-              <StripCell
+              <Button
+                variant="ghost"
+                size="icon"
                 aria-label={VIEW_LABEL[id]}
                 aria-pressed={surface === "view" && id === view}
+                className={
+                  surface === "view" && id === view
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground"
+                }
                 onClick={() => setDockView(id)}
               />
             }
@@ -195,7 +201,7 @@ export function DockTabStrip({
           <TooltipContent side="bottom">{VIEW_LABEL[id]}</TooltipContent>
         </Tooltip>
       ))}
-      <Separator orientation="vertical" className="h-auto" />
+      <Separator orientation="vertical" className="mr-1.5 ml-2 h-7" />
       <div
         ref={list}
         role="tablist"
@@ -227,7 +233,7 @@ export function DockTabStrip({
             aria-selected="true"
             aria-label="Explorer"
             className={cn(
-              "group/tab relative flex h-full shrink-0 items-center gap-1 px-2.5 text-xs",
+              "group/tab relative flex h-full shrink-0 items-center gap-1.5 px-2.5 text-xs",
               "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary",
             )}
           >
@@ -264,9 +270,14 @@ export function DockTabStrip({
       <Tooltip>
         <TooltipTrigger
           render={
-            <StripCell
+            <Button
+              variant="ghost"
+              size="icon-sm"
               aria-label="Open a file"
               aria-pressed={surface === "explorer"}
+              className={
+                surface === "explorer" ? "bg-muted text-foreground" : "text-muted-foreground"
+              }
               onClick={selectDockExplorer}
             />
           }
@@ -277,19 +288,20 @@ export function DockTabStrip({
       </Tooltip>
       {dockNarrow.value ? null : (
         <>
-          <Separator orientation="vertical" className="h-auto" />
           <Tooltip>
             {/* A disabled button takes no pointer events, so the span carries the tooltip. */}
-            <TooltipTrigger render={<span className="flex h-full shrink-0" />}>
-              <StripCell
+            <TooltipTrigger render={<span className="shrink-0" />}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 aria-label={maximized ? "Restore the panel width" : "Widen the panel"}
                 aria-pressed={maximized}
                 disabled={!maximized && !canWiden}
-                mark="fill"
+                className="text-muted-foreground"
                 onClick={toggleDockMaximized}
               >
                 <DeckIcon icon={maximized ? Minimize01Icon : Maximize01Icon} />
-              </StripCell>
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {maximized
@@ -301,10 +313,17 @@ export function DockTabStrip({
           </Tooltip>
         </>
       )}
-      <Separator orientation="vertical" className="h-auto" />
       <Tooltip>
         <TooltipTrigger
-          render={<StripCell aria-label={closeLabel} mark="fill" onClick={onClose} />}
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={closeLabel}
+              className="shrink-0 text-muted-foreground"
+              onClick={onClose}
+            />
+          }
         >
           <DeckIcon icon={ArrowRight01Icon} />
         </TooltipTrigger>
@@ -332,11 +351,12 @@ function ScrollArrow({
     <Tooltip>
       <TooltipTrigger
         render={
-          <StripCell
+          <Button
+            variant="ghost"
+            size="icon-sm"
             aria-label={label}
             disabled={disabled}
-            mark="fill"
-            className="min-w-7"
+            className="shrink-0 text-muted-foreground"
             onClick={onPress}
           />
         }

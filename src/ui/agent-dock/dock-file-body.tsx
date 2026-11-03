@@ -12,6 +12,7 @@ import {
 import { isMarkdownPath } from "../../files/markdown-policy";
 import { FilePanel } from "../../files/ui/file-panel";
 import { ViewModeToggle } from "../../files/ui/view-mode-toggle";
+import { Button } from "../controls/button";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockTreePane } from "./agent-dock-state";
@@ -58,6 +59,10 @@ function useWidth(ref: { readonly current: HTMLElement | null }, mounted: boolea
  * toggled, the project tree beside it. The tree gives way first: under 560px it starts hidden, and
  * the breadcrumb's tree button brings it back.
  */
+/** A path segment reads as text and brightens on hover; it has no fill like a strip cell. */
+const CRUMB_CELL =
+  "h-auto min-w-0 self-center px-1 hover:bg-transparent focus-visible:bg-transparent";
+
 export function DockFileBody({ controller, workspacePath, canCreate }: DockFileBodyProps) {
   const body = useRef<HTMLDivElement>(null);
   const path = surfaceFor(workspacePath).activePath;
@@ -89,7 +94,7 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   const treeLabel = treeOpen ? "Hide the file tree" : "Show the file tree";
   return (
     <div ref={body} className="dock-file flex h-full min-h-0 flex-col">
-      <div className="flex h-9 shrink-0 items-stretch border-b text-xs">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b pr-2.5 pl-3 text-xs">
         <nav
           aria-label="File path"
           className="flex min-w-0 flex-1 items-stretch overflow-hidden font-sans"
@@ -98,6 +103,7 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
             <>
               <StripCell
                 mark="fill"
+                className={CRUMB_CELL}
                 aria-label="Earlier folders"
                 onClick={() => reveal(crumbs[hidden - 1].folder ?? workspacePath)}
               >
@@ -112,15 +118,16 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
           )}
           {shown.map((crumb) =>
             crumb.folder === null ? (
-              <b
-                key={crumb.name}
-                className="flex min-w-0 items-center truncate px-2 font-semibold text-foreground"
-              >
+              <b key={crumb.name} className="min-w-0 truncate px-1 font-medium text-foreground">
                 {crumb.name}
               </b>
             ) : (
-              <span key={crumb.folder} className="flex shrink-0 items-stretch">
-                <StripCell mark="fill" onClick={() => reveal(crumb.folder as string)}>
+              <span key={crumb.folder} className="flex shrink-0 items-center gap-1">
+                <StripCell
+                  mark="fill"
+                  className={CRUMB_CELL}
+                  onClick={() => reveal(crumb.folder as string)}
+                >
                   {crumb.name}
                 </StripCell>
                 <DeckIcon
@@ -138,9 +145,11 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
         <Tooltip>
           <TooltipTrigger
             render={
-              <StripCell
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 aria-label="Save"
-                mark="fill"
+                className="text-muted-foreground"
                 disabled={!document?.dirty || document.file?.readOnly}
                 onClick={() => void controller.savePath(path)}
               />
@@ -153,10 +162,12 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
         <Tooltip>
           <TooltipTrigger
             render={
-              <StripCell
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 aria-label={treeLabel}
                 aria-pressed={treeOpen}
-                mark="fill"
+                className={treeOpen ? "bg-muted text-foreground" : "text-muted-foreground"}
                 onClick={() => {
                   dockTreePane.value = !treeOpen;
                 }}
