@@ -1,8 +1,8 @@
 /**
- * Which folder the dock's Files and Changes sections show (spec OD-3, LAY-6, AC-3).
+ * Which folder the agent dock's file tabs, tree and Changes view show (spec OD-3, LAY-6, AC-3).
  *
  * The legacy dock roots them at the selected tab's `workspacePath`, which is fixed when the tab is
- * created. The stacked dock follows the FOCUSED pane: its cwd (`statusInfo.cwd`, which `syncViews`
+ * created. The agent dock follows the FOCUSED pane: its cwd (`statusInfo.cwd`, which `syncViews`
  * already publishes) mapped to the checkout that contains it by longest prefix, so an agent that
  * `cd`s into a secondary worktree takes the dock with it. This is a derived value and writes
  * nothing: `activeWorkspace` stays the tab's own folder, because the file watcher and the open

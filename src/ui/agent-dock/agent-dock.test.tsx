@@ -85,7 +85,7 @@ function twoAgents(focusedKey: number | null): TabView[] {
 const BODIES = {
   changes: {
     watch: () => null,
-    section: (root: string | null) => <p>changes body at {root ?? "no folder"}</p>,
+    view: (root: string | null) => <p>changes body at {root ?? "no folder"}</p>,
     count: () => null,
   },
   files: testFileBodies(),
@@ -204,7 +204,7 @@ describe("the tabbed dock in a wide window", () => {
     const rows = Array.from({ length: 65 }, (_, index) => <li key={index}>file {index}</li>);
     const view = await mount(
       dock({
-        bodies: { ...BODIES, changes: { ...BODIES.changes, section: () => <ul>{rows}</ul> } },
+        bodies: { ...BODIES, changes: { ...BODIES.changes, view: () => <ul>{rows}</ul> } },
       }),
     );
     const column = document.body.querySelector(".agent-dock__column") as HTMLElement;

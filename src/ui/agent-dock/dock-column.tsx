@@ -14,18 +14,18 @@ import { DockTabStrip } from "./dock-tab-strip";
 
 /**
  * What the views show. `App` picks the bodies, as it does for the legacy column, so the host
- * (`dock-column`, `dock-edge`) imports no body: not the Explorer, Usage, History or the Changes
- * view. `dock-changes` sits in this directory only because Tailwind scans it.
+ * (`dock-column`, `dock-edge`) imports no body: not the file tree, Usage, History or the Changes
+ * view. The bodies sit in this directory because Tailwind scans it.
  */
 /**
  * The Changes view is three parts because the window width splits them: the view lives in the
- * column or the sheet, the watch and the open diff outlive the sheet, and the handle shows a count.
+ * column or the sheet, the watch outlives the sheet, and the handle shows a count.
  */
 export interface DockChangesBodies {
-  /** Holds the checkout's watch and the open diff for as long as the dock is mounted. */
+  /** Holds the checkout's watch for as long as the dock is mounted. */
   readonly watch: (root: string | null) => ComponentChildren;
   /** The view itself, without a header: the strip names it. */
-  readonly section: (root: string | null) => ComponentChildren;
+  readonly view: (root: string | null) => ComponentChildren;
   /** The changed-file count the handle shows, or null when there is none to show. */
   readonly count: (root: string | null) => number | null;
 }
@@ -136,7 +136,7 @@ export function DockColumn({
           <div className="h-full min-h-0">{bodies.files.explorer(root)}</div>
         ) : null}
         {surface === "view" && view === "changes" && bodies.changes !== null
-          ? bodies.changes.section(root)
+          ? bodies.changes.view(root)
           : null}
         {surface === "view" && view === "usage" ? bodies.usage({ item, space, cwd }) : null}
         {surface === "view" && view === "history" && bodies.history !== null

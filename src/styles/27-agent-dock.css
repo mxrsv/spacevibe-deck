@@ -1,4 +1,4 @@
-/* ── The stacked dock (src/ui/agent-dock/) ─────────────────────────────────
+/* ── The agent dock (src/ui/agent-dock/) ───────────────────────────────────
    Behind the `agentDock` release switch. Its root rides the legacy `.dock-panel` box
    (14-dock.css): the absolute placement, the `--dock-w` width the stage inset reads, the
    slide-over, `is-open`, and the reduced-motion and usage-page `inert` rules keyed on that class.
@@ -22,13 +22,6 @@
   --term-ok: var(--green);
   --term-err: var(--red);
   --term-warn: var(--yellow);
-}
-
-/* The header is `.dock-panel__header` (its `--frame-h` height and Windows inset are keyed on
-   that class); the identity needs more room on the left than the legacy tab row's 4px. Keyed on
-   the column, not the root, so it reaches the header inside the sheet's portal too. */
-.agent-dock__column .dock-panel__header {
-  padding-left: 12px;
 }
 
 /* The edge handle's top cell: the frame row's height and hairline, so the handle's seam lines up

@@ -74,28 +74,7 @@ export function toggleDockCardFold(key: string): void {
  */
 export const dockSheetOpen = signal(false);
 
-let afterSheetClose: (() => void) | null = null;
-
-/**
- * Close the sheet and run `action` once it has let go of focus. The sheet returns focus to its
- * handle when it closes; an action that wants focus elsewhere (the diff column a file press just
- * opened) cannot win that race by running first, so `DockEdge` runs it in place of the return.
- */
-export function closeDockSheetThen(action: () => void): void {
-  afterSheetClose = action;
-  dockSheetOpen.value = false;
-  dockWideRequested.value = false;
-}
-
-/** The action `closeDockSheetThen` left for the sheet's close, once; null for any other close. */
-export function takeAfterSheetClose(): (() => void) | null {
-  const action = afterSheetClose;
-  afterSheetClose = null;
-  return action;
-}
-
 export function resetAgentDockState(): void {
-  afterSheetClose = null;
   dockView.value = DEFAULT_VIEW;
   dockSurface.value = "view";
   dockTreePane.value = null;

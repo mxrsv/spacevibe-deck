@@ -120,10 +120,7 @@ function chromeCssFiles(): string[] {
  * The new shell's own stylesheets, keyed on its release switches and painted from the preset (UI-2).
  * Exempt from the token rule only: they may read any preset token, not just the CMP-19 list.
  */
-const PRESET_READING_SHELL_CSS = new Set([
-  "styles/27-dock-stacked.css",
-  "styles/31-shell-stage.css",
-]);
+const PRESET_READING_SHELL_CSS = new Set(["styles/27-agent-dock.css", "styles/31-shell-stage.css"]);
 
 /**
  * Preset tokens a legacy stylesheet may read (CMP-19, replacing UI-3): the new look is a set of values

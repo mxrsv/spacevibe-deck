@@ -9,7 +9,7 @@ import { shortcutLabel } from "../../lib/shortcut-label";
 import { Kbd } from "../controls/kbd";
 import { statusLabel } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
-import { dockSheetOpen, takeAfterSheetClose } from "./agent-dock-state";
+import { dockSheetOpen } from "./agent-dock-state";
 import { DockColumn, type DockColumnProps } from "./dock-column";
 
 const OPEN_LABEL = "Open the side panel";
@@ -93,14 +93,8 @@ export function DockEdge({ item, space, root, cwd, bodies, onHide }: DockEdgePro
       </div>
       <SheetContent
         showCloseButton={false}
+        // Escape, the scrim and the close control return focus to the handle (Base UI's default).
         className="data-[side=right]:w-80 data-[side=right]:sm:max-w-80"
-        // Escape, the scrim and the close control return focus to the handle. A close that left an
-        // action (a file press showing its diff) runs it instead and leaves focus where it puts it.
-        finalFocus={() => {
-          const action = takeAfterSheetClose();
-          action?.();
-          return action === null;
-        }}
       >
         <SheetTitle className="sr-only">Side panel</SheetTitle>
         <DockColumn

@@ -55,7 +55,7 @@ const KEPT_LINES: readonly Allowed[] = [
   { selector: ".md-doc hr", reason: "markdown thematic break is content, not a divider" },
   {
     selector: ".agent-dock__edge-head",
-    file: "src/styles/27-dock-stacked.css",
+    file: "src/styles/27-agent-dock.css",
     reason: "held by a peer session; leave it listed until that work lands",
   },
 ];

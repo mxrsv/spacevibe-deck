@@ -35,14 +35,14 @@ const NARROW_CRUMBS_BELOW = 400;
  * The tree pane gives way first (DOCK-11): 260px where the body affords it, else 40% of the body,
  * so a 320px sheet keeps 192px of editor. An unmeasured body counts as wide, as for the default.
  */
-export function treePaneWidth(bodyWidth: number | null): number {
+function treePaneWidth(bodyWidth: number | null): number {
   return bodyWidth === null
     ? TREE_PANE_WIDTH
     : Math.min(TREE_PANE_WIDTH, Math.round(bodyWidth * TREE_PANE_SHARE));
 }
 
 /** How many folders the breadcrumb spells out before the `…`. */
-export function visibleCrumbFolders(bodyWidth: number | null): number {
+function visibleCrumbFolders(bodyWidth: number | null): number {
   return bodyWidth !== null && bodyWidth < NARROW_CRUMBS_BELOW ? 1 : VISIBLE_FOLDERS;
 }
 

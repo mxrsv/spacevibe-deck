@@ -1,7 +1,7 @@
 /**
- * Where the stacked dock sits and how wide it is (spec LAY-9, OD-4).
+ * Where the agent dock sits and how wide it is (spec LAY-9, OD-4, DOCK-11).
  *
- * The column rests at 320px and resizes by the same grip as the tabbed dock (`DockResizeGrip`).
+ * The column rests at 320px and resizes by the same grip as the legacy dock (`DockResizeGrip`).
  * Under 1360px of window width it shrinks to a 32px edge handle, and opening it draws the same
  * column in a sheet over the stage. The window width is read through one signal, and `App` reads
  * only the boolean derived from it, so a window drag re-renders `App` when the width crosses the

@@ -112,7 +112,7 @@ describe("the order of the dock", () => {
         bodies={{
           changes: {
             watch: () => null,
-            section: () => <p>changes body</p>,
+            view: () => <p>changes body</p>,
             count: () => null,
           },
           files: testFileBodies(),

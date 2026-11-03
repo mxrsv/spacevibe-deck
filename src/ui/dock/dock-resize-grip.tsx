@@ -14,8 +14,8 @@ export interface DockResizeGripProps {
 }
 
 /**
- * The seam on a dock column's inner edge (DL-19.4), shared by the tabbed dock and the stacked
- * one so the two cannot disagree about how a drag resizes or collapses. It sits on the column's
+ * The seam on a dock column's inner edge (DL-19.4), shared by the legacy dock and the agent
+ * dock so the two cannot disagree about how a drag resizes or collapses. It sits on the column's
  * LEFT edge; the width rides a live signal during the drag and settles into settings on release.
  */
 export function DockResizeGrip({ width, onWidthChange, onClose }: DockResizeGripProps) {

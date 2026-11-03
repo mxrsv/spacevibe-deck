@@ -20,11 +20,11 @@ export interface AgentDockProps {
 }
 
 /**
- * The stacked-section dock (spec LAY-6, LAY-9): a 320px column of collapsible sections that the
+ * The agent dock (spec LAY-9, DOCK-1, DOCK-11): a 320px column of one strip and one body that the
  * grip resizes or drags shut, or under 1360px a 32px edge handle that opens the same column as a
- * sheet. It rides the legacy
- * `.dock-panel` box, so the stage inset, the slide-over and the usage page's `inert` cover keep
- * working, and `27-dock-stacked.css` repaints it on the rail's surface.
+ * 320px sheet. It rides the legacy `.dock-panel` box, so the stage inset, the slide-over and the
+ * usage page's `inert` cover keep working, and `27-agent-dock.css` repaints it on the rail's
+ * surface.
  */
 export function AgentDock({ entered, onClose, bodies }: AgentDockProps) {
   const narrow = dockNarrow.value;

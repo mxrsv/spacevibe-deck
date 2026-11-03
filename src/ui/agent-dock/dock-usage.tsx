@@ -83,7 +83,7 @@ function startedAtOf(item: RailItem): number | null {
 }
 
 /**
- * The stacked dock's Usage section (LAY-6): the focused agent's repository today, in tokens and
+ * The agent dock's Usage view (LAY-6, DOCK-1): the focused agent's repository today, in tokens and
  * estimated cost, the space's cost beside it when the space holds other agents, and how long the
  * agent has been running. The figures are the repository's, for that agent and not one session:
  * the scanner has no session dimension, and reads Claude Code and Codex only, so any other agent
