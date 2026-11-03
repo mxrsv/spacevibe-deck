@@ -2,11 +2,6 @@
    Each slot renders nothing; the slice that owns it fills the body and its
    stylesheet partial, so `app.tsx` is edited once here and never again. */
 
-/** Stacked sections inside the dock (`src/styles/27-dock-stacked.css`). */
-export function DockSections() {
-  return null;
-}
-
 /** The hunk queue (`src/styles/28-hunk-queue.css`). */
 export function HunkQueue() {
   return null;

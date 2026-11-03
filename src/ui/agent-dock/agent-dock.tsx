@@ -3,8 +3,7 @@ import { dockWidthLive } from "../../files/file-surface-store";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { DockResizeGrip } from "../dock/dock-resize-grip";
-import type { RailSelection } from "../project-rail/project-rail-model";
-import { dockNarrow, dockStageWidth } from "./agent-dock-layout";
+import { dockNarrow, dockStageWidth, dockWideRequested } from "./agent-dock-layout";
 import { dockSheetOpen } from "./agent-dock-state";
 import { DockColumn, type DockBodies } from "./dock-column";
 import { DockEdge } from "./dock-edge";
@@ -18,18 +17,16 @@ export interface AgentDockProps {
   /** Hides the dock. `App` routes it into the `toggle-dock` action and its focus guard. */
   readonly onClose: () => void;
   readonly bodies: DockBodies;
-  /** The rail's own focus path, for the rows that name another agent's pane. */
-  readonly selection: RailSelection;
 }
 
 /**
- * The stacked-section dock (spec LAY-6, LAY-9): a 320px column of collapsible sections that the
+ * The agent dock (spec LAY-9, DOCK-1, DOCK-11): a 320px column of one strip and one body that the
  * grip resizes or drags shut, or under 1360px a 32px edge handle that opens the same column as a
- * sheet. It rides the legacy
- * `.dock-panel` box, so the stage inset, the slide-over and the usage page's `inert` cover keep
- * working, and `27-dock-stacked.css` repaints it on the rail's surface.
+ * 320px sheet. It rides the legacy `.dock-panel` box, so the stage inset, the slide-over and the
+ * usage page's `inert` cover keep working, and `27-agent-dock.css` repaints it on the rail's
+ * surface.
  */
-export function AgentDock({ entered, onClose, bodies, selection }: AgentDockProps) {
+export function AgentDock({ entered, onClose, bodies }: AgentDockProps) {
   const narrow = dockNarrow.value;
   const { focused: item, space } = useDockAgents();
   const root = dockRoot.value;
@@ -55,7 +52,11 @@ export function AgentDock({ entered, onClose, bodies, selection }: AgentDockProp
       {narrow ? null : (
         <DockResizeGrip
           width={dockStageWidth(settings.value.dockWidth, dockWidthLive.value)}
-          onWidthChange={(width) => updateSettings({ dockWidth: width })}
+          onWidthChange={(width) => {
+            // The dragged width is the user's own now, so the strip's maximize lets go.
+            dockWideRequested.value = false;
+            updateSettings({ dockWidth: width });
+          }}
           onClose={onClose}
         />
       )}
@@ -64,7 +65,6 @@ export function AgentDock({ entered, onClose, bodies, selection }: AgentDockProp
         <DockEdge
           item={item}
           space={space}
-          selection={selection}
           root={root}
           cwd={cwd}
           bodies={bodies}
@@ -74,7 +74,6 @@ export function AgentDock({ entered, onClose, bodies, selection }: AgentDockProp
         <DockColumn
           item={item}
           space={space}
-          selection={selection}
           root={root}
           cwd={cwd}
           bodies={bodies}

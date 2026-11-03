@@ -28,6 +28,27 @@ const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }
   untracked: { letter: "U", ink: "text-(--term-ok)" },
 };
 
+/**
+ * A file's status letter in a 16px square washed with its own ink (the mock's `.st`, its letter at
+ * CMP-10's 12px floor rather than 9.5px), so the letter reads as a mark and not as part of the
+ * name. The word is its accessible name.
+ */
+export function StatusMark({ status }: { readonly status: ChangeStatus }) {
+  const mark = STATUS_LOOK[status];
+  return (
+    <span
+      role="img"
+      aria-label={STATUS_WORD[status]}
+      className={cn(
+        "grid size-4 shrink-0 place-items-center rounded-sm bg-current/20 font-mono text-code leading-none font-semibold",
+        mark.ink,
+      )}
+    >
+      {mark.letter}
+    </span>
+  );
+}
+
 export interface DockChangesTreeProps {
   readonly entries: readonly ChangeEntry[];
   /** The path whose diff is open, or null. */
@@ -49,7 +70,6 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
   const key = fileKey(entry);
   const selected = entry.path === tree.selectedPath;
   const counts = countsFor(entry);
-  const mark = STATUS_LOOK[entry.status];
   return (
     <>
       {/* raw-control: a whole-row press target; no Button variant spans a tree row */}
@@ -63,16 +83,10 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         style={{ paddingLeft: INDENT + depth * STEP + 18 }}
         className={cn(ROW, "gap-2", selected && "bg-muted")}
       >
-        <span
-          role="img"
-          aria-label={STATUS_WORD[entry.status]}
-          className={cn("w-3 shrink-0 text-center font-mono text-code font-semibold", mark.ink)}
-        >
-          {mark.letter}
-        </span>
+        <StatusMark status={entry.status} />
         <span
           className={cn(
-            "min-w-0 flex-1 truncate font-mono text-code",
+            "min-w-0 flex-1 truncate text-xs",
             entry.status === "deleted" ? "text-muted-foreground line-through" : "text-foreground",
           )}
         >
@@ -82,7 +96,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
           ) : null}
         </span>
         {counts.kind === "counts" ? (
-          <ChangeCounts added={counts.added} removed={counts.removed} />
+          <ChangeCounts added={counts.added} removed={counts.removed} sans />
         ) : counts.kind === "binary" ? (
           <span className="shrink-0 text-xs text-muted-foreground">binary</span>
         ) : null}
@@ -114,13 +128,11 @@ function FolderRow({
         <span className="text-muted-foreground">
           <DeckIcon icon={open ? ArrowDown01Icon : ArrowRight01Icon} size={GLYPH_INLINE} />
         </span>
-        <span className="min-w-0 flex-1 truncate font-mono text-code text-foreground">
-          {folder.label}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-xs text-foreground">{folder.label}</span>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {folder.fileCount}
         </span>
-        <ChangeCounts added={folder.added} removed={folder.removed} />
+        <ChangeCounts added={folder.added} removed={folder.removed} sans />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <Rows folder={folder} depth={depth + 1} tree={tree} />

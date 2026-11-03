@@ -56,8 +56,9 @@ import {
   usageStale,
 } from "../../usage/usage-store";
 import { click, mount, settle, waitUntil } from "../controls/preset-test-kit";
+import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
-import { resetAgentDockState, setDockSectionOpen } from "./agent-dock-state";
+import { resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockHistory } from "./dock-history";
 import { DockUsage } from "./dock-usage";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
@@ -124,10 +125,9 @@ function dock() {
     <AgentDock
       entered
       onClose={() => {}}
-      selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
       bodies={{
         changes: null,
-        files: () => null,
+        files: testFileBodies(),
         usage: ({ item, space }) => (
           <DockUsage item={item} space={space} onOpenDetails={onOpenDetails} />
         ),
@@ -144,24 +144,25 @@ async function resizeTo(width: number): Promise<void> {
   });
 }
 
-const section = (title: string): HTMLElement | null =>
-  document.body.querySelector(`section[aria-label="${title}"]`);
+/** The dock's one body: it holds the selected view and nothing else. */
+const body = (): HTMLElement | null =>
+  document.body.querySelector<HTMLElement>(".agent-dock__column > div:last-child");
 const usage = (): Record<string, string> =>
   Object.fromEntries(
-    [...(section("Usage")?.querySelectorAll("dl > div") ?? [])].map((row) => [
+    [...(body()?.querySelectorAll("dl > div") ?? [])].map((row) => [
       row.querySelector("dt")?.textContent ?? "",
       row.querySelector("dd")?.textContent ?? "",
     ]),
   );
 /** The note on what the figures cover: the info control's name, which its tooltip repeats. */
 const scopeNote = (): string =>
-  section("Usage")
+  body()
     ?.querySelector('button[aria-label$="API prices."], button[aria-label^="Usage is read"]')
     ?.getAttribute("aria-label") ?? "";
 const historyRows = (): HTMLElement[] => [
-  ...(section("History")?.querySelectorAll<HTMLElement>("li button") ?? []),
+  ...(body()?.querySelectorAll<HTMLElement>("li button") ?? []),
 ];
-const historyText = (): string => section("History")?.textContent ?? "";
+const historyText = (): string => body()?.textContent ?? "";
 
 const entry = (over: Partial<SessionEntry> = {}): SessionEntry => ({
   agent: "claude",
@@ -219,8 +220,8 @@ afterEach(async () => {
   resetAgentDockState();
 });
 
-describe("the Usage section", () => {
-  beforeEach(() => setDockSectionOpen("usage", true));
+describe("the Usage view", () => {
+  beforeEach(() => setDockView("usage"));
 
   it("says the repository's tokens and cost today for the focused agent, and how long it has run", async () => {
     usageSnapshot.value = snapshotOf([
@@ -297,49 +298,49 @@ describe("the Usage section", () => {
     usageSnapshot.value = null;
     usageLoading.value = true;
     const view = await mount(dock());
-    expect(section("Usage")?.textContent).toContain("Reading this machine's usage…");
+    expect(body()?.textContent).toContain("Reading this machine's usage…");
     await act(async () => {
       usageSnapshot.value = snapshotOf([bucket({ agent: "claude" })]);
       usageLoading.value = false;
       usageStale.value = true;
     });
     await settle();
-    expect(section("Usage")?.textContent).toContain("Stale: showing the last good read.");
+    expect(body()?.textContent).toContain("Stale: showing the last good read.");
     await view.unmount();
   });
 
   it("tells a user with no focused agent to focus one", async () => {
     tabViews.value = [tab([pane({ focused: false })])];
     const view = await mount(dock());
-    expect(section("Usage")?.textContent).toContain("Focus an agent to see its usage.");
+    expect(body()?.textContent).toContain("Focus an agent to see its usage.");
     expect(Object.keys(usage())).toEqual([]);
     await view.unmount();
   });
 
   it("opens the full usage page from Details", async () => {
     const view = await mount(dock());
-    const details = section("Usage")?.querySelector(
-      'button[aria-label="Usage details"]',
-    ) as HTMLElement;
+    const details = body()?.querySelector('button[aria-label="Usage details"]') as HTMLElement;
     await click(details);
     expect(onOpenDetails).toHaveBeenCalledTimes(1);
     await view.unmount();
   });
 
-  it("polls only while unfolded", async () => {
+  it("polls only while selected", async () => {
     const view = await mount(dock());
     expect(startUsagePolling).toHaveBeenCalledTimes(1);
     expect(stopUsagePolling).not.toHaveBeenCalled();
     await click(
-      section("Usage")?.querySelector('[data-slot="collapsible-trigger"]') as HTMLElement,
+      document.body.querySelector(
+        '[aria-label="Dock views"] [aria-label="History"]',
+      ) as HTMLElement,
     );
     await waitUntil(() => vi.mocked(stopUsagePolling).mock.calls.length === 1);
     await view.unmount();
   });
 });
 
-describe("the History section", () => {
-  beforeEach(() => setDockSectionOpen("history", true));
+describe("the History view", () => {
+  beforeEach(() => setDockView("history"));
 
   it("lists the focused agent's sessions in the exact folder its pane stands in", async () => {
     sessionEntries.value = [
@@ -444,7 +445,7 @@ describe("the History section", () => {
     await settle();
     expect(historyText()).toContain("Couldn't read recorded sessions.");
     vi.mocked(refreshSessions).mockClear();
-    await click(section("History")?.querySelector(".load-error__retry") as HTMLElement);
+    await click(body()?.querySelector(".load-error__retry") as HTMLElement);
     expect(refreshSessions).toHaveBeenCalledTimes(1);
 
     sessionsLoadState.value = LOAD_READY;

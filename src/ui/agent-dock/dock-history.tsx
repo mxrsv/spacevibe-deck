@@ -30,7 +30,7 @@ const Note = ({ children }: { children: string }) => (
 );
 
 /**
- * The stacked dock's History section (LAY-6): the past sessions of the focused agent in the folder
+ * The agent dock's History view (LAY-6, DOCK-1): the past sessions of the focused agent in the folder
  * its pane stands in, newest first, from the same list the legacy History tab reads. Only Claude
  * Code and Codex record sessions. A row resumes that session.
  */

@@ -50,6 +50,7 @@ import {
   tab,
   text,
   unmount,
+  workday,
   workdayFocusing,
 } from "./project-rail-test-kit";
 
@@ -248,6 +249,72 @@ describe("row", () => {
     expect(text(row("pane:12"))).toContain("main");
     expect(text(row("pane:12"))).toContain("1m");
     expect(row("pane:21")?.querySelector('[data-state="unread"]')).not.toBeNull();
+  });
+
+  it("says on its own line what an agent that needs you waits on, and its press goes to the pane", async () => {
+    tabViews.value = workday().map((view) =>
+      view.key === 1
+        ? {
+            ...view,
+            panes: (view.panes ?? []).map((p) =>
+              p.paneId === 11 ? { ...p, detail: "permission prompt: run rm -rf dist" } : p,
+            ),
+          }
+        : view,
+    );
+    const onFocusPane = vi.fn();
+    mount({ onFocusPane });
+    await settle();
+
+    const asking = row("pane:11");
+    expect(text(asking)).toContain("permission prompt: run rm -rf dist");
+    // The working, unread and failed rows ask nothing.
+    for (const id of ["pane:12", "pane:21", "pane:31"]) {
+      expect(text(row(id))).not.toContain("permission prompt");
+      expect(text(row(id))).not.toContain("Waiting for you");
+    }
+    // The line has no control of its own: the row's press takes the keyboard to the pane.
+    expect(asking?.querySelectorAll("button")).toHaveLength(0);
+    click(asking);
+    expect(onFocusPane).toHaveBeenCalledWith(0, 11);
+  });
+
+  it("says plainly that an agent waits when the signal names nothing, hedging an inferred one", async () => {
+    mount();
+    await settle();
+    expect(text(row("pane:11"))).toContain("Waiting for you");
+    expect(text(row("pane:11"))).not.toContain("Probably");
+
+    act(() => {
+      tabViews.value = workday().map((view) =>
+        view.key === 1
+          ? {
+              ...view,
+              panes: (view.panes ?? []).map((p) =>
+                p.paneId === 11 ? { ...p, confidence: "inferred" as const } : p,
+              ),
+            }
+          : view,
+      );
+    });
+    await settle();
+    expect(text(row("pane:11"))).toContain("Probably waiting for you");
+
+    // Answered: the line goes with the state.
+    act(() => {
+      tabViews.value = workday().map((view) =>
+        view.key === 1
+          ? {
+              ...view,
+              panes: (view.panes ?? []).map((p) =>
+                p.paneId === 11 ? { ...p, attention: "none" as const } : p,
+              ),
+            }
+          : view,
+      );
+    });
+    await settle();
+    expect(text(row("pane:11"))).not.toContain("Waiting for you");
   });
 
   it("names the folder where git knows no branch, and draws a shell row without an agent", async () => {

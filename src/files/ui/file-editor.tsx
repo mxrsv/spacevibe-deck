@@ -28,6 +28,7 @@ import {
 } from "../editor-host";
 import { activeFileTab, clearReveal, documentFor, pendingReveal } from "../file-surface-store";
 import { editorSettings, type FileSurfaceController } from "../file-surface-controller";
+import { editorWordWrap } from "../editor-wrap";
 import { ExternalChangeBar } from "./external-change-bar";
 
 export interface FileEditorProps {
@@ -116,6 +117,7 @@ export function FileEditor(props: FileEditorProps) {
           fontFamily: `${settings.value.fontFamily}, ${monoFontFallback()}`,
           fontSize: textFontSize(settings.value),
           tabSize: 2,
+          wordWrap: editorWordWrap.value ? "on" : "off",
           // The file's own ending is restored on save (`applyEol`); the editor
           // works in LF throughout so nothing rewrites endings silently.
           value: "",
@@ -275,6 +277,12 @@ export function FileEditor(props: FileEditorProps) {
       clearReveal(reveal.path);
     }
   }, [props.path, document?.text, document?.file, ready.value, reveal]);
+
+  // The dock's wrap toggle reaches the one editor instance as it flips.
+  useSignalEffect(() => {
+    const wordWrap = editorWordWrap.value ? "on" : "off";
+    handleRef.current?.editor.updateOptions({ wordWrap });
+  });
 
   // Theme, font family and font size follow the SAME `applySettings` call the
   // terminals do — a theme switch must not leave the editor in the old palette

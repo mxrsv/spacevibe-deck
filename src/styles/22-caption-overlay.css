@@ -55,7 +55,8 @@
    the stage is the grid's second row, below the tab bar, and the dock's header
    never touches the frame row — hence `.stage--strip`. The hide control is last
    in this row, which is why the padding is on the end. */
-.window--caption-overlay .stage--strip .dock-panel__header {
+.window--caption-overlay .stage--strip .dock-panel__header,
+.window--caption-overlay .stage--strip .agent-dock__strip {
   padding-right: calc(var(--frame-controls-w) + 4px);
 }
 

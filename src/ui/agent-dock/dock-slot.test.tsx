@@ -6,9 +6,7 @@ import { DockSlot } from "./dock-slot";
 
 /** What `app.tsx` mounts: both columns offered, the switch decides. */
 function Entrance() {
-  return (
-    <DockSlot legacy={<aside data-column="legacy" />} stacked={<aside data-column="stacked" />} />
-  );
+  return <DockSlot legacy={<aside data-column="legacy" />} agent={<aside data-column="agent" />} />;
 }
 
 /** Pin the host the way `action-availability.test.ts` does; the switch follows `isDevelopment`. */
@@ -31,7 +29,7 @@ describe("the dock entrance with the agentDock switch off", () => {
   it.each([
     ["no host (a unit test)", false],
     ["a packaged host", true],
-  ])("keeps the tabbed column with %s", async (_label, pinned) => {
+  ])("keeps the legacy column with %s", async (_label, pinned) => {
     if (pinned) pinHost(false);
     await mount(<Entrance />);
     expect(columns()).toEqual(["legacy"]);
@@ -39,9 +37,9 @@ describe("the dock entrance with the agentDock switch off", () => {
 });
 
 describe("the dock entrance with the agentDock switch on", () => {
-  it("shows the stacked dock in place of the tabbed column", async () => {
+  it("shows the agent dock in place of the legacy column", async () => {
     pinHost(true);
     await mount(<Entrance />);
-    expect(columns()).toEqual(["stacked"]);
+    expect(columns()).toEqual(["agent"]);
   });
 });

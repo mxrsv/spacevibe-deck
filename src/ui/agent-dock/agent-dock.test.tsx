@@ -31,9 +31,9 @@ import {
 } from "../../terminal/tabs-store";
 import { browserPanelObscured } from "../app-policy";
 import { byRole, click, mount, press, settle, waitUntil } from "../controls/preset-test-kit";
+import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
-import { dockSheetOpen, resetAgentDockState, setDockSectionOpen } from "./agent-dock-state";
-import { DockSection } from "./dock-section";
+import { dockSheetOpen, dockView, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
 
 const NOW = 1_800_000_000_000;
@@ -85,28 +85,16 @@ function twoAgents(focusedKey: number | null): TabView[] {
 const BODIES = {
   changes: {
     watch: () => null,
-    section: (root: string | null) => (
-      <DockSection id="changes" title="Changes">
-        <p>changes body at {root ?? "no folder"}</p>
-      </DockSection>
-    ),
+    view: (root: string | null) => <p>changes body at {root ?? "no folder"}</p>,
     count: () => null,
   },
-  files: (root: string | null) => <p>files body at {root ?? "no folder"}</p>,
+  files: testFileBodies(),
   usage: () => <p>usage body</p>,
   history: () => <p>history body</p>,
 };
 
 function dock(overrides: Partial<Parameters<typeof AgentDock>[0]> = {}) {
-  return (
-    <AgentDock
-      entered
-      onClose={() => {}}
-      bodies={BODIES}
-      selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
-      {...overrides}
-    />
-  );
+  return <AgentDock entered onClose={() => {}} bodies={BODIES} {...overrides} />;
 }
 
 /** Pin the host the way `action-availability.test.ts` does; the switch follows `isDevelopment`. */
@@ -123,14 +111,19 @@ async function resizeTo(width: number): Promise<void> {
   });
 }
 
-const trigger = (title: string): HTMLElement =>
-  [...document.body.querySelectorAll<HTMLElement>('[data-slot="collapsible-trigger"]')].find(
-    (candidate) => candidate.textContent?.includes(title),
-  ) as HTMLElement;
-const triggers = (): (string | null)[] =>
-  [...document.body.querySelectorAll('[data-slot="collapsible-trigger"]')].map(
-    (candidate) => candidate.textContent,
+const strip = (): HTMLElement | null =>
+  document.body.querySelector<HTMLElement>('[aria-label="Dock views"]');
+const icon = (label: string): HTMLElement =>
+  strip()?.querySelector(`[aria-label="${label}"]`) as HTMLElement;
+const icons = (): (string | null)[] =>
+  [...(strip()?.querySelectorAll("button") ?? [])].map((button) =>
+    button.getAttribute("aria-label"),
   );
+/** Which of the strip's choices reads as selected; the panel toggle at its end always does. */
+const pressed = (): (string | null)[] =>
+  [...(strip()?.querySelectorAll('button[aria-pressed="true"]') ?? [])]
+    .map((button) => button.getAttribute("aria-label"))
+    .filter((label) => label !== "Hide the side panel");
 const bodyText = (): string => document.body.textContent ?? "";
 const named = (label: string): HTMLElement | null =>
   document.body.querySelector<HTMLElement>(`[aria-label^="${label}"]`);
@@ -170,86 +163,99 @@ afterEach(async () => {
   resetAgentDockState();
 });
 
-describe("the stacked dock in a wide window", () => {
+describe("the tabbed dock in a wide window", () => {
   beforeEach(() => resizeTo(1440));
 
-  it("names the focused agent and its title, and follows focus", async () => {
+  it("has one strip of fixed icons in order, then +, with no tab and no count", async () => {
     const view = await mount(dock());
-    const header = document.body.querySelector("header") as HTMLElement;
-    expect(header.textContent).toContain("Claude");
-    expect(header.textContent).toContain("token refresh");
-
-    tabViews.value = twoAgents(2);
-    activeTabIndex.value = 1;
-    await settle();
-    expect(header.textContent).toContain("Codex");
-    expect(header.textContent).toContain("fix flaky test");
-    await view.unmount();
-  });
-
-  it("shows a neutral header when no agent holds the keyboard", async () => {
-    tabViews.value = twoAgents(null);
-    const view = await mount(dock());
-    expect(document.body.querySelector("header")?.textContent).toContain("No agent focused");
-    await view.unmount();
-  });
-
-  it("stacks Changes, Usage, Files and History on one scroll with nothing behind a tab", async () => {
-    const view = await mount(dock());
-    expect(triggers().map((text) => text?.trim())).toEqual([
+    expect(icons()).toEqual([
       "Changes",
       "Usage",
-      "Files",
       "History",
+      "Open a file",
+      "Widen the panel",
+      "Hide the side panel",
     ]);
+    expect(strip()?.textContent).toBe("");
     expect(document.body.querySelector('[role="tab"]')).toBeNull();
     await view.unmount();
   });
 
-  it("starts with Changes open and the rest folded, and folds and unfolds on press", async () => {
+  it("starts on Changes and swaps the whole body on an icon press, unmounting the rest", async () => {
     const view = await mount(dock());
-    expect(trigger("Changes").getAttribute("aria-expanded")).toBe("true");
+    expect(pressed()).toEqual(["Changes"]);
     expect(bodyText()).toContain("changes body");
-    for (const title of ["Usage", "Files", "History"]) {
-      expect(trigger(title).getAttribute("aria-expanded")).toBe("false");
-    }
-    expect(bodyText()).not.toContain("files body");
     expect(bodyText()).not.toContain("usage body");
 
-    await click(trigger("Usage"));
-    expect(trigger("Usage").getAttribute("aria-expanded")).toBe("true");
+    await click(icon("Usage"));
+    expect(pressed()).toEqual(["Usage"]);
     expect(bodyText()).toContain("usage body");
+    // The unselected view is unmounted, so an unselected Usage runs no poll.
+    expect(bodyText()).not.toContain("changes body");
+    expect(bodyText()).not.toContain("explorer body");
 
-    await click(trigger("Usage"));
-    await waitUntil(() => !bodyText().includes("usage body"));
-    // A folded section unmounts its body, so folded Usage runs no poll.
+    await click(icon("Open a file"));
+    expect(bodyText()).toContain("explorer body");
     expect(bodyText()).not.toContain("usage body");
+    expect(pressed()).toEqual(["Open a file"]);
     await view.unmount();
   });
 
-  it("keeps the folds when focus moves to another agent and when the dock closes and reopens", async () => {
+  it("gives the body the height and keeps the column from scrolling, however long Changes is", async () => {
+    const rows = Array.from({ length: 65 }, (_, index) => <li key={index}>file {index}</li>);
+    const view = await mount(
+      dock({
+        bodies: { ...BODIES, changes: { ...BODIES.changes, view: () => <ul>{rows}</ul> } },
+      }),
+    );
+    const column = document.body.querySelector(".agent-dock__column") as HTMLElement;
+    expect(column.className).not.toContain("overflow-y-auto");
+    const body = column.lastElementChild as HTMLElement;
+    expect(body.className).toContain("overflow-y-auto");
+    expect(body.className).toContain("flex-1");
+    expect(body.contains(strip())).toBe(false);
+    expect(body.querySelectorAll("li")).toHaveLength(65);
+    await view.unmount();
+  });
+
+  it("keeps the view when focus moves to another agent and when the dock closes and reopens", async () => {
     let view = await mount(dock());
-    await click(trigger("Changes"));
-    await click(trigger("History"));
-    expect(bodyText()).not.toContain("changes body");
+    await click(icon("History"));
     expect(bodyText()).toContain("history body");
 
     tabViews.value = twoAgents(2);
     activeTabIndex.value = 1;
     await settle();
-    expect(trigger("Changes").getAttribute("aria-expanded")).toBe("false");
-    expect(trigger("History").getAttribute("aria-expanded")).toBe("true");
+    expect(pressed()).toEqual(["History"]);
 
     await view.unmount();
     view = await mount(dock());
-    expect(trigger("Changes").getAttribute("aria-expanded")).toBe("false");
-    expect(trigger("History").getAttribute("aria-expanded")).toBe("true");
+    expect(pressed()).toEqual(["History"]);
+    expect(bodyText()).toContain("history body");
     await view.unmount();
   });
 
   it("leaves History out where the host cannot list sessions", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, history: null } }));
-    expect(triggers().map((text) => text?.trim())).toEqual(["Changes", "Usage", "Files"]);
+    expect(icons()).toEqual([
+      "Changes",
+      "Usage",
+      "Open a file",
+      "Widen the panel",
+      "Hide the side panel",
+    ]);
+    await view.unmount();
+  });
+
+  it("falls back to the first available view when the selected one is unavailable, keeping the choice", async () => {
+    setDockView("history");
+    const view = await mount(dock({ bodies: { ...BODIES, history: null } }));
+    expect(pressed()).toEqual(["Changes"]);
+    expect(bodyText()).toContain("changes body");
+    expect(dockView.value).toBe("history");
+    await view.update(dock({ bodies: { ...BODIES, changes: null, history: null } }));
+    expect(pressed()).toEqual(["Usage"]);
+    expect(bodyText()).toContain("usage body");
     await view.unmount();
   });
 
@@ -270,31 +276,22 @@ describe("the stacked dock in a wide window", () => {
     await view.unmount();
   });
 
-  it("unfolds the section a changed dockTab names, and not on a plain reopen", async () => {
+  it("selects the view a changed dockTab names, and not on a plain reopen", async () => {
     let view = await mount(dock());
-    expect(trigger("Usage").getAttribute("aria-expanded")).toBe("false");
+    expect(pressed()).toEqual(["Changes"]);
 
-    // ⌘⇧U with the dock open: the legacy chord writes `dockTab`.
+    // The usage chord with the dock open: the legacy chord writes `dockTab`.
     await act(async () => {
       settings.value = { ...settings.value, dockTab: "usage" };
     });
     await settle();
-    expect(trigger("Usage").getAttribute("aria-expanded")).toBe("true");
+    expect(pressed()).toEqual(["Usage"]);
 
-    // The user folds it again and closes the dock; opening it again is not a request.
-    await click(trigger("Usage"));
+    // The user picks another view and closes the dock; opening it again is not a request.
+    await click(icon("History"));
     await view.unmount();
     view = await mount(dock());
-    expect(trigger("Usage").getAttribute("aria-expanded")).toBe("false");
-    await view.unmount();
-  });
-
-  it("unfolds the section the chord names when the chord also opens the dock", async () => {
-    await act(async () => {
-      settings.value = { ...settings.value, dockTab: "sessions", dockOpen: true };
-    });
-    const view = await mount(dock());
-    expect(trigger("History").getAttribute("aria-expanded")).toBe("true");
+    expect(pressed()).toEqual(["History"]);
     await view.unmount();
   });
 });
@@ -324,7 +321,7 @@ async function dragGrip(dx: number, release: boolean): Promise<void> {
   }
 }
 
-describe("the stacked dock's resize grip", () => {
+describe("the tabbed dock's resize grip", () => {
   beforeEach(async () => {
     await resizeTo(1440);
     dockWidthLive.value = null;
@@ -354,7 +351,7 @@ describe("the stacked dock's resize grip", () => {
   });
 });
 
-describe("the folder the sections show", () => {
+describe("the folder the views show", () => {
   const repository = (root: string, ...worktrees: string[]): RepositoryScan => ({
     kind: "repository",
     key: `${root}/.git`,
@@ -429,9 +426,15 @@ describe("the folder the sections show", () => {
     await view.unmount();
   });
 
-  it("leaves the Changes section out where the host cannot read git changes", async () => {
+  it("leaves the Changes view out where the host cannot read git changes", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, changes: null } }));
-    expect(triggers().map((text) => text?.trim())).toEqual(["Usage", "Files", "History"]);
+    expect(icons()).toEqual([
+      "Usage",
+      "History",
+      "Open a file",
+      "Widen the panel",
+      "Hide the side panel",
+    ]);
     await view.unmount();
   });
 
@@ -444,20 +447,7 @@ describe("the folder the sections show", () => {
   });
 });
 
-describe("a section header", () => {
-  it("shows the count at the right when the section has one", async () => {
-    setDockSectionOpen("changes", true);
-    const view = await mount(
-      <DockSection id="changes" title="Changes" count="7">
-        <p>rows</p>
-      </DockSection>,
-    );
-    expect(trigger("Changes").textContent).toBe("Changes7");
-    await view.unmount();
-  });
-});
-
-describe("the stacked dock under 1360px", () => {
+describe("the tabbed dock under 1360px", () => {
   beforeEach(() => resizeTo(1000));
 
   it("has no resize grip, and its own control hides the dock", async () => {
@@ -470,10 +460,10 @@ describe("the stacked dock under 1360px", () => {
     await view.unmount();
   });
 
-  it("is a handle: no section, no sheet, and the browser is not asked to yield", async () => {
+  it("is a handle: no strip, no sheet, and the browser is not asked to yield", async () => {
     const view = await mount(dock());
     expect(named("Open the side panel")).not.toBeNull();
-    expect(triggers()).toEqual([]);
+    expect(strip()).toBeNull();
     expect(byRole("dialog")).toBeNull();
     expect(dockSheetOpen.value).toBe(false);
     await view.unmount();
@@ -491,13 +481,8 @@ describe("the stacked dock under 1360px", () => {
     const view = await mount(dock());
     await click(named("Open the side panel") as HTMLElement);
     const sheet = byRole("dialog") as HTMLElement;
-    expect(sheet.textContent).toContain("token refresh");
-    expect(triggers().map((text) => text?.trim())).toEqual([
-      "Changes",
-      "Usage",
-      "Files",
-      "History",
-    ]);
+    expect(sheet.textContent).toContain("changes body");
+    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file", "Close the side panel"]);
     expect(dockSheetOpen.value).toBe(true);
     expect(
       browserPanelObscured({

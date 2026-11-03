@@ -25,15 +25,15 @@ vi.mock("../../repositories/repositories-store", async () => {
 
 import type { ChangeEntry, ChangesSnapshot } from "../../host/git-changes-host";
 import type { ChangesController, ChangesState } from "../../files/changes/changes-controller";
-import { diffFocusRequested } from "../../files/changes/diff-column-focus";
-import { createDiffSelection, type DiffSelectionStore } from "../../files/changes/diff-selection";
+import type { DiffSidesPorts } from "../../files/changes/diff-sides";
 import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { tabViews, type TabView } from "../../terminal/tabs-store";
 import { click, mount, press } from "../controls/preset-test-kit";
-import { resetAgentDockState } from "./agent-dock-state";
+import { dockChangesList, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
-import { DockChangesWatch } from "./dock-changes-watch";
+import { testFileBodies } from "./dock-files-test-kit";
+import { changedFileCount, DockChangesWatch } from "./dock-changes-watch";
 
 const ROOT = "/work/repo";
 
@@ -73,8 +73,6 @@ function snapshot(entries: ChangeEntry[], over: Partial<ChangesSnapshot> = {}): 
   };
 }
 
-let diff: DiffSelectionStore;
-
 function fakeChanges(initial: Partial<ChangesState> = {}) {
   const state = signal<ChangesState>({
     root: ROOT,
@@ -92,15 +90,41 @@ function fakeChanges(initial: Partial<ChangesState> = {}) {
     turnEnded: vi.fn(),
     dispose: vi.fn(),
   };
-  diff = createDiffSelection(state);
   return { controller, state };
 }
 
-/** What `AgentDock` mounts for Changes: the watch beside the section. */
-const section = (controller: ChangesController, root: string | null = ROOT) => (
+/** What `AgentDock` mounts for Changes: the watch beside the view. */
+const files = testFileBodies().controller;
+/** Both sides read as one-line files: the cards load, the tests here look at the list. */
+const ports: DiffSidesPorts = {
+  statFiles: async (_root, paths) =>
+    paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 4 })),
+  readFile: async () => ({
+    kind: "ok",
+    content: "new\n",
+    eol: "lf",
+    encoding: "utf-8",
+    bytes: 4,
+    mixedEol: false,
+    readOnly: false,
+    reason: null,
+    mtimeMs: 1,
+    size: 4,
+    writable: true,
+  }),
+  readHeadFile: async () => ({
+    kind: "ok",
+    content: "old\n",
+    eol: "lf",
+    encoding: "utf-8",
+    bytes: 4,
+    mixedEol: false,
+  }),
+};
+const changesView = (controller: ChangesController, root: string | null = ROOT) => (
   <>
-    <DockChangesWatch root={root} changes={controller} diff={diff} />
-    <DockChanges root={root} changes={controller} diff={diff} />
+    <DockChangesWatch root={root} changes={controller} />
+    <DockChanges root={root} changes={controller} controller={files} ports={ports} />
   </>
 );
 
@@ -110,8 +134,6 @@ const rowKeys = (): (string | null)[] =>
   [...document.body.querySelectorAll("[data-change-row]")].map((r) =>
     r.getAttribute("data-change-row"),
   );
-const header = (): HTMLElement =>
-  document.body.querySelector('[data-slot="collapsible-trigger"]') as HTMLElement;
 const text = (): string => document.body.textContent ?? "";
 const squash = (value: string | null | undefined): string => (value ?? "").replace(/\s+/g, " ");
 
@@ -124,8 +146,9 @@ function resizeTo(width: number): void {
 beforeEach(() => {
   resizeTo(1440);
   resetAgentDockState();
+  // The list pane is off by default; most of this file looks at the list.
+  dockChangesList.value = true;
   repositoryScans.value = new Map();
-  diffFocusRequested.value = false;
 });
 
 afterEach(() => {
@@ -134,11 +157,30 @@ afterEach(() => {
   resetAgentDockState();
 });
 
-describe("the Changes section's tree", () => {
-  it("counts the changed files in its header", async () => {
+describe("the Changes view's tree", () => {
+  it("counts the changed files for the handle", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
-    expect(squash(header().textContent)).toBe("Changes6");
+    const view = await mount(changesView(controller));
+    expect(changedFileCount(ROOT, controller)).toBe(6);
+    expect(squash(document.body.textContent)).not.toContain("Changes");
+    await view.unmount();
+  });
+
+  it("shows the scope and the totals in one toolbar row, in the UI face", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(changesView(controller));
+    const bar = (document.body.querySelector('[aria-label="Refresh changes"]') as HTMLElement)
+      .parentElement as HTMLElement;
+    expect(squash(bar.textContent)).toBe("Uncommitted6 files +25 −12");
+    expect(bar.querySelector(".font-mono")).toBeNull();
+    await view.unmount();
+  });
+
+  it("sets names and counts in the UI face, not mono", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(changesView(controller));
+    expect(row("file:src/lib/c.ts").querySelector(".font-mono:not([role])")).toBeNull();
+    expect(row("folder:src").querySelector(".font-mono")).toBeNull();
     await view.unmount();
   });
 
@@ -151,7 +193,7 @@ describe("the Changes section's tree", () => {
         entry({ path: "pkg/inner/only/d.ts", added: 1, removed: 1 }),
       ]),
     });
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(squash(row("folder:src").textContent)).toBe("src3+18 −3");
     expect(squash(row("folder:src/ui").textContent)).toBe("ui2+8 −3");
     expect(squash(row("folder:src/lib").textContent)).toBe("lib1+10 −0");
@@ -163,7 +205,7 @@ describe("the Changes section's tree", () => {
 
   it("marks each file by status and strikes a deleted one", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     const mark = (key: string) => row(key).querySelector('[role="img"]');
     expect(mark("file:old.txt")?.getAttribute("aria-label")).toBe("Deleted");
     expect(mark("file:old.txt")?.textContent).toBe("D");
@@ -179,14 +221,14 @@ describe("the Changes section's tree", () => {
     const { controller } = fakeChanges({
       snapshot: snapshot([entry({ path: "src/new.ts", status: "renamed", oldPath: "src/old.ts" })]),
     });
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(row("file:src/new.ts").textContent).toContain("(from src/old.ts)");
     await view.unmount();
   });
 
   it("collapses and expands a folder, hiding what is under it", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(rowKeys()).toContain("file:src/ui/a.ts");
     expect(row("folder:src/ui").getAttribute("aria-expanded")).toBe("true");
 
@@ -202,74 +244,80 @@ describe("the Changes section's tree", () => {
   });
 });
 
-describe("opening a diff from a row", () => {
-  it("raises the same call as the legacy row: the diff opens on the root and the column asks for focus", async () => {
+describe("the list pane", () => {
+  it("is off by default: the stack fills the body and no list shows", async () => {
+    dockChangesList.value = false;
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
-    expect(diff.selection.value).toMatchObject({ root: ROOT, path: "src/ui/a.ts" });
-    expect(diffFocusRequested.value).toBe(true);
-    expect(row("file:src/ui/a.ts").getAttribute("aria-current")).toBe("true");
-    expect(row("file:src/lib/c.ts").getAttribute("aria-current")).toBeNull();
-
-    // A deleted file's diff is the old side: it is pressable too.
-    await click(row("file:old.txt"));
-    expect(diff.selection.value?.path).toBe("old.txt");
+    const view = await mount(changesView(controller));
+    expect(rowKeys()).toEqual([]);
+    expect(document.body.querySelectorAll("[data-card-path]")).toHaveLength(ENTRIES.length);
+    await click(document.body.querySelector('[aria-label="Changed files list"]') as HTMLElement);
+    expect(rowKeys()).toContain("file:src/ui/a.ts");
     await view.unmount();
   });
 
-  it("ends the diff when the section folds, as leaving the legacy Changes view does", async () => {
+  it("scrolls to the card of a pressed file and marks it, opening no tab", async () => {
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const openFile = vi.spyOn(files, "openFile");
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
-    expect(diff.selection.value).not.toBeNull();
-    await click(header());
-    expect(diff.selection.value).toBeNull();
-    await view.unmount();
-  });
+    const view = await mount(changesView(controller));
+    // jsdom has no layout: the stack's scroller sits at 100px, scrolled 40px, and the card 360px
+    // below its top edge.
+    const scroller = (document.body.querySelector('[aria-label="File diffs"]') as HTMLElement)
+      .parentElement as HTMLElement;
+    let top = 40;
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => top,
+      set: (value: number) => {
+        top = value;
+      },
+    });
+    scroller.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    const target = document.body.querySelector('[data-card-path="src/lib/c.ts"]') as HTMLElement;
+    target.getBoundingClientRect = () => ({ top: 460 }) as DOMRect;
 
-  it("ends the diff when the root moves to another checkout", async () => {
-    const { controller } = fakeChanges();
-    const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
-    await view.update(section(controller, "/work/side"));
-    expect(diff.selection.value).toBeNull();
+    await click(row("file:src/lib/c.ts"));
+    expect(top).toBe(400);
+    // Only the stack scrolls: no ancestor is asked to move.
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(document.body.querySelector("[data-marked]")?.getAttribute("data-card-path")).toBe(
+      "src/lib/c.ts",
+    );
+    expect(row("file:src/lib/c.ts").getAttribute("aria-current")).toBe("true");
+    expect(openFile).not.toHaveBeenCalled();
+    Element.prototype.scrollIntoView = original;
+    openFile.mockRestore();
     await view.unmount();
-  });
-
-  it("ends the diff when the section unmounts: a closed dock, or a closed sheet", async () => {
-    const { controller } = fakeChanges();
-    const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
-    await view.unmount();
-    expect(diff.selection.value).toBeNull();
   });
 });
 
-describe("what the section watches", () => {
-  it("watches the root while mounted, folded or not, and releases it on unmount", async () => {
+describe("what the view watches", () => {
+  it("watches the root while mounted, selected or not, and releases it on unmount", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(controller.setShown).toHaveBeenLastCalledWith(ROOT);
-    await click(header());
-    // Folded: the count in the header stays live.
+    await act(async () => setDockView("usage"));
+    // Another view is selected: the count on the handle stays live.
     expect(controller.setShown).not.toHaveBeenCalledWith(null);
-    expect(squash(header().textContent)).toBe("Changes6");
+    expect(changedFileCount(ROOT, controller)).toBe(6);
     await view.unmount();
     expect(controller.setShown).toHaveBeenLastCalledWith(null);
   });
 
   it("moves the watch with the root", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
-    await view.update(section(controller, "/work/side"));
+    const view = await mount(changesView(controller));
+    await view.update(changesView(controller, "/work/side"));
     expect(controller.setShown).toHaveBeenLastCalledWith("/work/side");
     await view.unmount();
   });
 
   it("asks the controller to read again on Refresh", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     await click(document.body.querySelector('[aria-label="Refresh changes"]') as HTMLElement);
     expect(controller.trigger).toHaveBeenCalledWith("refresh");
     await view.unmount();
@@ -308,7 +356,7 @@ describe("the turn-end refresh", () => {
 
   it("reads again when a turn ends in the root's own folder", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     await endTurn(ROOT);
     expect(controller.trigger).toHaveBeenCalledWith("turn-end");
     await view.unmount();
@@ -316,7 +364,7 @@ describe("the turn-end refresh", () => {
 
   it("reads again when a turn ends in another checkout of the same repository", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     await endTurn("/work/side");
     expect(controller.trigger).toHaveBeenCalledWith("turn-end");
     await view.unmount();
@@ -324,13 +372,13 @@ describe("the turn-end refresh", () => {
 
   it("does not read for a turn in another repository, or when nothing is watched", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     await endTurn("/work/other");
     expect(controller.trigger).not.toHaveBeenCalled();
     await view.unmount();
 
     const idle = fakeChanges();
-    const plain = await mount(section(idle.controller, null));
+    const plain = await mount(changesView(idle.controller, null));
     await endTurn(ROOT);
     expect(idle.controller.trigger).not.toHaveBeenCalled();
     await plain.unmount();
@@ -340,15 +388,14 @@ describe("the turn-end refresh", () => {
 describe("empty, loading and error states", () => {
   it("says it is reading until the first reply", async () => {
     const { controller } = fakeChanges({ snapshot: null, reading: true });
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(text()).toContain("Reading changes…");
-    expect(squash(header().textContent)).toBe("Changes");
     await view.unmount();
   });
 
   it("says there is nothing against HEAD, or no files yet on an unborn branch", async () => {
     const { controller, state } = fakeChanges({ snapshot: snapshot([]) });
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(text()).toContain("No changes against HEAD.");
     await act(async () => {
       state.value = { ...state.value, snapshot: snapshot([], { initial: true }) };
@@ -361,7 +408,7 @@ describe("empty, loading and error states", () => {
     const { controller } = fakeChanges({
       failure: { kind: "timeout", message: "git took too long" },
     });
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     const line = [...document.body.querySelectorAll('[role="status"]')].find((p) =>
       p.textContent?.includes("git took too long"),
     );
@@ -372,7 +419,7 @@ describe("empty, loading and error states", () => {
 
   it("says how many changes are not shown", async () => {
     const { controller } = fakeChanges({ snapshot: snapshot(ENTRIES, { omitted: 3 }) });
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(text()).toContain("3 more changes are not shown");
     await view.unmount();
   });
@@ -380,7 +427,7 @@ describe("empty, loading and error states", () => {
   it("says a folder is not a repository, and watches nothing", async () => {
     repositoryScans.value = new Map([[ROOT, { kind: "plain", reason: "not a git repository" }]]);
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(text()).toContain("Not a git repository");
     expect(controller.setShown).toHaveBeenLastCalledWith(null);
     expect(rowKeys()).toEqual([]);
@@ -389,7 +436,7 @@ describe("empty, loading and error states", () => {
 
   it("says the tab has no workspace when there is no root", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller, null));
+    const view = await mount(changesView(controller, null));
     expect(text()).toContain("This tab has no workspace to show.");
     expect(controller.setShown).toHaveBeenLastCalledWith(null);
     await view.unmount();
@@ -404,7 +451,7 @@ describe("the keyboard", () => {
 
   it("leaves one row as the Tab stop and walks the rest with the arrow keys", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     expect(tabStops()).toEqual(["folder:src"]);
 
     row("folder:src").focus();
@@ -423,7 +470,7 @@ describe("the keyboard", () => {
 
   it("collapses and expands a folder with Left and Right", async () => {
     const { controller } = fakeChanges();
-    const view = await mount(section(controller));
+    const view = await mount(changesView(controller));
     row("folder:src/ui").focus();
     await press(row("folder:src/ui"), { key: "ArrowLeft" });
     expect(row("folder:src/ui").getAttribute("aria-expanded")).toBe("false");

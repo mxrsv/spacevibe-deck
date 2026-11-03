@@ -76,12 +76,7 @@ export function ExplorerTab(props: ExplorerTabProps) {
   // Changes, re-rooting on another tab's workspace and unmounting all end it,
   // because `setShown(null)` empties the state and nothing would refresh a
   // diff after (plan 2026-10-10-diff-column, D4).
-  // Only a tab that offers Changes owns that diff: the stacked dock mounts this tab for its files
-  // alone, beside a Changes section whose diff folding Files must not close.
-  useEffect(
-    () => (changesAvailable ? () => void diff.close() : undefined),
-    [diff, changesAvailable, showChanges, workspacePath],
-  );
+  useEffect(() => () => void diff.close(), [diff, showChanges, workspacePath]);
 
   if (workspacePath === null) {
     return (

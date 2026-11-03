@@ -20,7 +20,7 @@ interface BrowserPanelObscuredState {
   readonly settingsLoadError: boolean;
   /**
    * The narrow-window dock sheet is open over the stage (spec OD-4). Absent means closed: only
-   * the stacked dock behind the `agentDock` switch raises it.
+   * the agent dock behind the `agentDock` switch raises it.
    */
   readonly dockSheetOpen?: boolean;
 }

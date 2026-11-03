@@ -1,0 +1,49 @@
+/* ── The dock's file tree pane (src/ui/agent-dock/dock-file-tree.tsx) ──────
+   Every rule is keyed on `.dock-tree`, so the legacy Explorer's `.file-tree__*` rows
+   (14-dock.css) keep their 22px, rounded, always-visible-actions look. Row height and the left
+   inset come from `TreeMetricsContext`, not from here. */
+
+/* Full-bleed square rows in the UI sans, as the Changes rows above. */
+.dock-tree .file-tree__row {
+  gap: 6px;
+  padding-right: 12px;
+  border-radius: 0;
+  color: var(--text-primary);
+}
+
+.dock-tree .file-tree__row.is-ignored {
+  color: var(--text-faint);
+}
+
+.dock-tree .file-tree__row:hover,
+.dock-tree .file-tree__row.is-active {
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+
+.dock-tree .file-tree__row.is-ignored .file-tree__icon {
+  opacity: 0.6;
+}
+
+/* Changes in a folder: a small dot at the row's right edge, in the accent ink. */
+.dock-tree .file-tree__dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* The root's actions wait for the pointer or the keyboard (owner, 2026-11-02): a cluster of six
+   glyphs at rest was most of the root row. */
+.dock-tree .file-tree__actions {
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.dock-tree:hover .file-tree__actions,
+.dock-tree .file-tree__row:focus-visible .file-tree__actions,
+.dock-tree .file-tree__actions:focus-within {
+  opacity: 1;
+}

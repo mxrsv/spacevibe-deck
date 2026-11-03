@@ -888,15 +888,23 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
 ## 19. Docked side panels
 
 A docked panel is a permanent column beside the stage that displaces content instead of
-covering it; the file explorer is the resident instance.
+covering it. Two docks ship, chosen by the `agentDock` release switch: with it off (every
+packaged build) the **legacy dock**, whose resident surface is the file explorer
+([`DockPanel`](../src/ui/dock/dock-panel.tsx)); with it on (development builds) the **agent
+dock**, one strip over one body ([`AgentDock`](../src/ui/agent-dock/agent-dock.tsx), the
+[tabbed dock panel spec](specs/2026-11-03-dock-tabbed-panel.md)). DL-19.1, DL-19.4 and DL-19.6
+hold for both; DL-19.3, DL-19.5 and DL-19.7 to DL-19.11 are the legacy dock's, and DL-19.12 to
+DL-19.19 the agent dock's.
 
 - **DL-19.1** A docked panel is a column of the stage, not an overlay. The terminal grid's
   bounds shrink by exactly the panel's width, so panes resize around it.
 - **DL-19.2** The seam is a single `--hair` border on the panel's inner edge (DL-3.3), with
-  no shadow, gradient or second rule. The panel stands on the stage's `--bg`, so that
+  no shadow, gradient or second rule. The legacy panel stands on the stage's `--bg`, so that
   hairline alone separates the regions; only the navigation column has its own colour
-  (DL-18.7).
-- **DL-19.3** The header is the tab row (DL-19.7), built from the window's own controls at
+  (DL-18.7). The agent dock stands on the rail's `--sidebar` surface instead and parts from the
+  stage with the sidebar border, as the rail does (LAY-10,
+  [`27-agent-dock.css`](../src/styles/27-agent-dock.css)).
+- **DL-19.3** The legacy dock's header is the tab row (DL-19.7), built from the window's own controls at
   the tab bar's 13px chrome icon size (DL-14.2). It is `--frame-h` tall with
   `box-sizing: border-box`, closing on the same pixel row as the stage strip beside it. A
   shown column carries its hide control at its outer edge, ending the tab row at the
@@ -911,8 +919,11 @@ covering it; the file explorer is the resident instance.
   the column under the pointer, and it returns if the pointer does; the width is written
   only on release, and a close writes none. The slide-over (§7) is suppressed during the
   gesture, since 280ms of easing inside a drag reads as lag
-  ([`resolvePanelDrag`](../src/ui/panel-resize.ts)).
-- **DL-19.5** One status line sits directly under the header, in `--text-faint` (DL-3.4) or
+  ([`resolvePanelDrag`](../src/ui/panel-resize.ts)). The agent dock rests at 320px while the
+  stored width is still the legacy default, takes a dragged width as the user's own, and widens
+  to 700px from its strip only while the window keeps 760px for the stage
+  ([`dockStageWidth`](../src/ui/agent-dock/agent-dock-layout.ts)).
+- **DL-19.5** In the legacy dock, one status line sits directly under the header, in `--text-faint` (DL-3.4) or
   `--red` for a failure (DL-3.2), and is the panel's only place for transient text. A panel
   reports its own state (a failure, a progress step, an unreadable directory) there and
   never raises a dialog; a dialog the user pressed a control to open may use the shared
@@ -920,8 +931,8 @@ covering it; the file explorer is the resident instance.
 - **DL-19.6** Foreign content (a web page, a preview) gets its own rectangle below the
   header, the only part of the column Deck does not paint. A native view cannot be covered
   by any DOM layer, so the panel hides it whenever an overlay opens.
-- **DL-19.7** A panel hosting more than one surface names them in a tab row and shows exactly
-  one at a time. The row is the header (DL-19.3): a `role="tablist"` of `role="tab"` chips,
+- **DL-19.7** A legacy panel hosting more than one surface names them in a tab row and shows
+  exactly one at a time. The row is the header (DL-19.3): a `role="tablist"` of `role="tab"` chips,
   the active one carrying DL-21.1's full wash and idle chips none. The chips are icon-only,
   grouped immediately before the right-panel toggle at the window's outer edge, each with a
   sentence-case `aria-label` and DL-23.10's tooltip; their glyphs use Phosphor's `fill`
@@ -929,11 +940,11 @@ covering it; the file explorer is the resident instance.
   A tab the running host cannot serve is omitted, not disabled. The selection persists as a
   setting and is re-resolved against host support on every read, so changing host never
   paints an empty column ([`availableDockTabs`](../src/ui/dock/dock-tab-registry.ts)).
-- **DL-19.8** A screen that moves into the column leaves its rail behind: §11's 120px rail
+- **DL-19.8** A screen that moves into the legacy column leaves its rail behind: §11's 120px rail
   would take a third of a 360px panel, so it becomes a compact chip row above the content,
   with the same `role="tablist"` and DL-21.1/21.2 selection language, walked with ←/→. A
   chip may print a shorter label if its full name stays the accessible name (WCAG 2.5.3).
-- **DL-19.9** A panel tab hangs its own actions off the row that names what it shows; the
+- **DL-19.9** A legacy panel tab hangs its own actions off the row that names what it shows; the
   shared header carries no control belonging to one tab. They are a trailing cluster of
   icon-only controls, visible at rest, sized to the row rather than to chrome: `.iconbtn`'s
   24px box would overflow the 22px data row, whose height every virtual-list index is computed
@@ -957,7 +968,7 @@ covering it; the file explorer is the resident instance.
   The row whose diff is open carries DL-21.1's wash at `--radius-tab` and is `aria-selected`;
   a deleted row is pressable, since its diff is the old side.
   Why: the wash is DL-21.1's selection signifier, and a filter is not a selection.
-- **DL-19.10** Opening a document splits the Explorer's existing width into a narrower list
+- **DL-19.10** In the legacy dock, opening a document splits the Explorer's existing width into a narrower list
   and a document panel on its left, so the list stays against the window edge; it creates no top-strip chip. The panel's Open files
   selector retains access to kept and dirty files ([FilePanel](../src/files/ui/file-panel.tsx)).
   The row with the displayed document's path carries DL-21.1's wash at `--radius-tab`
@@ -967,7 +978,8 @@ covering it; the file explorer is the resident instance.
   needs, never moving keyboard focus or the roving tab stop and never opening the dock. A
   document outside the root, under an ignored path while Show ignored files is off, or a
   dot-path while hidden files are off marks nothing and changes no filter. The mark remains while the terminal has keyboard focus.
-- **DL-19.11** The diff column is the Changes list's transient second docked column. It
+- **DL-19.11** The diff column is the legacy Changes list's transient second docked column;
+  nothing in the agent dock opens it (DL-19.17 draws diffs in the dock). It
   stands directly left of the Explorer and follows DL-19.1 and DL-19.2: the grid's right inset
   is the dock plus the column, with one `--hair` seam on its inner edge. Its header is
   `--frame-h` tall like DL-19.3 and names the file, its status mark and its counts, then
@@ -982,6 +994,67 @@ covering it; the file explorer is the resident instance.
   diff in the editor's theme and font ([`DiffColumn`](../src/files/ui/diff-column.tsx)).
   Why: every width change resizes each pane's terminal, so the column changes width only when
   the window or the dock does.
+- **DL-19.12** The agent dock's strip is its one header row: `--frame-h` tall with
+  `box-sizing: border-box`, so its hairline meets the stage strip's, padded 0 8px with a 2px
+  gap. Left to right: the fixed view icons Changes, Usage and History, always in that order,
+  28px icon buttons with a tooltip each, the selected one pressed with the `--muted` fill; a
+  vertical divider 28px tall, 8px after the icons and 6px before the tabs; the file tabs in a
+  region of their own, the only part that scrolls sideways, without a scrollbar, the active tab
+  kept in view, and ‹ › arrows only while it overflows; then `+`, which opens the Explorer tab
+  and reads pressed while it shows; the widen control, in the column only, unavailable with its
+  reason when the window cannot afford it; and at the outer edge the side-panel toggle, pressed
+  while the panel shows (in the sheet a plain ×). Those controls are 24px. A view the host
+  cannot serve is omitted, as in DL-19.7
+  ([`DockTabStrip`](../src/ui/agent-dock/dock-tab-strip.tsx)).
+- **DL-19.13** A file tab is flush to the strip's full height, padded 0 10px with a 6px gap, in
+  12px text: the file-type glyph, the name (italic while it is the preview tab, truncated at
+  130px, and the tab never wider than the tab region), an unsaved dot, and a 16px × on the
+  active tab only. The active tab is `--foreground` with a 2px `--primary` underline on the
+  strip's bottom edge and no fill; an idle tab is muted and takes the `--muted` fill and the
+  foreground on hover. No count or badge sits on any tab. A right-click or the menu key offers
+  Close, Close others, Close to the right, Close all and Copy path
+  ([`DockFileTab`](../src/ui/agent-dock/dock-file-tab.tsx)).
+- **DL-19.14** One body under the strip owns the column's height and scrolls inside itself; it
+  shows exactly one view, the active file or the Explorer, and only that one is mounted, so an
+  unselected Usage polls nothing ([`DockColumn`](../src/ui/agent-dock/dock-column.tsx)).
+- **DL-19.15** The row under the strip is 40px, padded 0 10px 0 12px with an 8px gap and a
+  hairline under it. On a file it is the breadcrumb: each folder a cell in the UI sans, muted
+  and brightening on hover, that reveals the folder in the tree, › between them, and the file's
+  name in `--foreground` at weight 500. Two folders show before a `…` cell, one under a 400px
+  body. Its trailing controls are the Markdown view toggle on a Markdown file, Save, the
+  open-in split button (DL-23.11's shape: the action and a narrower caret in one
+  `--control-frame` hairline, absent where no app is installed), the wrap toggle (absent on a
+  rendered page) and the tree toggle
+  ([`DockFileBody`](../src/ui/agent-dock/dock-file-body.tsx),
+  [`DockOpenIn`](../src/ui/agent-dock/dock-open-in.tsx)). On Changes it reads `Uncommitted`
+  and `N files +a −d`, then the list toggle and Refresh
+  ([`DockChanges`](../src/ui/agent-dock/dock-changes.tsx)).
+- **DL-19.16** The file tree pane is the part that gives way: 260px where the body affords it,
+  at most two fifths of the body otherwise, and hidden by default under a 560px body. It opens
+  with a 36px search row and Refresh; its rows are 28px, full bleed and square, in the UI sans,
+  an ignored entry at `--text-faint`, a 6px `--accent` dot on a folder that holds changes, and
+  the root's actions shown only to the pointer or the keyboard
+  ([`DockFileTree`](../src/ui/agent-dock/dock-file-tree.tsx),
+  [`27b-dock-tree.css`](../src/styles/27b-dock-tree.css)).
+- **DL-19.17** Changes is one scrolling stack of per-file cards. A card's header sticks to the
+  top of the stack: 30px, padded 0 10px 0 4px with a 6px gap, on the `--sidebar` surface with
+  a hairline under it, holding a 20px fold chevron, the status letter in a 16px square washed
+  with its own ink at 20%, the file name (pressed, it opens the file as a tab; a deleted file's
+  is struck through and inert) and `+a −d`. The body is a unified diff on a surface mixed 70%
+  towards `--background`, in `text-code` on 18px lines: an old and a new line-number gutter,
+  muted, a sign column, then the line. Added and removed lines are washed with the diff green
+  and red at 13%; the hunk header is `--primary` on an 8% primary wash; each line takes its
+  syntax colour from the side it comes from, and context stays muted until it does. A binary,
+  too-large or unreadable file is one muted line in place of hunks. A press in the list pane
+  marks its card with a 2px inset `--primary` edge and scrolls the stack, and only the stack,
+  to it ([`DockChangesStack`](../src/ui/agent-dock/dock-changes-stack.tsx)).
+- **DL-19.18** Under 1360px the agent dock is a 32px edge handle: the frame row's top cell,
+  the open control, the focused agent's state mark, the changed-file count and a hide ×. Opening
+  it draws the same column in a 320px sheet over the stage with its scrim; Escape, the scrim or
+  the strip's × closes the sheet and focus returns to the handle. Every view stays usable at
+  that width ([`DockEdge`](../src/ui/agent-dock/dock-edge.tsx)).
+- **DL-19.19** Mono type appears in the agent dock only in the editor, the diff and the status
+  letter: file names, paths in lists, totals and `+a −d` are the UI sans with tabular numerals.
 
 ## 23. Action tooltips and the `More` menu
 

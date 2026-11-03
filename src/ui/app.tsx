@@ -221,8 +221,11 @@ import { RailAgentLimits } from "./usage/agent-usage-summary";
 import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { DockPanel } from "./dock/dock-panel";
 import { AgentDock } from "./agent-dock/agent-dock";
+import { DockFileBody } from "./agent-dock/dock-file-body";
+import type { DockOpenInApps } from "./agent-dock/dock-open-in";
+import { DockFileTree } from "./agent-dock/dock-file-tree";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
-import { dockSheetOpen, setDockSectionOpen } from "./agent-dock/agent-dock-state";
+import { dockSheetOpen, selectDockFile } from "./agent-dock/agent-dock-state";
 import { dockShows, openDockTab, revealDockTab } from "./agent-dock/dock-reveal";
 import { DockChanges } from "./agent-dock/dock-changes";
 import { DockHistory } from "./agent-dock/dock-history";
@@ -257,7 +260,7 @@ import { lastSession, summarizeLastSession } from "../terminal/last-session-stor
 import type { WindowRecord } from "../lib/session-schema";
 import { discardLastSession, reopenLastSession } from "./last-session-actions";
 import { DesktopChrome } from "./desktop-chrome";
-import { AttentionSwitcher, BrowserSideSlot, DockSections, HunkQueue } from "./shell-mounts";
+import { AttentionSwitcher, BrowserSideSlot, HunkQueue } from "./shell-mounts";
 import {
   boardClosesAfterResume,
   bootOpensTheBoard,
@@ -336,8 +339,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         if (!settings.value.dockOpen || settings.value.dockTab !== "explorer") {
           updateSettings({ dockOpen: true, dockTab: "explorer" });
         }
-        // The stacked dock keeps the document inside its Files section.
-        if (agentDockEnabled()) setDockSectionOpen("files", true);
+        // The tabbed dock shows the document as a file tab; the Explorer tab (+) gives way to it.
+        if (agentDockEnabled()) selectDockFile();
       },
       canFocus: () =>
         agentLaunchPage.request.value === null &&
@@ -2121,7 +2124,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     });
 
   /**
-   * Live drag width while resizing, the persisted setting otherwise. The stacked dock rests at
+   * Live drag width while resizing, the persisted setting otherwise. The agent dock rests at
    * 320px until the user drags it, and is a 32px handle in a narrow window (`dockStageWidth`).
    */
   const dockWidth = (): number => dockStageWidth(settings.value.dockWidth, dockWidthLive.value);
@@ -2136,8 +2139,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const dockTab = (): DockTab => resolveDockTab(settings.value.dockTab, sessionsSupported.value);
 
   /**
-   * The Explorer over one folder: the legacy dock roots it at the tab's folder, the stacked dock
-   * at the checkout the focused agent stands in (`agent-dock/dock-root.ts`).
+   * The legacy dock's Explorer, rooted at the tab's folder. The agent dock has its own tree
+   * (`DockFileTree`), rooted at the checkout the focused agent stands in (`agent-dock/dock-root.ts`).
    */
   const explorerAt = (workspacePath: string | null, changesAvailable: boolean) => (
     <ExplorerTab
@@ -2148,7 +2151,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       changesAvailable={changesAvailable}
     />
   );
-  /** What each dock surface shows: the legacy column mounts one, the stacked dock all of them. */
+  /** What each legacy dock tab shows; the column mounts the selected one. */
   const dockBodies = {
     files: explorerAt(activeWorkspace.value, gitChangesAvailable),
     usage: <UsageDockTab onOpenDetails={() => tabsRef.current?.runAction("open-usage")} />,
@@ -2289,6 +2292,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }}
     />
   );
+
+  /**
+   * The dock breadcrumb's open-in split button: the toolbar's apps and selection, opening the
+   * file rather than the workspace. Empty where the host cannot answer, so the control is absent.
+   */
+  const dockOpenIn: DockOpenInApps = {
+    choices:
+      externalAppsAvailable && externalAppsScanned.value
+        ? externalAppChoices(installedExternalApps.value, true)
+        : [],
+    selected: settings.value.externalAppId,
+    onOpen: (path, appId) => {
+      void openInApp({ appId, path, isDirectory: false, line: 1, column: 1 }).catch(
+        (error: unknown) => {
+          reportPersistError(`Couldn't open ${externalAppLabel(appId)}: ${String(error)}`);
+        },
+      );
+    },
+    onSelect: (externalAppId) => updateSettings({ externalAppId }),
+  };
 
   const chromeActions = (
     <DeckToolbar
@@ -2798,23 +2821,39 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                       : dockBodies.history}
                 </DockPanel>
               }
-              // `agentDock` switch: sections on one scroll, no resize grip. Closing goes
+              // `agentDock` switch: one strip and one body. Closing goes
               // through the action too, so the focus guard stays the one way out.
-              stacked={
+              agent={
                 <AgentDock
                   entered={dockPresence.entered}
-                  selection={{ onFocusPane: focusRailPane, onSelectTab: selectTab }}
                   onClose={() => tabsRef.current?.runAction("toggle-dock")}
                   bodies={{
                     changes: gitChangesAvailable
                       ? {
                           watch: (root) => <DockChangesWatch root={root} />,
-                          section: (root) => <DockChanges root={root} />,
+                          view: (root) => <DockChanges root={root} controller={fileController} />,
                           count: changedFileCount,
                         }
                       : null,
-                    // Changes is its own section here, so the Explorer keeps only the files.
-                    files: (root) => explorerAt(root, false),
+                    // Changes is its own view here; the files are tabs, with the tree behind +.
+                    files: {
+                      controller: fileController,
+                      explorer: (root) => (
+                        <DockFileTree
+                          controller={fileController}
+                          workspacePath={root}
+                          canCreate={fileCreateAvailable}
+                        />
+                      ),
+                      document: (root) => (
+                        <DockFileBody
+                          controller={fileController}
+                          workspacePath={root}
+                          canCreate={fileCreateAvailable}
+                          openIn={dockOpenIn}
+                        />
+                      ),
+                    },
                     usage: ({ item, space }) => (
                       <DockUsage
                         item={item}
@@ -2836,7 +2875,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }
             />
           ) : null}
-          <DockSections />
           <HunkQueue />
           {boardOpen.value ? (
             <OpenBoard

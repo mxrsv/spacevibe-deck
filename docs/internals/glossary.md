@@ -36,8 +36,18 @@ separately; it is the tab. Not: workspace, window, macOS Space.
 previewed space's panes as snapshot windows. It replaced the Agent Board. Not: Board, Open
 board.
 
-**Dock** (side panel) — The docked right column with three tabs: file explorer, token usage,
-session history. It displaces the terminal grid rather than covering it. Not: sidebar, rail.
+**Dock** (side panel) — The docked right column. It displaces the terminal grid rather than
+covering it. The legacy dock, in every packaged build, has three tabs: file explorer, token
+usage, session history. The agent dock, behind the `agentDock` switch, is one strip over one
+body. Not: sidebar, rail.
+
+**Dock strip** — The agent dock's one header row: the fixed Changes, Usage and History icons,
+a divider, the file tabs (the only part that scrolls), `+` for the Explorer tab, and the panel
+controls. Not: tab bar, surface strip.
+
+**Changes stack** — The agent dock's Changes view: one card per changed file, each a sticky
+header over that file's unified hunks, read only when the card nears the viewport. Not: diff
+column, Changes list.
 
 **Agent Rail** — The left column: one cluster per project, one row per agent pane, each
 showing the agent's newest sentence or its name, and a dot for failed, asked or working.
@@ -150,7 +160,8 @@ empty. Not: busy check.
 ## Files and browser
 
 **File explorer** — The dock's tree of the workspace root. A click opens a preview tab, a
-double-click a kept tab; the document renders on the stage. Electron only.
+double-click a kept tab; the document opens in the dock. In the agent dock the tree is the
+Explorer tab behind `+` and the pane beside an open file. Electron only.
 Not: editor, file sidebar.
 
 **Preview tab** — A workspace's one italic file tab, replaced in place by the next single
@@ -174,7 +185,8 @@ debounced one second, plus a per-workspace archive. Not: closed tab snapshot.
 resume command, behind a crash-loop marker and a liveness pass. Launch only offers it, as the
 board's **Last session** line. Not: closed tab snapshot, history.
 
-**Session history** — The dock's third tab and the board's "Resume a previous session…":
+**Session history** — The legacy dock's third tab, the agent dock's History view, and the
+board's "Resume a previous session…":
 Claude Code and Codex conversations found on disk, each resumable into a new tab.
 Not: session restore.
 

@@ -9,7 +9,7 @@ import { shortcutLabel } from "../../lib/shortcut-label";
 import { Kbd } from "../controls/kbd";
 import { statusLabel } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
-import { dockSheetOpen, takeAfterSheetClose } from "./agent-dock-state";
+import { dockSheetOpen } from "./agent-dock-state";
 import { DockColumn, type DockColumnProps } from "./dock-column";
 
 const OPEN_LABEL = "Open the side panel";
@@ -25,10 +25,7 @@ function handleLabel(item: RailItem | null, changed: number | null): string {
   return `${OPEN_LABEL}, ${displayAgent(item.entry.agent)}, ${statusLabel(item)}${changes}`;
 }
 
-type DockEdgeProps = Pick<
-  DockColumnProps,
-  "item" | "space" | "selection" | "root" | "cwd" | "bodies"
-> & {
+type DockEdgeProps = Pick<DockColumnProps, "item" | "space" | "root" | "cwd" | "bodies"> & {
   /** Hides the whole dock, as the toggle does: the sheet's own control closes the sheet only. */
   readonly onHide: () => void;
 };
@@ -41,7 +38,7 @@ type DockEdgeProps = Pick<
  * The sheet's own header control closes the sheet only; the handle's own "x" hides the dock, through
  * the same action as the toggle, so a narrow window needs no chord to put the column away.
  */
-export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: DockEdgeProps) {
+export function DockEdge({ item, space, root, cwd, bodies, onHide }: DockEdgeProps) {
   const changed = bodies.changes?.count(root) ?? null;
   const setOpen = (open: boolean): void => {
     dockSheetOpen.value = open;
@@ -96,20 +93,13 @@ export function DockEdge({ item, space, selection, root, cwd, bodies, onHide }: 
       </div>
       <SheetContent
         showCloseButton={false}
+        // Escape, the scrim and the close control return focus to the handle (Base UI's default).
         className="data-[side=right]:w-80 data-[side=right]:sm:max-w-80"
-        // Escape, the scrim and the close control return focus to the handle. A close that left an
-        // action (a file press showing its diff) runs it instead and leaves focus where it puts it.
-        finalFocus={() => {
-          const action = takeAfterSheetClose();
-          action?.();
-          return action === null;
-        }}
       >
         <SheetTitle className="sr-only">Side panel</SheetTitle>
         <DockColumn
           item={item}
           space={space}
-          selection={selection}
           root={root}
           cwd={cwd}
           bodies={bodies}

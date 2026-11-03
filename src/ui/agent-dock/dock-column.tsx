@@ -1,37 +1,52 @@
 import type { ComponentChildren } from "preact";
-import type { RailSelection } from "../project-rail/project-rail-model";
+import { useEffect } from "preact/hooks";
+import type { FileSurfaceController } from "../../files/file-surface-controller";
+import { surfaceFor } from "../../files/file-surface-store";
 import type { RailItem } from "../rail-view-model";
-import { DockAsk } from "./dock-ask";
-import { DockHeader } from "./dock-header";
-import { DockSection } from "./dock-section";
-import { DockSpace } from "./dock-space";
+import {
+  DOCK_VIEWS,
+  dockSurface,
+  dockView,
+  type DockSurface,
+  type DockViewId,
+} from "./agent-dock-state";
+import { DockTabStrip } from "./dock-tab-strip";
 
 /**
- * What the sections show. `App` picks the bodies, as it does for the legacy column, so the host
- * (`dock-column`, `dock-section`, `dock-edge`) imports no body: not the Explorer, Usage, History
- * or the Changes section. `dock-changes` sits in this directory only because Tailwind scans it.
+ * What the views show. `App` picks the bodies, as it does for the legacy column, so the host
+ * (`dock-column`, `dock-edge`) imports no body: not the file tree, Usage, History or the Changes
+ * view. The bodies sit in this directory because Tailwind scans it.
  */
 /**
- * The Changes section is three parts because the window width splits them: the section lives in the
- * column or the sheet, the watch and the open diff outlive the sheet, and the handle shows a count.
+ * The Changes view is three parts because the window width splits them: the view lives in the
+ * column or the sheet, the watch outlives the sheet, and the handle shows a count.
  */
 export interface DockChangesBodies {
-  /** Holds the checkout's watch and the open diff for as long as the dock is mounted. */
+  /** Holds the checkout's watch for as long as the dock is mounted. */
   readonly watch: (root: string | null) => ComponentChildren;
-  /** The section itself, header included: its count is its own state. */
-  readonly section: (root: string | null) => ComponentChildren;
+  /** The view itself, without a header: the strip names it. */
+  readonly view: (root: string | null) => ComponentChildren;
   /** The changed-file count the handle shows, or null when there is none to show. */
   readonly count: (root: string | null) => number | null;
+}
+
+/** The documents: file tabs in the strip, the Explorer tab behind `+`, and the open file's body. */
+export interface DockFileBodies {
+  /** Opens, activates and closes the file tabs; the strip drives it, the bodies read the store. */
+  readonly controller: FileSurfaceController;
+  /** The Explorer tab: the project tree at full width, rooted at `root`. */
+  readonly explorer: (root: string | null) => ComponentChildren;
+  /** The active file: breadcrumb row, editor and tree pane. Only called with a root that has one. */
+  readonly document: (root: string) => ComponentChildren;
 }
 
 export interface DockBodies {
   /** Null where the host cannot read git changes, so Changes is left out. */
   readonly changes: DockChangesBodies | null;
-  /** The file tree and the open document, rooted at `root`, the folder the focused agent stands in. */
-  readonly files: (root: string | null) => ComponentChildren;
+  readonly files: DockFileBodies;
   /** Usage and History are about the focused agent, so they take who it is and where it stands. */
   readonly usage: (context: DockContext) => ComponentChildren;
-  /** Null where the host cannot list sessions, so the section is left out. */
+  /** Null where the host cannot list sessions, so the view is left out. */
   readonly history: ((context: DockContext) => ComponentChildren) | null;
 }
 
@@ -44,11 +59,9 @@ export interface DockContext {
 
 export interface DockColumnProps {
   readonly item: RailItem | null;
-  /** The focused agent's space-mates, for "In this space". */
+  /** The focused agent's space-mates, for the Usage and History bodies. */
   readonly space: readonly RailItem[];
-  /** How an Ask or space row takes the keyboard to an agent's pane: the rail's own focus path. */
-  readonly selection: RailSelection;
-  /** The folder the sections show (`dock-root.ts`). */
+  /** The folder the views show (`dock-root.ts`). */
   readonly root: string | null;
   readonly cwd: string | null;
   readonly bodies: DockBodies;
@@ -58,13 +71,35 @@ export interface DockColumnProps {
 }
 
 /**
+ * The selected view, or the first available one when the choice has no body here (no git, no
+ * sessions). Derived on every render; the stored choice is left alone so it returns with its host.
+ */
+export function effectiveDockView(selected: DockViewId, bodies: DockBodies): DockViewId {
+  const available = DOCK_VIEWS.filter(
+    (view) =>
+      (view !== "changes" || bodies.changes !== null) &&
+      (view !== "history" || bodies.history !== null),
+  );
+  return available.includes(selected) ? selected : available[0];
+}
+
+/**
+ * What holds the body: the stored surface, except a file surface with no file to show (the last
+ * tab closed, or another folder's agent took focus) gives it back to the fixed view.
+ */
+export function effectiveDockSurface(root: string | null): DockSurface {
+  const surface = dockSurface.value;
+  return surface === "file" && surfaceFor(root).activePath === null ? "view" : surface;
+}
+
+/**
  * The legacy bodies assume a column that owns the height: the file tree windows its rows against
- * its own scroller. Under one stacked scroll that height is undefined, so each body gets a box.
+ * its own scroller. The body is that height (DOCK-2): it scrolls, the column never does, and only
+ * the selected view is mounted, so an unselected Usage polls nothing.
  */
 export function DockColumn({
   item,
   space,
-  selection,
   root,
   cwd,
   bodies,
@@ -72,24 +107,41 @@ export function DockColumn({
   closeChord,
   onClose,
 }: DockColumnProps) {
+  const view = effectiveDockView(dockView.value, bodies);
+  const views = DOCK_VIEWS.filter((id) => effectiveDockView(id, bodies) === id);
+  const surface = effectiveDockSurface(root);
+  // Write the settled surface back so the reveal chords and telemetry read what is on screen.
+  useEffect(() => {
+    if (dockSurface.value !== surface) {
+      dockSurface.value = surface;
+    }
+  }, [surface]);
   return (
     <div className="agent-dock__column flex h-full min-h-0 flex-col">
-      <DockHeader item={item} closeLabel={closeLabel} closeChord={closeChord} onClose={onClose} />
+      <DockTabStrip
+        views={views}
+        view={view}
+        surface={surface}
+        root={root}
+        controller={bodies.files.controller}
+        closeLabel={closeLabel}
+        closeChord={closeChord}
+        onClose={onClose}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <DockAsk item={item} selection={selection} />
-        {bodies.changes === null ? null : bodies.changes.section(root)}
-        <DockSpace agents={space} selection={selection} />
-        <DockSection id="usage" title="Usage">
-          <div className="max-h-96 overflow-y-auto">{bodies.usage({ item, space, cwd })}</div>
-        </DockSection>
-        <DockSection id="files" title="Files">
-          <div className="h-96 min-h-0">{bodies.files(root)}</div>
-        </DockSection>
-        {bodies.history === null ? null : (
-          <DockSection id="history" title="History">
-            <div className="max-h-96 overflow-y-auto">{bodies.history({ item, space, cwd })}</div>
-          </DockSection>
-        )}
+        {surface === "file" && root !== null ? (
+          <div className="h-full min-h-0">{bodies.files.document(root)}</div>
+        ) : null}
+        {surface === "explorer" ? (
+          <div className="h-full min-h-0">{bodies.files.explorer(root)}</div>
+        ) : null}
+        {surface === "view" && view === "changes" && bodies.changes !== null
+          ? bodies.changes.view(root)
+          : null}
+        {surface === "view" && view === "usage" ? bodies.usage({ item, space, cwd }) : null}
+        {surface === "view" && view === "history" && bodies.history !== null
+          ? bodies.history({ item, space, cwd })
+          : null}
       </div>
     </div>
   );

@@ -1,9 +1,7 @@
 import { useEffect } from "preact/hooks";
 import { changesController, type ChangesController } from "../../files/changes/changes-controller";
-import { diffSelection, type DiffSelectionStore } from "../../files/changes/diff-selection";
 import { installTurnEndWatch } from "../../files/changes/turn-end";
 import { ensureRepositoriesScanned, repositoryScans } from "../../repositories/repositories-store";
-import { dockSectionsOpen } from "./agent-dock-state";
 
 /**
  * The folder whose changes are read: the root, unless the rail's repository scan calls it plain
@@ -35,29 +33,19 @@ function repositoryOf(path: string): string | null {
 
 export interface DockChangesWatchProps {
   readonly root: string | null;
-  /** Test seams; the window's own controller and selection otherwise. */
+  /** Test seam; the window's own controller otherwise. */
   readonly changes?: ChangesController;
-  readonly diff?: DiffSelectionStore;
 }
 
 /**
- * What the Changes section stands on, kept apart from the section so it outlives the sheet: the
- * controller's watch of the root, and the open diff. `AgentDock` mounts it at every window width,
- * so the narrow window's sheet closing releases neither (the diff column sits beside the handle,
- * not in the sheet). Renders nothing.
- *
- * The watch is held whether or not the section is unfolded, so the count stays true. The diff
- * ends when the section is folded, the root moves, or the dock goes, as leaving the legacy
- * Changes view does: the controller empties its state once nothing is shown, and nothing would
- * refresh a diff after.
+ * What the Changes view stands on, kept apart from the view so it outlives the sheet: the
+ * controller's watch of the root. `AgentDock` mounts it at every window width, so closing the
+ * narrow window's sheet does not release it, and it is held whether or not the view is selected,
+ * so the handle's count stays true. Renders nothing. The diff column is the legacy dock's: nothing
+ * in this dock opens it, so there is no diff to end here.
  */
-export function DockChangesWatch({
-  root,
-  changes: injected,
-  diff: injectedDiff,
-}: DockChangesWatchProps) {
+export function DockChangesWatch({ root, changes: injected }: DockChangesWatchProps) {
   const changes = injected ?? changesController();
-  const diff = injectedDiff ?? diffSelection();
   useEffect(() => {
     if (root !== null) {
       ensureRepositoriesScanned([root]);
@@ -68,14 +56,6 @@ export function DockChangesWatch({
     changes.setShown(watched);
   }, [changes, watched]);
   useEffect(() => () => changes.setShown(null), [changes]);
-
-  const open = dockSectionsOpen.value.changes;
-  useEffect(() => {
-    if (!open) {
-      void diff.close();
-    }
-  }, [open, diff]);
-  useEffect(() => () => void diff.close(), [diff, root]);
 
   // A turn that ends in another checkout of the root's repository changes files under this
   // root's own checkout too (the window's trigger only knows the tab's folder), so it reads again.
