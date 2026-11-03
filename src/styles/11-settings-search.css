@@ -10,13 +10,27 @@
 .settings-nav__search-input {
   box-sizing: border-box;
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--hair);
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--control-frame);
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-primary);
   font-family: var(--ui-font);
   font-size: var(--type-body);
+  outline: none;
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+
+.settings-nav__search-input:hover {
+  border-color: var(--control-frame-hover);
+}
+
+.settings-nav__search-input:focus-visible {
+  border-color: var(--muted-foreground);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 
 .settings-nav__search-input::placeholder {

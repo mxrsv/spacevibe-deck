@@ -12,18 +12,18 @@
   background: transparent;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
 }
 .settings-group {
-  border: 1px solid var(--hair);
+  border: 0;
   border-radius: var(--radius-surface);
   background: var(--chrome-1);
   overflow: clip;
   min-width: 0;
 }
 .settings-group__head {
-  padding: 20px 22px 8px;
+  padding: 16px 24px 8px;
 }
 .settings-group__head h3 {
   margin: 0;
@@ -31,23 +31,20 @@
   font-weight: 600;
 }
 .settings-group__head p {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--text-faint);
   font-size: var(--type-meta);
 }
 .settings-group__body {
-  padding: 6px 22px 14px;
+  padding: 6px 24px 12px;
 }
 .settings-group .cfg-group {
-  margin: 14px 0 12px;
+  margin: 12px 0;
   border: 0;
   padding: 0;
 }
 .settings-group .cfg-row {
   padding: 12px 0;
-}
-.settings-group .cfg-row + .cfg-row {
-  border-top: 1px solid var(--hair);
 }
 .settings-group .cfg-row__key {
   min-width: 0;
@@ -58,7 +55,7 @@
 .appearance-studio__controls {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
 }
 /* DL-6: Studio switches are neutral rails; aria-checked remains their value. */
@@ -72,7 +69,7 @@
   border-radius: 999px;
   font-size: 0;
   background: var(--chrome-2);
-  border-color: var(--text-faint);
+  border-color: var(--control-frame);
 }
 .settings-screen__fields--studio .cfg-btn[role="switch"]::after {
   content: "";
@@ -93,6 +90,10 @@
   transform: translateX(14px);
   background: var(--chrome-1);
 }
+.settings-screen__fields--studio .cfg-btn[role="switch"]:hover,
+.settings-screen__fields--studio .cfg-btn[role="switch"]:focus-visible {
+  border-color: var(--control-frame-hover);
+}
 /* The narrower Studio document also narrows each agent's own container. */
 @container (max-width: 400px) {
   .settings-screen__fields--studio .lp-agent-details .cfg-row {
@@ -111,10 +112,10 @@
 }
 @media (max-width: 720px) {
   .settings-group__head {
-    padding: 16px 14px 6px;
+    padding: 16px 12px 6px;
   }
   .settings-group__body {
-    padding: 4px 14px 10px;
+    padding: 4px 12px 10px;
   }
 }
 

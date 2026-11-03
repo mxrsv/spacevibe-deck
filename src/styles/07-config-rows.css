@@ -38,7 +38,7 @@
 .cfg-row__key {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -52,7 +52,7 @@
 }
 
 .cfg-row__desc {
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
   color: var(--text-faint);
 }
 
@@ -72,49 +72,46 @@
   flex-shrink: 0;
 }
 
-/* The value pill — every interactive value wears this skin (DL-5.2) */
+/* The value pill — every interactive value wears this skin (DL-5.2): a 28px secondary button */
 .cfg-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  box-sizing: border-box;
+  height: 28px;
   font-family: var(--ui-font);
-  font-size: var(--type-meta);
+  font-size: var(--type-body);
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
   background: transparent;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tab);
-  padding: 3px 8px;
+  border: 1px solid var(--control-frame);
+  border-radius: var(--radius-control);
+  padding: 0 10px;
   cursor: pointer;
   transition:
     color var(--duration) var(--ease),
+    background var(--duration) var(--ease),
     border-color var(--duration) var(--ease);
 }
 
-.cfg-btn:hover {
-  border-color: var(--hair-strong);
-}
-
-.cfg-btn:hover .cfg-btn__hint {
-  color: var(--accent);
-}
-
-/* The pill itself is the focus target only when it IS the control (a button, or
-   a pill wrapping one invisible native input). A pill holding several buttons
-   (step) delegates the ring to whichever button is focused — else the keyboard
-   user can't tell which one Enter would press. */
+/* Focus paints as hover (CMP-11). The step pill holds several buttons, so it
+   delegates to whichever one is focused. */
+.cfg-btn:hover,
 .cfg-btn:focus-visible,
-.cfg-btn--overlay:focus-within,
+.cfg-btn--overlay:focus-within {
+  border-color: var(--control-frame-hover);
+  background: var(--state-hover-bg);
+}
+
+.cfg-step__btn:hover,
 .cfg-step__btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  background: var(--state-hover-bg);
 }
 
 .cfg-btn__hint {
   display: flex;
   color: var(--text-faint);
-  transition: color var(--duration) var(--ease);
 }
 
 .cfg-btn__hex {
@@ -140,31 +137,25 @@
   color: var(--red);
 }
 
-.cfg-btn--danger:hover {
+.cfg-btn--danger:hover,
+.cfg-btn--danger:focus-visible {
   border-color: color-mix(in srgb, var(--red) 45%, transparent);
 }
 
-/* Disabled → `--text-faint` and no affordance left alive (DL-5.2, DL-21.4).
-   Until 2026-08-14 no such rule existed, so a disabled pill was pixel-identical
-   to an enabled one — the gap the gallery's state matrix surfaced. The pill
+/* Disabled is 50% opacity and no affordance left alive (CMP-13, DL-5.2). The pill
    arrives disabled two ways: the native attribute (`ToggleRow`, the update
    pill) and a `--disabled` class, which about-section sets independently of the
-   attribute. Matching only one leaves the treatment half applied. Declared
-   after the `--on`/`--off`/`--danger` colours so it wins at equal specificity. */
+   attribute. Matching only one leaves the treatment half applied. */
 .cfg-btn:disabled,
 .cfg-btn--disabled {
-  color: var(--text-faint);
+  opacity: 0.5;
   cursor: default;
 }
 
 .cfg-btn:disabled:hover,
 .cfg-btn--disabled:hover {
-  border-color: var(--hair);
-}
-
-.cfg-btn:disabled:hover .cfg-btn__hint,
-.cfg-btn--disabled:hover .cfg-btn__hint {
-  color: var(--text-faint);
+  border-color: var(--control-frame);
+  background: transparent;
 }
 
 /* Invisible native input stretched over the pill (menu / color kinds, DL-1.4) */
@@ -181,7 +172,7 @@
 .cfg-swatch {
   width: 12px;
   height: 12px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tight);
   border: 1px solid var(--hair-strong);
   flex-shrink: 0;
 }
@@ -199,7 +190,7 @@
 .theme-gallery {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 10px 0;
 }
 
@@ -225,10 +216,10 @@
 .theme-card {
   display: flex;
   flex-direction: column;
-  padding: 3px;
+  padding: 4px;
   background: transparent;
   border: 1px solid var(--seam-raised);
-  border-radius: var(--radius-surface);
+  border-radius: var(--radius-control);
   cursor: pointer;
   text-align: left;
   transition:
@@ -236,27 +227,24 @@
     background var(--duration) var(--ease);
 }
 
-.theme-card:hover {
+.theme-card:hover,
+.theme-card:focus-visible {
   background: var(--state-hover-bg);
 }
 
-/* DL-24.4: the selected card is marked by its border AND its check, because a
-   card carries a picture that can be any colour — the wash every other
-   selection uses (DL-21.1) is invisible under a preview. */
-.theme-card--active {
-  border-color: var(--accent);
-}
-
-.theme-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+/* DL-24.4: the selected card is one neutral background step AND carries its
+   check (CMP-13) — no accent border. */
+.theme-card--active,
+.theme-card--active:hover,
+.theme-card--active:focus-visible {
+  background: var(--tab-active-bg);
 }
 
 .theme-card__foot {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 3px 1px;
+  padding: 6px 4px 2px;
 }
 
 .theme-card__name {
@@ -284,8 +272,8 @@
 }
 
 .theme-card--active .theme-card__mark {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--text-primary);
+  border-color: var(--text-primary);
 }
 
 /* The miniature: a drawing of Deck's own frame, rail and stage (DL-24.2).
@@ -392,17 +380,19 @@
 }
 
 .cfg-step__btn {
+  align-self: stretch;
   border: none;
   background: transparent;
-  font-size: 12px;
-  color: var(--accent);
-  padding: 3px 8px;
-  border-radius: var(--radius-tab);
+  font-size: var(--type-body);
+  color: var(--text-primary);
+  padding: 0 10px;
+  border-radius: var(--radius-tight);
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
 
 .cfg-step__btn:disabled {
-  color: var(--text-faint);
+  opacity: 0.5;
   cursor: default;
 }
 
@@ -415,16 +405,19 @@
 .cfg-clear {
   border: none;
   background: transparent;
-  color: var(--accent);
-  width: 20px;
-  height: 20px;
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-control);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--type-meta);
+  transition: background var(--duration) var(--ease);
 }
 
-.cfg-clear:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+.cfg-clear:hover,
+.cfg-clear:focus-visible {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
 }
 
 /* Inline row under a menu/picker row: the custom-font field, or a picker error */
@@ -435,30 +428,49 @@
 /* picker error (DL-3.2: --red = error only) */
 .cfg-custom--error {
   font-family: var(--ui-font);
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
   color: var(--red);
 }
 
+/* A text field has the secondary button's frame at button height (CMP-8) and
+   the one focus ring (CMP-9). The ring is outside the box: a clipping ancestor
+   hides it, so a container must leave room. */
 .text-input {
   appearance: none;
   width: 100%;
   box-sizing: border-box;
+  min-height: 32px;
   padding: 6px 10px;
-  border: 1px solid var(--hair-strong);
+  border: 1px solid var(--control-frame);
   border-radius: var(--radius-control);
   background: var(--input-bg);
   color: var(--text-primary);
   font-family: var(--ui-font);
   font-size: var(--type-body);
+  outline: none;
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+
+.text-input:hover {
+  border-color: var(--control-frame-hover);
 }
 
 .text-input:focus-visible {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--muted-foreground);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
+}
+
+.text-input:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .text-input--small {
-  font-size: var(--type-meta);
+  min-height: 28px;
+  padding: 4px 10px;
 }
 
 /* Multi-line field (DL-13.5): inherits .text-input, grows by content up to a
@@ -468,7 +480,6 @@
   max-height: 220px;
   resize: none;
   line-height: 1.45;
-  font-size: var(--type-meta);
 }
 
 /* ── Editable list rows (DL-12) ──────────────────────────── */
@@ -499,14 +510,10 @@
   cursor: text;
 }
 
-.cfg-row__label--edit:hover {
-  color: var(--accent);
-}
-
+.cfg-row__label--edit:hover,
 .cfg-row__label--edit:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-tab);
+  outline: none;
+  color: var(--text-muted);
 }
 
 .cfg-row__remove {
@@ -518,21 +525,17 @@
   border: none;
   background: none;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--type-body);
   line-height: 1;
   color: var(--text-faint);
   cursor: pointer;
   transition: color var(--duration) var(--ease);
 }
 
-.cfg-row__remove:hover {
-  color: var(--red);
-}
-
+.cfg-row__remove:hover,
 .cfg-row__remove:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-control);
+  outline: none;
+  color: var(--red);
 }
 
 /* ── Shortcut rows (DL §17) ─────────────────────────────────────────────
@@ -556,8 +559,7 @@
   color: var(--text-faint);
 }
 
-/* Recording. The accent border is the same "this is live" signal a focused
-   pill already carries; nothing moves (DL-1.2). */
+/* Recording: the live state role keeps the accent; nothing moves (DL-1.2). */
 .cfg-chord--listening {
   border-color: var(--accent);
   color: var(--accent);
@@ -606,9 +608,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 30px;
+  min-height: 32px;
   margin: 6px 8px;
-  padding: 5px 8px;
+  padding: 6px 8px;
   color: var(--red);
   background: color-mix(in srgb, var(--red) 6%, transparent);
   border: 1px solid color-mix(in srgb, var(--red) 28%, transparent);
@@ -624,22 +626,21 @@
 
 .load-error__retry {
   flex-shrink: 0;
-  padding: 3px 7px;
+  height: 24px;
+  padding: 0 8px;
   color: var(--text-primary);
   background: transparent;
-  border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-tight);
+  border: 0;
+  border-radius: var(--radius-control);
   font: inherit;
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
 
-.load-error__retry:hover {
-  background: var(--state-hover-bg);
-}
-
+.load-error__retry:hover,
 .load-error__retry:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
+  background: var(--state-hover-bg);
 }
 
 /* ── .sbtn: the small ghost button (Back, Details) ────────────────────────
@@ -654,7 +655,7 @@
   box-sizing: border-box;
   padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: var(--radius-tab);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-family: var(--ui-font);
@@ -676,14 +677,11 @@
   padding-right: 6px;
 }
 
-.sbtn:hover {
+.sbtn:hover,
+.sbtn:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
-}
-
-.sbtn:focus-visible {
-  outline: 2px solid var(--text-muted);
-  outline-offset: -2px;
 }
 
 .sbtn:disabled {

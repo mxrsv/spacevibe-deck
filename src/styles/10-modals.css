@@ -18,6 +18,110 @@
      wash, which is the thing the 42% figure exists to avoid. */
   backdrop-filter: blur(10px);
 }
+/* The dialogs' buttons are 32px secondary buttons (CMP-1, CMP-2); the one
+   `.is-primary` in a dialog is its confirming action and the only filled
+   button. Focus paints as hover (CMP-11). */
+.preset-editor__tools button,
+.preset-editor__actions button,
+.save-preset__actions button,
+.create-entry__actions button,
+.usage-consent__actions button {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--type-body);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--control-frame);
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+.preset-editor__tools button {
+  height: 28px;
+}
+.preset-editor__tools button:hover,
+.preset-editor__tools button:focus-visible,
+.preset-editor__actions button:hover,
+.preset-editor__actions button:focus-visible,
+.save-preset__actions button:hover,
+.save-preset__actions button:focus-visible,
+.create-entry__actions button:hover,
+.create-entry__actions button:focus-visible,
+.usage-consent__actions button:hover,
+.usage-consent__actions button:focus-visible {
+  outline: none;
+  border-color: var(--control-frame-hover);
+}
+.preset-editor__tools button:disabled,
+.preset-editor__actions button:disabled,
+.save-preset__actions button:disabled,
+.create-entry__actions button:disabled,
+.usage-consent__actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.preset-editor__actions button.is-primary,
+.save-preset__actions button.is-primary,
+.create-entry__actions button.is-primary,
+.usage-consent__actions button.is-primary {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--primary-foreground);
+}
+.preset-editor__actions button.is-primary:hover,
+.preset-editor__actions button.is-primary:focus-visible,
+.save-preset__actions button.is-primary:hover,
+.save-preset__actions button.is-primary:focus-visible,
+.create-entry__actions button.is-primary:hover,
+.create-entry__actions button.is-primary:focus-visible,
+.usage-consent__actions button.is-primary:hover,
+.usage-consent__actions button.is-primary:focus-visible {
+  background: color-mix(in oklch, var(--primary) 92%, black);
+}
+.preset-editor__actions button.is-primary:active,
+.save-preset__actions button.is-primary:active,
+.create-entry__actions button.is-primary:active,
+.usage-consent__actions button.is-primary:active {
+  background: color-mix(in oklch, var(--primary) 84%, black);
+}
+
+/* Text fields in dialogs: the secondary button's frame at button height, and the
+   one focus ring (CMP-8, CMP-9). */
+.preset-editor__name,
+.save-preset__row input,
+.save-preset__row select,
+.create-entry input {
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--type-body);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--control-frame);
+  border-radius: var(--radius-control);
+  outline: none;
+  transition:
+    border-color var(--duration) var(--ease),
+    box-shadow var(--duration) var(--ease);
+}
+.preset-editor__name:hover,
+.save-preset__row input:hover,
+.save-preset__row select:hover,
+.create-entry input:hover {
+  border-color: var(--control-frame-hover);
+}
+.preset-editor__name:focus-visible,
+.save-preset__row input:focus-visible,
+.save-preset__row select:focus-visible,
+.create-entry input:focus-visible {
+  border-color: var(--muted-foreground);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
+}
 .preset-editor {
   display: flex;
   flex-direction: column;
@@ -37,30 +141,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--hair);
+  padding: 12px 16px;
 }
 .preset-editor__toolbar h1 {
-  font-size: var(--type-title);
+  font-size: 16px;
   margin: 0;
 }
 .preset-editor__tools {
   display: flex;
   gap: 6px;
-}
-.preset-editor__tools button {
-  font: inherit;
-  font-size: var(--type-meta);
-  padding: 4px 10px;
-  border-radius: var(--radius-tab);
-  border: 1px solid var(--hair-strong);
-  background: none;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.preset-editor__tools button:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 .preset-editor__stage {
   flex: 1;
@@ -108,7 +197,7 @@
   inset: -3px;
 }
 .mock-divider:hover {
-  background: var(--accent);
+  background: var(--text-muted);
 }
 .mock-pane {
   display: flex;
@@ -121,36 +210,28 @@
   min-height: 0;
 }
 .mock-pane.is-selected {
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--tab-active-bg);
 }
 .mock-pane__cwd {
   font-family: var(--ui-font);
-  font-size: 10px;
+  font-size: var(--type-meta);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .mock-pane__label {
-  font-size: 10px;
+  font-size: var(--type-meta);
   color: var(--text-faint);
 }
 .preset-editor__footer {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--hair);
+  padding: 12px 16px;
 }
 .preset-editor__name {
   flex: 0 0 220px;
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-tab);
 }
 .preset-editor__meta {
   flex: 1;
@@ -161,26 +242,6 @@
   display: flex;
   gap: 8px;
 }
-.preset-editor__actions button {
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 14px;
-  border-radius: var(--radius-tab);
-  border: 1px solid var(--hair-strong);
-  background: none;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.preset-editor__actions button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.preset-editor__actions button.is-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-}
-
 /* ---------- Save preset dialog ---------- */
 .save-preset {
   display: flex;
@@ -195,7 +256,7 @@
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .save-preset h1 {
-  font-size: var(--type-title);
+  font-size: 16px;
   margin: 0;
 }
 .save-preset__row {
@@ -211,13 +272,6 @@
 .save-preset__row input,
 .save-preset__row select {
   flex: 1;
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-tab);
 }
 .save-preset__toggle {
   display: flex;
@@ -231,26 +285,6 @@
   justify-content: flex-end;
   gap: 8px;
 }
-.save-preset__actions button {
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 14px;
-  border-radius: var(--radius-tab);
-  border: 1px solid var(--hair-strong);
-  background: none;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.save-preset__actions button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.save-preset__actions button.is-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-}
-
 /* ---------- New file / new folder (DL-19.5, amended 2026-08-25) ---------- */
 /* A dialog the user PRESSED a control to open may use the shared shell. The
    panel is `--sidebar-bg` like every other modal (DL-29.6); the box follows
@@ -269,22 +303,14 @@
 }
 .create-entry h1 {
   margin: 0;
-  font-size: var(--type-title);
+  font-size: 16px;
 }
 .create-entry__destination {
   margin: 0;
   color: var(--text-faint);
   font-size: var(--type-meta);
 }
-.create-entry input {
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--hair-strong);
-  border-radius: var(--radius-tab);
-}
+
 /* DL-3.2: a refusal is red. This is the field's own reason, not the panel's
    status line — that one lives under the dock's header and reports what main
    answered. */
@@ -298,26 +324,6 @@
   justify-content: flex-end;
   gap: 8px;
 }
-.create-entry__actions button {
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 14px;
-  border-radius: var(--radius-tab);
-  border: 1px solid var(--hair-strong);
-  background: none;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.create-entry__actions button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-.create-entry__actions button.is-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-}
-
 /* ---------- Usage consent (DL-29.9, the decision modal) ---------- */
 /* The one modal whose shell exits are withdrawn: no ✕, no Escape, no scrim
    dismissal — every way out persists a consent answer (owner-decided
@@ -328,7 +334,7 @@
   flex-direction: column;
   gap: 10px;
   width: min(420px, 86vw);
-  padding: 20px;
+  padding: 24px;
   /* DL-29.6: the chrome plane, like every panel on this scrim. */
   background: var(--sidebar-bg);
   border: 1px solid var(--seam-raised);
@@ -338,7 +344,7 @@
 }
 .usage-consent__title {
   margin: 0;
-  font-size: var(--type-title);
+  font-size: 16px;
 }
 .usage-consent__message {
   margin: 0;
@@ -351,22 +357,6 @@
   gap: 8px;
   margin-top: 6px;
 }
-.usage-consent__actions button {
-  font: inherit;
-  font-size: var(--type-body);
-  padding: 6px 14px;
-  border-radius: var(--radius-tab);
-  border: 1px solid var(--hair-strong);
-  background: none;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.usage-consent__actions button.is-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
-}
-
 /* "What Deck sends →" / "Read the full privacy notice →": a link, not a
    decision — plain ink, no frame. Shared with Settings → Privacy, which is
    why the class is feature-named rather than panel-named. */
@@ -385,6 +375,7 @@
 
 .usage-link:hover,
 .usage-link:focus-visible {
+  outline: none;
   color: var(--text-primary);
 }
 
@@ -402,7 +393,7 @@
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .agent-quick-picker h1 {
-  font-size: var(--type-title);
+  font-size: 16px;
   margin: 0;
 }
 .agent-quick-picker__hint {
@@ -471,7 +462,7 @@
   padding: 6px 12px;
   background: var(--chrome-1);
   border: 1px solid var(--red);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-surface);
   font-size: var(--type-meta);
   color: var(--text-primary);
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
@@ -487,7 +478,7 @@
   max-width: calc(100% - 32px);
   padding: 12px 16px;
   border: 1px solid var(--accent);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-surface);
   background: var(--chrome-1);
   color: var(--text-primary);
   font-size: var(--type-body);
@@ -508,15 +499,19 @@
   background: var(--chrome-1);
 }
 .persist-error-bar button {
+  height: 24px;
+  padding: 0 8px;
   font: inherit;
   font-size: var(--type-meta);
-  padding: 3px 10px;
-  border-radius: var(--radius-tab);
-  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  border: 0;
   background: none;
   color: var(--text-primary);
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
-.persist-error-bar button:hover {
-  border-color: var(--accent);
+.persist-error-bar button:hover,
+.persist-error-bar button:focus-visible {
+  outline: none;
+  background: var(--state-hover-bg);
 }

@@ -30,7 +30,7 @@
 .prompt-popover__empty,
 .prompt-picker__unavailable {
   font-family: var(--ui-font);
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
   color: var(--text-faint);
 }
 
@@ -39,7 +39,7 @@
 .prompt-row__auto {
   margin-right: 8px;
   font-family: var(--ui-font);
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
   color: var(--text-faint);
 }
 
@@ -56,12 +56,11 @@
   justify-content: space-between;
 }
 
-/* Pickers sit under a hairline: they compose the prompt, they are not a
-   template (DL-3.3 — structure from hairlines, not color). */
+/* Pickers sit apart by space, not a line: they compose the prompt, they are not
+   a template (CMP-14). */
 .prompt-picker {
-  margin-top: 6px;
+  margin-top: 10px;
   padding-top: 4px;
-  border-top: 1px solid var(--hair);
 }
 
 /* ── Pane drag-dock ──────────────────────────────────────── */
@@ -93,7 +92,7 @@
   z-index: 1000;
   pointer-events: none;
   max-width: 240px;
-  padding: 6px 11px;
+  padding: 6px 12px;
   font-family: var(--ui-font);
   font-size: var(--type-meta);
   color: var(--text-muted);
@@ -113,7 +112,7 @@
    hovering. It carries the cluster's label, never a clone of the block — a
    project with eight tabs would otherwise drag half the column around. */
 .rail-drag-ghost {
-  padding: 5px 10px;
+  padding: 6px 10px;
   font-size: var(--type-project);
   color: var(--text-primary);
 }

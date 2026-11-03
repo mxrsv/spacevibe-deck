@@ -22,7 +22,9 @@
   align-items: center;
   /* No `gap`: the row is one text span since 2026-08-19 (DL-11.3 retired —
      the owner took the category icons off). */
-  padding: 7px 10px;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 6px 10px;
   margin: 0 6px;
   border: none;
   border-radius: var(--radius-control);
@@ -42,7 +44,9 @@
 /* DL-21.2: hover is the quiet wash. It shared one declaration with `.is-active`
    until 2026-08-14, which meant pointing at a category you had not opened
    painted it as the open one. */
-.settings-nav__item:hover {
+.settings-nav__item:hover,
+.settings-nav__item:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
@@ -53,11 +57,6 @@
 .settings-nav__item.is-active {
   background: var(--tab-active-bg);
   color: var(--text-primary);
-}
-
-.settings-nav__item:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
 }
 
 /* ── Settings screen: full-window shell (settings-screen.tsx, DL-11.1) ── */
@@ -142,7 +141,6 @@
   box-sizing: border-box;
   padding: 8px 16px 8px calc(var(--frame-lights-w) + 12px);
   flex-shrink: 0;
-  border-bottom: 1px solid var(--hair);
   -webkit-app-region: drag;
 }
 
@@ -153,72 +151,49 @@
 /* Back, not a close X (2026-08-19, owner). Settings covers the whole window
    now, so leaving it is a NAVIGATION — the user goes back to their work —
    and the control says that in a word rather than in a glyph. Escape does the
-   same thing and always did. */
-.settings-screen__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 6px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tab);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--ui-font);
-  font-size: var(--type-meta);
-  cursor: pointer;
-  /* DL-21.5: state changes ride the shared motion pair. */
-  transition:
-    background var(--duration) var(--ease),
-    border-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
-}
+   same thing and always did.
 
-.settings-screen__back:hover {
-  background: var(--state-hover-bg);
-  border-color: var(--hair-strong);
-  color: var(--text-primary);
-}
-
-.settings-screen__back:focus-visible {
-  outline: 2px solid var(--text-muted);
-  outline-offset: 1px;
-}
-
-/* "Star on GitHub" took the decorative path's slot (2026-08-19, owner). It
-   borrows `.settings-screen__back`'s shape deliberately: the two are one
-   leading cluster, and the header is not a split row — the traffic lights own
-   the far left and a lone control on the far right would read as a close.
-   Achromatic (DL-3.7), so the ask carries no hue of its own on this surface;
-   `--text-primary` at rest is the whole emphasis it gets, one step above the
-   muted `Back` next to it. */
+   The two header actions are 28px secondary buttons (CMP-1); neither is filled,
+   since Settings shows no confirming action. */
+.settings-screen__back,
 .settings-screen__star {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-right: auto;
-  padding: 4px 10px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tab);
-  background: var(--state-hover-bg);
+  box-sizing: border-box;
+  height: 28px;
+  border: 1px solid var(--control-frame);
+  border-radius: var(--radius-control);
+  background: transparent;
   color: var(--text-primary);
   font-family: var(--ui-font);
-  font-size: var(--type-meta);
+  font-size: var(--type-body);
   cursor: pointer;
   /* DL-21.5: state changes ride the shared motion pair. */
   transition:
     background var(--duration) var(--ease),
-    border-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
+    border-color var(--duration) var(--ease);
 }
 
-.settings-screen__star:hover {
-  border-color: var(--hair-strong);
-  background: var(--chrome-2);
+.settings-screen__back {
+  padding: 0 10px 0 6px;
 }
 
+.settings-screen__back:hover,
+.settings-screen__back:focus-visible,
+.settings-screen__star:hover,
 .settings-screen__star:focus-visible {
-  outline: 2px solid var(--text-muted);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--control-frame-hover);
+  background: var(--state-hover-bg);
+}
+
+/* "Star on GitHub" shares the Back button's shape: the two are one leading
+   cluster, and the header is not a split row — the traffic lights own the far
+   left and a lone control on the far right would read as a close. */
+.settings-screen__star {
+  margin-right: auto;
+  padding: 0 10px;
 }
 
 /* Two columns: the rail is fixed, the section area owns all scrolling
@@ -252,25 +227,15 @@
 
 .settings-screen__intro {
   padding-bottom: 24px;
-  /* The one structural line on this side. Everything below it is settings;
-     everything above it says which settings. */
-  border-bottom: 1px solid var(--hair);
 }
 
-/* A scoped structural heading, 24px — the fifth entry on DL-4.5's closed
-   exception list (2026-08-19), beside the §16 display figure and the board's
-   19px screen heading. It is not a fifth rung of DL-4.4's ladder: it names
-   what a whole screen is currently about, a structural level the four roles
-   do not have. Bounded to this selector, and the reason it is needed is that
-   the section title and the group labels beneath it were both
-   `--type-title`. */
+/* The screen title takes the dialog-title size, 16px (CMP-10). */
 .settings-screen__title {
   margin: 0;
   font-family: var(--ui-font);
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 650;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.3;
   color: var(--text-primary);
 }
 
@@ -278,13 +243,13 @@
   max-width: 58ch;
   margin: 10px 0 0;
   font-family: var(--ui-font);
-  font-size: var(--type-title);
+  font-size: var(--type-body);
   font-weight: 400;
   line-height: 1.5;
   color: var(--text-faint);
 }
 
-/* The grouped settings surface — one background step and a 1px edge, no
+/* The grouped settings surface — one background step, no edge line (CMP-14), no
    shadow (DL-20.1: this is chrome that sits IN the screen, not a panel
    floating above it).
    `min-inline-size: 0` and the border/padding reset are not styling: a
@@ -296,36 +261,34 @@
   margin: 24px 0 0;
   padding: 2px 0 8px;
   overflow: hidden;
-  border: 1px solid var(--hair);
+  border: 0;
   border-radius: var(--radius-surface);
   background: var(--chrome-1);
 }
 
-/* Each group after the first opens with a rule, so a surface holding four
-   groups reads as four blocks rather than one long run of rows. */
+/* Each group after the first opens with space, not a rule (CMP-14). */
 .settings-screen__fields .cfg-group {
-  padding: 18px 16px 7px;
+  padding: 16px 16px 6px;
 }
 
 .settings-screen__fields .cfg-group:not(:first-child) {
-  margin-top: 4px;
-  border-top: 1px solid var(--hair);
+  margin-top: 8px;
 }
 
-/* Deliberate vertical room, still denser than the references it came from:
-   10px for a bare row, 12px once a description gives the key two lines.
+/* Deliberate vertical room: a bare row holds a 28px value with 8px around it,
+   and a description gives the key two lines and 10px.
    `box-sizing` is declared because this element has a percentage-free size
    AND padding, and `src/styles.css` has no global reset (see AGENTS.md). */
 .settings-screen__fields .cfg-row {
   box-sizing: border-box;
-  min-height: 42px;
+  min-height: 44px;
   margin: 0 6px;
-  padding: 10px;
+  padding: 8px 10px;
 }
 
 .settings-screen__fields .cfg-row:has(.cfg-row__desc) {
-  min-height: 50px;
-  padding-block: 12px;
+  min-height: 52px;
+  padding-block: 10px;
 }
 
 /* Disclosure prose under a section's rows (Privacy, spec §7): body copy, not
@@ -344,49 +307,8 @@
    enabled toggle from a disabled one. Neutral contrast carries the state
    instead — which is also what makes it legible to a user who cannot
    distinguish the two hues. */
-.settings-screen .cfg-btn--on,
-.settings-screen .cfg-step__btn {
+.settings-screen .cfg-btn--on {
   color: var(--text-primary);
-}
-
-.settings-screen .cfg-btn:hover .cfg-btn__hint {
-  color: var(--text-primary);
-}
-
-/* An unavailable pill drops the hover wash on its caret too (DL-23.6). The
-   rule above out-specifies `.cfg-btn--disabled:hover .cfg-btn__hint`, so
-   without this the caret of the Windows "Open with" pill would light up under
-   the pointer. Reached only by that pill, which only Windows renders, and
-   scoped under `.window--windows` like every Windows-only rule. */
-.window--windows .settings-screen .cfg-btn--unavailable:hover .cfg-btn__hint {
-  color: var(--text-faint);
-}
-
-/* The clear-override button (DL-6.1), mounted here by the shortcut rows and
-   the logo row. Accent ink plus a 14% accent wash on hover was the loudest
-   colour left on the surface.
-
-   KNOWN LIMIT, and the reason this list is a list: DL-3.7 is stated as a rule
-   and enforced by enumeration, so every control added to Settings has to be
-   remembered here. The deeper fix is redefining `--accent` / `--green` once,
-   scoped to `.settings-screen`, which would close the whole class instead of
-   one member — deliberately NOT done yet, because it repaints controls across
-   this surface and no owner eye review of it exists. */
-.settings-screen .cfg-clear {
-  color: var(--text-muted);
-}
-
-.settings-screen .cfg-clear:hover {
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
-}
-
-.settings-screen .cfg-btn:focus-visible,
-.settings-screen .cfg-btn--overlay:focus-within,
-.settings-screen .cfg-step__btn:focus-visible,
-.settings-screen .settings-nav__item:focus-visible,
-.settings-screen .text-input:focus-visible {
-  outline-color: var(--text-muted);
 }
 
 /* ── The binary segmented value kind (DL-6.5, 2026-08-19) ───────────────────
@@ -399,22 +321,22 @@
   grid-auto-flow: column;
   grid-auto-columns: minmax(64px, 1fr);
   padding: 2px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--control-frame);
   border-radius: var(--radius-control);
   background: var(--input-bg);
 }
 
 .segmented__option {
   min-height: 26px;
-  padding: 3px 10px;
-  border: 1px solid transparent;
+  padding: 0 10px;
+  border: 0;
   /* The inner corner of a 10px track with 2px of padding — DL-20.1's
      `--radius-tight` is that value, so the nested shape stays on the scale
      instead of being derived by arithmetic at the use site. */
   border-radius: var(--radius-tight);
   background: transparent;
   color: var(--text-faint);
-  font: 520 var(--type-meta) / 1 var(--ui-font);
+  font: 520 var(--type-body) / 1 var(--ui-font);
   cursor: pointer;
   /* DL-21.5: state changes ride the shared motion pair. */
   transition:
@@ -422,25 +344,17 @@
     color var(--duration) var(--ease);
 }
 
-.segmented__option:hover {
+.segmented__option:hover,
+.segmented__option:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
-/* DL-21.1's selection wash, plus the neutral 1px frame the tab strip's
-   selected chip uses (DL-21.1's scoped exception, extended to this control by
-   DL-6.5) — a segment sitting on a
-   wash alone, inside a track that is itself a wash, was not reliably the
-   one that looked chosen. */
+/* Selected is one neutral background step with no frame (CMP-13). */
 .segmented__option.is-selected {
-  border-color: var(--hair-strong);
   background: var(--tab-active-bg);
   color: var(--text-primary);
-}
-
-.segmented__option:focus-visible {
-  outline: 2px solid var(--text-muted);
-  outline-offset: -2px;
 }
 
 /* ── Compact width (DL-11.7, 2026-08-19) ────────────────────────────────────
@@ -513,7 +427,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--hair);
+  border-inline: 1px solid var(--hair);
   overflow: hidden;
 }
 
@@ -567,7 +481,6 @@
   gap: 12px;
   padding: 6px 10px;
   background: var(--chrome-2);
-  border-bottom: 1px solid var(--hair);
   font-size: var(--type-meta);
   flex: none;
 }
@@ -590,9 +503,10 @@
 }
 
 .filebar__btn {
-  padding: 3px 8px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tab);
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-family: var(--ui-font);
@@ -604,12 +518,20 @@
     color var(--duration) var(--ease);
 }
 
-.filebar__btn:hover {
+.filebar__btn:hover,
+.filebar__btn:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
+/* The lead action reads as a chip with a fill; the other stays quiet (CMP-5). */
 .filebar__btn--primary {
-  border-color: var(--hair-strong);
+  background: var(--muted);
   color: var(--text-primary);
+}
+
+.filebar__btn--primary:hover,
+.filebar__btn--primary:focus-visible {
+  background: var(--tab-active-bg);
 }
