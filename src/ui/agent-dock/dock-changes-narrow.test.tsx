@@ -27,6 +27,7 @@ import { activeWorkspace } from "../../files/file-surface-store";
 import type { ChangesController, ChangesState } from "../../files/changes/changes-controller";
 import { diffFocusRequested } from "../../files/changes/diff-column-focus";
 import { createDiffSelection, type DiffSelectionStore } from "../../files/changes/diff-selection";
+import type { DiffSidesPorts } from "../../files/changes/diff-sides";
 import type { ChangeEntry } from "../../host/git-changes-host";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
@@ -41,7 +42,7 @@ import {
 import { byRole, click, mount, press, settle, waitUntil } from "../controls/preset-test-kit";
 import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
-import { dockSheetOpen, resetAgentDockState } from "./agent-dock-state";
+import { dockChangesList, dockSheetOpen, resetAgentDockState } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
 import { changedFileCount, DockChangesWatch } from "./dock-changes-watch";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
@@ -62,6 +63,13 @@ const ENTRIES = ["src/a.ts", "src/b.ts", "docs/c.md"].map(entry);
 
 let diff: DiffSelectionStore;
 let controller: ChangesController;
+const files = testFileBodies();
+/** Nothing to read: the cards stay at their "Reading…" line, which these tests do not look at. */
+const stackPorts: DiffSidesPorts = {
+  statFiles: async () => new Promise(() => {}),
+  readFile: async () => new Promise(() => {}),
+  readHeadFile: async () => new Promise(() => {}),
+};
 
 function fakeChanges(): void {
   const state = signal<ChangesState>({
@@ -123,10 +131,17 @@ function dock() {
       bodies={{
         changes: {
           watch: (root) => <DockChangesWatch root={root} changes={controller} diff={diff} />,
-          section: (root) => <DockChanges root={root} changes={controller} diff={diff} />,
+          section: (root) => (
+            <DockChanges
+              root={root}
+              changes={controller}
+              controller={files.controller}
+              ports={stackPorts}
+            />
+          ),
           count: (root) => changedFileCount(root, controller),
         },
-        files: testFileBodies(),
+        files,
         usage: () => <p>usage body</p>,
         history: () => <p>history body</p>,
       }}
@@ -150,6 +165,8 @@ const scrim = (): HTMLElement =>
 
 beforeEach(async () => {
   vi.stubGlobal("__deckHost", {});
+  // jsdom has no layout; a list press scrolls to its card.
+  Element.prototype.scrollIntoView = vi.fn();
   initializeDesktopEnvironment({ platform: "macos", homeDir: "/home/test", isDevelopment: true });
   settings.value = DEFAULT_SETTINGS;
   tabViews.value = [tab()];
@@ -195,20 +212,15 @@ describe("the Changes section in a narrow window", () => {
     expect(controller.setShown).toHaveBeenLastCalledWith(null);
   });
 
-  it("closes the sheet on a file press and leaves the diff open for the column beside the handle", async () => {
+  it("keeps the sheet open on a list press: it scrolls to the card and opens no diff", async () => {
+    dockChangesList.value = true;
     const view = await mount(dock());
-    const handle = named("Open the side panel") as HTMLElement;
-    handle.focus();
-    await click(handle);
+    await click(named("Open the side panel") as HTMLElement);
     await click(row("file:src/a.ts"));
-
-    await waitUntil(() => byRole("dialog") === null);
-    expect(dockSheetOpen.value).toBe(false);
-    expect(diff.selection.value).toMatchObject({ root: ROOT, path: "src/a.ts" });
-    expect(controller.setShown).not.toHaveBeenCalledWith(null);
-    // The diff column is asked for focus after the sheet let go, and the handle does not get it back.
-    await waitUntil(() => diffFocusRequested.value);
-    expect(document.activeElement).not.toBe(handle);
+    expect(byRole("dialog")).not.toBeNull();
+    expect(dockSheetOpen.value).toBe(true);
+    expect(diff.selection.value).toBeNull();
+    expect(diffFocusRequested.value).toBe(false);
     await view.unmount();
   });
 
@@ -240,7 +252,8 @@ describe("the Changes section in a narrow window", () => {
   it("ends the diff when the dock goes away", async () => {
     const view = await mount(dock());
     await click(named("Open the side panel") as HTMLElement);
-    await click(row("file:src/a.ts"));
+    diff.open(ROOT, "src/a.ts");
+    await press(byRole("dialog") as HTMLElement, { key: "Escape" });
     await waitUntil(() => byRole("dialog") === null);
     expect(diff.selection.value).not.toBeNull();
     await view.unmount();

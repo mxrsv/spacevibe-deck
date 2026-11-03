@@ -54,6 +54,20 @@ export function selectDockFile(): void {
  */
 export const dockTreePane = signal<boolean | null>(null);
 
+/** The Changes view's own list pane beside the card stack (DOCK-10); off until the user asks. */
+export const dockChangesList = signal(false);
+
+/** `root\0path` of the Changes cards the user folded; window-scoped so a view switch keeps them. */
+export const dockFoldedCards = signal<ReadonlySet<string>>(new Set());
+
+export function toggleDockCardFold(key: string): void {
+  const next = new Set(dockFoldedCards.value);
+  if (!next.delete(key)) {
+    next.add(key);
+  }
+  dockFoldedCards.value = next;
+}
+
 /**
  * The narrow-window sheet. The native browser view paints above every DOM layer, so `App` yields
  * it while this is true; the host resets it when it unmounts or the window widens.
@@ -85,6 +99,8 @@ export function resetAgentDockState(): void {
   dockView.value = DEFAULT_VIEW;
   dockSurface.value = "view";
   dockTreePane.value = null;
+  dockChangesList.value = false;
+  dockFoldedCards.value = new Set();
   dockSheetOpen.value = false;
   dockWideRequested.value = false;
 }
