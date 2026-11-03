@@ -7,6 +7,8 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Switch between agents without the pause.** Switching [agent tabs](docs/user/agents.md)
+  no longer freezes the interface while the previous terminal is hidden.
 - **Choose from eight themes.** [Appearance](docs/user/settings.md#appearance) shows Deck Light,
   Paper and Mist, and Deck Dark, Graphite, Midnight, Forest and Dusk as pictured cards, and a
   choice applies at once. Terminal theme files you import appear under Custom. The preview
