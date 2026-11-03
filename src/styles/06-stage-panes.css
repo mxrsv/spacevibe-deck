@@ -376,7 +376,7 @@
    the accent (CMP-19). */
 .split__divider:hover,
 .split__divider.is-dragging {
-  background: var(--control-frame);
+  background: var(--ring);
 }
 
 /* While dragging a divider, block mouse events on terminals so text is not selected */

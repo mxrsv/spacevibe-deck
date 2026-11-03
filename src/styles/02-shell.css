@@ -259,11 +259,12 @@
   transition: background var(--duration) var(--ease);
 }
 
-/* A neutral frame step, not the accent: a handle is not a link or a state role
-   (CMP-19). The pane split divider matches it (`06-stage-panes.css`). */
+/* A neutral step, not the accent: a handle is not a link or a state role
+   (CMP-19). Not the soft control frame either, which a 1px bar would lose. The
+   pane split divider matches it (`06-stage-panes.css`). */
 .sidebar-grip:hover::after,
 .sidebar-grip.is-dragging::after {
-  background: var(--control-frame);
+  background: var(--ring);
 }
 
 /* Hidden means hidden (DL-18.9, revised 2026-08-16): the column goes to zero,
