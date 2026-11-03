@@ -13,6 +13,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
   beside Appearance is gone.
 - **Settings controls are a size up.** Buttons, fields and menus in Settings use larger text,
   and an enabled button shows a pointer.
+- **Zoom the whole window.** ⌘⌥= and ⌘⌥- (Ctrl+Alt on Windows and Linux) scale Deck's interface,
+  and ⌘⌥0 resets it. Terminal and editor text keeps its size; ⌘= and ⌘- still change it.
+- **A calmer, more even interface.** Buttons, chips, fields and labels share one set of sizes,
+  primary buttons are ivory instead of blue, and divider lines between rows are gone. Keyboard
+  focus on a button looks like hover; only text fields show a ring.
 - **Clone errors name the real cause.** A clone into a folder whose name contains words like
   `proxy`, `ssl` or `tls` no longer reports a failed connection when the folder could not be
   written.
