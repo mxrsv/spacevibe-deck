@@ -39,10 +39,15 @@ files) pushes every section below it out of reach, and the column carries more f
   pressing a file opens its diff exactly as today. Whether the diff moves inside the dock is DOCK-10.
 - **DOCK-9 Ask on the rail.** The `needs-input` detail and its action show on the agent's rail row, and
   the dock banner is deleted. Own PR in the rail's owner area.
-- **DOCK-10 Diff in the dock.** A stacked list of per-file diffs with sticky file headers (chevron
-  folds a file; the file name opens the file) replaces the diff column's role for Changes, **only if** a
-  spike shows Monaco diff editors can mount lazily for the visible files within the resource budget.
-  Otherwise the diff column stays.
+- **DOCK-10 Diff in the dock.** The Changes view is one scrolling stack of per-file cards. Each card
+  has a sticky header (a chevron that folds the file, the status mark, the file name, `+a −d`) and a
+  body of unified hunks with three lines of context; a file's diff loads only when its card nears the
+  viewport. The file name opens the real file as a tab (DOCK-6); the chevron or the rest of the header
+  folds. The optional tree pane (a toggle in the Changes row, off by default) lists the same files and
+  a press scrolls to that card without opening anything. The stack uses a small in-repo line diff
+  over the two texts the diff column already reads (`HEAD` and the working copy): no Monaco instance
+  per file and no new dependency. Binary, too-large and unreadable files show a one-line note instead
+  of hunks. The separate diff column stays for the legacy dock only.
 - **DOCK-11 Width.** The dock keeps its resize grip and, below 1360px, its edge handle and sheet. A
   view must stay usable at 320px; the file tree pane is the part that gives way.
 - **DOCK-12 Type.** Mono type appears only in the editor, the diff and the terminal. File names, paths
@@ -57,6 +62,7 @@ files) pushes every section below it out of reach, and the column carries more f
 | AC-3 | Each revealing chord selects its view and opens the dock, including from a closed dock. |
 | AC-4 | With `agentDock` off the legacy dock is unchanged. |
 | AC-5 | No PTY, IPC, persistence or tab-materialization change; the file surface store keeps its API. |
+| AC-7 | A 65-file Changes stack mounts no more than the cards near the viewport (the rest are headers only) and the line diff of two fixed texts yields the expected hunks, including insert-only, delete-only and no-change files. |
 | AC-6 | `scripts/` and `src/styles/` policy suites, lint and the tests beside each changed file pass at every stage. |
 
 ## Out of scope
