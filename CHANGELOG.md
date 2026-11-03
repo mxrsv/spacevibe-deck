@@ -7,6 +7,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Choose from eight themes.** [Appearance](docs/user/settings.md#appearance) shows Deck Light,
+  Paper and Mist, and Deck Dark, Graphite, Midnight, Forest and Dusk as pictured cards, and a
+  choice applies at once. Terminal theme files you import appear under Custom. The preview
+  beside Appearance is gone.
+- **Settings controls are a size up.** Buttons, fields and menus in Settings use larger text,
+  and an enabled button shows a pointer.
 - **Clone errors name the real cause.** A clone into a folder whose name contains words like
   `proxy`, `ssl` or `tls` no longer reports a failed connection when the folder could not be
   written.
