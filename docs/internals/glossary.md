@@ -147,6 +147,21 @@ and OpenCode produce one. Not: title, status.
 pane count, and every unsaved document. A reading that fails is refused, never treated as
 empty. Not: busy check.
 
+**Coordinator** — An ordinary agent in a pane that follows the guide `deck skill orchestrate`
+prints: it splits a job into tasks, opens one worker per task through the `deck` command and
+keeps the task table in its own context. Deck ships no coordinator process and no scheduler,
+and the guide keeps orchestration one level deep. Not: orchestrator, supervisor, parent pane.
+
+**Worker** — An agent in a pane a coordinator opened with `deck pane open`, in its own worktree
+on its own branch. The coordinator sees only its final output. The guide tells a worker to run
+no `deck` command; Deck does not stop it, since any pane may open one. Not: subagent (an
+agent's own in-process helper), background job.
+
+**Envelope** — The block of text a worker ends its output with, `DECK_WORKER_DONE` or
+`DECK_WORKER_BLOCKED` plus a fixed list of `key: value` lines. It is a convention in the brief,
+not an event: main parses the last complete block out of the pane's scrollback
+([`envelope.ts`](../../electron/control/envelope.ts)). Not: report, hook event, result file.
+
 ## Files and browser
 
 **File explorer** — The dock's tree of the workspace root. A click opens a preview tab, a

@@ -13,6 +13,8 @@ translations at `/<locale>/docs` from `marketing/landing-prototype/docs/translat
   files.
 - [Agents](user/agents.md) — the built-in commands, custom agents, what Deck knows about each
   tool.
+- [Orchestration](user/orchestration.md) — running several agents from one coordinator pane
+  with the `deck` command.
 - [Keyboard shortcuts](user/keyboard-shortcuts.md) — every shipped chord on macOS and Windows.
 - [Settings](user/settings.md) — each category, the privacy switch, where data lives.
 

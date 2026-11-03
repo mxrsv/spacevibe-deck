@@ -504,6 +504,64 @@ runs independently of the switch. Without hooks, API failures cannot produce the
   panes or controlled.
 - Windows ships no hook script.
 
+### The control layer
+
+The hooks let an agent tell Deck what it is doing. The control layer lets an agent act on
+Deck: the in-pane `deck` command opens, types into, reads, waits on and closes panes (the
+[user guide](../user/orchestration.md) is the command reference). It reuses the hook
+listener, the pane token and the renderer's own paths. Five things are easy to get wrong.
+
+- **The shim is a file, and it is gated.** `deck` is a POSIX `sh` + `curl` script
+  ([`deck-cli.ts`](../../electron/agent-shell/deck-cli.ts)) that
+  [`provision.ts`](../../electron/agent-shell/provision.ts) writes beside the wrappers only
+  while the `agentControl` switch is on, and removes when it is off. The router is mounted
+  under the same condition, so a release build answers `/control/` with the 404 any unknown
+  path gets. It reaches a pane through the same `PATH` bootstrap as the wrappers, so a shell
+  without one, and Windows, has no `deck`. All decisions and all formatting live in main; the
+  shim only builds a form-encoded body and maps the HTTP status to an exit code.
+- **The mirror is the renderer's report, and main never classifies.** The renderer sends
+  every change of a pane's phase and attention through `pane_attention_report`
+  ([`pane-attention-reporter.ts`](../../src/terminal/pane-attention-reporter.ts)), and main
+  keeps the latest per pane in [`pane-mirror.ts`](../../electron/control/pane-mirror.ts). The
+  report flows whether or not the switch is on; only the router reads it. `list` and `wait`
+  answer from this copy, so they work with no renderer round trip. A `working` report older
+  than 120 seconds reads `inferred`, as the rail hollows it, and a long turn changes no field
+  for minutes, so the reporter re-sends an unchanged `working` on the first sync at least 45
+  seconds after the last send. That is not a timer: a pane that produces no sync is not
+  re-sent. Raise the heartbeat past the hollowing and every long turn reads doubtful.
+- **Every caller is authorized by pane, token and tty.**
+  [`control-auth.ts`](../../electron/control/control-auth.ts) checks the pane id, the token in
+  constant time, and that the tty of the agent process running the shim (`DECK_AGENT_PID` when
+  the wrapper set it, else the shim's parent) is the pane's own. Hooks check the tty only for
+  Codex; here any process that inherited the three `DECK_*` variables could otherwise drive
+  the pane, so it is checked for everyone. A missing pane, a wrong token and a wrong tty get
+  the same 403 and the same code. Scope is a second, separate table
+  ([`opened-by.ts`](../../electron/control/opened-by.ts)): a pane acts on itself (`read`,
+  `wait`) and on panes it opened, and a target outside that answers like a missing pane. A
+  pane sending to or closing itself gets the same status and code with its own message. The
+  record dies with either pane. The shim passes `--noproxy '*'` for the reason hook posts do.
+- **There is one typing path.** `send` and `open --prompt` both end in
+  [`injectIntoPane`](../../src/terminal/tab-manager.ts), the Prompt Board's
+  paste-then-gated-Enter, with two stricter options: `submitDelayMs` (500 ms, so the gate
+  reads the pane just before Enter) and `expectedProcessId` (the agent process read right
+  before typing; a different one at Enter answers `stale`). `pasted` and `stale` leave the
+  text in the pane's input, and no command presses a bare Enter, so a retry would paste it
+  twice. Sends to one pane queue in
+  [`control-commands.ts`](../../src/terminal/control-commands.ts) rather than answering
+  `busy`. A new command that types must go through this path, not `write_pty`.
+- **Forwarding is one flat event and one reply.** `open`, `send`, `read` and `close` leave
+  main as a single `control:command` event to the window that owns the pane (for `open`, the
+  caller's pane, so the tab opens in the caller's window), and the window answers with the
+  `control_reply` command. [`control-forward.ts`](../../electron/control/control-forward.ts)
+  holds the HTTP call until then and accepts a reply only for a request it still holds, from
+  the window the request went to. Replies carry closed codes, because they end up printed in
+  a terminal. The timeouts nest: the shim's `curl` waits 95 seconds, one `open` is
+  budgeted 90, and a `wait` answers `202` after 60 so the shim asks again, which keeps every
+  call under the `curl` limit. A late reply to an `open` is still handed to the router for
+  two minutes, so the new tab is recorded as the caller's instead of being orphaned.
+  `markSent` has to run before the paste is pushed: it records the mirror revision that a
+  following `wait` must see a turn begin after.
+
 ## Actions, keymaps and the menu
 
 - [`action-registry.ts`](../../src/terminal/action-registry.ts) is the one list of actions:

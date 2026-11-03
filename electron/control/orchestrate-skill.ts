@@ -15,7 +15,7 @@ You are the coordinator. Follow the nine sections in order. You keep the plan in
 
 Run \`deck status\`.
 
-- A line saying it must run inside a Deck pane, or exit code 3: stop and tell the user. Nothing below works outside a Deck pane.
+- \`command not found\`, a line saying it must run inside a Deck pane, or exit code 3: stop and tell the user. Nothing below works outside a Deck pane.
 - It reports the app version, your pane id and window, whether control is enabled, and whether you may open panes. If you may not, stop and tell the user.
 - \`deck <command> --help\` lists every flag. \`--json\` on any command prints one JSON object instead of text.
 
@@ -46,15 +46,23 @@ For each \`ready\` task, in this order:
 
 \`\`\`sh
 deck worktree create --repo <repo path> --branch <branch name>
-deck pane open --cwd <worktree path> --agent <agent id> --name <task id> --prompt "$(cat <<'BRIEF'
-<the brief from section 5>
-BRIEF
-)"
+deck pane open --cwd <worktree path> --agent <agent id> --name <task id>
+deck pane wait <pane id> --for idle
+deck pane read <pane id>
 \`\`\`
 
 - \`worktree create\` prints the new path. Without \`--dest\` it lands beside the repository, named after the branch with \`/\` replaced by \`-\`. It never overwrites a branch or a directory: on an error, stop and read it.
-- \`pane open\` prints the new pane id. The agent id is the one the user named; ask if they named none.
-- The here-document keeps quotes and backticks in the brief intact.
+- \`pane open\` prints the new pane id and moves the user's focus to the new tab. The agent id is the one the user named; ask if they named none.
+- A fresh worktree makes some agents ask a first-run question before they take input (Claude Code asks whether to trust the folder), and a pane showing that question reads \`idle\` too. So open without \`--prompt\`, wait for the first \`idle\`, and read the pane. A pane that reads \`exited\` never started its agent: read it and tell the user.
+- If the pane shows a question, do not answer it with \`send\`: it may be a menu that pasted text cannot answer. Tell the user which pane it is in, ask them to answer it there themselves, and send nothing until they have. Then repeat \`wait --for idle\` and \`read\` until the pane shows the agent waiting for input with no question on screen, and deliver the brief, a here-document keeping quotes and backticks intact:
+
+\`\`\`sh
+deck pane send <pane id> --stdin <<'BRIEF'
+<the brief from section 5>
+BRIEF
+\`\`\`
+
+- \`open --prompt\` types the brief as soon as the agent first reads idle, which can answer the first-run question instead of delivering the brief. Use it only for an agent you know asks nothing on first run.
 - One worktree per task, never shared. Record worktree and pane in the table and set the status to \`running\`. Independent \`ready\` tasks open together.
 
 ## 5. Write the worker brief
@@ -102,12 +110,12 @@ For every \`running\` worker:
 1. Wait: \`deck pane wait <id> --for turn\` returns once the worker's turn has ended, whether it finished (the pane reads \`idle\`), needs the user (a permission request, a warning, an error), or the agent exited. Exit 124 means the timeout passed with no change.
 2. Read: \`deck pane read <id> --envelope\` prints the last complete envelope as JSON, or \`none\`.
 3. Check that the envelope's \`task\` is the id you sent. Another id is not this task's result: treat it as \`none\`.
-4. \`none\` after the wait returned means the turn ended without a result, or the wait returned on the start-up \`idle\`. Run \`deck pane read <id> --lines 80\`, see what happened, and wait again or mark the task \`failed\`. An exited pane with no envelope is \`failed\`.
+4. \`none\` after the wait returned means the turn ended without a result, or the wait printed \`no turn started after the send\` (the brief reached the pane but the agent took no turn). Run \`deck pane read <id> --lines 80\`, see what happened, and wait again or mark the task \`failed\`. An exited pane with no envelope is \`failed\`.
 5. \`DECK_WORKER_DONE\` goes to section 8. \`DECK_WORKER_BLOCKED\` goes to section 7.
 6. Update the table. Every \`pending\` task whose dependencies are all \`completed\` becomes \`ready\`: open it as in section 4 and put the finished tasks' \`handoff\` into its prior findings.
 7. A \`failed\` task is redispatched only after you change the brief: a narrower objective, the missing finding, the failing output. Send the new brief to the same pane: pass it as the argument of \`deck pane send <id> "<text>"\`, or pipe it into \`deck pane send <id> --stdin\` through a quoted here-document (\`<<'BRIEF'\`). If the old pane is gone, open a new pane in the same worktree instead. A second failure goes to the user.
 
-\`deck pane list\` shows phase, attention and confidence for every pane in your window. A \`working\` state with confidence \`inferred\` is older than 120 seconds and suspect: read the pane before you wait longer. A \`send\` reply of \`pasted\` means the text sits in the input but was not submitted: read the pane before you send again.
+\`deck pane list\` shows phase, attention and confidence for every pane in your window. A \`working\` state with confidence \`inferred\` is older than 120 seconds and suspect: read the pane before you wait longer. A \`send\` ends \`sent\`, \`pasted\` or \`stale\`. \`pasted\` means the text sits in the input and Enter was withheld because the agent was busy or asking something. \`stale\` (it fails with exit 1) means the agent process changed before Enter, so the text sits in the input unsubmitted. After either, read the pane, ask the user to answer any question there themselves, and never send the same text again: the first copy is still in the input. If there is no question, tell the user the text waits unsubmitted in that pane.
 
 ## 7. Hand blocked work to the user
 
@@ -130,5 +138,5 @@ Report two lists, never mixed: the worker's claims (the envelope fields as writt
 
 Deck does not merge. Do not merge, rebase, push or open a pull request, and do not remove a worktree. Give the user the final table and, for each task, its branch, its worktree path, its status and whether the worktree has uncommitted changes. Say which branches depend on which, so the user can integrate them in order.
 
-Leave the workers open. Close one with \`deck pane close <id>\` only when the user asks. A pane that is \`working\` or has \`requested\` attention is refused without \`--force\`: use \`--force\` only when the user says so. You cannot close your own pane.
+Leave the workers open. Close one with \`deck pane close <id>\` only when the user asks. A pane that is \`working\` or has \`requested\` attention is refused without \`--force\`. Any other pane, an idle agent included, makes Deck show the user its normal close dialog, and the command waits for their answer (it fails if they cancel). \`--force\` closes without asking: use it only when the user says so. You cannot close your own pane.
 `;

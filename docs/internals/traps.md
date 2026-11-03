@@ -233,6 +233,15 @@ constants that currently switch behaviour off and are meant to be flipped back.
   grouping for good. Subdirectories, including folders inside an ancestor repository, fold
   into the repository that contains them — unlike the rail, which names only a checkout's own
   root.
+- **A first-run dialog reads as idle, so `deck pane open --prompt` can answer it.** Claude
+  Code's trust-this-folder menu passes the readiness gate: phase `idle`, no attention. `open
+  --prompt` types and submits the brief the first time the new pane reads idle
+  ([`control-pane-commands.ts`](../../electron/control/control-pane-commands.ts)), which on a
+  fresh worktree is that question. Main cannot tell a question from a prompt. The mitigation
+  is the order the [user guide](../user/orchestration.md#first-run-questions) and the
+  orchestrate guide give: open without `--prompt`, wait for idle, read the pane, have the
+  user answer a question in that pane themselves (a menu is not answered by pasted text),
+  then send. `--prompt` is for an agent known to ask nothing.
 
 ## Accepted limitations
 

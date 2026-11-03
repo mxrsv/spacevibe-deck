@@ -125,6 +125,36 @@ describe("ORCHESTRATE_SKILL", () => {
     expect(section(6)).not.toMatch(/--for (idle|needs-you)/);
   });
 
+  it("opens a worker without a prompt, waits for idle and hands a first-run question to the user", () => {
+    const opening = section(4);
+    const open = opening.match(/^deck pane open .*$/m)?.[0] ?? "";
+    expect(open).toContain("--cwd");
+    expect(open).not.toContain("--prompt");
+    expect(opening).toContain("deck pane wait <pane id> --for idle");
+    expect(opening).toMatch(/deck pane read <pane id>/);
+    expect(opening).toMatch(/first-run question/);
+    expect(opening).toMatch(/do not answer it with `send`: it may be a menu/);
+    expect(opening).toMatch(/ask them to answer it there themselves/);
+    expect(opening).toMatch(/send nothing until they have/);
+    expect(opening).toMatch(/repeat `wait --for idle` and `read`/);
+    // The brief goes in only afterwards, through the here-document path.
+    expect(opening).toContain("deck pane send <pane id> --stdin <<'BRIEF'");
+    expect(opening.indexOf("--for idle")).toBeLessThan(opening.indexOf("deck pane send"));
+    expect(opening).toMatch(
+      /`open --prompt` types the brief as soon as the agent first reads idle/,
+    );
+    expect(opening).toMatch(/only for an agent you know asks nothing on first run/);
+  });
+
+  it("explains pasted and stale, and never resends the same text", () => {
+    const loop = section(6);
+    expect(loop).toMatch(/`pasted` means the text sits in the input/);
+    expect(loop).toMatch(/`stale`.*exit 1.*unsubmitted/);
+    expect(loop).toMatch(/read the pane, ask the user to answer any question there themselves/);
+    expect(loop).toMatch(/never send the same text again/);
+    expect(loop).toContain("no turn started after the send");
+  });
+
   it("sends blocked work to the user and never answers for a worker", () => {
     expect(section(7)).toContain("DECK_WORKER_BLOCKED");
     expect(section(7)).toContain("`requested`");
@@ -140,6 +170,15 @@ describe("ORCHESTRATE_SKILL", () => {
   it("leaves merging to the user and closes workers only when asked", () => {
     expect(section(9)).toMatch(/Deck does not merge/);
     expect(section(9)).toMatch(/only when the user asks/);
+  });
+
+  it("says a close without --force asks the user, and when --force skips it", () => {
+    const finish = section(9);
+    expect(finish).toMatch(/refused without `--force`/);
+    expect(finish).toMatch(/normal close dialog/);
+    expect(finish).toMatch(/waits for their answer/);
+    expect(finish).toMatch(/`--force` closes without asking/);
+    expect(finish).toMatch(/only when the user says so/);
   });
 
   it("mentions the repository's AGENTS.md", () => {
