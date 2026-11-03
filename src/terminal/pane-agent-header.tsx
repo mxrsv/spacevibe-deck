@@ -91,10 +91,9 @@ function FlushIdentity({
           {tip}
         </TooltipContent>
       </Tooltip>
-      <AgentStateMark
-        status={railStatus({ state: signal.state, attention: pane.attention })}
-        confidence={signal.confidence}
-      />
+      {/* Always solid: beside the name a hollow ring (the inferred look) reads as the letter "O".
+          The tooltip and the rail still carry how sure Deck is. */}
+      <AgentStateMark status={railStatus({ state: signal.state, attention: pane.attention })} />
       <span class="pane-agent-header__message pane-agent-header__message--hidden">
         {sentence ? `${state}. ${sentence}` : state}
       </span>
