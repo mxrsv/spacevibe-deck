@@ -132,7 +132,8 @@ gates are the named next round.
   403, as hooks do.
 - **ORC5**: The listener stays `127.0.0.1` on the OS-chosen hook port; the shim calls it with
   `--noproxy '*'` and a bounded timeout; bodies are capped like hook posts. A control route
-  refuses anything but POST with a JSON body.
+  refuses anything but POST; arguments travel as a form-encoded body (`curl --data-urlencode`,
+  so the shim never builds JSON in `sh`), and `json=1` selects a JSON reply.
 - **ORC6**: Main records, for every pane opened through `deck pane open`, the pane that opened it.
   `send`, `read`, `wait` and `close` are allowed on the caller's own pane (`read` and `wait`
   only) and on panes the caller opened; any other target is refused with the same answer as a
