@@ -15,7 +15,7 @@
  * already uses for a vertical list.
  */
 import type { ComponentChild } from "preact";
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { canExpand, type TreeRow } from "../file-tree";
 import {
   clearTreeFocus,
@@ -27,6 +27,7 @@ import {
   treeRows,
 } from "../file-surface-store";
 import { resolveFocusIndex } from "../tree-focus";
+import { filterRows, relativeTo } from "../tree-filter";
 import { createTargetDirectory } from "../create-target";
 import { createEntryRequest } from "../../chrome/events";
 import type { EntryKind } from "../../host/file-create-host";
@@ -35,6 +36,7 @@ import type { FileSurfaceController } from "../file-surface-controller";
 import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
 import { chevronForRow, iconForRow } from "./file-icons";
 import { LoadError } from "../../ui/controls/load-error";
+import { TreeMetricsContext } from "./tree-metrics";
 import { useRevealActiveDocument } from "./use-reveal-active-document";
 
 export interface FileTreeViewProps {
@@ -46,20 +48,26 @@ export interface FileTreeViewProps {
    * without mocking a `const` export.
    */
   readonly canCreate: boolean;
+  /** Keeps only the rows whose name contains this, with their folders. Absent: every row. */
+  readonly filter?: string;
+  /**
+   * Folders, relative to the root and `/`-separated, that get a dot because they hold changes.
+   * Absent: no dots.
+   */
+  readonly markedFolders?: ReadonlySet<string>;
 }
-
-/** DL-19: data rows are 22px. The windowing math is built on this constant,
- * not read from layout, so it stays correct even for an offscreen row. */
-const ROW_HEIGHT = 22;
 
 /** Rows kept mounted just past the viewport edge, so a fast arrow-key or
  * wheel scroll never shows a blank frame while the next row mounts. */
 const OVERSCAN = 8;
 
 export function FileTreeView(props: FileTreeViewProps) {
-  const { controller, workspacePath, canCreate } = props;
+  const { controller, workspacePath, canCreate, filter, markedFolders } = props;
+  // The windowing math is built on this number, not read from layout, so it stays correct even
+  // for an offscreen row.
+  const { rowHeight, inset } = useContext(TreeMetricsContext);
   const surface = surfaceFor(workspacePath);
-  const rows = treeRows(workspacePath);
+  const rows = filterRows(treeRows(workspacePath), filter ?? "");
   const loaded = surface.listings.has(workspacePath);
   const listingErrors = listingErrorsFor(workspacePath);
 
@@ -86,7 +94,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     controller,
     workspacePath,
     containerRef,
-    rowHeight: ROW_HEIGHT,
+    rowHeight,
     onScrolled: setScrollTop,
   });
 
@@ -133,8 +141,8 @@ export function FileTreeView(props: FileTreeViewProps) {
       return;
     }
     if (viewportHeight > 0) {
-      const rowTop = index * ROW_HEIGHT;
-      const rowBottom = rowTop + ROW_HEIGHT;
+      const rowTop = index * rowHeight;
+      const rowBottom = rowTop + rowHeight;
       if (rowTop < node.scrollTop) {
         node.scrollTop = rowTop;
         setScrollTop(rowTop);
@@ -304,9 +312,9 @@ export function FileTreeView(props: FileTreeViewProps) {
   // anything is a directory large enough that windowing matters, and a real
   // window always reports a real height before that directory is visible.
   const measured = viewportHeight > 0;
-  const startIndex = measured ? Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN) : 0;
+  const startIndex = measured ? Math.max(0, Math.floor(scrollTop / rowHeight) - OVERSCAN) : 0;
   const endIndex = measured
-    ? Math.min(rows.length, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN)
+    ? Math.min(rows.length, Math.ceil((scrollTop + viewportHeight) / rowHeight) + OVERSCAN)
     : rows.length;
   const visible = rows.slice(startIndex, endIndex);
 
@@ -318,11 +326,13 @@ export function FileTreeView(props: FileTreeViewProps) {
   if (!loaded && !listingErrors.has(workspacePath)) {
     status = <p class="file-tree__status">Loading…</p>;
   } else if (loaded && surface.rootExpanded && rows.length === 1) {
-    status = <p class="file-tree__status">No files</p>;
+    status = (
+      <p class="file-tree__status">{(filter ?? "").trim() === "" ? "No files" : "No matches"}</p>
+    );
   }
 
   const body = (
-    <div class="file-tree__rows" style={{ height: `${rows.length * ROW_HEIGHT}px` }}>
+    <div class="file-tree__rows" style={{ height: `${rows.length * rowHeight}px` }}>
       {visible.map((row, offset) => {
         const index = startIndex + offset;
         const isRoot = row.path === workspacePath;
@@ -342,13 +352,14 @@ export function FileTreeView(props: FileTreeViewProps) {
             aria-level={row.depth + 1}
             aria-selected={row.directory ? undefined : isMarked}
             tabIndex={index === focusedIndex ? 0 : -1}
-            // DL-19: data rows are 22px, one fixed indent token per depth.
+            // One fixed indent token per depth.
             class={`file-tree__row${isRoot ? " is-root" : ""}${isMarked ? " is-active" : ""}${row.ignored ? " is-ignored" : ""}`}
             // Colour alone cannot say a row is ignored (WCAG 1.4.1).
             aria-description={row.ignored ? "Ignored" : undefined}
             style={{
-              top: `${index * ROW_HEIGHT}px`,
-              paddingLeft: `${8 + row.depth * 14}px`,
+              top: `${index * rowHeight}px`,
+              height: `${rowHeight}px`,
+              paddingLeft: `${inset + row.depth * 14}px`,
             }}
             title={isRoot ? workspacePath : undefined}
             onClick={(event) => handleRowClick(row, event.currentTarget as HTMLDivElement)}
@@ -369,6 +380,9 @@ export function FileTreeView(props: FileTreeViewProps) {
             )}
             {/* DL-19: a data row keeps its content's real casing. */}
             <span class="file-tree__name">{row.name}</span>
+            {row.directory && !isRoot && markedFolders?.has(relativeTo(workspacePath, row.path)) ? (
+              <span class="file-tree__dot" role="img" aria-label="Contains changes" />
+            ) : null}
             {isRoot && (
               <TreeRootActions
                 canCreate={canCreate}

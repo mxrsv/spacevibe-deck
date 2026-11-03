@@ -12,7 +12,11 @@ vi.mock("../../host/store-host", () => ({
   },
 }));
 vi.mock("../../host/dialog-host", () => ({ open: vi.fn(async () => null) }));
-vi.mock("../../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
+// `listen` too: the tree pane reads the shared Changes controller, which subscribes on creation.
+vi.mock("../../host/bridge", () => ({
+  invoke: vi.fn(async () => null),
+  listen: vi.fn(async () => () => {}),
+}));
 vi.mock("../../host/shell-host", () => ({ writeText: vi.fn(async () => {}) }));
 
 import type { DirEntry } from "../../files/file-tree";
