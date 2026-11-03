@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHookServer, type HookEventPayload, type HookServer } from "./hook-server";
 
 const TOKEN = "0123456789abcdef0123456789abcdef";
@@ -134,5 +135,74 @@ describe("hook server — opencode", () => {
     await claude("SessionStart", "claude-1");
     await post("Stop", "ses_a");
     expect(events.map((e) => e.agent)).toEqual(["opencode", "claude", "opencode"]);
+  });
+});
+
+describe("hook server — control routes", () => {
+  async function withControl(
+    handle?: (request: IncomingMessage, response: ServerResponse) => void,
+  ) {
+    const events: HookEventPayload[] = [];
+    const seen: string[] = [];
+    const log = vi.fn<(message: string) => void>();
+    const server = createHookServer({
+      tokenFor: (paneId) => (paneId === 7 ? TOKEN : null),
+      ttyFor: (paneId) => (paneId === 7 ? "ttys009" : null),
+      emitToOwner: (_paneId, payload) => events.push(payload),
+      log,
+      ...(handle === undefined
+        ? {}
+        : {
+            control: {
+              handle: async (request: IncomingMessage, response: ServerResponse) => {
+                seen.push(request.url ?? "");
+                handle(request, response);
+              },
+            },
+          }),
+    });
+    servers.push(server);
+    const port = await server.listen();
+    const post = (path: string) =>
+      fetch(`http://127.0.0.1:${port}${path}`, {
+        method: "POST",
+        headers: { "x-deck-pane": "7", "x-deck-token": TOKEN },
+        body: JSON.stringify({ hook_event_name: "Stop", session_id: "claude-1" }),
+      });
+    return { events, seen, log, post };
+  }
+
+  it("hands a /control/ request to the control handler and answers with what it wrote", async () => {
+    const { post, seen } = await withControl((_request, response) => {
+      response.statusCode = 200;
+      response.end("from control");
+    });
+    const reply = await post("/control/v1/status?x=1");
+    expect(reply.status).toBe(200);
+    expect(await reply.text()).toBe("from control");
+    expect(seen).toEqual(["/control/v1/status?x=1"]);
+  });
+
+  it("keeps serving hooks beside the control routes", async () => {
+    const { post, events, seen } = await withControl((_request, response) => response.end());
+    expect((await post("/hook")).status).toBe(204);
+    expect(events.map((e) => e.event)).toEqual(["Stop"]);
+    expect(seen).toEqual([]);
+  });
+
+  it("answers 404 on /control/ when no control handler is mounted, as it did before", async () => {
+    const { post, events } = await withControl();
+    expect((await post("/control/v1/status")).status).toBe(404);
+    expect((await post("/control/")).status).toBe(404);
+    expect(events).toEqual([]);
+  });
+
+  it("answers 500 and stays up when the control handler rejects", async () => {
+    const { post, log } = await withControl(() => {
+      throw new Error("handler broke");
+    });
+    expect((await post("/control/v1/status")).status).toBe(500);
+    expect(log.mock.calls.at(-1)?.[0]).toContain("handler broke");
+    expect((await post("/hook")).status).toBe(204);
   });
 });

@@ -8,12 +8,18 @@
  * learns a port and every hook script exits 0 without posting — the rail then
  * falls back to the process table and OSC, drawn as inferred.
  *
+ * The same listener serves the in-pane `deck` command: a request under `/control/` is handed
+ * whole to the optional `control` handler (`electron/control/`), which does its own
+ * authorization. Without one, those paths fall through to the hook validator's 404, so a
+ * build with the `agentControl` switch off answers them as it always did.
+ *
  * Every decision about a request is `hook-request.ts`'s, tested on its own;
  * this file only wires those decisions to `node:http` and to the generation
  * check that drops a post from a pane's previous occupant.
  */
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { CONTROL_PATH_PREFIX } from "../control/control-auth";
 import {
   hookAgentOfUrl,
   hookMaxBodyBytes,
@@ -37,6 +43,11 @@ export interface HookEventPayload {
   readonly receivedAt: number;
 }
 
+/** Answers every request whose path starts with `/control/`; it owns that request's whole life. */
+export interface ControlHandler {
+  handle(request: http.IncomingMessage, response: http.ServerResponse): Promise<void>;
+}
+
 export interface HookServerDeps {
   /** The pane's token, or null when the pane is not live. */
   readonly tokenFor: (paneId: number) => string | null;
@@ -44,6 +55,8 @@ export interface HookServerDeps {
   readonly ttyFor: (paneId: number) => string | null;
   /** Deliver to the window that owns the pane. */
   readonly emitToOwner: (paneId: number, payload: HookEventPayload) => void;
+  /** The control routes of the in-pane `deck` command; absent while the switch is off. */
+  readonly control?: ControlHandler;
   readonly now?: () => number;
   readonly log?: (message: string) => void;
 }
@@ -96,6 +109,22 @@ export function createHookServer(deps: HookServerDeps): HookServer {
   }
 
   function handle(request: http.IncomingMessage, response: http.ServerResponse): void {
+    const control = deps.control;
+    if (
+      control !== undefined &&
+      (request.url ?? "").split("?")[0].startsWith(CONTROL_PATH_PREFIX)
+    ) {
+      control.handle(request, response).catch((error: unknown) => {
+        // The handler answers its own failures; this is the last line, so a rejection can never
+        // surface as an unhandled one in main.
+        log(`Deck: a control request failed: ${String(error)}`);
+        if (!response.headersSent) {
+          response.statusCode = 500;
+        }
+        response.end();
+      });
+      return;
+    }
     const head = validateHookHead(
       { method: request.method, url: request.url, headers: request.headers },
       deps.tokenFor,

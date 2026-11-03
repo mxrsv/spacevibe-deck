@@ -66,3 +66,10 @@ describe("temporary release switches", () => {
     ).toBe(false);
   });
 });
+
+describe("the shipped switch table", () => {
+  it("keeps agentControl dark in a release and lit in development", () => {
+    expect(isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(false))).toBe(false);
+    expect(isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(true))).toBe(true);
+  });
+});

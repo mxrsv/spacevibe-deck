@@ -7,6 +7,10 @@
  * pane that is mid-startup, or a wrapper already running, keeps the inode it
  * opened; nobody ever reads a half-written script.
  *
+ * With the `agentControl` switch on, the in-pane `deck` command is written beside the wrappers
+ * (spec 2026-11-03-agent-orchestration, ORC1). With it off nothing is written, and a `deck` an
+ * earlier development run left behind is removed so a release build never serves a stale one.
+ *
  * A failure answers null: panes then start `$SHELL -l` as they did before, and
  * the wrappers are simply absent. It never stops Deck from booting.
  */
@@ -14,6 +18,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { WRAPPED_AGENTS, agentWrapperSource, type WrapperOptions } from "./agent-wrappers";
+import { DECK_CLI_FILE, deckCliSource } from "./deck-cli";
 import { OPENCODE_PLUGIN_FILE, opencodePluginSource } from "./opencode-plugin";
 import {
   agentShellPaths,
@@ -82,12 +87,19 @@ export function wrapperOptions(userDataDir: string): WrapperOptions {
   };
 }
 
+export interface ProvisionOptions {
+  /** Write the in-pane `deck` command (the `agentControl` switch, resolved by main). */
+  readonly agentControl?: boolean;
+}
+
 export async function provisionAgentShell(
   userDataDir: string,
   log: (message: string, error: unknown) => void = console.warn,
   env: NodeJS.ProcessEnv = process.env,
+  options: ProvisionOptions = {},
 ): Promise<AgentShellPaths | null> {
   const paths = agentShellPaths(userDataDir);
+  const deckCli = path.join(paths.binDir, DECK_CLI_FILE);
   try {
     await Promise.all([
       ...WRAPPED_AGENTS.map((agent) =>
@@ -97,6 +109,9 @@ export async function provisionAgentShell(
           SCRIPT_MODE,
         ),
       ),
+      ...(options.agentControl === true
+        ? [writeAtomic(deckCli, deckCliSource(), SCRIPT_MODE)]
+        : []),
       writeAtomic(
         path.join(opencodeConfigDir(userDataDir), "plugin", OPENCODE_PLUGIN_FILE),
         opencodePluginSource(),
@@ -110,6 +125,13 @@ export async function provisionAgentShell(
   } catch (error) {
     log("Deck: the agent wrappers could not be written; panes start a plain login shell.", error);
     return null;
+  }
+  if (options.agentControl !== true) {
+    // Apart from the writes above, like the link below: a stale file we cannot remove must not
+    // take the wrappers down with it. `force` makes a file that is already absent a success.
+    await fs.rm(deckCli, { force: true }).catch((error: unknown) => {
+      log("Deck: a stale deck command could not be removed from the agent-shell bin.", error);
+    });
   }
   // Apart from the writes above: a failed link costs opencode its global AGENTS.md, never
   // every agent its wrapper. Windows panes get no wrappers, and a symlink needs privilege there.

@@ -20,6 +20,8 @@ export const RELEASE_SWITCHES = Object.freeze({
   agentDock: { enabled: false, createdOn: "2026-10-24" },
   /** The flush stage replaces the card panes: breadcrumb bar, pane identity header (LAY-5, LAY-10). */
   shellStage: { enabled: false, createdOn: "2026-10-25" },
+  /** The in-pane `deck` command and its control routes (spec 2026-11-03-agent-orchestration). */
+  agentControl: { enabled: false, createdOn: "2026-11-03" },
 } satisfies ReleaseSwitchDefinitions);
 export type ReleaseSwitchId = keyof typeof RELEASE_SWITCHES;
 

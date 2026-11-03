@@ -13,6 +13,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { WRAPPED_AGENTS, agentWrapperSource } from "./agent-wrappers";
+import { DECK_CLI_FILE, deckCliSource } from "./deck-cli";
 import { OPENCODE_PLUGIN_FILE, opencodePluginSource } from "./opencode-plugin";
 import { provisionAgentShell, userOpencodeInstructions, wrapperOptions } from "./provision";
 import { opencodeConfigDir } from "./shell-bootstrap";
@@ -105,5 +106,51 @@ describe.skipIf(process.platform === "win32")("the opencode global AGENTS.md lin
     expect(paths).not.toBeNull();
     expect(log).toHaveBeenCalledTimes(1);
     expect(lstatSync(linkIn(userData)).isDirectory()).toBe(true);
+  });
+});
+
+describe("provisionAgentShell — the deck command", () => {
+  const deckIn = (binDir: string) => path.join(binDir, DECK_CLI_FILE);
+
+  it("writes an executable deck beside the wrappers when agent control is on", async () => {
+    const userData = path.join(ROOT, "control-on");
+    const paths = await provisionAgentShell(userData, vi.fn(), process.env, {
+      agentControl: true,
+    });
+    expect(readFileSync(deckIn(paths!.binDir), "utf8")).toBe(deckCliSource());
+    if (process.platform !== "win32") {
+      expect(statSync(deckIn(paths!.binDir)).mode & 0o777).toBe(0o755);
+    }
+    expect(readdirSync(paths!.binDir).sort()).toEqual([...WRAPPED_AGENTS, DECK_CLI_FILE].sort());
+  });
+
+  it("writes nothing when agent control is off, which is the default", async () => {
+    const userData = path.join(ROOT, "control-off");
+    const paths = await provisionAgentShell(userData);
+    expect(readdirSync(paths!.binDir).sort()).toEqual([...WRAPPED_AGENTS].sort());
+    const explicit = await provisionAgentShell(userData, vi.fn(), process.env, {
+      agentControl: false,
+    });
+    expect(readdirSync(explicit!.binDir)).not.toContain(DECK_CLI_FILE);
+  });
+
+  it("removes a deck an earlier run left behind once the switch is off", async () => {
+    const userData = path.join(ROOT, "control-stale");
+    const on = await provisionAgentShell(userData, vi.fn(), process.env, { agentControl: true });
+    expect(readdirSync(on!.binDir)).toContain(DECK_CLI_FILE);
+    const off = await provisionAgentShell(userData);
+    expect(readdirSync(off!.binDir)).not.toContain(DECK_CLI_FILE);
+  });
+
+  it("keeps the wrappers and reports it when a stale deck cannot be removed", async () => {
+    const userData = path.join(ROOT, "control-stuck");
+    const binDir = path.join(userData, "agent-shell", "bin");
+    // A directory named deck is something `rm` without `recursive` refuses to delete.
+    mkdirSync(path.join(deckIn(binDir), "occupied"), { recursive: true });
+    const log = vi.fn();
+    const paths = await provisionAgentShell(userData, log);
+    expect(paths).not.toBeNull();
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(readdirSync(binDir)).toContain("claude");
   });
 });

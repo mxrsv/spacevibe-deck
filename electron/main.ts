@@ -79,6 +79,9 @@ import { provisionAgentShell } from "./agent-shell/provision";
 import { bootstrapLaunch, type AgentShellPaths } from "./agent-shell/shell-bootstrap";
 import { createCodexCapabilities } from "./agent-shell/codex-capabilities";
 import { hooksSupported } from "./agent-hooks/hooks-supported";
+import { createControlRouter } from "./control/control-routes";
+import { addWorktree } from "./git/worktree";
+import { isReleaseSwitchEnabled, resolveReleaseSwitches } from "../src/lib/release-switches";
 import { installAppImagePolicy } from "./app-image-policy";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
@@ -187,9 +190,29 @@ const browserPanels = new BrowserPanels({
 // delivers through the coordinator, so an event reaches the window that owns
 // the pane and no other. Created BEFORE the PTY
 // manager because every shell learns the endpoint's port at spawn.
+//
+// The same listener carries the in-pane `deck` command's `/control/v1/*` routes
+// (spec 2026-11-03-agent-orchestration). They are mounted, and the command
+// written next to the wrappers, only while the `agentControl` switch is on and
+// the host runs hooks at all; a Deck without the switch answers `/control/`
+// with the 404 any unknown path gets.
+const agentControl =
+  hooksSupported() &&
+  isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(!app.isPackaged));
+const controlRouter = agentControl
+  ? createControlRouter({
+      tokenFor: (paneId) => pty.hookTokenOf(paneId),
+      ttyFor: (paneId) => pty.ttyNameOf(paneId),
+      version: () => app.getVersion(),
+      windowOf: (paneId) => coordinator.owner(paneId),
+      addWorktree,
+      log: (message) => console.warn(message),
+    })
+  : null;
 const hookServer = createHookServer({
   tokenFor: (paneId) => pty.hookTokenOf(paneId),
   ttyFor: (paneId) => pty.ttyNameOf(paneId),
+  ...(controlRouter === null ? {} : { control: controlRouter }),
   emitToOwner: (paneId, payload) => {
     const integration =
       payload.agent === "codex"
@@ -237,6 +260,7 @@ const pty = new PtyManager({
     coordinator.unregister(paneId);
     // A pane's generation dies with its PTY.
     hookServer.forgetPane(paneId);
+    controlRouter?.forgetPane(paneId);
   },
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
   hookPort: () => hookServer.port(),
@@ -749,7 +773,9 @@ app.whenReady().then(async () => {
   // hook script. Registration failure keeps registry-based discovery available.
   await hookServer.listen();
   // Same reason: the wrappers must exist before any pane's shell asks for them.
-  agentShell = await provisionAgentShell(app.getPath("userData"));
+  agentShell = await provisionAgentShell(app.getPath("userData"), undefined, undefined, {
+    agentControl,
+  });
   // Read the stored rebinds BEFORE the first window exists. `createWindow`
   // rebuilds the menu itself, so resolving afterwards would install the
   // shipped accelerators first and correct them a moment later — a window in

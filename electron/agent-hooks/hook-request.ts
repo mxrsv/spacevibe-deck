@@ -37,6 +37,8 @@ export const HEADER_PANE = "x-deck-pane";
 export const HEADER_TOKEN = "x-deck-token";
 /** The tty of the `codex` process that ran the hook; see `validateHookHead`. */
 export const HEADER_TTY = "x-deck-tty";
+/** A pane id as the `X-Deck-Pane` header and `DECK_PANE_ID` write it: no sign, no leading zero. */
+export const PANE_ID_PATTERN = /^[1-9][0-9]{0,9}$/;
 
 /** The Codex events Deck registers, and the two that are session-scoped and carry no `turn_id`. */
 const CODEX_EVENTS = [
@@ -117,7 +119,7 @@ export type HookRefusal =
   | { readonly ok: false; readonly status: 404 | 405 | 400 | 403 | 413; readonly reason: string }
   | { readonly ok: true; readonly paneId: number };
 
-function headerValue(headers: HookRequestHead["headers"], name: string): string | undefined {
+export function headerValue(headers: HookRequestHead["headers"], name: string): string | undefined {
   const value = headers[name];
   return Array.isArray(value) ? value[0] : value;
 }
@@ -139,7 +141,7 @@ export function validateHookHead(
     return { ok: false, status: 405, reason: "method" };
   }
   const paneHeader = headerValue(head.headers, HEADER_PANE) ?? "";
-  const paneId = /^[1-9][0-9]{0,9}$/.test(paneHeader) ? Number(paneHeader) : null;
+  const paneId = PANE_ID_PATTERN.test(paneHeader) ? Number(paneHeader) : null;
   if (paneId === null) {
     return { ok: false, status: 400, reason: "pane header" };
   }
