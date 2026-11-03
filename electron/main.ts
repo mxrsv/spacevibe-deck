@@ -80,6 +80,8 @@ import { bootstrapLaunch, type AgentShellPaths } from "./agent-shell/shell-boots
 import { createCodexCapabilities } from "./agent-shell/codex-capabilities";
 import { hooksSupported } from "./agent-hooks/hooks-supported";
 import { createControlRouter } from "./control/control-routes";
+import { createPaneMirror } from "./control/pane-mirror";
+import { registerControl } from "./ipc/register-control";
 import { addWorktree } from "./git/worktree";
 import { isReleaseSwitchEnabled, resolveReleaseSwitches } from "../src/lib/release-switches";
 import { installAppImagePolicy } from "./app-image-policy";
@@ -199,6 +201,9 @@ const browserPanels = new BrowserPanels({
 const agentControl =
   hooksSupported() &&
   isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(!app.isPackaged));
+// The renderer reports every pane's phase and attention here whether or not the switch is on
+// (a report is cheap); only the control router reads it.
+const paneMirror = createPaneMirror({ now: () => Date.now() });
 const controlRouter = agentControl
   ? createControlRouter({
       tokenFor: (paneId) => pty.hookTokenOf(paneId),
@@ -206,6 +211,11 @@ const controlRouter = agentControl
       version: () => app.getVersion(),
       windowOf: (paneId) => coordinator.owner(paneId),
       addWorktree,
+      mirror: paneMirror,
+      panesOf: (label) =>
+        pty
+          .snapshots(coordinator.panesForWindow(label))
+          .map(({ id, cwd }) => ({ paneId: id, cwd })),
       log: (message) => console.warn(message),
     })
   : null;
@@ -261,6 +271,7 @@ const pty = new PtyManager({
     // A pane's generation dies with its PTY.
     hookServer.forgetPane(paneId);
     controlRouter?.forgetPane(paneId);
+    paneMirror.forget(paneId);
   },
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
   hookPort: () => hookServer.port(),
@@ -542,6 +553,14 @@ registerAgentSignals({
       codexNoDaemon: codex.noDaemon,
     };
   },
+});
+
+// ---------------------------------------------- In-pane `deck` command
+// The phase mirror's report channel (spec 2026-11-03-agent-orchestration, ORC17).
+registerControl({
+  mirror: paneMirror,
+  labelOf,
+  assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
 });
 
 // ------------------------------------------------- Dev server discovery

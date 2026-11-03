@@ -21,6 +21,7 @@ import type { SurfaceStrip } from "./surface-strip";
 import type { RegistrySnapshot } from "../lib/agent-registry";
 import type { AgentSignalConfig } from "../host/agent-signals-host";
 import type { HookEvent } from "../lib/agent-signal-map";
+import type { PaneAttentionReport } from "../lib/pane-attention-report";
 import type { UnlistenFn } from "../host/bridge";
 
 /**
@@ -143,6 +144,12 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * built on it stays inert there. `null` disables the sync outright.
    */
   registry?: (() => Promise<RegistrySnapshot>) | null;
+  /**
+   * Where each pane's tracker state is reported for the in-pane `deck` command (spec
+   * 2026-11-03-agent-orchestration, ORC17). Defaults to `src/host/control-host.ts`, which is
+   * inert where the Electron bridge is absent; `null` turns the reports off.
+   */
+  reportPaneAttention?: ((report: PaneAttentionReport) => void) | null;
   /**
    * Test seams for the stage-2 adapters. `signalConfig` answers the launch
    * config (`--settings` file, hook port); `hookEvents` subscribes to

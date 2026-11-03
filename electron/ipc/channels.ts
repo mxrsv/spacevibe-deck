@@ -64,6 +64,12 @@ export const CHANNELS = {
   // block above; the hook endpoint itself is loopback HTTP, not IPC, and its
   // accepted posts arrive as the `hook:event` push below.
   agentSignalConfig: "agent_signal_config",
+  // The in-pane `deck` command's phase mirror (spec 2026-11-03-agent-orchestration,
+  // ORC17): the renderer reports a pane's attention snapshot whenever it changes, and
+  // `deck pane list|wait` answer from main's copy. Flat `{ paneId, phase, attention, source,
+  // confidence, agent, pid }` per R6; the closed sets live in `src/lib/pane-attention-report.ts`.
+  // Refused (answers false) for a pane the sending window does not own. Electron-only.
+  paneAttentionReport: "pane_attention_report",
   // Window label accessor, for the same restore work: no renderer accessor
   // existed before this (main derived it per-request via `labelOf(event)`
   // only). Electron-only, like the block above.

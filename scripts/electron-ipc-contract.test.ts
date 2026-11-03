@@ -238,6 +238,24 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("pane_attention_report carries the flat phase-mirror payload on both sides", () => {
+    // The in-pane `deck` command's mirror (spec 2026-11-03-agent-orchestration, ORC17),
+    // pinned the way `worktree_add` is above. The sender is the window that owns the pane,
+    // resolved in main, so no key names one.
+    const keys = ["paneId", "phase", "attention", "source", "confidence", "agent", "pid"];
+    const sites = callSites.filter((site) => site.channel === "pane_attention_report");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(keys);
+    }
+    const registered = handlers.filter((handler) => handler.channel === "pane_attention_report");
+    expect(registered.length).toBeGreaterThan(0);
+    for (const handler of registered) {
+      expect(handler.required).toEqual(keys);
+    }
+    expect(INVOKABLE_CHANNELS.has("pane_attention_report")).toBe(true);
+  });
+
   it("create_directory carries the flat { parent, name } payload on both sides", () => {
     const sites = callSites.filter((site) => site.channel === "create_directory");
     expect(sites.length).toBeGreaterThan(0);

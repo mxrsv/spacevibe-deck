@@ -16,8 +16,22 @@ import type http from "node:http";
 import path from "node:path";
 import type { WorktreeAddParams, WorktreeAddResult } from "../git/worktree";
 import { PANE_ID_PATTERN, HEADER_PANE } from "../agent-hooks/hook-request";
-import { authorizeControlHead, CONTROL_MAX_BODY_BYTES } from "./control-auth";
+import { authorizeControlHead, CONTROL_CALL_CAP_MS, CONTROL_MAX_BODY_BYTES } from "./control-auth";
 import { createOpenedBy } from "./opened-by";
+import type { PaneMirror, PaneSnapshot, WaitTarget } from "./pane-mirror";
+
+/** What `pane wait` waits for when the call names no timeout (ORC14). */
+const DEFAULT_WAIT_SECONDS = 600;
+const MAX_WAIT_SECONDS = 3600;
+const WAIT_TARGETS: readonly WaitTarget[] = ["idle", "needs-you", "exited", "turn"];
+const TIMEOUT_PATTERN = /^[1-9][0-9]{0,3}$/;
+/** A value printed into a terminal: control characters, escape sequences included, become `?`. */
+const CONTROL_CHARACTERS = /\p{Cc}/gu;
+
+export interface ControlPane {
+  readonly paneId: number;
+  readonly cwd: string | null;
+}
 
 export interface ControlRouterDeps {
   /** The pane's token, or null when the pane is not live. */
@@ -28,6 +42,10 @@ export interface ControlRouterDeps {
   /** The label of the window that owns the pane, or null while it is being transferred. */
   readonly windowOf: (paneId: number) => string | null;
   readonly addWorktree: (params: WorktreeAddParams) => Promise<WorktreeAddResult>;
+  /** The renderer's reports of each pane's phase and attention (ORC17). */
+  readonly mirror: PaneMirror;
+  /** The live panes of a window with their working directories, read in main. */
+  readonly panesOf: (window: string) => readonly ControlPane[];
   /** Refusals are logged with the pane id and a reason, never the token. */
   readonly log: (message: string) => void;
 }
@@ -36,6 +54,14 @@ export interface ControlRouter {
   handle(request: http.IncomingMessage, response: http.ServerResponse): Promise<void>;
   /** Forget what the router knows about a pane once its PTY is gone. */
   forgetPane(paneId: number): void;
+  /** Record that `openerPaneId` opened `childPaneId` (ORC6), which puts the child in its scope. */
+  recordOpened(childPaneId: number, openerPaneId: number): void;
+  /**
+   * Note that text is about to be sent to a pane (ORC15). Call it BEFORE the paste: from then
+   * on a `wait` on that pane ignores the state that preceded the send and needs a turn that
+   * started after it.
+   */
+  markSent(paneId: number): void;
 }
 
 type ControlJson = { readonly ok: boolean } & Readonly<Record<string, unknown>>;
@@ -49,17 +75,17 @@ interface Reply {
 interface CommandContext {
   readonly paneId: number;
   readonly args: URLSearchParams;
+  /** Aborts when the caller hangs up before the reply, so a held call lets go of its timers. */
+  readonly signal: AbortSignal;
 }
 
 type Command = (context: CommandContext) => Reply | Promise<Reply>;
 
 /** Commands the spec names that a later slice builds; they answer `not-implemented` until then. */
 const PLANNED_COMMANDS: ReadonlySet<string> = new Set([
-  "pane/list",
   "pane/open",
   "pane/send",
   "pane/read",
-  "pane/wait",
   "pane/close",
   "skill/orchestrate",
 ]);
@@ -79,6 +105,36 @@ function failure(status: number, error: string, text: string): Reply {
 /** `a/b` becomes `a-b`; a branch is a path of refs, a folder name is one segment. */
 function folderOfBranch(branch: string): string {
   return branch.replace(/\//g, "-");
+}
+
+function printable(value: string): string {
+  return value.replace(CONTROL_CHARACTERS, "?");
+}
+
+/** What a caller reads of a pane's state; a pane main has no report for reads as unknown. */
+function stateFields(state: PaneSnapshot | null) {
+  return {
+    phase: state?.phase ?? "unknown",
+    attention: state?.attention ?? "none",
+    confidence: state?.confidence ?? "unknown",
+    agent: state?.agent ?? null,
+  } as const;
+}
+
+function stateText(fields: ReturnType<typeof stateFields>): string {
+  return `${fields.phase}, attention ${fields.attention}, confidence ${fields.confidence}`;
+}
+
+/** Pad every column but the last to its widest cell, so a pane per line reads as a table. */
+function alignedRows(rows: ReadonlyArray<readonly string[]>): string {
+  const widths = rows[0].map((_cell, column) => Math.max(...rows.map((row) => row[column].length)));
+  return rows
+    .map((row) =>
+      row
+        .map((cell, column) => (column === row.length - 1 ? cell : cell.padEnd(widths[column])))
+        .join("  "),
+    )
+    .join("\n");
 }
 
 async function readBody(
@@ -133,6 +189,8 @@ function claimedPane(request: http.IncomingMessage): string {
 
 export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
   const openedBy = createOpenedBy();
+  /** The pane's report revision at its latest send; a `wait` needs a turn that began after it. */
+  const sentAtRevision = new Map<number, number>();
 
   const refused = (request: http.IncomingMessage, paneId: number | null, reason: string) =>
     deps.log(
@@ -143,15 +201,97 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     status: ({ paneId }) => {
       const version = deps.version();
       const window = deps.windowOf(paneId);
+      // ORC8: only an agent pane with a known agent may open other panes.
+      const canOpen = (deps.mirror.get(paneId)?.agent ?? null) !== null;
       return {
         status: 200,
-        json: { ok: true, version, paneId, window, switch: "on" },
+        json: { ok: true, version, paneId, window, switch: "on", canOpen },
         text: [
           `Deck ${version}`,
           `pane ${paneId} in window ${window ?? "none"}`,
           "agent control: on",
+          `can open panes: ${canOpen ? "yes" : "no"}`,
         ].join("\n"),
       };
+    },
+    "pane/list": ({ paneId }) => {
+      const window = deps.windowOf(paneId);
+      const panes = (window === null ? [] : [...deps.panesOf(window)])
+        .sort((a, b) => a.paneId - b.paneId)
+        .map((pane) => {
+          const fields = stateFields(deps.mirror.get(pane.paneId));
+          return {
+            paneId: pane.paneId,
+            agent: fields.agent ?? "shell",
+            phase: fields.phase,
+            attention: fields.attention,
+            confidence: fields.confidence,
+            cwd: pane.cwd,
+            mine: openedBy.openedBy(paneId, pane.paneId),
+          };
+        });
+      const text =
+        panes.length === 0
+          ? "deck: no panes in this window"
+          : alignedRows(
+              panes.map((pane) => [
+                String(pane.paneId),
+                printable(pane.agent),
+                pane.phase,
+                pane.attention,
+                pane.confidence,
+                pane.mine ? "mine" : "-",
+                pane.cwd === null ? "-" : printable(pane.cwd),
+              ]),
+            );
+      return { status: 200, json: { ok: true, panes }, text };
+    },
+    "pane/wait": async ({ paneId: caller, args, signal }) => {
+      const id = args.get("id") ?? "";
+      if (!PANE_ID_PATTERN.test(id)) return usage("pane id must be a positive number");
+      const target = WAIT_TARGETS.find((candidate) => candidate === args.get("for"));
+      if (target === undefined) return usage("--for must be idle, needs-you, exited or turn");
+      const asked = args.get("timeout") ?? String(DEFAULT_WAIT_SECONDS);
+      if (!TIMEOUT_PATTERN.test(asked) || Number(asked) > MAX_WAIT_SECONDS) {
+        return usage(`--timeout must be a number of seconds from 1 to ${MAX_WAIT_SECONDS}`);
+      }
+      const targetPane = Number(id);
+      // The same answer as a pane that does not exist (ORC6): a worker learns nothing of panes
+      // it did not open.
+      if (!openedBy.mayAct(caller, targetPane, "wait"))
+        return failure(403, "forbidden", "no such pane");
+      const remainingMs = Number(asked) * 1000;
+      const afterRevision = sentAtRevision.get(targetPane);
+      const result = await deps.mirror.wait(targetPane, target, {
+        capMs: Math.min(remainingMs, CONTROL_CALL_CAP_MS),
+        ...(afterRevision === undefined ? {} : { afterRevision }),
+        signal,
+      });
+      if (result.reached) {
+        const fields = stateFields(result.state);
+        return {
+          status: 200,
+          json: { ok: true, reached: true, ...fields },
+          text: `pane ${targetPane}: ${stateText(fields)}`,
+        };
+      }
+      switch (result.reason) {
+        case "no-turn": {
+          const fields = stateFields(deps.mirror.get(targetPane));
+          return {
+            status: 200,
+            json: { ok: true, reached: false, reason: "no-turn", ...fields },
+            text: `pane ${targetPane}: no turn started after the send; ${stateText(fields)}`,
+          };
+        }
+        case "gone":
+          return failure(422, "pane-gone", `pane ${targetPane} is gone`);
+        case "cap":
+          // The shim asks again with what is left; only the last slice may time out.
+          return remainingMs > CONTROL_CALL_CAP_MS
+            ? { status: 202, json: { ok: false, pending: true }, text: "deck: still waiting" }
+            : failure(408, "timeout", `timed out waiting for pane ${targetPane}`);
+      }
     },
     "worktree/create": async ({ args }) => {
       const repo = args.get("repo") ?? "";
@@ -218,8 +358,17 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
       );
       return;
     }
-    const reply = await command({ paneId: head.paneId, args });
+    // A `wait` holds the call for up to a minute; a caller that hangs up (Ctrl+C in the pane)
+    // must not leave its timers and waiter behind.
+    const hangup = new AbortController();
+    response.once("close", () => {
+      if (!response.writableFinished) hangup.abort();
+    });
+    const reply = await command({ paneId: head.paneId, args, signal: hangup.signal });
+    if (hangup.signal.aborted) return;
     if (reply.status === 400) refused(request, head.paneId, "usage");
+    // A scope refusal reads like a missing pane to the caller; the log keeps the difference.
+    if (reply.status === 403) refused(request, head.paneId, "outside the caller's scope");
     sendReply(response, reply, json);
   }
 
@@ -238,6 +387,13 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     },
     forgetPane(paneId) {
       openedBy.forget(paneId);
+      sentAtRevision.delete(paneId);
+    },
+    recordOpened(childPaneId, openerPaneId) {
+      openedBy.record(childPaneId, openerPaneId);
+    },
+    markSent(paneId) {
+      sentAtRevision.set(paneId, deps.mirror.revisionOf(paneId));
     },
   };
 }

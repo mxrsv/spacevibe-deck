@@ -48,6 +48,8 @@ import { countAgentLaunch } from "../telemetry/usage-counters";
 import { createAgentRegistrySync } from "./agent-registry-sync";
 import { agentRegistry as fetchAgentRegistry } from "../host/agent-registry-host";
 import { UNAVAILABLE_REGISTRY } from "../lib/agent-registry";
+import { reportPaneAttention } from "../host/control-host";
+import { createPaneAttentionReporter } from "./pane-attention-reporter";
 import { augmentLaunchCommand } from "../lib/launch-augment";
 import { commandAgentId } from "../lib/launch-profile";
 import {
@@ -250,6 +252,15 @@ export function createTabManager(
   // every input passes a process gate: activity and signals only count once a
   // poll has recognised the pane's foreground process as an agent.
   const tracker = createAgentAttentionTracker({ now });
+  // Main's copy of each pane's tracker state, for the in-pane `deck` command (ORC17). `null`
+  // is a test seam that turns the reports off; absent = the host facade, which is inert
+  // wherever the Electron bridge is not (the browser preview).
+  const sendPaneReport =
+    deps.reportPaneAttention === undefined ? reportPaneAttention : deps.reportPaneAttention;
+  const paneReporter = createPaneAttentionReporter({
+    send: (report) => sendPaneReport?.(report),
+    now,
+  });
   // Injected notifier wins (tests); production default reads the setting and
   // window focus LIVE (function seams, not captured values) and sends
   // through Task 20's permission-guarded Tauri adapter.
@@ -632,6 +643,21 @@ export function createTabManager(
       );
     });
     activeTabIndex.value = active;
+    // Every path that changes the tracker ends here, so this one call keeps main's mirror
+    // current; the reporter sends only what changed.
+    paneReporter.sync(
+      live.map((id) => {
+        const info = poller.infoFor(id);
+        const agent = explicitAgent(info);
+        const pid = info?.processId;
+        return {
+          paneId: id,
+          snapshot: tracker.snapshot(id),
+          agent,
+          pid: typeof pid === "number" && Number.isSafeInteger(pid) && pid > 0 ? pid : null,
+        };
+      }),
+    );
     const manager = activeManager();
     const paneId = manager?.activePaneId() ?? null;
     const info = paneId === null ? undefined : poller.infoFor(paneId);
