@@ -61,7 +61,8 @@
   min-width: 0;
   box-sizing: border-box;
   padding: 0 4px 0 8px;
-  border-bottom: 1px solid var(--hair);
+  /* CMP-14: a background step closes the header where a line used to. */
+  background: var(--chrome-1);
 }
 
 .diff-column__head .changes-row__mark {
@@ -104,7 +105,7 @@
 .diff-column__btn[aria-disabled="true"],
 .diff-column__btn[aria-disabled="true"]:hover {
   background: transparent;
-  color: var(--text-faint);
+  opacity: 0.5;
   cursor: default;
 }
 
