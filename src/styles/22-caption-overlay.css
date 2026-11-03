@@ -25,7 +25,7 @@
    yields 0 here and reserves nothing on that side; Deck has no such layout.
 
    HOW EACH OCCUPANT RESERVES. `padding-right`, never `right:`, so a row's
-   bottom hairline still runs the full width. Each value is the occupant's
+   background still runs the full width. Each value is the occupant's
    own right padding (restated, since it is a shorthand there) plus the
    footprint. Where the reserved box is padding of a drag surface (the strip,
    the tab bar, the Settings head) it stays draggable, which is correct: the

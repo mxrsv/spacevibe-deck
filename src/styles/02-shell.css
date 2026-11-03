@@ -12,7 +12,7 @@
   grid-template-rows: var(--frame-h) 1fr var(--status-h);
   color: var(--text-primary);
   font-family: var(--ui-font);
-  font-size: 13px;
+  font-size: var(--type-body);
   background: var(--bg);
 }
 
@@ -117,14 +117,17 @@
   font: 400 var(--type-meta) / 1 var(--ui-font);
 }
 
-/* DL-2.1: the local-build badge follows the theme's accent tokens. */
+/* CMP-6: a badge is 20 high, a pill, read only, and neutral (CMP-19 rule 8). */
 .sidebar-brand__dev {
+  display: inline-flex;
   flex: none;
-  padding: 3px 5px;
-  border-radius: var(--radius-tight);
-  background: var(--accent);
-  color: var(--bg);
-  font: 700 var(--type-micro) / 1 var(--ui-font);
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font: 600 var(--type-micro) / 1 var(--ui-font);
 }
 
 /* DL-27.14: keep the launcher above the project scrollport. */
@@ -147,7 +150,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 6px;
-  border: 1px solid var(--hair-strong);
+  border: 1px solid var(--control-frame);
   border-radius: var(--radius-tab);
   background: transparent;
   color: var(--text-muted);
@@ -158,15 +161,16 @@
     color var(--duration) var(--ease);
 }
 
-.sidebar-new:hover {
+.sidebar-new:hover,
+.sidebar-new:focus-visible {
+  border-color: var(--control-frame-hover);
   background: var(--state-hover-bg);
   color: var(--text-primary);
   cursor: grab;
 }
 
 .sidebar-new:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
 }
 
 /* DL-18.3: the stage runs from the top of the window to the status bar with no
@@ -229,7 +233,7 @@
 }
 
 /* DL-18.9, amended 2026-08-19: at rest the target paints nothing, but hovering
-   it — or dragging it — lights the seam it sits on in the accent, as a pane
+   it — or dragging it — lights the seam it sits on, as a pane
    split divider has always done (`.split__divider:hover`). A drag target
    that gives no feedback until the column moves is a target the user finds by
    guessing; this is the app's existing answer to that, applied to the other
@@ -255,14 +259,11 @@
   transition: background var(--duration) var(--ease);
 }
 
-/* Full `--accent`, and since 2026-09-18 the pane split divider matches it
-   (`06-stage-panes.css`). The 60% mix the split used to take was justified by
-   a difference that no longer exists — "a split sits between two terminals on
-   `--bg`, this seam has chrome on one side" — because both are now a 4px
-   chrome gutter between two `--bg` cards. One idiom, one value. */
+/* A neutral frame step, not the accent: a handle is not a link or a state role
+   (CMP-19). The pane split divider matches it (`06-stage-panes.css`). */
 .sidebar-grip:hover::after,
 .sidebar-grip.is-dragging::after {
-  background: var(--accent);
+  background: var(--control-frame);
 }
 
 /* Hidden means hidden (DL-18.9, revised 2026-08-16): the column goes to zero,
@@ -318,8 +319,8 @@
 .wsitem {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 6px 7px 9px;
+  gap: 8px;
+  padding: 6px 6px 6px 8px;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
@@ -335,9 +336,11 @@
    selection below it on purpose. The reviewed direction gave this row and
    `.is-active` one declaration, so hovering an unselected repository painted
    "this one is open". */
-.wsitem:hover {
+.wsitem:hover,
+.wsitem:focus-visible {
   color: var(--text-primary);
   background: var(--state-hover-bg);
+  outline: none;
 }
 
 .wsitem.is-active {
@@ -412,7 +415,7 @@
    does not get flipped to the far end of the line. */
 .wsitem__path {
   font-family: var(--ui-font);
-  font-size: var(--type-micro);
+  font-size: var(--type-meta);
   color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -422,12 +425,12 @@
 }
 
 .wsitem__close {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   border: none;
   padding: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-tight);
   display: grid;
   place-items: center;
   opacity: 0;
@@ -443,11 +446,14 @@
 }
 
 .wsitem:hover .wsitem__close,
-.wsitem.is-active .wsitem__close {
+.wsitem.is-active .wsitem__close,
+.wsitem__close:focus-visible {
   opacity: 1;
 }
 
-.wsitem__close:hover {
+.wsitem__close:hover,
+.wsitem__close:focus-visible {
+  outline: none;
   background: color-mix(in srgb, var(--red) 22%, transparent);
   color: var(--red);
 }
@@ -455,9 +461,9 @@
 .wsbar__add {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   margin-top: 2px;
-  padding: 7px 6px 7px 9px;
+  padding: 6px 6px 6px 8px;
   border: none;
   border-radius: var(--radius-tab);
   background: transparent;
@@ -471,7 +477,9 @@
     color var(--duration) var(--ease);
 }
 
-.wsbar__add:hover {
+.wsbar__add:hover,
+.wsbar__add:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }

@@ -35,7 +35,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 5px 6px;
+  padding: 6px;
   border: none;
   border-radius: var(--radius-tab);
   background: transparent;
@@ -48,7 +48,10 @@
 }
 
 .repogroup__toggle:hover,
-.repogroup__action:hover {
+.repogroup__toggle:focus-visible,
+.repogroup__action:hover,
+.repogroup__action:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
 }
 
@@ -93,7 +96,8 @@
   opacity: 1;
 }
 
-.repogroup__action:hover {
+.repogroup__action:hover,
+.repogroup__action:focus-visible {
   color: var(--text-primary);
 }
 
@@ -166,9 +170,10 @@ button.wsitem__state::after {
   border-radius: 50%;
 }
 
+/* No hover of its own, so focus fills the ring: it keeps the state colour. */
 button.wsitem__state:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline: none;
+  background: currentColor;
 }
 
 /* The badge must not be eaten by the name's ellipsis, so the label becomes a
@@ -188,21 +193,24 @@ button.wsitem__state:focus-visible {
   white-space: nowrap;
 }
 
-/* DL-4.3: lowercase, like every other chrome label. */
+/* CMP-6: a read-only pill, 20 high. DL-4.3: lowercase, like every other chrome label. */
 .wsitem__badge {
+  display: inline-flex;
   flex-shrink: 0;
-  padding: 0 5px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
-  color: var(--text-faint);
-  font-size: 9.5px;
-  line-height: 1.5;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: var(--type-meta);
+  line-height: 1;
 }
 
 /* One focusable agent mark per terminal tab. DL-14.6 permits real product
    marks here; declared/shell tabs use the deterministic letter treatment.
    Three marks are the row-width budget. Unlike the former overlapping
-   identity readout, every 26px control is a reliable click target that focuses
+   identity readout, every 24px control is a reliable click target that focuses
    its exact tab; +N exposes the remaining tabs without growing the row. */
 .worktree-agents {
   position: relative;
@@ -215,41 +223,35 @@ button.wsitem__state:focus-visible {
 
 .worktree-agents__item {
   display: grid;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   padding: 0;
   place-items: center;
   box-sizing: border-box;
-  border: 1px solid transparent;
+  border: none;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    border-color var(--duration) var(--ease),
     background var(--duration) var(--ease),
     color var(--duration) var(--ease);
 }
 
 .worktree-agents__item:hover,
+.worktree-agents__item:focus-visible,
 .worktree-agents__more:hover,
+.worktree-agents__more:focus-visible,
 .worktree-agents__more.is-open {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
 .worktree-agents__item.is-active {
-  border-color: color-mix(in srgb, var(--accent) 62%, transparent);
   background: var(--tab-active-bg);
   color: var(--text-primary);
-}
-
-.worktree-agents__item:focus-visible,
-.worktree-agents__more:focus-visible,
-.worktree-agents__menu-item:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 1px;
 }
 
 .worktree-agents__logo {
@@ -265,25 +267,25 @@ button.wsitem__state:focus-visible {
   height: 16px;
   place-items: center;
   border-radius: 50%;
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 650;
   line-height: 1;
 }
 
 .worktree-agents__more {
   display: grid;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   padding: 0;
   place-items: center;
   box-sizing: border-box;
-  border: 1px solid transparent;
+  border: none;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: 9px;
+  font-size: var(--type-meta);
   font-weight: 650;
   line-height: 1;
   cursor: pointer;
@@ -299,7 +301,7 @@ button.wsitem__state:focus-visible {
   bottom: calc(100% + 6px);
   display: flex;
   width: 172px;
-  padding: 5px;
+  padding: 4px;
   flex-direction: column;
   gap: 2px;
   border: 1px solid var(--hair);
@@ -311,8 +313,8 @@ button.wsitem__state:focus-visible {
 .worktree-agents__menu-item {
   display: flex;
   min-width: 0;
-  height: 30px;
-  padding: 2px 7px;
+  height: 28px;
+  padding: 2px 8px;
   align-items: center;
   gap: 8px;
   border: none;
@@ -325,7 +327,9 @@ button.wsitem__state:focus-visible {
   cursor: pointer;
 }
 
-.worktree-agents__menu-item:hover {
+.worktree-agents__menu-item:hover,
+.worktree-agents__menu-item:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
 }
