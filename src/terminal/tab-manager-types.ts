@@ -13,7 +13,7 @@ import type { ShortcutAction } from "./keymap";
 import type { TerminalManager, TerminalManagerDeps } from "./terminal-manager";
 import type { PaneAttentionSnapshot } from "./agent-attention";
 import type { AgentNotifier } from "./agent-notifier";
-import type { InjectOutcome } from "../prompts/inject";
+import type { InjectOptions, InjectOutcome } from "../prompts/inject";
 import type { MaterializeIntent, PaneLaunchReceipt } from "./tab-materialize";
 import type { LaunchTaskOutcome, LaunchTaskResult } from "./task-prompt-send";
 import type { Settings } from "../settings/settings-schema";
@@ -22,6 +22,7 @@ import type { RegistrySnapshot } from "../lib/agent-registry";
 import type { AgentSignalConfig } from "../host/agent-signals-host";
 import type { HookEvent } from "../lib/agent-signal-map";
 import type { PaneAttentionReport } from "../lib/pane-attention-report";
+import type { ControlReplyPayload } from "../lib/control-command";
 import type { UnlistenFn } from "../host/bridge";
 
 /**
@@ -150,6 +151,15 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * inert where the Electron bridge is absent; `null` turns the reports off.
    */
   reportPaneAttention?: ((report: PaneAttentionReport) => void) | null;
+  /**
+   * Where the in-pane `deck pane open | send | read | close` commands are heard, and where each
+   * is answered (spec 2026-11-03-agent-orchestration, ORC11-13, ORC16). Both default to
+   * `src/host/control-host.ts`, which is inert where the Electron bridge is absent; `null`
+   * turns that half off. The commands act through this manager's own paths, so nothing else of
+   * it is exposed for them.
+   */
+  controlCommands?: ((handler: (payload: unknown) => void) => Promise<UnlistenFn>) | null;
+  controlReply?: ((reply: ControlReplyPayload) => void) | null;
   /**
    * Test seams for the stage-2 adapters. `signalConfig` answers the launch
    * config (`--settings` file, hook port); `hookEvents` subscribes to
@@ -317,11 +327,7 @@ export interface TabManager {
    * failed paste to `"failed"`, an overlapping attempt to `"busy"`, and an
    * unknown pane to `"no-target"`.
    */
-  injectIntoPane(
-    paneId: number,
-    text: string,
-    opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
-  ): Promise<InjectOutcome>;
+  injectIntoPane(paneId: number, text: string, opts: InjectOptions): Promise<InjectOutcome>;
   /**
    * Materialize one single-pane tab and hand its agent the first prompt
    * exactly once (task launcher design §8). `prompt` null or blank opens the

@@ -210,6 +210,7 @@ const controlRouter = agentControl
       ttyFor: (paneId) => pty.ttyNameOf(paneId),
       version: () => app.getVersion(),
       windowOf: (paneId) => coordinator.owner(paneId),
+      deliver: (paneId, event, payload) => coordinator.deliver(paneId, event, payload),
       addWorktree,
       mirror: paneMirror,
       panesOf: (label) =>
@@ -556,11 +557,16 @@ registerAgentSignals({
 });
 
 // ---------------------------------------------- In-pane `deck` command
-// The phase mirror's report channel (spec 2026-11-03-agent-orchestration, ORC17).
+// The phase mirror's report channel (ORC17) and the reply to a pushed control command
+// (spec 2026-11-03-agent-orchestration).
 registerControl({
   mirror: paneMirror,
   labelOf,
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
+  settleReply:
+    controlRouter === null
+      ? null
+      : (fromWindow, reply) => controlRouter.settleReply(fromWindow, reply),
 });
 
 // ------------------------------------------------- Dev server discovery

@@ -16,8 +16,32 @@ export interface PromptTarget {
   readonly cwd: string | null;
 }
 
-/** Result of one atomic, per-pane Prompt Board injection attempt. */
-export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target";
+/**
+ * Result of one atomic, per-pane Prompt Board injection attempt.
+ *
+ * `stale` is only given when the caller asked for the process check (`expectedProcessId`): the
+ * text was pasted, but the agent process that was there when the request was gated is gone, so
+ * Enter was withheld.
+ */
+export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target" | "stale";
+
+/** What one injection is asked to do; the two optional fields exist for the in-pane `deck` command. */
+export interface InjectOptions {
+  readonly autoSend: boolean;
+  readonly expectedAgent: string | null;
+  /**
+   * Wait this long after the paste before reading the submit gate, so the gate looks at the pane
+   * as it is just before Enter and not as it was at the paste (diff-line-comments spec DLC10).
+   * Absent = read it at once, as every older caller does.
+   */
+  readonly submitDelayMs?: number;
+  /**
+   * The agent process the request was gated on. With it, the fresh `pty_info` read before Enter
+   * must name the same process, or the outcome is `stale` and Enter is withheld. Absent = the
+   * agent name alone decides, as for every older caller.
+   */
+  readonly expectedProcessId?: number;
+}
 
 export interface SubmitGateInput {
   /** The agent captured when the popover opened. */

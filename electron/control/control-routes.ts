@@ -8,15 +8,20 @@
  * body is read cannot know which was wanted, so it is always JSON.
  *
  * Status codes are the shim's whole contract with this file: 200 done, 400 usage, 403 refused,
- * 404 unknown or not built yet, 413 oversize, 422 the command ran and failed with a closed code.
- * Commands that need the renderer or the phase mirror are listed in `PLANNED_COMMANDS` and
- * answer 404 `not-implemented` until their slice lands.
+ * 404 unknown, 409 busy, 413 oversize, 422 the command ran and failed with a closed code, 504 the
+ * window that owns a pane did not answer. `open`, `send`, `read` and `close` are in
+ * `control-pane-commands.ts`; they reach the renderer through `control-forward.ts`.
  */
 import type http from "node:http";
 import path from "node:path";
 import type { WorktreeAddParams, WorktreeAddResult } from "../git/worktree";
 import { PANE_ID_PATTERN, HEADER_PANE } from "../agent-hooks/hook-request";
+import type { ControlReplyPayload } from "../../src/lib/control-command";
 import { authorizeControlHead, CONTROL_CALL_CAP_MS, CONTROL_MAX_BODY_BYTES } from "./control-auth";
+import { createControlForwarder } from "./control-forward";
+import { createPaneCommands } from "./control-pane-commands";
+import { failure, usage, type Command, type Reply } from "./control-reply";
+import { ORCHESTRATE_SKILL } from "./orchestrate-skill";
 import { createOpenedBy } from "./opened-by";
 import type { PaneMirror, PaneSnapshot, WaitTarget } from "./pane-mirror";
 
@@ -41,6 +46,8 @@ export interface ControlRouterDeps {
   readonly version: () => string;
   /** The label of the window that owns the pane, or null while it is being transferred. */
   readonly windowOf: (paneId: number) => string | null;
+  /** Push an event to the window that owns the pane (`WindowCoordinator.deliver`). */
+  readonly deliver: (paneId: number, event: string, payload: unknown) => void;
   readonly addWorktree: (params: WorktreeAddParams) => Promise<WorktreeAddResult>;
   /** The renderer's reports of each pane's phase and attention (ORC17). */
   readonly mirror: PaneMirror;
@@ -62,44 +69,11 @@ export interface ControlRouter {
    * started after it.
    */
   markSent(paneId: number): void;
-}
-
-type ControlJson = { readonly ok: boolean } & Readonly<Record<string, unknown>>;
-
-interface Reply {
-  readonly status: number;
-  readonly json: ControlJson;
-  readonly text: string;
-}
-
-interface CommandContext {
-  readonly paneId: number;
-  readonly args: URLSearchParams;
-  /** Aborts when the caller hangs up before the reply, so a held call lets go of its timers. */
-  readonly signal: AbortSignal;
-}
-
-type Command = (context: CommandContext) => Reply | Promise<Reply>;
-
-/** Commands the spec names that a later slice builds; they answer `not-implemented` until then. */
-const PLANNED_COMMANDS: ReadonlySet<string> = new Set([
-  "pane/open",
-  "pane/send",
-  "pane/read",
-  "pane/close",
-  "skill/orchestrate",
-]);
-
-function usage(message: string): Reply {
-  return {
-    status: 400,
-    json: { ok: false, error: "usage", message },
-    text: `deck: ${message}`,
-  };
-}
-
-function failure(status: number, error: string, text: string): Reply {
-  return { status, json: { ok: false, error }, text: `deck: ${text}` };
+  /**
+   * Hand a window's `control_reply` to the request it answers. False when the request is unknown
+   * or expired, or `fromWindow` is not the window it was pushed to.
+   */
+  settleReply(fromWindow: string, reply: ControlReplyPayload): boolean;
 }
 
 /** `a/b` becomes `a-b`; a branch is a path of refs, a folder name is one segment. */
@@ -191,6 +165,14 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
   const openedBy = createOpenedBy();
   /** The pane's report revision at its latest send; a `wait` needs a turn that began after it. */
   const sentAtRevision = new Map<number, number>();
+  const forwarder = createControlForwarder({
+    deliver: deps.deliver,
+    windowOf: deps.windowOf,
+    log: deps.log,
+  });
+  const markSent = (paneId: number): void => {
+    sentAtRevision.set(paneId, deps.mirror.revisionOf(paneId));
+  };
 
   const refused = (request: http.IncomingMessage, paneId: number | null, reason: string) =>
     deps.log(
@@ -201,8 +183,8 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     status: ({ paneId }) => {
       const version = deps.version();
       const window = deps.windowOf(paneId);
-      // ORC8: only an agent pane with a known agent may open other panes.
-      const canOpen = (deps.mirror.get(paneId)?.agent ?? null) !== null;
+      // ORC8: any authenticated pane may open, as long as its window is there to open in.
+      const canOpen = window !== null;
       return {
         status: 200,
         json: { ok: true, version, paneId, window, switch: "on", canOpen },
@@ -293,6 +275,19 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
             : failure(408, "timeout", `timed out waiting for pane ${targetPane}`);
       }
     },
+    ...createPaneCommands({
+      forwarder,
+      openedBy,
+      mirror: deps.mirror,
+      windowOf: deps.windowOf,
+      markSent,
+      log: deps.log,
+    }),
+    "skill/orchestrate": () => ({
+      status: 200,
+      json: { ok: true, text: ORCHESTRATE_SKILL },
+      text: ORCHESTRATE_SKILL,
+    }),
     "worktree/create": async ({ args }) => {
       const repo = args.get("repo") ?? "";
       const branch = args.get("branch") ?? "";
@@ -343,19 +338,8 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     const json = args.get("json") === "1";
     const command = commands[head.command];
     if (command === undefined) {
-      const planned = PLANNED_COMMANDS.has(head.command);
-      refused(request, head.paneId, planned ? "not implemented" : "unknown command");
-      sendReply(
-        response,
-        planned
-          ? failure(
-              404,
-              "not-implemented",
-              `${head.command.replace("/", " ")} is not implemented yet`,
-            )
-          : failure(404, "unknown-command", "unknown command"),
-        json,
-      );
+      refused(request, head.paneId, "unknown command");
+      sendReply(response, failure(404, "unknown-command", "unknown command"), json);
       return;
     }
     // A `wait` holds the call for up to a minute; a caller that hangs up (Ctrl+C in the pane)
@@ -369,6 +353,7 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     if (reply.status === 400) refused(request, head.paneId, "usage");
     // A scope refusal reads like a missing pane to the caller; the log keeps the difference.
     if (reply.status === 403) refused(request, head.paneId, "outside the caller's scope");
+    if (reply.status === 409) refused(request, head.paneId, "busy");
     sendReply(response, reply, json);
   }
 
@@ -388,12 +373,14 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
     forgetPane(paneId) {
       openedBy.forget(paneId);
       sentAtRevision.delete(paneId);
+      forwarder.forgetCaller(paneId);
     },
     recordOpened(childPaneId, openerPaneId) {
       openedBy.record(childPaneId, openerPaneId);
     },
-    markSent(paneId) {
-      sentAtRevision.set(paneId, deps.mirror.revisionOf(paneId));
+    markSent,
+    settleReply(fromWindow, reply) {
+      return forwarder.settle(fromWindow, reply);
     },
   };
 }

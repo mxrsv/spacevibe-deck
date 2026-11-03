@@ -1,6 +1,7 @@
 /**
- * Renderer facade for the in-pane `deck` command's phase mirror (spec
- * 2026-11-03-agent-orchestration, ORC17): the `pane_attention_report` channel.
+ * Renderer facade for the in-pane `deck` command (spec 2026-11-03-agent-orchestration): the
+ * `pane_attention_report` channel of the phase mirror (ORC17), and the `control:command` push
+ * with its `control_reply` answer (ORC11-13, ORC16).
  *
  * Fire-and-forget and never throws into the UI loop. It is called from the tab manager's
  * view sync, which runs on every output chunk that changes anything, so an absent host (the
@@ -10,7 +11,8 @@
  *
  * Electron-only like `worktree-host.ts`: no Tauri counterpart exists.
  */
-import { invoke } from "./bridge";
+import { invoke, listen, type UnlistenFn } from "./bridge";
+import type { ControlReplyPayload } from "../lib/control-command";
 import type { PaneAttentionReport } from "../lib/pane-attention-report";
 
 function hostPresent(): boolean {
@@ -56,5 +58,61 @@ export function reportPaneAttention({
     });
   } catch (error) {
     console.warn("pane_attention_report failed:", error);
+  }
+}
+
+/**
+ * Hear the commands main pushes for the panes this window owns. The payload is handed over
+ * unchecked: the handler parses it, because a shape main does not send is the handler's to
+ * refuse. Where the bridge is absent there is nothing to hear.
+ */
+export async function listenControlCommands(
+  handler: (payload: unknown) => void,
+): Promise<UnlistenFn> {
+  if (!hostPresent()) {
+    return () => {};
+  }
+  return listen<unknown>("control:command", ({ payload }) => handler(payload));
+}
+
+let warnedReplyAbsent = false;
+
+/**
+ * Answer one command. Flat payload per R6, every key present — the object literal is what the
+ * contract test can see the keys of. Main answers false for a request that already timed out or
+ * was addressed to another window; that is logged, because the caller has long since moved on.
+ */
+export function replyControl({
+  requestId,
+  ok,
+  paneId,
+  text,
+  outcome,
+  error,
+}: ControlReplyPayload): void {
+  if (!hostPresent()) {
+    if (!warnedReplyAbsent) {
+      warnedReplyAbsent = true;
+      console.warn("control_reply skipped: the Deck host bridge is unavailable");
+    }
+    return;
+  }
+  try {
+    invoke<boolean>("control_reply", {
+      requestId,
+      ok,
+      paneId,
+      text,
+      outcome,
+      error,
+    })
+      .then((settled) => {
+        if (!settled) console.warn("control_reply was not accepted: the request had expired");
+      })
+      .catch((failure: unknown) => {
+        console.warn("control_reply failed:", failure);
+      });
+  } catch (failure) {
+    console.warn("control_reply failed:", failure);
   }
 }

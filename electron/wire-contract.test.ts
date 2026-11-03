@@ -16,7 +16,9 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CHANNELS, INVOKABLE_CHANNELS } from "./ipc/channels";
+import { CHANNELS, EVENTS, INVOKABLE_CHANNELS } from "./ipc/channels";
+import { commandFields } from "./control/control-forward";
+import { CONTROL_COMMAND_NAMES, parseControlCommand } from "../src/lib/control-command";
 import { WindowRegistry } from "./window-lifecycle";
 import { bootModeOrNormal, moveToWindowTarget } from "../src/terminal/transfer-client";
 import { isUpdateMenuAction } from "../src/updater/update-menu-actions";
@@ -100,6 +102,59 @@ describe("menu:action", () => {
     expect(MENU).toContain("EVENTS.menuAction, action.id");
     expect(isUpdateMenuAction("check-for-updates")).toBe(true);
     expect(isUpdateMenuAction({ id: "check-for-updates" })).toBe(false);
+  });
+});
+
+describe("control:command", () => {
+  const KEYS = [
+    "agent",
+    "command",
+    "cwd",
+    "expectedAgent",
+    "force",
+    "lines",
+    "name",
+    "paneId",
+    "requestId",
+    "submit",
+    "text",
+  ];
+
+  it("is pushed as the request id and every key of the command, on the event the renderer hears", () => {
+    // The renderer's listener reads this name and `parseControlCommand` is its whole guard: a
+    // command main builds with a key missing or renamed was silently ignored, and the
+    // `deck` call waited out its timeout.
+    expect(EVENTS.controlCommand).toBe("control:command");
+    expect(readFileSync("electron/control/control-forward.ts", "utf8")).toContain(
+      "EVENTS.controlCommand, { requestId, ...fields }",
+    );
+    expect(readFileSync("src/host/control-host.ts", "utf8")).toContain('"control:command"');
+  });
+
+  it.each(CONTROL_COMMAND_NAMES)(
+    "builds %s with all eleven keys, and the renderer accepts it",
+    (name) => {
+      const fields = commandFields(name, 7);
+      expect(Object.keys({ requestId: "r-1", ...fields }).sort()).toEqual(KEYS);
+      expect(parseControlCommand({ requestId: "r-1", ...fields })).toEqual({
+        requestId: "r-1",
+        ...fields,
+      });
+    },
+  );
+
+  it("is refused by the renderer when a key is missing or has the wrong type", () => {
+    const whole = { requestId: "r-1", ...commandFields("send", 7, { text: "go", submit: true }) };
+    expect(parseControlCommand(whole)).not.toBeNull();
+    for (const key of KEYS) {
+      // A dropped key reads as undefined, which no sender produces.
+      const rest = Object.fromEntries(Object.entries(whole).filter(([name]) => name !== key));
+      expect(parseControlCommand(rest), `without ${key}`).toBeNull();
+    }
+    expect(parseControlCommand({ ...whole, command: "run" })).toBeNull();
+    expect(parseControlCommand({ ...whole, paneId: "7" })).toBeNull();
+    expect(parseControlCommand({ ...whole, submit: "yes" })).toBeNull();
+    expect(parseControlCommand("send")).toBeNull();
   });
 });
 

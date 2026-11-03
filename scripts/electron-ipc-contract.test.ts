@@ -256,6 +256,24 @@ describe("Electron IPC contract", () => {
     expect(INVOKABLE_CHANNELS.has("pane_attention_report")).toBe(true);
   });
 
+  it("control_reply carries the flat command-reply payload on both sides", () => {
+    // The renderer's answer to a pushed `control:command` (spec 2026-11-03-agent-orchestration,
+    // ORC11-13, ORC16). Every key is always sent, null where unused; the sender is the window
+    // that owns the pane, resolved in main, so no key names one.
+    const keys = ["requestId", "ok", "paneId", "text", "outcome", "error"];
+    const sites = callSites.filter((site) => site.channel === "control_reply");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(keys);
+    }
+    const registered = handlers.filter((handler) => handler.channel === "control_reply");
+    expect(registered.length).toBeGreaterThan(0);
+    for (const handler of registered) {
+      expect(handler.required).toEqual(keys);
+    }
+    expect(INVOKABLE_CHANNELS.has("control_reply")).toBe(true);
+  });
+
   it("create_directory carries the flat { parent, name } payload on both sides", () => {
     const sites = callSites.filter((site) => site.channel === "create_directory");
     expect(sites.length).toBeGreaterThan(0);

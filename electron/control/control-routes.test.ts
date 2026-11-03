@@ -57,7 +57,12 @@ async function start(
     ok: true,
     path: params.destPath,
   }),
-  options: { mirror?: PaneMirror; panes?: readonly ControlPane[] } = {},
+  options: {
+    mirror?: PaneMirror;
+    panes?: readonly ControlPane[];
+    /** The label of pane 7's window; null while it is being transferred. */
+    window?: string | null;
+  } = {},
 ) {
   const log = vi.fn<(message: string) => void>();
   const mirror = options.mirror ?? createPaneMirror({ now: () => Date.now() });
@@ -68,7 +73,9 @@ async function start(
     tokenFor: (paneId) => (paneId === 7 ? TOKEN : null),
     ttyFor: (paneId) => (paneId === 7 ? TTY : null),
     version: () => "9.9.9",
-    windowOf: (paneId) => (paneId === 7 ? "main" : null),
+    windowOf: (paneId) =>
+      paneId === 7 ? (options.window === undefined ? "main" : options.window) : null,
+    deliver: () => {},
     addWorktree,
     mirror,
     panesOf,
@@ -115,24 +122,26 @@ describe("control router — status", () => {
     expect(reply.status).toBe(200);
     expect(reply.type).toContain("text/plain");
     expect(reply.text).toBe(
-      "Deck 9.9.9\npane 7 in window main\nagent control: on\ncan open panes: no\n",
+      "Deck 9.9.9\npane 7 in window main\nagent control: on\ncan open panes: yes\n",
     );
   });
 
-  it("says the caller can open panes once its mirror reports an agent (ORC8)", async () => {
+  it("says any authenticated pane may open while its window is there, and not while it is moving (ORC8)", async () => {
     const { call, mirror } = await start();
-    expect(JSON.parse((await call("status", { json: "1" })).text)).toMatchObject({
-      canOpen: false,
-    });
-    mirror.report(7, { ...CLAUDE_IDLE, agent: null, pid: null });
-    expect(JSON.parse((await call("status", { json: "1" })).text)).toMatchObject({
-      canOpen: false,
-    });
-    mirror.report(7, CLAUDE_IDLE);
+    // No mirror report at all, and then a shell: neither takes the answer away.
     expect(JSON.parse((await call("status", { json: "1" })).text)).toMatchObject({
       canOpen: true,
     });
-    expect((await call("status")).text).toContain("can open panes: yes");
+    mirror.report(7, { ...CLAUDE_IDLE, agent: null, pid: null });
+    expect(JSON.parse((await call("status", { json: "1" })).text)).toMatchObject({
+      canOpen: true,
+    });
+    const moving = await start(undefined, { window: null });
+    expect(JSON.parse((await moving.call("status", { json: "1" })).text)).toMatchObject({
+      window: null,
+      canOpen: false,
+    });
+    expect((await moving.call("status")).text).toContain("can open panes: no");
   });
 
   it("answers one JSON object with ok when the body says json=1", async () => {
@@ -146,7 +155,7 @@ describe("control router — status", () => {
       paneId: 7,
       window: "main",
       switch: "on",
-      canOpen: false,
+      canOpen: true,
     });
   });
 });
@@ -246,20 +255,9 @@ describe("control router — worktree create", () => {
   });
 });
 
-describe("control router — commands that are not built yet", () => {
-  it("answers 404 not-implemented for each planned command, and unknown-command for the rest", async () => {
+describe("control router — unknown commands", () => {
+  it("answers 404 unknown-command in the form the call asked for", async () => {
     const { call } = await start();
-    for (const route of [
-      "pane/open",
-      "pane/send",
-      "pane/read",
-      "pane/close",
-      "skill/orchestrate",
-    ]) {
-      const reply = await call(route, { json: "1" });
-      expect(reply.status).toBe(404);
-      expect(JSON.parse(reply.text)).toEqual({ ok: false, error: "not-implemented" });
-    }
     const unknown = await call("pane/frobnicate", { json: "1" });
     expect(unknown.status).toBe(404);
     expect(JSON.parse(unknown.text)).toEqual({ ok: false, error: "unknown-command" });
@@ -288,12 +286,12 @@ describe("control router — authorization", () => {
     const { call, log } = await start();
     await call("status", {}, { "x-deck-token": "guess-guess-guess" });
     await call("status", {}, { "x-deck-tty": "ttys010" });
-    await call("pane/open", { json: "1" });
+    await call("pane/frobnicate", { json: "1" });
     const lines = log.mock.calls.map(([line]) => line);
     expect(lines[0]).toContain("pane 7");
     expect(lines[0]).toContain("wrong token");
     expect(lines[1]).toContain("wrong tty");
-    expect(lines[2]).toContain("not implemented");
+    expect(lines[2]).toContain("unknown command");
     for (const line of lines) {
       expect(line).not.toContain(TOKEN);
       expect(line).not.toContain("guess-guess-guess");

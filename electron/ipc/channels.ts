@@ -70,6 +70,12 @@ export const CHANNELS = {
   // confidence, agent, pid }` per R6; the closed sets live in `src/lib/pane-attention-report.ts`.
   // Refused (answers false) for a pane the sending window does not own. Electron-only.
   paneAttentionReport: "pane_attention_report",
+  // The renderer's answer to one `control:command` push (ORC11-13, ORC16): flat `{ requestId, ok,
+  // paneId, text, outcome, error }` per R6, every key present with null where unused. Main
+  // resolves the pending request only when the sender is the window the command was pushed to,
+  // and answers false for a request that is unknown, expired or addressed to another window.
+  // Electron-only.
+  controlReply: "control_reply",
   // Window label accessor, for the same restore work: no renderer accessor
   // existed before this (main derived it per-request via `labelOf(event)`
   // only). Electron-only, like the block above.
@@ -264,6 +270,11 @@ export const EVENTS = {
   // that owns the pane (agent-signal contract layer, stage 2). Flat keys —
   // `electron/agent-hooks/hook-server.ts`'s `HookEventPayload`.
   hookEvent: "hook:event",
+  // One command of the in-pane `deck` command (open, send, read, close) pushed to the window that
+  // owns the pane it is about (spec 2026-11-03-agent-orchestration). Flat `{ requestId, command,
+  // paneId, cwd, agent, name, text, submit, expectedAgent, lines, force }`, every key present;
+  // the window answers once with `control_reply`. Shapes live in `src/lib/control-command.ts`.
+  controlCommand: "control:command",
   // "Read the changes again" for the checkout this window watches. Carries the
   // root only, never a file list: the renderer owns all scheduling.
   gitChanged: "git:changed",

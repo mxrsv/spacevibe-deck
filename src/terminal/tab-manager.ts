@@ -48,7 +48,12 @@ import { countAgentLaunch } from "../telemetry/usage-counters";
 import { createAgentRegistrySync } from "./agent-registry-sync";
 import { agentRegistry as fetchAgentRegistry } from "../host/agent-registry-host";
 import { UNAVAILABLE_REGISTRY } from "../lib/agent-registry";
-import { reportPaneAttention } from "../host/control-host";
+import { listenControlCommands, replyControl, reportPaneAttention } from "../host/control-host";
+import {
+  createControlCommandHandler,
+  type ControlTabs,
+  type OpenAgentTabResult,
+} from "./control-commands";
 import { createPaneAttentionReporter } from "./pane-attention-reporter";
 import { augmentLaunchCommand } from "../lib/launch-augment";
 import { commandAgentId } from "../lib/launch-profile";
@@ -95,7 +100,7 @@ import {
   type LaunchTaskResult,
 } from "./task-prompt-send";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
-import { submitAllowed, type InjectOutcome } from "../prompts/inject";
+import { submitAllowed, type InjectOptions, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
 import { sessionsSupported } from "../sessions/sessions-store";
 import {
@@ -261,6 +266,12 @@ export function createTabManager(
     send: (report) => sendPaneReport?.(report),
     now,
   });
+  // The in-pane `deck` command's main → renderer channel (ORC11-13, ORC16): where commands are
+  // heard and where each is answered. Both default to the host facade, which is inert where the
+  // Electron bridge is not; `null` turns that half off.
+  const controlListen =
+    deps.controlCommands === undefined ? listenControlCommands : deps.controlCommands;
+  const controlReply = deps.controlReply === undefined ? replyControl : deps.controlReply;
   // Injected notifier wins (tests); production default reads the setting and
   // window focus LIVE (function seams, not captured values) and sends
   // through Task 20's permission-guarded Tauri adapter.
@@ -1386,6 +1397,41 @@ export function createTabManager(
     });
   }
 
+  /**
+   * The in-pane `deck pane open` (ORC11): one new tab at `cwd` running `agentId`, built from the
+   * intent the Open board builds for a workspace and an agent, then selected like any other open.
+   *
+   * The agent is checked here, with the filter the pickers use, because `materialize` given an
+   * unknown or disabled agent resolves no command and quietly opens a bare shell, which a caller
+   * that asked for an agent must not be handed. The cache is awaited for the same reason
+   * `dropAgentPane` awaits it: right after boot it is empty, and empty is not "nothing installed".
+   */
+  async function openAgentTab(input: {
+    readonly cwd: string;
+    readonly agent: string;
+    readonly name: string | null;
+  }): Promise<OpenAgentTabResult> {
+    const customAgents = settings.value.customAgents;
+    const detected = await ensureAgentsDetected(probeNames(customAgents));
+    const usable = agentOptions(detected, customAgents, settings.value.disabledAgents).some(
+      (option) => option.id === input.agent && !option.missing,
+    );
+    if (!usable) {
+      return { ok: false, error: "unknown-agent" };
+    }
+    const name = normalizeTabName(input.name);
+    const receipt = await materializePane({
+      layout: BUILT_IN_PRESET.layout,
+      cwds: [input.cwd],
+      agent: input.agent,
+      workspacePath: input.cwd,
+      ...(name === null ? {} : { chrome: { name } }),
+    });
+    return receipt === null
+      ? { ok: false, error: "spawn-failed" }
+      : { ok: true, paneId: receipt.paneId };
+  }
+
   function captureAgentLaunchTarget(workspacePath: string, checkoutRoots: readonly string[] = []) {
     return resolveAgentLaunchTarget(
       workspacePath,
@@ -2052,6 +2098,65 @@ export function createTabManager(
   }
 
   /**
+   * The agent process in a pane right now, read fresh (not from the 2 s poll): the in-pane `deck
+   * send` captures it before it types and Enter must still find the same one (ORC12, ORC23). Null
+   * for a pane this window does not hold; `agent` is null when the foreground process is not an
+   * agent, and `processId` when the host could not read it.
+   */
+  async function agentProcessOf(
+    paneId: number,
+  ): Promise<{ readonly agent: string | null; readonly processId: number | null } | null> {
+    if (ownerOf(paneId) === undefined) {
+      return null;
+    }
+    const [info] = await freshPaneInfo(
+      [paneId],
+      pty,
+      agentProcessMatchers(settings.value.customAgents),
+    );
+    if (info?.kind !== "agent") {
+      return { agent: null, processId: null };
+    }
+    const processId = info.processId;
+    return {
+      agent: info.agent,
+      processId:
+        Number.isSafeInteger(processId) && (processId ?? 0) > 0 ? (processId ?? null) : null,
+    };
+  }
+
+  /**
+   * Panes the in-pane `deck pane close --force` is closing right now: the busy confirmation is
+   * waived for these ids and no others. The census itself (`confirmClose`) is untouched, so a
+   * close that did not come from `--force` asks exactly as before.
+   */
+  const forcedClosePanes = new Set<number>();
+
+  /**
+   * Close one pane through the rail's per-agent close (ORC16): a tab's last pane closes the tab,
+   * and the closed tab is kept for reopening like any other. `declined` means the busy dialog was
+   * answered with Cancel, so the pane is still here.
+   */
+  async function closePaneById(
+    paneId: number,
+    opts: { readonly force: boolean },
+  ): Promise<"closed" | "declined" | "no-target"> {
+    const owner = ownerOf(paneId);
+    if (owner === undefined) {
+      return "no-target";
+    }
+    if (opts.force) {
+      forcedClosePanes.add(paneId);
+    }
+    try {
+      await close.closePaneAt(tabs.indexOf(owner), paneId);
+    } finally {
+      forcedClosePanes.delete(paneId);
+    }
+    return ownerOf(paneId) === undefined ? "closed" : "declined";
+  }
+
+  /**
    * Restart the agent a pane was running, resuming its conversation
    * (spec §5.6, §11.10).
    *
@@ -2146,7 +2251,7 @@ export function createTabManager(
   async function injectIntoPane(
     paneId: number,
     text: string,
-    opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
+    opts: InjectOptions,
   ): Promise<InjectOutcome> {
     if (injectingPanes.has(paneId)) {
       return "busy";
@@ -2164,6 +2269,12 @@ export function createTabManager(
       }
       if (!opts.autoSend) {
         return "pasted";
+      }
+      if (opts.submitDelayMs !== undefined && opts.submitDelayMs > 0) {
+        // The gate below must read the pane as it is just before Enter: attention raised or an
+        // agent that left during this wait both withhold the submit. `attentionBeforePaste` was
+        // taken before the paste, so any change in between fails the revision check.
+        await new Promise<void>((resolve) => setTimeout(resolve, opts.submitDelayMs));
       }
       const [info] = await freshPaneInfo(
         [paneId],
@@ -2188,7 +2299,15 @@ export function createTabManager(
           attention: attentionBeforeSubmit,
           alive: stillOwned !== undefined,
         });
-      if (!allowed || stillOwned === undefined) {
+      if (stillOwned === undefined) {
+        return "pasted";
+      }
+      // A process that is not the one the request was gated on, or one whose id the host could
+      // not read, is a different agent as far as Enter is concerned: fail closed.
+      if (opts.expectedProcessId !== undefined && info?.processId !== opts.expectedProcessId) {
+        return "stale";
+      }
+      if (!allowed) {
         return "pasted";
       }
       const submit = stillOwned.manager.submitPane(paneId);
@@ -2334,7 +2453,10 @@ export function createTabManager(
   }
 
   const close = createCloseCoordinator({
-    confirmClose: (paneIds) => confirmClose(paneIds, pty),
+    confirmClose: (paneIds) =>
+      paneIds.length > 0 && paneIds.every((id) => forcedClosePanes.has(id))
+        ? Promise.resolve(true)
+        : confirmClose(paneIds, pty),
     activeManager,
     activeIndex: () => active,
     tabAt: (index) => tabs[index],
@@ -3486,6 +3608,18 @@ export function createTabManager(
     }
     if (hookEventsListen !== null) {
       await registerUnlisten(hookEventsListen(onHookEvent));
+    }
+    // `deck pane open | send | read | close`: this window answers for the panes it owns.
+    if (controlListen !== null && controlReply !== null) {
+      const controlTabs: ControlTabs = {
+        openAgentTab,
+        agentProcessOf,
+        injectIntoPane,
+        serializePane,
+        closePaneById,
+      };
+      const handler = createControlCommandHandler({ tabs: controlTabs, reply: controlReply });
+      await registerUnlisten(controlListen((payload) => void handler.handle(payload)));
     }
     await registerUnlisten(
       installFileDrop({
