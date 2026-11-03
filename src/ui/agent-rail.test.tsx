@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parseRules } from "../styles/css-weight-sites";
 
 // Host stubs the rail's import graph still reaches under jsdom. The logo,
 // favicon-scan, native-dialog and file-drop paths left the rail on 2026-08-16
@@ -1619,12 +1620,29 @@ describe("AgentRail recent activity style contract", () => {
     expect(stylesheet).toContain(
       ".recent-session-activity__row.is-unavailable:hover {\n  background: transparent;",
     );
-    expect(stylesheet).not.toContain(
-      ".recent-session-activity__row.is-unavailable:focus-visible {\n  background: transparent;",
+    const focusRules = parseRules("src/styles/13-sessions.css", stylesheet).filter((rule) =>
+      rule.selectors.some(
+        (selector) =>
+          selector.includes(".recent-session-activity__row") && selector.includes(":focus-visible"),
+      ),
     );
-    expect(stylesheet).not.toMatch(
-      /\.recent-session-activity__row:focus-visible\s*\{[^}]*outline:\s*[1-9]/,
+    expect(focusRules.length).toBeGreaterThan(0);
+    const lastValue = (rule: (typeof focusRules)[number], prop: string): string | undefined =>
+      rule.declarations.findLast((d) => d.prop === prop)?.value.trim();
+    const unavailableFocus = focusRules.filter((rule) =>
+      rule.selectors.some(
+        (selector) => selector.includes(".is-unavailable") && selector.includes(":focus-visible"),
+      ),
     );
+    expect(unavailableFocus.map((rule) => lastValue(rule, "background"))).not.toContain(
+      "transparent",
+    );
+    // Any outline but none/0 (auto, solid, 2px ...) would be a focus ring (CMP-11).
+    expect(
+      focusRules
+        .map((rule) => lastValue(rule, "outline"))
+        .filter((outline) => outline !== undefined && !/^(none|0)$/.test(outline)),
+    ).toEqual([]);
     expect(stylesheet).toContain(
       ".recent-session-activity__row.is-unavailable .recent-session-activity__agent,\n.recent-session-activity__row.is-unavailable .recent-session-activity__summary {\n  color: var(--text-faint);",
     );
