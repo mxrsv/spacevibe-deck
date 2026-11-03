@@ -26,13 +26,15 @@ vi.mock("../../repositories/repositories-store", async () => {
 import type { ChangeEntry, ChangesSnapshot } from "../../host/git-changes-host";
 import type { ChangesController, ChangesState } from "../../files/changes/changes-controller";
 import { diffFocusRequested } from "../../files/changes/diff-column-focus";
+import type { DiffSidesPorts } from "../../files/changes/diff-sides";
 import { createDiffSelection, type DiffSelectionStore } from "../../files/changes/diff-selection";
 import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { tabViews, type TabView } from "../../terminal/tabs-store";
 import { click, mount, press } from "../controls/preset-test-kit";
-import { resetAgentDockState, setDockView } from "./agent-dock-state";
+import { dockChangesList, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
+import { testFileBodies } from "./dock-files-test-kit";
 import { changedFileCount, DockChangesWatch } from "./dock-changes-watch";
 
 const ROOT = "/work/repo";
@@ -97,10 +99,37 @@ function fakeChanges(initial: Partial<ChangesState> = {}) {
 }
 
 /** What `AgentDock` mounts for Changes: the watch beside the section. */
+const files = testFileBodies().controller;
+/** Both sides read as one-line files: the cards load, the tests here look at the list. */
+const ports: DiffSidesPorts = {
+  statFiles: async (_root, paths) =>
+    paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 4 })),
+  readFile: async () => ({
+    kind: "ok",
+    content: "new\n",
+    eol: "lf",
+    encoding: "utf-8",
+    bytes: 4,
+    mixedEol: false,
+    readOnly: false,
+    reason: null,
+    mtimeMs: 1,
+    size: 4,
+    writable: true,
+  }),
+  readHeadFile: async () => ({
+    kind: "ok",
+    content: "old\n",
+    eol: "lf",
+    encoding: "utf-8",
+    bytes: 4,
+    mixedEol: false,
+  }),
+};
 const section = (controller: ChangesController, root: string | null = ROOT) => (
   <>
     <DockChangesWatch root={root} changes={controller} diff={diff} />
-    <DockChanges root={root} changes={controller} diff={diff} />
+    <DockChanges root={root} changes={controller} controller={files} ports={ports} />
   </>
 );
 
@@ -122,6 +151,8 @@ function resizeTo(width: number): void {
 beforeEach(() => {
   resizeTo(1440);
   resetAgentDockState();
+  // The list pane is off by default; most of this file looks at the list.
+  dockChangesList.value = true;
   repositoryScans.value = new Map();
   diffFocusRequested.value = false;
 });
@@ -219,26 +250,47 @@ describe("the Changes view's tree", () => {
   });
 });
 
-describe("opening a diff from a row", () => {
-  it("raises the same call as the legacy row: the diff opens on the root and the column asks for focus", async () => {
+describe("the list pane", () => {
+  it("is off by default: the stack fills the body and no list shows", async () => {
+    dockChangesList.value = false;
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
-    expect(diff.selection.value).toMatchObject({ root: ROOT, path: "src/ui/a.ts" });
-    expect(diffFocusRequested.value).toBe(true);
-    expect(row("file:src/ui/a.ts").getAttribute("aria-current")).toBe("true");
-    expect(row("file:src/lib/c.ts").getAttribute("aria-current")).toBeNull();
-
-    // A deleted file's diff is the old side: it is pressable too.
-    await click(row("file:old.txt"));
-    expect(diff.selection.value?.path).toBe("old.txt");
+    expect(rowKeys()).toEqual([]);
+    expect(document.body.querySelectorAll("[data-card-path]")).toHaveLength(ENTRIES.length);
+    await click(document.body.querySelector('[aria-label="Changed files list"]') as HTMLElement);
+    expect(rowKeys()).toContain("file:src/ui/a.ts");
     await view.unmount();
   });
 
-  it("ends the diff when another view is selected, as leaving the legacy Changes view does", async () => {
+  it("scrolls to the card of a pressed file and marks it, opening no diff and no tab", async () => {
+    const scrolled: (string | undefined)[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push((this as HTMLElement).dataset.cardPath);
+    };
+    const openFile = vi.spyOn(files, "openFile");
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
+    await click(row("file:src/lib/c.ts"));
+    expect(scrolled).toEqual(["src/lib/c.ts"]);
+    expect(document.body.querySelector("[data-marked]")?.getAttribute("data-card-path")).toBe(
+      "src/lib/c.ts",
+    );
+    expect(row("file:src/lib/c.ts").getAttribute("aria-current")).toBe("true");
+    expect(openFile).not.toHaveBeenCalled();
+    expect(diff.selection.value).toBeNull();
+    expect(diffFocusRequested.value).toBe(false);
+    Element.prototype.scrollIntoView = original;
+    openFile.mockRestore();
+    await view.unmount();
+  });
+});
+
+describe("the diff column stays out of the dock's Changes view", () => {
+  it("ends an open diff when another view is selected, as leaving the legacy Changes view does", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    diff.open(ROOT, "src/ui/a.ts");
     expect(diff.selection.value).not.toBeNull();
     await act(async () => setDockView("usage"));
     expect(diff.selection.value).toBeNull();
@@ -248,7 +300,7 @@ describe("opening a diff from a row", () => {
   it("ends the diff when the root moves to another checkout", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
+    diff.open(ROOT, "src/ui/a.ts");
     await view.update(section(controller, "/work/side"));
     expect(diff.selection.value).toBeNull();
     await view.unmount();
@@ -257,7 +309,7 @@ describe("opening a diff from a row", () => {
   it("ends the diff when the view unmounts: a closed dock, or a closed sheet", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
-    await click(row("file:src/ui/a.ts"));
+    diff.open(ROOT, "src/ui/a.ts");
     await view.unmount();
     expect(diff.selection.value).toBeNull();
   });

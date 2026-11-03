@@ -2811,7 +2811,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                     changes: gitChangesAvailable
                       ? {
                           watch: (root) => <DockChangesWatch root={root} />,
-                          section: (root) => <DockChanges root={root} />,
+                          section: (root) => (
+                            <DockChanges root={root} controller={fileController} />
+                          ),
                           count: changedFileCount,
                         }
                       : null,

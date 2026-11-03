@@ -20,7 +20,7 @@ const ROW =
   "flex h-7 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
 /** A file's mark and its ink: new files read as added, rewritten ones as modified. */
-const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {
+export const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {
   modified: { letter: "M", ink: "text-(--term-warn)" },
   added: { letter: "A", ink: "text-(--term-ok)" },
   deleted: { letter: "D", ink: "text-(--term-err)" },
