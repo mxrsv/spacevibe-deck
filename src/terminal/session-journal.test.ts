@@ -72,6 +72,13 @@ function createFakeStore(): FakeStore {
       data.delete(key);
     }),
     save: vi.fn(async () => {}),
+    patch: vi.fn(async (values, deleteKeys = []) => {
+      const next = new Map([...data, ...Object.entries(values)]);
+      for (const key of deleteKeys) next.delete(key);
+      data.clear();
+      for (const [key, value] of next) data.set(key, value);
+      await store.save();
+    }),
   };
   return { store, data };
 }
@@ -104,6 +111,149 @@ describe("session journal", () => {
     resetAgentBoardStore();
     resetTaskPrompts();
     vi.useRealTimers();
+  });
+
+  it("strict flush cannot acknowledge an uninitialized journal", async () => {
+    await expect(flushSessionJournal({ force: true, strict: true })).rejects.toThrow(
+      "not initialized",
+    );
+    await expect(flushSessionJournal()).resolves.toBeUndefined();
+  });
+
+  it("strict flush restores an identical snapshot after a queued window clear", async () => {
+    const { store, data } = createFakeStore();
+    await initSessionJournal(deps({ store, capture: () => [tab("/w")] }));
+    await flushSessionJournal();
+    const clear = clearWindowRecord("main");
+    const final = flushSessionJournal({ force: true, strict: true });
+    await Promise.all([clear, final]);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/w")] });
+  });
+
+  it("resuming the last suspension recaptures changes made while paused", async () => {
+    const { store, data } = createFakeStore();
+    let tabs = [tab("/before")];
+    await initSessionJournal(deps({ store, capture: () => tabs }));
+    await flushSessionJournal();
+    suspendSessionJournal();
+    suspendSessionJournal();
+    tabs = [tab("/after")];
+    pokeTabViews();
+    resumeSessionJournal();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/before")] });
+    resumeSessionJournal();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/after")] });
+  });
+
+  it("strict flush rejects a failed save and retries it on the next flush", async () => {
+    const { store } = createFakeStore();
+    await initSessionJournal(deps({ store, capture: () => [tab("/w")] }));
+    vi.mocked(store.save).mockRejectedValueOnce(new Error("disk full"));
+    await expect(flushSessionJournal({ force: true, strict: true })).rejects.toThrow("disk full");
+    await expect(flushSessionJournal({ force: true, strict: true })).resolves.toBeUndefined();
+    expect(store.save).toHaveBeenCalledTimes(2);
+  });
+
+  it("strict flush rewrites the last durable capture after another snapshot failed to save", async () => {
+    const { store, data } = createFakeStore();
+    let tabs = [tab("/original")];
+    await initSessionJournal(deps({ store, capture: () => tabs }));
+    await flushSessionJournal();
+    tabs = [tab("/unsaved")];
+    vi.mocked(store.save).mockRejectedValueOnce(new Error("disk full"));
+    await flushSessionJournal();
+    tabs = [tab("/original")];
+    await flushSessionJournal({ force: true, strict: true });
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/original")] });
+    expect(store.save).toHaveBeenCalledTimes(3);
+  });
+
+  it("strict flush waits for an older write before persisting the final snapshot", async () => {
+    const { store, data } = createFakeStore();
+    let capture = [tab("/old")];
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const patch = store.patch.bind(store);
+    vi.mocked(store.patch).mockImplementationOnce(async (values, deleteKeys) => {
+      await blocked;
+      await patch(values, deleteKeys);
+    });
+    await initSessionJournal(deps({ store, capture: () => capture }));
+    const older = flushSessionJournal();
+    await Promise.resolve();
+    await Promise.resolve();
+    capture = [tab("/final")];
+    suspendSessionJournal();
+    let settled = false;
+    const final = flushSessionJournal({ force: true, strict: true }).then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release();
+    await Promise.all([older, final]);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/final")] });
+  });
+
+  it("a queued background capture cannot run after another operation suspends the journal", async () => {
+    const { store, data } = createFakeStore();
+    let tabs = [tab("/old")];
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const patch = store.patch.bind(store);
+    vi.mocked(store.patch).mockImplementationOnce(async (values, deleted) => {
+      await blocked;
+      await patch(values, deleted);
+    });
+    await initSessionJournal(deps({ store, capture: () => tabs }));
+    const first = flushSessionJournal();
+    await Promise.resolve();
+    await Promise.resolve();
+    tabs = [tab("/later")];
+    pokeTabViews();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    suspendSessionJournal();
+    release();
+    await first;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/old")] });
+    resumeSessionJournal();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(data.get("window:main")).toMatchObject({ tabs: [tab("/later")] });
+  });
+
+  it("strict flush rechecks overlapping suspensions after waiting in the write queue", async () => {
+    const { store } = createFakeStore();
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const patch = store.patch.bind(store);
+    vi.mocked(store.patch).mockImplementationOnce(async (values, deleted) => {
+      await blocked;
+      await patch(values, deleted);
+    });
+    await initSessionJournal(deps({ store, capture: () => [tab("/w")] }));
+    const first = flushSessionJournal();
+    await Promise.resolve();
+    await Promise.resolve();
+    suspendSessionJournal();
+    const final = flushSessionJournal({ force: true, strict: true });
+    suspendSessionJournal();
+    const rejected = final.catch((error: unknown) => error);
+    release();
+    await first;
+    expect(await rejected).toMatchObject({
+      message: "Session journal is busy; retry after the current operation",
+    });
   });
 
   it("holdEmpty keeps a tabless capture from overwriting the record on disk", async () => {
@@ -149,7 +299,7 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
 
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
-    expect(store.set).not.toHaveBeenCalledWith("window:main", expect.anything());
+    expect(store.patch).not.toHaveBeenCalled();
 
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
@@ -178,14 +328,14 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    vi.mocked(store.set).mockClear();
+    vi.mocked(store.patch).mockClear();
     vi.mocked(store.save).mockClear();
 
     // New array identity, same content — this is what the 2s poll produces.
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
-    expect(store.set).not.toHaveBeenCalled();
+    expect(store.patch).not.toHaveBeenCalled();
     expect(store.save).not.toHaveBeenCalled();
   });
 
@@ -226,20 +376,22 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    vi.mocked(store.set).mockClear();
+    vi.mocked(store.patch).mockClear();
 
     suspendSessionJournal();
     capture.mockReturnValue([tab("/other")]);
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 5);
-    expect(store.set).not.toHaveBeenCalled();
+    expect(store.patch).not.toHaveBeenCalled();
 
     resumeSessionJournal();
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    expect(store.set).toHaveBeenCalledWith(
-      "window:main",
-      expect.objectContaining({ tabs: [tab("/other")] }),
+    expect(store.patch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "window:main": expect.objectContaining({ tabs: [tab("/other")] }),
+      }),
+      [],
     );
   });
 
@@ -248,14 +400,14 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    vi.mocked(store.set).mockClear();
+    vi.mocked(store.patch).mockClear();
 
     capture.mockReturnValue([tab("/other")]);
     pokeTabViews(); // arms the debounce timer
     suspendSessionJournal(); // must cancel the now-pending write, not just gate future ones
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 5);
 
-    expect(store.set).not.toHaveBeenCalled();
+    expect(store.patch).not.toHaveBeenCalled();
 
     resumeSessionJournal();
   });
@@ -265,7 +417,7 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    vi.mocked(store.set).mockClear();
+    vi.mocked(store.patch).mockClear();
 
     suspendSessionJournal();
     suspendSessionJournal();
@@ -274,14 +426,16 @@ describe("session journal", () => {
     resumeSessionJournal();
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    expect(store.set).not.toHaveBeenCalled();
+    expect(store.patch).not.toHaveBeenCalled();
 
     resumeSessionJournal();
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    expect(store.set).toHaveBeenCalledWith(
-      "window:main",
-      expect.objectContaining({ tabs: [tab("/restored")] }),
+    expect(store.patch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "window:main": expect.objectContaining({ tabs: [tab("/restored")] }),
+      }),
+      [],
     );
   });
 
@@ -304,13 +458,13 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    vi.mocked(store.set).mockClear();
+    vi.mocked(store.patch).mockClear();
 
     suspendSessionJournal();
     capture.mockReturnValue([tab("/other")]);
     await flushSessionJournal();
 
-    expect(store.set).not.toHaveBeenCalled();
+    expect(store.patch).not.toHaveBeenCalled();
   });
 
   it("6. degrades on a store failure with console.warn + reportPersistError, never throwing", async () => {
@@ -322,13 +476,19 @@ describe("session journal", () => {
       }),
       delete: vi.fn(async () => {}),
       save: vi.fn(async () => {}),
+      patch: vi.fn(async () => {
+        throw new Error("disk full");
+      }),
     };
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
 
     await expect(vi.advanceTimersByTimeAsync(DEBOUNCE_MS)).resolves.not.toThrow();
 
-    expect(warn).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      "Failed to write session journal:",
+      expect.objectContaining({ message: "disk full" }),
+    );
     expect(persistError.value).not.toBeNull();
     warn.mockRestore();
   });

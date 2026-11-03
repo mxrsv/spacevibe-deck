@@ -124,14 +124,24 @@ export class WindowCoordinator {
   private readonly routes = new Map<number, PaneRoute>();
   private readonly settled = new Map<string, Settled>();
   private readonly settledOrder: string[] = [];
-  /** Labels of destroyed windows. Never reused within a process run, so this
-   * cannot outgrow the number of windows opened. */
+  /** Destroyed labels stay dead until main explicitly opens a new lifetime. */
   private readonly dead = new Set<string>();
   /** Panes a settle handed back to a window that no longer exists; the caller
    * drains and kills them. */
   private pendingOrphans: number[] = [];
 
   constructor(private readonly sink: EventSink) {}
+
+  /** Retire an old lifetime before macOS reopens its main window label. */
+  handleWindowCreated(label: string, now: number = Date.now()): number[] {
+    if (!this.dead.has(label)) return [];
+    // A dead source may still have an unsettled transfer. Abort while it is
+    // dead, or that transfer could later return its old pane to the new window.
+    this.abortInvolving(label, now);
+    const orphans = this.takePendingOrphans();
+    this.dead.delete(label);
+    return orphans;
+  }
 
   register(paneId: number, windowLabel: string): void {
     this.routes.set(paneId, { kind: "owned", label: windowLabel });

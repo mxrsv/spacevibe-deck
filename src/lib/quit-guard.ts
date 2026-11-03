@@ -37,7 +37,7 @@ export interface QuitFlowDeps {
   /** Show the dialog; resolves true when the user accepts. */
   ask(message: string): Promise<boolean>;
   /** Persist pending debounced state — the process or window goes right after. */
-  flush(): Promise<void>;
+  flush?(requestId: number): Promise<void>;
   confirm(requestId: number): Promise<void>;
   cancel(requestId: number): Promise<void>;
 }
@@ -95,20 +95,21 @@ export function closeRequestOrNull(raw: unknown): CloseRequest | null {
 export function createQuitFlow(
   deps: QuitFlowDeps,
   copy: ConfirmCopy = QUIT_COPY,
-): (request: CloseRequest) => Promise<void> {
+): (request: CloseRequest, canFinish?: () => boolean) => Promise<void> {
   let prompting = false;
-  return async (request) => {
+  return async (request, canFinish = () => true) => {
     async function finish(ok: boolean): Promise<void> {
-      if (!ok) {
+      if (!ok || !canFinish()) {
         await deps.cancel(request.requestId);
         return;
       }
       try {
-        await deps.flush();
+        await deps.flush?.(request.requestId);
       } catch (err: unknown) {
         console.warn("Flush before quit failed:", err);
       }
-      await deps.confirm(request.requestId);
+      if (canFinish()) await deps.confirm(request.requestId);
+      else await deps.cancel(request.requestId);
     }
 
     // Empty in ALL THREE dimensions, not just the pane one.
@@ -152,39 +153,93 @@ export function createQuitFlow(
   };
 }
 
-/**
- * Install the quit and window-close guards. Returns a function that removes
- * both listeners.
- *
- * There is deliberately NO `getCurrentWindow().onCloseRequested` here. Tauri
- * auto-prevents close for any window carrying a JS close listener, so
- * registering one made the frontend the veto authority over every window
- * close — which, with peer windows (spec §9.5), means the Rust
- * `CloseRequested` handler and this flow both run and the user confirms
- * twice. Rust now owns the decision and asks this window to prompt.
- */
+export interface QuitPreparationDeps {
+  suspend(): void;
+  flush(): Promise<void>;
+  resume(): void;
+  acknowledge(requestId: number, ok: boolean): Promise<void>;
+  failed(): void;
+}
+
+function preparationId(raw: unknown): number | null {
+  if (typeof raw !== "object" || raw === null || !("requestId" in raw)) return null;
+  const id = raw.requestId;
+  return typeof id === "number" && Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+/** The dialog remains single-window; preparation is installed in every renderer. */
 export async function installQuitGuard(deps: {
   readonly quit: QuitFlowDeps;
   readonly close: QuitFlowDeps;
+  readonly preparation?: QuitPreparationDeps;
 }): Promise<UnlistenFn> {
   const promptQuit = createQuitFlow(deps.quit, QUIT_COPY);
   const promptClose = createQuitFlow(deps.close, WINDOW_CLOSE_COPY);
+  let preparedId: number | null = null;
+  let latestId = 0;
+  let closeEpoch = 0;
+  const unlisteners: UnlistenFn[] = [];
+  const preparation = deps.preparation;
+  if (preparation !== undefined) {
+    unlisteners.push(
+      await listen("quit:prepare", ({ payload }) => {
+        const requestId = preparationId(payload);
+        if (requestId === null || requestId <= latestId || preparedId !== null) return;
+        latestId = requestId;
+        preparedId = requestId;
+        closeEpoch += 1;
+        // Synchronous: no exit/debounce can slip in before suspension.
+        preparation.suspend();
+        void Promise.resolve()
+          .then(() => preparation.flush())
+          .then(
+            () => true,
+            () => false,
+          )
+          .then(async (ok) => {
+            // A timeout may resume this journal while its disk write still waits.
+            // That late completion must not acknowledge a replacement attempt.
+            if (preparedId === requestId) await preparation.acknowledge(requestId, ok);
+          })
+          .catch((error: unknown) => console.error("Quit preparation reply failed:", error));
+      }),
+    );
+    unlisteners.push(
+      await listen("quit:resume", ({ payload }) => {
+        const requestId = preparationId(payload);
+        if (requestId === null || requestId < latestId) return;
+        if (preparedId === requestId) {
+          preparedId = null;
+          preparation.resume();
+          preparation.failed();
+        } else if (preparedId === null && requestId > latestId) {
+          // Another renderer's send can fail before this one receives prepare.
+          // Still show the cancellation and reject a delayed prepare for it.
+          latestId = requestId;
+          preparation.failed();
+        }
+      }),
+    );
+  }
   const route =
-    (flow: (request: CloseRequest) => Promise<void>) =>
+    (close: boolean) =>
     (event: { payload: unknown }): void => {
       const request = closeRequestOrNull(event.payload);
       if (request === null) {
-        // No id means no safe answer: replying with a guessed one would
-        // resolve a request Rust never asked.
         console.warn("Ignoring malformed close/quit request payload");
         return;
       }
-      void flow(request);
+      if (close && preparedId !== null) {
+        void deps.close.cancel(request.requestId);
+        return;
+      }
+      const epoch = closeEpoch;
+      if (close) void promptClose(request, () => preparedId === null && closeEpoch === epoch);
+      else void promptQuit(request);
     };
-  const unlistenQuit = await listen("quit-requested", route(promptQuit));
-  const unlistenClose = await listen("window:close-requested", route(promptClose));
+  unlisteners.push(await listen("quit-requested", route(false)));
+  unlisteners.push(await listen("window:close-requested", route(true)));
   return () => {
-    unlistenQuit();
-    unlistenClose();
+    for (const unlisten of unlisteners) unlisten();
   };
 }

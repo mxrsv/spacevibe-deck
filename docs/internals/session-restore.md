@@ -14,7 +14,7 @@ it off (`restoreSessions`) went with it and validation drops the stale field.
 tabs into `session.json` continuously, debounced 1 second, so the file is current at a hard
 power-off rather than only at a clean quit.
 
-- Keys: `window:<label>` records,
+- Keys: `window:<label>` records, `pendingRestore` (unrestored dated records),
   `archive` (per-workspace, the rail's remembered rows) and `restoreAttempt` (the marker).
 - The [store IPC](../../electron/ipc/register-store.ts) derives the virtual `windowLabels`
   read from record keys in main. Renderers never maintain a shared index array; a legacy
@@ -26,8 +26,23 @@ power-off rather than only at a clean quit.
 - Caps: 32 tabs per window and 24 archived workspaces, enforced on the write path too.
 - A write is skipped when the record minus `savedAt` is unchanged. `capture()` reads the
   2-second poll cache with no IPC and no awaits: that is the deliberate accuracy bound.
-- Restore suspends the journal so it cannot clobber what it is reading; quit flushes it with
-  `force`, because the quit flow suspends first and an unforced flush was a no-op.
+- **Quit acknowledgment means durable persistence, not an attempted write.** Restore and
+  quit suspend captures; quit forces a strict flush that drains preceding writes and rejects
+  failures. An unforced background flush while suspended is a no-op; a strict one rejects.
+  A background error reporter
+  cannot stand in for this acknowledgment. See the
+  [journal](../../src/terminal/session-journal.ts) and
+  [quit preparation](../../electron/ipc/register-quit.ts).
+- **A checkpoint is one host mutation, not several individually atomic file writes.**
+  [Store.patch](../../src/host/store-host.ts) carries the live record, pending records and
+  consumed source keys through one [store handler](../../electron/ipc/register-store.ts).
+  [JsonStore.patch](../../electron/store.ts) replaces them together before saving; autosave
+  and a peer's Save must never observe half a checkpoint. Live peer records are protected
+  from cleanup, and retry offers use pending identities rather than reused window labels.
+- **Restore and quit preparation cannot start over one another.** The
+  [restore action](../../src/ui/last-session-actions.ts) claims an idle journal before
+  touching the offer or crash marker. A strict quit flush refuses another operation's
+  suspension. The user can retry the canceled operation after the other finishes.
 - While the offer stands, `holdEmpty` keeps the fresh, tabless window from overwriting the
   main record. Without it the journal's first write would erase the offer, and a launch that
   was closed without choosing would offer nothing next time.
@@ -41,10 +56,13 @@ Boot calls `readLastSession` before the journal starts and holds the records in
 tab count and workspace names. The offer ends one of three ways, all in
 [`last-session-actions.ts`](../../src/ui/last-session-actions.ts):
 
-- **Reopen** runs `restoreSession` over the held records, not the file, which the journal is
-  by then writing again.
-- **Dismiss**, or any tab opening by other means, drops it: secondary window records are
-  cleared at that moment, or they would fold into the next launch's offer as ghost tabs.
+- **Reopen** runs `restoreSession` over the held records. Failed tabs stay in a retry offer
+  and in `pendingRestore`; successful tabs are not retried. Live captures must preserve those
+  pending records and include them in the archive, or a later ordinary flush silently erases
+  the recovery path after partial success.
+- **Dismiss**, or opening a tab instead of accepting the initial offer, drops it. Opening
+  live tabs does not dismiss a retry offer. A restore checkpoint saves pending records and
+  the live capture before consuming source records; failure is not equivalent to dismissal.
 - A crash-loop marker left set means the last reopen crashed Deck; boot clears it and offers
   nothing, so the session that crashed is not offered back.
 
@@ -64,9 +82,12 @@ tab count and workspace names. The offer ends one of three ways, all in
 4. **One batched `resume_lookup`** with one `{ agent, cwd, lastSeenAt }` per surviving
    built-in-agent pane, answered positionally.
 5. **Materialize** each tab sequentially through `MaterializeIntent.paneCommands`, so each
-   pane types its own resume command. A tab that throws is skipped and the rest continue.
-6. Secondary window records are cleared **before** files and tab selection are restored, so
-   a throw there cannot leave a stale record to fold in twice on the next boot.
+   pane types its own resume command. A false result or exception retains that tab for retry
+   while the rest continue.
+6. The [reopen action](../../src/ui/last-session-actions.ts) checkpoints live and pending
+   tabs together before consuming source records. Clearing all secondary records merely
+   because one tab succeeded would lose the remaining tabs; preserving the full source
+   instead would duplicate the successful ones on retry.
 
 While `AGENT_BOARD_RETIRED` is on (Mission Control replaced the Board on 2026-09-28), the
 Board flags below are read without error and ignored. With the switch off:

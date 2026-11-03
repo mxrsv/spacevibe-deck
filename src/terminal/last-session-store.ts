@@ -12,6 +12,8 @@ import type { WindowRecord } from "../lib/session-schema";
 import { workspaceLabel } from "../lib/workspace-label";
 
 export interface LastSession {
+  /** A failed reopen stays available even when sibling tabs are already live. */
+  readonly retry?: boolean;
   /** Every window record the previous launch left, handed to `restoreSession`. */
   readonly records: ReadonlyMap<string, WindowRecord>;
   /** The label the records were read for; the others are secondary windows. */

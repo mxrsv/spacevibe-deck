@@ -9,7 +9,7 @@ import { invoke } from "./bridge";
 
 export interface StoreOptions {
   readonly defaults?: Record<string, unknown>;
-  /** Milliseconds to debounce, or false for explicit saves only. */
+  /** Milliseconds to debounce. Legacy false maps to 0 (immediate saves); use patch for atomic batches. */
   readonly autoSave?: number | boolean;
 }
 
@@ -43,6 +43,14 @@ export class Store {
 
   delete(key: string): Promise<void> {
     return invoke("store_delete", { file: this.file, key });
+  }
+
+  /** Replace related keys and remove consumed records in one durable main-owned operation. */
+  patch(
+    values: Readonly<Record<string, unknown>>,
+    deleteKeys: readonly string[] = [],
+  ): Promise<void> {
+    return invoke("store_patch", { file: this.file, values, deleteKeys });
   }
 
   save(): Promise<void> {

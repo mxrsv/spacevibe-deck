@@ -56,8 +56,10 @@ above your recent folders. The board offers:
 
 When Deck quit with tabs open, the board shows **Last session** at the top. **Reopen** brings
 back those tabs and resumes each agent conversation it can resolve; dismiss it, or open
-anything else, and Deck starts clean. Scrollback, unsaved file edits and window placement are
-not restored.
+anything else before reopening, and Deck starts clean. If some tabs cannot reopen, **Last
+session** keeps those tabs so you can retry without duplicating the ones already open.
+The retry remains available after restarting Deck. Scrollback, unsaved file edits and window
+placement are not restored. See [session recovery](../../src/ui/last-session-actions.ts).
 
 ## Launch an agent
 
@@ -120,6 +122,10 @@ terminal remains visible. Use **Open files** to return to a retained document; u
 files carry a dot. With the document focused, **⌘S** (Windows: **Ctrl+S**) saves and
 **⌘W** closes it. Markdown opens rendered; **⌘⇧V** flips it to source.
 See the [file panel](../../src/files/ui/file-panel.tsx).
+
+If a background reload fails, Deck keeps your open text available to edit and save, and shows
+an error message. A delayed reload cannot replace text you have just saved
+([editor recovery](../../src/files/file-surface-controller.ts)).
 
 The eye button on the folder's row shows or hides dot-files such as `.env` and `.github`. The
 tree also hides what the repository's `.gitignore` rules ignore, such as `node_modules` or build

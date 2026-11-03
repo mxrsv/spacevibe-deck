@@ -4,7 +4,7 @@
  * inside the app's own data directory.
  */
 import { ipcMain, type BrowserWindow } from "electron";
-import type { StoreRegistry } from "../store";
+import { validateStorePatch, type StoreRegistry } from "../store";
 import { EVENTS } from "./channels";
 
 export interface RegisterStoreDeps {
@@ -104,6 +104,25 @@ export function registerStore(deps: RegisterStoreDeps): void {
   });
   ipcMain.handle("store_delete", (_event, { file, key }) => {
     openStores.get(assertStoreFile(file))?.delete(key);
+  });
+  ipcMain.handle("store_patch", (_event, payload: unknown) => {
+    if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+      throw new Error("Invalid store patch payload");
+    }
+    const { file: rawFile, values, deleteKeys } = payload as Record<string, unknown>;
+    const file = assertStoreFile(rawFile);
+    const store = openStores.get(file);
+    if (store === undefined) throw new Error("Store has not been loaded");
+    const patch = validateStorePatch(values, deleteKeys);
+    // A boot snapshot may name a detached label that has since been reused.
+    // Consuming that old source must not erase the new live window's journal.
+    const removable = patch.deleteKeys.filter(
+      (key) =>
+        file !== SESSION_STORE ||
+        !key.startsWith(WINDOW_RECORD_PREFIX) ||
+        !deps.windows.has(key.slice(WINDOW_RECORD_PREFIX.length)),
+    );
+    return store.patch(patch.values, removable);
   });
   ipcMain.handle("store_save", (_event, { file }) => openStores.get(assertStoreFile(file))?.save());
 }

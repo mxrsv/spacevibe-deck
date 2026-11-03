@@ -77,6 +77,7 @@ export function censusFor(
 interface InFlight {
   readonly requestId: number;
   readonly window: string;
+  readonly senderId?: number;
 }
 
 /** At most one quit prompt exists at a time, app-wide. */
@@ -86,12 +87,12 @@ export class QuitFlight {
 
   /** Claim the prompt for `window`. Null means another window already has it —
    * a second quit request must not open a second dialog. */
-  tryBegin(window: string): number | null {
+  tryBegin(window: string, senderId?: number): number | null {
     if (this.current !== null) {
       return null;
     }
     this.nextId += 1;
-    this.current = { requestId: this.nextId, window };
+    this.current = { requestId: this.nextId, window, senderId };
     return this.nextId;
   }
 
@@ -103,6 +104,14 @@ export class QuitFlight {
     }
     this.current = null;
     return true;
+  }
+
+  matches(window: string, senderId: number, requestId: number): boolean {
+    return (
+      this.current?.window === window &&
+      this.current.senderId === senderId &&
+      this.current.requestId === requestId
+    );
   }
 
   holder(): string | null {
@@ -159,5 +168,128 @@ export class CloseFlight {
 
   forget(label: string): void {
     this.pending.delete(label);
+  }
+}
+
+export const QUIT_PREPARATION_TIMEOUT_MS = 5000;
+
+export interface QuitWindow {
+  readonly label: string;
+  readonly senderId: number;
+}
+
+export interface QuitPreparationDeps {
+  windows(): readonly QuitWindow[];
+  send(label: string, event: string, payload: { requestId: number }): boolean;
+  teardown(): Promise<void>;
+}
+
+interface Preparation {
+  readonly requestId: number;
+  readonly windows: readonly QuitWindow[];
+  readonly pending: Set<number>;
+  readonly timer: ReturnType<typeof setTimeout>;
+  phase: "preparing" | "teardown";
+}
+
+/** One main-owned barrier after the single dialog. Only durable acknowledgments
+ * from the exact window census authorize teardown; labels alone can be reused. */
+export class QuitPreparation {
+  private current: Preparation | null = null;
+
+  constructor(
+    private readonly flight: QuitFlight,
+    private readonly deps: QuitPreparationDeps,
+  ) {}
+
+  blocksClose(): boolean {
+    return this.current !== null;
+  }
+
+  confirm(label: string, senderId: number, requestId: number): void {
+    if (this.current !== null || !this.flight.matches(label, senderId, requestId)) return;
+    const windows = this.deps.windows();
+    const timer = setTimeout(() => this.windowChanged(), QUIT_PREPARATION_TIMEOUT_MS);
+    const preparation: Preparation = {
+      requestId,
+      windows,
+      pending: new Set(windows.map((window) => window.senderId)),
+      timer,
+      phase: "preparing",
+    };
+    this.current = preparation;
+    if (
+      windows.length === 0 ||
+      !windows.some((window) => window.label === label && window.senderId === senderId)
+    ) {
+      this.windowChanged();
+      return;
+    }
+    for (const window of windows) {
+      if (this.current !== preparation) break;
+      if (!this.send(window.label, "quit:prepare", requestId)) this.windowChanged();
+    }
+  }
+
+  cancel(label: string, senderId: number, requestId: number): void {
+    // A dialog reply cannot unlock a confirmed attempt during persistence or
+    // telemetry. Preparation failures are the only cancellation authority then.
+    if (this.current === null && this.flight.matches(label, senderId, requestId)) {
+      this.flight.finish(requestId);
+    }
+  }
+
+  acknowledge(label: string, senderId: number, requestId: number, ok: boolean): void {
+    const current = this.current;
+    if (
+      current === null ||
+      current.phase !== "preparing" ||
+      current.requestId !== requestId ||
+      !current.windows.some((window) => window.label === label && window.senderId === senderId) ||
+      !current.pending.has(senderId)
+    )
+      return;
+    const live = this.deps.windows();
+    if (
+      !ok ||
+      live.length !== current.windows.length ||
+      current.windows.some(
+        (window) =>
+          !live.some(
+            (candidate) =>
+              candidate.label === window.label && candidate.senderId === window.senderId,
+          ),
+      )
+    ) {
+      this.windowChanged();
+      return;
+    }
+    current.pending.delete(senderId);
+    if (current.pending.size > 0) return;
+    clearTimeout(current.timer);
+    current.phase = "teardown";
+    // Keep both locks through killAll, telemetry, store flush and exit. There
+    // is no safe retry after teardown has already started killing processes.
+    void this.deps
+      .teardown()
+      .catch((error: unknown) => console.error("Quit teardown failed:", error));
+  }
+
+  /** Called before a window joins, leaves, or loses its renderer. */
+  windowChanged(): void {
+    const current = this.current;
+    if (current === null || current.phase !== "preparing") return;
+    clearTimeout(current.timer);
+    this.current = null;
+    for (const window of current.windows) this.send(window.label, "quit:resume", current.requestId);
+    this.flight.finish(current.requestId);
+  }
+
+  private send(label: string, event: string, requestId: number): boolean {
+    try {
+      return this.deps.send(label, event, { requestId });
+    } catch {
+      return false;
+    }
   }
 }

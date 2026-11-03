@@ -48,6 +48,7 @@ import { ptyInfo, type PtyInfo } from "./pty/info";
 import { validateAgentProcessMatchers } from "./platform/classify";
 import { addLocalBinToPath } from "./platform/windows-path";
 import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
+import { registerQuit } from "./ipc/register-quit";
 import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
 import { INITIAL_OVERLAY_COLORS, windowChromeOptions } from "./window-options";
 import { StoreRegistry } from "./store";
@@ -279,6 +280,8 @@ function createWindow(label: string): BrowserWindow {
       sandbox: false,
     },
   });
+  quitPreparation.windowChanged();
+  for (const paneId of coordinator.handleWindowCreated(label)) pty.terminate(paneId);
   windows.set(label, window);
   // Captured now, not in `closed`: the webContents is destroyed by then and
   // reading `.id` off it would throw inside the teardown handler.
@@ -296,6 +299,7 @@ function createWindow(label: string): BrowserWindow {
   // does not run on a destroyed webview, so without this the accelerators stay
   // stripped for every window until relaunch.
   window.webContents.on("render-process-gone", () => {
+    quitPreparation.windowChanged();
     menuState.setRecording(senderId, false);
     // The window survives a dead renderer, so `closed` may never fire — but
     // the renderer that claimed the update-check flight is gone and will never
@@ -312,6 +316,10 @@ function createWindow(label: string): BrowserWindow {
   });
 
   window.on("close", (event) => {
+    if (quitPreparation.blocksClose()) {
+      event.preventDefault();
+      return;
+    }
     if (updater.isInstalling()) {
       // The installer is taking the app down. `quitAndInstall` closes every
       // window before `before-quit` ever fires, and the renderer already ran
@@ -369,6 +377,7 @@ function createWindow(label: string): BrowserWindow {
   });
 
   window.on("closed", () => {
+    quitPreparation.windowChanged();
     // Before `windows.delete`: closing the panel wants the window to still be
     // resolvable so the native view can be detached from its content view.
     browserPanels.close(label);
@@ -564,21 +573,24 @@ app.once("will-quit", () => void cloneService.dispose());
 process.once("exit", () => void cloneService.dispose());
 
 // ------------------------------------------------------------------ Quit
-ipcMain.handle(CHANNELS.confirmQuit, (_event, { requestId }) => {
-  if (!quitFlight.finish(requestId)) {
-    return;
-  }
-  void pty
-    .killAll()
-    // Best-effort final snapshot before the stores flush, so the buffer's
-    // sent-state reaches disk. `flushOnQuit` never throws and is bounded by
-    // the POST timeout, so quit cannot hang on a dead Worker.
-    .then(() => telemetry.flushOnQuit())
-    .then(() => stores.saveAll())
-    .finally(() => app.exit(0));
-});
-ipcMain.handle(CHANNELS.cancelQuit, (_event, { requestId }) => {
-  quitFlight.finish(requestId);
+const quitPreparation = registerQuit(quitFlight, {
+  labelOf,
+  windows: () =>
+    [...windows]
+      .filter(([, window]) => !window.isDestroyed())
+      .map(([label, window]) => ({
+        label,
+        senderId: window.webContents.id,
+      })),
+  send: emitTo,
+  teardown: () =>
+    pty
+      .killAll()
+      // The strict renderer acknowledgments establish journal durability;
+      // saveAll is only best effort and must never authorize killing panes.
+      .then(() => telemetry.flushOnQuit())
+      .then(() => stores.saveAll())
+      .finally(() => app.exit(0)),
 });
 ipcMain.handle(CHANNELS.confirmCloseWindow, (event, { requestId }) => {
   const label = labelOf(event);
@@ -588,6 +600,10 @@ ipcMain.handle(CHANNELS.confirmCloseWindow, (event, { requestId }) => {
   if (!closeFlight.take(label, requestId)) {
     return;
   }
+  // A confirmation can already be queued when preparation begins. Consume its
+  // authenticated flight even though teardown is blocked, so cancellation of
+  // quit does not leave that window permanently unable to request another close.
+  if (quitPreparation.blocksClose()) return;
   for (const paneId of coordinator.panesForWindow(label)) {
     pty.terminate(paneId);
   }
@@ -777,14 +793,14 @@ app.on("before-quit", (event) => {
     // and it was already confirmed in the renderer.
     return;
   }
+  if (quitPreparation.blocksClose()) {
+    event.preventDefault();
+    return;
+  }
   const paneIds = coordinator.allPanes();
-  // The dirty registry is part of this question, not an afterthought: a window
-  // holding only file tabs owns NO panes, so `allPanes()` is empty and this
-  // early return used to let ⌘Q exit with unsaved edits in the editor, silently
-  // (plan §1 finding 4). Window close never had this hole — it prevents the
-  // default unconditionally — so the two paths are fixed differently on
-  // purpose.
-  if (paneIds.length === 0 && !dirtyFiles.anyDirty()) {
+  // Even a window without panes must flush its settings and recovery offer.
+  // Only an app with no windows and nothing to guard can bypass preparation.
+  if (windows.size === 0 && paneIds.length === 0 && !dirtyFiles.anyDirty()) {
     return;
   }
   // No window can answer, so there is nobody to prompt. Rust's `exit_policy`
@@ -799,7 +815,7 @@ app.on("before-quit", (event) => {
   event.preventDefault();
   // Exactly one window is asked, behind the app-wide in-flight lock: a second
   // quit while the dialog is open must do nothing.
-  const requestId = quitFlight.tryBegin(label);
+  const requestId = quitFlight.tryBegin(label, windows.get(label)!.webContents.id);
   if (requestId === null) {
     return;
   }
@@ -810,9 +826,8 @@ app.on("before-quit", (event) => {
       quitFlight.finish(requestId);
       return;
     }
-    // Sent even when nothing is busy: the renderer auto-confirms a census that
-    // is empty in BOTH dimensions, but only after flushing debounced state to
-    // disk. Every window's unsaved files, deduplicated — quit ends them all.
+    // One dialog covers every window's unsaved files. Accepting it starts the
+    // all-window preparation barrier, including when nothing is busy.
     if (!emitTo(label, EVENTS.quitRequested, censusFor(requestId, infos, dirtyFiles.all()))) {
       quitFlight.finish(requestId);
     }

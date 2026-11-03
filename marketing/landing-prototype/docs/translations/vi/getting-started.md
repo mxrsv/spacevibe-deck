@@ -1,5 +1,5 @@
 ---
-translated-from: b353ffb2
+translated-from: 19883a02
 ---
 
 # Bắt đầu
@@ -45,8 +45,11 @@ Deck mở ra ở **Open board**, màn hình khởi đầu. Ở đây có:
 
 Nếu lần trước bạn thoát Deck khi vẫn còn tab, board sẽ hiện **Last session** ở trên cùng.
 **Reopen** mở lại các tab đó và nối tiếp từng cuộc trò chuyện với agent mà Deck tìm lại được;
-bỏ qua nó, hoặc mở thứ khác, là Deck bắt đầu lại từ đầu. Scrollback, chỉnh sửa file chưa lưu và
-vị trí cửa sổ thì không được khôi phục.
+bỏ qua nó, hoặc mở thứ khác trước khi chọn Reopen, là Deck bắt đầu lại từ đầu. Nếu một số tab
+không mở lại được, **Last session** giữ những tab đó để bạn thử lại mà không mở trùng các tab
+đã thành công. Bạn vẫn có thể thử lại sau khi khởi động lại Deck. Scrollback, chỉnh sửa file
+chưa lưu và vị trí cửa sổ thì không được khôi phục.
+Xem [khôi phục phiên làm việc](../../src/ui/last-session-actions.ts).
 
 ## Chạy một agent
 
@@ -108,6 +111,10 @@ sách nằm sát mép phải, tài liệu hiện bên trái nó, còn terminal v
 **Open files** để quay lại một tài liệu đang giữ; file chưa lưu có dấu chấm. Khi đang ở trong
 tài liệu, **⌘S** (Windows: **Ctrl+S**) để lưu và **⌘W** để đóng. File Markdown mở ra ở dạng đã
 render; **⌘⇧V** chuyển sang xem mã nguồn.
+
+Nếu việc tải lại file trong nền thất bại, Deck giữ nội dung đang mở để bạn tiếp tục sửa và lưu,
+đồng thời hiển thị thông báo lỗi. Kết quả tải lại đến chậm không thể thay thế nội dung bạn vừa
+lưu ([khôi phục editor](../../src/files/file-surface-controller.ts)).
 
 Nút con mắt trên dòng thư mục dùng để hiện hoặc ẩn các dot-file như `.env` và `.github`. Cây thư
 mục cũng ẩn những gì `.gitignore` của repo bỏ qua, như `node_modules` hay output của build, và

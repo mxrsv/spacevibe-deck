@@ -273,3 +273,184 @@ describe("installQuitGuard", () => {
     expect(quit.cancel).not.toHaveBeenCalled();
   });
 });
+
+describe("all-window journal preparation events", () => {
+  beforeEach(() => {
+    listenMock.mockClear();
+  });
+
+  const deliver = (name: string, requestId: unknown) => {
+    const handler = listenMock.mock.calls.find((call) => call[0] === name)?.[1];
+    expect(handler).toBeDefined();
+    handler!({ payload: { requestId } });
+  };
+  const settle = async () => {
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+  };
+  const preparationDeps = () => ({
+    suspend: vi.fn(),
+    flush: vi.fn(async () => {}),
+    resume: vi.fn(),
+    acknowledge: vi.fn(async (_requestId: number, _ok: boolean) => {}),
+    failed: vi.fn(),
+  });
+
+  it("suspends synchronously, acknowledges only after the durable flush, and ignores duplicates", async () => {
+    let release!: () => void;
+    const preparation = preparationDeps();
+    preparation.flush.mockImplementation(
+      () =>
+        new Promise<void>((done) => {
+          release = done;
+        }),
+    );
+    await installQuitGuard({ quit: makeDeps(), close: makeDeps(), preparation });
+    deliver("quit:prepare", "7");
+    deliver("quit:prepare", 7);
+    expect(preparation.suspend).toHaveBeenCalledTimes(1);
+    deliver("quit:prepare", 7);
+    await settle();
+    expect(preparation.acknowledge).not.toHaveBeenCalled();
+    release();
+    await settle();
+    expect(preparation.acknowledge).toHaveBeenCalledExactlyOnceWith(7, true);
+    expect(preparation.resume).not.toHaveBeenCalled();
+  });
+
+  it("resumes once while a flush is pending and never ACKs that canceled attempt or a newer attempt early", async () => {
+    const releases: Array<() => void> = [];
+    const preparation = preparationDeps();
+    preparation.flush.mockImplementation(
+      () =>
+        new Promise<void>((done) => {
+          releases.push(done);
+        }),
+    );
+    await installQuitGuard({ quit: makeDeps(), close: makeDeps(), preparation });
+    deliver("quit:prepare", 7);
+    await settle();
+    deliver("quit:resume", 6);
+    expect(preparation.resume).not.toHaveBeenCalled();
+    deliver("quit:resume", 7);
+    deliver("quit:resume", 7);
+    expect(preparation.resume).toHaveBeenCalledTimes(1);
+    expect(preparation.failed).toHaveBeenCalledTimes(1);
+    deliver("quit:prepare", 7);
+    deliver("quit:prepare", 8);
+    await settle();
+    releases[0]();
+    await settle();
+    expect(preparation.acknowledge).not.toHaveBeenCalled();
+    expect(preparation.suspend).toHaveBeenCalledTimes(2);
+    releases[1]();
+    await settle();
+    expect(preparation.acknowledge).toHaveBeenCalledExactlyOnceWith(8, true);
+  });
+
+  it("reports a failed strict flush to main and waits for the matching resume", async () => {
+    const preparation = preparationDeps();
+    preparation.flush.mockRejectedValue(new Error("disk full"));
+    await installQuitGuard({ quit: makeDeps(), close: makeDeps(), preparation });
+    deliver("quit:prepare", 3);
+    await settle();
+    expect(preparation.acknowledge).toHaveBeenCalledExactlyOnceWith(3, false);
+    expect(preparation.resume).not.toHaveBeenCalled();
+    deliver("quit:resume", 3);
+    expect(preparation.resume).toHaveBeenCalledTimes(1);
+    expect(preparation.failed).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates a close dialog opened before preparation, even after cancellation resumes journaling", async () => {
+    let accept!: (ok: boolean) => void;
+    const close = makeDeps({
+      ask: vi.fn(
+        () =>
+          new Promise<boolean>((done) => {
+            accept = done;
+          }),
+      ),
+    });
+    const preparation = preparationDeps();
+    await installQuitGuard({ quit: makeDeps(), close, preparation });
+    listenMock.mock.calls.find((call) => call[0] === "window:close-requested")![1]({
+      payload: busyRequest,
+    });
+    expect(close.ask).toHaveBeenCalledTimes(1);
+    deliver("quit:prepare", 9);
+    deliver("quit:resume", 9);
+    accept(true);
+    await settle();
+    expect(close.flush).not.toHaveBeenCalled();
+    expect(close.confirm).not.toHaveBeenCalled();
+    expect(close.cancel).toHaveBeenCalledWith(busyRequest.requestId);
+  });
+
+  it("refuses a close arriving during preparation without clearing its journal or asking again", async () => {
+    const close = makeDeps();
+    await installQuitGuard({ quit: makeDeps(), close, preparation: preparationDeps() });
+    deliver("quit:prepare", 9);
+    listenMock.mock.calls.find((call) => call[0] === "window:close-requested")![1]({
+      payload: busyRequest,
+    });
+    await settle();
+    expect(close.ask).not.toHaveBeenCalled();
+    expect(close.flush).not.toHaveBeenCalled();
+    expect(close.confirm).not.toHaveBeenCalled();
+    expect(close.cancel).toHaveBeenCalledWith(busyRequest.requestId);
+  });
+});
+
+it("reports cancellation even when another window's send failed before this renderer prepared", async () => {
+  listenMock.mockClear();
+  const preparation = {
+    suspend: vi.fn(),
+    flush: vi.fn(async () => {}),
+    resume: vi.fn(),
+    acknowledge: vi.fn(async () => {}),
+    failed: vi.fn(),
+  };
+  await installQuitGuard({ quit: makeDeps(), close: makeDeps(), preparation });
+  const send = (name: string) =>
+    listenMock.mock.calls.find((call) => call[0] === name)![1]({ payload: { requestId: 2 } });
+  send("quit:resume");
+  send("quit:resume");
+  send("quit:prepare");
+  expect(preparation.failed).toHaveBeenCalledTimes(1);
+  expect(preparation.resume).not.toHaveBeenCalled();
+  expect(preparation.suspend).not.toHaveBeenCalled();
+});
+
+it("cancels a close whose flush completes after quit preparation was canceled", async () => {
+  listenMock.mockClear();
+  let release!: () => void;
+  const close = makeDeps({
+    flush: vi.fn(
+      () =>
+        new Promise<void>((done) => {
+          release = done;
+        }),
+    ),
+  });
+  await installQuitGuard({
+    quit: makeDeps(),
+    close,
+    preparation: {
+      suspend: () => {},
+      flush: async () => {},
+      resume: () => {},
+      acknowledge: async () => {},
+      failed: () => {},
+    },
+  });
+  listenMock.mock.calls.find((call) => call[0] === "window:close-requested")![1]({
+    payload: idleRequest,
+  });
+  expect(close.flush).toHaveBeenCalledTimes(1);
+  for (const event of ["quit:prepare", "quit:resume"]) {
+    listenMock.mock.calls.find((call) => call[0] === event)![1]({ payload: { requestId: 9 } });
+  }
+  release();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(close.confirm).not.toHaveBeenCalled();
+  expect(close.cancel).toHaveBeenCalledWith(idleRequest.requestId);
+});

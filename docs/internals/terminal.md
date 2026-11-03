@@ -536,7 +536,12 @@ runs independently of the switch. Without hooks, API failures cannot produce the
   `QuitFlight` is app-wide, so a second ⌘Q while the dialog is open does nothing.
 - **Quit** asks one window with every window's unsaved files deduplicated, and skips the
   question only when there are no panes and nothing dirty. With no window to answer it kills
-  the PTYs and exits. `confirm_quit` runs `killAll` → telemetry flush → `saveAll` → exit.
+  the PTYs and exits. After confirmation, [quit preparation](../../electron/ipc/register-quit.ts)
+  asks every live renderer to suspend and durably flush its journal before `killAll` →
+  telemetry flush → `saveAll` → exit. One dialog does not mean one window to flush: otherwise
+  peer journals capture split panes disappearing during teardown. Failed or timed-out
+  preparation cancels without killing panes and resumes recording; stale or foreign replies
+  cannot complete another window's acknowledgment.
 - **An update install confirms the whole app** through
   [`update_census`](../../electron/ipc/register-updater.ts), including transferring panes and
   every window's dirty files. The [adapter](../../src/updater/electron-updater-adapter.ts)
@@ -570,3 +575,9 @@ pane to exactly one window or to an in-flight transfer.
 [`scripts/electron-ipc-contract.test.ts`](../../scripts/electron-ipc-contract.test.ts).
 A window's `close` aborts transfers involving it before anything else; `closed` terminates
 the panes it still owned.
+
+**Reusing `main` starts a new window lifetime, not a new pane registration.** macOS can
+reopen the last window after it closed. [Window creation](../../electron/main.ts) explicitly
+revives the label in the [coordinator](../../electron/coordinator.ts), first aborting old
+transfers while the source is still dead. Clearing the tombstone in `register` would let an
+old transfer return a pane to the new window. Detached labels remain unique per process.

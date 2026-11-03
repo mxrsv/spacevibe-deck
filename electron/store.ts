@@ -16,7 +16,7 @@ import path from "node:path";
 import { writeFileAtomically } from "./fs/write";
 
 export interface StoreOptions {
-  /** Milliseconds to coalesce writes; 0 disables autosave. */
+  /** Milliseconds to coalesce writes; 0 saves immediately. */
   readonly autoSaveMs?: number;
   /**
    * Called when a background write fails.
@@ -31,6 +31,26 @@ export interface StoreOptions {
 export interface StoreLoadState {
   readonly state: "ready" | "unreadable";
   readonly fresh: boolean;
+}
+
+/** Validate the whole batch before a protected deletion is filtered or state changes. */
+export function validateStorePatch(
+  values: unknown,
+  deleteKeys: unknown,
+): { readonly values: Record<string, unknown>; readonly deleteKeys: readonly string[] } {
+  if (
+    typeof values !== "object" ||
+    values === null ||
+    Array.isArray(values) ||
+    (Object.getPrototypeOf(values) !== Object.prototype &&
+      Object.getPrototypeOf(values) !== null) ||
+    !Array.isArray(deleteKeys) ||
+    Array.from(deleteKeys).some((key) => typeof key !== "string" || key.length === 0) ||
+    Reflect.ownKeys(values).some((key) => typeof key !== "string" || key.length === 0) ||
+    deleteKeys.some((key) => Object.hasOwn(values, key))
+  )
+    throw new Error("Invalid store patch");
+  return { values: values as Record<string, unknown>, deleteKeys };
 }
 
 export class JsonStore {
@@ -176,6 +196,39 @@ export class JsonStore {
     const { [key]: _removed, ...rest } = this.data;
     this.data = rest;
     this.scheduleSave();
+  }
+
+  /** One synchronous snapshot replacement, then one awaited durable write.
+   * A peer save can see the old batch or the new batch, never half of either. */
+  async patch(values: unknown, deleteKeys: unknown = []): Promise<void> {
+    this.assertWritable();
+    const patch = validateStorePatch(values, deleteKeys);
+    // Validate serializability before replacing anything, and detach nested
+    // values from the caller so a later mutation cannot alter another save.
+    const encoded = JSON.stringify(structuredClone(patch.values), (_key, value: unknown) => {
+      if (
+        value === undefined ||
+        typeof value === "function" ||
+        typeof value === "symbol" ||
+        typeof value === "bigint" ||
+        (typeof value === "number" && !Number.isFinite(value)) ||
+        (typeof value === "object" &&
+          value !== null &&
+          !Array.isArray(value) &&
+          Object.getPrototypeOf(value) !== Object.prototype &&
+          Object.getPrototypeOf(value) !== null)
+      )
+        throw new Error("Store patch values must be JSON data");
+      return value;
+    });
+    const cloned = JSON.parse(encoded) as Record<string, unknown>;
+    const remove = new Set(patch.deleteKeys);
+    const next = Object.fromEntries(
+      Object.entries({ ...this.data, ...cloned }).filter(([key]) => !remove.has(key)),
+    );
+    JSON.stringify(next);
+    this.data = next;
+    await this.save();
   }
 
   clear(): void {

@@ -72,6 +72,13 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   every change (`set_dirty_files`), and main's copy is what the quit and window-close census
   reads, so a wedged renderer cannot make ⌘Q forget an unsaved file. A failed save marks the
   document `unknown`, which keeps the guard asking.
+- **A clean buffer can still have a newer save than an in-flight read.** The
+  [controller](../../src/files/file-surface-controller.ts) rejects stale reads across newer
+  reads, saves and document lifetimes; checking `dirty` alone admits an old response just
+  after Save clears it. A failed reload keeps the usable buffer and reports through shared
+  chrome, because the Explorer may be hidden. Only an initial read may replace the editor
+  with refusal UI. The [race regressions](../../src/files/file-surface-controller-races.test.ts)
+  cover the ordering, not just each operation separately.
 - Content limits ([`file-content.ts`](../../src/files/file-content.ts), compiled into main
   too): editable up to 2 MiB, readable up to 16 MiB, binary refused by a NUL byte in the
   first 8 KiB, invalid UTF-8 decoded lossily and opened read-only, line endings detected by

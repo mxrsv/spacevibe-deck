@@ -1,25 +1,18 @@
 import { reportPersistError } from "../chrome/events";
-import { lastSession } from "../terminal/last-session-store";
+import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
 import {
-  clearWindowRecord,
   flushSessionJournal,
-  readWindowRecords,
+  retainPendingSessionRestore,
   resumeSessionJournal,
-  suspendSessionJournal,
+  trySuspendSessionJournal,
 } from "../terminal/session-journal";
-import {
-  clearSecondaryRecords,
-  restoreSession,
-  type RestoreDeps,
-} from "../terminal/session-restore";
+import { restoreSession, type RestoreDeps } from "../terminal/session-restore";
 import { countRestoredSessions } from "../telemetry/usage-counters";
 import { restoreDeps } from "./app-restore-deps";
 
 /**
- * The Open Board's "reopen last session" click. True when at least one tab
- * came back. The offer is cleared FIRST: the line leaves on the click, a
- * second click cannot start a second restore, and the journal stops holding
- * the record it would otherwise overwrite.
+ * True only when the reopen completed without pending tabs. Hide the offer
+ * during the attempt to prevent double clicks, then offer only failed tabs.
  */
 export async function reopenLastSession(deps: {
   readonly manager: RestoreDeps["manager"];
@@ -29,32 +22,51 @@ export async function reopenLastSession(deps: {
   if (held === null) {
     return false;
   }
+  if (!trySuspendSessionJournal()) {
+    reportPersistError(
+      "Couldn't reopen while Deck is saving your session. Try again after it finishes.",
+    );
+    return false;
+  }
   lastSession.value = null;
-  suspendSessionJournal();
+  let remaining = held.records;
+  let restored = false;
+  let saved = false;
   try {
-    const restored = await restoreSession(
-      restoreDeps({ ...deps, records: held.records }),
+    restored = await restoreSession(
+      {
+        ...restoreDeps({ ...deps, records: held.records }),
+        onProgress: (records) => {
+          remaining = records;
+        },
+      },
       held.mainLabel,
     );
-    if (restored) {
-      // Spec §4: true when a session restore materialized at least one pane.
-      countRestoredSessions();
-    } else {
-      reportPersistError("Couldn't reopen your last session.");
-    }
-    return restored;
+    if (restored) countRestoredSessions();
   } catch (err) {
     console.error("session restore failed:", err);
-    reportPersistError("Couldn't reopen your last session.");
-    return false;
   } finally {
+    const pending = retainPendingSessionRestore(remaining, held.records.keys());
+    const retry = summarizeLastSession(pending, held.mainLabel);
+    lastSession.value = retry === null ? null : { ...retry, retry: true };
     resumeSessionJournal();
-    // The restore's signal changes were ignored while suspended; capture the
-    // result now rather than on whatever moves next.
-    await flushSessionJournal().catch((err: unknown) => {
+    try {
+      await flushSessionJournal({ strict: true });
+      saved = true;
+    } catch (err) {
       console.warn("Failed to capture the reopened session:", err);
-    });
+    }
   }
+  if (remaining.size > 0) {
+    reportPersistError(
+      restored
+        ? "Some tabs couldn't reopen. Reopen Last session to retry the remaining tabs."
+        : "Couldn't reopen your last session. You can retry it.",
+    );
+  } else if (!restored || !saved) {
+    reportPersistError("Couldn't save or reopen your last session.");
+  }
+  return restored && remaining.size === 0 && saved;
 }
 
 /**
@@ -69,13 +81,9 @@ export function discardLastSession(): void {
     return;
   }
   lastSession.value = null;
-  void clearSecondaryRecords(
-    { readWindowRecords, clearWindowRecord },
-    held.records.keys(),
-    held.mainLabel,
-  )
-    .then(() => flushSessionJournal())
-    .catch((err: unknown) => {
-      console.warn("Failed to discard the last session:", err);
-    });
+  retainPendingSessionRestore(new Map(), held.records.keys());
+  void flushSessionJournal({ strict: true }).catch((err: unknown) => {
+    console.warn("Failed to discard the last session:", err);
+    reportPersistError("Couldn't save your session choice.");
+  });
 }

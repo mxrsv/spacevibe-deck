@@ -54,6 +54,9 @@ describe("JsonStore", () => {
     expect(() => store.delete("settings")).toThrow(/unreadable/i);
     expect(() => store.clear()).toThrow(/unreadable/i);
     await expect(store.save()).rejects.toThrow(/unreadable/i);
+    await expect(store.patch({ settings: { themeId: "default" } }, [])).rejects.toThrow(
+      /unreadable/i,
+    );
 
     expect(readFileSync(file, "utf8")).toBe("{ not json");
   });
@@ -271,5 +274,64 @@ describe("concurrency and recovery", () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
 
     expect(errors).toHaveLength(1);
+  });
+});
+
+describe("atomic store patches", () => {
+  it.each([
+    [null, []],
+    [[], []],
+    [{ next: 1 }, [42]],
+    [{ next: 1 }, ["next"]],
+    [{ "": 1 }, []],
+    [{ next: undefined }, []],
+    [{ next: NaN }, []],
+    [{ next: 1n }, []],
+    [{ next: new Map([["x", 1]]) }, []],
+  ])(
+    "rejects malformed batches without changing staged or durable data (%#)",
+    async (values, deleted) => {
+      const file = join(tempDir(), "session.json");
+      const initial = { keep: "original", remove: "still here" };
+      writeFileSync(file, JSON.stringify(initial));
+      const store = new JsonStore(file);
+      await store.load();
+      await expect(store.patch(values, deleted)).rejects.toThrow(/store patch|JSON data/i);
+      expect(store.entries()).toEqual(initial);
+      expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(initial);
+    },
+  );
+
+  it("rejects cyclic values before applying any part of a patch", async () => {
+    const file = join(tempDir(), "session.json");
+    writeFileSync(file, JSON.stringify({ keep: "original" }));
+    const store = new JsonStore(file);
+    await store.load();
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    await expect(store.patch({ newKey: "must not apply", cycle }, ["keep"])).rejects.toThrow(
+      /circular/i,
+    );
+    expect(store.entries()).toEqual({ keep: "original" });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ keep: "original" });
+  });
+
+  it("retries a rejected durable write with the complete batch", async () => {
+    const dir = tempDir();
+    const parent = join(dir, "blocked");
+    const file = join(parent, "session.json");
+    const store = new JsonStore(file);
+    await store.load();
+    writeFileSync(parent, "not a directory");
+    const values = {
+      "window:main": { tabs: ["A", "B"] },
+      pendingRestore: {},
+      archive: { tabs: ["A", "B"] },
+    };
+    await expect(store.patch(values, ["window:old"])).rejects.toThrow(/EEXIST|ENOTDIR/);
+    expect(store.entries()).toEqual(values);
+    rmSync(parent);
+    await store.patch(values, ["window:old"]);
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(values);
   });
 });

@@ -35,6 +35,8 @@ import {
 export const SESSION_STORE_FILE = "session.json";
 
 const ARCHIVE_KEY = "archive";
+const PENDING_RESTORE_KEY = "pendingRestore";
+const PENDING_LABEL_PREFIX = "pending-restore:";
 /**
  * Main derives this virtual index from the existing `window:<label>` keys.
  * Keeping the read key preserves the facade without a shared array that
@@ -48,7 +50,7 @@ function windowKey(label: string): string {
   return `window:${label}`;
 }
 
-type StoreSeam = Pick<Store, "get" | "set" | "delete" | "save">;
+type StoreSeam = Pick<Store, "get" | "set" | "delete" | "save" | "patch">;
 
 export interface SessionJournalDeps {
   /** TabManager.captureSession, injected to avoid a manager import cycle. */
@@ -78,6 +80,47 @@ let disposeEffect: (() => void) | null = null;
 let suspensionDepth = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let lastWritten: string | null = null;
+let writeTail: Promise<void> = Promise.resolve();
+let pendingRestore: ReadonlyMap<string, WindowRecord> = new Map();
+let consumedLabels: ReadonlySet<string> = new Set();
+let restoreCheckpointPending = false;
+
+function serializeWrite(operation: () => Promise<void>): Promise<void> {
+  const next = writeTail.then(operation);
+  writeTail = next.catch(() => {});
+  return next;
+}
+
+async function readPendingRestore(store: StoreSeam): Promise<ReadonlyMap<string, WindowRecord>> {
+  const raw = await store.get<unknown>(PENDING_RESTORE_KEY);
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return new Map();
+  return new Map(
+    Object.entries(raw).flatMap(([label, value]) => {
+      const record = validateWindowRecord(value);
+      return record === null || record.tabs.length === 0 ? [] : [[label, record] as const];
+    }),
+  );
+}
+
+/** Stage a restore checkpoint; the next flush saves it with the live capture
+ * and removes consumed source records in the SAME atomic store save. */
+export function retainPendingSessionRestore(
+  records: ReadonlyMap<string, WindowRecord>,
+  sourceLabels: Iterable<string>,
+): ReadonlyMap<string, WindowRecord> {
+  // Give each source record its own slot. A fresh main record and an older
+  // pending main record may both fail on the next launch; keying by their
+  // original label would overwrite one and lose its timestamp and tabs.
+  pendingRestore = new Map([...records.values()].map((record, index) => [String(index), record]));
+  consumedLabels = new Set(
+    [...consumedLabels, ...sourceLabels].filter((label) => !label.startsWith(PENDING_LABEL_PREFIX)),
+  );
+  lastWritten = null;
+  restoreCheckpointPending = true;
+  return new Map(
+    [...pendingRestore].map(([label, record]) => [`${PENDING_LABEL_PREFIX}${label}`, record]),
+  );
+}
 
 function openStore(): Promise<StoreSeam> {
   return (storePromise ??= Store.load(SESSION_STORE_FILE, {
@@ -105,13 +148,19 @@ export async function readWindowRecords(): Promise<ReadonlyMap<string, WindowRec
       result.set(label, record);
     }
   }
+  for (const [label, record] of await readPendingRestore(store)) {
+    result.set(`${PENDING_LABEL_PREFIX}${label}`, record);
+  }
   return result;
 }
 
 export async function clearWindowRecord(label: string): Promise<void> {
-  const store = await openStore();
-  await store.delete(windowKey(label));
-  await store.save();
+  await serializeWrite(async () => {
+    const store = await openStore();
+    if (label === activeDeps?.windowLabel) lastWritten = null;
+    await store.delete(windowKey(label));
+    await store.save();
+  });
 }
 
 /**
@@ -208,38 +257,58 @@ function groupTabsByWorkspace(
   return map;
 }
 
-async function writeNow(deps: SessionJournalDeps): Promise<void> {
+async function writeNow(deps: SessionJournalDeps, strict = false): Promise<void> {
   if (timer !== null) {
     clearTimeout(timer);
     timer = null;
   }
   const record = buildRecord(deps);
-  if (record.tabs.length === 0 && deps.holdEmpty?.() === true) {
+  if (record.tabs.length === 0 && deps.holdEmpty?.() === true && !restoreCheckpointPending) {
     return;
   }
-  const fingerprint = fingerprintOf(record);
-  if (fingerprint === lastWritten) {
+  const pending = pendingRestore;
+  const consumed = consumedLabels;
+  const fingerprint = JSON.stringify([fingerprintOf(record), [...pending]]);
+  if (fingerprint === lastWritten && !restoreCheckpointPending && consumedLabels.size === 0) {
     return;
   }
   try {
     const store = await openStore();
-    await store.set(windowKey(deps.windowLabel), record);
+    let next = sessionArchive.value;
     if (deps.isMain) {
-      let next = sessionArchive.value;
-      for (const [workspacePath, tabs] of groupTabsByWorkspace(record.tabs)) {
+      // Pending tabs have their own dated records; archive is only the rail's
+      // bounded view. Put pending tabs first so a live capture cannot hide them.
+      const archiveTabs = [...pending.values()].flatMap((entry) => entry.tabs).concat(record.tabs);
+      for (const [workspacePath, tabs] of groupTabsByWorkspace(archiveTabs)) {
         next = pushArchiveEntry(next, workspacePath, {
           savedAt: record.savedAt,
-          tabs,
+          tabs: tabs.slice(0, MAX_JOURNAL_TABS),
         });
       }
-      sessionArchive.value = next;
-      await store.set(ARCHIVE_KEY, next);
     }
-    await store.save();
+    const values = {
+      [windowKey(deps.windowLabel)]: record,
+      ...(deps.isMain
+        ? { [ARCHIVE_KEY]: next, [PENDING_RESTORE_KEY]: Object.fromEntries(pending) }
+        : {}),
+    };
+    const deleted = deps.isMain
+      ? [...consumed].filter((label) => label !== deps.windowLabel).map(windowKey)
+      : [];
+    await store.patch(values, deleted);
+    if (deps.isMain) sessionArchive.value = next;
     lastWritten = fingerprint;
+    if (pendingRestore === pending) {
+      restoreCheckpointPending = false;
+      consumedLabels = new Set([...consumedLabels].filter((label) => !consumed.has(label)));
+    }
   } catch (err) {
+    // The store may already hold an unsaved newer record. Even a return to
+    // the last durable capture must rewrite it before a strict flush can ACK.
+    lastWritten = null;
     console.warn("Failed to write session journal:", err);
     reportPersistError("Couldn't save your session — it may not restore.");
+    if (strict) throw err;
   }
 }
 
@@ -253,7 +322,9 @@ function schedule(deps: SessionJournalDeps): void {
   const debounceMs = deps.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   timer = setTimeout(() => {
     timer = null;
-    void writeNow(deps);
+    void serializeWrite(async () => {
+      if (suspensionDepth === 0) await writeNow(deps);
+    });
   }, debounceMs);
 }
 
@@ -270,6 +341,8 @@ export async function initSessionJournal(deps: SessionJournalDeps): Promise<void
     console.warn("Failed to load session archive:", err);
     reportPersistError("Couldn't load your saved sessions.");
   }
+  // A failed pending-record read must never turn into permission to overwrite it.
+  if (deps.isMain) pendingRestore = await readPendingRestore(store);
   activeDeps = deps;
   disposeEffect?.();
   disposeEffect = effect(() => {
@@ -305,8 +378,17 @@ export function suspendSessionJournal(): void {
   }
 }
 
+/** Begin a user restore only when no close/quit capture already owns the journal. */
+export function trySuspendSessionJournal(): boolean {
+  if (suspensionDepth > 0) return false;
+  suspendSessionJournal();
+  return true;
+}
+
 export function resumeSessionJournal(): void {
+  const wasSuspended = suspensionDepth > 0;
   suspensionDepth = Math.max(0, suspensionDepth - 1);
+  if (wasSuspended && suspensionDepth === 0 && activeDeps !== null) schedule(activeDeps);
 }
 
 /**
@@ -321,16 +403,33 @@ export function resumeSessionJournal(): void {
  * still blocks re-arming after this write, because the suspension stays held.
  */
 export async function flushSessionJournal(
-  options: { readonly force?: boolean } = {},
+  options: { readonly force?: boolean; readonly strict?: boolean } = {},
 ): Promise<void> {
   if (timer !== null) {
     clearTimeout(timer);
     timer = null;
   }
-  if (activeDeps === null || (suspensionDepth > 0 && options.force !== true)) {
+  if (activeDeps === null) {
+    if (options.strict) throw new Error("Session journal is not initialized");
     return;
   }
-  await writeNow(activeDeps);
+  if (suspensionDepth > 0 && options.force !== true) {
+    if (options.strict)
+      throw new Error("Session journal is busy; retry after the current operation");
+    return;
+  }
+  const deps = activeDeps;
+  await serializeWrite(async () => {
+    // Quit owns one suspension. It cannot acknowledge a partial restore that
+    // owns another, including a restore started while this write was queued.
+    const allowedSuspensions = options.force === true ? 1 : 0;
+    if (suspensionDepth > allowedSuspensions) {
+      if (options.strict)
+        throw new Error("Session journal is busy; retry after the current operation");
+      if (options.force !== true) return;
+    }
+    await writeNow(deps, options.strict);
+  });
 }
 
 /** Tests only. */
@@ -345,5 +444,9 @@ export function resetSessionJournal(): void {
   activeDeps = null;
   suspensionDepth = 0;
   lastWritten = null;
+  writeTail = Promise.resolve();
+  pendingRestore = new Map();
+  consumedLabels = new Set();
+  restoreCheckpointPending = false;
   sessionArchive.value = {};
 }

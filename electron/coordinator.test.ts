@@ -389,3 +389,49 @@ describe("pty exit mid-transfer", () => {
     expect(coordinator.owner(1)).toBe(null);
   });
 });
+
+describe("reopened window lifetime", () => {
+  it("keeps a reopened main window's panes alive when another window closes", () => {
+    coordinator.register(1, "main");
+    expect(coordinator.handleWindowDestroyed("main")).toEqual([1]);
+    coordinator.handleWindowCreated("main");
+    coordinator.register(2, "main");
+    coordinator.register(3, "deck-1");
+
+    expect(coordinator.handleWindowDestroyed("deck-1")).toEqual([3]);
+    expect(coordinator.owner(2)).toBe("main");
+    coordinator.deliver(2, "pty:output", { id: 2, data: "still running" });
+    expect(events("main").at(-1)).toMatchObject({
+      event: "pty:output",
+      payload: { id: 2, data: "still running" },
+    });
+  });
+
+  it("retires transfers from the old main before its label becomes live again", () => {
+    const now = 1_000;
+    coordinator.register(1, "main");
+    const token = coordinator.beginTransfer("main", 1, now);
+    coordinator.reserveDestination(token, "main", "deck-1");
+    expect(coordinator.handleWindowDestroyed("main", now)).toEqual([]);
+
+    expect(coordinator.handleWindowCreated("main", now + 1)).toEqual([1]);
+    coordinator.register(2, "main");
+    coordinator.abort(token, now + 2);
+    coordinator.sweep(now + TRANSFER_TIMEOUT_MS + 1);
+    expect(coordinator.owner(1)).toBeNull();
+    expect(coordinator.owner(2)).toBe("main");
+    expect(coordinator.takePendingOrphans()).toEqual([]);
+  });
+
+  it("preserves an adoption reserved for a never-before-opened window", () => {
+    coordinator.register(1, "main");
+    const token = coordinator.beginTransfer("main", 1);
+    coordinator.stagePayload(token, "main", payload(1));
+    coordinator.reserveDestination(token, "main", "deck-1");
+
+    expect(coordinator.handleWindowCreated("deck-1")).toEqual([]);
+    expect(coordinator.claim(token, "deck-1")).toEqual(payload(1));
+    coordinator.commit(token, "deck-1");
+    expect(coordinator.owner(1)).toBe("deck-1");
+  });
+});

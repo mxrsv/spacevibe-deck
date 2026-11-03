@@ -8,6 +8,7 @@
  * about both halves.
  */
 import { signal } from "@preact/signals";
+import { reportChromeMessage } from "../chrome/events";
 import type { UnlistenFn } from "../host/bridge";
 import type { SurfaceStrip, SurfaceEditCommand } from "../terminal/tab-manager";
 import { UNSEQUENCED } from "../lib/open-sequence";
@@ -195,6 +196,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
     isDisposed: () => disposed,
   });
   const listingGenerations = new Map<string, number>();
+  const documentReads = new Map<string, symbol>();
 
   /** Paths of every open document, across every workspace. */
   function openPaths(): string[] {
@@ -254,20 +256,20 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
   }
 
   async function readDocument(workspacePath: string, path: string): Promise<void> {
-    // What the buffer held when the read was decided on. `decideExternalChange`
-    // refuses to auto-reload a DIRTY buffer, but it decides before this await —
-    // and the editor stays writable throughout. Without this, typing during a
-    // silent reload had the disk content dropped on top of it, with no bar and
-    // no dialog: spec §5's "dirty + changed → never auto-decide" bypassed by
-    // timing rather than by logic.
-    const before = documentFor(path)?.text;
+    const before = documentFor(path);
+    const read = Symbol();
+    documentReads.set(path, read);
+    // A newer read/open or save supersedes this request. The immutable file
+    // reference also changes when a save finishes, even if the text is clean.
+    const isCurrent = () =>
+      !disposed && documentReads.get(path) === read && documentFor(path)?.file === before?.file;
     try {
       const result = await client.readFile(workspacePath, path);
       const live = documentFor(path);
-      if (disposed || live === undefined) {
+      if (!isCurrent() || live === undefined) {
         return;
       }
-      if (before !== undefined && live.text !== before && live.dirty) {
+      if (before !== undefined && live.text !== before.text) {
         // The user typed while we were reading. Raise the bar this reload was
         // supposed to be a shortcut around, and keep their text.
         updateDocument(path, {
@@ -278,6 +280,12 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         return;
       }
       if (result.kind === "refused") {
+        if (live.file !== null) {
+          reportChromeMessage(
+            `Could not reload ${path}: ${result.reason}. Your text is still available; save it or reopen the file to retry.`,
+          );
+          return;
+        }
         updateDocument(path, {
           file: null,
           text: "",
@@ -308,14 +316,18 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       });
       dirty.set(path, false);
     } catch (error: unknown) {
-      if (disposed || documentFor(path) === undefined) {
-        return;
+      const live = documentFor(path);
+      if (!isCurrent() || live === undefined) return;
+      const reason = error instanceof Error ? error.message : "Deck could not read this file.";
+      if (live.file !== null) {
+        reportChromeMessage(
+          `Could not reload ${path}: ${reason}. Your text is still available; save it or reopen the file to retry.`,
+        );
+      } else {
+        updateDocument(path, { refusal: reason });
       }
-      updateDocument(path, {
-        file: null,
-        refusal: error instanceof Error ? error.message : "Deck could not read this file.",
-      });
     } finally {
+      if (documentReads.get(path) === read) documentReads.delete(path);
       notify();
     }
   }
@@ -578,6 +590,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         return;
       }
       const file = document.file;
+      documentReads.delete(path);
       // The text that is about to reach disk, captured before the await so the
       // baseline below is what was actually WRITTEN.
       const written = document.text;

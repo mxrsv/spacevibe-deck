@@ -44,6 +44,8 @@ export interface RestoreDeps {
     readWindowRecords(): Promise<ReadonlyMap<string, WindowRecord>>;
     clearWindowRecord(label: string): Promise<void>;
   };
+  /** Checkpoint unmaterialized tabs before any secondary records are removed. */
+  onProgress?(remaining: ReadonlyMap<string, WindowRecord>): void;
   marker: {
     /** True = a previous attempt never cleared (crash mid-restore). */
     take(): Promise<boolean>;
@@ -256,8 +258,8 @@ async function materializeAll(
   refs: ReadonlyMap<string, ResumeRef>,
   customAgents: readonly CustomAgent[],
   select: boolean,
-): Promise<number> {
-  let restored = 0;
+): Promise<ReadonlySet<SessionTab>> {
+  const restored = new Set<SessionTab>();
   for (const [tabIndex, tab] of tabs.entries()) {
     const paneCommands = paneCommandsFor(tab, tabIndex, refs, customAgents);
     try {
@@ -275,7 +277,7 @@ async function materializeAll(
         ...(tab.source.workspacePath !== null ? { workspacePath: tab.source.workspacePath } : {}),
       });
       if (ok) {
-        restored += 1;
+        restored.add(tab.source);
         noteResumedPanes(tab, tabIndex, refs);
         // Usage analytics (spec §4): a resumed agent is a launch, counted per
         // pane that will actually type a command. Counted here rather than in
@@ -303,6 +305,7 @@ async function restoreTabs(
   select = true,
 ): Promise<{
   readonly restored: number;
+  readonly remaining: ReadonlySet<SessionTab>;
   readonly alive: ReadonlyMap<string, boolean>;
 }> {
   const paths = livenessPaths(entries, extraLivenessPaths);
@@ -310,7 +313,11 @@ async function restoreTabs(
   const live = applyLiveness(entries, alive);
   const refs = await resolveRefs(deps.lookup, live);
   const restored = await materializeAll(deps.manager, live, refs, deps.customAgents(), select);
-  return { restored, alive };
+  return {
+    restored: restored.size,
+    remaining: new Set(live.filter((tab) => !restored.has(tab.source)).map((tab) => tab.source)),
+    alive,
+  };
 }
 
 /** Clear every non-main secondary window record, one at a time. A failed
@@ -413,10 +420,25 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
     const result = await restoreTabs(deps, ordered, fileWorkspaces, false);
     restored = result.restored;
 
-    // Clear secondary records as soon as their tabs are folded in, BEFORE
-    // restoreFiles/selectTab/activateFile below — those only ever touch the
-    // main record, so a throw there must not skip this clear (H2).
-    await clearSecondaryRecords(deps.journal, records.keys(), mainLabel);
+    // Checkpoint tab outcomes before files or selection can throw. The action
+    // saves this remainder with its live capture before consuming source records;
+    // direct callers clear only secondary records with no pending tabs.
+    const remaining = new Map(
+      [...records].flatMap(([label, record]) => {
+        const tabs = record.tabs.filter((tab) => result.remaining.has(tab));
+        return tabs.length === 0 ? [] : [[label, { ...record, tabs }] as const];
+      }),
+    );
+    if (deps.onProgress !== undefined) {
+      // The action commits live tabs, pending tabs and consumed records together.
+      deps.onProgress(remaining);
+    } else {
+      await clearSecondaryRecords(
+        deps.journal,
+        [...records.keys()].filter((label) => !remaining.has(label)),
+        mainLabel,
+      );
+    }
 
     // Guarded on its own: the tabs above are materialized hidden (`select:
     // false`), so a throw here that skipped the selection below would leave

@@ -2,10 +2,9 @@
  * Window labels, focus order and boot mode — the port of
  * `src-tauri/src/window_lifecycle.rs`.
  *
- * Labels are `main` and then `deck-<n>`, allocated monotonically and NEVER
- * reused within a process run. That is load-bearing rather than tidy: the
- * coordinator remembers dead labels to decide whether a pane may be handed
- * back, and a reused label would resurrect a window that no longer exists.
+ * Detached labels `deck-<n>` are never reused. macOS can reopen `main` after
+ * its last window closes; createWindow must announce that new lifetime to the
+ * coordinator before routing panes, retiring transfers from the old window.
  */
 
 export const MAIN_LABEL = "main";

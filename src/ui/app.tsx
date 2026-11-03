@@ -11,7 +11,7 @@ import { installNotificationActivation } from "./attention/notification-activati
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { launchPageAgents, quickAgentOptions } from "../settings/quick-agents";
 import { openSettingsAt } from "./settings/settings-focus-store";
-import { listen, type UnlistenFn } from "../host/bridge";
+import { invoke, listen, type UnlistenFn } from "../host/bridge";
 import { getCurrentWindow, currentWindowLabel } from "../host/window-host";
 import { ask, message, open as openDialog } from "../host/dialog-host";
 import { installQuitGuard } from "../lib/quit-guard";
@@ -251,6 +251,7 @@ import {
   flushSessionJournal,
   initSessionJournal,
   suspendSessionJournal,
+  resumeSessionJournal,
 } from "../terminal/session-journal";
 import { readLastSession } from "../terminal/session-restore";
 import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
@@ -915,10 +916,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // just activated. `setActiveWorkspace`'s own doc comment already says this
   // setter is "deliberately NOT called when the window runs out of terminal
   // tabs" — this is that rule enforced at its one call site.
-  // Opening anything else answers the last-session offer: once a tab exists
-  // the offer is gone for good, and the journal stops holding its record.
+  // Opening anything else answers the initial last-session offer. A failed
+  // restore keeps its retry offer even while successfully restored tabs exist.
   useSignalEffect(() => {
-    if (tabViews.value.length > 0 && lastSession.value !== null) {
+    if (tabViews.value.length > 0 && lastSession.value !== null && !lastSession.value.retry) {
       discardLastSession();
     }
   });
@@ -974,24 +975,29 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           cancelLabel: "Cancel",
         }),
     });
+    let closeSuspended: number | null = null;
     installQuitGuard({
-      quit: {
-        ...answering(QUIT_COPY),
-        // Quitting persists the journal so the next launch restores it.
-        // Suspend FIRST: the window is going away, so a pane-exit signal
-        // re-arming the debounce after the flush must not clobber the
-        // flushed record mid-teardown (M1a). No resume needed.
-        flush: async () => {
+      preparation: {
+        suspend: () => {
+          // A close already flushing when preparation arrives no longer owns
+          // teardown. Replace that suspension instead of leaking its depth.
+          if (closeSuspended !== null) resumeSessionJournal();
+          closeSuspended = null;
           suspendSessionJournal();
+        },
+        flush: async () => {
           await Promise.all([
             flushSettingsSave(),
-            // `force`, because the line above suspended: without it this pair
-            // cancelled the armed debounce and then wrote NOTHING, so quitting
-            // within a second of opening or switching a tab dropped that
-            // change from `session.json` entirely.
-            flushSessionJournal({ force: true }),
+            flushSessionJournal({ force: true, strict: true }),
           ]);
         },
+        resume: resumeSessionJournal,
+        acknowledge: (requestId, ok) => invoke<void>("quit_prepared", { requestId, ok }),
+        failed: () =>
+          reportPersistError("Could not save the session. Quit canceled; please try again."),
+      },
+      quit: {
+        ...answering(QUIT_COPY),
         confirm: (requestId: number) => defaultPtyClient.confirmQuit(requestId),
         cancel: (requestId: number) => defaultPtyClient.cancelQuit(requestId),
       },
@@ -1006,17 +1012,28 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         // needed — the window is going away. A window still offering the last
         // session holds no tabs of its own; its record IS the offer, so it
         // stays for the next launch rather than being cleared unanswered.
-        flush: async () => {
+        flush: async (requestId: number) => {
+          closeSuspended = requestId;
           suspendSessionJournal();
           await Promise.all([
             flushSettingsSave(),
             lastSession.value === null
-              ? currentWindowLabel().then((label) => clearWindowRecord(label))
+              ? currentWindowLabel().then((label) => {
+                  // The label reply may arrive after quit already saved this
+                  // window. Only the close that still owns suspension may clear.
+                  if (closeSuspended === requestId) return clearWindowRecord(label);
+                })
               : Promise.resolve(),
           ]);
         },
         confirm: (requestId: number) => defaultPtyClient.confirmCloseWindow(requestId),
-        cancel: (requestId: number) => defaultPtyClient.cancelCloseWindow(requestId),
+        cancel: async (requestId: number) => {
+          if (closeSuspended === requestId) {
+            closeSuspended = null;
+            resumeSessionJournal();
+          }
+          await defaultPtyClient.cancelCloseWindow(requestId);
+        },
       },
     })
       .then((fn) => {
