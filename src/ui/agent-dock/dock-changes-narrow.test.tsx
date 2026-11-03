@@ -39,6 +39,7 @@ import {
   type TabView,
 } from "../../terminal/tabs-store";
 import { byRole, click, mount, press, settle, waitUntil } from "../controls/preset-test-kit";
+import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
 import { dockSheetOpen, resetAgentDockState } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
@@ -125,7 +126,7 @@ function dock() {
           section: (root) => <DockChanges root={root} changes={controller} diff={diff} />,
           count: (root) => changedFileCount(root, controller),
         },
-        files: () => <p>files body</p>,
+        files: testFileBodies(),
         usage: () => <p>usage body</p>,
         history: () => <p>history body</p>,
       }}

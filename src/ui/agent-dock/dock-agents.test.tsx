@@ -28,6 +28,7 @@ import {
   type TabView,
 } from "../../terminal/tabs-store";
 import { click, mount, settle } from "../controls/preset-test-kit";
+import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
 import { resetAgentDockState } from "./agent-dock-state";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
@@ -68,7 +69,7 @@ function dock() {
       selection={{ onFocusPane: focusPane, onSelectTab: selectTab }}
       bodies={{
         changes: null,
-        files: () => <p>files body</p>,
+        files: testFileBodies(),
         usage: () => <p>usage body</p>,
         history: null,
       }}
@@ -230,7 +231,7 @@ describe("the order of the dock", () => {
             section: () => <p>changes body</p>,
             count: () => null,
           },
-          files: () => <p>files body</p>,
+          files: testFileBodies(),
           usage: () => <p>usage body</p>,
           history: () => <p>history body</p>,
         }}

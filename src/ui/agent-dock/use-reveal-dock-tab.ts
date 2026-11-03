@@ -1,7 +1,8 @@
 import { useEffect } from "preact/hooks";
 import { DEFAULT_SETTINGS, type DockTab } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
-import { setDockView, VIEW_OF_TAB } from "./agent-dock-state";
+import { dockSurface } from "./agent-dock-state";
+import { selectDockSurfaceOf } from "./dock-reveal";
 
 /** The tab the last dock mount or change settled on; module-level so a closed dock remembers it. */
 let settledTab: DockTab = DEFAULT_SETTINGS.dockTab;
@@ -15,7 +16,11 @@ export function useRevealDockTab(): void {
   const tab = settings.value.dockTab;
   useEffect(() => {
     if (tab !== settledTab) {
-      setDockView(VIEW_OF_TAB[tab]);
+      // Opening a file writes `dockTab: "explorer"` too (the file controller's hook), after it
+      // has already put the file tab on the body; the Explorer tab must not take it back.
+      if (tab !== "explorer" || dockSurface.value === "view") {
+        selectDockSurfaceOf(tab);
+      }
     }
     settledTab = tab;
   }, [tab]);

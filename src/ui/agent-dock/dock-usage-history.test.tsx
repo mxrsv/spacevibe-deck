@@ -56,6 +56,7 @@ import {
   usageStale,
 } from "../../usage/usage-store";
 import { click, mount, settle, waitUntil } from "../controls/preset-test-kit";
+import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
 import { resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockHistory } from "./dock-history";
@@ -127,7 +128,7 @@ function dock() {
       selection={{ onFocusPane: () => {}, onSelectTab: () => {} }}
       bodies={{
         changes: null,
-        files: () => null,
+        files: testFileBodies(),
         usage: ({ item, space }) => (
           <DockUsage item={item} space={space} onOpenDetails={onOpenDetails} />
         ),
@@ -330,7 +331,9 @@ describe("the Usage view", () => {
     expect(startUsagePolling).toHaveBeenCalledTimes(1);
     expect(stopUsagePolling).not.toHaveBeenCalled();
     await click(
-      document.body.querySelector('[aria-label="Dock views"] [aria-label="Files"]') as HTMLElement,
+      document.body.querySelector(
+        '[aria-label="Dock views"] [aria-label="History"]',
+      ) as HTMLElement,
     );
     await waitUntil(() => vi.mocked(stopUsagePolling).mock.calls.length === 1);
     await view.unmount();

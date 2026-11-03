@@ -39,3 +39,15 @@
   box-sizing: border-box;
   border-bottom: 1px solid var(--sidebar-border);
 }
+
+/* A file in the tabbed dock (dock-file-body.tsx): the legacy panel without its header, filling the
+   editor side. The tree pane draws the seam, so the panel's own right border would double it. */
+.dock-file .file-panel {
+  flex: 1;
+  border-right: 0;
+}
+
+/* The Markdown toggle sits in the breadcrumb row here, not over the surface's corner. */
+.dock-file .md-view-toggle {
+  position: static;
+}

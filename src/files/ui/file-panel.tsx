@@ -19,9 +19,14 @@ export interface FilePanelProps {
   readonly controller: FileSurfaceController;
   readonly workspacePath: string;
   readonly onEmpty?: () => void;
+  /**
+   * "none" leaves out the header (file select, Markdown toggle, Save, Close) for a host that draws
+   * those itself: the tabbed dock has them in its strip and breadcrumb row.
+   */
+  readonly chrome?: "full" | "none";
 }
 
-export function FilePanel({ controller, workspacePath, onEmpty }: FilePanelProps) {
+export function FilePanel({ controller, workspacePath, onEmpty, chrome = "full" }: FilePanelProps) {
   const surface = surfaceFor(workspacePath);
   const path = surface.activePath;
   const panel = useRef<HTMLElement>(null);
@@ -79,37 +84,39 @@ export function FilePanel({ controller, workspacePath, onEmpty }: FilePanelProps
         }
       }}
     >
-      <header class="file-panel__header">
-        <select
-          class="file-panel__files"
-          aria-label="Open files"
-          value={path}
-          onChange={(event) => controller.activateFile(workspacePath, event.currentTarget.value)}
-        >
-          {surface.tabs.map((tab) => (
-            <option key={tab.path} value={tab.path}>
-              {baseName(tab.path)}
-              {documentFor(tab.path)?.dirty ? " •" : ""}
-            </option>
-          ))}
-        </select>
-        {markdown && <ViewModeToggle mode={mode} onToggle={() => toggleViewMode(path)} />}
-        <button
-          type="button"
-          class="file-panel__action"
-          disabled={!document?.dirty || document.file?.readOnly}
-          onClick={() => void controller.savePath(path)}
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          class="file-panel__action"
-          onClick={() => void controller.closePath(workspacePath, path)}
-        >
-          Close
-        </button>
-      </header>
+      {chrome === "full" && (
+        <header class="file-panel__header">
+          <select
+            class="file-panel__files"
+            aria-label="Open files"
+            value={path}
+            onChange={(event) => controller.activateFile(workspacePath, event.currentTarget.value)}
+          >
+            {surface.tabs.map((tab) => (
+              <option key={tab.path} value={tab.path}>
+                {baseName(tab.path)}
+                {documentFor(tab.path)?.dirty ? " •" : ""}
+              </option>
+            ))}
+          </select>
+          {markdown && <ViewModeToggle mode={mode} onToggle={() => toggleViewMode(path)} />}
+          <button
+            type="button"
+            class="file-panel__action"
+            disabled={!document?.dirty || document.file?.readOnly}
+            onClick={() => void controller.savePath(path)}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            class="file-panel__action"
+            onClick={() => void controller.closePath(workspacePath, path)}
+          >
+            Close
+          </button>
+        </header>
+      )}
       <div class="file-panel__content">
         {markdown && mode === "rendered" ? (
           <MarkdownView path={path} controller={controller} />

@@ -15,13 +15,39 @@ import {
 } from "../../settings/settings-store";
 import type { DockTab } from "../../settings/settings-schema";
 import { agentDockEnabled, dockNarrow } from "./agent-dock-layout";
-import { dockSheetOpen, dockView, setDockView, VIEW_OF_TAB } from "./agent-dock-state";
+import { surfaceFor } from "../../files/file-surface-store";
+import {
+  dockSheetOpen,
+  dockSurface,
+  dockView,
+  selectDockExplorer,
+  selectDockFile,
+  setDockView,
+  VIEW_OF_TAB,
+} from "./agent-dock-state";
+import { dockRoot } from "./dock-root";
+
+/** Select what a legacy tab names: the Explorer tab for the explorer, a fixed view otherwise. */
+export function selectDockSurfaceOf(tab: DockTab): void {
+  if (tab === "explorer") {
+    selectDockExplorer();
+  } else {
+    setDockView(VIEW_OF_TAB[tab]);
+  }
+}
+
+/** Whether the surface of `tab` is the one on the body (the explorer owns files and the + tab). */
+function onSurfaceOf(tab: DockTab): boolean {
+  return tab === "explorer"
+    ? dockSurface.value === "explorer"
+    : dockSurface.value === "view" && dockView.value === VIEW_OF_TAB[tab];
+}
 
 /** Open the dock on a surface and never close it; its view is selected even when the tab is unchanged. */
 export function openDockTab(tab: DockTab): void {
   openTab(tab);
   if (agentDockEnabled()) {
-    setDockView(VIEW_OF_TAB[tab]);
+    selectDockSurfaceOf(tab);
   }
 }
 
@@ -35,15 +61,20 @@ export function revealDockTab(tab: DockTab): boolean {
   if (!agentDockEnabled()) {
     return revealTab(tab);
   }
-  const view = VIEW_OF_TAB[tab];
-  if (settings.value.dockOpen && dockView.value === view) {
+  if (settings.value.dockOpen && onSurfaceOf(tab)) {
+    // A second explorer press leaves the Explorer tab for the document beside it, if one is open;
+    // only without one does it put the dock away.
+    if (tab === "explorer" && surfaceFor(dockRoot.value).activePath !== null) {
+      selectDockFile();
+      return false;
+    }
     // `dockTab` can lag the icon press, so close directly rather than through the tab compare.
     updateSettings({ dockOpen: false, dockTab: tab });
     return true;
   }
   // Not on screen: open on it. `revealTab` would hide a dock whose stored tab already matches.
   updateSettings({ dockOpen: true, dockTab: tab });
-  setDockView(view);
+  selectDockSurfaceOf(tab);
   return false;
 }
 
@@ -56,5 +87,10 @@ export function dockShows(tab: DockTab, activeTab: DockTab): boolean {
   if (!agentDockEnabled()) {
     return activeTab === tab;
   }
-  return dockView.value === VIEW_OF_TAB[tab] && (!dockNarrow.value || dockSheetOpen.value);
+  // Files and the Explorer tab are both the explorer: it is on screen while either holds the body.
+  const shown =
+    tab === "explorer"
+      ? dockSurface.value !== "view"
+      : dockSurface.value === "view" && dockView.value === VIEW_OF_TAB[tab];
+  return shown && (!dockNarrow.value || dockSheetOpen.value);
 }
