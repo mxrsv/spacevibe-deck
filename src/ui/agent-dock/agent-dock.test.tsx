@@ -31,6 +31,7 @@ import {
 } from "../../terminal/tabs-store";
 import { browserPanelObscured } from "../app-policy";
 import { byRole, click, mount, press, settle, waitUntil } from "../controls/preset-test-kit";
+import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
 import { dockSheetOpen, dockView, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
@@ -87,7 +88,7 @@ const BODIES = {
     section: (root: string | null) => <p>changes body at {root ?? "no folder"}</p>,
     count: () => null,
   },
-  files: (root: string | null) => <p>files body at {root ?? "no folder"}</p>,
+  files: testFileBodies(),
   usage: () => <p>usage body</p>,
   history: () => <p>history body</p>,
 };
@@ -193,9 +194,9 @@ describe("the tabbed dock in a wide window", () => {
     await view.unmount();
   });
 
-  it("has one strip of fixed icons in order, with no tab and no count", async () => {
+  it("has one strip of fixed icons in order, then +, with no tab and no count", async () => {
     const view = await mount(dock());
-    expect(icons()).toEqual(["Changes", "Usage", "Files", "History"]);
+    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file"]);
     expect(strip()?.textContent).toBe("");
     expect(document.body.querySelector('[role="tab"]')).toBeNull();
     await view.unmount();
@@ -212,11 +213,12 @@ describe("the tabbed dock in a wide window", () => {
     expect(bodyText()).toContain("usage body");
     // The unselected view is unmounted, so an unselected Usage runs no poll.
     expect(bodyText()).not.toContain("changes body");
-    expect(bodyText()).not.toContain("files body");
+    expect(bodyText()).not.toContain("explorer body");
 
-    await click(icon("Files"));
-    expect(bodyText()).toContain("files body");
+    await click(icon("Open a file"));
+    expect(bodyText()).toContain("explorer body");
     expect(bodyText()).not.toContain("usage body");
+    expect(pressed()).toEqual(["Open a file"]);
     await view.unmount();
   });
 
@@ -256,7 +258,7 @@ describe("the tabbed dock in a wide window", () => {
 
   it("leaves History out where the host cannot list sessions", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, history: null } }));
-    expect(icons()).toEqual(["Changes", "Usage", "Files"]);
+    expect(icons()).toEqual(["Changes", "Usage", "Open a file"]);
     await view.unmount();
   });
 
@@ -301,10 +303,10 @@ describe("the tabbed dock in a wide window", () => {
     expect(pressed()).toEqual(["Usage"]);
 
     // The user picks another view and closes the dock; opening it again is not a request.
-    await click(icon("Files"));
+    await click(icon("History"));
     await view.unmount();
     view = await mount(dock());
-    expect(pressed()).toEqual(["Files"]);
+    expect(pressed()).toEqual(["History"]);
     await view.unmount();
   });
 });
@@ -441,7 +443,7 @@ describe("the folder the views show", () => {
 
   it("leaves the Changes view out where the host cannot read git changes", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, changes: null } }));
-    expect(icons()).toEqual(["Usage", "Files", "History"]);
+    expect(icons()).toEqual(["Usage", "History", "Open a file"]);
     await view.unmount();
   });
 
@@ -489,7 +491,7 @@ describe("the tabbed dock under 1360px", () => {
     await click(named("Open the side panel") as HTMLElement);
     const sheet = byRole("dialog") as HTMLElement;
     expect(sheet.textContent).toContain("token refresh");
-    expect(icons()).toEqual(["Changes", "Usage", "Files", "History"]);
+    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file"]);
     expect(dockSheetOpen.value).toBe(true);
     expect(
       browserPanelObscured({

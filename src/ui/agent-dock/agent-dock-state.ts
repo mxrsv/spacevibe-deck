@@ -6,17 +6,23 @@
 import { signal } from "@preact/signals";
 import type { DockTab } from "../../settings/settings-schema";
 
-export type DockViewId = "changes" | "usage" | "files" | "history";
+export type DockViewId = "changes" | "usage" | "history";
 
-/** The strip's fixed order (DOCK-1). */
-export const DOCK_VIEWS: readonly DockViewId[] = ["changes", "usage", "files", "history"];
+/** The strip's fixed order (DOCK-1). Documents are tabs after these (DOCK-6), not a view. */
+export const DOCK_VIEWS: readonly DockViewId[] = ["changes", "usage", "history"];
+
+/**
+ * What the body shows: a fixed view, the active file tab, or the Explorer tab (`+`). Kept apart
+ * from `dockView` so choosing a file never forgets which view the user left, and so a fixed icon
+ * can take the body without closing any file tab (the file surface store keeps those).
+ */
+export type DockSurface = "view" | "file" | "explorer";
 
 /** What a fresh window shows: the checkout's Changes, the thing an agent's work leaves behind. */
 const DEFAULT_VIEW: DockViewId = "changes";
 
-/** The view each legacy dock tab (and its chord) names. */
-export const VIEW_OF_TAB: Readonly<Record<DockTab, DockViewId>> = {
-  explorer: "files",
+/** The view each legacy dock tab (and its chord) names; the explorer is a surface, not a view. */
+export const VIEW_OF_TAB: Readonly<Record<Exclude<DockTab, "explorer">, DockViewId>> = {
   usage: "usage",
   sessions: "history",
 };
@@ -24,9 +30,28 @@ export const VIEW_OF_TAB: Readonly<Record<DockTab, DockViewId>> = {
 /** The view the user chose; `DockColumn` falls back from it when it is unavailable. */
 export const dockView = signal<DockViewId>(DEFAULT_VIEW);
 
+export const dockSurface = signal<DockSurface>("view");
+
 export function setDockView(view: DockViewId): void {
   dockView.value = view;
+  dockSurface.value = "view";
 }
+
+/** The `+` tab: the project tree at full width. */
+export function selectDockExplorer(): void {
+  dockSurface.value = "explorer";
+}
+
+/** The active file tab takes the body. Also the Explorer tab's way out when a file opens. */
+export function selectDockFile(): void {
+  dockSurface.value = "file";
+}
+
+/**
+ * The user's own choice for the tree pane beside a file, or null to follow the dock's width
+ * (hidden under 560px, DOCK-6). Window-scoped so it holds while the file body remounts.
+ */
+export const dockTreePane = signal<boolean | null>(null);
 
 /**
  * The narrow-window sheet. The native browser view paints above every DOM layer, so `App` yields
@@ -56,5 +81,7 @@ export function takeAfterSheetClose(): (() => void) | null {
 export function resetAgentDockState(): void {
   afterSheetClose = null;
   dockView.value = DEFAULT_VIEW;
+  dockSurface.value = "view";
+  dockTreePane.value = null;
   dockSheetOpen.value = false;
 }

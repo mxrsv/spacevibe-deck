@@ -1,18 +1,19 @@
-import {
-  ChartHistogramIcon,
-  Clock01Icon,
-  FileEditIcon,
-  Folder01Icon,
-} from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
-import { Button } from "../controls/button";
-import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
+import { useEffect } from "preact/hooks";
+import type { FileSurfaceController } from "../../files/file-surface-controller";
+import { surfaceFor } from "../../files/file-surface-store";
 import type { RailSelection } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
 import { DockAsk } from "./dock-ask";
 import { DockHeader } from "./dock-header";
-import { DOCK_VIEWS, dockView, setDockView, type DockViewId } from "./agent-dock-state";
+import {
+  DOCK_VIEWS,
+  dockSurface,
+  dockView,
+  type DockSurface,
+  type DockViewId,
+} from "./agent-dock-state";
+import { DockTabStrip } from "./dock-tab-strip";
 
 /**
  * What the views show. `App` picks the bodies, as it does for the legacy column, so the host
@@ -32,11 +33,20 @@ export interface DockChangesBodies {
   readonly count: (root: string | null) => number | null;
 }
 
+/** The documents: file tabs in the strip, the Explorer tab behind `+`, and the open file's body. */
+export interface DockFileBodies {
+  /** Opens, activates and closes the file tabs; the strip drives it, the bodies read the store. */
+  readonly controller: FileSurfaceController;
+  /** The Explorer tab: the project tree at full width, rooted at `root`. */
+  readonly explorer: (root: string | null) => ComponentChildren;
+  /** The active file: breadcrumb row, editor and tree pane. Only called with a root that has one. */
+  readonly document: (root: string) => ComponentChildren;
+}
+
 export interface DockBodies {
   /** Null where the host cannot read git changes, so Changes is left out. */
   readonly changes: DockChangesBodies | null;
-  /** The file tree and the open document, rooted at `root`, the folder the focused agent stands in. */
-  readonly files: (root: string | null) => ComponentChildren;
+  readonly files: DockFileBodies;
   /** Usage and History are about the focused agent, so they take who it is and where it stands. */
   readonly usage: (context: DockContext) => ComponentChildren;
   /** Null where the host cannot list sessions, so the view is left out. */
@@ -65,20 +75,6 @@ export interface DockColumnProps {
   readonly onClose: () => void;
 }
 
-const VIEW_ICON: Readonly<Record<DockViewId, DeckGlyph>> = {
-  changes: FileEditIcon,
-  usage: ChartHistogramIcon,
-  files: Folder01Icon,
-  history: Clock01Icon,
-};
-
-const VIEW_LABEL: Readonly<Record<DockViewId, string>> = {
-  changes: "Changes",
-  usage: "Usage",
-  files: "Files",
-  history: "History",
-};
-
 /**
  * The selected view, or the first available one when the choice has no body here (no git, no
  * sessions). Derived on every render; the stored choice is left alone so it returns with its host.
@@ -90,6 +86,15 @@ export function effectiveDockView(selected: DockViewId, bodies: DockBodies): Doc
       (view !== "history" || bodies.history !== null),
   );
   return available.includes(selected) ? selected : available[0];
+}
+
+/**
+ * What holds the body: the stored surface, except a file surface with no file to show (the last
+ * tab closed, or another folder's agent took focus) gives it back to the fixed view.
+ */
+export function effectiveDockSurface(root: string | null): DockSurface {
+  const surface = dockSurface.value;
+  return surface === "file" && surfaceFor(root).activePath === null ? "view" : surface;
 }
 
 /**
@@ -110,40 +115,36 @@ export function DockColumn({
 }: DockColumnProps) {
   const view = effectiveDockView(dockView.value, bodies);
   const views = DOCK_VIEWS.filter((id) => effectiveDockView(id, bodies) === id);
+  const surface = effectiveDockSurface(root);
+  // Write the settled surface back so the reveal chords and telemetry read what is on screen.
+  useEffect(() => {
+    if (dockSurface.value !== surface) {
+      dockSurface.value = surface;
+    }
+  }, [surface]);
   return (
     <div className="agent-dock__column flex h-full min-h-0 flex-col">
       <DockHeader item={item} closeLabel={closeLabel} closeChord={closeChord} onClose={onClose} />
       <DockAsk item={item} selection={selection} />
-      <div
-        role="toolbar"
-        aria-label="Dock views"
-        className="flex shrink-0 items-center gap-1 border-b px-2 py-1"
-      >
-        {views.map((id) => (
-          <Tooltip key={id}>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={VIEW_LABEL[id]}
-                  aria-pressed={id === view}
-                  className={id === view ? "bg-muted text-foreground" : "text-muted-foreground"}
-                  onClick={() => setDockView(id)}
-                />
-              }
-            >
-              <DeckIcon icon={VIEW_ICON[id]} />
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{VIEW_LABEL[id]}</TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
+      <DockTabStrip
+        views={views}
+        view={view}
+        surface={surface}
+        root={root}
+        controller={bodies.files.controller}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {view === "changes" && bodies.changes !== null ? bodies.changes.section(root) : null}
-        {view === "usage" ? bodies.usage({ item, space, cwd }) : null}
-        {view === "files" ? <div className="h-full min-h-0">{bodies.files(root)}</div> : null}
-        {view === "history" && bodies.history !== null
+        {surface === "file" && root !== null ? (
+          <div className="h-full min-h-0">{bodies.files.document(root)}</div>
+        ) : null}
+        {surface === "explorer" ? (
+          <div className="h-full min-h-0">{bodies.files.explorer(root)}</div>
+        ) : null}
+        {surface === "view" && view === "changes" && bodies.changes !== null
+          ? bodies.changes.section(root)
+          : null}
+        {surface === "view" && view === "usage" ? bodies.usage({ item, space, cwd }) : null}
+        {surface === "view" && view === "history" && bodies.history !== null
           ? bodies.history({ item, space, cwd })
           : null}
       </div>

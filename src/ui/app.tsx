@@ -221,8 +221,10 @@ import { RailAgentLimits } from "./usage/agent-usage-summary";
 import { projectRailEnabled } from "./project-rail/project-rail-enabled";
 import { DockPanel } from "./dock/dock-panel";
 import { AgentDock } from "./agent-dock/agent-dock";
+import { DockFileBody } from "./agent-dock/dock-file-body";
+import { DockFileTree } from "./agent-dock/dock-file-tree";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
-import { dockSheetOpen, setDockView } from "./agent-dock/agent-dock-state";
+import { dockSheetOpen, selectDockFile } from "./agent-dock/agent-dock-state";
 import { dockShows, openDockTab, revealDockTab } from "./agent-dock/dock-reveal";
 import { DockChanges } from "./agent-dock/dock-changes";
 import { DockHistory } from "./agent-dock/dock-history";
@@ -336,8 +338,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         if (!settings.value.dockOpen || settings.value.dockTab !== "explorer") {
           updateSettings({ dockOpen: true, dockTab: "explorer" });
         }
-        // The tabbed dock keeps the document inside its Files view.
-        if (agentDockEnabled()) setDockView("files");
+        // The tabbed dock shows the document as a file tab; the Explorer tab (+) gives way to it.
+        if (agentDockEnabled()) selectDockFile();
       },
       canFocus: () =>
         agentLaunchPage.request.value === null &&
@@ -2813,8 +2815,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                           count: changedFileCount,
                         }
                       : null,
-                    // Changes is its own view here, so the Explorer keeps only the files.
-                    files: (root) => explorerAt(root, false),
+                    // Changes is its own view here; the files are tabs, with the tree behind +.
+                    files: {
+                      controller: fileController,
+                      explorer: (root) => (
+                        <DockFileTree
+                          controller={fileController}
+                          workspacePath={root}
+                          canCreate={fileCreateAvailable}
+                        />
+                      ),
+                      document: (root) => (
+                        <DockFileBody
+                          controller={fileController}
+                          workspacePath={root}
+                          canCreate={fileCreateAvailable}
+                        />
+                      ),
+                    },
                     usage: ({ item, space }) => (
                       <DockUsage
                         item={item}

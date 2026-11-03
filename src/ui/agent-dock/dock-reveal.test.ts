@@ -17,7 +17,15 @@ vi.mock("../../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
-import { dockSheetOpen, dockView, resetAgentDockState, setDockView } from "./agent-dock-state";
+import { surfaceFor, openFileTab, resetFileSurfaces } from "../../files/file-surface-store";
+import {
+  dockSheetOpen,
+  dockSurface,
+  dockView,
+  resetAgentDockState,
+  setDockView,
+} from "./agent-dock-state";
+import { dockRoot } from "./dock-root";
 import { dockShows, openDockTab, revealDockTab } from "./dock-reveal";
 
 function pinHost(isDevelopment: boolean): void {
@@ -36,9 +44,11 @@ beforeEach(() => {
   resizeTo(1440);
   settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "explorer" };
   resetAgentDockState();
+  resetFileSurfaces();
 });
 
 afterEach(() => {
+  resetFileSurfaces();
   resizeTo(1024);
   vi.unstubAllGlobals();
   resetDesktopEnvironmentForTests();
@@ -50,13 +60,29 @@ describe("a dock chord with the tabbed dock", () => {
     expect(dockView.value).toBe("changes");
     expect(revealDockTab("explorer")).toBe(false);
     expect(settings.value.dockOpen).toBe(true);
-    expect(dockView.value).toBe("files");
+    expect(dockSurface.value).toBe("explorer");
   });
 
   it("hides the dock on a second press, as the tabbed dock does", () => {
     revealDockTab("explorer");
     expect(revealDockTab("explorer")).toBe(true);
     expect(settings.value.dockOpen).toBe(false);
+  });
+
+  it("moves from the Explorer tab to the open file on a second press, and hides only without one", () => {
+    const root = "/r/main";
+    // Opening the file makes its folder the active workspace, which is the dock's root fallback.
+    openFileTab(root, `${root}/a.ts`, { keep: true });
+    expect(dockRoot.value).toBe(root);
+    expect(surfaceFor(root).activePath).not.toBeNull();
+    revealDockTab("explorer");
+    expect(dockSurface.value).toBe("explorer");
+    expect(revealDockTab("explorer")).toBe(false);
+    expect(dockSurface.value).toBe("file");
+    expect(settings.value.dockOpen).toBe(true);
+    // From the file the chord brings the Explorer tab back.
+    expect(revealDockTab("explorer")).toBe(false);
+    expect(dockSurface.value).toBe("explorer");
   });
 
   it("hides the dock for the view on screen even when dockTab lags the icon press", () => {
@@ -92,7 +118,7 @@ describe("a Tools row with the tabbed dock", () => {
   it("selects its view when the dock is already on that tab, and never closes", () => {
     openDockTab("explorer");
     expect(settings.value.dockOpen).toBe(true);
-    expect(dockView.value).toBe("files");
+    expect(dockSurface.value).toBe("explorer");
     openDockTab("explorer");
     expect(settings.value.dockOpen).toBe(true);
   });
