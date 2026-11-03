@@ -51,6 +51,8 @@ export interface PaneCommandDeps {
   readonly forwarder: ControlForwarder;
   readonly openedBy: OpenedBy;
   readonly mirror: PaneMirror;
+  /** The pane's token, or null when the pane is not live: a caller that is gone has no standing. */
+  readonly tokenFor: (paneId: number) => string | null;
   /** The label of the window that owns the pane, or null while it is being transferred. */
   readonly windowOf: (paneId: number) => string | null;
   /** Note a send BEFORE it is pushed, so a `wait` needs a turn that began after it (ORC15). */
@@ -86,6 +88,7 @@ const ERROR_TEXT: Readonly<Record<string, (pane: number) => string>> = {
   stale: (pane) =>
     `the agent process in pane ${pane} changed during the send; the text was not submitted and may already be in the pane`,
   expired: (pane) => `the send to pane ${pane} waited past its deadline; nothing was typed`,
+  forbidden: () => "no such pane",
   busy: (pane) => `pane ${pane} is taking another paste`,
   "no-target": (pane) => `pane ${pane} is not available`,
   failed: (pane) => `the paste into pane ${pane} failed`,
@@ -154,6 +157,12 @@ export function createPaneCommands(deps: PaneCommandDeps): Readonly<Record<strin
       // A caller that hung up while this send waited its turn gets nothing typed.
       if (signal.aborted) {
         return { ok: false, status: 422, error: "aborted" };
+      }
+      // The request was authorized when it arrived, and the wait in this chain can be long. A
+      // caller whose pane has closed since, or whose claim on the target died with either pane,
+      // is a stranger now: it gets the answer a missing pane gets, and nothing is forwarded.
+      if (deps.tokenFor(caller) === null || !deps.openedBy.mayAct(caller, target, "send")) {
+        return { ok: false, status: 403, error: "forbidden" };
       }
       // ORC23: only a pane main knows to run an agent, and the window re-checks the process.
       const expectedAgent = deps.mirror.get(target)?.agent ?? null;

@@ -59,10 +59,13 @@ function build(
   const forwarder: ControlForwarder = { forward, settle: () => false, forgetCaller: () => {} };
   const markSent = vi.fn<(paneId: number) => void>();
   const log = vi.fn<(message: string) => void>();
+  /** Set `live.value` to false to close the caller's pane: its token is gone from then on. */
+  const live = { value: true };
   const commands = createPaneCommands({
     forwarder,
     openedBy,
     mirror,
+    tokenFor: (paneId) => (paneId === CALLER && !live.value ? null : "token"),
     windowOf: (paneId) => WINDOWS[paneId] ?? null,
     markSent,
     log,
@@ -75,7 +78,7 @@ function build(
       args: new URLSearchParams(fields),
       signal: signal ?? new AbortController().signal,
     });
-  return { run, forward, markSent, log, mirror, openedBy };
+  return { run, forward, markSent, log, mirror, openedBy, live };
 }
 
 /** The fields of the single command a test expects to have been pushed. */
@@ -524,6 +527,38 @@ describe("pane send (ORC12, ORC23)", () => {
       expect(next.status).toBe(200);
       expect(markSent).toHaveBeenCalledTimes(2);
     });
+
+    it.each([
+      [
+        "its pane closed",
+        (built: ReturnType<typeof heldForwards>) => {
+          built.live.value = false;
+        },
+      ],
+      [
+        "its claim on the target ended with the pane it opened",
+        (built: ReturnType<typeof heldForwards>) => built.openedBy.forget(WORKER),
+      ],
+    ])(
+      "answers a queued send as a missing pane and forwards nothing once the caller lost standing: %s",
+      async (_name, strand) => {
+        const built = heldForwards();
+        const first = built.run("pane/send", { id: String(WORKER), text: "one" });
+        const second = built.run("pane/send", { id: String(WORKER), text: "two" });
+        await vi.waitFor(() => expect(built.release).toHaveLength(1));
+
+        // `forgetPane` ran while the first send was in flight and the second was queued behind it.
+        strand(built);
+        built.release[0]();
+        await first;
+
+        const missing = await built.run("pane/send", { id: "4040", text: "go" });
+        await expect(second).resolves.toEqual(missing);
+        expect(missing.status).toBe(403);
+        expect(built.markSent).toHaveBeenCalledTimes(1);
+        expect(built.forward).toHaveBeenCalledTimes(1);
+      },
+    );
 
     it("types nothing for a queued send whose caller hung up while it waited", async () => {
       const { run, order, release, markSent } = heldForwards();

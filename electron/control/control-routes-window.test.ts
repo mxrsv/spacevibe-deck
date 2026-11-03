@@ -33,14 +33,21 @@ type Window = (command: ControlCommandPayload) => Partial<ControlReplyPayload> |
  * The real router on a real listener, with a fake window on the other end of `deliver`: the
  * window's answer goes back through `settleReply`, as the `control_reply` handler would call it.
  */
-async function start(options: { window?: Window; windows?: Record<number, string | null> } = {}) {
+async function start(
+  options: {
+    window?: Window;
+    windows?: Record<number, string | null>;
+    /** Set `live.value` to false to close pane 7: its token is gone from then on. */
+    live?: { value: boolean };
+  } = {},
+) {
   const log = vi.fn<(message: string) => void>();
   const pushed: ControlCommandPayload[] = [];
   const mirror = createPaneMirror({ now: () => Date.now() });
   const windows = { 7: "main", 12: "main", 13: "main", ...options.windows };
   let router: ControlRouter | undefined;
   router = createControlRouter({
-    tokenFor: (paneId) => (paneId === 7 ? TOKEN : null),
+    tokenFor: (paneId) => (paneId === 7 && (options.live?.value ?? true) ? TOKEN : null),
     ttyFor: (paneId) => (paneId === 7 ? TTY : null),
     version: () => "9.9.9",
     windowOf: (paneId) => (windows as Record<number, string | null>)[paneId] ?? null,
@@ -277,6 +284,27 @@ describe("control router with a window — send, read, close", () => {
         error: null,
       }),
     ).toBe(false);
+  });
+
+  it("answers a send queued behind another as a missing pane once its caller's pane is forgotten, pushing nothing for it", async () => {
+    const live = { value: true };
+    const { call, router, mirror, pushed } = await start({ window: () => "silent", live });
+    router.recordOpened(12, 7);
+    mirror.report(12, CODEX_IDLE);
+    const first = call("pane/send", { id: "12", text: "one", json: "1" });
+    const second = call("pane/send", { id: "12", text: "two", json: "1" });
+    await vi.waitFor(() => expect(pushed).toHaveLength(1));
+    // Let the second request arrive and take its place behind the first.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    live.value = false;
+    router.forgetPane(7);
+
+    const [held, queued] = await Promise.all([first, second]);
+    expect(held.status).toBe(422);
+    expect(queued.status).toBe(403);
+    expect(JSON.parse(queued.text)).toEqual({ ok: false, error: "forbidden" });
+    expect(pushed).toHaveLength(1);
   });
 
   it("holds the call when another window answers, until the right one does", async () => {

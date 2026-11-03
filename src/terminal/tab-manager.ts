@@ -2273,6 +2273,11 @@ export function createTabManager(
           return "stale";
         }
       }
+      // After the read above, with nothing awaited between here and the paste frame: a deadline
+      // that passed during the read must not let the text in for a call that has timed out.
+      if (opts.pasteDeadline !== undefined && Date.now() > opts.pasteDeadline) {
+        return "expired";
+      }
       const owner = ownerOf(paneId);
       const attentionBeforePaste = paneAttention(paneId);
       const paste = owner?.manager.pasteIntoPane(paneId, text) ?? null;

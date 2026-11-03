@@ -293,6 +293,7 @@ export function createControlRouter(deps: ControlRouterDeps): ControlRouter {
       forwarder,
       openedBy,
       mirror: deps.mirror,
+      tokenFor: deps.tokenFor,
       windowOf: deps.windowOf,
       markSent,
       log: deps.log,

@@ -23,8 +23,12 @@ export interface PromptTarget {
  * agent process that was there when the request was gated is gone, so nothing is submitted. The
  * process is read before the paste as well as before Enter, so the text is in the pane only when
  * the process changed between the two.
+ *
+ * `expired` is only given when the caller set `pasteDeadline` and it passed before the paste:
+ * nothing was typed.
  */
-export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target" | "stale";
+export type InjectOutcome =
+  "sent" | "pasted" | "failed" | "busy" | "no-target" | "stale" | "expired";
 
 /** What one injection is asked to do; the two optional fields exist for the in-pane `deck` command. */
 export interface InjectOptions {
@@ -42,6 +46,12 @@ export interface InjectOptions {
    * agent name alone decides, as for every older caller.
    */
   readonly expectedProcessId?: number;
+  /**
+   * Epoch milliseconds after which nothing is typed (the outcome is `expired`), checked right
+   * before the paste and so after the process read above. The call this injection answers has
+   * already given up. Absent = no bound, as for every older caller.
+   */
+  readonly pasteDeadline?: number;
   /**
    * Epoch milliseconds after which Enter is withheld (the outcome is `pasted`): the call this
    * injection answers has already given up. Absent = no bound, as for every older caller.

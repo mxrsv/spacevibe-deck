@@ -261,7 +261,10 @@ gates are the named next round.
 - **ORC22**: Nothing in this scope stages, commits, pushes, opens a PR, removes a worktree or
   runs a command from a repository file. The only git write is ORC9.
 - **ORC23**: `send` and `open --prompt` never type into a pane that is not an agent pane or whose
-  agent process changed since the request was gated (the existing `stale` outcome).
+  agent process changed since the request was gated (the existing `stale` outcome). The gate is
+  a fresh read of the pane immediately before the paste and again before Enter; an agent that
+  exits in the milliseconds between that read and the PTY write is the accepted residual window,
+  the same one a user typing at that instant has (review, 2026-11-03).
 - **ORC24**: A refused or malformed request is logged by main with the pane id and reason, never
   with the token.
 

@@ -562,6 +562,51 @@ describe("injectIntoPane — the process check and the wait before Enter", () =>
     m.tm.dispose();
   });
 
+  it("answers expired and pastes nothing when the deadline passes while the process read is pending", async () => {
+    const m = await agentPane(new Map([[1, codexPane(1, 4242)]]));
+    // The read the preflight makes is held back; it answers only after the deadline has gone by.
+    const realRead = m.pty.ptyInfo.bind(m.pty);
+    let finishRead: () => void = () => {};
+    vi.spyOn(m.pty, "ptyInfo").mockImplementation(async (ids, matchers, waitForCwd) => {
+      await new Promise<void>((resolve) => {
+        finishRead = resolve;
+      });
+      return realRead(ids, matchers, waitForCwd);
+    });
+
+    const outcome = m.tm.injectIntoPane(1, "hello", {
+      autoSend: true,
+      expectedAgent: "codex",
+      expectedProcessId: 4242,
+      pasteDeadline: Date.now() + 200,
+    });
+    await m.tick(500);
+    expect(m.pty.writes).toEqual([]);
+    finishRead();
+    await m.tick(0);
+
+    // The process is still the expected one: only the deadline stopped the paste.
+    await expect(outcome).resolves.toBe("expired");
+    expect(m.pty.writes).toEqual([]);
+    m.tm.dispose();
+  });
+
+  it("pastes when the deadline is still ahead after the process read", async () => {
+    const m = await agentPane(new Map([[1, codexPane(1, 4242)]]));
+
+    const outcome = m.tm.injectIntoPane(1, "hello", {
+      autoSend: false,
+      expectedAgent: "codex",
+      expectedProcessId: 4242,
+      pasteDeadline: Date.now() + 5_000,
+    });
+    await m.tick(0);
+
+    await expect(outcome).resolves.toBe("pasted");
+    expect(m.pty.writes.some((write) => write.data.includes("hello"))).toBe(true);
+    m.tm.dispose();
+  });
+
   it("withholds Enter, leaving the text pasted, when the deadline passes during the wait", async () => {
     const m = await agentPane(new Map([[1, codexPane(1, 4242)]]));
 

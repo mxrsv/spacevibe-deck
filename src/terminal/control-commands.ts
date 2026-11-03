@@ -135,7 +135,8 @@ export function createControlCommandHandler(options: {
       }
       // Main answered this call with a timeout once `deadline` passed, and a coordinator that got
       // one retries. Typing now would put the text in twice, so a send that waited in the queue
-      // past it is dropped; the same bound withholds Enter if it passes during the pause.
+      // past it is dropped here, the injection drops it again right before the paste (its own
+      // process read comes first), and the same bound withholds Enter if it passes during the pause.
       if (command.deadline !== null && Date.now() > command.deadline) {
         return refuse(command.requestId, "expired");
       }
@@ -144,8 +145,13 @@ export function createControlCommandHandler(options: {
         expectedAgent,
         submitDelayMs: CONTROL_SUBMIT_DELAY_MS,
         expectedProcessId: running.processId,
-        ...(command.deadline === null ? {} : { submitDeadline: command.deadline }),
+        ...(command.deadline === null
+          ? {}
+          : { pasteDeadline: command.deadline, submitDeadline: command.deadline }),
       });
+      if (outcome === "expired") {
+        return refuse(command.requestId, "expired");
+      }
       return answer(command.requestId, {
         ok: outcome === "sent" || outcome === "pasted",
         outcome,

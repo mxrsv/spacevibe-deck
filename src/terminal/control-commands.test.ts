@@ -320,7 +320,7 @@ describe("control command handler — send", () => {
       expect(replies[0]).toMatchObject({ ok: true, outcome: "sent" });
     });
 
-    it("hands the same deadline to the injection as the bound on Enter", async () => {
+    it("hands the same deadline to the injection as the bound on the paste and on Enter", async () => {
       const seen: InjectOptions[] = [];
       const { handler } = build({
         injectIntoPane: async (_pane, _text, opts) => {
@@ -332,7 +332,26 @@ describe("control command handler — send", () => {
 
       await handler.handle(send({ deadline }));
 
-      expect(seen.map((opts) => opts.submitDeadline)).toEqual([deadline]);
+      expect(seen.map((opts) => [opts.pasteDeadline, opts.submitDeadline])).toEqual([
+        [deadline, deadline],
+      ]);
+    });
+
+    it("answers expired, not an outcome, when the injection dropped the paste for the deadline", async () => {
+      const { handler, replies } = build({ injectIntoPane: async () => "expired" });
+
+      await handler.handle(send({ deadline: Date.now() + 60_000 }));
+
+      expect(replies).toEqual([
+        {
+          requestId: "req-1",
+          ok: false,
+          paneId: null,
+          text: null,
+          outcome: null,
+          error: "expired",
+        },
+      ]);
     });
   });
 });
