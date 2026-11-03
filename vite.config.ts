@@ -1,7 +1,7 @@
 // `vitest/config` re-exports Vite's own `defineConfig` with the `test` key
 // typed. Importing it from "vite" instead would make the `test` block below a
 // type error, and dropping that block silently breaks 276 component tests.
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
@@ -48,6 +48,8 @@ export default defineConfig(async () => ({
     minify: "terser",
   },
   test: {
+    // Agent worktrees are independent checkouts, not additional tests of this one.
+    exclude: [...configDefaults.exclude, "**/.claude/worktrees/**"],
     // Bundles the Base UI controls once per run, with the React aliases applied, for the
     // tests to import; Node would otherwise resolve Base UI's CommonJS `require("react")`
     // to the real React (scripts/preset-controls-bundle.mjs).
