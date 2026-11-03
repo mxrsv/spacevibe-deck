@@ -192,7 +192,7 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
         ref={list}
         role="tablist"
         aria-label="Open files"
-        className="relative flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]"
+        className="relative flex min-w-0 flex-1 items-stretch self-stretch overflow-x-auto [scrollbar-width:none]"
         onScroll={measure}
       >
         {root === null
@@ -219,8 +219,8 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
             aria-selected="true"
             aria-label="Explorer"
             className={cn(
-              "group/tab flex h-7 shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 text-xs",
-              "text-foreground",
+              "group/tab relative flex h-full shrink-0 items-center gap-1 px-2.5 text-xs",
+              "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary",
             )}
           >
             <DeckIcon icon={Folder01Icon} />
