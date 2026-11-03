@@ -141,6 +141,24 @@ describe("the Changes view's tree", () => {
     await view.unmount();
   });
 
+  it("shows the scope and the totals in one toolbar row, in the UI face", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    const bar = (document.body.querySelector('[aria-label="Refresh changes"]') as HTMLElement)
+      .parentElement as HTMLElement;
+    expect(squash(bar.textContent)).toBe("Uncommitted6 files +25 −12");
+    expect(bar.querySelector(".font-mono")).toBeNull();
+    await view.unmount();
+  });
+
+  it("sets names and counts in the UI face, not mono", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    expect(row("file:src/lib/c.ts").querySelector(".font-mono:not([role])")).toBeNull();
+    expect(row("folder:src").querySelector(".font-mono")).toBeNull();
+    await view.unmount();
+  });
+
   it("rolls lines up through folders and folds a lone folder chain into one row", async () => {
     const { controller } = fakeChanges({
       snapshot: snapshot([

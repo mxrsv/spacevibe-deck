@@ -72,7 +72,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         </span>
         <span
           className={cn(
-            "min-w-0 flex-1 truncate font-mono text-code",
+            "min-w-0 flex-1 truncate text-xs",
             entry.status === "deleted" ? "text-muted-foreground line-through" : "text-foreground",
           )}
         >
@@ -82,7 +82,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
           ) : null}
         </span>
         {counts.kind === "counts" ? (
-          <ChangeCounts added={counts.added} removed={counts.removed} />
+          <ChangeCounts added={counts.added} removed={counts.removed} sans />
         ) : counts.kind === "binary" ? (
           <span className="shrink-0 text-xs text-muted-foreground">binary</span>
         ) : null}
@@ -114,13 +114,11 @@ function FolderRow({
         <span className="text-muted-foreground">
           <DeckIcon icon={open ? ArrowDown01Icon : ArrowRight01Icon} size={GLYPH_INLINE} />
         </span>
-        <span className="min-w-0 flex-1 truncate font-mono text-code text-foreground">
-          {folder.label}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-xs text-foreground">{folder.label}</span>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {folder.fileCount}
         </span>
-        <ChangeCounts added={folder.added} removed={folder.removed} />
+        <ChangeCounts added={folder.added} removed={folder.removed} sans />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <Rows folder={folder} depth={depth + 1} tree={tree} />

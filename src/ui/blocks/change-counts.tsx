@@ -7,12 +7,19 @@
 export function ChangeCounts({
   added,
   removed,
+  sans = false,
 }: {
   readonly added: number;
   readonly removed: number;
+  /** Set the counts in the UI face instead of mono (the dock's Changes view, DOCK-12). */
+  readonly sans?: boolean;
 }) {
   return (
-    <span className="shrink-0 font-mono text-code tabular-nums">
+    <span
+      className={
+        sans ? "shrink-0 text-xs tabular-nums" : "shrink-0 font-mono text-code tabular-nums"
+      }
+    >
       <span className="text-(--term-ok)">+{added}</span>{" "}
       <span className="text-(--term-err)">−{removed}</span>
     </span>
