@@ -16,6 +16,7 @@ import { documentFor, promoteFileTab, surfaceFor } from "../../files/file-surfac
 import { cn } from "@/lib/cn";
 import { Button } from "../controls/button";
 import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
+import { Kbd } from "../controls/kbd";
 import { Separator } from "../controls/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import {
@@ -33,6 +34,7 @@ import {
 } from "./agent-dock-state";
 import { DockFileTab } from "./dock-file-tab";
 import { closeGuarded } from "./dock-file-tabs-close";
+import { StripCell } from "./dock-strip-cell";
 
 const VIEW_ICON: Readonly<Record<DockViewId, DeckGlyph>> = {
   changes: FileEditIcon,
@@ -103,6 +105,10 @@ export interface DockTabStripProps {
   readonly view: DockViewId;
   /** What holds the body, already settled against the files that exist. */
   readonly surface: DockSurface;
+  /** The way out, last in the row: it hides the column, or only the sheet. */
+  readonly closeLabel: string;
+  readonly closeChord: string | null;
+  readonly onClose: () => void;
   /** The folder whose file tabs are listed, or null when there is none. */
   readonly root: string | null;
   readonly controller: FileSurfaceController;
@@ -113,7 +119,16 @@ export interface DockTabStripProps {
  * region of their own that scrolls sideways while the icons and `+` stay put, and the active tab
  * is kept in view. `+` opens the Explorer tab, which exists only while it is the selected surface.
  */
-export function DockTabStrip({ views, view, surface, root, controller }: DockTabStripProps) {
+export function DockTabStrip({
+  views,
+  view,
+  surface,
+  root,
+  controller,
+  closeLabel,
+  closeChord,
+  onClose,
+}: DockTabStripProps) {
   const surfaceState = surfaceFor(root);
   const tabs = surfaceState.tabs;
   const paths = tabs.map((tab) => tab.path);
@@ -162,22 +177,15 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
     <div
       role="toolbar"
       aria-label="Dock views"
-      className="flex h-[38px] shrink-0 items-center gap-1 border-b px-2"
+      className="agent-dock__strip box-border flex h-[var(--frame-h)] shrink-0 items-stretch border-b"
     >
       {views.map((id) => (
         <Tooltip key={id}>
           <TooltipTrigger
             render={
-              <Button
-                variant="ghost"
-                size="icon"
+              <StripCell
                 aria-label={VIEW_LABEL[id]}
                 aria-pressed={surface === "view" && id === view}
-                className={
-                  surface === "view" && id === view
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground"
-                }
                 onClick={() => setDockView(id)}
               />
             }
@@ -187,7 +195,7 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
           <TooltipContent side="bottom">{VIEW_LABEL[id]}</TooltipContent>
         </Tooltip>
       ))}
-      <Separator orientation="vertical" className="mx-1 h-4 self-center" />
+      <Separator orientation="vertical" className="h-auto" />
       <div
         ref={list}
         role="tablist"
@@ -256,12 +264,9 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
       <Tooltip>
         <TooltipTrigger
           render={
-            <Button
-              variant="ghost"
-              size="icon"
+            <StripCell
               aria-label="Open a file"
               aria-pressed={surface === "explorer"}
-              className="shrink-0 text-muted-foreground"
               onClick={selectDockExplorer}
             />
           }
@@ -272,21 +277,19 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
       </Tooltip>
       {dockNarrow.value ? null : (
         <>
-          <Separator orientation="vertical" className="mx-1 h-4 self-center" />
+          <Separator orientation="vertical" className="h-auto" />
           <Tooltip>
             {/* A disabled button takes no pointer events, so the span carries the tooltip. */}
-            <TooltipTrigger render={<span className="shrink-0" />}>
-              <Button
-                variant="ghost"
-                size="icon"
+            <TooltipTrigger render={<span className="flex h-full shrink-0" />}>
+              <StripCell
                 aria-label={maximized ? "Restore the panel width" : "Widen the panel"}
                 aria-pressed={maximized}
                 disabled={!maximized && !canWiden}
-                className="text-muted-foreground"
+                mark="fill"
                 onClick={toggleDockMaximized}
               >
                 <DeckIcon icon={maximized ? Minimize01Icon : Maximize01Icon} />
-              </Button>
+              </StripCell>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {maximized
@@ -298,6 +301,18 @@ export function DockTabStrip({ views, view, surface, root, controller }: DockTab
           </Tooltip>
         </>
       )}
+      <Separator orientation="vertical" className="h-auto" />
+      <Tooltip>
+        <TooltipTrigger
+          render={<StripCell aria-label={closeLabel} mark="fill" onClick={onClose} />}
+        >
+          <DeckIcon icon={ArrowRight01Icon} />
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          {closeLabel}
+          {closeChord === null ? null : <Kbd>{closeChord}</Kbd>}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
@@ -317,12 +332,11 @@ function ScrollArrow({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon"
+          <StripCell
             aria-label={label}
             disabled={disabled}
-            className="shrink-0 text-muted-foreground"
+            mark="fill"
+            className="min-w-7"
             onClick={onPress}
           />
         }
