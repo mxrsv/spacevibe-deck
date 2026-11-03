@@ -89,7 +89,7 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   const treeLabel = treeOpen ? "Hide the file tree" : "Show the file tree";
   return (
     <div ref={body} className="dock-file flex h-full min-h-0 flex-col">
-      <div className="flex h-8 shrink-0 items-stretch border-b text-xs">
+      <div className="flex h-9 shrink-0 items-stretch border-b text-xs">
         <nav
           aria-label="File path"
           className="flex min-w-0 flex-1 items-stretch overflow-hidden font-sans"
