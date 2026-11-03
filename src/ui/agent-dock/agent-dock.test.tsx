@@ -196,7 +196,7 @@ describe("the tabbed dock in a wide window", () => {
 
   it("has one strip of fixed icons in order, then +, with no tab and no count", async () => {
     const view = await mount(dock());
-    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file"]);
+    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file", "Widen the panel"]);
     expect(strip()?.textContent).toBe("");
     expect(document.body.querySelector('[role="tab"]')).toBeNull();
     await view.unmount();
@@ -258,7 +258,7 @@ describe("the tabbed dock in a wide window", () => {
 
   it("leaves History out where the host cannot list sessions", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, history: null } }));
-    expect(icons()).toEqual(["Changes", "Usage", "Open a file"]);
+    expect(icons()).toEqual(["Changes", "Usage", "Open a file", "Widen the panel"]);
     await view.unmount();
   });
 
@@ -443,7 +443,7 @@ describe("the folder the views show", () => {
 
   it("leaves the Changes view out where the host cannot read git changes", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, changes: null } }));
-    expect(icons()).toEqual(["Usage", "History", "Open a file"]);
+    expect(icons()).toEqual(["Usage", "History", "Open a file", "Widen the panel"]);
     await view.unmount();
   });
 

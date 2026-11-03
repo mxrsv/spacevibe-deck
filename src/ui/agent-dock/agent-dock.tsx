@@ -4,7 +4,7 @@ import { shortcutLabel } from "../../lib/shortcut-label";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { DockResizeGrip } from "../dock/dock-resize-grip";
 import type { RailSelection } from "../project-rail/project-rail-model";
-import { dockNarrow, dockStageWidth } from "./agent-dock-layout";
+import { dockNarrow, dockStageWidth, dockWideRequested } from "./agent-dock-layout";
 import { dockSheetOpen } from "./agent-dock-state";
 import { DockColumn, type DockBodies } from "./dock-column";
 import { DockEdge } from "./dock-edge";
@@ -55,7 +55,11 @@ export function AgentDock({ entered, onClose, bodies, selection }: AgentDockProp
       {narrow ? null : (
         <DockResizeGrip
           width={dockStageWidth(settings.value.dockWidth, dockWidthLive.value)}
-          onWidthChange={(width) => updateSettings({ dockWidth: width })}
+          onWidthChange={(width) => {
+            // The dragged width is the user's own now, so the strip's maximize lets go.
+            dockWideRequested.value = false;
+            updateSettings({ dockWidth: width });
+          }}
           onClose={onClose}
         />
       )}
