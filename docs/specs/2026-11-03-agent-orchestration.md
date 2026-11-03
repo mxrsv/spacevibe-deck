@@ -129,7 +129,9 @@ gates are the named next round.
   that runs the shim (`DECK_AGENT_PID` when the wrapper set it, else the shim's parent). Main
   accepts a request only when the token matches that pane's token in constant time **and** the
   reported tty is that pane's tty. "No such pane", "wrong token" and "wrong tty" get the same
-  403, as hooks do.
+  403, as hooks do. The token is the credential; the self-reported tty is defence in depth
+  against a daemon or a leaked environment without the pane's terminal, not proof of the
+  caller's process (review, 2026-11-03).
 - **ORC5**: The listener stays `127.0.0.1` on the OS-chosen hook port; the shim calls it with
   `--noproxy '*'` and a bounded timeout; bodies are capped like hook posts. A control route
   refuses anything but POST; arguments travel as a form-encoded body (`curl --data-urlencode`,
@@ -144,7 +146,8 @@ gates are the named next round.
 ### Commands
 
 - **ORC8 `deck status`**: the app version, the caller's pane id and window, the switch state, and
-  whether the caller may open panes (it is an agent pane with a known agent).
+  whether the caller may open panes (its window is live; a shell pane may open workers too, so a
+  user can drive the command by hand; changed from "an agent pane" on 2026-11-03).
 - **ORC9 `deck worktree create --repo <path> --branch <name> [--dest <path>]`**: runs the existing
   `addWorktree` (`git worktree add <dest> -b <branch>`, 60 s, never `-B` or `--force`). `--dest`
   defaults to the repository's parent directory joined with the branch name, `/` replaced by

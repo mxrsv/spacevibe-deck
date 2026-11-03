@@ -533,9 +533,12 @@ listener, the pane token and the renderer's own paths. Five things are easy to g
   [`control-auth.ts`](../../electron/control/control-auth.ts) checks the pane id, the token in
   constant time, and that the tty of the agent process running the shim (`DECK_AGENT_PID` when
   the wrapper set it, else the shim's parent) is the pane's own. Hooks check the tty only for
-  Codex; here any process that inherited the three `DECK_*` variables could otherwise drive
-  the pane, so it is checked for everyone. A missing pane, a wrong token and a wrong tty get
-  the same 403 and the same code. Scope is a second, separate table
+  Codex; here it is checked for everyone. Know what it proves: the tty is self-reported, so
+  it stops a daemon or a leaked environment that has lost the pane's terminal, not a process
+  that holds the token and deliberately reports the agent's tty. The token is the credential,
+  as it is for hooks; a loopback HTTP listener cannot read the peer's pid, so a stronger proof
+  would need a Unix socket. A missing pane, a wrong token and a wrong tty get the same 403
+  and the same code. Scope is a second, separate table
   ([`opened-by.ts`](../../electron/control/opened-by.ts)): a pane acts on itself (`read`,
   `wait`) and on panes it opened, and a target outside that answers like a missing pane. A
   pane sending to or closing itself gets the same status and code with its own message. The
