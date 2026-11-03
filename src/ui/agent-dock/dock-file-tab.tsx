@@ -57,7 +57,7 @@ export function DockFileTab({
       title={path}
       data-path={path}
       className={cn(
-        "group/tab relative flex h-full min-w-0 max-w-40 shrink-0 items-center gap-1 px-2.5 text-xs",
+        "group/tab relative flex h-full min-w-0 max-w-40 shrink-0 items-center gap-1.5 px-2.5 text-xs",
         active
           ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
           : "text-muted-foreground hover:bg-muted/50",
