@@ -21,14 +21,16 @@
  * - **`curl -q` comes first** so a user's `~/.curlrc` cannot add options; `--noproxy` keeps the
  *   pane token away from a proxy.
  */
-import { CONTROL_CALL_CAP_MS } from "../control/control-auth";
 
 /** The file name in the bin directory, which is the command's name. */
 export const DECK_CLI_FILE = "deck";
 
-/** Longer than the server's per-call cap, so Deck's own timeout answers first. */
-const CURL_MARGIN_S = 5;
-const CURL_TIMEOUT_S = CONTROL_CALL_CAP_MS / 1000 + CURL_MARGIN_S;
+/**
+ * Above the slowest answer Deck can give, so curl never gives up before Deck does: a worktree
+ * add is 60 s of git plus the git calls that inspect an interrupted checkout, and one slice of a
+ * `wait` is 60 s.
+ */
+const CURL_TIMEOUT_S = 95;
 
 export function deckCliSource(): string {
   return `#!/bin/sh

@@ -287,7 +287,7 @@ describe.each(SHELLS)("deck shim under %s", (shell) => {
           "json=1",
         ]),
       );
-      expect(argv[argv.indexOf("-m") + 1]).toBe("65");
+      expect(argv[argv.indexOf("-m") + 1]).toBe("95");
       expect(argv.at(-1)).toBe(URL_OF("status"));
       expect(argv.filter((a) => a.startsWith("--data-urlencode"))).toHaveLength(1);
     });
