@@ -696,7 +696,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect(
       head?.querySelector(".asr-cluster__folder > span")?.getAttribute("data-deck-icon-size"),
     ).toBe("15");
-    expect(readFileSync("src/styles/01-tokens.css", "utf8")).toContain("--type-project: 15px");
+    expect(readFileSync("src/styles/01-tokens.css", "utf8")).toContain("--type-project: 14px");
     expect(readFileSync("src/styles/04a-agent-rail.css", "utf8")).toContain(
       "font: 600 var(--type-project)",
     );
@@ -1546,7 +1546,10 @@ describe("AgentRail recent activity style contract", () => {
 
   it("separates the flat block and hides it with the collapsed sidebar", () => {
     const block = ruleBody(".recent-session-activity");
-    expect(block).toContain("border-top: 1px solid var(--seam-recessed)");
+    // CMP-19: the block is set apart by spacing, not by a divider line.
+    expect(block).not.toMatch(/\bborder-(?:top|bottom)\s*:/);
+    expect(block).toContain("margin-top: 8px");
+    expect(block).toContain("padding-top: 6px");
     expect(block).toContain("min-width: 0");
     expect(block).toContain("max-width: 100%");
     expect(stylesheet).toContain(
@@ -1591,7 +1594,7 @@ describe("AgentRail recent activity style contract", () => {
     expect(row).toContain("border: 0");
     expect(row).toContain("transition: background var(--duration) var(--ease)");
     expect(stylesheet).toContain(
-      ".recent-session-activity__row:hover,\n.recent-session-activity__row:focus-visible {\n  background: var(--state-hover-bg);",
+      ".recent-session-activity__row:hover,\n.recent-session-activity__row:focus-visible {\n  outline: none;\n  background: var(--state-hover-bg);",
     );
 
     expect(recentRules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
@@ -1609,11 +1612,18 @@ describe("AgentRail recent activity style contract", () => {
   it("keeps unavailable rows focusable without promising resume", () => {
     const unavailable = ruleBody(".recent-session-activity__row.is-unavailable");
     expect(unavailable).toContain("cursor: default");
+    // CMP-19: focus is painted as hover (the shared rule asserted above), with
+    // no outline of its own. An unavailable row must therefore keep its focus
+    // paint: only :hover may fall back to transparent, or keyboard focus on it
+    // would be invisible.
     expect(stylesheet).toContain(
-      ".recent-session-activity__row.is-unavailable:hover,\n.recent-session-activity__row.is-unavailable:focus-visible {\n  background: transparent;",
+      ".recent-session-activity__row.is-unavailable:hover {\n  background: transparent;",
     );
-    expect(stylesheet).toContain(
-      ".recent-session-activity__row:focus-visible {\n  outline: 2px solid var(--accent);",
+    expect(stylesheet).not.toContain(
+      ".recent-session-activity__row.is-unavailable:focus-visible {\n  background: transparent;",
+    );
+    expect(stylesheet).not.toMatch(
+      /\.recent-session-activity__row:focus-visible\s*\{[^}]*outline:\s*[1-9]/,
     );
     expect(stylesheet).toContain(
       ".recent-session-activity__row.is-unavailable .recent-session-activity__agent,\n.recent-session-activity__row.is-unavailable .recent-session-activity__summary {\n  color: var(--text-faint);",

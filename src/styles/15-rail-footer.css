@@ -2,12 +2,11 @@
    DL §28. Pinned under the scrolling workspace list, above the usage summary,
    which closes the rail. Icons, not rows: the rail's own rows carry a task
    label and a status line, so the foot reads as chrome beside them (DL-28.2,
-   amended 2026-10-07). The hairline above is shared with the usage summary
-   below — one seam for the pair. ── */
+   amended 2026-10-07). No hairline above it (CMP-14): the list's end and the
+   foot separate by spacing. ── */
 .sidebar-actions {
   flex: 0 0 auto;
   padding: 6px 0 0;
-  border-top: 1px solid var(--sidebar-seam);
 }
 
 /* The positioning context for the Prompt Board popover, which opens from the
@@ -21,31 +20,28 @@
   gap: 2px;
 }
 
-/* `.iconbtn` supplies the surface, DL-21.2's hover wash and DL-21.3's focus
-   outline; this only widens the 24px square to the mock's 30 × 26 so six of
-   them read as a row, not a clump. DL-21.8: there is no active rule, ever. */
+/* `.iconbtn` supplies the surface and DL-21.2's hover wash; this only sizes
+   it to the 28px icon box (CMP-7) so six of them read as a row, not a clump.
+   DL-21.8: there is no active rule, ever. */
 .sidebar-actions__tool {
-  width: 30px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
 }
 
 /* DL-28.6: in the avatar column the six icons are one `Tools` button, centred
-   under the avatars with the same seam above it. The column centres its
-   children, which would shrink the seam to the button's width. */
+   under the avatars. */
 .sidebar-actions--collapsed {
   align-self: stretch;
   display: flex;
   justify-content: center;
 }
 
-/* The usage summary draws its own hairline and gap for the days it closed the
-   rail alone; behind the tools row it shares theirs. The project rail's foot
-   (`project-rail-footer.tsx`) holds the summary inside its slot, under the
-   buttons, and draws the hairline itself. */
+/* The usage summary keeps its own gap for the days it closed the rail alone;
+   behind the tools row (also inside the project rail's slot,
+   `project-rail-footer.tsx`) the row's padding is the gap. */
 .sidebar-actions + .agent-usage-summary,
 .sidebar-actions__slot > .agent-usage-summary {
   margin-top: 0;
-  border-top: 0;
 }
 
 /* This layout's Prompt Board opens from the rail's bottom-left corner, so it
@@ -75,7 +71,6 @@
   flex-direction: column;
   margin-top: 8px;
   padding-top: 6px;
-  border-top: 1px solid var(--seam-recessed);
   font-family: var(--ui-font);
 }
 
@@ -86,7 +81,7 @@
   gap: 10px;
   min-height: 0;
   margin: 0;
-  padding: 0 6px;
+  padding: 0;
   overflow-y: hidden;
   overflow-x: auto;
   overscroll-behavior: contain;
@@ -98,14 +93,16 @@
 }
 
 /* DL-33.1 (amended 2026-10-07, mock D's `.usage`): one micro line of faint text — no badge, no
-   logo — so the foot reads as chrome under the tools row. The press target is the text itself,
-   padded vertically only. */
+   logo — so the foot reads as chrome under the tools row. A quiet 24px chip (CMP-5): no
+   fill until hover; the padding keeps the text where the row's old inset put it. */
 .agent-usage-summary__agent {
   box-sizing: border-box;
   display: block;
   min-width: 0;
-  padding: 3px 0;
+  height: 24px;
+  padding: 0 6px;
   border: 0;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-faint);
   font: inherit;
@@ -113,17 +110,18 @@
   text-align: left;
   white-space: nowrap;
   cursor: pointer;
-  transition: color var(--duration) var(--ease);
+  line-height: 24px;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
-.agent-usage-summary__agent:hover {
-  color: var(--text-muted);
-}
-
+.agent-usage-summary__agent:hover,
 .agent-usage-summary button:focus-visible,
 .agent-usage-summary__rows:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  background: var(--muted);
+  color: var(--text-muted);
 }
 
 .agent-usage-summary__limit {

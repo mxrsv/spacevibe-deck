@@ -17,19 +17,19 @@
 }
 
 /* DL-21.8: a control whose whole job is to toggle a surface paints no active
-   state — the popover is the readout — so there is hover and focus here and
-   deliberately no `[aria-expanded="true"]` rule. `aria-expanded` still carries
+   state — the popover is the readout — so there is hover (focus paints the same,
+   CMP-11) and deliberately no `[aria-expanded="true"]` rule. `aria-expanded` still carries
    the state for a screen reader. */
 .attn-chip {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   height: 24px;
   min-width: 24px;
-  padding: 0 7px;
+  padding: 0 8px;
   border: none;
-  border-radius: var(--radius-tab);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font: 600 var(--type-meta) / 1 var(--ui-font);
@@ -40,14 +40,11 @@
   -webkit-app-region: no-drag;
 }
 
-.attn-chip:hover {
+.attn-chip:hover,
+.attn-chip:focus-visible {
+  outline: none;
   background: var(--state-hover-bg);
   color: var(--text-primary);
-}
-
-.attn-chip:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 
 .attn-chip__dot {
@@ -92,14 +89,15 @@
 
 .attn-pop__list {
   display: grid;
-  gap: 1px;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 /* DL-13.8: glyph spanning both lines, title over detail, separated by weight
-   and ink rather than size — nothing goes below `--type-micro` (DL-4.5). The
+   and ink rather than size: the title is a row title (14), the rest metadata
+   (12, CMP-10). The
    age rides the title line's trailing edge, a readout like the rail's. */
 .attn-row {
   box-sizing: border-box;
@@ -107,11 +105,11 @@
   grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 8px;
-  row-gap: 1px;
+  row-gap: 2px;
   width: 100%;
-  padding: 5px 8px;
+  padding: 6px 8px;
   border: 0;
-  border-radius: var(--radius-tab);
+  border-radius: var(--radius-control);
   background: none;
   color: inherit;
   font: inherit;
@@ -119,13 +117,10 @@
   cursor: pointer;
 }
 
-.attn-row:hover {
-  background: var(--state-hover-bg);
-}
-
+.attn-row:hover,
 .attn-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  background: var(--state-hover-bg);
 }
 
 .attn-row__glyph {
@@ -182,7 +177,7 @@
   overflow: hidden;
   grid-column: 2;
   color: var(--text-primary);
-  font: 600 var(--type-meta) / 1.3 var(--ui-font);
+  font: 600 var(--type-body) / 1.3 var(--ui-font);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -211,12 +206,11 @@
   white-space: nowrap;
 }
 
-/* What the list does not show, counted once. A hairline, not a heading: it
-   is the surface's footer, and says nothing the rows above did not earn. */
+/* What the list does not show, counted once. Not a heading: it is the
+   surface's footer, and says nothing the rows above did not earn. */
 .attn-pop__foot {
   margin: 4px 0 0;
-  padding: 6px 8px 3px;
-  border-top: 1px solid var(--hair);
+  padding: 6px 8px 4px;
   color: var(--text-faint);
   font: 400 var(--type-micro) / 1.35 var(--ui-font);
 }

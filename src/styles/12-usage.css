@@ -64,7 +64,6 @@
   gap: 12px;
   padding: 8px 16px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--hair);
 }
 
 /* In the sidebar layout the head stands where the stage strip was, so it takes
@@ -93,16 +92,18 @@
 /* Back, not a close X: leaving is going back to the work (same word and shape
    as `.settings-screen__back`; its own rule so Settings can re-tune freely). */
 .usage-screen__back {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 4px 6px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-tab);
+  height: 28px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--control-frame);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-family: var(--ui-font);
-  font-size: var(--type-meta);
+  font-size: var(--type-body);
   cursor: pointer;
   /* DL-21.5: state changes ride the shared motion pair. */
   transition:
@@ -111,15 +112,12 @@
     color var(--duration) var(--ease);
 }
 
-.usage-screen__back:hover {
-  background: var(--state-hover-bg);
-  border-color: var(--hair-strong);
-  color: var(--text-primary);
-}
-
+.usage-screen__back:hover,
 .usage-screen__back:focus-visible {
-  outline: 2px solid var(--text-muted);
-  outline-offset: 1px;
+  outline: none;
+  background: var(--state-hover-bg);
+  border-color: var(--control-frame-hover);
+  color: var(--text-primary);
 }
 
 .usage-screen__title {
@@ -156,7 +154,7 @@
   overflow-y: auto;
   /* Horizontal padding here, unlike the settings section: a config row brings
      its own 14px, a table does not. */
-  padding: 14px 16px 16px;
+  padding: 12px 16px 16px;
 }
 
 /* The section's scrollbar is the app-wide one (`01-tokens.css`, 2026-08-17). */
@@ -169,10 +167,9 @@
 .usage-status {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
-  padding: 7px 16px;
+  gap: 4px 12px;
+  padding: 6px 16px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--hair);
 }
 
 .usage-status:empty {
@@ -238,7 +235,7 @@
 
 .usage-hero__footnote,
 .usage-hero__estimate {
-  margin: 3px 0 0;
+  margin: 4px 0 0;
   font-family: var(--ui-font);
   font-size: var(--type-micro);
   color: var(--text-faint);
@@ -257,20 +254,25 @@
 }
 
 .usage-range__option {
+  box-sizing: border-box;
+  height: 24px;
   border: none;
   background: transparent;
   color: var(--text-faint);
   font-family: var(--ui-font);
   font-size: var(--type-meta);
-  padding: 3px 9px;
+  padding: 0 8px;
   border-radius: var(--radius-control);
   cursor: pointer;
   transition:
-    background 0.13s ease,
-    color 0.13s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
-.usage-range__option:hover {
+.usage-range__option:hover,
+.usage-range__option:focus-visible {
+  outline: none;
+  background: var(--muted);
   color: var(--text-primary);
 }
 
@@ -279,13 +281,8 @@
   color: var(--text-primary);
 }
 
-.usage-range__option:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
 .usage-hero__empty {
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   font-family: var(--ui-font);
   font-size: var(--type-micro);
   color: var(--text-faint);
@@ -293,12 +290,12 @@
 
 .usage-hero__agents {
   list-style: none;
-  margin: 26px 0 0;
+  margin: 24px 0 0;
   padding: 0;
 }
 
 .usage-agent + .usage-agent {
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 .usage-agent__line {
@@ -332,7 +329,7 @@
   height: 4px;
   border-radius: var(--radius-tight);
   background: color-mix(in srgb, var(--fg) 8%, transparent);
-  margin: 7px 0 5px;
+  margin: 8px 0 4px;
   overflow: hidden;
 }
 
@@ -394,14 +391,14 @@
   font-weight: 600;
 }
 .usage-overview__note {
-  margin: 5px 0 10px;
+  margin: 4px 0 10px;
   color: var(--text-muted);
   font-size: var(--type-micro);
 }
 .usage-overview .usage-hero {
   max-width: none;
-  padding: 0 0 20px;
-  margin-bottom: 20px;
+  padding: 0 0 16px;
+  margin-bottom: 16px;
 }
 .usage-hero__head {
   display: flex;
@@ -422,7 +419,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 16px;
 }
 .usage-overview .usage-agent {
   min-width: 0;
@@ -477,9 +474,8 @@
   padding: 10px 0;
 }
 .usage-allowance {
-  padding: 0 0 20px;
-  border-bottom: 1px solid var(--hair);
-  margin-bottom: 20px;
+  padding: 0 0 16px;
+  margin-bottom: 16px;
 }
 .usage-allowance :where(ul, p) {
   margin: 0;
@@ -488,7 +484,7 @@
 }
 .usage-allowance__agents {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   margin-top: 10px;
 }
 .usage-allowance__name {
@@ -576,7 +572,7 @@
 .usage-timeline__plot {
   display: flex;
   gap: 10px;
-  margin: 18px 0 8px;
+  margin: 16px 0 8px;
   height: 154px;
 }
 .usage-timeline__scale {
@@ -592,7 +588,7 @@
 .usage-timeline__columns {
   display: grid;
   flex: 1;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 .usage-timeline__column {
@@ -647,7 +643,7 @@
 }
 .usage-timeline__legend {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
   font-size: var(--type-micro);
   color: var(--text-muted);
@@ -655,7 +651,7 @@
 .usage-timeline__legend > span {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 .usage-timeline__legend i {
   width: 7px;
@@ -670,6 +666,8 @@
 .usage-overview__details summary {
   cursor: pointer;
   width: fit-content;
+  border-radius: var(--radius-tight);
+  transition: background var(--duration) var(--ease);
 }
 .usage-overview__details p {
   overflow-wrap: anywhere;
@@ -679,14 +677,17 @@
   min-width: 140px;
   overflow-wrap: anywhere;
 }
+/* Focus reads as hover (CMP-11). The table scroller has no hover, so it takes
+   the same wash the summary does. */
+.usage-overview summary:hover,
 .usage-overview summary:focus-visible,
 .usage-overview__table-scroll:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  background: var(--muted);
 }
 @container usage-overview (max-width: 400px) {
   .usage-timeline__columns {
-    gap: 3px;
+    gap: 2px;
   }
   .usage-timeline__column:not(:last-child) .usage-timeline__label--alternate {
     visibility: hidden;
@@ -697,12 +698,12 @@
 .usage-totals,
 .usage-models,
 .usage-repo-tiles {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 .usage-totals__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px 16px;
+  gap: 12px 16px;
   margin: 10px 0 0;
 }
 @container usage-overview (min-width: 640px) {
@@ -762,7 +763,7 @@
 }
 .usage-tile {
   min-width: 0;
-  padding: 12px 14px;
+  padding: 12px;
   border: 1px solid var(--hair);
   border-radius: var(--radius-control);
 }
@@ -785,7 +786,7 @@
   overflow-wrap: anywhere;
 }
 .usage-tile__parent {
-  margin-top: 1px;
+  margin-top: 2px;
 }
 .usage-tile__cost {
   margin-top: 10px;
@@ -829,7 +830,7 @@
   height: 14px;
 }
 .usage-tiles__empty {
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   font-size: var(--type-micro);
   color: var(--text-faint);
 }
