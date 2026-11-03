@@ -58,7 +58,10 @@ classes as chrome class names the preset must not generate. Chrome outside the f
   are custom properties declared for light and dark in
   [`mocks.css:24`](../../src/gallery/layout-mocks/mocks.css) and read with the
   `text-(--term-ok)` form, 39 times, for example
-  [`mock-terminal.tsx:32`](../../src/gallery/layout-mocks/mock-terminal.tsx).
+  [`mock-terminal.tsx:32`](../../src/gallery/layout-mocks/mock-terminal.tsx). In the app they are
+  declared once, on `.agent-dock__column` in
+  [`27-agent-dock.css`](../../src/styles/27-agent-dock.css), as the active theme's own role
+  inks; a region that reads them outside the dock declares them on its own root.
 - **No palette or hex colours.** **Target**, with 28 violations outside the fake web page:
   25 palette classes for agent states and scrims (`bg-red-600`, `bg-amber-500`, `bg-sky-600`,
   `bg-black/55`), for example
@@ -123,9 +126,20 @@ classes as chrome class names the preset must not generate. Chrome outside the f
   a raw `<button>`, `<input>`, `<select>` or `<textarea>` in a shipping `.tsx` file fails the
   test unless the debt file lists the file or the line directly above the element reads
   `// raw-control: <reason>` (`{/* raw-control: <reason> */}` among JSX children). A row ported
-  from the mock takes that comment, naming why no control variant spans the row. A hand-built
-  row, section header, setting row, theme card or panel surface is not detected; review holds
-  those to the library.
+  from the mock takes that comment, naming why no control variant spans the row; so does a cell
+  that must fill its row edge to edge, the dock's
+  [`StripCell`](../../src/ui/agent-dock/dock-strip-cell.tsx). A hand-built row, section header,
+  setting row, theme card or panel surface is not detected; review holds those to the library.
+- **A split button is two `Button`s in one framed `div`**, the action and a narrower caret
+  sharing a `border-control-frame` hairline with no gap, as
+  [`dock-open-in.tsx`](../../src/ui/agent-dock/dock-open-in.tsx); there is no split-button
+  control.
+- **Markup arrives as HTML in three places only**: the Markdown view's rendered document, its
+  colorized fences and Mermaid diagrams
+  ([`markdown-enhance.ts`](../../src/files/markdown-enhance.ts)), and the Changes stack's lines
+  from Monaco's colorizer
+  ([`dock-changes-stack.tsx`](../../src/ui/agent-dock/dock-changes-stack.tsx)). Each comes from
+  a renderer that escapes or sanitizes the text it marks up; nothing else is set as HTML.
 - **Icons go through `DeckIcon`, and a control sizes the icon it holds.** The mocks pass
   `HugeiconsIcon` no size inside a `Button`, `DropdownMenuItem` or `Select`, and the control's
   `[&_svg:not([class*='size-'])]:size-*` rule wins over any `size` attribute. Shipping code

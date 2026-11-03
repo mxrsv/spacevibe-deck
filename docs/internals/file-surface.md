@@ -2,7 +2,8 @@
 
 > For maintainers. Using Deck? See [docs/user/](../user/).
 
-Documents opened from the Explorer share its dock; the browser occupies the stage.
+Documents opened from the Explorer share its dock (behind `agentDock`, as tabs in the dock's
+strip); the browser occupies the stage.
 Path routing turns a path an agent printed into either an in-Deck document or an external
 open. All of it is Electron only: the file channels, the `WebContentsView` and the external
 app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri keeps.
@@ -19,7 +20,7 @@ app catalog have no Tauri counterpart, and `open_editor` is the one path Tauri k
   counts only browser/board slots for tab navigation. Its `total` also counts retained
   documents, keeping the window alive after its last terminal closes. `hasFocus` routes
   save/close/edit commands to a docked document without inventing a strip slot.
-- **One document panel shares the Explorer's width with its list.**
+- **In the legacy dock, one document panel shares the Explorer's width with its list.**
   [`FilePanel`](../../src/files/ui/file-panel.tsx) displays the workspace's `activePath`;
   `activeFileTab` tracks keyboard ownership, so returning to the terminal does not remove
   the document. Hiding the dock unmounts the view and releases focus, but keeps buffers and
@@ -173,6 +174,44 @@ host cannot answer.
   the Changes chip with "Not a git repository". That scan cannot tell a missing git from a
   folder that is not a repository, so with no git on `PATH` the chip is disabled the same way
   and the "Git is not installed" message appears only if git vanishes while the list is up.
+
+## The agent dock
+
+Behind the `agentDock` switch the dock is one strip over one body
+([spec](../specs/2026-11-03-dock-tabbed-panel.md), DL-19.12 to DL-19.19). It reads the file
+surface store, the preview slot and the Changes controller unchanged; what is its own:
+
+- **What holds the body is kept apart from the chosen view.**
+  [`dockSurface`](../../src/ui/agent-dock/agent-dock-state.ts) says whether a fixed view, the
+  active file tab or the Explorer has the body, and `dockView` which fixed view the user left,
+  so choosing a file never forgets the view and a fixed icon takes the body without closing a
+  tab. A file surface whose root has no active file settles back to the view on render.
+- **Its files are the store's tabs for the dock's root**, the checkout the focused pane stands
+  in ([`dock-root.ts`](../../src/ui/agent-dock/dock-root.ts)), which can differ from
+  `activeWorkspace`, the tab's own folder. The watcher re-arms for `activeWorkspace` only
+  (`refreshWatch` in [`file-surface-controller.ts`](../../src/files/file-surface-controller.ts)),
+  so while an agent stands in another checkout the dock's tree and files there are reconciled by
+  the focus re-`stat`, not by a watch.
+- **A Changes card reads two texts, never a Monaco diff editor.** A card reads `HEAD` and the
+  working copy through [`diff-sides.ts`](../../src/files/changes/diff-sides.ts) only once it is
+  within 600px of the viewport, diffs them with the in-repo
+  [`line-diff.ts`](../../src/files/changes/line-diff.ts) (a Myers walk, capped at 2,000 changed
+  lines) and colours each side with Monaco's colorizer
+  ([`colorize-lines.ts`](../../src/files/changes/colorize-lines.ts)), which creates no editor
+  and no model: a diff editor per file was the cost DOCK-10 refused for a 65-file stack. The
+  colorizer applies the Deck theme first, because an `mtk` class means a colour only once a
+  theme is set, and a card colours again when the theme changes. A side over 200,000
+  characters, or of a language Monaco does not know, stays plain.
+- **The diff column is the legacy dock's.** Nothing in the agent dock opens it, so
+  [`DockChangesWatch`](../../src/ui/agent-dock/dock-changes-watch.tsx) holds only the
+  controller's watch. It is mounted at every window width, which keeps the edge handle's count
+  live while the narrow window's sheet is closed.
+- **A card comes into view through its own scroller.** `scrollIntoView` scrolls every
+  scrolling ancestor, `overflow: hidden` ones included, and the dock sits inside clipped boxes
+  where a shift moves the whole column ([traps](traps.md#layout-and-css)); a list press sets
+  the stack's `scrollTop` from the two rects instead.
+- **Wrap is one window-scoped flag** ([`editor-wrap.ts`](../../src/files/editor-wrap.ts)), not
+  a setting: one editor instance serves every file tab, so the toggle holds across tabs.
 
 ## Main-process file guards
 

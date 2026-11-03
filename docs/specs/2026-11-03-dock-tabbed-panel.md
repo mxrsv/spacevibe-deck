@@ -24,7 +24,7 @@ files) pushes every section below it out of reach, and the column carries more f
 - **DOCK-4 Reveal.** Every existing path that reveals a dock tab (the explorer, usage and sessions
   chords, sidebar tool rows, command palette entries) selects the matching view and opens the dock.
 - **DOCK-5 Space and Ask.** `In this space` is removed from the dock: the rail lists the same agents.
-  The Ask banner stays above the strip until it moves to the rail (DOCK-9), and keeps its button.
+  The Ask banner moves to the rail (DOCK-9).
 - **DOCK-6 Documents as tabs.** A file opened from Changes or the file tree becomes a tab after the
   fixed icons, behind a divider. Only the file tabs scroll horizontally. A single click opens or
   replaces the preview tab, a double click or the first edit keeps it (the existing preview slot). The
@@ -38,7 +38,8 @@ files) pushes every section below it out of reach, and the column carries more f
 - **DOCK-8 Changes view.** Changes lists the changed files with a status mark, name and `+a −d`;
   pressing a file opens its diff exactly as today. Whether the diff moves inside the dock is DOCK-10.
 - **DOCK-9 Ask on the rail.** The `needs-input` detail and its action show on the agent's rail row, and
-  the dock banner is deleted. Own PR in the rail's owner area.
+  the dock banner is deleted. It lands with the dock rather than in a PR of its own (owner,
+  2026-11-03).
 - **DOCK-10 Diff in the dock.** The Changes view is one scrolling stack of per-file cards. Each card
   has a sticky header (a chevron that folds the file, the status mark, the file name, `+a −d`) and a
   body of unified hunks with three lines of context; a file's diff loads only when its card nears the
