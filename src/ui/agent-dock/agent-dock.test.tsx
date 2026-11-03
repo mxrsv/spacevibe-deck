@@ -173,30 +173,16 @@ afterEach(async () => {
 describe("the tabbed dock in a wide window", () => {
   beforeEach(() => resizeTo(1440));
 
-  it("names the focused agent and its title, and follows focus", async () => {
-    const view = await mount(dock());
-    const header = document.body.querySelector("header") as HTMLElement;
-    expect(header.textContent).toContain("Claude");
-    expect(header.textContent).toContain("token refresh");
-
-    tabViews.value = twoAgents(2);
-    activeTabIndex.value = 1;
-    await settle();
-    expect(header.textContent).toContain("Codex");
-    expect(header.textContent).toContain("fix flaky test");
-    await view.unmount();
-  });
-
-  it("shows a neutral header when no agent holds the keyboard", async () => {
-    tabViews.value = twoAgents(null);
-    const view = await mount(dock());
-    expect(document.body.querySelector("header")?.textContent).toContain("No agent focused");
-    await view.unmount();
-  });
-
   it("has one strip of fixed icons in order, then +, with no tab and no count", async () => {
     const view = await mount(dock());
-    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file", "Widen the panel"]);
+    expect(icons()).toEqual([
+      "Changes",
+      "Usage",
+      "History",
+      "Open a file",
+      "Widen the panel",
+      "Hide the side panel",
+    ]);
     expect(strip()?.textContent).toBe("");
     expect(document.body.querySelector('[role="tab"]')).toBeNull();
     await view.unmount();
@@ -258,7 +244,13 @@ describe("the tabbed dock in a wide window", () => {
 
   it("leaves History out where the host cannot list sessions", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, history: null } }));
-    expect(icons()).toEqual(["Changes", "Usage", "Open a file", "Widen the panel"]);
+    expect(icons()).toEqual([
+      "Changes",
+      "Usage",
+      "Open a file",
+      "Widen the panel",
+      "Hide the side panel",
+    ]);
     await view.unmount();
   });
 
@@ -443,7 +435,13 @@ describe("the folder the views show", () => {
 
   it("leaves the Changes view out where the host cannot read git changes", async () => {
     const view = await mount(dock({ bodies: { ...BODIES, changes: null } }));
-    expect(icons()).toEqual(["Usage", "History", "Open a file", "Widen the panel"]);
+    expect(icons()).toEqual([
+      "Usage",
+      "History",
+      "Open a file",
+      "Widen the panel",
+      "Hide the side panel",
+    ]);
     await view.unmount();
   });
 
@@ -490,8 +488,8 @@ describe("the tabbed dock under 1360px", () => {
     const view = await mount(dock());
     await click(named("Open the side panel") as HTMLElement);
     const sheet = byRole("dialog") as HTMLElement;
-    expect(sheet.textContent).toContain("token refresh");
-    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file"]);
+    expect(sheet.textContent).toContain("changes body");
+    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file", "Close the side panel"]);
     expect(dockSheetOpen.value).toBe(true);
     expect(
       browserPanelObscured({

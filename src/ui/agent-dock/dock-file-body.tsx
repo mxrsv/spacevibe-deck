@@ -12,11 +12,11 @@ import {
 import { isMarkdownPath } from "../../files/markdown-policy";
 import { FilePanel } from "../../files/ui/file-panel";
 import { ViewModeToggle } from "../../files/ui/view-mode-toggle";
-import { Button } from "../controls/button";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockTreePane } from "./agent-dock-state";
 import { crumbsFor, foldersTo } from "./dock-file-crumbs";
+import { StripCell } from "./dock-strip-cell";
 import { DockFileTree } from "./dock-file-tree";
 
 /** Below this body width the tree pane starts hidden (DOCK-6); the editor keeps the room. */
@@ -89,45 +89,44 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   const treeLabel = treeOpen ? "Hide the file tree" : "Show the file tree";
   return (
     <div ref={body} className="dock-file flex h-full min-h-0 flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-1 border-b px-2 text-xs">
-        <nav aria-label="File path" className="flex min-w-0 flex-1 items-center gap-0.5 font-sans">
+      <div className="flex h-8 shrink-0 items-stretch border-b text-xs">
+        <nav
+          aria-label="File path"
+          className="flex min-w-0 flex-1 items-stretch overflow-hidden font-sans"
+        >
           {hidden === 0 ? null : (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 shrink-0 px-1 text-muted-foreground"
+              <StripCell
+                mark="fill"
                 aria-label="Earlier folders"
                 onClick={() => reveal(crumbs[hidden - 1].folder ?? workspacePath)}
               >
                 …
-              </Button>
+              </StripCell>
               <DeckIcon
                 icon={ArrowRight01Icon}
                 size={GLYPH_INLINE}
-                class="shrink-0 text-muted-foreground"
+                class="shrink-0 self-center text-muted-foreground"
               />
             </>
           )}
           {shown.map((crumb) =>
             crumb.folder === null ? (
-              <b key={crumb.name} className="min-w-0 truncate px-1 font-semibold text-foreground">
+              <b
+                key={crumb.name}
+                className="flex min-w-0 items-center truncate px-2 font-semibold text-foreground"
+              >
                 {crumb.name}
               </b>
             ) : (
-              <span key={crumb.folder} className="flex shrink-0 items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-1 text-muted-foreground"
-                  onClick={() => reveal(crumb.folder as string)}
-                >
+              <span key={crumb.folder} className="flex shrink-0 items-stretch">
+                <StripCell mark="fill" onClick={() => reveal(crumb.folder as string)}>
                   {crumb.name}
-                </Button>
+                </StripCell>
                 <DeckIcon
                   icon={ArrowRight01Icon}
                   size={GLYPH_INLINE}
-                  class="shrink-0 text-muted-foreground"
+                  class="shrink-0 self-center text-muted-foreground"
                 />
               </span>
             ),
@@ -139,10 +138,9 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <StripCell
                 aria-label="Save"
+                mark="fill"
                 disabled={!document?.dirty || document.file?.readOnly}
                 onClick={() => void controller.savePath(path)}
               />
@@ -155,12 +153,10 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <StripCell
                 aria-label={treeLabel}
                 aria-pressed={treeOpen}
-                className={treeOpen ? "bg-muted text-foreground" : "text-muted-foreground"}
+                mark="fill"
                 onClick={() => {
                   dockTreePane.value = !treeOpen;
                 }}

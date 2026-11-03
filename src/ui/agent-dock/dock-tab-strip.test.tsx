@@ -69,6 +69,9 @@ async function mountStrip() {
       surface="view"
       root={ROOT}
       controller={files.controller}
+      closeLabel="Hide the side panel"
+      closeChord={null}
+      onClose={() => {}}
     />,
   );
   return { view, files };

@@ -211,7 +211,7 @@ describe("Ask", () => {
 });
 
 describe("the order of the dock", () => {
-  it("is Ask above the strip, and the strip above the body, with no space list", async () => {
+  it("is the strip above Ask, and Ask above the body, with no space list", async () => {
     tabViews.value = [
       tab({
         panes: [
@@ -242,7 +242,7 @@ describe("the order of the dock", () => {
     const order = [...column.children].map(
       (child) => child.getAttribute("aria-label") ?? child.tagName.toLowerCase(),
     );
-    expect(order).toEqual(["header", "Ask", "Dock views", "div"]);
+    expect(order).toEqual(["Dock views", "Ask", "div"]);
     expect(document.body.textContent).not.toContain("In this space");
     await view.unmount();
   });

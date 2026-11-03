@@ -5,7 +5,6 @@ import { surfaceFor } from "../../files/file-surface-store";
 import type { RailSelection } from "../project-rail/project-rail-model";
 import type { RailItem } from "../rail-view-model";
 import { DockAsk } from "./dock-ask";
-import { DockHeader } from "./dock-header";
 import {
   DOCK_VIEWS,
   dockSurface,
@@ -124,15 +123,17 @@ export function DockColumn({
   }, [surface]);
   return (
     <div className="agent-dock__column flex h-full min-h-0 flex-col">
-      <DockHeader item={item} closeLabel={closeLabel} closeChord={closeChord} onClose={onClose} />
-      <DockAsk item={item} selection={selection} />
       <DockTabStrip
         views={views}
         view={view}
         surface={surface}
         root={root}
         controller={bodies.files.controller}
+        closeLabel={closeLabel}
+        closeChord={closeChord}
+        onClose={onClose}
       />
+      <DockAsk item={item} selection={selection} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {surface === "file" && root !== null ? (
           <div className="h-full min-h-0">{bodies.files.document(root)}</div>
