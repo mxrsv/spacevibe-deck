@@ -78,6 +78,7 @@ export function CommitTextarea({
       onInput={(event) => setDraft(event.currentTarget.value)}
       onBlur={commit}
       onKeyDown={(event) => {
+        if (event.isComposing) return;
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
           commit();

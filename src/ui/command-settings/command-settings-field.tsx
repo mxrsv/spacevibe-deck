@@ -7,7 +7,12 @@ import { Input } from "../controls/input";
  * gave it. Memory only, never persisted: it lives from one opening of Settings to the next
  * (`clearFieldDrafts`), so a half-typed command survives folding the row and nothing else.
  */
-const drafts = new Map<string, string>();
+interface FieldDraft {
+  readonly text: string;
+  readonly committed: string;
+}
+
+const drafts = new Map<string, FieldDraft>();
 
 export function clearFieldDrafts(): void {
   drafts.clear();
@@ -58,9 +63,10 @@ export function CommitField({
   draftKey,
   ...input
 }: CommitFieldProps) {
-  const [draft, setDraft] = useState(
-    () => (draftKey === undefined ? undefined : drafts.get(draftKey)) ?? value,
-  );
+  const [draft, setDraft] = useState(() => {
+    const saved = draftKey === undefined ? undefined : drafts.get(draftKey);
+    return saved?.committed === value ? saved.text : value;
+  });
   const committed = useRef(value);
   const latest = useRef(draft);
   latest.current = draft;
@@ -79,8 +85,11 @@ export function CommitField({
   useEffect(
     () => () => {
       if (draftKey === undefined) return;
-      if (latest.current !== committed.current) drafts.set(draftKey, latest.current);
-      else drafts.delete(draftKey);
+      if (latest.current !== committed.current) {
+        drafts.set(draftKey, { text: latest.current, committed: committed.current });
+      } else {
+        drafts.delete(draftKey);
+      }
     },
     [draftKey],
   );
@@ -116,6 +125,7 @@ export function CommitField({
         }
       }}
       onKeyDown={(event: KeyboardEvent) => {
+        if (event.isComposing) return;
         if (event.key === "Enter") {
           event.preventDefault();
           if (!commit(draft) && !keepRefused) {

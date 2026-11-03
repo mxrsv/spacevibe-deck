@@ -105,6 +105,7 @@ export function AddAgentRow({ locked }: { readonly locked: boolean }) {
   };
   // A draft of two fields owns its Escape: the surface must not close over it.
   const keep = (event: KeyboardEvent): void => {
+    if (event.isComposing) return;
     if (event.key === "Escape" && (name.value !== "" || command.value !== "")) {
       event.preventDefault();
       event.stopPropagation();
@@ -147,6 +148,7 @@ export function AddAgentRow({ locked }: { readonly locked: boolean }) {
               error.value = null;
             }}
             onKeyDown={(event: KeyboardEvent) => {
+              if (event.isComposing) return;
               if (event.key === "Enter") {
                 event.preventDefault();
                 add();

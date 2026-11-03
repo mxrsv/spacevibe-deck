@@ -80,6 +80,7 @@ export function SettingsNav() {
             settingsQuery.value = event.currentTarget.value;
           }}
           onKeyDown={(event) => {
+            if (event.isComposing) return;
             // Escape clears a query first; with nothing typed it falls through and closes Settings.
             if (event.key === "Escape" && query !== "") {
               event.stopPropagation();

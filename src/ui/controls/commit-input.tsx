@@ -91,6 +91,7 @@ export function CommitInput({
       }}
       onBlur={commit}
       onKeyDown={(event) => {
+        if (event.isComposing) return;
         if (event.key === "Enter") {
           event.preventDefault();
           commit();

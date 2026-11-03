@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "preact/test-utils";
 
 // The sections and pieces an area mounts pull in host-backed stores; stub them for jsdom.
 vi.mock("../../host/store-host", () => ({
@@ -35,12 +36,14 @@ vi.mock("../../settings/agent-hooks-support-store", async (importOriginal) => ({
 // The import order is load-bearing: with the kit below these imports, this suite fails at import
 // with an xterm "Data error" (tiny-inflate in the unicode-graphemes addon). Root cause unknown.
 import {
+  chip,
   clickIn,
   openSurface as open,
   resetCommandSettings,
   rowOf,
   typeInto,
 } from "./command-settings-test-kit";
+import { withAgentCommand } from "../../lib/launch-profile";
 import { agentLaunchCommand } from "../../lib/launch-command";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
@@ -181,6 +184,51 @@ describe("a draft in a row that folds", () => {
     await configure();
     expect(command().value).toBe("claude --half-typed");
     expect(launched()).toBe(saved);
+  });
+
+  it.each(["changed", "unchanged"])(
+    "drops a refused draft after resetting agents with a %s saved command",
+    async (saved) => {
+      await typeInto(
+        saved === "changed" ? command() : models(),
+        saved === "changed" ? "claude --verbose" : "model-x",
+      );
+      await press(saved === "changed" ? command() : models(), { key: "Enter" });
+      await typeInto(command(), "claude; invalid");
+      await press(command(), { key: "Enter" });
+      await configure();
+
+      await clickIn(chip("Reset"));
+      await clickIn(document.querySelector('[aria-label="Reset agents and templates"]'));
+      const confirm = [...document.querySelectorAll('[data-slot="dialog-content"] button')].find(
+        (button) => button.textContent === "Reset agents and templates",
+      );
+      await clickIn(confirm);
+      await waitUntil(() => document.querySelector('[data-slot="dialog-content"]') === null);
+      await clickIn(chip("Agents"));
+      await configure();
+
+      expect(command().value).toBe(launched());
+      expect(command().value).not.toBe("claude; invalid");
+    },
+  );
+
+  it("adopts a saved command changed elsewhere while its draft was folded", async () => {
+    await typeInto(command(), "claude --half-typed");
+    await configure();
+    await act(async () => {
+      settings.value = {
+        ...settings.value,
+        ...withAgentCommand(
+          "claude",
+          "claude --verbose",
+          settings.value.launchProfiles,
+          settings.value.defaultLaunchProfiles,
+        ),
+      };
+    });
+    await configure();
+    expect(command().value).toBe("claude --verbose");
   });
 
   it("is dropped once Settings closes, and a saved value is never shadowed by an old draft", async () => {

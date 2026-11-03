@@ -160,6 +160,24 @@ describe("SettingsNav", () => {
     expect(host.querySelector(".settings-nav__count")?.textContent).toBe("1");
   });
 
+  it("leaves composing Escape in search without clearing the query", () => {
+    mount();
+    type("candidate");
+    const field = host.querySelector<HTMLInputElement>('input[aria-label="Search settings"]')!;
+    const event = new KeyboardEvent("keydown", {
+      key: "Escape",
+      isComposing: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      field.dispatchEvent(event);
+    });
+    expect(field.value).toBe("candidate");
+    expect(settingsQuery.value).toBe("candidate");
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("search with no match says so and leaves the page alone", () => {
     mount();
     type("zzzz");

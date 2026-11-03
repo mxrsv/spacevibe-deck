@@ -80,6 +80,19 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("leaves composing Escape in its field without closing or moving focus", () => {
+    const onClose = mount(true);
+    const field = host.querySelector<HTMLInputElement>('input[aria-label="Search settings"]')!;
+    field.focus();
+    act(() => {
+      field.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", isComposing: true, bubbles: true }),
+      );
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(field);
+  });
+
   it("Escape does NOT close the screen when a terminal owns focus (vim/fzf)", () => {
     const onClose = mount(true);
 

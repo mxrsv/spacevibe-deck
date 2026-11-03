@@ -87,6 +87,25 @@ describe("CommitTextarea", () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  it.each(["Enter", "Escape"])("leaves composing %s to the input method", (key) => {
+    const onCommit = vi.fn();
+    const field = mount("old", onCommit);
+    type(field, "draft");
+    const event = new KeyboardEvent("keydown", {
+      key,
+      ctrlKey: true,
+      isComposing: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      field.dispatchEvent(event);
+    });
+    expect(field.value).toBe("draft");
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("adopts a value changed elsewhere, e.g. restore defaults", () => {
     const onCommit = vi.fn();
     mount("old", onCommit);

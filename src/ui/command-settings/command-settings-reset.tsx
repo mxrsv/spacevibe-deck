@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { applyReset, resetPromptOpen } from "../settings/confirm-reset";
 import { RESET_ROWS } from "../settings/sections/reset-section";
 import { RowShell } from "./command-settings-live-row";
+import { clearFieldDrafts } from "./command-settings-field";
 
 /** The scope whose confirmation is open. */
 const resetScope = signal<SettingScope | null>(null);
@@ -126,6 +127,8 @@ export function ResetRows() {
               variant="destructive"
               disabled={keys.length === 0}
               onClick={() => {
+                // All folded drafts belong to agent data, including unchanged default commands.
+                if (open === "data") clearFieldDrafts();
                 applyReset(keys);
                 closeReset();
               }}

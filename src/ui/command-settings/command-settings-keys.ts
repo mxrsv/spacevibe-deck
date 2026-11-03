@@ -73,7 +73,7 @@ function escape(event: KeyboardEvent, context: CommandKeyContext): void {
 
 export function handleCommandKey(event: KeyboardEvent, context: CommandKeyContext): void {
   // Key first, then the DOM walk: this fires for every keystroke typed into a field here.
-  if (!KEYS.has(event.key)) {
+  if (!KEYS.has(event.key) || event.isComposing) {
     return;
   }
   const target = event.target;
@@ -93,7 +93,7 @@ export function handleCommandKey(event: KeyboardEvent, context: CommandKeyContex
     escape(event, context);
     return;
   }
-  if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey) {
+  if (event.metaKey || event.ctrlKey || event.altKey) {
     return;
   }
 

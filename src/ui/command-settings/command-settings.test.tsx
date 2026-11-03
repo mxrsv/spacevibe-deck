@@ -246,6 +246,38 @@ describe("Command Settings keyboard", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("leaves a composing Escape in search without closing Settings", async () => {
+    const { onClose } = await open();
+    await typeInto(search(), "candidate");
+    await press(search(), { key: "Escape", isComposing: true });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(search());
+    expect(search().value).toBe("candidate");
+  });
+
+  it.each(["Enter", "Escape"])("leaves composing %s to a field's input method", async (key) => {
+    commandScope.value = "browser";
+    const { onClose } = await open();
+    const field = controlOf("setting:browserHomeUrl", "input") as HTMLInputElement;
+    field.focus();
+    await typeInto(field, "https://example.com/draft");
+    await press(field, { key, isComposing: true });
+    expect(field.value).toBe("https://example.com/draft");
+    expect(settings.value.browserHomeUrl).toBe(DEFAULT_SETTINGS.browserHomeUrl);
+    expect(document.activeElement).toBe(field);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus in a clean field while composing Escape", async () => {
+    commandScope.value = "browser";
+    const { onClose } = await open();
+    const field = controlOf("setting:browserHomeUrl", "input") as HTMLInputElement;
+    field.focus();
+    await press(field, { key: "Escape", isComposing: true });
+    expect(document.activeElement).toBe(field);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("labels the footer's Escape as Close at every depth", async () => {
     commandScope.value = "terminal";
     await open();

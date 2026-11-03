@@ -98,6 +98,20 @@ describe("the Add agent row", () => {
     expect(settings.value.customAgents).toHaveLength(1);
   });
 
+  it.each(["Enter", "Escape"])(
+    "leaves composing %s in Add agent without declaring or clearing",
+    async (key) => {
+      const { onClose } = await open();
+      await typeInto(nameField(), "Aider");
+      await typeInto(commandField(), "aider");
+      await press(key === "Escape" ? nameField() : commandField(), { key, isComposing: true });
+      expect(nameField().value).toBe("Aider");
+      expect(commandField().value).toBe("aider");
+      expect(settings.value.customAgents).toEqual([]);
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     ["", "aider", "a name is required"],
     ["x".repeat(33), "aider", "names stay under 32 characters"],

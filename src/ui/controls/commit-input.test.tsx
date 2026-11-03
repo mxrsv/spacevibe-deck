@@ -64,6 +64,24 @@ describe("CommitInput", () => {
     expect(onCommit).toHaveBeenCalledWith("Iosevka");
   });
 
+  it.each(["Enter", "Escape"])("leaves composing %s to the input method", (key) => {
+    const onCommit = vi.fn();
+    mount("Menlo", onCommit);
+    type(field(), "draft");
+    const event = new KeyboardEvent("keydown", {
+      key,
+      isComposing: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      field().dispatchEvent(event);
+    });
+    expect(field().value).toBe("draft");
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("does not commit an empty draft or an unchanged value", () => {
     const onCommit = vi.fn();
     mount("Menlo", onCommit);

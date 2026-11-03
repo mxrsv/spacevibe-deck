@@ -86,6 +86,7 @@ export function AddCommandRow({ locked }: { readonly locked: boolean }) {
               error.value = null;
             }}
             onKeyDown={(event: KeyboardEvent) => {
+              if (event.isComposing) return;
               if (event.key === "Enter") {
                 event.preventDefault();
                 add();

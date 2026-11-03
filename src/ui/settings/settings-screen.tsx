@@ -63,7 +63,7 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
       // document root, so testing it before the key would pay for a tree walk
       // on each character typed into a field here. It only ever mattered once
       // Tab joined Escape and the handler stopped returning immediately.
-      if (event.key !== "Escape" && event.key !== "Tab") {
+      if (event.isComposing || (event.key !== "Escape" && event.key !== "Tab")) {
         return;
       }
       const target = event.target;

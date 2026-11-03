@@ -109,6 +109,18 @@ describe("the Add command row", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it.each(["Enter", "Escape"])(
+    "leaves composing %s in Add command without submitting or clearing",
+    async (key) => {
+      const { onClose } = await open();
+      await typeInto(field(), "claude --plan");
+      await press(field(), { key, isComposing: true });
+      expect(field().value).toBe("claude --plan");
+      expect(settings.value.launchProfiles).toEqual(DEFAULT_SETTINGS.launchProfiles);
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
+
   it("is inert while the snapshot loads", async () => {
     const { settingsLoadState } = await import("../../settings/settings-store");
     settingsLoadState.value = { status: "loading" };
