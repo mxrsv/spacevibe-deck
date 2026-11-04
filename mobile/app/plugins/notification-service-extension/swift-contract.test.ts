@@ -48,6 +48,14 @@ describe("Swift extension ↔ push.ts contract", () => {
     }
   });
 
+  it("never hands the app a route: it strips paneId, pairingId and kind from userInfo on every path", () => {
+    expect(swift).toContain('untrustedKeys = ["paneId", "pairingId", "kind"]');
+    expect(swift).not.toContain('userInfo["paneId"] =');
+    expect(swift).not.toContain('userInfo["pairingId"] =');
+    expect(swift).toContain("deliver(Self.stripped(request.content))");
+    expect(swift).toContain("self.original = Self.stripped(request.content)");
+  });
+
   it("looks the key up with the service, access group and key encoding the app writes", () => {
     // expo-secure-store appends ":no-auth" to the service when requireAuthentication is false.
     expect(swift).toContain(`"${constants.PUSH_KEYCHAIN_SERVICE}:no-auth"`);

@@ -110,15 +110,21 @@ describe("desktop connection", () => {
     });
   });
 
-  it("blocks the desktop when this app is too old, and does not retry (MOB10)", async () => {
+  it("shows the block (MOB10) but keeps checking slowly, so a forged verdict cannot silence the desktop for good", async () => {
     const { connection, world } = setup({ desktopVersion: { version: 9, min: 9 } });
     connection.start();
     await settle();
     expect(connection.getSnapshot()).toMatchObject({ status: "blocked", block: "update-phone" });
-    const before = world.sockets.length;
-    await settle(120_000);
-    expect(world.sockets.length).toBe(before);
-    expect(world.live).toHaveLength(0);
+    const first = world.sockets.length;
+    await settle(30_000);
+    expect(world.sockets.length).toBe(first); // not hammering
+    await settle(31_000);
+    expect(world.sockets.length).toBeGreaterThan(first); // the 60 s check
+    expect(connection.getSnapshot().status).toBe("blocked");
+    const second = world.sockets.length;
+    connection.start(); // the app returned to the front: check at once
+    await settle(50);
+    expect(world.sockets.length).toBeGreaterThan(second);
   });
 
   it("blocks the desktop when Deck is too old", async () => {

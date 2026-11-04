@@ -1,4 +1,5 @@
 import type { AppEvent } from "@protocol/messages";
+import { filterInput } from "./input-filter";
 
 /** App → page. The page is xterm.js in a WebView (`scripts/terminal-page.js`). */
 export type PageCommand =
@@ -45,6 +46,8 @@ export interface TerminalBridge {
 export function createTerminalBridge(options: {
   readonly post: (command: PageCommand) => void;
   readonly init: () => Extract<PageCommand, { t: "init" }>;
+  /** Whether keystrokes may leave the phone: only in Live mode (MOB18). */
+  readonly acceptInput: () => boolean;
   readonly onInput: (data: string) => void;
   readonly onPinch: (scale: number) => void;
   /** The page lost its state (reload) or the queue overflowed: the owner should subscribe again. */
@@ -88,9 +91,15 @@ export function createTerminalBridge(options: {
           for (const command of waiting) options.post(command);
           break;
         }
-        case "input":
-          options.onInput(message.d);
+        case "input": {
+          // xterm answers terminal queries and reports modes by itself, Live or not; the desktop's
+          // terminal already does for the agent, so replies are never forwarded, and nothing is
+          // forwarded at all unless Live mode is on.
+          if (!options.acceptInput()) break;
+          const data = filterInput(message.d);
+          if (data !== "") options.onInput(data);
           break;
+        }
         case "pinch":
           options.onPinch(message.scale);
           break;
@@ -121,7 +130,7 @@ export interface TerminalFeed {
 export function createTerminalFeed(options: {
   readonly bridge: Pick<TerminalBridge, "send">;
   readonly onSize: (cols: number, rows: number) => void;
-  readonly onEnd: (reason: "closed" | "unsubscribed" | "moved") => void;
+  readonly onEnd: (reason: string) => void;
   /** A chunk went missing: the screen cannot be trusted, subscribe again. */
   readonly onGap: () => void;
 }): TerminalFeed {
@@ -235,3 +244,17 @@ export function parsePageMessage(text: string): PageMessage | null {
       return null;
   }
 }
+
+/**
+ * What a `term.end` means for the screen: only `closed` is the end of the pane. `moved` (to
+ * another window) and `overflow` (the desktop dropped output the phone was too slow to take) leave
+ * a live pane whose stream must be re-opened for a fresh snapshot; `unsubscribed` is our own doing.
+ */
+export function endAction(reason: string): "closed" | "resubscribe" | "ignore" {
+  if (reason === "closed") return "closed";
+  if (reason === "unsubscribed") return "ignore";
+  return "resubscribe";
+}
+
+/** A short pause before re-opening, so a pane that is mid-move has landed in its new window. */
+export const RESUBSCRIBE_DELAY_MS = 400;

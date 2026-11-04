@@ -12,6 +12,7 @@ import {
   onEnabledChange,
   onForeground,
   onUnlocked,
+  shouldAutoPrompt,
   type LockState,
 } from "./lock-state";
 
@@ -26,6 +27,7 @@ export function LockGate({ children }: { readonly children: ReactNode }) {
   const [lock, setLock] = useState<LockState | null>(null);
   const [away, setAway] = useState(false);
   const prompting = useRef(false);
+  const promptEnded = useRef<number | null>(null);
 
   // The first state is decided once the preference is known (locked at launch when it is on), and
   // follows later changes of the preference. Derived while rendering, not in an effect, so the
@@ -53,12 +55,20 @@ export function LockGate({ children }: { readonly children: ReactNode }) {
       if (result !== "cancelled") setLock((s) => (s === null ? s : onUnlocked(s)));
     } finally {
       prompting.current = false;
+      promptEnded.current = Date.now();
     }
   }, []);
 
   const locked = lock === null || lock.locked;
   useEffect(() => {
-    if (loaded && lock?.locked === true && !away) void unlock();
+    // Not right after a prompt closed: the closing Face ID sheet makes the app active again, and a
+    // cancelled prompt must not come straight back (the Unlock button is the deliberate retry).
+    if (
+      loaded &&
+      shouldAutoPrompt({ locked: lock?.locked === true }, away, Date.now(), promptEnded.current)
+    ) {
+      void unlock();
+    }
   }, [loaded, lock?.locked, away, unlock]);
 
   const coverStyle = {

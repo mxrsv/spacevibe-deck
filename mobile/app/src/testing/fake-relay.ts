@@ -29,6 +29,8 @@ export interface FakeWorldOptions {
   readonly pending?: PendingPairing;
   readonly claimToken?: string;
   /** LAN addresses the desktop offers in its `desktop` event and answers on. */
+  /** Delay of every answer on the relay path, to test requests still in flight when the path changes. */
+  readonly relayResponseDelayMs?: number;
   readonly lan?: readonly { host: string; port: number }[];
 }
 
@@ -87,17 +89,21 @@ export function createFakeWorld(options: FakeWorldOptions) {
         });
       }
     });
+    const slow = socket.url.startsWith("wss://") ? (options.relayResponseDelayMs ?? 0) : 0;
+    const reply = (m: object): void => {
+      if (slow > 0) setTimeout(() => next.sendMessage(m), slow);
+      else next.sendMessage(m);
+    };
     next.onMessage((raw) => {
       const message = parseAppMessage(raw);
       if (message?.kind === "request") {
         requests.push(message.request);
         const { id, m } = message.request;
-        if (m === "usage.get") next.sendMessage({ id, ok: true, r: { usage: { today: 1 } } });
-        else if (m === "tree.subscribe")
-          next.sendMessage({ id, ok: true, r: { tree: { projects: [] } } });
+        if (m === "usage.get") reply({ id, ok: true, r: { usage: { today: 1 } } });
+        else if (m === "tree.subscribe") reply({ id, ok: true, r: { tree: { projects: [] } } });
         else if (m === "pane.input")
           return; // never answered: lets a test observe a timeout
-        else next.sendMessage({ id, ok: false, e: { code: "unavailable", message: "not now" } });
+        else reply({ id, ok: false, e: { code: "unavailable", message: "not now" } });
       }
     });
     return next;

@@ -20,11 +20,18 @@ const desktopCrypto = createNodeCrypto();
 const HOME = { host: "192.168.1.20", port: 5000 };
 const OTHER = { host: "10.0.0.7", port: 5001 };
 
-function setup(lan: readonly { host: string; port: number }[]) {
+function setup(lan: readonly { host: string; port: number }[], relayResponseDelayMs = 0) {
   const pairKey = new Uint8Array(randomBytes(32));
   const pairingId = b64urlEncode(new Uint8Array(randomBytes(16)));
   const phoneToken = b64urlEncode(new Uint8Array(randomBytes(32)));
-  const world = createFakeWorld({ crypto: desktopCrypto, pairingId, phoneToken, pairKey, lan });
+  const world = createFakeWorld({
+    crypto: desktopCrypto,
+    pairingId,
+    phoneToken,
+    pairKey,
+    lan,
+    relayResponseDelayMs,
+  });
   const connection = createDesktopConnection({
     pairing: { pairingId, pairKey },
     crypto: phoneCrypto,
@@ -158,6 +165,22 @@ describe("moving between the relay and the LAN (MOB9)", () => {
     expect(world.requests.map((r) => r.m)).toContain("tree.unsubscribe");
   });
 
+  it("ends a relay subscribe that is still in flight when the session moves to the LAN", async () => {
+    const { world, connection } = setup([HOME], 80);
+    world.setLanReachable(HOME.host, HOME.port, false);
+    connection.start();
+    await settle(2_100); // online over the relay, the LAN address failed
+    world.setLanReachable(OTHER.host, OTHER.port, true);
+    const subscribed = connection.rpc.request("tree.subscribe", {}).catch(() => null);
+    world.announceLan([OTHER]); // the move happens while the subscribe's answer is still on its way
+    await settle(30);
+    expect(connection.getSnapshot().path).toBe("lan");
+    expect(world.requests.map((r) => r.m)).not.toContain("tree.unsubscribe");
+    await settle(300);
+    await subscribed;
+    expect(world.requests.map((r) => r.m)).toContain("tree.unsubscribe");
+  });
+
   it("ignores addresses that are not private IPv4 and stays on the relay", async () => {
     const { world, connection } = setup([
       { host: "8.8.8.8", port: 5000 },
@@ -225,6 +248,24 @@ describe("moving between the relay and the LAN (MOB9)", () => {
     world.dropLan();
     await settle(50);
     expect(epochs).toEqual([0, 1, 2]);
+  });
+
+  it("leaves no orphan relay socket when the relay and then the LAN drop before the relay retry", async () => {
+    const { world, connection } = setup([HOME]);
+    connection.start();
+    await settle(50);
+    expect(connection.getSnapshot().path).toBe("lan");
+    world.dropAll(1006); // the relay socket dies while the LAN carries the session; a retry is scheduled
+    await settle(10);
+    world.setLanReachable(HOME.host, HOME.port, false);
+    world.dropLan(); // the LAN dies before that retry runs: the fallback opens a relay link at once
+    await settle(5_000);
+    const relay = () => world.live.filter((s) => s.url.startsWith("wss://"));
+    expect(relay()).toHaveLength(1);
+    expect(connection.getSnapshot()).toMatchObject({ status: "online", path: "relay" });
+    connection.stop();
+    await settle(50);
+    expect(world.live).toHaveLength(0);
   });
 
   it("closing the connection closes the LAN socket too", async () => {

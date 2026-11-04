@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTH_SETTLE_MS,
+  shouldAutoPrompt,
   initialLock,
   onBackground,
   onEnabledChange,
@@ -45,5 +47,20 @@ describe("lock state (MOB4)", () => {
   it("ignores a foreground event that had no background event", () => {
     const state = onUnlocked(initialLock(true));
     expect(onForeground(state, 10 ** 12)).toBe(state);
+  });
+});
+
+describe("shouldAutoPrompt", () => {
+  const locked = { locked: true };
+  it("prompts when locked and in front, and not for an open or backgrounded app", () => {
+    expect(shouldAutoPrompt(locked, false, 5_000, null)).toBe(true);
+    expect(shouldAutoPrompt({ locked: false }, false, 5_000, null)).toBe(false);
+    expect(shouldAutoPrompt(locked, true, 5_000, null)).toBe(false);
+  });
+
+  it("does not prompt again at once after a prompt closed (a cancelled Face ID sheet)", () => {
+    expect(shouldAutoPrompt(locked, false, 10_000, 9_500)).toBe(false);
+    expect(shouldAutoPrompt(locked, false, 10_000, 9_000)).toBe(true);
+    expect(AUTH_SETTLE_MS).toBe(1_000);
   });
 });

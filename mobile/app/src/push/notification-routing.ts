@@ -10,8 +10,6 @@ export interface PushData {
   readonly pairingId: string;
   /** The sealed payload (`d.c`), when present. */
   readonly sealed: string | null;
-  /** The pane id the extension (or our own local notification) already put in the data. */
-  readonly paneId: number | null;
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -32,11 +30,7 @@ export function extractPushData(data: unknown): PushData | null {
         ? root.pairingId
         : null;
   if (pairingId === null || pairingId === "") return null;
-  const paneId =
-    typeof root.paneId === "number" && Number.isSafeInteger(root.paneId) && root.paneId >= 0
-      ? root.paneId
-      : null;
-  return { pairingId, sealed: typeof inner.c === "string" ? inner.c : null, paneId };
+  return { pairingId, sealed: typeof inner.c === "string" ? inner.c : null };
 }
 
 /** Looks up a pairing's push key; null for a pairing this phone does not have. */
@@ -47,9 +41,9 @@ export type TapRoute =
   | { readonly kind: "home" };
 
 /**
- * Where a tapped notification goes (MOB23). The sealed payload is the authority when it opens; the
- * pane id already in the data (written by the extension, which opened the same payload) is the
- * fallback; a pairing this phone does not have, or nothing decryptable, opens Home.
+ * Where a tapped notification goes (MOB23). Only a payload this app opened itself (`openPush` with the
+ * pairing's key) can name a pane: any pane id in the notification's data or userInfo is ignored,
+ * because a relay can write those. A pairing this phone does not have, or nothing decryptable, opens Home.
  */
 export function routeTap(data: unknown, crypto: CryptoProvider, keyOf: PushKeyLookup): TapRoute {
   const push = extractPushData(data);
@@ -58,7 +52,6 @@ export function routeTap(data: unknown, crypto: CryptoProvider, keyOf: PushKeyLo
   if (key === null) return { kind: "home" };
   const opened = push.sealed === null ? null : openPush(crypto, key, push.sealed);
   if (opened !== null) return { kind: "pane", desktopId: push.pairingId, paneId: opened.paneId };
-  if (push.paneId !== null) return { kind: "pane", desktopId: push.pairingId, paneId: push.paneId };
   return { kind: "home" };
 }
 
@@ -67,6 +60,8 @@ export interface ForegroundCopy {
   readonly body: string;
   readonly paneId: number;
   readonly pairingId: string;
+  /** The sealed payload it came from, so a tap can open it again instead of trusting a pane id. */
+  readonly sealed: string;
 }
 
 /**
@@ -85,10 +80,17 @@ export function foregroundCopy(
   const opened = openPush(crypto, key, push.sealed);
   if (opened === null) return null;
   const title = opened.desktop === "" ? opened.title : `${opened.title} · ${opened.desktop}`;
-  return { title, body: opened.body, paneId: opened.paneId, pairingId: push.pairingId };
+  return {
+    title,
+    body: opened.body,
+    paneId: opened.paneId,
+    pairingId: push.pairingId,
+    sealed: push.sealed,
+  };
 }
 
 /** Data of the local notification the app schedules with the real copy (no `c`, so it is never re-processed). */
 export function localNotificationData(copy: ForegroundCopy): Record<string, unknown> {
-  return { pairingId: copy.pairingId, paneId: copy.paneId };
+  // The same envelope shape a push has: a tap opens `c` with the push key like any other.
+  return { d: { p: copy.pairingId, c: copy.sealed } };
 }

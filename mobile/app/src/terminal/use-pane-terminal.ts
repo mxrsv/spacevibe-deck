@@ -6,7 +6,13 @@ import type { DesktopEntry } from "@/session/manager";
 import { useTheme } from "@/theme/use-theme";
 import { Holder } from "./holder";
 import { createInputBatcher } from "./keys";
-import { createTerminalBridge, createTerminalFeed, type PageCommand } from "./terminal-bridge";
+import {
+  createTerminalBridge,
+  createTerminalFeed,
+  endAction,
+  RESUBSCRIBE_DELAY_MS,
+  type PageCommand,
+} from "./terminal-bridge";
 import { fitFontSize, pinchZoom, stepZoom } from "./zoom";
 
 export type TerminalState = "connecting" | "live" | "ended" | "offline";
@@ -28,6 +34,18 @@ export function usePaneTerminal(entry: DesktopEntry, paneId: number, live: boole
   const zoom = zoomFor(prefs, pairingId);
 
   // Plain holders, not refs read while rendering: only event handlers and effects touch them.
+  const [liveHolder] = useState(() => new Holder(live));
+  useEffect(() => {
+    liveHolder.set(live);
+  }, [liveHolder, live]);
+  const [resubscribeTimer] = useState(() => new Holder<ReturnType<typeof setTimeout> | null>(null));
+  useEffect(
+    () => () => {
+      const timer = resubscribeTimer.get();
+      if (timer !== null) clearTimeout(timer);
+    },
+    [resubscribeTimer],
+  );
   const [view] = useState(() => new Holder<WebView<object> | null>(null));
   const setWebView = useCallback(
     (instance: WebView<object> | null) => {
@@ -71,6 +89,7 @@ export function usePaneTerminal(entry: DesktopEntry, paneId: number, live: boole
           background: latest.get().palette.terminalBg,
           foreground: latest.get().palette.terminalFg,
         }),
+        acceptInput: () => liveHolder.get(),
         onInput: (data) => batcher.push(data),
         onPinch: (scale) =>
           void controller.setTerminalZoom(
@@ -79,7 +98,7 @@ export function usePaneTerminal(entry: DesktopEntry, paneId: number, live: boole
           ),
         onNeedsReplay: () => setReplay((n) => n + 1),
       }),
-    [batcher, controller, latest, view, setReplay],
+    [batcher, controller, latest, view, setReplay, liveHolder],
   );
 
   const feed = useMemo(
@@ -88,10 +107,18 @@ export function usePaneTerminal(entry: DesktopEntry, paneId: number, live: boole
         bridge,
         onSize: (cols, rows) =>
           setSize((old) => (old.cols === cols && old.rows === rows ? old : { cols, rows })),
-        onEnd: (reason) => setEnded(reason),
+        onEnd: (reason) => {
+          const action = endAction(reason);
+          if (action === "closed") setEnded(reason);
+          else if (action === "resubscribe") {
+            const previous = resubscribeTimer.get();
+            if (previous !== null) clearTimeout(previous);
+            resubscribeTimer.set(setTimeout(() => setReplay((n) => n + 1), RESUBSCRIBE_DELAY_MS));
+          }
+        },
         onGap: () => setReplay((n) => n + 1),
       }),
-    [bridge, setSize, setEnded, setReplay],
+    [bridge, setSize, setEnded, setReplay, resubscribeTimer],
   );
 
   useEffect(() => () => batcher.dispose(), [batcher]);

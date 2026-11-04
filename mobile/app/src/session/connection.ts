@@ -94,6 +94,9 @@ const TERMINAL_RELAY_ERRORS = new Set([
   "expired",
 ]);
 
+/** How often a blocked desktop is tried again (a forged verdict must not block it for good). */
+export const BLOCKED_RETRY_MS = 60_000;
+
 export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection {
   const random = deps.random ?? Math.random;
   const listeners = new Set<() => void>();
@@ -116,6 +119,8 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
   // listening to that channel, so a move to the LAN ends them first (the LAN gets its own).
   let relayTree = false;
   const relaySubs = new Set<string>();
+  /** Subscribes sent over the relay whose answer has not come back: they may still start a stream. */
+  const inflight = new Set<Promise<unknown>>();
   let courtesyId = 1_000_000_000;
   const rpc: RpcClient = {
     ...baseRpc,
@@ -123,18 +128,16 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       const onRelay = lan?.active !== true;
       const pending = baseRpc.request(method, params, options);
       if (onRelay) {
-        if (method === "tree.subscribe")
-          void pending.then(
-            () => (relayTree = true),
-            () => {},
-          );
-        if (method === "pane.subscribe") {
-          void pending.then(
+        if (method === "tree.subscribe" || method === "pane.subscribe") {
+          const tracked = pending.then(
             (r) => {
-              if ("sub" in r) relaySubs.add(r.sub);
+              if (method === "tree.subscribe") relayTree = true;
+              else if ("sub" in r) relaySubs.add(r.sub);
             },
             () => {},
           );
+          inflight.add(tracked);
+          void tracked.then(() => inflight.delete(tracked));
         }
         if (method === "tree.unsubscribe") relayTree = false;
         if (method === "pane.unsubscribe") relaySubs.delete((params as { sub: string }).sub);
@@ -142,7 +145,10 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       return pending;
     },
   };
-  function endRelayStreams(): void {
+  /** How long a subscribe that is still in flight on the relay is waited for before leaving it. */
+  const LEAVE_WAIT_MS = 3_000;
+
+  function sendRelayUnsubscribes(): void {
     const send = (m: string, p: object): void => {
       channel?.sendMessage({ id: courtesyId++, m, p });
     };
@@ -150,6 +156,33 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
     for (const sub of relaySubs) send("pane.unsubscribe", { sub });
     relayTree = false;
     relaySubs.clear();
+  }
+
+  /**
+   * Leaves the relay channel for the LAN: waits for subscribes still in flight (their answers name
+   * the streams to end), ends every stream on the relay, then closes the channel. If the relay
+   * channel was replaced or lost meanwhile there is nothing left to end.
+   */
+  function leaveRelayChannel(): void {
+    const old = channel;
+    if (old === null) return;
+    const finish = (): void => {
+      if (channel !== old) return;
+      sendRelayUnsubscribes();
+      dropChannel("lan-active");
+    };
+    if (inflight.size === 0) {
+      finish();
+      return;
+    }
+    let done = false;
+    const once = (): void => {
+      if (done) return;
+      done = true;
+      finish();
+    };
+    void Promise.all([...inflight]).then(once);
+    setTimeout(once, LEAVE_WAIT_MS);
   }
 
   function set(patch: Partial<ConnectionSnapshot>): void {
@@ -197,7 +230,11 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       session: deps.session,
     });
     channel = next;
-    set({ status: "connecting", path: current.kind, problem: null, block: null });
+    set({
+      status: snapshot.status === "blocked" ? "blocked" : "connecting",
+      path: current.kind,
+      problem: null,
+    });
     next.onMessage((message) => {
       if (channel === next) handleMessage(message);
     });
@@ -219,7 +256,7 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       if (handshakeTimer !== null) clearTimeout(handshakeTimer);
       handshakeTimer = null;
       failures = 0;
-      set({ status: "online", problem: null });
+      set({ status: "online", problem: null, block: null });
       lan?.setEligible(true); // a working relay session: the direct path may be tried
     }
     if (message.kind === "response") {
@@ -238,9 +275,12 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
     if (reason === "update-phone" || reason === "update-desktop") {
       dropChannel(reason);
       dropLink();
-      running = false;
       clearTimers();
       set({ status: "blocked", block: reason, problem: null, path: null });
+      // The verdict is the desktop's word, but it arrives before anything is authenticated, so a
+      // relay in the middle could forge it. The block is shown, and the phone keeps checking
+      // slowly (and again whenever the app returns to the front), so it cannot be silenced for good.
+      retryTimer = setTimeout(attempt, BLOCKED_RETRY_MS);
       return;
     }
     // A failed handshake, too many forged frames, a timeout: start over on a fresh socket.
@@ -295,7 +335,11 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
   }
 
   function attempt(): void {
+    // One relay link at a time: a pending retry and a link from an earlier attempt are dropped, so
+    // two paths to `attempt()` (the timer and a LAN fallback) cannot leave an orphan socket open.
+    if (retryTimer !== null) clearTimeout(retryTimer);
     retryTimer = null;
+    if (link !== null) dropLink();
     if (!running) return;
     const mine = ++generation;
     const live = (): boolean => mine === generation;
@@ -324,7 +368,9 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       return;
     }
     link = opened;
-    if (snapshot.status !== "offline") set({ status: "connecting", problem: null });
+    if (snapshot.status !== "offline" && snapshot.status !== "blocked") {
+      set({ status: "connecting", problem: null });
+    }
   }
 
   if (deps.openLan !== undefined) {
@@ -342,8 +388,7 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
         // Move the session: the relay channel goes (the desktop drops its streams for it), the
         // relay socket stays for presence and push. Subscribers see the epoch change and subscribe
         // again over the LAN.
-        endRelayStreams();
-        dropChannel("lan-active");
+        leaveRelayChannel();
         set({ status: "online", path: "lan", problem: null, epoch: snapshot.epoch + 1 });
       },
       onMessage: handleMessage,
@@ -361,7 +406,12 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
   }
 
   function start(): void {
-    if (running || snapshot.status === "revoked") return;
+    if (snapshot.status === "revoked") return;
+    if (running) {
+      // The app came back to the front while blocked: check again now.
+      if (snapshot.status === "blocked") attempt();
+      return;
+    }
     running = true;
     failures = 0;
     attempt();

@@ -29,7 +29,8 @@ Store the push key with `expo-secure-store`:
 - `keychainService`: `PUSH_KEYCHAIN_SERVICE` from `constants.js` (the library stores it as
   `<service>:no-auth`)
 - key: the pairing id; value: base64url of the 32-byte push key
-- `keychainAccessible: AFTER_FIRST_UNLOCK` (the extension runs while the phone is locked)
+- `keychainAccessible: AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` (the extension runs while the phone is
+  locked, so not "when unlocked"; and the key must not travel in a backup to another device)
 - no `accessGroup` needed (see above)
 
 `swift-contract.test.ts` pins these strings and `push.ts`'s AAD and layout against the Swift file.

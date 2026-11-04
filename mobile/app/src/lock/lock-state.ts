@@ -33,3 +33,21 @@ export function onUnlocked(state: LockState): LockState {
 export function onEnabledChange(state: LockState, enabled: boolean): LockState {
   return { ...state, enabled, locked: enabled ? state.locked : false };
 }
+
+/** The system Face ID sheet makes the app inactive; its `active` can arrive after the prompt resolved. */
+export const AUTH_SETTLE_MS = 1_000;
+
+/**
+ * Whether to show the Face ID prompt by itself: only while locked and in front, and not within a
+ * second of the previous prompt closing, so a cancelled prompt is not shown again by the
+ * `active` event the closing sheet causes. The Unlock button is always there for a deliberate retry.
+ */
+export function shouldAutoPrompt(
+  state: Pick<LockState, "locked">,
+  away: boolean,
+  now: number,
+  lastPromptEndedAt: number | null,
+): boolean {
+  if (!state.locked || away) return false;
+  return lastPromptEndedAt === null || now - lastPromptEndedAt >= AUTH_SETTLE_MS;
+}

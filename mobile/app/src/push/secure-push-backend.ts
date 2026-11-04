@@ -7,4 +7,7 @@ const backend: PushKeyBackend = {
   delete: (key, options) => SecureStore.deleteItemAsync(key, options),
 };
 
-export const pushKeyStore = createPushKeyStore(backend, SecureStore.AFTER_FIRST_UNLOCK);
+export const pushKeyStore = createPushKeyStore(
+  backend,
+  SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+);

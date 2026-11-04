@@ -3,6 +3,7 @@ import type { AppEvent } from "@protocol/messages";
 import {
   createTerminalBridge,
   createTerminalFeed,
+  endAction,
   parsePageMessage,
   MAX_QUEUED_COMMANDS,
   type PageCommand,
@@ -18,17 +19,19 @@ const INIT: Extract<PageCommand, { t: "init" }> = {
 };
 
 function bridgeWith() {
+  const accept = { value: true };
   const posted: PageCommand[] = [];
   const onNeedsReplay = vi.fn<() => void>();
   const inputs: string[] = [];
   const bridge = createTerminalBridge({
     post: (c) => posted.push(c),
     init: () => INIT,
+    acceptInput: () => accept.value,
     onInput: (d) => inputs.push(d),
     onPinch: () => {},
     onNeedsReplay,
   });
-  return { bridge, posted, onNeedsReplay, inputs };
+  return { bridge, posted, onNeedsReplay, inputs, accept };
 }
 
 describe("terminal bridge gating", () => {
@@ -58,10 +61,22 @@ describe("terminal bridge gating", () => {
     expect(onNeedsReplay).toHaveBeenCalledTimes(2);
   });
 
-  it("passes page input through", () => {
+  it("passes real keys through in Live mode and drops xterm's own replies", () => {
     const { bridge, inputs } = bridgeWith();
     bridge.receive({ t: "input", d: "ls\r" });
-    expect(inputs).toEqual(["ls\r"]);
+    bridge.receive({ t: "input", d: "\u001b[?1;2c" });
+    bridge.receive({ t: "input", d: "\u001b[24;80R" });
+    bridge.receive({ t: "input", d: "\u001b[I" });
+    bridge.receive({ t: "input", d: "\u001b[A" });
+    expect(inputs).toEqual(["ls\r", "\u001b[A"]);
+  });
+
+  it("forwards nothing while Live mode is off, replies or keys", () => {
+    const { bridge, inputs, accept } = bridgeWith();
+    accept.value = false;
+    bridge.receive({ t: "input", d: "x" });
+    bridge.receive({ t: "input", d: "\u001b[?1;2c" });
+    expect(inputs).toEqual([]);
   });
 });
 
@@ -152,5 +167,14 @@ describe("parsePageMessage", () => {
     expect(parsePageMessage('{"t":"input"}')).toBeNull();
     expect(parsePageMessage("nope")).toBeNull();
     expect(parsePageMessage('{"t":"other"}')).toBeNull();
+  });
+});
+
+describe("endAction", () => {
+  it("shows the closed state only for closed, and re-opens after moved or overflow", () => {
+    expect(endAction("closed")).toBe("closed");
+    expect(endAction("moved")).toBe("resubscribe");
+    expect(endAction("overflow")).toBe("resubscribe");
+    expect(endAction("unsubscribed")).toBe("ignore");
   });
 });

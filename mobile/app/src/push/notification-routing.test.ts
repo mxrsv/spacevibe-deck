@@ -33,14 +33,12 @@ function tampered(data: string): string {
 
 describe("extractPushData", () => {
   it("reads APNs's `d`, Expo's flat data and the extension's userInfo", () => {
-    expect(extractPushData(apns)).toEqual({ pairingId: "pair-1", sealed, paneId: null });
-    expect(extractPushData({ p: "pair-1", c: sealed })).toEqual({
+    expect(extractPushData(apns)).toEqual({ pairingId: "pair-1", sealed });
+    expect(extractPushData({ p: "pair-1", c: sealed })).toEqual({ pairingId: "pair-1", sealed });
+    // A pane id in the data is never read, whoever wrote it.
+    expect(extractPushData({ ...apns, paneId: 3, pairingId: "pair-1" })).toEqual({
       pairingId: "pair-1",
       sealed,
-      paneId: null,
-    });
-    expect(extractPushData({ ...apns, paneId: 3, pairingId: "pair-1" })).toMatchObject({
-      paneId: 3,
     });
     expect(extractPushData({})).toBeNull();
     expect(extractPushData(null)).toBeNull();
@@ -57,12 +55,18 @@ describe("routeTap (MOB23)", () => {
     });
   });
 
-  it("falls back to the pane id the extension already put in the data", () => {
-    const data = { d: { p: "pair-1", c: "garbage" }, paneId: 4 };
-    expect(routeTap(data, phoneCrypto, keyOf)).toEqual({
+  it("ignores a pane id the app did not decrypt, even with a known pairing", () => {
+    expect(routeTap({ d: { p: "pair-1", c: "garbage" }, paneId: 4 }, phoneCrypto, keyOf)).toEqual({
+      kind: "home",
+    });
+    expect(
+      routeTap({ d: { p: "pair-1" }, paneId: 4, pairingId: "pair-1" }, phoneCrypto, keyOf),
+    ).toEqual({ kind: "home" });
+    // A forged route next to a valid payload: the decrypted pane wins.
+    expect(routeTap({ ...apns, paneId: 99 }, phoneCrypto, keyOf)).toEqual({
       kind: "pane",
       desktopId: "pair-1",
-      paneId: 4,
+      paneId: 7,
     });
   });
 
@@ -94,6 +98,7 @@ describe("foregroundCopy", () => {
       body: "Do you want to proceed?",
       paneId: 7,
       pairingId: "pair-1",
+      sealed,
     });
   });
 

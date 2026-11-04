@@ -29,7 +29,10 @@ class NotificationService: UNNotificationServiceExtension {
     withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
   ) {
     self.contentHandler = contentHandler
-    self.original = request.content
+    // `paneId`, `pairingId` and `kind` are never set by this extension and the app never reads
+    // them: they are removed from whatever arrived, so a relay cannot pre-fill a route. The app
+    // opens the sealed `d.c` itself when the notification is tapped.
+    self.original = Self.stripped(request.content)
     guard let mutable = request.content.mutableCopy() as? UNMutableNotificationContent else {
       deliver(request.content)
       return
@@ -39,17 +42,26 @@ class NotificationService: UNNotificationServiceExtension {
       let sealed = d?["c"] as? String,
       let payload = Self.open(pairingId: pairingId, sealed: sealed)
     else {
-      deliver(request.content)
+      deliver(Self.stripped(request.content))
       return
     }
     mutable.title = payload.title
     mutable.body = payload.body
     var userInfo = mutable.userInfo
-    userInfo["paneId"] = payload.paneId
-    userInfo["pairingId"] = pairingId
-    userInfo["kind"] = payload.kind
+    for key in Self.untrustedKeys { userInfo.removeValue(forKey: key) }
     mutable.userInfo = userInfo
     deliver(mutable)
+  }
+
+  private static let untrustedKeys = ["paneId", "pairingId", "kind"]
+
+  /// The notification with every key the app might mistake for a decrypted route removed.
+  private static func stripped(_ content: UNNotificationContent) -> UNNotificationContent {
+    guard let copy = content.mutableCopy() as? UNMutableNotificationContent else { return content }
+    var info = copy.userInfo
+    for key in untrustedKeys { info.removeValue(forKey: key) }
+    copy.userInfo = info
+    return copy
   }
 
   override func serviceExtensionTimeWillExpire() {

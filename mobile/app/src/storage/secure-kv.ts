@@ -1,10 +1,11 @@
 import * as SecureStore from "expo-secure-store";
 import type { KeyValueStore } from "./key-value";
 
-// AFTER_FIRST_UNLOCK so a push or a background wake can read the keys while the phone is locked
-// but has been unlocked once since boot (spec MOB3).
+// "After first unlock" so a push or a background wake can read the keys while the phone is locked
+// but has been unlocked once since boot (spec MOB3); THIS_DEVICE_ONLY so the keys never travel in a
+// backup to another device: a restored phone must pair again.
 const OPTIONS: SecureStore.SecureStoreOptions = {
-  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
 };
 
 export const secureKeyValue: KeyValueStore = {
