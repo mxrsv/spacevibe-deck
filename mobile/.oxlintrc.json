@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import", "vitest", "react"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }
+    ],
+    "no-explicit-any": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "react/react-in-jsx-scope": "off"
+  },
+  "overrides": [
+    {
+      // Command-line scripts report progress on stdout; that is their output, not debugging.
+      "files": ["scripts/**", "**/scripts/**"],
+      "rules": { "no-console": "off" }
+    }
+  ],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.expo/**",
+    "**/.wrangler/**",
+    "**/dist/**",
+    "app/src/terminal/terminal-html.generated.ts"
+  ]
+}

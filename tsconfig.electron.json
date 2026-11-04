@@ -16,6 +16,8 @@
     "sourceMap": true,
     "types": ["node"]
   },
+  // `mobile/` is its own package with its own check (`npm run mobile:check`). Only the protocol
+  // files `electron/mobile/` imports are compiled here, through that import, as the shared contract.
   "include": ["electron/**/*.ts", "src/terminal/action-registry.ts"],
   "exclude": ["electron/**/*.test.ts"]
 }

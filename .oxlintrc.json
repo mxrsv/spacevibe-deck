@@ -100,6 +100,10 @@
     "test-results/**",
     ".expo/**",
     "electron/vendor/**",
-    "marketing/**"
+    "marketing/**",
+    // The phone companion is its own set of packages (React Native, a Worker, a shared protocol)
+    // with its own lint config and `npm run mobile:check`; the renderer's rules (Preact, R8, R11,
+    // R12) do not apply there, and its node_modules are not the root's.
+    "mobile/**"
   ]
 }

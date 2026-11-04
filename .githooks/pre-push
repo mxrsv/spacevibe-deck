@@ -24,8 +24,12 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
 $(git diff --name-only --diff-filter=d "$base" "$local_sha")"
 done
 
-code=$(printf '%s\n' "$changed" | grep -vE '^$|^docs/|^marketing/|\.md$' || true)
-[ -z "$code" ] && exit 0
+# `mobile/` is its own set of packages with its own check (`npm run mobile:check`): its tests
+# run under its own vitest and React Native types, so the root suites never see them. A push
+# that touches it runs that check once, below, instead of the sibling lookup.
+mobile=$(printf '%s\n' "$changed" | grep -E '^mobile/' || true)
+code=$(printf '%s\n' "$changed" | grep -vE '^$|^docs/|^marketing/|^mobile/|\.md$' || true)
+[ -z "$code" ] && [ -z "$mobile" ] && exit 0
 
 files=""
 sources=""
@@ -52,6 +56,14 @@ echo "pre-push: lint, policy suites and tests beside the changed files"
 # core.bare and a test user.name here. Drop them before anything spawns git.
 # shellcheck disable=SC2046
 unset $(git rev-parse --local-env-vars)
+if [ -n "$mobile" ]; then
+  if [ -d mobile/node_modules ]; then
+    npm --prefix mobile run check
+  else
+    echo "pre-push: mobile/ changed but its packages are not installed; run \`npm --prefix mobile run setup\` to check it here (CI runs it either way)"
+  fi
+fi
+[ -z "$code" ] && exit 0
 # shellcheck disable=SC2086 # word splitting is the point: one argument per path
 [ -z "$sources" ] || npx oxlint --quiet $sources
 # shellcheck disable=SC2086

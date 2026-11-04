@@ -13,8 +13,16 @@ fi
 existing=""
 sources=""
 tests=""
+mobile=""
 for file in $files; do
   [ -f "$file" ] || continue
+  # `mobile/` has its own toolchain and check; the root tsc, oxlint and vitest must not see it.
+  case "$file" in
+    mobile/*)
+      mobile=1
+      continue
+      ;;
+  esac
   existing="$existing $file"
   case "$file" in
     *.ts | *.tsx | *.js | *.mjs | *.cjs) sources="$sources $file" ;;
@@ -29,6 +37,7 @@ for file in $files; do
   esac
 done
 
+[ -z "$mobile" ] || npm --prefix mobile run check
 [ -n "$existing" ] || { echo "check-changed: nothing to check"; exit 0; }
 
 # shellcheck disable=SC2086 # one argument per path is the point
