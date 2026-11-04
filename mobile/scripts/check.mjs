@@ -33,6 +33,7 @@ if (!existsSync(path.join(root, "node_modules"))) {
 run("prettier", "npx", ["prettier", "--check", "."]);
 run("oxlint", "npx", ["oxlint", "-c", ".oxlintrc.json", "--deny-warnings", "protocol", "scripts"]);
 run("tsc protocol", "npx", ["tsc", "-p", "protocol/tsconfig.json"]);
+run("tsc protocol core (no Node types)", "npx", ["tsc", "-p", "protocol/tsconfig.core.json"]);
 run("vitest protocol", "npx", ["vitest", "run"]);
 
 for (const name of PACKAGES) {

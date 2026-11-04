@@ -19,6 +19,11 @@
       // Command-line scripts report progress on stdout; that is their output, not debugging.
       "files": ["scripts/**", "**/scripts/**"],
       "rules": { "no-console": "off" }
+    },
+    {
+      // The repro client is a command-line tool; its stdout is the product.
+      "files": ["**/repro/**"],
+      "rules": { "no-console": "off" }
     }
   ],
   "ignorePatterns": [

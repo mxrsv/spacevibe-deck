@@ -7,9 +7,11 @@
     "setup": "npm install && node scripts/setup.mjs",
     "check": "node scripts/check.mjs",
     "test": "vitest run",
-    "typecheck": "tsc -p protocol/tsconfig.json",
+    "typecheck": "tsc -p protocol/tsconfig.json && tsc -p protocol/tsconfig.core.json",
     "lint": "oxlint -c .oxlintrc.json protocol scripts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "repro": "tsx protocol/repro/client.ts",
+    "vectors": "tsx protocol/scripts/make-test-vectors.ts"
   },
   "engines": {
     "node": ">=22.13.0"

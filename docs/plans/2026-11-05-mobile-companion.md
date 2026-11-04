@@ -205,13 +205,13 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     and `@noble/*`.
   - **S5:** Electron 43's Node has a global `WebSocket` client usable in main. If it does not,
     the relay client needs `ws` (F1).
-- [ ] **T1: Isolation of `mobile/` from root tooling (F8).**
+- [x] **T1: Isolation of `mobile/` from root tooling (F8).** Done 2026-11-05 in `a0f60dc`.
   - **Excluded from:** root vitest, `tsconfig`, `.oxlintrc.json` (with an R9 comment),
     prettier, `scripts/check-changed.sh`, the `.githooks/pre-push` sibling lookup and CI paths.
   - **Added:** a `mobile/` check script.
   - **Verify:** a deliberately broken file under `mobile/` is invisible to `npm test` and
     `npm run lint`, and is caught by the `mobile/` check.
-- [ ] **T2: Protocol and crypto (`mobile/protocol/`).**
+- [x] **T2: Protocol and crypto (`mobile/protocol/`).** Done 2026-11-05.
   - **Contents:** types, version, framing, the crypto interface with a Node implementation, the
     S4 vectors, and the no-phone repro client.
   - **Covers:** MOB7 (framing and auth failure) and MOB10.
@@ -348,6 +348,69 @@ accepted).
 ## Verification
 
 Evidence lands here, per task, with the command and the observed result.
+
+**Baseline (clean clone of `origin/main` `f3d2aa3`, Linux cloud VM, 2026-11-05):** `npm test` →
+`Test Files 4 failed | 626 passed | 1 skipped (631)`, `Tests 2 failed | 9692 passed | 22 skipped`.
+All four are environmental and pre-existing:
+- `scripts/electron-dev-watch.test.ts`, `electron/agent-hooks/codex-integration.test.ts`: "Electron
+  failed to install correctly" (the VM has no Electron binary);
+- `electron/dev-servers/protocol.test.ts` › rejects a certificate without an IP SAN for `::1` (no
+  IPv6 in the sandbox);
+- `electron/agent-shell/shell-bootstrap.test.ts` › bash startup keeps the user's PATH order.
+
+`npx oxlint` → exit 0 (warnings only).
+
+**T1:**
+- A file with a type error and a failing test under `mobile/protocol/src/` is invisible to the root:
+  `npx vitest run --exclude 'backend/**' --exclude 'mobile/**' mobile/` → "No test files found";
+  `npx oxlint <file>` → exit 0, nothing reported; `npx prettier --check <file>` → ignored.
+- The same file is caught by `npm run mobile:check`: unformatted → `mobile:check: prettier failed`;
+  formatted → `protocol/src/broken.test.ts(3,7): error TS2322 … mobile:check: tsc protocol failed`.
+- `npm run mobile:check` on the real tree → `mobile:check: all green`.
+- `npx vitest run scripts/ src/styles/` → one failure, `electron-release-config.test.ts` pins two
+  `ubuntu-24.04` jobs in `ci.yml`; updated to three for `mobile-check` in the same commit → green.
+- Push from a clean `/tmp` worktree: the pre-push hook ran `mobile:check` and
+  `npm test -- scripts/ src/styles/` → `Test Files 32 passed (32)`, `Tests 511 passed | 1 skipped`.
+
+**T2 (`mobile/protocol/`):**
+- `cd mobile && npx vitest run` → `Test Files 15 passed (15)`, `Tests 190 passed (190)`: encoding,
+  the Node crypto against RFC 7748 §6.1, RFC 8439 §2.8.2 and RFC 5869 vectors, every Deck
+  derivation in `test-vectors.json`, QR expiry/version/malformed, frames, the pairing exchange
+  (one-time use, expiry on the desktop too, bad proof), the channel (in-order counters, a tampered
+  frame dropped and counted while the next good one opens, close after 16 failures, version
+  verdicts, no message before key confirmation), messages/results/tree parsers, chunking, sealed
+  push, and a full in-memory phone ↔ desktop loopback.
+- `npx tsc -p protocol/tsconfig.json` and `protocol/tsconfig.core.json` (`types: []`, no Node) pass;
+  the core also compiles under the root's TS 5.6 with `--module commonjs --lib ES2022 --types node`.
+- Prettier and `oxlint --deny-warnings` clean on `protocol/` and `scripts/`.
+- The repro client (`npm run repro -- …`) typechecks and parses its arguments; its run against a
+  real relay and `electron:dev` is **verify on the Mac**.
+
+## Decisions taken (cloud run, 2026-11-05)
+
+Each is the reversible option closest to the spec, taken without stopping (Operating contract).
+
+1. **Branch.** The session was handed `mock/mobile-companion-2026-11-05` as its branch; the owner's
+   prompt and this plan name `claude/mobile-companion`, so the build lives there and the mock branch
+   is only read. Turned down: committing onto the mock branch, which is never merged.
+2. **npm 10.9 crashes resolving vitest without a lockfile** (`Cannot read properties of null
+   (reading 'edgesOut')`, also in an empty directory). Each `mobile/` lockfile was created once with
+   `npx npm@11 install`; `npm ci` with npm 10 works from it. Turned down: `--legacy-peer-deps`,
+   which changes what gets installed.
+3. **CI runs `mobile/` in its own job** (`mobile-check`) instead of ignoring the path:
+   `electron/mobile/` imports `mobile/protocol/`, so a protocol change must still run the root CI.
+   `scripts/electron-release-config.test.ts` counted two Linux CI jobs and now counts three.
+4. **The pre-push hook runs `mobile:check` when `mobile/` changed** and its packages are installed,
+   and prints how to install them otherwise (CI runs it either way). Turned down: failing the push
+   for a contributor who never installed the phone toolchain.
+5. **`tsx` in `mobile/`'s dev dependencies** runs the protocol's no-phone repro client.
+6. **Session keys are per connection**, from a fresh X25519 exchange on each transport mixed with
+   the pairing key and the handshake transcript; frame counters restart per session. Turned down:
+   one long-lived key with persisted counters, which a crash or a second transport can reuse.
+7. **The relay never sees the QR secret**: it holds `sha256(claimToken)`, where `claimToken` is an
+   HKDF of the secret, so it cannot forge the phone's pairing proof.
+8. **Relay URL parsing is string-based** (`parseRelayUrl`): React Native's `URL` cannot set a
+   protocol or a path.
 
 ## Handoff
 
