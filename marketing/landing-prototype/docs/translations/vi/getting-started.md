@@ -65,8 +65,8 @@ mới, còn **New split here** mở shell ngay cạnh tab hiện tại. Menu ⌘
 - **Agent Rail** (cột bên trái). Mỗi project là một cụm, mỗi pane agent là một dòng. Dòng đó hiện
   câu gần nhất agent vừa nói, hoặc tên agent nếu nó chưa nói gì. Chấm nhỏ trên logo agent cho
   biết trạng thái: đỏ là lỗi, vàng là đang hỏi bạn, xám là đã chạy xong; agent đang làm việc thì
-  hiện một cụm chấm xoay nhỏ. Chỉ agent nào đang cần bạn mới giữ logo đủ màu, nên lướt qua cột
-  là thấy ngay. Bấm vào một dòng để chuyển tới pane đó. Nút ✕ ở mỗi dòng đóng đúng thứ dòng đó
+  hiện một spinner braille nhỏ, một ô chấm chạy vòng. Chỉ agent nào đang cần bạn mới giữ logo
+  đủ màu, nên lướt qua cột là thấy ngay. Bấm vào một dòng để chuyển tới pane đó. Nút ✕ ở mỗi dòng đóng đúng thứ dòng đó
   đại diện: dòng agent thì đóng pane đó, dòng tiêu đề project thì đóng mọi tab của repo đó. Kéo
   tiêu đề project để sắp xếp lại các cụm.
 - **Stage** (ở giữa). Các pane terminal của tab đang mở, chia theo ý bạn. Phía trên là một dải
