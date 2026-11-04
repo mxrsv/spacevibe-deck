@@ -150,12 +150,30 @@ describe("the Changes stack", () => {
     const view = await mount(stack([entry("src/a.ts")]));
     await reveal("src/a.ts");
     const kinds = (kind: string) =>
-      [...card("src/a.ts").querySelectorAll(`[data-line="${kind}"]`)].map((line) =>
-        line.textContent?.slice(1),
+      [...card("src/a.ts").querySelectorAll(`[data-line="${kind}"]`)].map(
+        (line) => line.lastElementChild?.textContent,
       );
     expect(kinds("add")).toEqual(["new line"]);
     expect(kinds("del")).toEqual(["old line"]);
     expect(card("src/a.ts").textContent).toContain("@@ -1,3 +1,3 @@");
+    await view.unmount();
+  });
+
+  it("numbers each line in a gutter the copy and the reader skip: old for removed, new otherwise", async () => {
+    const view = await mount(stack([entry("src/a.ts")]));
+    await reveal("src/a.ts");
+    const lines = [...card("src/a.ts").querySelectorAll<HTMLElement>("[data-line]")];
+    const shown = lines.map((line) => {
+      const [gutter, sign, code] = [...line.children] as HTMLElement[];
+      return `${gutter.textContent} ${sign.textContent}${code.textContent}`;
+    });
+    expect(shown).toEqual(["1  keep", "2 -old line", "2 +new line", "3  end"]);
+    const gutter = lines[0].firstElementChild as HTMLElement;
+    expect(gutter.getAttribute("aria-hidden")).toBe("true");
+    expect(gutter.className).toContain("select-none");
+    // The number takes the change's ink, so the change reads from the gutter alone.
+    expect((lines[2].firstElementChild as HTMLElement).className).toContain("text-(--term-ok)");
+    expect((lines[1].firstElementChild as HTMLElement).className).toContain("text-(--term-err)");
     await view.unmount();
   });
 
