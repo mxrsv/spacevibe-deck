@@ -18,7 +18,7 @@ import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
 const INDENT = 8;
 const STEP = 12;
 const ROW =
-  "flex h-6 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+  "flex h-(--dock-row-h) w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
 /** A file's mark and its ink: new files read as added, rewritten ones as modified. */
 export const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {

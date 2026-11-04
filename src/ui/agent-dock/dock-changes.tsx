@@ -105,7 +105,7 @@ function DockChangesBody({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
-      <div className="flex h-8 items-center gap-2 pr-2 pl-3">
+      <div className="flex h-10 items-center gap-2 pr-2 pl-3">
         <span className="text-xs font-medium text-foreground">Uncommitted</span>
         {snapshot !== null && entries.length > 0 ? (
           <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-muted-foreground">

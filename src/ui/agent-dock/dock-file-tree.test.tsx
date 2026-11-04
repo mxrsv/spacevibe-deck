@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { DOCK_ROW_HEIGHT } from "./dock-row-height";
 import { signal } from "@preact/signals";
 import { render } from "preact";
 import { act } from "preact/test-utils";
@@ -179,10 +180,10 @@ describe("the dock's tree pane", () => {
     expect(docs?.classList.contains("is-ignored")).toBe(true);
   });
 
-  it("gives the rows the dock's 28px height", () => {
+  it("gives the rows the dock's one row height, the same the Changes rows take", () => {
     mount(fakeChanges(snapshotWith([])));
     const row = host.querySelector<HTMLElement>(".file-tree__row");
-    expect(row?.style.height).toBe("28px");
+    expect(row?.style.height).toBe(`${DOCK_ROW_HEIGHT}px`);
   });
 });
 

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { DOCK_ROW_HEIGHT } from "./dock-row-height";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -205,6 +206,13 @@ describe("the tabbed dock in a wide window", () => {
     expect(bodyText()).toContain("explorer body");
     expect(bodyText()).not.toContain("usage body");
     expect(pressed()).toEqual(["Open a file"]);
+    await view.unmount();
+  });
+
+  it("hands the column's one row height to every list and header inside it", async () => {
+    const view = await mount(dock());
+    const column = document.body.querySelector(".agent-dock__column") as HTMLElement;
+    expect(column.style.getPropertyValue("--dock-row-h")).toBe(`${DOCK_ROW_HEIGHT}px`);
     await view.unmount();
   });
 

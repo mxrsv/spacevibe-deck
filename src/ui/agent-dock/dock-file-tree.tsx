@@ -6,6 +6,7 @@ import { clearExplorerStatus, explorerStatus } from "../../files/file-surface-st
 import { foldersWithChanges } from "../../files/tree-filter";
 import { FileTreeView } from "../../files/ui/file-tree-view";
 import { TreeMetricsContext, type TreeMetrics } from "../../files/ui/tree-metrics";
+import { DOCK_ROW_HEIGHT } from "./dock-row-height";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import { Input } from "../controls/input";
@@ -21,8 +22,8 @@ export interface DockFileTreeProps {
   readonly changes?: ChangesController;
 }
 
-/** The dock's rows are 28px, like the tab strip's and the Changes rows. */
-const DOCK_TREE_METRICS: TreeMetrics = { rowHeight: 28, inset: 12 };
+/** The tree's rows are the dock's one row height, as the Changes list's are. */
+const DOCK_TREE_METRICS: TreeMetrics = { rowHeight: DOCK_ROW_HEIGHT, inset: 12 };
 
 /**
  * The project tree with the one status line a failed create reports on, as the legacy

@@ -162,7 +162,7 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
       className={cn("border-b", marked && "shadow-[inset_2px_0_0_var(--primary)]")}
     >
       <div
-        className="sticky top-0 z-10 flex h-7.5 items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        className="sticky top-0 z-10 flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
         {...menu.triggerProps}
       >
         <Button

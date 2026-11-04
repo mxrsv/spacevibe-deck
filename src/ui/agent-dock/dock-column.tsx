@@ -12,6 +12,7 @@ import {
   type DockSurface,
   type DockViewId,
 } from "./agent-dock-state";
+import { DOCK_ROW_HEIGHT } from "./dock-row-height";
 import { DockTabStrip } from "./dock-tab-strip";
 
 /**
@@ -122,7 +123,10 @@ export function DockColumn({
     }
   }, [surface]);
   return (
-    <div className="agent-dock__column flex h-full min-h-0 flex-col">
+    <div
+      className="agent-dock__column flex h-full min-h-0 flex-col"
+      style={{ "--dock-row-h": `${DOCK_ROW_HEIGHT}px` }}
+    >
       <DockTabStrip
         views={views}
         view={view}
