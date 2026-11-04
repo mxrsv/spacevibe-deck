@@ -24,8 +24,6 @@ interface RowShellProps {
   readonly reset: ComponentChildren;
   /** Full-width content under the row, such as a conflict. */
   readonly below?: ComponentChildren;
-  /** The row takes half the list width and shares its line with the next one. */
-  readonly pair?: boolean;
 }
 
 /**
@@ -41,14 +39,12 @@ export function RowShell({
   control,
   reset,
   below,
-  pair,
 }: RowShellProps) {
   return (
     <li
       id={rowDomId(itemKey)}
       {...{ [LIVE_ROW_ATTRIBUTE]: "" }}
       data-active={active || undefined}
-      data-pair={pair || undefined}
       aria-current={active || undefined}
       onPointerMove={() => {
         if (commandActiveKey.peek() !== itemKey) commandActiveKey.value = itemKey;
@@ -128,7 +124,6 @@ export function LiveRow({ itemKey, settingKey, settings, crumb, active, locked }
       changed={row.changed}
       label={row.label}
       crumb={crumb}
-      pair={crumb === null}
       control={<SettingControl row={row} disabled={locked} />}
       reset={
         keys === null ? null : (
