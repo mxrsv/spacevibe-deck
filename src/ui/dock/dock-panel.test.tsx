@@ -85,6 +85,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointerdown", {
           clientX: 500,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -98,6 +99,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointermove", {
           clientX: 440,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -111,6 +113,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointermove", {
           clientX: -1000,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -160,6 +163,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointerdown", {
           clientX: 500,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -171,6 +175,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointermove", {
           clientX: 700,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -227,6 +232,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointerdown", {
           clientX: 500,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -234,6 +240,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointermove", {
           clientX: 700,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -241,6 +248,7 @@ describe("DockPanel resize", () => {
         new PointerEvent("pointermove", {
           clientX: 460,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -253,6 +261,49 @@ describe("DockPanel resize", () => {
 
     expect(onClose).not.toHaveBeenCalled();
     expect(onWidthChange).toHaveBeenCalledWith(460);
+  });
+
+  // Owner report 2026-11-04: a release that never arrived left the column
+  // following a pointer with no button held.
+  it("ends a drag whose release never arrived at the first move with no button held", async () => {
+    const onWidthChange = vi.fn();
+    act(() => {
+      render(
+        <DockPanel
+          tabs={availableDockTabs(true)}
+          activeTab="explorer"
+          onSelectTab={() => {}}
+          width={420}
+          onWidthChange={onWidthChange}
+          onClose={vi.fn()}
+        >
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
+        </DockPanel>,
+        host,
+      );
+    });
+
+    const grip = host.querySelector<HTMLElement>(".dock-panel__grip")!;
+    grip.setPointerCapture = vi.fn();
+    grip.releasePointerCapture = vi.fn();
+
+    await act(async () => {
+      grip.dispatchEvent(
+        new PointerEvent("pointerdown", { clientX: 500, pointerId: 1, buttons: 1, bubbles: true }),
+      );
+      grip.dispatchEvent(
+        new PointerEvent("pointermove", { clientX: 460, pointerId: 1, buttons: 1, bubbles: true }),
+      );
+      grip.dispatchEvent(
+        new PointerEvent("pointermove", { clientX: 300, pointerId: 1, buttons: 0, bubbles: true }),
+      );
+    });
+
+    // The width the user saw while still holding, and the capture handed back.
+    expect(onWidthChange).toHaveBeenCalledTimes(1);
+    expect(onWidthChange).toHaveBeenCalledWith(460);
+    expect(dockWidthLive.value).toBeNull();
+    expect(grip.releasePointerCapture).toHaveBeenCalledWith(1);
   });
 });
 

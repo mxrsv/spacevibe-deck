@@ -1,4 +1,5 @@
 import { dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
+import { trackCapturedDrag } from "../captured-pointer-drag";
 import { dockDragBounds, resolvePanelDrag } from "../panel-resize";
 
 export interface DockResizeGripProps {
@@ -24,8 +25,6 @@ export function DockResizeGrip({ width, onWidthChange, onClose }: DockResizeGrip
     const startX = event.clientX;
     const startWidth = width;
     const bounds = dockDragBounds(window.innerWidth);
-    const target = event.currentTarget as HTMLElement;
-    target.setPointerCapture(event.pointerId);
 
     const move = (moveEvent: PointerEvent): void => {
       // The handle is on the column's LEFT edge, so dragging left widens it.
@@ -37,9 +36,6 @@ export function DockResizeGrip({ width, onWidthChange, onClose }: DockResizeGrip
       dockCollapseArmed.value = outcome.collapsed;
     };
     const end = (): void => {
-      target.removeEventListener("pointermove", move);
-      target.removeEventListener("pointerup", end);
-      target.removeEventListener("pointercancel", end);
       const dragged = dockWidthLive.value;
       const collapse = dockCollapseArmed.value;
       if (collapse) {
@@ -67,9 +63,10 @@ export function DockResizeGrip({ width, onWidthChange, onClose }: DockResizeGrip
         onWidthChange(dragged);
       }
     };
-    target.addEventListener("pointermove", move);
-    target.addEventListener("pointerup", end);
-    target.addEventListener("pointercancel", end);
+    trackCapturedDrag(event.currentTarget as HTMLElement, event.pointerId, {
+      onMove: move,
+      onEnd: end,
+    });
   };
 
   return (

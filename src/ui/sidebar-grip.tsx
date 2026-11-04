@@ -17,6 +17,7 @@
  * that still holds them. `sidebarCollapsedWidth` is that floor.
  */
 import { signal } from "@preact/signals";
+import { trackCapturedDrag } from "./captured-pointer-drag";
 import { SIDEBAR_DRAG_BOUNDS, resolvePanelDrag } from "./panel-resize";
 
 /**
@@ -49,8 +50,6 @@ export function SidebarGrip(props: SidebarGripProps) {
     event.preventDefault();
     const startX = event.clientX;
     const startWidth = props.width;
-    const target = event.currentTarget as HTMLElement;
-    target.setPointerCapture(event.pointerId);
 
     const move = (moveEvent: PointerEvent): void => {
       // This grip is on the column's RIGHT (outer) edge, the mirror of the
@@ -64,9 +63,6 @@ export function SidebarGrip(props: SidebarGripProps) {
       sidebarCollapseArmed.value = outcome.collapsed;
     };
     const end = (): void => {
-      target.removeEventListener("pointermove", move);
-      target.removeEventListener("pointerup", end);
-      target.removeEventListener("pointercancel", end);
       const dragged = sidebarWidthLive.value;
       const collapse = sidebarCollapseArmed.value;
       // Cleared before the commit for the same reason the explorer clears its
@@ -85,9 +81,10 @@ export function SidebarGrip(props: SidebarGripProps) {
         props.onWidthChange(dragged);
       }
     };
-    target.addEventListener("pointermove", move);
-    target.addEventListener("pointerup", end);
-    target.addEventListener("pointercancel", end);
+    trackCapturedDrag(event.currentTarget as HTMLElement, event.pointerId, {
+      onMove: move,
+      onEnd: end,
+    });
   };
 
   return (

@@ -7,6 +7,9 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Resize handles let go when you do.** Letting go of the mouse now always ends a drag of
+  [the seam beside the rail](docs/user/getting-started.md), the side panel's edge or a split
+  divider. The column or pane no longer keeps following the pointer until the next click.
 - **Safer encrypted connections.** The [desktop runtime](package.json) now rejects
   certificates issued through compromised eMudhra intermediates.
 - **Switch between agents without the pause.** Switching [agent tabs](docs/user/agents.md)

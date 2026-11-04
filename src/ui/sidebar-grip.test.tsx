@@ -22,12 +22,15 @@ function mount(props: {
   return grip;
 }
 
+// `buttons: 1` because a move with no button held now ends the drag: jsdom's
+// PointerEvent defaults to 0, which would read as a release on every move.
 function drag(grip: HTMLElement, from: number, to: readonly number[]): void {
   act(() => {
     grip.dispatchEvent(
       new PointerEvent("pointerdown", {
         clientX: from,
         pointerId: 1,
+        buttons: 1,
         bubbles: true,
       }),
     );
@@ -36,6 +39,7 @@ function drag(grip: HTMLElement, from: number, to: readonly number[]): void {
         new PointerEvent("pointermove", {
           clientX: x,
           pointerId: 1,
+          buttons: 1,
           bubbles: true,
         }),
       );
@@ -159,5 +163,64 @@ describe("SidebarGrip", () => {
 
     expect(onWidthChange).toHaveBeenCalledWith(330);
     expect(sidebarWidthLive.value).toBeNull();
+  });
+
+  // Owner report 2026-11-04: the release went missing, and the column kept
+  // following a pointer with no button held until the next click.
+  it("ends a drag whose release never arrived at the first move with no button held", () => {
+    const onWidthChange = vi.fn();
+    const onCollapsedChange = vi.fn();
+    const grip = mount({ width: 275, onWidthChange, onCollapsedChange });
+
+    drag(grip, 275, [335]);
+    act(() => {
+      grip.dispatchEvent(
+        new PointerEvent("pointermove", { clientX: 500, pointerId: 1, buttons: 0, bubbles: true }),
+      );
+    });
+
+    // The width the user saw while still holding, not where the pointer went after.
+    expect(onWidthChange).toHaveBeenCalledTimes(1);
+    expect(onWidthChange).toHaveBeenCalledWith(335);
+    expect(sidebarWidthLive.value).toBeNull();
+    // The capture goes back, or the next press anywhere lands on this seam.
+    expect(grip.releasePointerCapture).toHaveBeenCalledWith(1);
+    expect(host.querySelector<HTMLElement>(".sidebar-grip")!.className).not.toContain(
+      "is-dragging",
+    );
+
+    // Later moves no longer resize the column.
+    act(() => {
+      grip.dispatchEvent(
+        new PointerEvent("pointermove", { clientX: 420, pointerId: 1, buttons: 1, bubbles: true }),
+      );
+    });
+    expect(sidebarWidthLive.value).toBeNull();
+  });
+
+  it("ends the drag when the window loses focus mid-gesture", () => {
+    const onWidthChange = vi.fn();
+    const grip = mount({ width: 275, onWidthChange, onCollapsedChange: vi.fn() });
+
+    drag(grip, 275, [310]);
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+    });
+
+    expect(onWidthChange).toHaveBeenCalledWith(310);
+    expect(sidebarWidthLive.value).toBeNull();
+  });
+
+  it("commits once when the release is followed by the capture's own loss", () => {
+    const onWidthChange = vi.fn();
+    const grip = mount({ width: 275, onWidthChange, onCollapsedChange: vi.fn() });
+
+    drag(grip, 275, [320]);
+    release(grip);
+    act(() => {
+      grip.dispatchEvent(new PointerEvent("lostpointercapture", { pointerId: 1, bubbles: true }));
+    });
+
+    expect(onWidthChange).toHaveBeenCalledTimes(1);
   });
 });

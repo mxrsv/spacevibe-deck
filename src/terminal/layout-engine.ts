@@ -7,6 +7,7 @@ import {
   type TreeNode,
 } from "../lib/split-tree";
 import type { PaneRect } from "../lib/pane-geometry";
+import { trackCapturedDrag } from "../ui/captured-pointer-drag";
 
 /** Minimum share the Focused pane gets on each split along its path. */
 export const EXPAND_RATIO = 0.65;
@@ -278,7 +279,6 @@ function buildDivider(
 
   divider.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    divider.setPointerCapture(event.pointerId);
     divider.classList.add("is-dragging");
     elements.split.classList.add("is-resizing");
     let ratio = node.ratio;
@@ -294,15 +294,13 @@ function buildDivider(
       elements.second.style.flexGrow = String(1 - ratio);
     };
 
-    const onUp = (): void => {
-      divider.removeEventListener("pointermove", onMove);
+    const onEnd = (): void => {
       divider.classList.remove("is-dragging");
       elements.split.classList.remove("is-resizing");
       ctx.onRatioCommit(path, ratio);
     };
 
-    divider.addEventListener("pointermove", onMove);
-    divider.addEventListener("pointerup", onUp, { once: true });
+    trackCapturedDrag(divider, event.pointerId, { onMove, onEnd });
   });
 
   return divider;
