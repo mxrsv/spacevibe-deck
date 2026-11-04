@@ -282,7 +282,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     first.
   - **Privacy:** a new dated notice under `marketing/public/privacy/<date>/`; the App Store
     privacy answers match it.
-- [ ] **T12: Docs (MOB28).**
+- [x] **T12: Docs (MOB28).** Done 2026-11-05.
   - **User guide:** `docs/user/mobile.md`, covering pairing, revoke, offline, keep-awake and the
     Windows limit, plus its `vi` translation (then `npm run docs:translations -- --stamp
     vi/mobile`).
@@ -531,6 +531,21 @@ All four are environmental and pre-existing:
   and `EAS_PROJECT_ID`, the App Store Connect record, App ID capabilities for the app and its
   extension, the APNs key as relay secrets, a development build for the iPhone, a production
   build with `eas submit` for the public TestFlight beta, `eas update --channel protocol-1`).
+
+**T12 (docs):**
+- New: `docs/user/mobile.md` (pairing, answering, Live mode, new agent, files/changes/usage,
+  notifications, offline, keep-awake, the LAN prompt, Face ID, revoke, updates, the Windows limit)
+  with its `vi` translation stamped current (`npm run docs:translations -- --stamp vi/mobile` →
+  `vi/mobile current`), and `docs/internals/mobile.md` (protocol, pairing, channel, relay, LAN,
+  how phone input keeps echo suppression, push, keep-awake, Windows).
+- Updated in place: `docs/user/settings.md` (Mobile category), `docs/internals/glossary.md`,
+  `docs/README.md`, `docs/operations/development.md` (`mobile:check`, `mobile-check`),
+  `AGENTS.md` (the surface table and the commands table).
+- Every relative link in those files resolves (a script over each `](…)`; the one miss,
+  `AGENTS.md` → `../AGENTS.md`, is the pre-existing workspace map outside this repo).
+  `npm run build:landing` built; it still notes the pre-existing stale `vi` guides
+  (getting-started, keyboard-shortcuts, settings), which this change does not stamp.
+- `npx vitest run scripts/ src/styles/` → `Test Files 32 passed (32)`, `Tests 512 passed`.
 
 ## Decisions taken (cloud run, 2026-11-05)
 
