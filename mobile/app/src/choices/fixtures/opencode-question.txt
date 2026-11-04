@@ -1,0 +1,12 @@
+  Wire the relay client into main behind mobileCompanion
+
+  ┃
+  ┃  Which test runner should I use for the relay package?
+  ┃
+  ┃  1. vitest
+  ┃     Matches the rest of the repo
+  ┃  2. node:test
+  ┃     No dependency, slower to write
+  ┃  3. Type your own answer
+  ┃
+  ┃  ↑↓ select  enter confirm  esc dismiss

@@ -17,6 +17,8 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="pair" options={{ presentation: "modal" }} />
           <Stack.Screen name="desktop/[id]" />
+          <Stack.Screen name="needs-you" />
+          <Stack.Screen name="pane/[desktopId]/[paneId]" />
         </Stack>
       </LockGate>
     </AppProvider>

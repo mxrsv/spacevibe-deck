@@ -254,7 +254,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
   - **Verify:** Simulator screenshots next to the mock in both themes, with each difference
     measured.
   - **Needs Xcode:** an owner action, due before this task.
-- [ ] **T7: Home and pane (MOB16–19).**
+- [x] **T7: Home and pane (MOB16–19).** Done 2026-11-05 (committed before T4).
   - **Home:** tree E with the pinned Needs you section and See all. Every row shows its last line
     and age.
   - **Answers:** the numbered-choice parser with tests on captured Claude Code, Codex and opencode
@@ -415,6 +415,18 @@ All four are environmental and pre-existing:
   Dynamic Type, the Keychain, pairing against `wrangler dev` and `electron:dev`, and the look next
   to the mock in both themes (T14's eye batch). No Simulator here, so no screenshots.
 
+**T7 (`mobile/app/`):**
+- `cd mobile && npm run check` → app vitest `Tests 115 passed (115)`, `iOS Bundled … (1280 modules)`.
+  Tested: the numbered-choice parser on reconstructed Claude Code, Codex and opencode screens plus
+  negatives (a list higher up the output, a list followed by a spinner or an idle input box); the
+  Needs-you selection, order and See all; the tree store's replay after a reconnect; the terminal
+  bridge's ready gating and snapshot-then-live order, held events and gap detection; zoom snapping
+  and per-desktop persistence; the accessory key map; the 16 ms input batcher.
+- **Verify on the iPhone (Expo Go):** xterm drawing inside the WebView and the Menlo cell ratio that
+  sets fit-to-width; the keyboard opening in Live mode and keystrokes arriving; pinch and horizontal
+  scroll; the header swipe; and whether a bare digit selects an option in each real agent (no real
+  captures were available here; opencode's permission dialog has no numbers, so it gets Reply).
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -449,8 +461,10 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
     cannot reach `api.expo.dev` through this VM's proxy, so the versions come from
     `expo/bundledNativeModules.json` by hand; `expo-crypto` (random bytes for the noble crypto) and
     `expo-font` (needed by `expo-symbols`) join the F1 list.
-12. **T6 was committed before T4**: both were built at once by separate agents, and T6 finished
-    first. Each still has its own commit.
+12. **T6 and T7 were committed before T4**: they were built at once by separate agents and finished
+    first. Each task still has its own commit.
+13. **A numbered choice sends the bare digit**, the same for every agent (MOB18: parsed buttons are
+    agent-agnostic). Turned down: per-agent key recipes, which the spec rules out.
 
 ## Handoff
 

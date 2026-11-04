@@ -25,6 +25,9 @@ export interface Palette {
   readonly primary: string;
   readonly primaryText: string;
   readonly danger: string;
+  /** The terminal well (`--well-bg`) and its text (`--term-fg`). */
+  readonly terminalBg: string;
+  readonly terminalFg: string;
   readonly status: {
     readonly needsYou: string;
     readonly working: string;
@@ -52,6 +55,8 @@ export const darkPalette: Palette = {
   primary: "#efe9dc",
   primaryText: "#1d1a14",
   danger: "#df7f78",
+  terminalBg: "#131518",
+  terminalFg: "#d6d8db",
   status: {
     needsYou: "#e4c285",
     working: "#e7e8e9",
@@ -79,6 +84,8 @@ export const lightPalette: Palette = {
   primary: "#2a2620",
   primaryText: "#f7f3ea",
   danger: "#b42318",
+  terminalBg: "#ffffff",
+  terminalFg: "#272727",
   status: {
     needsYou: "#946200",
     working: "#272727",

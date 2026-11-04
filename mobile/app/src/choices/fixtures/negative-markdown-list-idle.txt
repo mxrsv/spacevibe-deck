@@ -1,0 +1,12 @@
+⏺ Here is the plan for the relay:
+
+  1. startRelay() opens one socket per pairing
+  2. frames are sealed with the pair key before they leave
+  3. nothing connects while mobileCompanion is off
+
+  Want me to start on step 1?
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ >                                                                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+  ? for shortcuts

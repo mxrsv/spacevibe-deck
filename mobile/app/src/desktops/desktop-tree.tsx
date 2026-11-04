@@ -1,11 +1,77 @@
+import { View } from "react-native";
+import { useRouter } from "expo-router";
+import { useTreeSnapshot } from "@/home/use-home";
+import { openPane } from "@/home/open-pane";
+import { PaneRow } from "@/home/pane-row";
 import type { DesktopEntry } from "@/session/manager";
+import { Group } from "@/ui/grouped-list";
+import { Symbol } from "@/ui/symbol";
+import { Txt } from "@/ui/text";
 
 /**
- * The seam for T7: Home shows each online desktop's tree (projects, checkouts, panes with the rail's
- * marks, the waiting panes pinned on top, MOB16) under its row. T7 fills this component: it
- * subscribes with `entry.connection.rpc.request("tree.subscribe", {})`, listens to `tree` events
- * through `entry.connection.onEvent`, and renders nothing for a desktop that is not online.
+ * One online desktop's tree under its header: projects, their checkouts (branch symbol) and the
+ * panes in each, with the rail's marks. Nothing for a desktop that is not online: a stale tree
+ * would claim agents are running that nobody can see.
  */
-export function DesktopTree(_props: { readonly entry: DesktopEntry }) {
-  return null;
+export function DesktopTree({ entry }: { readonly entry: DesktopEntry }) {
+  const router = useRouter();
+  const { status, tree } = useTreeSnapshot(entry.connection);
+  if (status !== "online" || tree === null) return null;
+  if (tree.projects.length === 0) {
+    return (
+      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+        <Txt variant="footnote" tone="faint">
+          No projects open in Deck.
+        </Txt>
+      </View>
+    );
+  }
+  return (
+    <View>
+      {tree.projects.map((project) => (
+        <View key={project.path}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 }}>
+            <Txt
+              variant="subheadlineStrong"
+              tone="muted"
+              numberOfLines={1}
+              accessibilityRole="header"
+            >
+              {project.name}
+            </Txt>
+          </View>
+          {project.checkouts.map((checkout) => (
+            <View key={checkout.path}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: 20,
+                  paddingBottom: 4,
+                  paddingTop: 4,
+                }}
+              >
+                <Symbol name="arrow.triangle.branch" size={12} tone="faint" />
+                <Txt variant="footnote" tone="faint" numberOfLines={1}>
+                  {checkout.branch ?? checkout.name}
+                </Txt>
+              </View>
+              {checkout.panes.length === 0 ? null : (
+                <Group>
+                  {checkout.panes.map((pane) => (
+                    <PaneRow
+                      key={pane.paneId}
+                      pane={pane}
+                      onPress={() => openPane(router, entry.summary.pairingId, pane.paneId, false)}
+                    />
+                  ))}
+                </Group>
+              )}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
 }

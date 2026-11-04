@@ -1,4 +1,5 @@
 import type { KeyValueStore } from "@/storage/key-value";
+import { isZoomStep, ZOOM_DEFAULT } from "@/terminal/zoom";
 
 /** The phone's few preferences. They live in the Keychain with the pairings: no AsyncStorage. */
 export interface Prefs {
@@ -6,9 +7,15 @@ export interface Prefs {
   readonly faceIdLock: boolean;
   /** The phone's own switch for push (decision 24); push delivery itself arrives in T9. */
   readonly notifications: boolean;
+  /** Terminal text size in percent, per desktop (pairing id), on this device (MOB17). */
+  readonly terminalZoom: Readonly<Record<string, number>>;
 }
 
-export const DEFAULT_PREFS: Prefs = { faceIdLock: true, notifications: true };
+export function zoomFor(prefs: Prefs, pairingId: string): number {
+  return prefs.terminalZoom[pairingId] ?? ZOOM_DEFAULT;
+}
+
+export const DEFAULT_PREFS: Prefs = { faceIdLock: true, notifications: true, terminalZoom: {} };
 
 const KEY = "deck.prefs";
 
@@ -26,10 +33,18 @@ export function parsePrefs(text: string | null): Prefs {
         typeof record.notifications === "boolean"
           ? record.notifications
           : DEFAULT_PREFS.notifications,
+      terminalZoom: parseZoom(record.terminalZoom),
     };
   } catch {
     return DEFAULT_PREFS;
   }
+}
+
+function parseZoom(value: unknown): Record<string, number> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  const zoom: Record<string, number> = {};
+  for (const [key, step] of Object.entries(value)) if (isZoomStep(step)) zoom[key] = step;
+  return zoom;
 }
 
 export interface PrefsController {
@@ -38,6 +53,7 @@ export interface PrefsController {
   subscribe(listener: () => void): () => void;
   load(): Promise<void>;
   update(patch: Partial<Prefs>): Promise<void>;
+  setTerminalZoom(pairingId: string, zoom: number): Promise<void>;
 }
 
 export function createPrefsController(kv: KeyValueStore): PrefsController {
@@ -50,6 +66,11 @@ export function createPrefsController(kv: KeyValueStore): PrefsController {
     snapshot = next;
     for (const listener of [...listeners]) listener();
   };
+  async function update(patch: Partial<Prefs>): Promise<void> {
+    const prefs = { ...snapshot.prefs, ...patch };
+    publish({ loaded: true, prefs });
+    await kv.set(KEY, JSON.stringify(prefs));
+  }
   return {
     getSnapshot: () => snapshot,
     subscribe(listener) {
@@ -65,10 +86,9 @@ export function createPrefsController(kv: KeyValueStore): PrefsController {
       }
       publish({ loaded: true, prefs: parsePrefs(text) });
     },
-    async update(patch) {
-      const prefs = { ...snapshot.prefs, ...patch };
-      publish({ loaded: true, prefs });
-      await kv.set(KEY, JSON.stringify(prefs));
+    update,
+    async setTerminalZoom(pairingId, zoom) {
+      await update({ terminalZoom: { ...snapshot.prefs.terminalZoom, [pairingId]: zoom } });
     },
   };
 }

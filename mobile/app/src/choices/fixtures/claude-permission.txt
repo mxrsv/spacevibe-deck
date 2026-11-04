@@ -1,0 +1,16 @@
+⏺ Bash(npm test -- electron/relay/)
+  ⎿  Running…
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Bash command                                                                 │
+│                                                                              │
+│   npm test -- electron/relay/                                                │
+│   Run the relay unit tests                                                   │
+│                                                                              │
+│ Do you want to proceed?                                                      │
+│ ❯ 1. Yes                                                                     │
+│   2. Yes, and don’t ask again for npm test commands in                       │
+│      /Users/dev/spacevibe-deck                                               │
+│   3. No, and tell Claude what to do differently (esc)                        │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯

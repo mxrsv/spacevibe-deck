@@ -4,14 +4,18 @@ import { createPrefsController, DEFAULT_PREFS, parsePrefs } from "./prefs-store"
 
 describe("prefs", () => {
   it("defaults to Face ID lock on and notifications on", () => {
-    expect(DEFAULT_PREFS).toEqual({ faceIdLock: true, notifications: true });
+    expect(DEFAULT_PREFS).toEqual({ faceIdLock: true, notifications: true, terminalZoom: {} });
   });
 
   it("falls back to the safe defaults for corrupt or partial values", () => {
     expect(parsePrefs("not json")).toEqual(DEFAULT_PREFS);
     expect(parsePrefs("[]")).toEqual(DEFAULT_PREFS);
     expect(parsePrefs('{"faceIdLock":"no"}')).toEqual(DEFAULT_PREFS);
-    expect(parsePrefs('{"faceIdLock":false}')).toEqual({ faceIdLock: false, notifications: true });
+    expect(parsePrefs('{"faceIdLock":false}')).toEqual({
+      faceIdLock: false,
+      notifications: true,
+      terminalZoom: {},
+    });
   });
 
   it("is not loaded until read, then persists updates and notifies", async () => {
@@ -28,6 +32,10 @@ describe("prefs", () => {
 
     const again = createPrefsController(kv);
     await again.load();
-    expect(again.getSnapshot().prefs).toEqual({ faceIdLock: false, notifications: true });
+    expect(again.getSnapshot().prefs).toEqual({
+      faceIdLock: false,
+      notifications: true,
+      terminalZoom: {},
+    });
   });
 });

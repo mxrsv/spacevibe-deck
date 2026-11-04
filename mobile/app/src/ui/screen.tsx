@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { ScrollView, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { metrics } from "@/theme/tokens";
 import { useTheme } from "@/theme/use-theme";
@@ -10,10 +10,13 @@ interface ScreenProps {
   readonly children: ReactNode;
   /** Controls to the right of the large title (a plus, a close). */
   readonly accessory?: ReactNode;
+  /** Pull to refresh; the spinner shows until the promise settles. */
+  readonly onRefresh?: () => Promise<void>;
 }
 
 /** A scrolling screen with the iOS large title on the grouped ground. */
-export function Screen({ title, children, accessory }: ScreenProps) {
+export function Screen({ title, children, accessory, onRefresh }: ScreenProps) {
+  const [refreshing, setRefreshing] = useState(false);
   const palette = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -22,6 +25,18 @@ export function Screen({ title, children, accessory }: ScreenProps) {
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 32 }}
       contentInsetAdjustmentBehavior="never"
       keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh === undefined ? undefined : (
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={palette.textFaint}
+            onRefresh={() => {
+              setRefreshing(true);
+              void onRefresh().finally(() => setRefreshing(false));
+            }}
+          />
+        )
+      }
     >
       <View
         style={{

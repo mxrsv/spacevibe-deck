@@ -13,5 +13,5 @@ export default defineConfig({
       "@": path.resolve(here, "src"),
     },
   },
-  test: { include: ["src/**/*.test.ts"] },
+  test: { include: ["src/**/*.test.ts", "plugins/**/*.test.ts"] },
 });
