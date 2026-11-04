@@ -34,8 +34,10 @@ The owner's CLI corpus (measured 2026-08-16) shows why that common case matters:
   count, and the stage shows the launcher. A window booted to adopt a pane opens on that pane and
   never shows the launcher at boot, as today.
 - **LCH-2 Remembered agents on the rail.**
-  - **At boot:** the rail lists every agent pane of the previous session under its project, dimmed:
-    agent logo, last title (else the agent's name), branch and age. Nothing runs.
+  - **At boot:** the rail lists every agent pane of the previous session's main window under its
+    project, dimmed: agent logo, last title (else the agent's name), branch and age. Nothing runs.
+    Panes in windows detached at quit are not listed. Their records are never cleared, so merging
+    them would bring back rows the user had forgotten.
   - **Hover:** a dimmed row swaps its age for a resume mark.
   - **Pressing a row** opens that one pane in its project and resumes its conversation. It uses the
     same resolution the last-session restore uses: the exact id where the resolver finds one, else
@@ -52,8 +54,11 @@ The owner's CLI corpus (measured 2026-08-16) shows why that common case matters:
 - **LCH-4 One launcher, in the stage.**
   - **Placement:** the launcher renders inside the stage, never over the rail.
   - **What opens it:** boot; the window having no live tab; ⌘T (the `new-tab` action keeps its id);
-    the rail's Agent button; pressing a project header on the rail, which retargets it to that
-    project; and the checkout menu, whose per-agent list becomes one **New agent…** item.
+    the rail's Agent button and a project header's `+`; and the checkout menu, whose per-agent list
+    becomes one **New agent…** item.
+  - **Retargeting:** pressing a project header while the launcher is up retargets it to that
+    project. Pressing a header still folds the project, so it does not open the launcher on its
+    own.
   - **Closing:** Esc closes it back to the previous surface when there is one.
   - **Over a live space:** opened over a live space, it floats at the top of the stage, and the
     panes stay visible and dimmed behind it without resizing (the PTYs keep their size).
