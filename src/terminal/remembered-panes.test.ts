@@ -90,7 +90,7 @@ describe("rememberedFromRecord", () => {
     );
     expect(entries).toEqual([
       {
-        id: "claude:/w/a",
+        id: "claude:/w/a:s1",
         workspacePath: "/w",
         cwd: "/w/a",
         agent: "claude",
@@ -122,6 +122,63 @@ describe("mergeFromRecord", () => {
     await mergeFromRecord(previous);
     expect(rememberedPanes.value).toHaveLength(2);
     expect(data.get("remembered")).toHaveLength(2);
+  });
+
+  it("keeps two panes of one agent in one checkout as two rows when their conversations differ", async () => {
+    const { store, data } = createFakeStore();
+    await loadRememberedPanes({ store });
+    await mergeFromRecord(
+      record([tab([pane({ sessionId: "conv-1" }), pane({ sessionId: "conv-2" })])]),
+    );
+    expect(rememberedPanes.value.map((entry) => entry.sessionId).sort()).toEqual([
+      "conv-1",
+      "conv-2",
+    ]);
+    expect(new Set(rememberedPanes.value.map((entry) => entry.id)).size).toBe(2);
+    expect(data.get("remembered")).toHaveLength(2);
+  });
+
+  it("merging a record with sibling conversations twice adds nothing", async () => {
+    const { store } = createFakeStore();
+    await loadRememberedPanes({ store });
+    const previous = record([tab([pane({ sessionId: "conv-1" }), pane({ sessionId: "conv-2" })])]);
+    await mergeFromRecord(previous);
+    const once = rememberedPanes.value;
+    await mergeFromRecord(previous);
+    expect(rememberedPanes.value).toEqual(once);
+  });
+
+  it("forgetting one sibling leaves the other", async () => {
+    const { store } = createFakeStore();
+    await loadRememberedPanes({ store });
+    await mergeFromRecord(
+      record([tab([pane({ sessionId: "conv-1" }), pane({ sessionId: "conv-2" })])]),
+    );
+    const first = rememberedPanes.value.find((entry) => entry.sessionId === "conv-1");
+    await forget(first?.id ?? "");
+    expect(rememberedPanes.value.map((entry) => entry.sessionId)).toEqual(["conv-2"]);
+  });
+
+  it("reads a row stored under the old agent:cwd id, and a sibling merged beside it survives", async () => {
+    const legacy = {
+      id: "claude:/w/a",
+      workspacePath: "/w",
+      cwd: "/w/a",
+      agent: "claude",
+      launchCommand: null,
+      title: null,
+      branch: null,
+      sessionId: "conv-1",
+      savedAt: 50,
+    };
+    const { store } = createFakeStore({ remembered: [legacy] });
+    await loadRememberedPanes({ store });
+    expect(rememberedPanes.value).toHaveLength(1);
+    await mergeFromRecord(record([tab([pane({ sessionId: "conv-2" })])], 100));
+    expect(rememberedPanes.value.map((entry) => entry.sessionId).sort()).toEqual([
+      "conv-1",
+      "conv-2",
+    ]);
   });
 
   it("a newer pane for the same agent + cwd replaces the older row", async () => {

@@ -11,6 +11,11 @@ vi.mock("../host/store-host", () => ({
   },
 }));
 
+const launcher = vi.hoisted(() => ({ enabled: true }));
+vi.mock("../launcher/stage-launcher-enabled", () => ({
+  stageLauncherEnabled: () => launcher.enabled,
+}));
+
 import { MAX_RECENTS, MAX_STORED_RECENTS, WORKSPACES_VERSION } from "../lib/workspace-recents";
 import {
   initWorkspaces,
@@ -26,6 +31,7 @@ const file = (count: number) => ({
 });
 
 beforeEach(async () => {
+  launcher.enabled = true;
   disk.clear();
   workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
   await initWorkspaces();
@@ -69,5 +75,40 @@ describe("workspace history", () => {
     expect(shownWorkspaces.value.map((r) => r.path)).toEqual(
       Array.from({ length: MAX_RECENTS }, (_, i) => `/p${i + 1}`),
     );
+  });
+});
+
+describe("workspace history with the stage launcher off", () => {
+  beforeEach(() => {
+    launcher.enabled = false;
+  });
+
+  it("writes only the newest few, as before the launcher", async () => {
+    for (let i = 0; i < MAX_RECENTS + 5; i += 1) recordWorkspaceOpen(`/p${i}`);
+    await Promise.resolve();
+
+    const written = disk.get("workspaces") as ReturnType<typeof file>;
+    expect(written.recents).toHaveLength(MAX_RECENTS);
+    expect(written.recents[0].path).toBe(`/p${MAX_RECENTS + 4}`);
+  });
+
+  it("reads a long file without error, keeping the newest few", async () => {
+    disk.set("workspaces", file(MAX_STORED_RECENTS));
+
+    await initWorkspaces();
+
+    expect(workspacesData.value.recents.map((r) => r.path)).toEqual(
+      Array.from({ length: MAX_RECENTS }, (_, i) => `/p${i}`),
+    );
+  });
+
+  it("leaves one fewer after removing a folder, instead of revealing an older one", async () => {
+    disk.set("workspaces", file(12));
+    await initWorkspaces();
+
+    removeWorkspaceRecents(["/p0"]);
+
+    expect(shownWorkspaces.value).toHaveLength(MAX_RECENTS - 1);
+    expect(shownWorkspaces.value.map((r) => r.path)).not.toContain(`/p${MAX_RECENTS}`);
   });
 });

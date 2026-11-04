@@ -88,7 +88,7 @@ export function rememberedFromRecord(record: WindowRecord): readonly RememberedP
             ? []
             : [
                 {
-                  id: rememberedPaneId(pane.agent, pane.cwd),
+                  id: rememberedPaneId(pane.agent, pane.cwd, pane.sessionId ?? null),
                   workspacePath: tab.workspacePath as string,
                   cwd: pane.cwd,
                   agent: pane.agent,
@@ -131,8 +131,7 @@ function commit(next: readonly RememberedPane[]): Promise<void> {
 /**
  * Fold the previous session's agent panes in. Call it with the main window
  * record read BEFORE the journal's first write, which replaces that record.
- * Merging the same record again changes nothing (same agent + cwd, same
- * `savedAt`); a newer one replaces the older row.
+ * Merging the same record again changes nothing (same agent + cwd + conversation); a newer one replaces the older row.
  */
 export function mergeFromRecord(
   previousMainRecord: WindowRecord | null | undefined,

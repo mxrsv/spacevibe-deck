@@ -114,19 +114,28 @@ describe("pushRecent", () => {
     expect(again[0].lastOpenedAt).toBe(NOW + 2);
   });
 
-  it("caps the list at MAX_STORED_RECENTS, dropping the oldest", () => {
-    let list = pushRecent([], "/0", NOW);
+  it("caps the list at the cap it is given, dropping the oldest", () => {
+    let list = pushRecent([], "/0", NOW, undefined, undefined, MAX_STORED_RECENTS);
     for (let i = 1; i <= MAX_STORED_RECENTS; i += 1) {
-      list = pushRecent(list, `/${i}`, NOW + i);
+      list = pushRecent(list, `/${i}`, NOW + i, undefined, undefined, MAX_STORED_RECENTS);
     }
     expect(list).toHaveLength(MAX_STORED_RECENTS);
     expect(list.some((r) => r.path === "/0")).toBe(false);
   });
 
+  it("keeps only MAX_RECENTS when no larger cap is given", () => {
+    let list: ReturnType<typeof pushRecent> = [];
+    for (let i = 0; i < MAX_RECENTS + 4; i += 1) {
+      list = pushRecent(list, `/${i}`, NOW + i);
+    }
+    expect(list).toHaveLength(MAX_RECENTS);
+    expect(list[0].path).toBe(`/${MAX_RECENTS + 3}`);
+  });
+
   it("keeps more history than any list shows, and shownRecents cuts it to MAX_RECENTS", () => {
     let list: ReturnType<typeof pushRecent> = [];
     for (let i = 0; i < 23; i += 1) {
-      list = pushRecent(list, `/${i}`, NOW + i);
+      list = pushRecent(list, `/${i}`, NOW + i, undefined, undefined, MAX_STORED_RECENTS);
     }
     expect(list).toHaveLength(23);
     expect(shownRecents(list).map((r) => r.path)).toEqual(
@@ -220,6 +229,19 @@ describe("validateWorkspaces", () => {
     const longer = validateWorkspaces({ version: 2, recents: entries(80) }).recents;
     expect(longer).toHaveLength(MAX_STORED_RECENTS);
     expect(longer[0].path).toBe("/p0");
+  });
+
+  it("cuts a file to the cap it is given, and reads a shorter one whole", () => {
+    const entries = Array.from({ length: 20 }, (_, i) => ({
+      path: `/p${i}`,
+      lastOpenedAt: NOW - i,
+    }));
+    expect(validateWorkspaces({ version: 2, recents: entries }, MAX_RECENTS).recents).toHaveLength(
+      MAX_RECENTS,
+    );
+    expect(
+      validateWorkspaces({ version: 2, recents: entries.slice(0, 3) }, MAX_RECENTS).recents,
+    ).toHaveLength(3);
   });
 
   it("reads a v1 file, keeping entries that lack the combo fields", () => {

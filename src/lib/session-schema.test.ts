@@ -288,7 +288,7 @@ describe("SessionPane.sessionId (agent-signal contract layer, stage 1)", () => {
 
 describe("validateRememberedPanes", () => {
   const PANE_ROW: RememberedPane = {
-    id: rememberedPaneId("claude", "/w/a"),
+    id: rememberedPaneId("claude", "/w/a", "abc-123"),
     workspacePath: "/w",
     cwd: "/w/a",
     agent: "claude",
@@ -339,6 +339,40 @@ describe("validateRememberedPanes", () => {
       title: null,
       branch: null,
     });
+  });
+
+  it("keeps panes of one agent + cwd apart when their sessionIds differ", () => {
+    const one = { ...PANE_ROW, id: rememberedPaneId("claude", "/w/a", "s1"), sessionId: "s1" };
+    const two = { ...PANE_ROW, id: rememberedPaneId("claude", "/w/a", "s2"), sessionId: "s2" };
+    expect(validateRememberedPanes([one, two]).map((pane) => pane.sessionId)).toEqual(["s1", "s2"]);
+  });
+
+  it("keeps only the newest sessionless pane per agent + cwd", () => {
+    const older = { ...PANE_ROW, sessionId: null, savedAt: 1, title: "old" };
+    const newer = { ...PANE_ROW, sessionId: null, id: "other-id", savedAt: 2, title: "new" };
+    const result = validateRememberedPanes([older, newer]);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toBe("new");
+  });
+
+  it("reads an entry stored under the old agent:cwd id, under the id that carries its conversation", () => {
+    const stored = { ...PANE_ROW, id: "claude:/w/a", sessionId: "abc-123" };
+    expect(validateRememberedPanes([stored])[0]?.id).toBe("claude:/w/a:abc-123");
+  });
+
+  it("keeps only MAX_ARCHIVE_WORKSPACES workspaces, dropping those whose newest row is oldest", () => {
+    const rows = Array.from({ length: MAX_ARCHIVE_WORKSPACES + 3 }, (_, index) => ({
+      ...PANE_ROW,
+      id: `p${index}`,
+      sessionId: null,
+      workspacePath: `/ws/${index}`,
+      cwd: `/ws/${index}`,
+      savedAt: index + 1,
+    }));
+    const result = validateRememberedPanes(rows);
+    expect(new Set(result.map((pane) => pane.workspacePath)).size).toBe(MAX_ARCHIVE_WORKSPACES);
+    expect(Math.min(...result.map((pane) => pane.savedAt))).toBe(4);
+    expect(normalizeRememberedPanes(result)).toEqual(result);
   });
 
   it("keeps only the newest per agent + cwd", () => {

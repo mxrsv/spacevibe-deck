@@ -307,7 +307,10 @@ export function pushArchiveEntry(
  * tab, so it cannot hold a row the user has not touched yet.
  */
 export interface RememberedPane {
-  /** Stable for one agent + cwd, so merging the same pane twice is a no-op. */
+  /**
+   * Stable for one agent + cwd + conversation (`rememberedPaneId`), so merging the same pane twice
+   * is a no-op while two conversations in one checkout stay two rows.
+   */
   readonly id: string;
   readonly workspacePath: string;
   readonly cwd: string;
@@ -321,9 +324,16 @@ export interface RememberedPane {
   readonly savedAt: number;
 }
 
-/** What makes two remembered panes the same row. */
-export function rememberedPaneId(agent: string, cwd: string): string {
-  return `${agent}:${cwd}`;
+/**
+ * What makes two remembered panes the same row: agent + cwd, and the conversation when the pane
+ * has one. Two panes of one agent in one checkout are two conversations, not one.
+ */
+export function rememberedPaneId(
+  agent: string,
+  cwd: string,
+  sessionId: string | null = null,
+): string {
+  return sessionId === null ? `${agent}:${cwd}` : `${agent}:${cwd}:${sessionId}`;
 }
 
 function nonEmptyString(value: unknown): value is string {
@@ -345,8 +355,17 @@ function validateRememberedPane(raw: unknown): RememberedPane | null {
   ) {
     return null;
   }
+  const sessionId =
+    typeof source.sessionId === "string" && SESSION_ID_SAFE.test(source.sessionId)
+      ? source.sessionId
+      : null;
   return {
-    id: source.id,
+    // An entry stored before the id carried the conversation is `agent:cwd` whatever its
+    // sessionId; read it under the new id so a second pane of that checkout does not replace it.
+    id:
+      sessionId !== null && source.id === rememberedPaneId(source.agent, source.cwd)
+        ? rememberedPaneId(source.agent, source.cwd, sessionId)
+        : source.id,
     workspacePath: source.workspacePath,
     cwd: source.cwd,
     agent: source.agent,
@@ -355,19 +374,17 @@ function validateRememberedPane(raw: unknown): RememberedPane | null {
     launchCommand: isLaunchCommand(source.launchCommand) ? source.launchCommand : null,
     title: nonEmptyString(source.title) ? source.title : null,
     branch: nonEmptyString(source.branch) ? source.branch : null,
-    sessionId:
-      typeof source.sessionId === "string" && SESSION_ID_SAFE.test(source.sessionId)
-        ? source.sessionId
-        : null,
+    sessionId,
     savedAt: source.savedAt,
   };
 }
 
 /**
- * Newest first, one row per agent + cwd and per id (a tie keeps the entry
- * that came first, so merging a record twice changes nothing), at most
- * `MAX_REMEMBERED_PER_WORKSPACE` per workspace. Every write and read goes
- * through here, so the stored array is always in this shape.
+ * Newest first, one row per conversation (agent + cwd + sessionId) and per id; panes without a
+ * sessionId share one row per agent + cwd. A tie keeps the entry that came first, so merging a
+ * record twice changes nothing. At most `MAX_REMEMBERED_PER_WORKSPACE` per workspace and
+ * `MAX_ARCHIVE_WORKSPACES` workspaces, dropping those whose newest row is oldest. Every write and
+ * read goes through here, so the stored array is always in this shape.
  */
 export function normalizeRememberedPanes(
   panes: readonly RememberedPane[],
@@ -377,7 +394,7 @@ export function normalizeRememberedPanes(
   const perWorkspace = new Map<string, number>();
   const kept: RememberedPane[] = [];
   for (const pane of newestFirst) {
-    const sameRow = rememberedPaneId(pane.agent, pane.cwd);
+    const sameRow = rememberedPaneId(pane.agent, pane.cwd, pane.sessionId);
     if (seen.has(sameRow) || seen.has(pane.id)) {
       continue;
     }
@@ -390,7 +407,13 @@ export function normalizeRememberedPanes(
     perWorkspace.set(pane.workspacePath, count + 1);
     kept.push(pane);
   }
-  return kept;
+  // `kept` is newest first, so a workspace's first row is its newest.
+  const workspaces = [...new Set(kept.map((pane) => pane.workspacePath))];
+  if (workspaces.length <= MAX_ARCHIVE_WORKSPACES) {
+    return kept;
+  }
+  const survivors = new Set(workspaces.slice(0, MAX_ARCHIVE_WORKSPACES));
+  return kept.filter((pane) => survivors.has(pane.workspacePath));
 }
 
 /** Not an array → empty; invalid entries are dropped one by one. */

@@ -8,10 +8,12 @@ export const WORKSPACES_VERSION = 2;
 export const MAX_RECENTS = 8;
 
 /**
- * How many folders `workspaces.json` keeps, capped on write (`pushRecent`) and on read
- * (`validateWorkspaces`). Only the launcher's project menu lists them all (spec LCH-5, AC-5).
- * An older build reads such a file by slicing to its own cap, so it keeps the newest 8 and its
- * next write drops the rest; `WORKSPACES_VERSION` stays because a bumped one would read as empty.
+ * How many folders `workspaces.json` keeps with the stage launcher on, capped on write
+ * (`pushRecent`) and on read (`validateWorkspaces`). Only the launcher's project menu lists them
+ * all (spec LCH-5, AC-5). With the switch off the caller passes `MAX_RECENTS` as the cap, as
+ * before the launcher. An older build reads a longer file by slicing to its own cap, so it keeps
+ * the newest 8 and its next write drops the rest; `WORKSPACES_VERSION` stays because a bumped one
+ * would read as empty.
  */
 export const MAX_STORED_RECENTS = 50;
 
@@ -38,11 +40,12 @@ export interface WorkspacesData {
 }
 
 /**
- * Invalid envelope → empty list; invalid entries are dropped one by one.
+ * Invalid envelope → empty list; invalid entries are dropped one by one. A file longer than `cap`
+ * is cut to its newest `cap` entries; a shorter one is read whole.
  * Accepts both v1 (no combo fields) and v2 files — a v1 entry just comes back
  * with `lastPresetId`/`lastAgent` undefined, never dropped for lacking them.
  */
-export function validateWorkspaces(raw: unknown): WorkspacesData {
+export function validateWorkspaces(raw: unknown, cap: number = MAX_STORED_RECENTS): WorkspacesData {
   const empty: WorkspacesData = { version: WORKSPACES_VERSION, recents: [] };
   if (typeof raw !== "object" || raw === null) {
     return empty;
@@ -55,7 +58,7 @@ export function validateWorkspaces(raw: unknown): WorkspacesData {
     return empty;
   }
   const recents: RecentWorkspace[] = [];
-  for (const entry of source.recents.slice(0, MAX_STORED_RECENTS)) {
+  for (const entry of source.recents.slice(0, cap)) {
     if (typeof entry !== "object" || entry === null) {
       continue;
     }
@@ -100,6 +103,9 @@ function validateCombo(
  * A `presetId`/`agent` argument of `undefined` **inherits** the existing
  * entry's combo (a plain "focus this folder again" must not wipe the memory),
  * while `agent: null` is an explicit Shell-only choice that overwrites it.
+ *
+ * `cap` is how many entries survive: `MAX_STORED_RECENTS` with the stage launcher on, `MAX_RECENTS`
+ * with it off. The caller decides, so this file never reads the switch.
  */
 export function pushRecent(
   recents: readonly RecentWorkspace[],
@@ -107,6 +113,7 @@ export function pushRecent(
   now: number,
   presetId?: string,
   agent?: AgentChoice,
+  cap: number = MAX_RECENTS,
 ): readonly RecentWorkspace[] {
   const previous = recents.find((entry) => entry.path === path);
   const rest = recents.filter((entry) => entry.path !== path);
@@ -118,7 +125,7 @@ export function pushRecent(
     ...(nextPresetId !== undefined ? { lastPresetId: nextPresetId } : {}),
     ...(nextAgent !== undefined ? { lastAgent: nextAgent } : {}),
   };
-  return [head, ...rest].slice(0, MAX_STORED_RECENTS);
+  return [head, ...rest].slice(0, cap);
 }
 
 /** Split rows into live and missing folders, keeping each side's order. */

@@ -147,7 +147,8 @@ describe("OpenBoard create-workspace flow", () => {
 
   it("lists the newest few folders even though the store keeps the whole history", async () => {
     let recents: readonly RecentWorkspace[] = [];
-    for (let i = 0; i < 23; i += 1) recents = pushRecent(recents, `/Users/dev/p${i}`, 1_000 + i);
+    for (let i = 0; i < 23; i += 1)
+      recents = pushRecent(recents, `/Users/dev/p${i}`, 1_000 + i, undefined, undefined, 50);
     workspacesData.value = { version: WORKSPACES_VERSION, recents };
     await mount();
 

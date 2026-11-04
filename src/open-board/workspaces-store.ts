@@ -2,6 +2,8 @@ import { computed, signal } from "@preact/signals";
 import { Store } from "../host/store-host";
 import {
   forgetAgent,
+  MAX_RECENTS,
+  MAX_STORED_RECENTS,
   pushRecent,
   removeRecents,
   shownRecents,
@@ -11,12 +13,13 @@ import {
   type WorkspacesData,
 } from "../lib/workspace-recents";
 import { reportPersistError } from "../chrome/events";
+import { stageLauncherEnabled } from "../launcher/stage-launcher-enabled";
 
 const STORE_FILE = "workspaces.json";
 const STORE_KEY = "workspaces";
 const CLONE_PARENT_KEY = "cloneParent";
 
-/** The whole history, up to `MAX_STORED_RECENTS`: only the launcher's project menu reads this. */
+/** The whole history, up to `MAX_STORED_RECENTS` with the stage launcher on: only its project menu reads this. */
 export const workspacesData = signal<WorkspacesData>({
   version: WORKSPACES_VERSION,
   recents: [],
@@ -24,6 +27,11 @@ export const workspacesData = signal<WorkspacesData>({
 
 /** The newest `MAX_RECENTS` of the history: what the Open board, the rail and every other list show. */
 export const shownWorkspaces = computed(() => shownRecents(workspacesData.value.recents));
+
+/** The long history belongs to the stage launcher; with it off the file behaves as it always did. */
+function recentsCap(): number {
+  return stageLauncherEnabled() ? MAX_STORED_RECENTS : MAX_RECENTS;
+}
 
 let store: Store | null = null;
 let cloneParent: string | null = null;
@@ -33,7 +41,7 @@ export async function initWorkspaces(): Promise<void> {
   try {
     store = await Store.load(STORE_FILE, { defaults: {}, autoSave: false });
     const raw = await store.get<unknown>(STORE_KEY);
-    workspacesData.value = validateWorkspaces(raw);
+    workspacesData.value = validateWorkspaces(raw, recentsCap());
     const parent = await store.get<unknown>(CLONE_PARENT_KEY);
     cloneParent = typeof parent === "string" && parent !== "" ? parent : null;
   } catch (err) {
@@ -50,7 +58,14 @@ export async function initWorkspaces(): Promise<void> {
 export function recordWorkspaceOpen(path: string, presetId?: string, agent?: AgentChoice): void {
   const next: WorkspacesData = {
     version: WORKSPACES_VERSION,
-    recents: pushRecent(workspacesData.value.recents, path, Date.now(), presetId, agent),
+    recents: pushRecent(
+      workspacesData.value.recents,
+      path,
+      Date.now(),
+      presetId,
+      agent,
+      recentsCap(),
+    ),
   };
   workspacesData.value = next;
   persist(next, "Recent folder wasn't saved");
@@ -66,7 +81,14 @@ export function recordWorkspaceOpen(path: string, presetId?: string, agent?: Age
 export function addWorkspaceDurably(path: string): Promise<void> {
   const next: WorkspacesData = {
     version: WORKSPACES_VERSION,
-    recents: pushRecent(workspacesData.value.recents, path, Date.now()),
+    recents: pushRecent(
+      workspacesData.value.recents,
+      path,
+      Date.now(),
+      undefined,
+      undefined,
+      recentsCap(),
+    ),
   };
   workspacesData.value = next;
   return persistDurably(next);

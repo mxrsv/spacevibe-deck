@@ -37,3 +37,13 @@ export async function seedRememberedPanes(deps: RememberedBootDeps): Promise<boo
   await mergeFromRecord(records.get(deps.mainLabel));
   return rememberedStoreWritable();
 }
+
+/**
+ * Whether boot keeps the previous main record in place instead of letting the journal replace it:
+ * while a last session exists and its panes have not reached the remembered store. Once they have
+ * (`rememberedSeeded`), holding the record would merge the same panes again next boot and bring
+ * back a row the user forgot.
+ */
+export function shouldHoldRecord(hasLastSession: boolean, rememberedSeeded: boolean): boolean {
+  return hasLastSession && !rememberedSeeded;
+}

@@ -9,8 +9,8 @@ const fake = vi.hoisted(() => ({
 vi.mock("../../host/store-host", () => ({ Store: { load: fake.load } }));
 
 import type { SessionPane, SessionTab, WindowRecord } from "../../lib/session-schema";
-import { rememberedPanes, resetRememberedPanes } from "../../terminal/remembered-panes";
-import { seedRememberedPanes } from "./remembered-boot";
+import { forget, rememberedPanes, resetRememberedPanes } from "../../terminal/remembered-panes";
+import { seedRememberedPanes, shouldHoldRecord } from "./remembered-boot";
 
 const pane = (over: Partial<SessionPane> = {}): SessionPane => ({
   cwd: "/w/a",
@@ -127,17 +127,65 @@ describe("seedRememberedPanes", () => {
     expect(rememberedPanes.value).toEqual([]);
   });
 
-  it("does not bring a forgotten row back when the same record is read again", async () => {
+  it("does not bring a forgotten row back on the next boot", async () => {
+    // The disk: one main record, replaced by the journal only when boot says it may be.
     const records = new Map([["main", record([tab([pane()])])]]);
-    const deps = { enabled: true, mainLabel: "main", readRecords: async () => records };
-    await seedRememberedPanes(deps);
-    const { forget } = await import("../../terminal/remembered-panes");
+    const boot = async () => {
+      const seeded = await seedRememberedPanes({
+        enabled: true,
+        mainLabel: "main",
+        readRecords: async () => records,
+      });
+      if (!shouldHoldRecord(records.has("main"), seeded)) {
+        records.delete("main");
+      }
+      return seeded;
+    };
+
+    expect(await boot()).toBe(true);
+    expect(rememberedPanes.value.map((entry) => entry.id)).toEqual(["claude:/w/a"]);
     await forget("claude:/w/a");
     expect(rememberedPanes.value).toEqual([]);
 
-    // The caller let the journal replace the record, so the next boot has no main record to merge.
-    await seedRememberedPanes({ ...deps, readRecords: async () => new Map() });
+    expect(await boot()).toBe(true);
 
     expect(rememberedPanes.value).toEqual([]);
+    expect(fake.data.get("remembered")).toEqual([]);
+  });
+
+  it("holds the record across boots while the store is write-locked, then seeds it once readable", async () => {
+    const records = new Map([["main", record([tab([pane()])])]]);
+    const boot = async () => {
+      const seeded = await seedRememberedPanes({
+        enabled: true,
+        mainLabel: "main",
+        readRecords: async () => records,
+      });
+      if (!shouldHoldRecord(records.has("main"), seeded)) {
+        records.delete("main");
+      }
+      return seeded;
+    };
+
+    fake.state = "unreadable";
+    expect(await boot()).toBe(false);
+    expect(records.has("main")).toBe(true);
+    expect(fake.data.size).toBe(0);
+
+    fake.state = "ready";
+    expect(await boot()).toBe(true);
+    expect(rememberedPanes.value.map((entry) => entry.id)).toEqual(["claude:/w/a"]);
+    expect(records.has("main")).toBe(false);
+  });
+});
+
+describe("shouldHoldRecord", () => {
+  it.each([
+    [true, false, true],
+    [true, true, false],
+    [false, false, false],
+    [false, true, false],
+  ])("last session %s, seeded %s -> hold %s", (hasLastSession, seeded, hold) => {
+    expect(shouldHoldRecord(hasLastSession, seeded)).toBe(hold);
   });
 });
