@@ -100,6 +100,7 @@ export function MobileSettingsSection() {
             starting={false}
             onCancel={none}
             onNewCode={none}
+            onCopy={none}
           />
         </DialogFrame>
       </Specimen>

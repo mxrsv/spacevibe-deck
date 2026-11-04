@@ -69,7 +69,8 @@ Shown only while the mobile companion is turned on (it is not in release builds 
 [Mobile](mobile.md) for the whole flow.
 
 - **Pair a phone** shows a QR code for the SpaceVibe Deck iPhone app. It works for five minutes and
-  only once; **Show a new code** replaces an expired one.
+  only once; **Copy code** copies it as text for the phone's code field, and **Show a new code**
+  replaces an expired one.
 - **Paired phones** lists each phone with its model, when it was paired and when it was last seen.
   **Revoke** removes a phone; within seconds it can no longer reach Deck.
   See [the Mobile section](../../src/ui/settings/sections/mobile-section.tsx).

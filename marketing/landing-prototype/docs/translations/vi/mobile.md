@@ -1,5 +1,5 @@
 ---
-translated-from: 187cca92
+translated-from: fb727656
 ---
 
 # Điện thoại
@@ -19,8 +19,9 @@ dùng giao diện của iPhone.
 2. Chọn **Pair a phone**. Deck hiện một mã QR dùng được trong năm phút và chỉ một lần.
 3. Trên iPhone, mở SpaceVibe Deck, chọn **Pair a desktop** rồi đưa camera vào mã.
 
-Điện thoại và máy tính tự thống nhất khoá với nhau; không có tài khoản, không cần đăng nhập. Khi mã
-hết hạn, chọn **Show a new code**. Một điện thoại ghép được với nhiều máy tính, và một máy tính
+Điện thoại và máy tính tự thống nhất khoá với nhau; không có tài khoản, không cần đăng nhập. Không dùng
+camera thì chọn **Copy code** trong Deck, dán vào ô nhập mã trên điện thoại rồi chọn **Use code**;
+với Universal Clipboard, mã đã chép tự sang iPhone. Khi mã hết hạn, chọn **Show a new code**. Một điện thoại ghép được với nhiều máy tính, và một máy tính
 ghép được với nhiều điện thoại.
 
 Mọi thứ giữa điện thoại và Deck đều được mã hoá đầu-cuối. Dữ liệu đi qua relay của SpaceVibe, nơi

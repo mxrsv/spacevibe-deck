@@ -14,6 +14,7 @@ vi.mock("../../../host/store-host", () => ({
 vi.mock("../../../host/shell-host", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../host/shell-host")>()),
   openUrl: vi.fn(async () => {}),
+  writeText: vi.fn(async () => {}),
 }));
 vi.mock("../../../chrome/events", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../chrome/events")>()),
@@ -44,7 +45,7 @@ vi.mock("../../../terminal/action-availability", () => ({
   rendererReleaseSwitches: () => ({ mobileCompanion: switches.on }),
 }));
 
-import { openUrl } from "../../../host/shell-host";
+import { openUrl, writeText } from "../../../host/shell-host";
 import {
   cancelMobilePairing,
   revokeMobilePhone,
@@ -161,6 +162,13 @@ describe("Settings → Mobile", () => {
     expect(dialog()?.textContent).toContain("Waiting for your phone…");
     expect(dialog()?.textContent).toMatch(/Code expires in [45]:\d\d/);
     expect(dialog()?.textContent).toContain("Connects through relay.example");
+  });
+
+  it("Copy code puts the pairing text on the clipboard, for the phone's paste field", async () => {
+    await mount(<MobileSection />);
+    await press("Pair a phone");
+    await press("Copy code");
+    expect(writeText).toHaveBeenCalledWith((host.start as { pending: { qr: string } }).pending.qr);
   });
 
   it("Cancel closes the dialog and tells main", async () => {

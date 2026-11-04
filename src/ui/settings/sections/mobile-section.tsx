@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { reportPersistError } from "../../../chrome/events";
-import { openUrl } from "../../../host/shell-host";
+import { openUrl, writeText } from "../../../host/shell-host";
 import type { MobilePhone, MobileState } from "../../../lib/mobile-state";
 import { Button } from "../../controls/button";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
@@ -52,7 +52,7 @@ export function MobileRows({ state, now, starting, onPair, onRevoke }: MobileRow
         label="Pair a phone"
         desc={
           state.encryptionAvailable
-            ? "Show a code to scan with the Deck app on your iPhone"
+            ? "Show a code to scan with SpaceVibe Deck on your iPhone"
             : "This computer cannot protect pairing keys (secure storage is unavailable), so phones cannot be paired"
         }
       >
@@ -128,6 +128,13 @@ export function MobileSection() {
             starting={pairStarting.value}
             onCancel={() => void cancelPairing()}
             onNewCode={() => void showPairingCode()}
+            onCopy={() => {
+              const code = state.pending?.qr;
+              if (code === undefined) return;
+              void writeText(code).catch(() =>
+                reportPersistError("Could not copy the pairing code"),
+              );
+            }}
           />
         </DialogContent>
       </Dialog>

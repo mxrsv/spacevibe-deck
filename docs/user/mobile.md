@@ -15,7 +15,9 @@ iPhone layout.
 3. On the iPhone, open SpaceVibe Deck, choose **Pair a desktop** and point the camera at the code.
 
 The phone and the computer agree on keys between themselves; there is no account and no sign-in.
-When the code expires, choose **Show a new code**. One phone can pair with several computers, and
+Without the camera, choose **Copy code** in Deck, paste it into the phone's code field and choose
+**Use code**; with Universal Clipboard the copy reaches the iPhone by itself. When the code
+expires, choose **Show a new code**. One phone can pair with several computers, and
 one computer with several phones.
 
 Everything between the phone and Deck is end-to-end encrypted. It travels through SpaceVibe's

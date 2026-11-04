@@ -58,18 +58,23 @@ export interface PairDialogViewProps {
   readonly starting: boolean;
   readonly onCancel: () => void;
   readonly onNewCode: () => void;
+  /**
+   * Copies the code as text, for the phone's paste field (Universal Clipboard) and the no-phone
+   * repro client. The text is as one-time and short-lived as the QR it encodes.
+   */
+  readonly onCopy?: () => void;
 }
 
 /** What the pairing dialog says: a live code, a code that expired, or why there is none. */
 export function PairDialogView(props: PairDialogViewProps) {
-  const { qr, expiresAt, now, error, starting, onCancel, onNewCode } = props;
+  const { qr, expiresAt, now, error, starting, onCancel, onNewCode, onCopy } = props;
   const expired = qr !== null && expiresAt !== null && now >= expiresAt;
   const live = qr !== null && !expired && error === null;
   const host = qr === null ? null : relayHostOf(qr);
   return (
     <div class="mobile-dialog">
       <h2 class="mobile-dialog__title">Pair a phone</h2>
-      <p class="mobile-dialog__text">Open the Deck app on your iPhone and scan this code.</p>
+      <p class="mobile-dialog__text">Open SpaceVibe Deck on your iPhone and scan this code.</p>
       {error !== null ? (
         <p class="mobile-dialog__text mobile-dialog__text--problem" role="alert">
           {error}
@@ -96,6 +101,11 @@ export function PairDialogView(props: PairDialogViewProps) {
         {error !== null || expired ? (
           <Button variant="outline" size="sm" disabled={starting} onClick={onNewCode}>
             Show a new code
+          </Button>
+        ) : null}
+        {live && onCopy !== undefined ? (
+          <Button variant="outline" size="sm" onClick={onCopy}>
+            Copy code
           </Button>
         ) : null}
         <Button variant="outline" size="sm" onClick={onCancel}>
