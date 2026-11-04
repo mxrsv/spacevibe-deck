@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "protocol-1-development",
+      "env": { "EAS_BUILD_PROFILE": "development" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "protocol-1-preview",
+      "env": { "EAS_BUILD_PROFILE": "preview" }
+    },
+    "production": {
+      "channel": "protocol-1",
+      "autoIncrement": true,
+      "env": { "EAS_BUILD_PROFILE": "production" }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "DJDD3T8LH7",
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID"
+      }
+    }
+  }
+}

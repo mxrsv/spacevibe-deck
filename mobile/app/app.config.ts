@@ -1,4 +1,8 @@
 import type { ExpoConfig } from "expo/config";
+import { BUNDLE_ID, IOS_DEPLOYMENT_TARGET, RUNTIME_VERSION } from "./src/release/release";
+
+// Set by the owner after `eas init`; without it Expo Go and local runs get no updates or EAS config.
+const projectId = process.env.EAS_PROJECT_ID;
 
 // No ios/ or android/ folders are committed: Expo generates the native projects on demand
 // (continuous native generation), and Expo Go runs the JavaScript without any of them.
@@ -11,7 +15,7 @@ const config: ExpoConfig = {
   // The iPhone layout runs on iPad too (spec decision 4).
   userInterfaceStyle: "automatic",
   ios: {
-    bundleIdentifier: "dev.spacevibe.deck.mobile",
+    bundleIdentifier: BUNDLE_ID,
     supportsTablet: true,
     buildNumber: "1",
     infoPlist: {
@@ -39,6 +43,7 @@ const config: ExpoConfig = {
         cameraPermission: "Deck scans the pairing code shown in Deck's Settings on your computer.",
       },
     ],
+    ["expo-build-properties", { ios: { deploymentTarget: IOS_DEPLOYMENT_TARGET } }],
     "expo-secure-store",
     [
       "expo-local-authentication",
@@ -60,6 +65,18 @@ const config: ExpoConfig = {
     // and `expo export` never load it.
     "./plugins/notification-service-extension/withNotificationServiceExtension",
   ],
+  // A JavaScript update only reaches a binary built for the same protocol (MOB24).
+  runtimeVersion: RUNTIME_VERSION,
+  ...(projectId === undefined
+    ? {}
+    : {
+        updates: {
+          url: `https://u.expo.dev/${projectId}`,
+          checkAutomatically: "ON_LOAD" as const,
+          fallbackToCacheTimeout: 0,
+        },
+        extra: { eas: { projectId } },
+      }),
   experiments: { typedRoutes: true },
 };
 

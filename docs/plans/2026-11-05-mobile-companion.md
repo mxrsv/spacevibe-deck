@@ -288,7 +288,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     vi/mobile`).
   - **Internals:** `docs/internals/mobile.md`, covering the protocol, the encryption and the
     traps. Plus glossary terms and the `docs/README.md` index.
-- [ ] **T13: Release pipeline (MOB24–25).**
+- [x] **T13: Release pipeline (MOB24–25).** Done 2026-11-05 as config; every EAS, App Store Connect and TestFlight step is the owner's.
   - **Contents:** the EAS project; Update channels per protocol version; the minimum iOS
     version and Expo SDK pinned; a public TestFlight beta.
   - **Submitting is an owner action.**
@@ -518,6 +518,20 @@ All four are environmental and pre-existing:
 - **The owner's eye (T14):** the dialog over Settings, the QR's size and a real iPhone camera
   scanning it in dark themes, row spacing.
 
+**T13 (release pipeline):**
+- `cd mobile && npm run check` green; `src/release/eas-config.test.ts` fails unless every EAS build
+  channel is `protocol-<PROTOCOL_VERSION>[-…]`, the runtime version is
+  `protocol-<PROTOCOL_VERSION>`, and the bundle id `dev.spacevibe.deck.mobile`, team `DJDD3T8LH7`
+  and the iOS deployment target are pinned — so bumping the protocol without new channels fails
+  the check (MOB24). `expo export` still bundles with `expo-updates`, `expo-build-properties` and
+  `expo-dev-client` installed.
+- **Pinned (MOB25):** Expo SDK 58 (React Native 0.88.1, React 19.3, TypeScript 6.0), iOS 16.4
+  minimum, the native modules listed in `mobile/app/package.json`.
+- **Owner actions, never run here:** the seven Release steps in `mobile/app/README.md` (`eas init`
+  and `EAS_PROJECT_ID`, the App Store Connect record, App ID capabilities for the app and its
+  extension, the APNs key as relay secrets, a development build for the iPhone, a production
+  build with `eas submit` for the public TestFlight beta, `eas update --channel protocol-1`).
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -599,6 +613,14 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
     areas are a closed set pinned by a type test; a Mobile area there is a follow-up when that
     switch ships. The dialogs use a plain stylesheet (`src/styles/32-mobile-settings.css`) because
     utility classes in app markup fail the preset-boundary test.
+29. **iOS 16.4 is the minimum**, not React Native 0.88's 15.1: `expo-build-properties` 58 refuses
+    anything below 16.4.
+30. **`npm start` is `expo start --go`**: with `expo-dev-client` installed, a plain `expo start`
+    serves a development build whose QR Expo Go cannot open. `npm run start:dev-client` serves
+    the EAS development build.
+31. **The runtime version is `protocol-<N>`** and the release constants sit in a CommonJS module
+    (`src/release/release.js`), because Expo's config loader cannot import TypeScript from
+    `app.config.ts`; a test checks it against the protocol's real export.
 
 ## Handoff
 
