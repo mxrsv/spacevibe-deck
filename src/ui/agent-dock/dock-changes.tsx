@@ -23,6 +23,7 @@ import {
 } from "./agent-dock-state";
 import { DockChangesStack } from "./dock-changes-stack";
 import { DockChangesTree } from "./dock-changes-tree";
+import { TREE_PANE_MIN_BODY, useWidth } from "./dock-file-body";
 import { watchedRoot } from "./dock-changes-watch";
 
 const NOT_A_REPOSITORY = "Not a git repository";
@@ -110,7 +111,13 @@ function DockChangesBody({
 }) {
   const snapshot = live?.snapshot ?? null;
   const entries = snapshot?.entries ?? [];
-  const list = dockChangesList.value;
+  const body = useRef<HTMLDivElement>(null);
+  const width = useWidth(body, true);
+  // The list pane needs the room the file tree needs; an unmeasured body counts as wide. Below it
+  // the toggle is gone, and the user's choice waits for the dock to widen again.
+  const roomy = width === null || width >= TREE_PANE_MIN_BODY;
+  const list = roomy && dockChangesList.value;
+  const listLabel = list ? "Hide file navigation" : "Show file navigation";
   const stack = useRef<HTMLDivElement>(null);
   const flash = useRef<Flash | null>(null);
   useEffect(() => () => endFlash(flash), []);
@@ -139,12 +146,12 @@ function DockChangesBody({
     // After the unfold has rendered, or a folded card near the end could not reach the top.
     requestAnimationFrame(() => card.scrollIntoView({ block: "start" }));
   };
-  // The file as a dock tab: what pressing a card's name does, and what a row's menu offers.
+  // The file as a kept dock tab: what a row's menu offers.
   const openFile = (entry: ChangeEntry): void => {
     void controller.openFile(root, absolutePath(root, entry.path), true).then(selectDockFile);
   };
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div ref={body} className="flex h-full min-h-0 flex-col">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
       <div className="flex h-10 items-center gap-2 pr-2 pl-3">
         <span className="text-xs font-medium text-foreground">Uncommitted</span>
@@ -156,22 +163,24 @@ function DockChangesBody({
         ) : (
           <span className="flex-1" />
         )}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Changed files list"
-                aria-pressed={list}
-                onClick={() => (dockChangesList.value = !list)}
-              />
-            }
-          >
-            <DeckIcon icon={SidebarLeft01Icon} />
-          </TooltipTrigger>
-          <TooltipContent side="left">Changed files list</TooltipContent>
-        </Tooltip>
+        {roomy ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={listLabel}
+                  aria-pressed={list}
+                  onClick={() => (dockChangesList.value = !list)}
+                />
+              }
+            >
+              <DeckIcon icon={SidebarLeft01Icon} />
+            </TooltipTrigger>
+            <TooltipContent side="left">{listLabel}</TooltipContent>
+          </Tooltip>
+        ) : null}
         <Tooltip>
           <TooltipTrigger
             render={

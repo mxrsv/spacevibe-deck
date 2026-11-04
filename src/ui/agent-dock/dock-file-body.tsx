@@ -20,7 +20,10 @@ import { crumbsFor, foldersTo } from "./dock-file-crumbs";
 import { StripCell } from "./dock-strip-cell";
 import { DockFileTree } from "./dock-file-tree";
 
-/** Below this body width the tree pane starts hidden (DOCK-6); the editor keeps the room. */
+/**
+ * Below this body width a side pane gives way: the file tree starts hidden (DOCK-6), and the
+ * Changes view has no list toggle at all (DOCK-10). The editor and the stack keep the room.
+ */
 export const TREE_PANE_MIN_BODY = 560;
 const TREE_PANE_WIDTH = "w-65";
 /** Crumbs shown before the earlier folders fold into one. */
@@ -33,7 +36,10 @@ export interface DockFileBodyProps {
 }
 
 /** The width of `ref`'s element, or null before the first measure (and where nothing measures). */
-function useWidth(ref: { readonly current: HTMLElement | null }, mounted: boolean): number | null {
+export function useWidth(
+  ref: { readonly current: HTMLElement | null },
+  mounted: boolean,
+): number | null {
   const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
     const node = ref.current;

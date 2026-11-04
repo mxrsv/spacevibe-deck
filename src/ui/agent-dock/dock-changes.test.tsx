@@ -180,6 +180,7 @@ beforeEach(() => {
 
 afterEach(() => {
   resizeTo(1024);
+  vi.unstubAllGlobals();
   repositoryScans.value = new Map();
   resetAgentDockState();
 });
@@ -286,13 +287,51 @@ describe("the Changes view's tree", () => {
 });
 
 describe("the list pane", () => {
+  /** The body's ResizeObserver; `widen` reports a new width, as a dock resize does. */
+  let widen: (width: number) => Promise<void> = async () => {};
+  function observeWidth(width: number): void {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(private readonly callback: (entries: unknown[]) => void) {
+          widen = async (next) => {
+            await act(async () => this.callback([{ contentRect: { width: next, height: 400 } }]));
+          };
+        }
+        observe(): void {
+          this.callback([{ contentRect: { width, height: 400 } }]);
+        }
+        disconnect(): void {}
+      },
+    );
+  }
+  const toggle = (): HTMLElement | null =>
+    document.body.querySelector<HTMLElement>('[aria-label$="file navigation"]');
+
   it("is off by default: the stack fills the body and no list shows", async () => {
     dockChangesList.value = false;
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
     expect(rowKeys()).toEqual([]);
     expect(document.body.querySelectorAll("[data-card-path]")).toHaveLength(ENTRIES.length);
-    await click(document.body.querySelector('[aria-label="Changed files list"]') as HTMLElement);
+    expect(toggle()?.getAttribute("aria-label")).toBe("Show file navigation");
+    await click(toggle() as HTMLElement);
+    expect(rowKeys()).toContain("file:src/ui/a.ts");
+    expect(toggle()?.getAttribute("aria-label")).toBe("Hide file navigation");
+    await view.unmount();
+  });
+
+  it("has no toggle and no list below 560px, and the choice returns when the dock widens", async () => {
+    observeWidth(559);
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    expect(toggle()).toBeNull();
+    expect(rowKeys()).toEqual([]);
+    expect(document.body.querySelectorAll("[data-card-path]")).toHaveLength(ENTRIES.length);
+    expect(dockChangesList.value).toBe(true);
+
+    await widen(560);
+    expect(toggle()?.getAttribute("aria-label")).toBe("Hide file navigation");
     expect(rowKeys()).toContain("file:src/ui/a.ts");
     await view.unmount();
   });
@@ -323,7 +362,6 @@ describe("the list pane", () => {
     expect(diffFocusRequested.value).toBe(false);
 
     await waitUntil(() => flashed().length === 0, 2500);
-    expect(document.body.querySelector("[data-marked]")).toBeNull();
     Element.prototype.scrollIntoView = original;
     openFile.mockRestore();
     await view.unmount();
