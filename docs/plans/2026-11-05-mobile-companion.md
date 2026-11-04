@@ -247,7 +247,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     T14.
   - **Covers:** MOB1 (QR, 5-minute expiry) and MOB2 (list, revoke within 10 seconds).
   - **Verify:** renderer tests; the repro client sees a revoke.
-- [ ] **T6: Phone app shell (`mobile/app/`).**
+- [x] **T6: Phone app shell (`mobile/app/`).** Done 2026-11-05 (committed before T4, which was still running).
   - **Contents:** the Expo project, a theme module from Deck's tokens, SF Symbols, the text
     styles, the Face ID lock (MOB4), QR pairing (MOB1, MOB3), Settings (desktops, online and
     offline, toggles), and the offline and version states (MOB10–11).
@@ -401,6 +401,20 @@ All four are environmental and pre-existing:
   `wrangler dev` answered `{"ok":true,"protocol":1}` on `/v1/health` and `/relay/v1/health`.
 - **Verify after the owner deploys (S2):** whether a Worker's `fetch` reaches APNs over HTTP/2.
 
+**T6 (`mobile/app/`):**
+- `cd mobile && npm run check` → app check: `tsc --noEmit` without Node types, the test tsconfig with
+  them, `oxlint --deny-warnings`, vitest `Test Files 10 passed (10)`, `Tests 64 passed (64)`, and
+  `expo export --platform ios --no-minify` → `iOS Bundled 11378ms node_modules/expo-router/entry.js
+  (1248 modules)`: Metro bundles the whole app for iOS without Xcode.
+- Tested: the noble provider against `test-vectors.json`, the RFC vectors and the Node provider;
+  pairing (happy path, reused code, desktop offline, relay unreachable, relay refusal, expired code);
+  the connection through the real channel against a fake desktop (online, offline with last seen,
+  version block, revoked, relay refusal, reconnect, handshake timeout); the ping watchdog; revoke on
+  forget; the MOB4 lock rules; prefs defaults; status lines.
+- **Verify on the Mac / iPhone (Expo Go):** camera QR scan, Face ID and the passcode, SF Symbols,
+  Dynamic Type, the Keychain, pairing against `wrangler dev` and `electron:dev`, and the look next
+  to the mock in both themes (T14's eye batch). No Simulator here, so no screenshots.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -424,13 +438,19 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
    one long-lived key with persisted counters, which a crash or a second transport can reuse.
 7. **The relay never sees the QR secret**: it holds `sha256(claimToken)`, where `claimToken` is an
    HKDF of the secret, so it cannot forge the phone's pairing proof.
+8. **Relay URL parsing is string-based** (`parseRelayUrl`): React Native's `URL` cannot set a
+   protocol or a path.
 9. **Expo's push service is the Expo Go path** (`kind: "expo"`), next to direct APNs. It carries
    the same generic line and ciphertext only; the privacy notice names it. Turned down: no push at
    all in Expo Go, which the owner's test tomorrow runs in.
 10. **A socket for an unknown pairing is accepted as a plain socket and closed at once**, because
     closing a just-accepted hibernatable socket left the client waiting 10 s for the close.
-8. **Relay URL parsing is string-based** (`parseRelayUrl`): React Native's `URL` cannot set a
-   protocol or a path.
+11. **Expo SDK 58** (the latest; React Native 0.88, React 19.3, TypeScript 6.0). `npx expo install`
+    cannot reach `api.expo.dev` through this VM's proxy, so the versions come from
+    `expo/bundledNativeModules.json` by hand; `expo-crypto` (random bytes for the noble crypto) and
+    `expo-font` (needed by `expo-symbols`) join the F1 list.
+12. **T6 was committed before T4**: both were built at once by separate agents, and T6 finished
+    first. Each still has its own commit.
 
 ## Handoff
 
