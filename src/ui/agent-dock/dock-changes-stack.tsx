@@ -2,20 +2,21 @@ import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { readHeadFile, type ChangeEntry } from "../../host/git-changes-host";
-import { absolutePath, baseName, countsFor, STATUS_WORD } from "../../files/changes/changes-model";
 import {
-  createDiffSides,
-  type DiffSidesPorts,
-  type DiffSidesView,
-} from "../../files/changes/diff-sides";
-import { diffLines, type DiffHunk, type DiffLine } from "../../files/changes/line-diff";
+  absolutePath,
+  baseName,
+  countsFor,
+  dirName,
+  STATUS_WORD,
+} from "../../files/changes/changes-model";
+import { createDiffSides, type DiffSidesPorts } from "../../files/changes/diff-sides";
 import { defaultFileClient } from "../../files/file-client";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
 import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import { dockFoldedCards, selectDockFile, toggleDockCardFold } from "./agent-dock-state";
-import { STATUS_LOOK } from "./dock-changes-tree";
+import { CardBody } from "./dock-changes-card-body";
 import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
 
 /** How far past the viewport a card starts reading its two sides. */
@@ -30,76 +31,6 @@ export const defaultStackPorts: DiffSidesPorts = {
 
 export const cardKey = (root: string, path: string): string => `${root}\0${path}`;
 
-const LINE_LOOK: Readonly<Record<DiffLine["kind"], { sign: string; tint: string }>> = {
-  context: { sign: " ", tint: "" },
-  add: { sign: "+", tint: "bg-[color-mix(in_oklch,var(--term-ok)_9%,transparent)]" },
-  del: { sign: "-", tint: "bg-[color-mix(in_oklch,var(--term-err)_9%,transparent)]" },
-};
-
-const range = (start: number, lines: number): string =>
-  lines === 1 ? `${start}` : `${start},${lines}`;
-
-function Hunk({ hunk }: { hunk: DiffHunk }) {
-  return (
-    <>
-      <div className="min-w-max px-3 text-muted-foreground">
-        @@ -{range(hunk.oldStart, hunk.oldLines)} +{range(hunk.newStart, hunk.newLines)} @@
-      </div>
-      {hunk.lines.map((line, index) => (
-        <div
-          // A hunk is never reordered: the position is the identity.
-          key={index}
-          data-line={line.kind}
-          className={cn("min-w-max px-3", LINE_LOOK[line.kind].tint)}
-        >
-          <span className="inline-block w-4 select-none text-muted-foreground">
-            {LINE_LOOK[line.kind].sign}
-          </span>
-          {line.text}
-        </div>
-      ))}
-    </>
-  );
-}
-
-const Line = ({ children }: { children: string }) => (
-  <p role="status" className="px-3 py-1.5 text-xs text-muted-foreground">
-    {children}
-  </p>
-);
-
-function CardBody({ view }: { view: DiffSidesView | null }) {
-  const shown = useMemo(
-    () => (view?.kind === "text" ? diffLines(view.original.text, view.modified.text) : null),
-    [view],
-  );
-  if (view === null) {
-    return <Line>Reading…</Line>;
-  }
-  if (view.kind === "binary") {
-    return <Line>Binary file.</Line>;
-  }
-  if (view.kind === "too-large") {
-    return <Line>This file is too large to show.</Line>;
-  }
-  if (view.kind === "failed") {
-    return <Line>{view.message}</Line>;
-  }
-  if (shown === null || shown.tooLarge) {
-    return <Line>Too many changes to show.</Line>;
-  }
-  if (shown.hunks.length === 0) {
-    return <Line>No line changes.</Line>;
-  }
-  return (
-    <div className="overflow-x-auto py-1 font-mono text-code leading-5 whitespace-pre">
-      {shown.hunks.map((hunk) => (
-        <Hunk key={`${hunk.oldStart}:${hunk.newStart}`} hunk={hunk} />
-      ))}
-    </div>
-  );
-}
-
 interface CardProps {
   readonly root: string;
   readonly entry: ChangeEntry;
@@ -109,6 +40,37 @@ interface CardProps {
   /** The controller's read counter: a read that left the entry's counts alone can still change its text. */
   readonly reads: number;
   readonly marked: boolean;
+}
+
+/**
+ * The header's repo-relative path, clipped from the left so the file name always shows in full:
+ * the folder part is muted and gives way first, the name keeps the button's weight. The folder
+ * clips inside an RTL box so the ellipsis lands on the left; its text stays an LTR run, or a
+ * leading dot (`.github/…`) would move to the end.
+ */
+function CardPath({ entry }: { entry: ChangeEntry }) {
+  const folder = dirName(entry.path);
+  return (
+    <>
+      {folder === "" ? null : (
+        <>
+          <span dir="rtl" className="min-w-0 truncate text-left font-normal text-muted-foreground">
+            <bdi dir="ltr">{folder}</bdi>
+          </span>
+          <span className="shrink-0 font-normal text-muted-foreground">/</span>
+        </>
+      )}
+      <span
+        className={cn(
+          "max-w-full shrink-0 truncate",
+          entry.status === "deleted" && "text-muted-foreground line-through",
+        )}
+      >
+        {baseName(entry.path)}
+      </span>
+      <span className="sr-only"> ({STATUS_WORD[entry.status]})</span>
+    </>
+  );
 }
 
 const stampOf = (entry: ChangeEntry): string =>
@@ -148,11 +110,15 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
   }, [near, folded, tag, sides]);
 
   const counts = countsFor(entry);
-  const mark = STATUS_LOOK[entry.status];
   const label = folded ? "Unfold" : "Fold";
   const menu = useFileMenu();
-  const openFile = (): void => {
-    void controller.openFile(root, absolutePath(root, entry.path), true).then(selectDockFile);
+  const absolute = absolutePath(root, entry.path);
+  // One press on the path is a preview tab (DOCK-6); the menu's Open keeps the tab.
+  const preview = (): void => {
+    void controller.openFile(root, absolute, false).then(selectDockFile);
+  };
+  const keep = (): void => {
+    void controller.openFile(root, absolute, true).then(selectDockFile);
   };
   return (
     <div
@@ -163,6 +129,13 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
     >
       <div
         className="sticky top-0 z-10 flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        // The header's one verb is the fold: a press anywhere but on a button folds the card. The
+        // chevron folds on its own press, which is the keyboard's way in; the path opens instead.
+        onClick={(event) => {
+          if ((event.target as Element).closest("button") === null) {
+            toggleDockCardFold(key);
+          }
+        }}
         {...menu.triggerProps}
       >
         <Button
@@ -174,25 +147,15 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
         >
           <DeckIcon icon={folded ? ArrowRight01Icon : ArrowDown01Icon} />
         </Button>
-        <span
-          role="img"
-          aria-label={STATUS_WORD[entry.status]}
-          className={cn("w-3 shrink-0 text-center font-mono text-code font-semibold", mark.ink)}
-        >
-          {mark.letter}
-        </span>
         <Button
           variant="ghost"
           size="sm"
           title={entry.path}
           disabled={entry.status === "deleted"}
-          className={cn(
-            "h-auto min-w-0 rounded-sm px-1 py-0 text-xs hover:bg-transparent hover:underline focus-visible:bg-transparent",
-            entry.status === "deleted" && "line-through",
-          )}
-          onClick={openFile}
+          className="h-auto min-w-0 gap-0 rounded-sm px-1 py-0 text-xs hover:bg-transparent hover:underline focus-visible:bg-transparent"
+          onClick={preview}
         >
-          <span className="truncate">{baseName(entry.path)}</span>
+          <CardPath entry={entry} />
         </Button>
         <span className="flex-1" />
         {counts.kind === "counts" ? (
@@ -205,7 +168,7 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
           entry={entry}
           open={menu.open}
           onOpenChange={menu.setOpen}
-          onOpenFile={openFile}
+          onOpenFile={keep}
         />
       </div>
       {folded ? null : near || loadedFor.current !== null ? (

@@ -14,7 +14,7 @@
 /* The column also stands alone inside the narrow-window sheet, where there is no `.dock-panel`. */
 .agent-dock__column {
   background: var(--sidebar);
-  /* `ChangeCounts` and the Changes rows read the terminal's green, red and amber as
+  /* `ChangeCounts`, the diff cards and the Ask banner read the terminal's green, red and amber as
      `--term-ok`, `--term-err` and `--term-warn`, which only the layout mock declares. In the app
      they are the active theme's own role inks (DL-3.2's diff colours), so a theme change reaches
      them and no palette is added. Declared here, on the column, because the sheet's portal

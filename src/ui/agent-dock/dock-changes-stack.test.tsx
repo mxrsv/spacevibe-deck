@@ -63,6 +63,11 @@ const card = (path: string): HTMLElement =>
     (element) => element.dataset.cardPath === path,
   ) as HTMLElement;
 
+const pathButton = (path: string): HTMLElement =>
+  card(path).querySelector(`button[title="${path}"]`) as HTMLElement;
+const chevron = (path: string): HTMLElement =>
+  card(path).querySelector("button[aria-expanded]") as HTMLElement;
+
 async function reveal(path: string): Promise<void> {
   await act(async () => observed.get(card(path))?.(true));
   await settle();
@@ -169,14 +174,62 @@ describe("the Changes stack", () => {
     await view.unmount();
   });
 
-  it("opens the real file as a dock tab when the file name is pressed", async () => {
+  it("opens the real file as a preview tab when the path is pressed, and does not fold", async () => {
     const open = vi.spyOn(files, "openFile").mockResolvedValue(undefined);
     const view = await mount(stack([entry("src/a.ts")]));
-    await click(card("src/a.ts").querySelector('button[title="src/a.ts"]') as HTMLElement);
-    expect(open).toHaveBeenCalledWith(ROOT, `${ROOT}/src/a.ts`, true);
+    await click(pathButton("src/a.ts"));
+    expect(open).toHaveBeenCalledWith(ROOT, `${ROOT}/src/a.ts`, false);
+    expect(chevron("src/a.ts").getAttribute("aria-expanded")).toBe("true");
     await settle();
     expect(dockSurface.value).toBe("file");
     open.mockRestore();
+    await view.unmount();
+  });
+
+  it("folds a card from any empty part of its header, the counts included", async () => {
+    const view = await mount(stack([entry("src/a.ts")]));
+    const header = card("src/a.ts").querySelector(".sticky") as HTMLElement;
+    await click(header);
+    expect(chevron("src/a.ts").getAttribute("aria-expanded")).toBe("false");
+    await click(
+      [...header.querySelectorAll("span")].find((s) => s.textContent === "+1") as HTMLElement,
+    );
+    expect(chevron("src/a.ts").getAttribute("aria-expanded")).toBe("true");
+    await view.unmount();
+  });
+
+  it("shows the repo-relative path with the name last, and no status letter", async () => {
+    const view = await mount(stack([entry("src/ui/a.ts"), entry("top.md")]));
+    const path = pathButton("src/ui/a.ts");
+    const shown = (button: HTMLElement): string =>
+      [...button.childNodes]
+        .filter((node) => !(node instanceof HTMLElement && node.classList.contains("sr-only")))
+        .map((node) => node.textContent)
+        .join("");
+    expect(shown(path)).toBe("src/ui/a.ts");
+    expect(path.lastElementChild?.textContent?.trim()).toBe("(Modified)");
+    // A file at the root has no folder part and no slash.
+    expect(shown(pathButton("top.md"))).toBe("top.md");
+    expect(card("src/ui/a.ts").querySelector('[role="img"]')).toBeNull();
+    await view.unmount();
+  });
+
+  it("strikes a deleted file's name and leaves nothing to open", async () => {
+    const view = await mount(stack([entry("src/gone.ts", { status: "deleted" })]));
+    const path = pathButton("src/gone.ts");
+    expect(path.hasAttribute("disabled")).toBe(true);
+    const name = [...path.querySelectorAll("span")].find((s) => s.textContent === "gone.ts");
+    expect(name?.classList.contains("line-through")).toBe(true);
+    await view.unmount();
+  });
+
+  it("says a file was renamed from outside the folder above its lines", async () => {
+    const view = await mount(
+      stack([entry("src/moved.ts", { status: "renamed", oldPath: null, added: 3, removed: 0 })]),
+    );
+    await reveal("src/moved.ts");
+    expect(card("src/moved.ts").textContent).toContain("Renamed from outside this folder");
+    expect(card("src/moved.ts").querySelector('[data-line="add"]')).not.toBeNull();
     await view.unmount();
   });
 
@@ -184,14 +237,14 @@ describe("the Changes stack", () => {
     const view = await mount(stack([entry("src/a.ts")]));
     await reveal("src/a.ts");
     expect(ports.readFile).toHaveBeenCalledTimes(1);
-    const chevron = card("src/a.ts").querySelector("button[aria-expanded]") as HTMLElement;
+    const fold = chevron("src/a.ts");
 
-    await click(chevron);
-    expect(chevron.getAttribute("aria-expanded")).toBe("false");
+    await click(fold);
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
     expect(card("src/a.ts").querySelector("[data-line]")).toBeNull();
 
-    await click(chevron);
-    expect(chevron.getAttribute("aria-expanded")).toBe("true");
+    await click(fold);
+    expect(fold.getAttribute("aria-expanded")).toBe("true");
     expect(card("src/a.ts").querySelector('[data-line="add"]')).not.toBeNull();
     expect(ports.readFile).toHaveBeenCalledTimes(1);
     await view.unmount();

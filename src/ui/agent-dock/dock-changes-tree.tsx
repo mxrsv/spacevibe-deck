@@ -1,7 +1,7 @@
 import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
-import type { ChangeEntry, ChangeStatus } from "../../host/git-changes-host";
+import type { ChangeEntry } from "../../host/git-changes-host";
 import { baseName, countsFor, STATUS_WORD } from "../../files/changes/changes-model";
 import {
   buildChangesTree,
@@ -19,15 +19,6 @@ const INDENT = 8;
 const STEP = 12;
 const ROW =
   "flex h-(--dock-row-h) w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
-
-/** A file's mark and its ink: new files read as added, rewritten ones as modified. */
-export const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {
-  modified: { letter: "M", ink: "text-(--term-warn)" },
-  added: { letter: "A", ink: "text-(--term-ok)" },
-  deleted: { letter: "D", ink: "text-(--term-err)" },
-  renamed: { letter: "R", ink: "text-(--term-warn)" },
-  untracked: { letter: "U", ink: "text-(--term-ok)" },
-};
 
 export interface DockChangesTreeProps {
   /** The folder the entries are relative to. */

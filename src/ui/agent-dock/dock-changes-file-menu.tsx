@@ -48,7 +48,7 @@ export interface DockChangesFileMenuProps {
   readonly entry: ChangeEntry;
   readonly open: boolean;
   onOpenChange(open: boolean): void;
-  /** Opens the file as a dock tab, as pressing a card's name does. */
+  /** Opens the file as a kept dock tab; pressing a card's path opens a preview instead. */
   onOpenFile(entry: ChangeEntry): void;
 }
 
