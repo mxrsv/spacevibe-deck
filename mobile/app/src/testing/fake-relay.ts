@@ -118,7 +118,9 @@ export function createFakeWorld(options: FakeWorldOptions) {
       return;
     }
     let channel = channels.get(socket);
-    if (channel === undefined || channel.state === "closed") {
+    // Like the real desktop: a new `hello` replaces the session on that transport.
+    if (channel === undefined || channel.state === "closed" || bytes[0] === FRAME_TYPE.hello) {
+      channel?.close("replaced");
       channel = openDesktopChannel(socket);
       channels.set(socket, channel);
     }

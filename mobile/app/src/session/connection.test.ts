@@ -144,6 +144,19 @@ describe("desktop connection", () => {
     expect(world.sockets).toHaveLength(1);
   });
 
+  it("treats the relay forgetting an established pairing (4404) as the desktop removing this phone", async () => {
+    const { connection, world } = setup();
+    connection.start();
+    await settle();
+    world.dropAll(4404);
+    await settle(60_000);
+    expect(connection.getSnapshot()).toMatchObject({
+      status: "revoked",
+      problem: "The desktop removed this phone, or the pairing expired. Pair it again.",
+    });
+    expect(world.sockets).toHaveLength(1);
+  });
+
   it("shows the relay's message for a refusal and does not hammer it (MOB8)", async () => {
     const { connection, world } = setup({ token: b64urlEncode(new Uint8Array(32)) });
     connection.start();

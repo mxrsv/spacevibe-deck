@@ -64,6 +64,8 @@ export interface ConnectionDeps {
   readonly crypto: CryptoProvider;
   readonly openLink: LinkFactory;
   readonly session: { readonly device: string; readonly appVersion: string };
+  /** For the sentence shown when the relay no longer knows this pairing. */
+  readonly desktopName?: string;
   readonly random?: () => number;
   /**
    * Opens the direct LAN link to one address (MOB9). Without it the connection stays on the relay.
@@ -314,6 +316,18 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       return;
     }
     if (down.kind === "relay-error") {
+      if (down.code === "unknown") {
+        // This pairing was claimed, so the relay only forgets it when the desktop revoked it or
+        // after 30 idle days: either way this phone has been removed.
+        running = false;
+        clearTimers();
+        set({
+          status: "revoked",
+          path: null,
+          problem: `${deps.desktopName ?? "The desktop"} removed this phone, or the pairing expired. Pair it again.`,
+        });
+        return;
+      }
       const problem = RELAY_ERROR_TEXT[down.code];
       if (TERMINAL_RELAY_ERRORS.has(down.code)) {
         running = false;
@@ -393,14 +407,19 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       },
       onMessage: handleMessage,
       onLost() {
-        // The direct path died: back to the relay at once, on a fresh relay session (the desktop's
-        // session on the old relay socket already did its handshake and cannot do another), and
-        // subscribers replay there.
+        // The direct path died: back to the relay at once, and subscribers replay there. The relay
+        // link is kept (a revoke arrives on it moments after the desktop closed the LAN session,
+        // and must be heard); a new `hello` on it replaces the desktop's old session. Only when
+        // the relay link is gone is a new one opened.
         dropChannel("lan-lost");
-        dropLink();
         failures = 0;
-        set({ status: "connecting", path: null, epoch: snapshot.epoch + 1 });
-        if (running) attempt();
+        if (link !== null) {
+          set({ status: "connecting", epoch: snapshot.epoch + 1 });
+          beginChannel();
+        } else {
+          set({ status: "connecting", path: null, epoch: snapshot.epoch + 1 });
+          if (running) attempt();
+        }
       },
     });
   }

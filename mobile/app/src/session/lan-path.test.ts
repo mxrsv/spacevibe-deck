@@ -213,7 +213,7 @@ describe("moving between the relay and the LAN (MOB9)", () => {
     await settle(50);
     expect(connection.getSnapshot()).toMatchObject({ status: "online", path: "relay" });
     expect(connection.getSnapshot().epoch).toBeGreaterThan(epochOnLan);
-    expect(world.sockets.length).toBeGreaterThanOrEqual(2); // a fresh relay session, not a second hello on the old one
+    expect(world.sockets.filter((s) => s.url.startsWith("wss://"))).toHaveLength(1); // the relay link was kept and a new hello replaced the session
     const viaRelay = connection.rpc.request("usage.get", {});
     await settle();
     await expect(viaRelay).resolves.toEqual({ usage: { today: 1 } });
@@ -266,6 +266,20 @@ describe("moving between the relay and the LAN (MOB9)", () => {
     connection.stop();
     await settle(50);
     expect(world.live).toHaveLength(0);
+  });
+
+  it("revoke while on the LAN ends revoked: the relay's word arrives after the LAN closed and is still heard (MOB2)", async () => {
+    const { world, connection } = setup([HOME]);
+    connection.start();
+    await settle(50);
+    expect(connection.getSnapshot().path).toBe("lan");
+    world.setLanReachable(HOME.host, HOME.port, false);
+    world.dropLan(); // the desktop closes the LAN session first ...
+    setTimeout(() => world.dropAll(4410), 25); // ... and the relay's `revoked` follows
+    await settle(200);
+    expect(connection.getSnapshot().status).toBe("revoked");
+    await settle(60_000);
+    expect(connection.getSnapshot().status).toBe("revoked");
   });
 
   it("closing the connection closes the LAN socket too", async () => {

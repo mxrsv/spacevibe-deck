@@ -63,6 +63,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     const keys = pairingKeys(pairing);
     const connection = createDesktopConnection({
       pairing: { pairingId: pairing.pairingId, pairKey: keys.pairKey },
+      desktopName: pairing.desktopName,
       crypto: deps.crypto,
       session: deps.session,
       openLan: (address, handlers) =>
