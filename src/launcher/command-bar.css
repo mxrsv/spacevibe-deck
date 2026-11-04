@@ -1,0 +1,314 @@
+/* LCH-5 / LCH-9: the stage launcher's command bar (mock direction A). It is built from the
+   preset's controls, so every colour is a preset token and every size a step of the type scale:
+   --type-body (14) for controls, labels and names, --type-meta (12) for branch, age, the
+   destination line and key hints. This sheet is unlayered, so its layout rules beat the
+   preset's reset. */
+.command-bar {
+  /* The raised surface of the floating panel and the menu: the preset's popover step, built from
+     the tokens a chrome stylesheet may read. */
+  --command-bar-raised: color-mix(in oklch, var(--background), var(--foreground) 7%);
+  --command-bar-row: 32px;
+  /* About 6.5 rows: the half row shows the list scrolls. */
+  --command-bar-list: calc(var(--command-bar-row) * 6.5);
+  position: absolute;
+  z-index: 25;
+  top: 27%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(700px, calc(100% - 64px));
+  transform: translateX(-50%);
+  background: transparent;
+  font-size: var(--type-body);
+}
+.command-bar--floating {
+  top: 16px;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--command-bar-raised);
+  box-shadow:
+    0 0 0 1px var(--control-frame),
+    0 20px 56px color-mix(in oklch, black 45%, transparent);
+}
+.command-bar__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--sidebar);
+  box-shadow: inset 0 0 0 1px var(--control-frame);
+}
+.command-bar__bar:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--control-frame-hover),
+    0 0 0 4px color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+.command-bar__meta {
+  font-size: var(--type-meta);
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.command-bar__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: color-mix(in oklch, var(--foreground) 12%, transparent);
+  color: var(--muted-foreground);
+  font-size: var(--type-meta);
+  font-weight: 600;
+}
+
+/* Project chip and filter. */
+.command-bar__project {
+  gap: 8px;
+  flex: none;
+  font-weight: 600;
+}
+.command-bar__branch {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.command-bar__caret-mark {
+  color: var(--muted-foreground);
+}
+.command-bar .command-bar__filter {
+  flex: 1;
+  height: 40px;
+  border-color: transparent;
+  background: transparent;
+  font-size: var(--type-body);
+}
+.command-bar__first-hint {
+  padding: 0 6px;
+  font-size: var(--type-meta);
+  color: var(--muted-foreground);
+}
+
+/* Run: one split button. */
+.command-bar__run {
+  display: flex;
+  flex: none;
+}
+.command-bar__run > :first-child:not(:last-child) {
+  gap: 8px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.command-bar__run > :last-child:not(:first-child) {
+  padding: 0 10px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /* A hairline between the halves, from the label's own ink. */
+  border-left: 1px solid color-mix(in oklch, var(--primary-foreground) 18%, transparent);
+}
+.command-bar__run kbd {
+  background: color-mix(in oklch, var(--primary-foreground) 12%, transparent);
+  color: color-mix(in oklch, var(--primary-foreground) 62%, transparent);
+  font-size: var(--type-meta);
+}
+.command-bar__command {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--type-meta);
+}
+
+/* Matching projects under the bar. */
+.command-bar__hits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--sidebar);
+}
+.command-bar__hit {
+  justify-content: flex-start;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+}
+.command-bar__hit[data-first] {
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+.command-bar__hit-age {
+  margin-left: auto;
+}
+
+/* Agent chips. */
+.command-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.command-bar__chips[data-off] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.command-bar__missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.command-bar .command-bar__chip {
+  min-width: 36px;
+  gap: 0;
+  padding: 0 9px;
+  transition:
+    background-color 160ms,
+    gap 200ms var(--ease, ease);
+}
+.command-bar .command-bar__chip[data-on] {
+  gap: 8px;
+  background: color-mix(in oklch, var(--muted), var(--foreground) 10%);
+}
+.command-bar__glyph {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  filter: grayscale(1);
+  opacity: 0.55;
+  transition:
+    filter 160ms,
+    opacity 160ms;
+}
+.command-bar__chip:is(:hover, :focus-visible) .command-bar__glyph,
+.command-bar__chip[data-on] .command-bar__glyph {
+  filter: none;
+  opacity: 1;
+}
+.command-bar__chip-name {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  transition:
+    max-width 220ms var(--ease, ease),
+    opacity 160ms;
+}
+.command-bar__chip[data-on] .command-bar__chip-name {
+  max-width: 160px;
+  opacity: 1;
+}
+
+/* Failure and destination. */
+.command-bar__failure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--foreground);
+}
+.command-bar__failure > svg {
+  flex: none;
+  color: var(--red);
+}
+.command-bar__failure-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.command-bar__destination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-meta);
+  color: var(--muted-foreground);
+}
+.command-bar__destination b {
+  font-weight: 600;
+  color: color-mix(in oklch, var(--muted-foreground), var(--foreground) 40%);
+}
+
+/* The project menu: search, a list that scrolls inside itself, a rule, two fixed actions. */
+.command-bar-menu {
+  position: absolute;
+  z-index: 5;
+  top: 52px;
+  left: 8px;
+  width: 320px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--command-bar-raised);
+  color: var(--foreground);
+  box-shadow:
+    0 0 0 1px var(--control-frame),
+    0 12px 32px color-mix(in oklch, black 45%, transparent);
+}
+.command-bar-menu__search {
+  position: relative;
+  margin-bottom: 4px;
+  color: var(--muted-foreground);
+}
+.command-bar-menu__search > svg {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.command-bar-menu__search input {
+  padding-left: 28px;
+  font-size: var(--type-body);
+}
+.command-bar-menu__list {
+  max-height: var(--command-bar-list);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+}
+.command-bar-menu__row,
+.command-bar-menu__action {
+  width: 100%;
+  height: var(--command-bar-row);
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-size: var(--type-body);
+  font-weight: 400;
+}
+.command-bar-menu__row[data-highlighted] {
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+.command-bar-menu__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.command-bar-menu__name[data-filtered] {
+  color: var(--muted-foreground);
+}
+.command-bar-menu__name b {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.command-bar-menu__end {
+  margin-left: auto;
+  flex: none;
+}
+.command-bar-menu__empty {
+  display: flex;
+  align-items: center;
+  height: var(--command-bar-row);
+  padding: 0 10px;
+  font-size: var(--type-meta);
+  color: var(--muted-foreground);
+}
+.command-bar-menu__rule {
+  height: 1px;
+  margin: 4px -4px;
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+}
