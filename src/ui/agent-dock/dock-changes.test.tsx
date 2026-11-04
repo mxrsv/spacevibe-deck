@@ -209,14 +209,14 @@ describe("the Changes view's tree", () => {
     await view.unmount();
   });
 
-  it("marks each file by status and strikes a deleted one", async () => {
+  it("names each file's status for assistive technology, shows no letter, and strikes a deleted one", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
-    const mark = (key: string) => row(key).querySelector('[role="img"]');
-    expect(mark("file:old.txt")?.getAttribute("aria-label")).toBe("Deleted");
-    expect(mark("file:old.txt")?.textContent).toBe("D");
-    expect(mark("file:scratch.txt")?.getAttribute("aria-label")).toBe("Untracked");
-    expect(mark("file:img.png")?.getAttribute("aria-label")).toBe("Added");
+    const status = (key: string) => row(key).querySelector(".sr-only")?.textContent?.trim();
+    expect(status("file:old.txt")).toBe("(Deleted)");
+    expect(status("file:scratch.txt")).toBe("(Untracked)");
+    expect(status("file:img.png")).toBe("(Added)");
+    expect(row("file:old.txt").querySelector('[role="img"]')).toBeNull();
     expect(row("file:old.txt").textContent).toContain("+0 −9");
     expect(row("file:old.txt").querySelector(".line-through")).not.toBeNull();
     expect(row("file:img.png").textContent).toContain("binary");

@@ -14,10 +14,10 @@ import { ChangeCounts } from "../blocks/change-counts";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
 
-const INDENT = 10;
-const STEP = 14;
+const INDENT = 8;
+const STEP = 12;
 const ROW =
-  "flex h-7 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+  "flex h-6 w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
 /** A file's mark and its ink: new files read as added, rewritten ones as modified. */
 export const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: string }>> = {
@@ -49,7 +49,6 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
   const key = fileKey(entry);
   const selected = entry.path === tree.selectedPath;
   const counts = countsFor(entry);
-  const mark = STATUS_LOOK[entry.status];
   return (
     <>
       {/* raw-control: a whole-row press target; no Button variant spans a tree row */}
@@ -61,15 +60,8 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         onClick={() => tree.onOpen(entry)}
         onFocus={() => tree.onFocus(key)}
         style={{ paddingLeft: INDENT + depth * STEP + 18 }}
-        className={cn(ROW, "gap-2", selected && "bg-muted")}
+        className={cn(ROW, selected && "bg-muted")}
       >
-        <span
-          role="img"
-          aria-label={STATUS_WORD[entry.status]}
-          className={cn("w-3 shrink-0 text-center font-mono text-code font-semibold", mark.ink)}
-        >
-          {mark.letter}
-        </span>
         <span
           className={cn(
             "min-w-0 flex-1 truncate text-xs",
@@ -77,6 +69,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
           )}
         >
           {baseName(entry.path)}
+          <span className="sr-only"> ({STATUS_WORD[entry.status]})</span>
           {entry.status === "renamed" && entry.oldPath !== null ? (
             <span className="sr-only"> (from {entry.oldPath})</span>
           ) : null}
