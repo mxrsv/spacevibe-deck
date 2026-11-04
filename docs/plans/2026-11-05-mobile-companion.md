@@ -1,25 +1,32 @@
 # Mobile companion: control a running Deck from an iPhone
 
-Record: Draft task plan for the owner's approval. Written on 2026-11-05 when the owner said
-"ok làm đi" to writing it. Nothing is built.
-- **Approval covers:**
+Record: Active task plan, approved by the owner on 2026-11-05 for a full build in one cloud run:
+"xong cho prompt để build luôn bản mobile này, cần build đầy đủ code luôn, rồi để mai tôi test
+sau". The approval was read as covering:
+- **The approval items as recommended:**
   - the spec's defaults 21–24 and its chosen numbers;
   - the forks table;
-  - the relay placement;
-  - the proposal to run spikes before the CLI ships;
+  - the relay at `mobile/relay/`;
   - the Operating contract.
+- **The CLI gate is waived** (spec decision 9 superseded).
+- **T5's mock stop moves into T14's single eye batch.**
+- **Spikes that need a Mac do not stop the run.** S1–S3 become items to verify on the Mac; the
+  build takes the primary approach behind an interface.
+- **Not built yet.**
 - **Started:** 2026-11-05.
 - **Spec:** [Mobile companion](../specs/2026-11-04-mobile-companion.md) (MOB1–28, decisions 1–27).
-- **Direction mock (picked, E):** `~/scratch/spacevibe-deck/mobile-mock-2026-11-05/`, outside
-  the repo.
+- **Direction mock (picked, E):** pushed on branch `mock/mobile-companion-2026-11-05`, under
+  `mock/mobile-companion-2026-11-05/`. That branch is never merged. To read it, run
+  `git fetch origin mock/mobile-companion-2026-11-05` then `git worktree add /tmp/mock
+  FETCH_HEAD`.
 - **Committed for cloud runs** on 2026-11-05, although `docs/plans/` is gitignored. The owner
   said: "push lên remote, tôi sẽ run session này trên cloud". This follows `e3b269a9`. The
   committed copy is the one to update; a local session pulls before editing it.
 - **Base revision:** `origin/main` `32ac87cf` plus this plan's commit. The dock test that
   `207c717e` broke was fixed by its owner in `32ac87cf`.
-- **Gate to start building (spec decision 9):** the `deck` CLI ships. In concrete terms, the
-  [orchestration plan](2026-11-03-agent-orchestration.md) T6 walk is done, `agentControl` is
-  flipped on, and that release is published.
+- **Gate to start building:** none any more. The owner waived it on 2026-11-05. The CLI
+  ([orchestration plan](2026-11-03-agent-orchestration.md)) is on `main` behind `agentControl`.
+  The phone uses its forwarder code, not its switch.
 
 ## Requirements reference and delivery scope
 
@@ -159,21 +166,25 @@ The desktop-side and protocol slices follow the orchestration plan's pattern:
 - **Pushing:** push from a clean `/tmp` worktree, never from the primary. The primary's hook
   also runs the nested `.claude/worktrees` suites.
 
-**Cloud run.** A Claude Code cloud session works on a fresh Linux clone of `origin/main`. Each
-slice gets a branch `claude/mobile-<slice>` and a PR against `main`; this replaces the local
-worktree, fast-forward and push steps, and the owner merges. The session runs `npm install` at
-the root and inside each `mobile/` package it touches.
-- **What the cloud cannot do:** run macOS, Xcode, an iPhone, a headed `electron:dev`, or read
-  the owner's `~/scratch`. The direction mock lives there; the spec records the pick.
-- **Work that waits for a Mac session:** S1–S3, T5's mock and eye step, the device checks in
-  T6–T9, T10 on a real network, and T13–T14.
-- **Work that runs in the cloud:**
-  - S4, plus S5 from Electron 43's documented Node version;
-  - T1–T3;
-  - T4 up to its unit and contract tests. Its repro run against `electron:dev` waits for a
-    display.
-
-  Each PR says which checks ran and which wait for the Mac.
+**Cloud run (the full build of 2026-11-05).** A Claude Code cloud session works on a fresh Linux
+clone of `origin/main`. This replaces the local worktree, fast-forward and push steps.
+- **Branch and PR:** one branch, `claude/mobile-companion`, with one commit per task (T1–T13), a
+  push after each commit, and one draft PR against `main` opened after the first commit. The
+  owner tests the whole of it and merges.
+- **Installing:** the session runs `npm install` at the root and inside each `mobile/` package.
+- **GitHub:** if `gh pr` fails with 403 (the proxy refuses GraphQL), use `gh api` (REST).
+- **What the cloud cannot do:** macOS, Xcode, an iPhone, a headed `electron:dev`, deploying,
+  or store actions. So:
+  - **Every task:** builds its full code with its unit and contract tests.
+  - **Mac-only checks** (S1–S3, device runs, Simulator shots, the `electron:dev` repro run, the
+    LAN path on a real network): listed in Verification as "verify on the Mac".
+  - **Owner actions:** prepared as config (Wrangler, `eas.json`, `app.config`), never run.
+- **Tomorrow's test path:** the owner's Mac has no Xcode, so the app must run in **Expo Go**.
+  - **Native builds:** everything except the push extension works without a custom native
+    build; push feature-detects and says it needs a dev build.
+  - **Relay:** runs locally with `wrangler dev`. The desktop reads its relay URL from Deck's
+    one env/config module (E5): `DECK_RELAY_URL`, defaulting to
+    `https://api.deck.spacevibe.dev/relay`.
 
 ## Tasks
 
@@ -230,9 +241,10 @@ the root and inside each `mobile/` package it touches.
     - a snapshot plus the stream draws a Claude Code TUI correctly;
     - no push while a Deck window is focused.
 - [ ] **T5: Desktop Settings → Mobile.**
-  - **Mock first, the only early stop:** a gallery specimen built from the real Settings rows
-    and controls, in the owner's theme, holding Pair a phone, the QR dialog, the paired list and
-    revoke. The owner picks; then build it.
+  - **Mock, no early stop** (the owner's 2026-11-05 full-build call): build a gallery specimen
+    from the real Settings rows and controls. It holds Pair a phone, the QR dialog, the paired
+    list and revoke. Then build the surface from the same parts. The owner judges both by eye in
+    T14.
   - **Covers:** MOB1 (QR, 5-minute expiry) and MOB2 (list, revoke within 10 seconds).
   - **Verify:** renderer tests; the repro client sees a revoke.
 - [ ] **T6: Phone app shell (`mobile/app/`).**
@@ -314,6 +326,18 @@ accepted).
   - an owner action from the list above.
 
   When stopping, post the question here and in chat.
+- **In the unattended cloud run of 2026-11-05 nobody answers overnight.** So three of those
+  stops do not halt the run:
+  - **Not stopping for:** an unnamed fork, a dependency outside F1, or a spec requirement that
+    proves impossible.
+  - **What to do instead:** take the reversible option closest to the spec, write it under
+    "Decisions taken" here and in the PR with the option turned down, and continue.
+  - **Still never done:**
+    - deploy, set secrets, or take any App Store, TestFlight or Expo account action;
+    - push to `main`;
+    - edit a sibling repository;
+    - change a DL invariant;
+    - bypass the pre-push hook.
 - **Done for a desktop task:** its tests, lint, `scripts/check-changed.sh` and the `scripts/` +
   `src/styles/` suites pass. The `mobile/` check stands in for those in phone tasks.
   `npm test`, `npm run build` and `electron:build` stay CI's.
@@ -327,11 +351,11 @@ Evidence lands here, per task, with the command and the observed result.
 
 ## Handoff
 
-2026-11-05: plan written and committed for a cloud session, together with the spec's link to it.
-Nothing is built; no worktree or branch exists.
-- **Not approved yet.** The Operating contract does not apply until the owner answers the
-  approval items in this plan's Record. A cloud session asks for that first and builds nothing
-  before it.
-- **After approval:** cloud-able spikes (S4, S5, if accepted), or T1 once the CLI gate is met.
+2026-11-05: plan written, approved for a full build (see Record) and committed for a cloud session,
+together with the spec's link to it. The direction mock was pushed on its own branch,
+`mock/mobile-companion-2026-11-05`. Nothing is built.
+- **Next:** the cloud session builds T1–T13 on `claude/mobile-companion` and opens one draft
+  PR.
+- **The owner's test (T14):** happens the next day on the Mac.
 
 /goal Mobile companion (docs/specs/2026-11-04-mobile-companion.md): behind `mobileCompanion`, an iPhone app built with Expo pairs with a running Deck by QR without an account, over an end-to-end encrypted Cloudflare relay at api.deck.spacevibe.dev/relay/* with a LAN fast path. Its home is every desktop's tree with up to three waiting panes pinned and answered in place. It renders any pane in xterm.js with Live mode, sends replies and keystrokes through the renderer's input path, opens a new agent with a prompt, and reads files, changes and usage. Push for requested/completed reaches the phone within 5 seconds in 9 of 10 tries on cellular, muted while a Deck window is focused. Deck keeps the machine awake while panes work. The relay's storage and logs hold no terminal text; revoke cuts a phone off within 10 seconds. Tests for the protocol, relay, desktop service, parser and IPC contracts pass. The user guide, its vi translation, the internals page, the privacy notice and the telemetry counters land. The app installs from TestFlight with EAS Update working, and the owner's walk on a real iPhone passes.

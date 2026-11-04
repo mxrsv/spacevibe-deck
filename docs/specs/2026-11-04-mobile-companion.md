@@ -55,7 +55,10 @@ second place where agents run.
    unreachable. While a pane is working and a phone is paired, Deck keeps the machine awake.
    - Turned down: building `keep-agents-running` (a daemon that owns the PTYs) first.
 8. **Free.** No tier gate.
-9. **Starts after the `deck` CLI ships.**
+9. **~~Starts after the `deck` CLI ships.~~ Superseded by the owner on 2026-11-05.** The owner
+   asked for the full build now ("cần build đầy đủ code luôn, rồi để mai tôi test sau"). The
+   phone reuses the CLI's forwarder code already on `main`, and both features stay behind
+   their switches until each is walked.
 10. **Pairing by QR code, with no account**, including over the relay. The QR carries the key
     material. This differs deliberately from reference app A, which needs sign-in for its relay;
     Deck's accounts are not shipped. An account gate on the relay may come later.
