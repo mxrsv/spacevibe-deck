@@ -175,5 +175,6 @@ export interface UsagePayloadLike {
   readonly maxPanes: number;
   readonly restoredSessions: boolean;
   readonly updates: Readonly<Record<string, number>>;
-  readonly mobile: Readonly<Record<string, number>>;
+  /** Only while the `mobileCompanion` switch is on: the deployed backend rejects unknown keys. */
+  readonly mobile?: Readonly<Record<string, number>>;
 }

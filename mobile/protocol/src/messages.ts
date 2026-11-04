@@ -6,7 +6,7 @@
  */
 import { displayText } from "./display-text";
 import { MAX_INPUT_CHARS, MAX_READ_LINES, MAX_SEND_CHARS } from "./limits";
-import { parseTree, type Tree } from "./tree";
+import { isAgentId, parseTree, type Tree } from "./tree";
 import {
   isIntegerIn,
   isRecord,
@@ -58,6 +58,9 @@ export const OS_NAMES = ["macos", "windows", "linux"] as const;
 /** Longest path or id string a request may carry; the desktop validates the meaning. */
 export const MAX_PATH_CHARS = 4096;
 export const MAX_SUB_CHARS = 64;
+/** Why a terminal stream ended; `overflow` = the phone fell too far behind, resubscribe for a fresh snapshot. */
+export const TERM_END_REASONS = ["closed", "unsubscribed", "moved", "overflow"] as const;
+export type TermEndReason = (typeof TERM_END_REASONS)[number];
 export const MAX_LAN_ADDRESSES = 8;
 
 type Empty = Record<string, never>;
@@ -137,7 +140,7 @@ export type AppEvent =
     }
   | {
       readonly ev: "term.end";
-      readonly p: { readonly sub: string; readonly reason: "closed" | "unsubscribed" | "moved" };
+      readonly p: { readonly sub: string; readonly reason: TermEndReason };
     }
   | {
       readonly ev: "chunk";
@@ -185,8 +188,7 @@ const PARAM_PARSERS: ParamParsers = {
   "pane.open": (p) =>
     pathString(p.projectPath) &&
     pathString(p.checkoutPath) &&
-    typeof p.agent === "string" &&
-    /^[A-Za-z0-9._-]{1,64}$/.test(p.agent) &&
+    isAgentId(p.agent) &&
     (p.prompt === null || isStringIn(p.prompt, 0, MAX_SEND_CHARS))
       ? {
           projectPath: p.projectPath,
@@ -320,7 +322,7 @@ export function parseEvent(value: unknown): AppEvent | null {
           }
         : null;
     case "term.end": {
-      const reason = oneOf(["closed", "unsubscribed", "moved"] as const, p.reason);
+      const reason = oneOf(TERM_END_REASONS, p.reason);
       return isStringIn(p.sub, 1, MAX_SUB_CHARS) && reason !== null
         ? { ev: "term.end", p: { sub: p.sub, reason } }
         : null;

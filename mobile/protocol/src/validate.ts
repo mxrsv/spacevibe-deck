@@ -47,3 +47,22 @@ export function parseList<T>(
   }
   return out;
 }
+
+/**
+ * Like `parseList`, but an item that fails to parse is dropped instead of failing the list. For
+ * display lists where one odd entry (a pane with a strange label) must not hide the rest; still
+ * null when the value is not an array or is longer than `max`.
+ */
+export function parseListLenient<T>(
+  value: unknown,
+  max: number,
+  parse: (item: unknown) => T | null,
+): T[] | null {
+  if (!Array.isArray(value) || value.length > max) return null;
+  const out: T[] = [];
+  for (const item of value) {
+    const parsed = parse(item);
+    if (parsed !== null) out.push(parsed);
+  }
+  return out;
+}

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import { pane, tab } from "../ui/rail-view-fixtures";
-import { buildMobileTree, buildProjectChoices, lastNonEmptyLine } from "./mobile-tree";
+import {
+  buildMobileTree,
+  buildProjectChoices,
+  lastNonEmptyLine,
+  phoneAgentChoices,
+} from "./mobile-tree";
 
 function checkout(path: string, branch: string) {
   return {
@@ -93,5 +98,21 @@ describe("mobile tree", () => {
         checkouts: [{ name: "notes", path: "/w/notes", branch: null }],
       },
     ]);
+  });
+
+  it("offers custom agents, including ones whose label has a space, and drops unusable ids", () => {
+    const option = (id: string, label = id, missing = false) => ({ id, label, missing });
+    expect(
+      phoneAgentChoices([
+        option("Claude Code"),
+        option("My Aider"),
+        option("custom:my-aider", "My Aider"),
+        option("Gone", "Gone", true),
+        option(""),
+        option("x".repeat(65)),
+        option(" padded "),
+        option("bell\u0007"),
+      ]).map((agent) => agent.id),
+    ).toEqual(["Claude Code", "My Aider", "custom:my-aider"]);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SessionCipher, SessionFileIo } from "../account/session-store";
-import { createPairingStore, type StoredPairing } from "./pairing-store";
+import { createPairingStore, guardedCipher, type StoredPairing } from "./pairing-store";
 
 function record(id: string, extra: Partial<StoredPairing> = {}): StoredPairing {
   return {
@@ -78,12 +78,44 @@ describe("pairing store", () => {
     expect(file.text).toBe('{"v":1,"data":"bm90IGVuYw=="}');
   });
 
-  it("deletes the file when the last phone is revoked", async () => {
+  it("keeps only a revoke record, never the keys, until the relay confirms", async () => {
     const { file, io } = memoryIo();
     const store = createPairingStore({ io, cipher: cipher() });
-    await store.add(record("a"));
+    await store.add(record("a", { pairKey: "SECRET-KEY", dsk: "SECRET-DSK" }));
     expect(await store.remove("a")).toBe(true);
+    expect(store.get("a")).toBeNull();
+    expect(store.revoking()).toEqual([
+      { pairingId: "a", relayUrl: "https://relay.example", desktopToken: "tok" },
+    ]);
+    expect(file.text).not.toBeNull();
+    expect(Buffer.from(JSON.parse(file.text!).data, "base64").toString()).not.toContain("SECRET");
+    // It survives a restart, so a revoke the relay never heard is retried.
+    const restarted = createPairingStore({ io, cipher: cipher() });
+    await restarted.load();
+    expect(restarted.revoking()).toHaveLength(1);
+    await restarted.finishRevoke("a");
     expect(file.text).toBeNull();
+  });
+
+  it("reads a file written before revokes were durable", async () => {
+    const { io } = memoryIo();
+    const legacy = Buffer.from(`enc:${JSON.stringify([record("old")])}`).toString("base64");
+    const store = createPairingStore({
+      io: { ...io, read: async () => JSON.stringify({ v: 1, data: legacy }) },
+      cipher: cipher(),
+    });
+    expect(await store.load()).toBe("ok");
+    expect(store.get("old")?.pairingId).toBe("old");
+  });
+
+  it("treats Linux's basic_text backend as no encryption at all", () => {
+    const base = cipher();
+    expect(guardedCipher(base, "linux", () => "basic_text").isEncryptionAvailable()).toBe(false);
+    expect(guardedCipher(base, "linux", () => "gnome_libsecret").isEncryptionAvailable()).toBe(
+      true,
+    );
+    expect(guardedCipher(base, "darwin", () => "basic_text").isEncryptionAvailable()).toBe(true);
+    expect(guardedCipher(cipher(false), "linux", () => null).isEncryptionAvailable()).toBe(false);
   });
 
   it("persists lastSeenAt at most once a minute", async () => {

@@ -255,14 +255,15 @@ test("a frame exactly at the limit still goes through", async () => {
 
 test("a flood is closed as rate-limited after the burst allowance", async () => {
   const { desktop, phone } = await pairedBoth();
-  for (let i = 0; i < 600; i += 1) desktop.sendBinary(new Uint8Array([3, i % 256]));
+  // RELAY_RATE in mobile/protocol/src/limits.ts allows 1500 messages per 10 s.
+  for (let i = 0; i < 1700; i += 1) desktop.sendBinary(new Uint8Array([3, i % 256]));
   let received = 0;
   for (;;) {
     const item = await phone.next(3000).catch(() => null);
     if (item === null) break;
     received += 1;
   }
-  assert.ok(received >= 395 && received <= 430, `forwarded ${received}`);
+  assert.ok(received >= 1495 && received <= 1540, `forwarded ${received}`);
   const error = await desktop.nextText();
   assert.deepEqual(error, { t: "error", code: "rate-limited" });
   assert.equal(await desktop.closed, 4429);

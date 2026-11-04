@@ -25,8 +25,12 @@ import type { StreamHub, StreamSink } from "./phone-streams";
 import type { TreeHub } from "./phone-tree";
 import { summarizeUsage } from "./phone-usage";
 
-/** A body longer than this is chunked instead of inlined; leaves room for the envelope. */
-export const INLINE_BODY_CHARS = 40_000;
+/**
+ * A body whose JSON-encoded UTF-8 size is over this is chunked instead of inlined. Counted in
+ * bytes, not characters: 40 000 CJK characters are 120 KB and would not fit one message. Leaves
+ * 32 KiB of the 96 KiB message cap for the envelope.
+ */
+export const INLINE_BODY_BYTES = 64 * 1024;
 
 export interface ExecutorSession {
   /** Identifies the session in the stream hub; unique per transport. */
@@ -64,7 +68,8 @@ export interface PhoneExecutor {
 export function createPhoneExecutor(deps: PhoneExecutorDeps): PhoneExecutor {
   const now = deps.now ?? Date.now;
   const newId = deps.newId ?? (() => randomUUID().replace(/-/g, ""));
-  const treeSubscriptions = new Map<string, () => void>();
+  /** `off` is null while the first snapshot is still being taken. */
+  const treeSubscriptions = new Map<string, { off: (() => void) | null }>();
 
   /** `text` inline when small, else a `{ chunked }` result plus the chunks that follow. */
   function bodyOf(
@@ -72,13 +77,15 @@ export function createPhoneExecutor(deps: PhoneExecutorDeps): PhoneExecutor {
     text: string,
     extra: Record<string, boolean> = {},
   ): { r: Record<string, unknown>; chunks: ChunkEvent[] } {
-    if (text.length <= INLINE_BODY_CHARS) return { r: { [key]: text, ...extra }, chunks: [] };
+    if (Buffer.byteLength(JSON.stringify(text), "utf8") <= INLINE_BODY_BYTES) {
+      return { r: { [key]: text, ...extra }, chunks: [] };
+    }
     const id = newId();
     return { r: { chunked: id, ...extra }, chunks: splitChunks(id, text) };
   }
 
   function dropTreeSubscription(sessionId: string): void {
-    treeSubscriptions.get(sessionId)?.();
+    treeSubscriptions.get(sessionId)?.off?.();
     treeSubscriptions.delete(sessionId);
   }
 
@@ -89,8 +96,12 @@ export function createPhoneExecutor(deps: PhoneExecutorDeps): PhoneExecutor {
     switch (request.m) {
       case "tree.subscribe": {
         dropTreeSubscription(session.id);
+        // Registered before the await so a close during it finds and cancels this subscription.
+        const entry: { off: (() => void) | null } = { off: null };
+        treeSubscriptions.set(session.id, entry);
         const tree = await deps.tree.snapshot();
-        treeSubscriptions.set(session.id, deps.tree.subscribe(session.pushTree, tree));
+        if (treeSubscriptions.get(session.id) !== entry) return { r: { tree } };
+        entry.off = deps.tree.subscribe(session.pushTree, tree);
         return { r: { tree } };
       }
       case "tree.unsubscribe":

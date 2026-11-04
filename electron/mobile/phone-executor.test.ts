@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Request } from "../../mobile/protocol/src/messages";
 import { joinChunks } from "../../mobile/protocol/src/chunk";
 import { EMPTY_COUNTERS } from "../../src/lib/usage-snapshot";
-import { createPhoneExecutor, INLINE_BODY_CHARS, type ExecutorSession } from "./phone-executor";
+import { createPhoneExecutor, INLINE_BODY_BYTES, type ExecutorSession } from "./phone-executor";
 import { PhoneError } from "./phone-error";
 
 const session: ExecutorSession = {
@@ -110,7 +110,7 @@ describe("phone executor", () => {
 
   it("chunks a large body, response first, and the chunks join back to the text", async () => {
     const { executor, deps } = harness();
-    const big = "x".repeat(INLINE_BODY_CHARS * 3);
+    const big = "x".repeat(INLINE_BODY_BYTES * 3);
     deps.files.read.mockResolvedValueOnce({ text: big, truncated: true, binary: false });
     const outcome = await executor.handle(
       session,
@@ -132,6 +132,37 @@ describe("phone executor", () => {
     executor.closeSession("s1");
     expect(unsubscribeTree).toHaveBeenCalledTimes(2);
     expect(deps.streams.closeOwner).toHaveBeenCalledWith("s1");
+  });
+
+  it("does not leave a tree subscription behind when the session closes during the snapshot", async () => {
+    const { executor, deps } = harness();
+    let release: (tree: { projects: never[] }) => void = () => {};
+    deps.tree.snapshot.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+    const pending = executor.handle(session, request("tree.subscribe", {}));
+    executor.closeSession("s1");
+    release({ projects: [] });
+    await pending;
+    expect(deps.tree.subscribe).not.toHaveBeenCalled();
+  });
+
+  it("inlines or chunks by UTF-8 size, so a long CJK file is chunked, not refused", async () => {
+    const { executor, deps } = harness();
+    const cjk = "字".repeat(30_000); // 90 KB in UTF-8, 30 000 characters
+    deps.files.read.mockResolvedValueOnce({ text: cjk, truncated: false, binary: false });
+    const outcome = await executor.handle(
+      session,
+      request("files.read", { root: "/p", path: "a" }),
+    );
+    expect(outcome.response).toMatchObject({ ok: true, r: { chunked: "chunk1" } });
+    const joined = joinChunks(outcome.chunks);
+    expect(joined.ok && joined.text).toBe(cjk);
+    deps.files.read.mockResolvedValueOnce({
+      text: "字".repeat(10_000),
+      truncated: false,
+      binary: false,
+    });
+    const small = await executor.handle(session, request("files.read", { root: "/p", path: "a" }));
+    expect(small.response).toMatchObject({ ok: true, r: { text: "字".repeat(10_000) } });
   });
 
   it("counts sends and opens, nothing else", async () => {

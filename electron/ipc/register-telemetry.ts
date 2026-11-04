@@ -12,6 +12,7 @@
  */
 import crypto from "node:crypto";
 import { app, ipcMain, type BrowserWindow } from "electron";
+import { isReleaseSwitchEnabled, resolveReleaseSwitches } from "../../src/lib/release-switches";
 import type { StoreRegistry } from "../store";
 import { CHANNELS, EVENTS } from "./channels";
 import {
@@ -88,6 +89,11 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
         version: app.getVersion(),
         platform: process.platform,
         arch: process.arch,
+        // The `mobile` block is sent only while the companion is on (older backends reject it).
+        mobileEnabled: isReleaseSwitchEnabled(
+          "mobileCompanion",
+          resolveReleaseSwitches(!app.isPackaged),
+        ),
         store: {
           unreadable: () => store.loadState.state === "unreadable",
           read: () => store.get(STATE_KEY),

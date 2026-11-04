@@ -123,13 +123,18 @@ interface Link {
 
 const HELLO_FRAME = 0x01;
 const PAIR_HELLO_FRAME = 0x10;
-/** Lets the relay deliver `revoked` to the phone before the desktop's socket goes away. */
-const REVOKE_LINGER_MS = 1_000;
 
 export function createMobileService(deps: MobileServiceDeps): MobileService {
   const now = deps.now ?? Date.now;
   const usage = deps.onUsage ?? (() => {});
   const links = new Map<string, Link>();
+  /**
+   * Pairings whose keys are gone but whose relay room is not yet known to be deleted. Their
+   * socket stays up only to deliver `revoke`; it carries no session and no push.
+   */
+  const revoking = new Set<string>();
+  /** Every live session on any transport, with the pairing its transport is bound to. */
+  const sessions = new Set<{ pairingId: string; session: PhoneSession }>();
   const hostName = () => desktopName(hostname());
   let disposed = false;
 
@@ -207,22 +212,37 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
       syncLan();
     },
     onRevoked: (record) => {
+      // Access ends now: every session of this pairing, on any transport, closes with its keys.
+      closeSessionsOf(record.pairingId);
+      revoking.add(record.pairingId);
       const link = links.get(record.pairingId);
-      if (link !== undefined) {
-        link.relay.sendControl({ t: "revoke" });
-        link.session?.close("revoked");
-        links.delete(record.pairingId);
-        const timer = setTimeout(() => link.relay.close(), REVOKE_LINGER_MS);
-        timer.unref?.();
-      }
-      for (const entry of [...lanSessions.values()]) {
-        if (entry.pairingId === record.pairingId) entry.session.close("revoked");
-      }
+      if (link === undefined) connect(record.pairingId, record.relayUrl, record.desktopToken);
+      // A socket that is already up has said `ready`; otherwise `onReady` sends it. The record
+      // stays in the store until the relay answers, so a dropped socket retries.
+      else if (link.relay.connected) link.relay.sendControl({ t: "revoke" });
       syncLan();
       keepAwake.evaluate();
       deps.broadcastChanged();
     },
   });
+
+  function closeSessionsOf(pairingId: string): void {
+    for (const entry of [...sessions]) {
+      if (entry.pairingId === pairingId) entry.session.close("revoked");
+    }
+    for (const entry of [...lanSessions.values()]) {
+      if (entry.pairingId === pairingId) entry.session.close("revoked");
+    }
+  }
+
+  /** The relay confirmed the room is gone (or never had it): the record has done its job. */
+  function finishRevoke(pairingId: string): void {
+    revoking.delete(pairingId);
+    const link = links.get(pairingId);
+    link?.relay.close();
+    links.delete(pairingId);
+    void deps.store.finishRevoke(pairingId);
+  }
 
   function lookup(pairingId: string): Uint8Array | null {
     const record = deps.store.get(pairingId);
@@ -243,32 +263,65 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
       role: "desktop",
       token,
       ...(deps.createSocket === undefined ? {} : { createSocket: deps.createSocket }),
-      onBinary: (frame) => void onFrame(pairingId, link, frame),
+      onBinary: (frame) => {
+        if (!revoking.has(pairingId)) void onFrame(pairingId, link, frame);
+      },
       onReady: ({ peerOnline }) => {
+        if (revoking.has(pairingId)) {
+          relay.sendControl({ t: "revoke" });
+          return;
+        }
         link.online = peerOnline;
+        // A phone that is not there has no one to hear a stream: end its subscriptions now.
+        if (!peerOnline) dropSession(link);
         deps.broadcastChanged();
       },
       onPeer: ({ online }) => {
+        if (revoking.has(pairingId)) return;
         link.online = online;
         if (online) deps.store.touch(pairingId, now());
+        else dropSession(link);
         deps.broadcastChanged();
       },
       onConnected: (up) => {
-        if (!up) link.online = false;
+        if (!up) {
+          link.online = false;
+          dropSession(link);
+        }
         deps.broadcastChanged();
       },
       onStop: (reason) => {
-        if (reason === "revoked" && deps.store.get(pairingId) !== null) {
-          // The phone revoked from its side: forget it here too.
-          void pairing.revoke(pairingId);
+        if (revoking.has(pairingId)) {
+          // The relay only stops for good when the room is gone (`revoked`) or was never ours
+          // (`unknown`, `unauthorized`): either way the record has done its job.
+          finishRevoke(pairingId);
+          return;
         }
+        // Sessions end before the link is dropped, so nothing keeps running on a dead pairing.
+        dropSession(link);
         links.delete(pairingId);
+        if (reason === "revoked" && deps.store.get(pairingId) !== null) {
+          // The phone revoked from its side: the relay room is already gone, so forget it here
+          // without a revoke of our own.
+          void (async () => {
+            closeSessionsOf(pairingId);
+            if (await deps.store.remove(pairingId)) await deps.store.finishRevoke(pairingId);
+            syncLan();
+            keepAwake.evaluate();
+            deps.broadcastChanged();
+          })();
+        }
         deps.broadcastChanged();
       },
     });
     (link as { relay: RelayConnection }).relay = relay;
     links.set(pairingId, link);
     relay.connect();
+  }
+
+  function dropSession(link: Link): void {
+    link.session?.close("peer-offline");
+    link.session = null;
   }
 
   async function onFrame(pairingId: string, link: Link, frame: Uint8Array): Promise<void> {
@@ -287,9 +340,11 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
 
   /** The desktop end of one phone on one transport; the relay and the LAN build it the same way. */
   function buildSession(pairingId: string, send: (frame: Uint8Array) => void): PhoneSession {
-    return createPhoneSession({
+    const session: PhoneSession = createPhoneSession({
       crypto: deps.crypto,
-      lookup,
+      // A transport belongs to one pairing: a hello naming another one (a revoked phone's keys
+      // replayed over this socket) finds no key and the channel closes before it derives any.
+      lookup: (id) => (id === pairingId ? lookup(id) : null),
       send,
       executor,
       hello: () => ({
@@ -308,7 +363,13 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
         usage("session");
         deps.broadcastChanged();
       },
+      onClosed: () => {
+        sessions.delete(entry);
+      },
     });
+    const entry = { pairingId, session };
+    sessions.add(entry);
+    return session;
   }
 
   // ------------------------------------------------------------------ LAN (MOB9)
@@ -366,7 +427,7 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
       return;
     }
     for (const [pairingId, link] of [...links]) {
-      if (deps.store.get(pairingId) === null) {
+      if (deps.store.get(pairingId) === null && !revoking.has(pairingId)) {
         link.relay.close();
         links.delete(pairingId);
       }
@@ -414,6 +475,11 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
     async start() {
       await deps.store.load();
       for (const record of deps.store.list()) connectRecord(record);
+      // A revoke the relay never confirmed (the app quit or the network was down) is retried.
+      for (const record of deps.store.revoking()) {
+        revoking.add(record.pairingId);
+        connect(record.pairingId, record.relayUrl, record.desktopToken);
+      }
       syncLan();
       keepAwake.evaluate();
     },

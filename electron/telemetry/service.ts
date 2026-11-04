@@ -70,6 +70,12 @@ export interface TelemetryDeps {
    * this is what keeps it covered while it is unreachable in shipped builds.
    */
   mandatory?: boolean;
+  /**
+   * Whether the `mobileCompanion` switch is on. The `mobile` block is sent only then: a backend
+   * that predates the companion rejects an unknown key with a terminal 400, which would lose a
+   * whole day of analytics for every user. Defaults to off.
+   */
+  mobileEnabled?: boolean;
 }
 
 export interface TelemetryService {
@@ -354,7 +360,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
       maxPanes: buffer.maxPanes,
       restoredSessions: buffer.restoredSessions,
       updates,
-      mobile,
+      ...(deps.mobileEnabled === true ? { mobile } : {}),
     };
   }
 

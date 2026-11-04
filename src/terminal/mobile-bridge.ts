@@ -53,7 +53,7 @@ export interface MobileBridgeDeps {
   readonly workspacePaths: () => readonly string[];
   readonly scanRepository: (path: string) => Promise<RepositoryScan>;
   readonly workspaceLabel: (path: string) => string;
-  /** The agents a phone may open: enabled, installed, and with an id the protocol accepts. */
+  /** The agents a phone may open: enabled, installed, and with an id the protocol accepts (custom agents included). */
   readonly agentChoices: () => Promise<readonly { id: string; label: string }[]>;
   readonly agentLabel: (agentId: string) => string | null;
   /** Plain rows of the pane's screen (ANSI stripped), "" for a pane not here. */
@@ -154,16 +154,26 @@ export function createMobileBridge(deps: MobileBridgeDeps): MobileBridge {
         end(stream, "moved");
         continue;
       }
-      const size = deps.paneSize(stream.paneId);
-      if (
-        stream.ready &&
-        size !== null &&
-        (stream.size === null || size.cols !== stream.size.cols || size.rows !== stream.size.rows)
-      ) {
-        flush(stream);
-        stream.size = size;
-        piece(stream, "resize", "", size);
-      }
+      syncSize(stream);
+    }
+  }
+
+  /**
+   * Sends a `resize` when the pane's size is no longer the one the phone was told, after anything
+   * already pending (that output was drawn at the old size). Also called before each new output
+   * chunk, because an app redraws for the new size right after a resize: noticing it only on the
+   * 2 s `watch` would send that redraw first and the phone would draw it at the old column count.
+   */
+  function syncSize(stream: Stream): void {
+    if (!stream.ready) return;
+    const size = deps.paneSize(stream.paneId);
+    if (
+      size !== null &&
+      (stream.size === null || size.cols !== stream.size.cols || size.rows !== stream.size.rows)
+    ) {
+      flush(stream);
+      stream.size = size;
+      piece(stream, "resize", "", size);
     }
   }
 
@@ -176,6 +186,7 @@ export function createMobileBridge(deps: MobileBridgeDeps): MobileBridge {
           stream.held.push(data);
           continue;
         }
+        syncSize(stream);
         stream.pending += data;
         if (stream.pending.length >= FLUSH_CHARS) flush(stream);
         else stream.timer ??= setTimeout(() => flush(stream), FLUSH_MS);

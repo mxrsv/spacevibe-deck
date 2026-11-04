@@ -20,7 +20,7 @@ import type { PaneMirror } from "../control/pane-mirror";
 import type { WindowCoordinator } from "../coordinator";
 import { writeFileAtomically } from "../fs/write";
 import { sharedUsageService } from "../ipc/register-services";
-import { createPairingStore } from "./pairing-store";
+import { createPairingStore, guardedCipher } from "./pairing-store";
 import { resolveRelayUrl } from "./relay-config";
 import { createMobileService, type MobileService, type MobileUsageKind } from "./service";
 
@@ -60,7 +60,10 @@ export function createMobileForMain(deps: {
     crypto: createNodeCrypto(),
     store: createPairingStore({
       io: fileIo(path.join(app.getPath("userData"), PAIRINGS_FILE)),
-      cipher: safeStorage,
+      cipher: guardedCipher(safeStorage, process.platform, () =>
+        // Linux only; absent on other platforms and older Electron.
+        (safeStorage as { getSelectedStorageBackend?: () => string }).getSelectedStorageBackend?.(),
+      ),
       report: (message) => console.warn(message),
     }),
     relayUrl: () => resolveRelayUrl(app.isPackaged),

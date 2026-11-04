@@ -43,6 +43,36 @@ function setup(answers: Record<string, unknown>) {
   return { hub: createTreeHub({ broker, mirror }), mirror, sent };
 }
 
+describe("tree hub with custom agents", () => {
+  it("keeps a window's tree and known roots when a pane's agent label has a space", async () => {
+    const t = setup({
+      a: {
+        projects: [
+          {
+            name: "deck",
+            path: "/w/deck",
+            checkouts: [
+              {
+                name: "main",
+                path: "/w/deck",
+                branch: "main",
+                panes: [
+                  { ...pane(1), agent: "My Aider", agentLabel: "My Aider" },
+                  { ...pane(2), agent: "custom:x" },
+                  { ...pane(3), phase: "nonsense" },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const snapshot = await t.hub.snapshot();
+    expect(snapshot.projects[0]?.checkouts[0]?.panes.map((p) => p.paneId)).toEqual([1, 2]);
+    expect(await t.hub.isKnownRoot("/w/deck")).toBe(true);
+  });
+});
+
 describe("query broker", () => {
   it("accepts an answer only from a window it asked, for the kind it asked, once", async () => {
     const broker = createQueryBroker({

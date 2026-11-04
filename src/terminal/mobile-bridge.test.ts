@@ -117,6 +117,22 @@ describe("mobile bridge", () => {
     expect(t.sent.at(-1)).toMatchObject({ kind: "end", data: "moved" });
   });
 
+  it("sends a resize before the redraw that follows it, without waiting for the watch", async () => {
+    const t = setup();
+    t.bridge.handleSubscribe({ subscriptionId: "s1", paneId: 7 });
+    t.takeSnapshot("S");
+    await Promise.resolve();
+    t.bridge.noteOutput(7, "drawn at 80 columns");
+    t.resize(100, 30);
+    t.bridge.noteOutput(7, "redraw at 100 columns");
+    vi.advanceTimersByTime(FLUSH_MS);
+    expect(t.sent.slice(1).map((p) => [p.kind, p.data, p.cols])).toEqual([
+      ["data", "drawn at 80 columns", 80],
+      ["resize", "", 100],
+      ["data", "redraw at 100 columns", 100],
+    ]);
+  });
+
   it("stops quietly on unsubscribe", async () => {
     const t = setup();
     t.bridge.handleSubscribe({ subscriptionId: "s1", paneId: 7 });

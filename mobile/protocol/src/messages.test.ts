@@ -109,7 +109,7 @@ describe("parseRequest", () => {
     expect(bad("pane.subscribe", { paneId: -1 })).toBeNull();
     expect(bad("pane.subscribe", { paneId: "1" })).toBeNull();
     expect(bad("pane.unsubscribe", { sub: "" })).toBeNull();
-    expect(bad("pane.open", { ...VALID["pane.open"], agent: "claude; rm -rf" })).toBeNull();
+    expect(bad("pane.open", { ...VALID["pane.open"], agent: "claude\u0007" })).toBeNull();
     expect(bad("pane.open", { ...VALID["pane.open"], prompt: 5 })).toBeNull();
     expect(
       bad("pane.open", { ...VALID["pane.open"], prompt: "x".repeat(MAX_SEND_CHARS + 1) }),
@@ -228,6 +228,7 @@ describe("parseEvent", () => {
     });
     expect(parseEvent({ ev: "term.resize", p: { sub: "s", cols: 100, rows: 30 } })).not.toBeNull();
     expect(parseEvent({ ev: "term.end", p: { sub: "s", reason: "moved" } })).not.toBeNull();
+    expect(parseEvent({ ev: "term.end", p: { sub: "s", reason: "overflow" } })).not.toBeNull();
     expect(parseEvent({ ev: "term.end", p: { sub: "s", reason: "bored" } })).toBeNull();
     expect(parseEvent({ ev: "term.resize", p: { sub: "s", cols: 0, rows: 30 } })).toBeNull();
     expect(parseEvent({ ev: "term.snapshot", p: { ...snapshot, seq: -1 } })).toBeNull();
@@ -338,15 +339,16 @@ describe("tree", () => {
       { attention: "panic" },
       { paneId: -1 },
       { paneId: "1" },
-      { agent: "a b" },
+      { agent: "a\u0007b" },
       { attentionSince: "now" },
       { lastOutputAt: -5 },
       { title: 5 },
     ]) {
-      expect(parseTree(withPane(override))).toBeNull();
+      // One bad pane is dropped, not the whole tree.
+      expect(parseTree(withPane(override))?.projects[0]?.checkouts[0]?.panes).toEqual([]);
     }
     expect(parseTree({ projects: "none" })).toBeNull();
-    expect(parseTree({ projects: [null] })).toBeNull();
+    expect(parseTree({ projects: [null] })).toEqual({ projects: [] });
     expect(parseTree(null)).toBeNull();
   });
 

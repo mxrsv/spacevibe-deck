@@ -226,7 +226,8 @@ export function createRelayConnection(options: RelayConnectionOptions): RelayCon
       }
     },
     sendControl(message) {
-      if (socket === null) return false;
+      // Before `ready` the relay has not authenticated this socket and rejects anything else.
+      if (!ready || socket === null) return false;
       try {
         socket.send(JSON.stringify(message));
         return true;

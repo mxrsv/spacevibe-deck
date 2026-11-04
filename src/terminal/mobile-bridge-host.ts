@@ -23,10 +23,8 @@ import { repositoryScans } from "../repositories/repositories-store";
 import { settings } from "../settings/settings-store";
 import { ensureAgentsDetected } from "./agent-detection-store";
 import { createMobileBridge, type MobileBridge, type MobileBridgeDeps } from "./mobile-bridge";
+import { phoneAgentChoices } from "./mobile-tree";
 import { activeTabIndex, tabViews } from "./tabs-store";
-
-/** The agent ids the phone protocol can name; a custom agent's `custom:` id cannot be sent. */
-const PHONE_AGENT_ID = /^[A-Za-z0-9._-]{1,64}$/;
 
 /** What only the tab manager knows. */
 export type MobilePaneAccess = Pick<
@@ -59,9 +57,7 @@ export function createHostedMobileBridge(panes: MobilePaneAccess): MobileBridge 
     agentChoices: async () => {
       const { customAgents, disabledAgents } = settings.value;
       const detected = await ensureAgentsDetected(probeNames(customAgents));
-      return agentOptions(detected, customAgents, disabledAgents)
-        .filter((option) => !option.missing && PHONE_AGENT_ID.test(option.id))
-        .map((option) => ({ id: option.id, label: option.label }));
+      return phoneAgentChoices(agentOptions(detected, customAgents, disabledAgents));
     },
     agentLabel: (agentId) => agentLabelFor(agentId, settings.value.customAgents),
     reportQuery: reportMobileQuery,

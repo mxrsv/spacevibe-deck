@@ -4,7 +4,7 @@
  * buggy desktop cannot make the phone build an unbounded list.
  */
 import { displayText } from "./display-text";
-import { isRecord, isSafeNonNegative, oneOf, parseList } from "./validate";
+import { isRecord, isSafeNonNegative, oneOf, parseListLenient } from "./validate";
 
 export const PANE_PHASES = ["unknown", "idle", "working", "exited"] as const;
 export const PANE_ATTENTIONS = ["none", "completed", "requested", "warning", "error"] as const;
@@ -50,7 +50,23 @@ const PATH_MAX = 1024;
 const LINE_MAX = 200;
 /** Longer raw strings are refused outright instead of being scanned and cut. */
 const RAW_TEXT_MAX = 64 * 1024;
-const AGENT_ID = /^[A-Za-z0-9._-]{1,64}$/;
+
+export const AGENT_ID_MAX = 64;
+
+/**
+ * An agent id is the agent's display label for built-ins ("Claude Code"), or `custom:<slug>` /
+ * the user's own label for custom agents, so it may hold spaces and any letters. It is accepted
+ * when it survives `displayText` unchanged: non-empty, at most 64 characters, no control, bidi or
+ * zero-width characters, no edge whitespace.
+ */
+export function isAgentId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= RAW_TEXT_MAX &&
+    displayText(value, AGENT_ID_MAX) === value
+  );
+}
 
 function text(value: unknown, max: number): string | null {
   return typeof value === "string" && value.length <= RAW_TEXT_MAX ? displayText(value, max) : null;
@@ -73,12 +89,7 @@ export function parseTreePane(value: unknown): TreePane | null {
   const agentLabel = nullableText(value.agentLabel, 64);
   const attentionSince = nullableTime(value.attentionSince);
   const lastOutputAt = nullableTime(value.lastOutputAt);
-  const agent =
-    value.agent === null
-      ? null
-      : typeof value.agent === "string" && AGENT_ID.test(value.agent)
-        ? value.agent
-        : undefined;
+  const agent = value.agent === null ? null : isAgentId(value.agent) ? value.agent : undefined;
   if (
     title === null ||
     lastLine === null ||
@@ -109,7 +120,7 @@ function parseCheckout(value: unknown): TreeCheckout | null {
   const name = text(value.name, NAME_MAX);
   const path = text(value.path, PATH_MAX);
   const branch = nullableText(value.branch, NAME_MAX);
-  const panes = parseList(value.panes, TREE_LIMITS.panes, parseTreePane);
+  const panes = parseListLenient(value.panes, TREE_LIMITS.panes, parseTreePane);
   return name === null || path === null || branch === undefined || panes === null
     ? null
     : { name, path, branch, panes };
@@ -119,13 +130,13 @@ function parseProject(value: unknown): TreeProject | null {
   if (!isRecord(value)) return null;
   const name = text(value.name, NAME_MAX);
   const path = text(value.path, PATH_MAX);
-  const checkouts = parseList(value.checkouts, TREE_LIMITS.checkouts, parseCheckout);
+  const checkouts = parseListLenient(value.checkouts, TREE_LIMITS.checkouts, parseCheckout);
   return name === null || path === null || checkouts === null ? null : { name, path, checkouts };
 }
 
 export function parseTree(value: unknown): Tree | null {
   if (!isRecord(value)) return null;
-  const projects = parseList(value.projects, TREE_LIMITS.projects, parseProject);
+  const projects = parseListLenient(value.projects, TREE_LIMITS.projects, parseProject);
   return projects === null ? null : { projects };
 }
 
@@ -143,17 +154,17 @@ export function parseProjectChoice(value: unknown): ProjectChoice | null {
   if (!isRecord(value)) return null;
   const name = text(value.name, NAME_MAX);
   const path = text(value.path, PATH_MAX);
-  const checkouts = parseList(value.checkouts, TREE_LIMITS.checkouts, parseChoiceCheckout);
+  const checkouts = parseListLenient(value.checkouts, TREE_LIMITS.checkouts, parseChoiceCheckout);
   return name === null || path === null || checkouts === null ? null : { name, path, checkouts };
 }
 
 export function parseProjectChoices(value: unknown): ProjectChoice[] | null {
-  return parseList(value, TREE_LIMITS.choices, parseProjectChoice);
+  return parseListLenient(value, TREE_LIMITS.choices, parseProjectChoice);
 }
 
 export function parseAgentChoices(value: unknown): { id: string; label: string }[] | null {
-  return parseList(value, 64, (item) => {
-    if (!isRecord(item) || typeof item.id !== "string" || !AGENT_ID.test(item.id)) return null;
+  return parseListLenient(value, 64, (item) => {
+    if (!isRecord(item) || !isAgentId(item.id)) return null;
     const label = text(item.label, 64);
     return label === null ? null : { id: item.id, label };
   });

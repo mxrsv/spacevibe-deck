@@ -56,7 +56,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 function harness(
   initial?: unknown,
-  options?: { unreadable?: boolean; mandatory?: boolean },
+  options?: { unreadable?: boolean; mandatory?: boolean; mobile?: boolean },
 ): Harness {
   let nowMs = Date.UTC(2026, 7, 22, 12, 0, 0);
   let uuidCounter = 0;
@@ -70,6 +70,7 @@ function harness(
   let persisted: unknown = initial;
   const deps: TelemetryDeps = {
     mandatory: options?.mandatory ?? false,
+    mobileEnabled: options?.mobile ?? true,
     now: () => nowMs,
     localDay: (ms) => new Date(ms).toISOString().slice(0, 10),
     randomUUID: () => `uuid-${(uuidCounter += 1)}`,
@@ -359,6 +360,16 @@ describe("counting and the cumulative merge", () => {
     });
   });
 
+  it("sends no mobile key at all while the mobileCompanion switch is off", async () => {
+    // A backend that predates the companion rejects unknown keys with a terminal 400.
+    const h = harness(ENABLED_STATE, { mobile: false });
+    h.service.countMobile("phoneSends");
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    expect(h.posts).toHaveLength(1);
+    expect("mobile" in h.posts[0]).toBe(false);
+  });
+
   it("carries mobile counts and the paired-phone gauge into the next snapshot", async () => {
     const h = harness(ENABLED_STATE);
     h.service.noteWindowReady();
@@ -405,7 +416,7 @@ describe("counting and the cumulative merge", () => {
     h.tick();
     await flushMicrotasks();
     const [first, second] = [h.posts[0], h.posts[h.posts.length - 1]];
-    expect(first.mobile.phoneSessions).toBe(1);
+    expect(first.mobile!.phoneSessions).toBe(1);
     expect(second.day).not.toBe(first.day);
     expect(second.mobile).toEqual({
       pairedPhones: 1,
@@ -424,7 +435,7 @@ describe("counting and the cumulative merge", () => {
     const restarted = harness(JSON.parse(JSON.stringify(saved)));
     restarted.service.noteWindowReady();
     return flushMicrotasks().then(() => {
-      expect(restarted.posts[0].mobile.phoneSends).toBe(1);
+      expect(restarted.posts[0].mobile!.phoneSends).toBe(1);
     });
   });
 
@@ -435,7 +446,7 @@ describe("counting and the cumulative merge", () => {
     h.service.setPairedPhones(Number.NaN);
     h.service.noteWindowReady();
     await flushMicrotasks();
-    expect(h.posts[0].mobile.pairedPhones).toBe(0);
+    expect(h.posts[0].mobile!.pairedPhones).toBe(0);
     const off = harness({ ...ENABLED_STATE, consent: "declined" });
     off.service.countMobile("send");
     expect(off.writes).toEqual([]);
@@ -447,7 +458,7 @@ describe("counting and the cumulative merge", () => {
     h.service.count("update", "phoneSends", 5);
     h.service.noteWindowReady();
     await flushMicrotasks();
-    expect(h.posts[0].mobile.phoneSends).toBe(0);
+    expect(h.posts[0].mobile!.phoneSends).toBe(0);
   });
 
   it("the mobile fields carry only whole numbers, no identifier", async () => {

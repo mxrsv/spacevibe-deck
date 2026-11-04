@@ -16,8 +16,12 @@ export const MAX_MESSAGE_BYTES = 96 * 1024;
 /** Size of one chunk's `data` before encoding; leaves room for JSON and base64 inside a message. */
 export const CHUNK_BYTES = 48 * 1024;
 
-/** Messages one socket may send in a window, as a token bucket. */
-export const RELAY_RATE = { messages: 400, perMs: 10_000 } as const;
+/**
+ * Messages one socket may send in a window, as a token bucket. The desktop paces each terminal
+ * stream to one message per 50 ms, so this leaves room for several busy panes at once plus the
+ * tree and replies; a socket over it is closed, which drops every session on it.
+ */
+export const RELAY_RATE = { messages: 1500, perMs: 10_000 } as const;
 /** Pushes one pairing's desktop may ask for in a window. */
 export const RELAY_PUSH_RATE = { messages: 30, perMs: 60_000 } as const;
 /** Live sockets per role per pairing; a reconnect may overlap the socket it replaces. */

@@ -145,3 +145,25 @@ export function buildProjectChoices(
   }
   return [...byKey.values()];
 }
+
+/**
+ * The agents a phone may open: installed and enabled, with an id the protocol accepts. An id is the
+ * agent's label (built-ins, custom agents) or `custom:<slug>`, so spaces are fine; what the phone
+ * refuses is an empty id, one over 64 characters, edge whitespace or a control character.
+ */
+export function isPhoneAgentId(id: string): boolean {
+  if (id.length === 0 || id.length > 64 || id !== id.trim()) return false;
+  for (const char of id) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return false;
+  }
+  return true;
+}
+
+export function phoneAgentChoices(
+  options: readonly { readonly id: string; readonly label: string; readonly missing: boolean }[],
+): { id: string; label: string }[] {
+  return options
+    .filter((option) => !option.missing && isPhoneAgentId(option.id))
+    .map((option) => ({ id: option.id, label: option.label }));
+}

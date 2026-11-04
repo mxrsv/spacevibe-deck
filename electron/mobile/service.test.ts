@@ -45,8 +45,17 @@ class FakeSocket implements RelaySocket {
   }
 }
 
-function setup(lan?: NonNullable<Parameters<typeof createMobileService>[0]["lan"]>) {
-  const file = { text: null as string | null };
+interface SetupOptions {
+  readonly lan?: NonNullable<Parameters<typeof createMobileService>[0]["lan"]>;
+  readonly labels?: readonly string[];
+  /** Reuse a previous run's file, to model a restart. */
+  readonly file?: { text: string | null };
+}
+
+function setup(options: SetupOptions = {}) {
+  const { lan } = options;
+  const queries: string[] = [];
+  const file = options.file ?? { text: null as string | null };
   const io: SessionFileIo = {
     read: async () => file.text,
     write: async (text) => {
@@ -77,8 +86,16 @@ function setup(lan?: NonNullable<Parameters<typeof createMobileService>[0]["lan"
     windows: {
       ownerOf: () => null,
       deliver: () => {},
-      emitTo: () => true,
-      labels: () => [],
+      emitTo: (label, event, payload) => {
+        if (event === "mobile:query-request") {
+          const { requestId, kind } = payload as { requestId: string; kind: "tree" };
+          queries.push(kind);
+          // The renderer answers at once, so a tree poll completes without waiting out a timeout.
+          queueMicrotask(() => service.settleQuery(label, requestId, kind, { projects: [] }));
+        }
+        return true;
+      },
+      labels: () => options.labels ?? [],
       focused: () => null,
       main: () => null,
       anyFocused: () => focus.any,
@@ -94,16 +111,16 @@ function setup(lan?: NonNullable<Parameters<typeof createMobileService>[0]["lan"
     ...(lan === undefined ? {} : { lan }),
     log: vi.fn(),
   });
-  return { service, sockets, blocker, mirror, focus, changed, file };
+  return { service, sockets, blocker, mirror, focus, changed, file, queries };
 }
 
-async function pairPhone(t: ReturnType<typeof setup>) {
-  await t.service.start();
+async function pairPhone(t: ReturnType<typeof setup>, index = 0) {
+  if (index === 0) await t.service.start();
   const started = await t.service.pairStart();
   if (started.pending === null) throw new Error("expected a pending pairing");
   const qr = parsePairingQr(started.pending.qr, Date.now());
   if (!qr.ok) throw new Error("bad qr");
-  const socket = t.sockets[0]!;
+  const socket = t.sockets[index]!;
   socket.onopen?.({});
   socket.control({ t: "ready", role: "desktop", peerOnline: true, peerLastSeen: null });
   const attempt = createPairHello(crypto, qr.value, {
@@ -192,15 +209,136 @@ describe("mobile service", () => {
     expect(JSON.stringify(pushes[0])).not.toContain("Claude needs attention");
   });
 
-  it("revoking tells the relay, closes the session and forgets the phone", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout"] });
+  it("revoking tells the relay and, once the relay answers, closes the socket and drops the record", async () => {
     const t = setup();
     const { socket } = await pairPhone(t);
     const state = await t.service.revoke(t.service.state().phones[0]!.pairingId);
     expect(state.phones).toEqual([]);
     expect(socket.controls().some((m) => m.t === "revoke")).toBe(true);
-    vi.advanceTimersByTime(1_000);
-    expect(socket.closed).toBe(true);
+    expect(socket.closed).toBe(false);
+    socket.control({ t: "revoked" });
+    socket.onclose?.({ code: 4410 });
+    await vi.waitFor(() => expect(socket.closed).toBe(true));
+    await vi.waitFor(() => expect(t.file.text).toBeNull());
+    const reopened = setup({ file: t.file });
+    await reopened.service.start();
+    expect(reopened.sockets).toHaveLength(0);
+  });
+
+  it("a revoke made while the socket is down is sent after reconnect and ready, and retried after a restart", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    const t = setup();
+    const { socket } = await pairPhone(t);
+    socket.onclose?.({ code: 1006 });
+    const id = t.service.state().phones[0]!.pairingId;
+    const state = await t.service.revoke(id);
+    // Access ends at once, even though the relay has not heard.
+    expect(state.phones).toEqual([]);
+    expect(socket.controls().some((m) => m.t === "revoke")).toBe(false);
+    vi.advanceTimersByTime(2_000);
+    const second = t.sockets[1]!;
+    second.onopen?.({});
+    // Nothing but `auth` goes out before the relay says ready.
+    expect(second.controls().map((m) => m.t)).toEqual(["auth"]);
+    second.control({ t: "ready", role: "desktop", peerOnline: false, peerLastSeen: null });
+    expect(second.controls().map((m) => m.t)).toEqual(["auth", "revoke"]);
+
+    // The app quits before the relay answers: the next start tries again.
+    const restarted = setup({ file: t.file });
+    await restarted.service.start();
+    const third = restarted.sockets[0]!;
+    third.onopen?.({});
+    third.control({ t: "ready", role: "desktop", peerOnline: false, peerLastSeen: null });
+    expect(third.controls().some((m) => m.t === "revoke")).toBe(true);
+    third.control({ t: "error", code: "unknown" });
+    third.onclose?.({ code: 4404 });
+    await vi.waitFor(() => expect(t.file.text).toBeNull());
+    const again = setup({ file: t.file });
+    await again.service.start();
+    expect(again.sockets).toHaveLength(0);
+  });
+
+  it("a hello for another pairing on this socket never opens a session, and revoking that pairing stays final", async () => {
+    const t = setup();
+    const a = await pairPhone(t);
+    const b = await pairPhone(t, 1);
+    const received: Record<string, unknown>[] = [];
+    const phoneB = createPhoneChannel({
+      crypto,
+      pairing: { pairingId: b.qr.pairingId, pairKey: b.attempt.pairKey },
+      send: (frame) => a.socket.toDesktop(frame),
+      session: { device: "iPhone", appVersion: "1" },
+    });
+    phoneB.onMessage((message) => received.push(message));
+    const before = a.socket.binaries().length;
+    phoneB.start();
+    await t.service.revoke(b.qr.pairingId);
+    phoneB.sendMessage({ id: 7, m: "tree.unsubscribe", p: {} });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // The desktop never answered B's hello with a welcome, so no key was ever derived.
+    expect(a.socket.binaries().length).toBe(before);
+    for (const frame of a.socket.binaries().slice(before)) phoneB.receive(frame);
+    expect(received.some((message) => message.id === 7)).toBe(false);
+  });
+
+  it("closes the session, and stops polling, when the relay reports the phone offline", async () => {
+    vi.useFakeTimers();
+    const t = setup({ labels: ["w1"] });
+    const { socket, qr, attempt } = await pairPhone(t);
+    const phone = createPhoneChannel({
+      crypto,
+      pairing: { pairingId: qr.pairingId, pairKey: attempt.pairKey },
+      send: (frame) => socket.toDesktop(frame),
+      session: { device: "iPhone", appVersion: "1" },
+    });
+    let consumed = 1;
+    const drain = () => {
+      const frames = socket.binaries();
+      while (consumed < frames.length) phone.receive(frames[consumed++]!);
+    };
+    phone.start();
+    drain();
+    drain();
+    phone.sendMessage({ id: 1, m: "tree.subscribe", p: {} });
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(2_100);
+    const polled = t.queries.length;
+    expect(polled).toBeGreaterThan(1);
+
+    socket.control({ t: "peer", online: false, lastSeen: 1 });
+    await vi.advanceTimersByTimeAsync(10);
+    const settled = t.queries.length;
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(t.queries.length).toBe(settled);
+  });
+
+  it("a revoke from the phone ends its session and its polling before the link is dropped", async () => {
+    vi.useFakeTimers();
+    const t = setup({ labels: ["w1"] });
+    const { socket, qr, attempt } = await pairPhone(t);
+    const phone = createPhoneChannel({
+      crypto,
+      pairing: { pairingId: qr.pairingId, pairKey: attempt.pairKey },
+      send: (frame) => socket.toDesktop(frame),
+      session: { device: "iPhone", appVersion: "1" },
+    });
+    let consumed = 1;
+    const drain = () => {
+      const frames = socket.binaries();
+      while (consumed < frames.length) phone.receive(frames[consumed++]!);
+    };
+    phone.start();
+    drain();
+    drain();
+    phone.sendMessage({ id: 1, m: "tree.subscribe", p: {} });
+    await vi.advanceTimersByTimeAsync(2_100);
+    socket.control({ t: "revoked" });
+    socket.onclose?.({ code: 4410 });
+    await vi.advanceTimersByTimeAsync(50);
+    const settled = t.queries.length;
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(t.queries.length).toBe(settled);
+    expect(t.service.state().phones).toEqual([]);
   });
 
   it("keeps the Mac awake only while a pane works and a phone is paired", async () => {
@@ -276,7 +414,7 @@ describe("mobile service", () => {
     }
 
     it("serves a phone over a real socket with the same channel and offers the address", async () => {
-      const t = setup(loopback);
+      const t = setup({ lan: loopback });
       const paired = await pairPhone(t);
       await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
       const [{ port }] = t.service.lanAddresses() as [{ port: number }];
@@ -298,9 +436,11 @@ describe("mobile service", () => {
       vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
       let up = true;
       const t = setup({
-        ...loopback,
-        listInterfaces: () => (up ? loopback.listInterfaces() : {}),
-        refreshMs: 1_000,
+        lan: {
+          ...loopback,
+          listInterfaces: () => (up ? loopback.listInterfaces() : {}),
+          refreshMs: 1_000,
+        },
       });
       const paired = await pairPhone(t);
       await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
@@ -319,7 +459,7 @@ describe("mobile service", () => {
     });
 
     it("stops listening when the last phone is revoked, and closes its LAN session", async () => {
-      const t = setup(loopback);
+      const t = setup({ lan: loopback });
       const paired = await pairPhone(t);
       await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
       const [{ port }] = t.service.lanAddresses() as [{ port: number }];
@@ -334,7 +474,7 @@ describe("mobile service", () => {
     });
 
     it("does not listen with no phone paired, starts on pairing and stops on dispose", async () => {
-      const t = setup(loopback);
+      const t = setup({ lan: loopback });
       await t.service.start();
       expect(t.service.lanAddresses()).toEqual([]);
       await pairPhone(t);
