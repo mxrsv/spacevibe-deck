@@ -37,7 +37,7 @@
   border-radius: var(--radius-control);
   color: var(--text-primary);
   background: transparent;
-  font: 550 var(--type-body)/1.4 var(--ui-font);
+  font: 600 var(--type-body)/1.4 var(--ui-font);
   cursor: pointer;
   transition: background var(--duration) var(--ease);
 }
@@ -48,7 +48,7 @@
 }
 .nt-workspace-picker__trigger:is(:hover, :focus-visible):not([aria-disabled="true"]) {
   outline: none;
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .nt-workspace-picker__trigger > span,
 .nt-workspace-picker__name,
@@ -89,7 +89,7 @@
   border-radius: var(--radius-control);
   color: inherit;
   background: transparent;
-  font: 450 var(--type-body)/1.4 var(--ui-font);
+  font: 400 var(--type-body)/1.4 var(--ui-font);
   text-align: left;
   cursor: pointer;
 }
@@ -158,7 +158,7 @@
   color: var(--text-muted);
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--control-frame);
-  font: 450 var(--type-meta)/1 var(--ui-font);
+  font: 400 var(--type-meta)/1 var(--ui-font);
   white-space: nowrap;
   cursor: pointer;
   transition: background var(--duration) var(--ease);
@@ -166,7 +166,7 @@
 .nt-agent-launcher__action:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
   color: var(--text-primary);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .nt-agent-launcher__action:disabled {
   opacity: 0.5;
@@ -243,7 +243,7 @@
   }
   .nt-board--agents .board-home__recents .row__meta {
     flex-wrap: wrap;
-    gap: 3px 8px;
+    gap: var(--space-4) var(--space-8);
   }
   .nt-board--agents .board-home__recents .row__path {
     flex-basis: 100%;

@@ -1,16 +1,16 @@
 import {
-  ClockCounterClockwise,
-  DownloadSimple,
-  FolderPlus,
-  Gear,
-  GitBranch,
-} from "@phosphor-icons/react";
+  Clock01Icon,
+  Download04Icon,
+  FolderAddIcon,
+  GitBranchIcon,
+  Settings02Icon,
+} from "@hugeicons/core-free-icons";
 import { AgentLaunchCards } from "../launcher/agent-launch-cards";
 import { launcherPendingLabel } from "../launcher/launcher-fields";
 import { quickAgentOptions } from "../settings/quick-agents";
 import { settings } from "../settings/settings-store";
 import type { BoardComposerProps } from "./board-composer";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { WorkspacePicker, type WorkspacePickerAction } from "./workspace-picker";
 import "./board-agent-launcher.css";
 
@@ -24,12 +24,17 @@ const PROMOTED_ACTIONS: readonly string[] = ["open-folder", "clone-repository", 
  */
 function boardActions(props: BoardComposerProps): readonly WorkspacePickerAction[] {
   return [
-    { id: "open-folder", label: "Open folder…", icon: FolderPlus, onActivate: props.onPickFolder },
+    {
+      id: "open-folder",
+      label: "Open folder…",
+      icon: FolderAddIcon,
+      onActivate: props.onPickFolder,
+    },
     props.canCreateWorkspace
       ? {
           id: "create-workspace",
           label: "Create workspace…",
-          icon: FolderPlus,
+          icon: FolderAddIcon,
           onActivate: props.onCreateWorkspace,
         }
       : null,
@@ -37,7 +42,7 @@ function boardActions(props: BoardComposerProps): readonly WorkspacePickerAction
       ? {
           id: "clone-repository",
           label: "Clone repository…",
-          icon: DownloadSimple,
+          icon: Download04Icon,
           onActivate: props.onCloneRepository,
         }
       : null,
@@ -45,7 +50,7 @@ function boardActions(props: BoardComposerProps): readonly WorkspacePickerAction
       ? {
           id: "create-worktree",
           label: "Create worktree…",
-          icon: GitBranch,
+          icon: GitBranchIcon,
           onActivate: props.onCreateWorktree,
         }
       : null,
@@ -53,11 +58,16 @@ function boardActions(props: BoardComposerProps): readonly WorkspacePickerAction
       ? {
           id: "resume-session",
           label: "Resume a session…",
-          icon: ClockCounterClockwise,
+          icon: Clock01Icon,
           onActivate: props.onBrowseSessions,
         }
       : null,
-    { id: "manage-agents", label: "Manage agents", icon: Gear, onActivate: props.onManageAgents },
+    {
+      id: "manage-agents",
+      label: "Manage agents",
+      icon: Settings02Icon,
+      onActivate: props.onManageAgents,
+    },
   ].filter((action): action is WorkspacePickerAction => action !== null);
 }
 
@@ -108,7 +118,7 @@ export function BoardAgentLauncher(props: BoardComposerProps) {
               aria-label={action.label}
               onClick={action.onActivate}
             >
-              <DeckIcon icon={action.icon} size={ROW_ICON} />
+              <DeckIcon icon={action.icon} size={GLYPH_ROW} />
               <span>{action.label}</span>
             </button>
           ))}

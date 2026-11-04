@@ -18,7 +18,7 @@
   padding: 6px 0 8px;
   background: var(--chrome-2);
   /* A hairline, not a shadow — depth comes from the background step (DL-1.3). */
-  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  box-shadow: var(--elev-1);
   /* DL-13.1: a surface floating above chrome takes the surface radius. */
   border-radius: var(--radius-surface);
 }
@@ -149,7 +149,7 @@
 .drop-overlay.is-swap {
   border-style: dashed;
   border-color: color-mix(in srgb, var(--accent) 90%, white);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--state-dragover-bg);
 }
 
 /* ── File drop target ────────────────────────────────────── */

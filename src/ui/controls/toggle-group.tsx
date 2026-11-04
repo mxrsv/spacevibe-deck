@@ -43,6 +43,7 @@ const ToggleGroup = withRef(function ToggleGroup({
       data-orientation={orientation}
       style={{ "--gap": spacing } as React.CSSProperties}
       className={cn(
+        // ui-scale: the gap is the caller's `spacing` in Tailwind steps, read at run time
         "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] rounded-md data-vertical:flex-col data-vertical:items-stretch",
         className,
       )}

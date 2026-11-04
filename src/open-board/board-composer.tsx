@@ -1,11 +1,11 @@
 import {
-  ClockCounterClockwise,
-  DownloadSimple,
-  FolderOpen,
-  FolderPlus,
-  GitBranch,
-  X,
-} from "@phosphor-icons/react";
+  Cancel01Icon,
+  Clock01Icon,
+  Download04Icon,
+  FolderAddIcon,
+  FolderOpenIcon,
+  GitBranchIcon,
+} from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { useRef } from "preact/hooks";
 import { hasPrimaryModifier } from "../lib/platform";
@@ -13,7 +13,7 @@ import { tildify } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
 import { formatRelativeTime, type RecentWorkspace } from "../lib/workspace-recents";
 import { GithubStarButton } from "../ui/controls/github-star-button";
-import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { GLYPH_FEATURE, DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { LauncherFields, type LauncherFieldsProps } from "../launcher/launcher-fields";
 import { BoardAgentLauncher } from "./board-agent-launcher";
 import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
@@ -131,7 +131,7 @@ export function BoardComposer(props: BoardComposerProps) {
           onClick={() => selectWorkspace(recent.path)}
           onDblClick={() => void props.onOpenWorkspace(recent.path)}
         >
-          <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
+          <DeckIcon icon={FolderOpenIcon} size={GLYPH_FEATURE} class="row__ico" />
           <span class="row__body">
             <span class="row__headline">
               <span class="row__name">{name}</span>
@@ -152,7 +152,7 @@ export function BoardComposer(props: BoardComposerProps) {
           aria-label={`Remove ${name} from recents`}
           onClick={() => props.onRemove([recent.path])}
         >
-          <DeckIcon icon={X} size={ROW_ICON} />
+          <DeckIcon icon={Cancel01Icon} size={GLYPH_ROW} />
         </button>
       </li>
     );
@@ -173,7 +173,7 @@ export function BoardComposer(props: BoardComposerProps) {
             opens. */}
         {props.lastSession ? (
           <div class="nt-last-session" role="group" aria-label="Last session">
-            <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} />
+            <DeckIcon icon={Clock01Icon} size={GLYPH_ROW} />
             <span class="nt-last-session__text">
               <span class="nt-last-session__title">Last session</span>
               <span class="nt-last-session__meta">{lastSessionMeta(props.lastSession)}</span>
@@ -193,7 +193,7 @@ export function BoardComposer(props: BoardComposerProps) {
               title="Dismiss"
               onClick={props.onDismissLastSession}
             >
-              <DeckIcon icon={X} size={ROW_ICON} />
+              <DeckIcon icon={Cancel01Icon} size={GLYPH_ROW} />
             </button>
           </div>
         ) : null}
@@ -230,27 +230,27 @@ export function BoardComposer(props: BoardComposerProps) {
         {staging ? (
           <div class="nt-board__shortcuts" role="group" aria-label="Workspace actions">
             <button type="button" disabled={busy} onClick={props.onPickFolder}>
-              <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Open folder…
+              <DeckIcon icon={FolderAddIcon} size={GLYPH_ROW} /> Open folder…
               <kbd>{props.openFolderShortcut}</kbd>
             </button>
             {props.canCreateWorkspace ? (
               <button type="button" disabled={busy} onClick={props.onCreateWorkspace}>
-                <DeckIcon icon={FolderPlus} size={ROW_ICON} /> Create workspace…
+                <DeckIcon icon={FolderAddIcon} size={GLYPH_ROW} /> Create workspace…
               </button>
             ) : null}
             {props.canCloneRepository === true ? (
               <button type="button" disabled={busy} onClick={props.onCloneRepository}>
-                <DeckIcon icon={DownloadSimple} size={ROW_ICON} /> Clone repository…
+                <DeckIcon icon={Download04Icon} size={GLYPH_ROW} /> Clone repository…
               </button>
             ) : null}
             {props.canCreateWorktree ? (
               <button type="button" disabled={busy} onClick={props.onCreateWorktree}>
-                <DeckIcon icon={GitBranch} size={ROW_ICON} /> Create worktree…
+                <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} /> Create worktree…
               </button>
             ) : null}
             {props.canBrowseSessions ? (
               <button type="button" disabled={busy} onClick={props.onBrowseSessions}>
-                <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} /> Resume a session…
+                <DeckIcon icon={Clock01Icon} size={GLYPH_ROW} /> Resume a session…
               </button>
             ) : null}
           </div>

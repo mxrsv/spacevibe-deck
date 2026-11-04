@@ -12,7 +12,7 @@ import { withRef } from "./with-ref";
  * user can tell "here" from "chosen".
  */
 const toggleVariants = cva(
-  "group/toggle inline-flex items-center justify-center gap-1 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none hover:bg-muted/50 hover:text-foreground focus-visible:bg-muted/50 focus-visible:text-foreground active:bg-muted disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-pressed:bg-muted aria-pressed:focus-visible:bg-[color-mix(in_oklch,var(--muted)_90%,var(--foreground))] aria-pressed:active:bg-[color-mix(in_oklch,var(--muted)_90%,var(--foreground))] data-[state=on]:bg-muted [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/toggle inline-flex items-center justify-center gap-1 rounded-md text-sm font-semibold whitespace-nowrap transition-colors duration-150 outline-none hover:bg-muted/50 hover:text-foreground focus-visible:bg-muted/50 focus-visible:text-foreground active:bg-muted disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-pressed:bg-muted aria-pressed:focus-visible:bg-[color-mix(in_oklch,var(--muted)_90%,var(--foreground))] aria-pressed:active:bg-[color-mix(in_oklch,var(--muted)_90%,var(--foreground))] data-[state=on]:bg-muted [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

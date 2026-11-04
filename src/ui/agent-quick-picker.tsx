@@ -1,4 +1,4 @@
-import { CaretDown } from "@phosphor-icons/react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { agentOptions, type CustomAgent } from "../lib/agent-catalog";
 import { AGENT_LOGOS } from "../lib/agent-logos";
@@ -6,7 +6,7 @@ import { letterAvatar } from "../lib/letter-avatar";
 import type { AgentChoice } from "../lib/workspace-recents";
 import { destinationLabel, type QuickDestination } from "../repositories/worktree-destinations";
 import { ConfigRow } from "./controls/config-row";
-import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "./controls/deck-icon";
 import { Modal } from "./modal";
 import { settings } from "../settings/settings-store";
 import { commandFlags, profilesForAgent } from "../lib/launch-profile";
@@ -232,7 +232,7 @@ export function AgentQuickPicker({
           <span class="cfg-btn cfg-btn--overlay">
             <span class="cfg-btn__text">{current === null ? "—" : destinationLabel(current)}</span>
             <span class="cfg-btn__hint">
-              <DeckIcon icon={CaretDown} size={ROW_ICON} />
+              <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
             </span>
             <select
               value={current?.path ?? ""}

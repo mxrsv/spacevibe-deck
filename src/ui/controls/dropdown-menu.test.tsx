@@ -47,21 +47,22 @@ describe("DropdownMenu", () => {
     await view.unmount();
   });
 
-  it("follows a theme switched after the menu first rendered", async () => {
+  it("draws on the theme's own popover ground in every theme, never inverted (RCP-11)", async () => {
     const root = document.documentElement.style;
     const popup = (): Element | null =>
       document.body.querySelector('[data-slot="dropdown-menu-content"]');
     const view = await mount(<Actions onRename={() => {}} />);
 
-    root.setProperty("--background", "#faf4e9");
-    await click(trigger(view.host));
-    expect(popup()?.classList.contains("dark")).toBe(false);
-    await press(byRole("menu") as HTMLElement, { key: "Escape" });
-    await waitUntil(() => byRole("menu") === null);
-
-    root.removeProperty("--background");
-    await click(trigger(view.host));
-    expect(popup()?.classList.contains("dark")).toBe(true);
+    for (const background of ["#faf4e9", ""]) {
+      if (background === "") root.removeProperty("--background");
+      else root.setProperty("--background", background);
+      await click(trigger(view.host));
+      expect(popup()?.classList.contains("dark")).toBe(false);
+      expect(popup()?.className).toContain("bg-(--popover-bg)");
+      expect(popup()?.className).toContain("shadow-(--elev-1)");
+      await press(byRole("menu") as HTMLElement, { key: "Escape" });
+      await waitUntil(() => byRole("menu") === null);
+    }
     await view.unmount();
   });
 

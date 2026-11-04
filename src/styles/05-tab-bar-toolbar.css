@@ -394,6 +394,7 @@
   font: var(--type-meta)/1.35 var(--ui-font);
   pointer-events: none;
   animation: action-tip-in var(--duration) var(--ease);
+  box-shadow: var(--elev-1);
 }
 
 /* DL-23.4 (amended 2026-10-07): a trigger in the window's bottom edge opens
@@ -444,6 +445,7 @@
   border: 1px solid var(--seam-raised);
   /* DL-13.1: a surface floating above chrome takes the surface radius. */
   border-radius: var(--radius-surface);
+  box-shadow: var(--elev-1);
 }
 
 .toolbar-menu__group {

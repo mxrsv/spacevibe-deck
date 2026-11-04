@@ -1,6 +1,6 @@
-import { CaretLeft } from "@phosphor-icons/react";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef } from "preact/hooks";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../controls/deck-icon";
 import { UsageBody } from "./usage-body";
 
 interface UsagePageProps {
@@ -67,7 +67,7 @@ export function UsagePage({ open, onClose }: UsagePageProps) {
             title="Back (Esc)"
             onClick={onClose}
           >
-            <DeckIcon icon={CaretLeft} size={ROW_ICON} />
+            <DeckIcon icon={ArrowLeft01Icon} size={GLYPH_ROW} />
             Back
           </button>
           <h2 class="usage-screen__title">Usage</h2>

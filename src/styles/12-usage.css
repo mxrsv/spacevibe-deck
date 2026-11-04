@@ -223,7 +223,7 @@
   margin: 2px 0 0;
   font-family: var(--ui-font);
   font-size: 40px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.1;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -249,7 +249,7 @@
 .usage-range {
   display: flex;
   flex-wrap: wrap;
-  gap: 1px;
+  gap: var(--space-2);
   margin: 12px 0 0;
 }
 
@@ -272,17 +272,17 @@
 .usage-range__option:hover,
 .usage-range__option:focus-visible {
   outline: none;
-  background: var(--muted);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
 .usage-range__option.is-active {
-  background: color-mix(in srgb, var(--fg) 12%, transparent);
+  background: var(--tab-active-bg);
   color: var(--text-primary);
 }
 
 .usage-range__option.is-active:focus-visible {
-  background: color-mix(in srgb, var(--fg) 18%, transparent);
+  background: var(--tab-active-focus-bg);
 }
 
 .usage-hero__empty {
@@ -309,8 +309,8 @@
 }
 
 .usage-agent__logo {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
   display: block;
 }
@@ -498,8 +498,8 @@
   white-space: nowrap;
 }
 .usage-allowance__logo {
-  width: 16px;
-  height: 16px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
 }
 .usage-allowance__windows {
@@ -583,7 +583,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding-bottom: 26px;
+  padding-bottom: var(--space-24);
   min-width: 36px;
   font-size: var(--type-micro);
   color: var(--text-muted);
@@ -687,7 +687,7 @@
 .usage-overview summary:focus-visible,
 .usage-overview__table-scroll:focus-visible {
   outline: none;
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 @container usage-overview (max-width: 400px) {
   .usage-timeline__columns {
@@ -741,8 +741,8 @@
   overflow-wrap: anywhere;
 }
 .usage-models__logo {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
   flex: none;
 }
 .usage-models__empty {
@@ -817,7 +817,7 @@
 }
 .usage-tile__fill {
   display: flex;
-  gap: 1px;
+  gap: var(--space-2);
   height: 100%;
   overflow: hidden;
   border-radius: var(--radius-tight);
@@ -830,8 +830,8 @@
   margin-top: 10px;
 }
 .usage-tile__logo {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
 }
 .usage-tiles__empty {
   margin: 12px 0 0;

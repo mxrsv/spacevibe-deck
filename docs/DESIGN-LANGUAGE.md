@@ -74,8 +74,11 @@ cites it.
   elevation never transitions or animates, and the rail, stage, dock and any repeated row or cell
   get none ([`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) fails any
   other blurred shadow). One exception: `.modal-scrim` uses `backdrop-filter` (DL-29.5), because
-  its layer exists only while a modal is open. Inside the preset boundary (DL-1.6) popups carry
-  the preset's `shadow-md` and `ring-1`, and the dialog's overlay blurs what is behind it.
+  its layer exists only while a modal is open. Inside the preset boundary (DL-1.6) the popups
+  wear the same tokens in place of the preset's `shadow-md`, `ring-1` and frosted backdrop:
+  menus, selects, popovers and tooltips `--elev-1`, the sheet `--elev-2`, the dialog `--elev-3`
+  with `--panel-frame`, each opaque on `--popover-bg` (the tooltip inverted on `--tooltip-bg`),
+  and the dialog's and sheet's overlay is the `--scrim-bg` colour scrim, with no blur.
 - **DL-1.4** Native inputs (`<select>`, `<input type="color">`) laid invisibly over a styled
   pill are preferred to custom pickers: no JS, no extra DOM, native accessibility. Inside the
   preset boundary (DL-1.6) the picker is the preset's Base UI `Select`.
@@ -86,13 +89,16 @@ cites it.
   [`preset-controls.ts`](../src/ui/controls/preset-controls.ts) with the popups they portal
   (each control root has a `data-slot`), are drawn by the preset
   ([`preset.css`](../src/ui/preset.css), generated from preset `b1a09kDGF`): its tokens,
-  Inter, its radius, shadows and motion. Every other surface keeps the rules in this document,
+  Inter, its radius and motion. Every other surface keeps the rules in this document,
   with the values of the [UI composition spec](specs/2026-11-03-ui-composition.md) (`CMP-n`):
   its legacy stylesheets follow the same sizes, radii, focus and dividers now (CMP-19), and
   the surfaces CMP-20 names keep their look until they are deleted. The sections below name
   what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1, DL-3.3, DL-4.1, DL-4.4, DL-14.3, DL-20.1,
-  DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where a `CMP-n` rule names a value, it takes
-  precedence over the preset's own.
+  DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where a `CMP-n` or `RCP-n` rule names a value, it
+  takes precedence over the preset's own: the controls draw 400 and 600, never the preset's 500
+  (RCP-5), their states read the RCP-9 tokens, and their popups wear RCP-11's elevation. A menu
+  paints on the theme's own `--popover-bg` and text, so it follows the theme rather than inverting
+  to the preset's dark.
   - `.dark` on the root element is the preset's dark mode, so portals follow it.
   - Deck Dark and Deck Light wear the preset's own tokens, except the primary role, which is the
     ivory of CMP-4 in [`preset.css`](../src/ui/preset.css); every other theme publishes the tokens
@@ -393,8 +399,10 @@ only the pre-JS fallbacks.
 - **DL-21.5** State changes use DL-20.2's `--duration` / `--ease` and only DL-1.2's
   properties. Reduced motion is handled by scope (§9).
 - **DL-21.6** No accent bar beside the wash: one state, one signifier.
-- **DL-21.7** A tab-strip chip, and an Agent Board card (DL-34.2), carry a resting wash,
-  `--tab-rest-bg` (3% `--tone`), so the ladder reads 3% → 6% hover → `--tab-active-bg`.
+- **DL-21.7** A tab-strip chip, an Agent Board card (DL-34.2), a panel footer (a dialog's or a
+  floating panel's, RCP-21) and the project avatar (RCP-4) carry a resting wash,
+  `--tab-rest-bg` (3% `--tone`), so the ladder reads 3% → 6% hover → `--tab-active-bg`; a
+  footer separates from its body by that step, not a line.
   Everything else has no wash at rest. Why: an object floating alone on `--bg` with no wash
   reads as nothing there.
 - **DL-21.8** An `.iconbtn` that toggles a surface (sidebar, dock, `More`, the browser's
@@ -583,9 +591,9 @@ A list the user adds to and deletes from (user-declared agents) is still made of
 A popover is a small screen anchored to a chrome button, made of rows. It is the Prompt Board
 popover and the rail worktree card's segment and actions menus (`docs/internals/agent-rail.md`).
 
-- **DL-13.1** A popover is a `--chrome-2` surface with a 1px `--seam-raised` inset hairline at
-  `--radius-surface` (DL-20.1), anchored to its trigger; inside the rail it takes the card's
-  `--asr-card-radius` (6px). No blurred shadow (DL-1.3): depth comes from the background step.
+- **DL-13.1** A popover is a `--chrome-2` surface at `--radius-surface` (DL-20.1) on `--elev-1`,
+  anchored to its trigger; the token carries the dark themes' 1px edge (RCP-11). Inside the rail
+  it takes the card's `--asr-card-radius` (6px).
 - **DL-13.2** Esc, an outside click or completing the action dismisses it, and focus returns to
   the pane or control that had it. The trigger carries `aria-expanded`; the surface is
   `role="dialog"` with a label.
@@ -1471,8 +1479,8 @@ a preset, draft a layout. Anything longer-lived is a full-window screen (§11) o
   the exits off per modal with `dismissOnScrim` and `dismissOnEscape`.
 - **DL-29.4** Scrim dismissal reads the pointer press, not the click. Why: a drag that starts
   inside the panel and releases outside makes the browser fire `click` on the scrim.
-- **DL-29.5** The scrim is a translucent wash (42%) plus a blur, an exception to DL-1.3's
-  `backdrop-filter` clause for this one selector. Escape stops dead (`preventDefault` +
+- **DL-29.5** The scrim is the `--scrim-bg` colour wash plus a blur, an exception to DL-1.3's
+  `backdrop-filter` clause for this one selector, and the panel stands on `--elev-3` (RCP-11). Escape stops dead (`preventDefault` +
   `stopPropagation`) because a live terminal reading raw keys sits behind the scrim.
 - **DL-29.6** The panel stands on the chrome plane `--sidebar-bg`, the ground of the navigation
   column and docked panel (DL-18.7), not a `--chrome-1` step off the stage.
@@ -1647,8 +1655,8 @@ DL-33.2–33.5 when reused; it is not the sidebar footer.
   agent in this window (a contract-reported id outranks the tail store's pairing); a match
   supplies the rail's [RailStatusMark](../src/ui/controls/rail-status-mark.tsx), no match leaves
   the slot empty, never a gray dot. Times run from `now` to `99y+` (`—` for an invalid date). The
-  summary yields before identity, time or state. The row is 30px
-  minimum height with a 7px inset, `--radius-control` and `--state-hover-bg`; the heading is
+  summary yields before identity, time or state. The row is 32 (`--row-32`) minimum height
+  with an 8 inset, `--radius-control` and `--state-hover-bg`; the heading is
   `--type-meta`, the summary and `View all` are `--type-micro`.
 - **DL-33.3** The compact row opens its exact session: a matching agent still open in this window
   gets its pane focused, otherwise the row resumes the session in a new single-pane tab in its

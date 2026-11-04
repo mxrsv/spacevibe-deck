@@ -545,6 +545,7 @@
   border-radius: var(--radius-surface);
   background: var(--chrome-2);
   font: var(--type-body) var(--ui-font);
+  box-shadow: var(--elev-1);
 }
 
 /* Pane bar hidden → no header to clear, hug the top edge */

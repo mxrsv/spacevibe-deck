@@ -25,7 +25,7 @@ describe("Button", () => {
     await view.unmount();
   });
 
-  it("takes variant and size from the preset's table, with defaults", async () => {
+  it("takes variant and size from its table, with defaults, on the recipe tokens", async () => {
     const view = await mount(
       <>
         <Button>Plain</Button>
@@ -35,10 +35,12 @@ describe("Button", () => {
     const [plain, destructive] = [...view.host.querySelectorAll("button")];
     expect(plain.className).toContain("bg-primary");
     expect(plain.className).toContain("h-8");
-    expect(destructive.className).toContain("text-destructive");
+    expect(destructive.className).toContain("text-(--ink-fail)");
     expect(destructive.className).toContain("size-5");
     expect(destructive.className).not.toContain("bg-primary");
-    expect(buttonVariants({ variant: "ghost" })).toContain("hover:bg-muted");
+    // RCP-9: hover is the one hover wash; text is 600, never 500 (RCP-5).
+    expect(buttonVariants({ variant: "ghost" })).toContain("hover:bg-(--state-hover-bg)");
+    expect(buttonVariants({})).toContain("font-semibold");
     await view.unmount();
   });
 

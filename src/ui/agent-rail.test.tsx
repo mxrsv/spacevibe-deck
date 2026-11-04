@@ -1563,15 +1563,18 @@ describe("AgentRail recent activity style contract", () => {
 
   it("keeps compact rows at fixed glyph and time geometry without horizontal overflow", () => {
     const row = ruleBody(".recent-session-activity__row");
-    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 4em 14px");
-    expect(row).toContain("min-height: 30px");
+    // RCP-4, RCP-7: the 16 glyph, the 14 mark slot and the 32 row are tokens now.
+    expect(row).toContain(
+      "grid-template-columns: var(--icon-16) minmax(0, 1fr) 4em var(--mark-slot)",
+    );
+    expect(row).toContain("min-height: var(--row-32)");
     expect(row).toContain("box-sizing: border-box");
     expect(row).toContain("width: 100%");
     expect(row).toContain("overflow: hidden");
 
     const glyph = ruleBody(".recent-session-activity__glyph");
-    expect(glyph).toContain("width: 15px");
-    expect(glyph).toContain("height: 15px");
+    expect(glyph).toContain("width: var(--icon-16)");
+    expect(glyph).toContain("height: var(--icon-16)");
 
     const summary = ruleBody(".recent-session-activity__summary");
     expect(summary).toContain("min-width: 0");

@@ -193,7 +193,8 @@ describe("windows weight ledger", () => {
  * ledger keeps it apart; this is the list of pairs it must keep apart.
  * Add a pair here when a new role sits beside another on one surface. Only
  * roles a shipped component renders belong: a pair guarding an unmounted class
- * (`.asr-wt__name`, `.asr-needs__chip`) constrains nothing anyone sees.
+ * (`.asr-wt__name`, `.asr-needs__chip`) constrains nothing anyone sees. With two weights
+ * (RCP-5) a pair is 600 over 400; buttons are all 600 and a primary is told apart by its fill.
  */
 const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
   ["project label over a checkout's label", ".asr-cluster__toggle", ".asr-checkout__name"],
@@ -221,7 +222,6 @@ const NEIGHBOURS: [why: string, heavier: string, lighter: string][] = [
     ".nt-workspace-picker__trigger",
     ".nt-workspace-picker__menu button",
   ],
-  ["primary button over the secondary", ".btn--primary", ".btn"],
   ["group separator over its action", ".gsep", ".gsep button"],
   ["board title over its section heads", ".board-home__title", ".board-home__recents-head"],
   ["settings title over a group label", ".settings-screen__title", ".cfg-group"],

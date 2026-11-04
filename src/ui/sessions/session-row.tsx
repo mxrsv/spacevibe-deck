@@ -1,6 +1,6 @@
-import { FolderDashed, Play } from "@phosphor-icons/react";
+import { FolderOffIcon, PlayIcon } from "@hugeicons/core-free-icons";
 import { AgentGlyph } from "../controls/agent-glyph";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../controls/deck-icon";
 import { tildify } from "../../lib/process-info";
 import { formatRelativeTime } from "../../lib/workspace-recents";
 import { SESSION_AGENT_LABELS, type SessionEntry } from "../../lib/session-history";
@@ -42,7 +42,7 @@ export function SessionRow({ entry, dead, homeDir, onResume }: SessionRowProps) 
     <li class="session-row__slot">
       <div class={`session-row ${dead ? "is-unavailable" : ""}`}>
         {dead ? (
-          <DeckIcon icon={FolderDashed} size={ROW_ICON} class="session-row__ico" />
+          <DeckIcon icon={FolderOffIcon} size={GLYPH_ROW} class="session-row__ico" />
         ) : (
           <AgentGlyph agent={entry.agent} className="session-row__logo" />
         )}
@@ -79,7 +79,7 @@ export function SessionRow({ entry, dead, homeDir, onResume }: SessionRowProps) 
             }
           }}
         >
-          <DeckIcon icon={Play} size={ROW_ICON} />
+          <DeckIcon icon={PlayIcon} size={GLYPH_ROW} />
           <span class="session-row__resume-text">Resume</span>
         </button>
       </div>

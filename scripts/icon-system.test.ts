@@ -119,6 +119,17 @@ const HUGEICONS_ONLY: readonly string[] = [
   "ui/tab-strip-menu.tsx",
   "ui/sidebar-toggle.tsx",
   "ui/dock/dock-toggle.tsx",
+  // Stage 4 and 5: the dock's file surfaces, the launcher, its forms, the prompt board, sessions.
+  "files/ui/file-icons.ts",
+  "files/ui/tree-root-actions.tsx",
+  "files/ui/view-mode-toggle.tsx",
+  "launcher/",
+  "open-board/",
+  "prompts/",
+  "ui/sessions/",
+  "ui/usage/usage-page.tsx",
+  "ui/usage-consent-modal.tsx",
+  "ui/agent-quick-picker.tsx",
 ];
 
 const inCutOverSet = (path: string): boolean =>

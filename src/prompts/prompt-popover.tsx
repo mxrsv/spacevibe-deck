@@ -1,4 +1,10 @@
-import { CaretDown, ClipboardText, PaperPlaneTilt, Plus, Trash } from "@phosphor-icons/react";
+import {
+  ArrowDown01Icon,
+  ClipboardIcon,
+  Delete02Icon,
+  PlusSignIcon,
+  SentIcon,
+} from "@hugeicons/core-free-icons";
 import { Fragment } from "preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
@@ -6,7 +12,7 @@ import { settings, updateSettings } from "../settings/settings-store";
 import { tabViews } from "../terminal/tabs-store";
 import { reportChromeMessage } from "../chrome/events";
 import { ConfigRow } from "../ui/controls/config-row";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { CommitInput } from "../ui/controls/commit-input";
 import { CommitTextarea } from "../ui/controls/commit-textarea";
 import {
@@ -72,7 +78,7 @@ function AssetPicker({
       <span class="cfg-btn cfg-btn--overlay">
         <span class="cfg-btn__text">{chosen === "" ? "none" : chosen}</span>
         <span class="cfg-btn__hint">
-          <DeckIcon icon={CaretDown} size={ROW_ICON} />
+          <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
         </span>
         <select
           value={chosen}
@@ -352,10 +358,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                 disabled={injecting.value}
                 onClick={() => void injectTemplate(template)}
               >
-                <DeckIcon
-                  icon={template.autoSend ? PaperPlaneTilt : ClipboardText}
-                  size={ROW_ICON}
-                />
+                <DeckIcon icon={template.autoSend ? SentIcon : ClipboardIcon} size={GLYPH_ROW} />
               </button>
             </div>
           </div>
@@ -393,7 +396,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                   title={`Remove ${template.label}`}
                   onClick={() => removeTemplate(template.id)}
                 >
-                  <DeckIcon icon={Trash} size={ROW_ICON} />
+                  <DeckIcon icon={Delete02Icon} size={GLYPH_ROW} />
                 </button>
               </div>
             </div>
@@ -452,7 +455,7 @@ export function PromptPopover(props: PromptPopoverProps) {
             draftOpen.value = true;
           }}
         >
-          {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
+          {draftOpen.value ? "add" : <DeckIcon icon={PlusSignIcon} size={GLYPH_ROW} />}
         </button>
       </ConfigRow>
 

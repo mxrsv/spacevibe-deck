@@ -40,8 +40,11 @@ const STATE_TOKENS: ReadonlySet<string> = new Set([
   "--state-pressed-bg",
   "--state-dragover-bg",
   "--state-needs-you-bg",
+  // A filled control's own fill and steps: a `.is-primary` variant is not a state.
+  "--primary",
   "--primary-hover",
   "--primary-pressed",
+  "--danger-bg",
   "--danger-bg-hover",
   // RCP-16: the scrollbar thumb's two steps.
   "--scrollbar-thumb",
@@ -155,11 +158,10 @@ function shadowHit(rule: Rule, { prop, value }: Declaration): string | null {
   const v = clean(value);
   if (/^(none|inherit|initial|unset)$/.test(v)) return null;
   if (/^var\(--elev-[123]\)$/.test(v)) {
+    // An entrance `animation` moves opacity or transform; what its keyframes touch is not read
+    // here (RCP-29), so only a transition on the shadow, or on `all`, counts.
     const moves = rule.declarations.some(
-      (d) =>
-        (/^transition(-property)?$/.test(d.prop) && /box-shadow|\ball\b/.test(d.value)) ||
-        d.prop === "animation" ||
-        d.prop === "animation-name",
+      (d) => /^transition(-property)?$/.test(d.prop) && /box-shadow|\ball\b/.test(d.value),
     );
     return moves ? `${prop}: ${value} transitions` : null;
   }

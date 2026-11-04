@@ -68,8 +68,7 @@ const KEPT_LINES: readonly Allowed[] = [
 /**
  * CMP-11 gives keyboard focus a ring on text fields only (the field's border plus a box-shadow
  * halo, never `outline`). Each token names a selector part; a focus selector containing it may
- * set an outline. Every token must still occur in some rule. Drop-target highlights
- * (`.drop-overlay`, `.pane-slot.is-drop-target`, `.rail-drag-line`) need no entry: their rules
+ * set an outline or a ring. Every token must still occur in some rule. Drop-target highlights
  * have no `:focus` selector, which this check never looks at.
  */
 const TEXT_FIELD_FOCUS: readonly { token: string; reason: string }[] = [
@@ -82,6 +81,7 @@ const TEXT_FIELD_FOCUS: readonly { token: string; reason: string }[] = [
   { token: ".wtf__input", reason: "worktree field input" },
   { token: ".preset-editor__name", reason: "preset name input" },
   { token: "input", reason: "plain input element" },
+  { token: ".command-bar__bar", reason: "the command bar's frame takes its input's ring (RCP-3)" },
 ];
 
 const FOCUS = /:focus(-visible|-within)?(?![\w-])/;

@@ -436,11 +436,14 @@ describe("DL-33 recent agent activity", () => {
     const row = css.match(/\.recent-session-activity__row\s*\{([^}]*)\}/)?.[1] ?? "";
     // Amended 2026-09-09 (owner): the fixed age precedes the trailing status
     // slot; an unopened session leaves that slot empty without moving text.
-    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 4em 14px\s*;/);
+    expect(row).toMatch(
+      /grid-template-columns:\s*var\(--icon-16\) minmax\(0, 1fr\) 4em var\(--mark-slot\)\s*;/,
+    );
     expect(css).toMatch(
       /\.recent-session-activity__state > \.asr-row__mark\s*\{[^}]*justify-self:\s*center/s,
     );
-    expect(row).toMatch(/min-height:\s*30px\s*;/);
+    // RCP-7: a one-line row is 32.
+    expect(row).toMatch(/min-height:\s*var\(--row-32\)\s*;/);
     expect(row).toMatch(/border-radius:\s*var\(--radius-control\)\s*;/);
     expect(css).toMatch(
       /\[data-sidebar-collapsed="true"\] \.recent-session-activity\s*\{[^}]*display:\s*none/s,

@@ -1,9 +1,9 @@
-import { Check, FolderOpen, GitFork, MagnifyingGlass } from "@phosphor-icons/react";
+import { FolderOpenIcon, GitForkIcon, Search01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import type { RefObject } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { Chord } from "../ui/blocks/chord";
 import { Button } from "../ui/controls/button";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { Input } from "../ui/controls/input";
 import {
   matchParts,
@@ -86,7 +86,7 @@ export function CommandBarProjectMenu(props: CommandBarProjectMenuProps) {
   return (
     <div class="command-bar-menu" ref={root} onKeyDown={onKeyDown}>
       <div class="command-bar-menu__search">
-        <DeckIcon icon={MagnifyingGlass} size={ROW_ICON} />
+        <DeckIcon icon={Search01Icon} size={GLYPH_ROW} />
         <Input
           ref={search}
           role="combobox"
@@ -134,7 +134,7 @@ export function CommandBarProjectMenu(props: CommandBarProjectMenuProps) {
                   {parts.after}
                 </span>
                 {project.path === currentPath ? (
-                  <DeckIcon icon={Check} size={ROW_ICON} class="command-bar-menu__end" />
+                  <DeckIcon icon={Tick02Icon} size={GLYPH_ROW} class="command-bar-menu__end" />
                 ) : project.age === null ? null : (
                   <span class="command-bar-menu__end command-bar__meta">{project.age}</span>
                 )}
@@ -145,14 +145,14 @@ export function CommandBarProjectMenu(props: CommandBarProjectMenuProps) {
       </div>
       <div class="command-bar-menu__rule" role="separator" />
       <Button variant="ghost" className="command-bar-menu__action" onClick={props.onOpenFolder}>
-        <DeckIcon icon={FolderOpen} size={ROW_ICON} />
+        <DeckIcon icon={FolderOpenIcon} size={GLYPH_ROW} />
         Open folder…
         <span class="command-bar-menu__end">
           <Chord keys={props.openFolderKeys} />
         </span>
       </Button>
       <Button variant="ghost" className="command-bar-menu__action" onClick={props.onNewWorktree}>
-        <DeckIcon icon={GitFork} size={ROW_ICON} />
+        <DeckIcon icon={GitForkIcon} size={GLYPH_ROW} />
         New worktree…
       </Button>
     </div>

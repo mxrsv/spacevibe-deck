@@ -1,6 +1,11 @@
-import { ArrowLeft, ArrowUp, Folder, X } from "@phosphor-icons/react";
+import {
+  ArrowLeft01Icon,
+  ArrowUp02Icon,
+  Cancel01Icon,
+  Folder01Icon,
+} from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 
 export interface CreateWorkspaceFormProps {
   readonly initialParent: string;
@@ -31,7 +36,7 @@ function FormHeader({ onBack, onClose }: Pick<CreateWorkspaceFormProps, "onBack"
   return (
     <header class="nt-quick-launch__head">
       <button type="button" class="nt-icon-action" aria-label="Back" onClick={onBack}>
-        <DeckIcon icon={ArrowLeft} size={ROW_ICON} />
+        <DeckIcon icon={ArrowLeft01Icon} size={GLYPH_ROW} />
       </button>
       <div>
         <span>Workspace</span>
@@ -39,7 +44,7 @@ function FormHeader({ onBack, onClose }: Pick<CreateWorkspaceFormProps, "onBack"
       </div>
       {onClose === undefined ? null : (
         <button type="button" class="nt-icon-action" aria-label="Close" onClick={onClose}>
-          <DeckIcon icon={X} size={ROW_ICON} />
+          <DeckIcon icon={Cancel01Icon} size={GLYPH_ROW} />
         </button>
       )}
     </header>
@@ -103,13 +108,13 @@ export function CreateWorkspaceForm(props: CreateWorkspaceFormProps) {
             onClick={() => void pickParent()}
             disabled={pending.value}
           >
-            <DeckIcon icon={Folder} size={ROW_ICON} />
+            <DeckIcon icon={Folder01Icon} size={GLYPH_ROW} />
             <span data-parent-path>{parent.value || "Choose a parent folder"}</span>
             <span>Choose…</span>
           </button>
         </label>
         <label>
-          <span>Folder name</span>
+          <span>Folder01Icon name</span>
           <input
             type="text"
             aria-label="Folder name"
@@ -140,7 +145,7 @@ export function CreateWorkspaceForm(props: CreateWorkspaceFormProps) {
           onClick={() => void submit()}
         >
           Create workspace
-          <DeckIcon icon={ArrowUp} size={ROW_ICON} />
+          <DeckIcon icon={ArrowUp02Icon} size={GLYPH_ROW} />
         </button>
       </footer>
     </section>

@@ -1,6 +1,6 @@
-import { CaretDown } from "@phosphor-icons/react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "../ui/controls/button";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +35,7 @@ export function CommandBarProfileMenu(props: CommandBarProfileMenuProps) {
       <DropdownMenuTrigger
         render={<Button size="xl" aria-label="Launch profile" disabled={props.disabled} />}
       >
-        <DeckIcon icon={CaretDown} size={ROW_ICON} />
+        <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {props.sections.map((section) => (

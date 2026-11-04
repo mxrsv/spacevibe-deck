@@ -1,11 +1,17 @@
-import { CaretDown, DownloadSimple, FolderOpen, GitBranch, Warning } from "@phosphor-icons/react";
+import {
+  Alert02Icon,
+  ArrowDown01Icon,
+  Download04Icon,
+  FolderOpenIcon,
+  GitBranchIcon,
+} from "@hugeicons/core-free-icons";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { LaunchCommandChoices } from "../lib/launch-command";
 import type { LaunchCommandOverride } from "../terminal/agent-launch-target";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { Button } from "../ui/controls/button";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { Input } from "../ui/controls/input";
 import { Chord } from "../ui/blocks/chord";
 import { Kbd } from "../ui/controls/kbd";
@@ -170,12 +176,12 @@ export function CommandBar(props: CommandBarProps) {
               className="command-bar__open"
               onClick={props.onOpenFolder}
             >
-              <DeckIcon icon={FolderOpen} size={ROW_ICON} />
+              <DeckIcon icon={FolderOpenIcon} size={GLYPH_ROW} />
               Open folder
               <Chord keys={props.openFolderKeys ?? DEFAULT_OPEN_FOLDER_KEYS} />
             </Button>
             <Button size="xl" variant="secondary" onClick={props.onClone}>
-              <DeckIcon icon={DownloadSimple} size={ROW_ICON} />
+              <DeckIcon icon={Download04Icon} size={GLYPH_ROW} />
               Clone
             </Button>
             <span class="command-bar__first-hint">or drop a folder anywhere</span>
@@ -200,11 +206,11 @@ export function CommandBar(props: CommandBarProps) {
               <span class="command-bar__project-name">{current?.name ?? "Project"}</span>
               {current?.branch ? (
                 <span class="command-bar__branch command-bar__meta">
-                  <DeckIcon icon={GitBranch} size={ROW_ICON} />
+                  <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} />
                   <span class="command-bar__branch-name">{current.branch}</span>
                 </span>
               ) : null}
-              <DeckIcon icon={CaretDown} size={ROW_ICON} class="command-bar__caret-mark" />
+              <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} class="command-bar__caret-mark" />
             </Button>
             <Input
               ref={filterField}
@@ -296,7 +302,7 @@ export function CommandBar(props: CommandBarProps) {
       </div>
       {props.failure ? (
         <div class="command-bar__failure" role="alert">
-          <DeckIcon icon={Warning} size={ROW_ICON} />
+          <DeckIcon icon={Alert02Icon} size={GLYPH_ROW} />
           <span class="command-bar__failure-text">{props.failure}</span>
           <Button size="sm" variant="secondary" disabled={pending} onClick={props.onRetry}>
             Retry

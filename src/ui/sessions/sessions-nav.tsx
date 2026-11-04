@@ -1,7 +1,7 @@
-import { ClockCounterClockwise } from "@phosphor-icons/react";
+import { Clock01Icon } from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { AgentGlyph } from "../controls/agent-glyph";
-import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE } from "../controls/deck-icon";
 import type { SessionAgent } from "../../lib/session-history";
 import { filterSessions, type AgentFilter } from "../../sessions/session-filters";
 import { sessionAgentFilter, sessionEntries } from "../../sessions/sessions-store";
@@ -42,7 +42,7 @@ const SESSIONS_NAV_ITEMS: readonly SessionsNavItem[] = [
  *  has no brand, so it keeps the surface's own history glyph. */
 function NavGlyph({ agent }: { readonly agent: AgentFilter }) {
   return agent === "all" ? (
-    <DeckIcon icon={ClockCounterClockwise} size={RAIL_ICON} />
+    <DeckIcon icon={Clock01Icon} size={GLYPH_FEATURE} />
   ) : (
     <AgentGlyph agent={agent as SessionAgent} className="sessions-nav__logo" />
   );

@@ -1,9 +1,9 @@
-import { Check, Gear, SlidersHorizontal } from "@phosphor-icons/react";
+import { Settings02Icon, SlidersHorizontalIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import type { LaunchCommandChoices } from "../lib/launch-command";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import "./agent-launch-page.css";
 
 export interface LaunchProfileSection {
@@ -113,7 +113,7 @@ export function LaunchProfilePopover(props: LaunchProfilePopoverProps) {
           }
         }}
       >
-        <DeckIcon icon={SlidersHorizontal} size={ROW_ICON} />
+        <DeckIcon icon={SlidersHorizontalIcon} size={GLYPH_ROW} />
         {custom ? "Custom profile" : "Default profile"}
       </button>
       {open.value ? (
@@ -145,7 +145,7 @@ export function LaunchProfilePopover(props: LaunchProfilePopoverProps) {
                       }}
                     >
                       {selected ? (
-                        <DeckIcon icon={Check} size={ROW_ICON} />
+                        <DeckIcon icon={Tick02Icon} size={GLYPH_ROW} />
                       ) : (
                         <span class="launch-profile__check" />
                       )}
@@ -169,7 +169,7 @@ export function LaunchProfilePopover(props: LaunchProfilePopoverProps) {
               props.onEditProfiles();
             }}
           >
-            <DeckIcon icon={Gear} size={ROW_ICON} />
+            <DeckIcon icon={Settings02Icon} size={GLYPH_ROW} />
             <span class="launch-profile__command">Edit profiles in Settings…</span>
           </button>
         </div>

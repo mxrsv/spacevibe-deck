@@ -1,15 +1,20 @@
-import { CaretDown, Check, Folder, FolderPlus, type Icon } from "@phosphor-icons/react";
+import {
+  ArrowDown01Icon,
+  Folder01Icon,
+  FolderAddIcon,
+  Tick02Icon,
+} from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { tildify } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW, type DeckGlyph } from "../ui/controls/deck-icon";
 
 /** A row beside `Open folder…`: another way to reach a workspace or the board's other screens. */
 export interface WorkspacePickerAction {
   readonly id: string;
   readonly label: string;
-  readonly icon: Icon;
+  readonly icon: DeckGlyph;
   readonly onActivate: () => void;
 }
 
@@ -147,9 +152,9 @@ export function WorkspacePicker(props: WorkspacePickerProps) {
           }
         }}
       >
-        <DeckIcon icon={Folder} size={ROW_ICON} />
+        <DeckIcon icon={Folder01Icon} size={GLYPH_ROW} />
         <span>{current}</span>
-        <DeckIcon icon={CaretDown} size={ROW_ICON} />
+        <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
       </button>
       {open.value && !props.disabled ? (
         <div class="nt-workspace-picker__menu" role="menu" aria-label="Choose a folder">
@@ -160,7 +165,7 @@ export function WorkspacePicker(props: WorkspacePickerProps) {
               tabIndex={-1}
               onClick={() => activate(props.onPickFolder)}
             >
-              <DeckIcon icon={FolderPlus} size={ROW_ICON} />
+              <DeckIcon icon={FolderAddIcon} size={GLYPH_ROW} />
               <span class="nt-workspace-picker__name">Open folder…</span>
             </button>
           )}
@@ -172,7 +177,7 @@ export function WorkspacePicker(props: WorkspacePickerProps) {
               tabIndex={-1}
               onClick={() => activate(action.onActivate)}
             >
-              <DeckIcon icon={action.icon} size={ROW_ICON} />
+              <DeckIcon icon={action.icon} size={GLYPH_ROW} />
               <span class="nt-workspace-picker__name">{action.label}</span>
             </button>
           ))}
@@ -193,12 +198,12 @@ export function WorkspacePicker(props: WorkspacePickerProps) {
                 title={path}
                 onClick={() => activate(() => void props.onSelect(path))}
               >
-                <DeckIcon icon={Folder} size={ROW_ICON} />
+                <DeckIcon icon={Folder01Icon} size={GLYPH_ROW} />
                 <span class="nt-workspace-picker__name">{labels[index]}</span>
                 {shared ? (
                   <span class="nt-workspace-picker__detail">{tildify(path, props.homeDir)}</span>
                 ) : null}
-                {selected ? <DeckIcon icon={Check} size={ROW_ICON} /> : null}
+                {selected ? <DeckIcon icon={Tick02Icon} size={GLYPH_ROW} /> : null}
               </button>
             );
           })}

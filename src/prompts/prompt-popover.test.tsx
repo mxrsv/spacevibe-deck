@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ArrowDown01Icon, ClipboardIcon, Delete02Icon, SentIcon } from "@hugeicons/core-free-icons";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
@@ -20,6 +21,16 @@ import { EMPTY_PROMPT_ASSETS } from "./prompt-assets-client";
 import type { PromptTarget } from "./inject";
 import { tabViews } from "../terminal/tabs-store";
 import { persistError } from "../chrome/events";
+import { DeckIcon, type DeckGlyph } from "../ui/controls/deck-icon";
+
+/** A glyph has no name to read back (DL-14.1), so a test pins it by its drawn path data. */
+function drawn(icon: DeckGlyph): string {
+  const scratch = document.createElement("div");
+  render(<DeckIcon icon={icon} />, scratch);
+  const markup = scratch.querySelector("svg")?.innerHTML ?? "";
+  render(null, scratch);
+  return markup;
+}
 
 const target: PromptTarget = { paneId: 1, agent: "claude", cwd: "/repo" };
 
@@ -170,8 +181,8 @@ describe("PromptPopover", () => {
 
     expect(paste.title).toBe("Paste into the focused pane");
     expect(send.title).toBe("Send to the focused pane");
-    expect(paste.querySelector("svg")?.classList.contains("deck-icon--clipboard-text")).toBe(true);
-    expect(send.querySelector("svg")?.classList.contains("deck-icon--paper-plane-tilt")).toBe(true);
+    expect(paste.querySelector("svg")?.innerHTML).toBe(drawn(ClipboardIcon));
+    expect(send.querySelector("svg")?.innerHTML).toBe(drawn(SentIcon));
     // Neither is named by its glyph: the icon is decoration, the label is the
     // action, and a Send that fails its gate still only pasted.
     expect(paste.textContent).toBe("");
@@ -210,12 +221,13 @@ describe("PromptPopover", () => {
     click(host.querySelector(".cfg-row__label--edit") as Element);
 
     expect(host.querySelector('[aria-label="Remove fix bug"] svg')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Remove fix bug"] svg')?.innerHTML).toBe(
+      drawn(Delete02Icon),
+    );
+    const caret = drawn(ArrowDown01Icon);
     expect(
-      host
-        .querySelector('[aria-label="Remove fix bug"] svg')
-        ?.classList.contains("deck-icon--trash"),
+      [...host.querySelectorAll(".prompt-picker svg")].some((svg) => svg.innerHTML === caret),
     ).toBe(true);
-    expect(host.querySelector(".prompt-picker .deck-icon--caret-down")).not.toBeNull();
   });
 
   it("reports an injection rejection and stays open for retry", async () => {

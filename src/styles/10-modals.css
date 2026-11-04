@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  background: var(--scrim-bg);
   /* 10px, chosen against a rendered terminal ground rather than picked: 6px
      still let line rhythm read as text, and 14px erased the stage into a flat
      wash, which is the thing the 42% figure exists to avoid. */
@@ -81,13 +81,13 @@
 .usage-consent__actions button.is-primary:hover:not(:disabled),
 .usage-consent__actions button.is-primary:focus-visible:not(:disabled) {
   outline: none;
-  background: color-mix(in oklch, var(--primary) 92%, black);
+  background: var(--primary-hover);
 }
 .preset-editor__actions button.is-primary:active:not(:disabled),
 .save-preset__actions button.is-primary:active:not(:disabled),
 .create-entry__actions button.is-primary:active:not(:disabled),
 .usage-consent__actions button.is-primary:active:not(:disabled) {
-  background: color-mix(in oklch, var(--primary) 84%, black);
+  background: var(--primary-pressed);
 }
 
 /* Text fields in dialogs: the secondary button's frame at button height, and the
@@ -116,12 +116,16 @@
 .create-entry input:hover {
   border-color: var(--control-frame-hover);
 }
+/* RCP-9: only a text input wears the ring; a select's focus is its hover frame. */
 .preset-editor__name:focus-visible,
 .save-preset__row input:focus-visible,
-.save-preset__row select:focus-visible,
 .create-entry input:focus-visible {
-  border-color: var(--muted-foreground);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 var(--ring-w) var(--focus-ring);
+}
+
+.save-preset__row select:focus-visible {
+  border-color: var(--control-frame-hover);
 }
 .preset-editor {
   display: flex;
@@ -137,6 +141,7 @@
   outline: none;
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: hidden;
+  box-shadow: var(--elev-3);
 }
 .preset-editor__toolbar {
   display: flex;
@@ -198,7 +203,7 @@
   inset: -3px;
 }
 .mock-divider:hover {
-  background: var(--text-muted);
+  background: var(--ring);
 }
 .mock-pane {
   display: flex;
@@ -255,6 +260,7 @@
   border-radius: var(--radius-surface);
   outline: none;
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--elev-3);
 }
 .save-preset h1 {
   font-size: 16px;
@@ -342,6 +348,7 @@
   border-radius: var(--radius-surface);
   outline: none;
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--elev-3);
 }
 .usage-consent__title {
   margin: 0;
@@ -392,6 +399,7 @@
   border-radius: var(--radius-surface);
   outline: none;
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--elev-3);
 }
 .agent-quick-picker h1 {
   font-size: 16px;
