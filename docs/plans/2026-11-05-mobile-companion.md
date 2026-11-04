@@ -568,6 +568,28 @@ All four are environmental and pre-existing:
 - Each fix carries its own test; the reviewers' failing scratch tests were reproduced as repo tests
   where the agents fixed them.
 
+**End-to-end over real sockets (scratch only, nothing committed):** the real relay under
+`wrangler dev`, the real desktop `createMobileService` with a fake renderer, and the phone's real
+pair flow, connection manager, socket factory and noble crypto: pairing (QR → claim → accept in
+103–167 ms), online with the `desktop` event, the tree (with a "My Aider" custom agent), snapshot
+then live data in order, `pane.input` and shell `pane.send` reaching the renderer's input path, a
+push reaching the relay, the move to the LAN on a private alias address and the fallback to the
+relay when it closed, and revoke reaching the phone in 52–80 ms (relay path, relay only, and
+during a LAN session — that last case failed first and was fixed in `db4ba6a`); a reconnect with
+the old token then reads 4404.
+
+**Final gates on a clean worktree (`2d94987` for the long runs, then `db4ba6a`/`bc036d2`):**
+- `npm test` → `Test Files 2 failed | 647 passed | 1 skipped (650)`, `Tests 2 failed | 9895
+  passed | 22 skipped (9919)`: the two baseline failures only (bash PATH, `::1`).
+- `npm run lint` at `db4ba6a` → exit 0 (the first run at `2d94987` failed: `mobile/.oxlintrc.json`
+  was loaded by the root as a nested config and overrode its ignore; fixed in `5a03d82`). 31 new
+  warnings of kinds the tree already carries, six of them `max-lines` on new files over 300 lines.
+- `npm run build` → `✓ built in 1m 3s`, exit 0. `npm run electron:build` → exit 0.
+- `cd backend && npm test` → `# pass 57 # fail 0` after `bc036d2` (the contract test now turns
+  the mobile switch on).
+- `npm run mobile:check` → `mobile:check: all green` (protocol 194 tests, relay 35, app 241, the
+  iOS bundle).
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
