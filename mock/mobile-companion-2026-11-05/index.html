@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-worst="0">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SpaceVibe Deck for iPhone · direction mock</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="mobile.css" />
+  </head>
+  <body>
+    <header class="gx-top">
+      <h1>SpaceVibe Deck for iPhone · pick a home</h1>
+      <div class="gx-seg" data-group="theme">
+        <button data-v="dark" aria-pressed="true">Dark</button
+        ><button data-v="light" aria-pressed="false">Light</button>
+      </div>
+      <div class="gx-seg" data-group="worst">
+        <button data-v="0" aria-pressed="true">Real data</button
+        ><button data-v="1" aria-pressed="false">Worst case</button>
+      </div>
+      <div class="gx-seg" data-group="scale">
+        <button data-v="0.6" aria-pressed="false">S</button
+        ><button data-v="0.72" aria-pressed="true">M</button
+        ><button data-v="1" aria-pressed="false">1:1</button>
+      </div>
+    </header>
+    <main id="mock"></main>
+    <section class="gx-section">
+      <div class="gx-head"><h2>Also decided by this pick</h2></div>
+      <ul class="gx-notes">
+        <li>
+          <b>Type:</b> iOS text styles at their default Dynamic Type sizes (Body 17, Footnote 13,
+          Large Title 34), weights 400 and 600 only. Deck desktop’s 14/12 scale is too small for a
+          phone held at arm’s length.
+        </li>
+        <li>
+          <b>Icons:</b> drawn here with Deck’s Hugeicons. The native build can swap them for SF
+          Symbols, which follow Dynamic Type and weight on their own; Hugeicons keep the desktop’s
+          look.
+        </li>
+        <li>
+          <b>Lines:</b> no separators inside lists; groups are split by space and a background step,
+          as on the desktop.
+        </li>
+        <li>
+          <b>Terminal:</b> fits the desktop pane’s columns to the screen (64 cols here, so text is
+          small), pinch to zoom 50–200%. It never resizes the pane on the desktop.
+        </li>
+      </ul>
+    </section>
+    <script src="icons.js"></script>
+    <script src="data.js"></script>
+    <script src="screens.js"></script>
+    <script>
+      const root = document.documentElement;
+      document.querySelectorAll(".gx-seg").forEach((seg) =>
+        seg.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b) return;
+          seg
+            .querySelectorAll("button")
+            .forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          const g = seg.dataset.group;
+          if (g === "theme") root.dataset.theme = b.dataset.v;
+          if (g === "worst") root.dataset.worst = b.dataset.v;
+          if (g === "scale") root.style.setProperty("--phone-scale", b.dataset.v);
+          renderMock();
+        }),
+      );
+      const q = new URLSearchParams(location.search);
+      if (q.get("theme"))
+        document.querySelector(`[data-group=theme] [data-v=${q.get("theme")}]`).click();
+      if (q.get("worst"))
+        document.querySelector(`[data-group=worst] [data-v="${q.get("worst")}"]`).click();
+      renderMock();
+    </script>
+  </body>
+</html>
