@@ -1,28 +1,15 @@
-/**
- * The monochrome file-type icon vocabulary (spec §3.1, DL-18.10).
- *
- * Written for the tree's data rows and docked-panel-only until 2026-08-16,
- * when the tab strip's chips became glyph-led: a document's chip takes the
- * same glyph its row in the tree has, so the two can never name the same file
- * with two different pictures. Still the one library DL-14.1 names, so this
- * is a vocabulary inside it rather than a second library.
- *
- * `ALWAYS_HIDDEN` and `FALLBACK_IGNORED` live in `file-tree.ts` as the tree's
- * named exclusion constants (spec §3.1); this module owns icon selection only
- * and never re-lists which entries are hidden.
- */
 import {
-  BracketsCurly,
-  CaretDown,
-  CaretRight,
-  File,
-  FileCode,
-  FileImage,
-  FileText,
-  Folder,
-  FolderOpen,
-} from "@phosphor-icons/react";
-import type { DeckIconComponent } from "../../ui/controls/deck-icon";
+  ArrowDown01Icon,
+  ArrowRight01Icon,
+  BracketsIcon,
+  File01Icon,
+  FileCodeIcon,
+  FileEditIcon,
+  FileImageIcon,
+  Folder01Icon,
+  FolderOpenIcon,
+} from "@hugeicons/core-free-icons";
+import type { DeckGlyph } from "../../ui/controls/deck-icon";
 import type { TreeRow } from "../file-tree";
 
 const CODE_EXTENSIONS: readonly string[] = [
@@ -47,11 +34,11 @@ const IMAGE_EXTENSIONS: readonly string[] = ["png", "jpg", "jpeg", "gif", "svg",
 const TEXT_EXTENSIONS: readonly string[] = ["md", "mdx", "txt"];
 
 /** Extension → glyph, built once from the readable lists above. */
-const EXTENSION_ICONS: ReadonlyMap<string, DeckIconComponent> = new Map([
-  ...CODE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileCode]),
-  ["json", BracketsCurly],
-  ...IMAGE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileImage]),
-  ...TEXT_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileText]),
+const EXTENSION_ICONS: ReadonlyMap<string, DeckGlyph> = new Map([
+  ...CODE_EXTENSIONS.map((extension): [string, DeckGlyph] => [extension, FileCodeIcon]),
+  ["json", BracketsIcon],
+  ...IMAGE_EXTENSIONS.map((extension): [string, DeckGlyph] => [extension, FileImageIcon]),
+  ...TEXT_EXTENSIONS.map((extension): [string, DeckGlyph] => [extension, FileEditIcon]),
 ]);
 
 /** The part after the last dot, lowercased. A leading-dot dotfile (`.env`)
@@ -65,25 +52,25 @@ function extensionOf(name: string): string | null {
 }
 
 /** A directory's glyph, open or closed. */
-export function directoryIcon(expanded: boolean): DeckIconComponent {
-  return expanded ? FolderOpen : Folder;
+export function directoryIcon(expanded: boolean): DeckGlyph {
+  return expanded ? FolderOpenIcon : Folder01Icon;
 }
 
 /** A file's glyph by extension, falling back to the generic file glyph. */
-export function fileIcon(name: string): DeckIconComponent {
+export function fileIcon(name: string): DeckGlyph {
   const extension = extensionOf(name);
   if (extension === null) {
-    return File;
+    return File01Icon;
   }
-  return EXTENSION_ICONS.get(extension) ?? File;
+  return EXTENSION_ICONS.get(extension) ?? File01Icon;
 }
 
 /** The disclosure chevron for one row's expansion state. */
-export function chevronForRow(row: TreeRow): DeckIconComponent {
-  return row.expanded ? CaretDown : CaretRight;
+export function chevronForRow(row: TreeRow): DeckGlyph {
+  return row.expanded ? ArrowDown01Icon : ArrowRight01Icon;
 }
 
 /** The type glyph for one row, directory or file. */
-export function iconForRow(row: TreeRow): DeckIconComponent {
+export function iconForRow(row: TreeRow): DeckGlyph {
   return row.directory ? directoryIcon(row.expanded) : fileIcon(row.name);
 }

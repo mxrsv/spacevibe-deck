@@ -2,7 +2,23 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  FilterIcon,
+  FilterRemoveIcon,
+  ViewIcon,
+  ViewOffSlashIcon,
+} from "@hugeicons/core-free-icons";
+import { DeckIcon, type DeckGlyph } from "../../ui/controls/deck-icon";
 import { TreeRootActions } from "./tree-root-actions";
+
+/** A glyph has no name to read back (DL-14.1), so a test pins it by its drawn path data. */
+function drawn(icon: DeckGlyph): string {
+  const scratch = document.createElement("div");
+  render(<DeckIcon icon={icon} />, scratch);
+  const markup = scratch.querySelector("svg")?.innerHTML ?? "";
+  render(null, scratch);
+  return markup;
+}
 
 let host: HTMLDivElement;
 const handlers = () => ({
@@ -86,18 +102,17 @@ describe("TreeRootActions", () => {
   describe("Show hidden files", () => {
     const toggle = (): HTMLButtonElement =>
       host.querySelector<HTMLButtonElement>('[aria-label="Show hidden files"]')!;
-    const glyph = (): string[] => [...toggle().querySelector("svg")!.classList];
+    const glyph = (): string => toggle().querySelector("svg")?.innerHTML ?? "";
 
     it("is a toggle whose state and glyph follow the prop", () => {
       const props = handlers();
       act(() => render(<TreeRootActions canCreate tabIndex={0} {...props} />, host));
       expect(toggle().getAttribute("aria-pressed")).toBe("false");
-      expect(glyph()).toContain("deck-icon--eye-slash");
+      expect(glyph()).toBe(drawn(ViewOffSlashIcon));
 
       act(() => render(<TreeRootActions canCreate tabIndex={0} {...props} showHidden />, host));
       expect(toggle().getAttribute("aria-pressed")).toBe("true");
-      expect(glyph()).toContain("deck-icon--eye");
-      expect(glyph()).not.toContain("deck-icon--eye-slash");
+      expect(glyph()).toBe(drawn(ViewIcon));
     });
 
     it("keeps one constant label and carries no wash class in either state", () => {
@@ -144,18 +159,17 @@ describe("TreeRootActions", () => {
   describe("Show ignored files (IGN13)", () => {
     const toggle = (): HTMLButtonElement =>
       host.querySelector<HTMLButtonElement>('[aria-label="Show ignored files"]')!;
-    const glyph = (): string[] => [...toggle().querySelector("svg")!.classList];
+    const glyph = (): string => toggle().querySelector("svg")?.innerHTML ?? "";
 
     it("is a toggle whose state and glyph follow the prop", () => {
       const props = handlers();
       act(() => render(<TreeRootActions canCreate tabIndex={0} {...props} />, host));
       expect(toggle().getAttribute("aria-pressed")).toBe("false");
-      expect(glyph()).toContain("deck-icon--funnel-simple-x");
+      expect(glyph()).toBe(drawn(FilterRemoveIcon));
 
       act(() => render(<TreeRootActions canCreate tabIndex={0} {...props} showIgnored />, host));
       expect(toggle().getAttribute("aria-pressed")).toBe("true");
-      expect(glyph()).not.toContain("deck-icon--funnel-simple-x");
-      expect(glyph()).toContain("deck-icon--funnel-simple");
+      expect(glyph()).toBe(drawn(FilterIcon));
     });
 
     it("mirrors the roving tab stop", () => {

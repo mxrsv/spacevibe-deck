@@ -1000,9 +1000,10 @@ covering it; the file explorer is the resident instance.
   chip may print a shorter label if its full name stays the accessible name (WCAG 2.5.3).
 - **DL-19.9** A panel tab hangs its own actions off the row that names what it shows; the
   shared header carries no control belonging to one tab. They are a trailing cluster of
-  icon-only controls, visible at rest, sized to the row rather than to chrome: `.iconbtn`'s
-  24px box would overflow the 22px data row, whose height every virtual-list index is computed
-  from ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)). The explorer's tree-root
+  icon-only controls, visible at rest, sized to the row rather than to chrome: the 20 icon box
+  (RCP-4) with a 12 glyph, because `.iconbtn`'s 28 would overflow the 22px data row, whose height
+  every virtual-list index is computed from
+  ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)). The explorer's tree-root
   cluster is New file and New folder (omitted when the host cannot create), Show hidden
   files, Show ignored files, Refresh and Collapse all: 107px at DL-19.4's floor, and the
   root's name truncates first. Show hidden files and Show ignored files are toggles:

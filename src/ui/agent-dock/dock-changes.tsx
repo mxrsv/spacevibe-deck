@@ -58,7 +58,9 @@ const Note = ({ children, failure = false }: { children: string; failure?: boole
   <p
     role="status"
     className={
-      failure ? "px-3 py-2 text-xs text-(--term-err)" : "px-3 py-2 text-xs text-muted-foreground"
+      failure
+        ? "px-(--space-in-lg) py-2 text-xs text-(--ink-fail)"
+        : "px-(--space-in-lg) py-2 text-xs text-(--text-faint)"
     }
   >
     {children}
@@ -152,10 +154,11 @@ function DockChangesBody({
   return (
     <div ref={body} className="flex h-full min-h-0 flex-col">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
-      <div className="flex h-10 items-center gap-2 pr-2 pl-3">
-        <span className="text-xs font-medium text-foreground">Uncommitted</span>
+      {/* RCP-7: the view's header band is 40. */}
+      <div className="flex h-(--control-h-40) items-center gap-2 px-(--space-in-lg)">
+        <span className="text-xs font-semibold text-(--text-primary)">Uncommitted</span>
         {snapshot !== null && entries.length > 0 ? (
-          <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate text-xs tabular-nums text-(--text-faint)">
             {entries.length} {entries.length === 1 ? "file" : "files"}{" "}
             <ChangeCounts added={snapshot.totals.added} removed={snapshot.totals.removed} sans />
           </span>
@@ -203,7 +206,7 @@ function DockChangesBody({
       {entries.length > 0 ? (
         <div className="flex min-h-0 flex-1">
           {list ? (
-            <div className="w-2/5 shrink-0 overflow-y-auto border-r">
+            <div className="w-2/5 shrink-0 overflow-y-auto">
               <DockChangesTree
                 root={root}
                 entries={entries}

@@ -10,14 +10,15 @@ import {
   visibleRows,
   type ChangeFolder,
 } from "../../files/changes/changes-tree-model";
+import { stateClasses } from "../blocks/recipe-classes";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
 import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
 
 const INDENT = 8;
 const STEP = 12;
-const ROW =
-  "flex h-(--dock-row-h) w-full items-center gap-1.5 pr-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+/** RCP-7, RCP-9: a dense 24 row; keyboard focus paints as hover, no ring (CMP-11). */
+const ROW = `flex h-(--row-24) w-full items-center gap-(--space-icon-label) pr-(--space-pad-row) text-left ${stateClasses(false)}`;
 
 export interface DockChangesTreeProps {
   /** The folder the entries are relative to. */

@@ -4,33 +4,32 @@ import type { DiffSidesView } from "../../files/changes/diff-sides";
 import { diffLines, type DiffHunk, type DiffLine } from "../../files/changes/line-diff";
 
 /**
- * A changed line is the theme's green or red mixed opaquely into the diff's ground, with its
- * number in the full ink and a bar beside it, so the change reads from the gutter alone; context
- * and `@@` sit near the ground and carry no colour. The mixes are opaque because the gutter
- * sticks over the code when the lines scroll sideways.
+ * RCP-22 (DOCK-10): a changed line is its hue mixed 20% (lab) into the card (`--diff-add-bg`), its
+ * gutter a 15% mix with the number in status ink and a 3px bar (`.dock-diff-bar`, in
+ * 27-dock-stacked.css), so the change reads from the gutter alone; context is muted and the `@@`
+ * line sits on `--diff-hunk-bg`. The mixes are opaque because the gutter sticks over the code when
+ * the lines scroll sideways.
  */
 const LINE_LOOK: Readonly<
   Record<DiffLine["kind"], { sign: string; line: string; gutter: string; ink: string }>
 > = {
   context: {
     sign: " ",
-    line: "text-muted-foreground",
-    gutter: "bg-background text-(--text-faint)",
+    line: "text-(--text-muted)",
+    gutter: "bg-(--card-bg) text-(--text-faint)",
     ink: "",
   },
   add: {
     sign: "+",
-    line: "bg-[color-mix(in_lab,var(--background)_80%,var(--term-ok))]",
-    gutter:
-      "bg-[color-mix(in_lab,var(--background)_85%,var(--term-ok))] text-(--term-ok) shadow-[inset_3px_0_0_var(--term-ok)]",
-    ink: "text-(--term-ok)",
+    line: "bg-(--diff-add-bg) text-(--text-primary)",
+    gutter: "dock-diff-bar dock-diff-bar--add bg-(--diff-add-gutter) text-(--ink-ok)",
+    ink: "text-(--ink-ok)",
   },
   del: {
     sign: "-",
-    line: "bg-[color-mix(in_lab,var(--background)_80%,var(--term-err))]",
-    gutter:
-      "bg-[color-mix(in_lab,var(--background)_85%,var(--term-err))] text-(--term-err) shadow-[inset_3px_0_0_var(--term-err)]",
-    ink: "text-(--term-err)",
+    line: "bg-(--diff-del-bg) text-(--text-primary)",
+    gutter: "dock-diff-bar dock-diff-bar--del bg-(--diff-del-gutter) text-(--ink-fail)",
+    ink: "text-(--ink-fail)",
   },
 };
 
@@ -54,7 +53,7 @@ function Hunk({ hunk, gutter }: { hunk: DiffHunk; gutter: string }) {
   const numbers = lineNumbers(hunk);
   return (
     <>
-      <div className="bg-[color-mix(in_oklch,var(--background)_94%,var(--foreground))] px-3 text-muted-foreground">
+      <div className="bg-(--diff-hunk-bg) px-3 text-(--text-faint)">
         @@ -{range(hunk.oldStart, hunk.oldLines)} +{range(hunk.newStart, hunk.newLines)} @@
       </div>
       {hunk.lines.map((line, index) => {

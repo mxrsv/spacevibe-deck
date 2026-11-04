@@ -107,7 +107,8 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   const treeLabel = treeOpen ? "Hide the file tree" : "Show the file tree";
   return (
     <div ref={body} className="dock-file flex h-full min-h-0 flex-col">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b pr-2.5 pl-3 text-xs">
+      {/* RCP-7: the breadcrumb band is 40, with no line under it (RCP-12). */}
+      <div className="flex h-(--control-h-40) shrink-0 items-center gap-2 px-(--space-in-lg) text-xs">
         <nav
           aria-label="File path"
           className="flex min-w-0 flex-1 items-stretch overflow-hidden font-sans"
@@ -131,7 +132,10 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
           )}
           {shown.map((crumb) =>
             crumb.folder === null ? (
-              <b key={crumb.name} className="min-w-0 truncate px-1 font-medium text-foreground">
+              <b
+                key={crumb.name}
+                className="min-w-0 truncate px-1 font-normal text-(--text-primary)"
+              >
                 {crumb.name}
               </b>
             ) : (
@@ -180,7 +184,9 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
                 size="icon-sm"
                 aria-label={treeLabel}
                 aria-pressed={treeOpen}
-                className={treeOpen ? "bg-muted text-foreground" : "text-muted-foreground"}
+                className={
+                  treeOpen ? "bg-(--tab-active-bg) text-(--text-primary)" : "text-(--text-muted)"
+                }
                 onClick={() => {
                   dockTreePane.value = !treeOpen;
                 }}
@@ -197,7 +203,7 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
           <FilePanel controller={controller} workspacePath={workspacePath} chrome="none" />
         </div>
         {treeOpen ? (
-          <div className={`${TREE_PANE_WIDTH} shrink-0 border-l`}>
+          <div className={`${TREE_PANE_WIDTH} shrink-0 bg-(--card-bg)`}>
             <DockFileTree
               controller={controller}
               workspacePath={workspacePath}

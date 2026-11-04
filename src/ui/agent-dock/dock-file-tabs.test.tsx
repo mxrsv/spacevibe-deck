@@ -141,12 +141,11 @@ describe("file tabs in the dock strip", () => {
     expect(tabNames()).toEqual(["a.ts", "b.ts"]);
     expect(selected()).toEqual(["b.ts"]);
     expect(bodyText()).toContain(`editing ${B}`);
-    // Fixed icons first, then the divider, then the file tabs.
-    const divider = strip().querySelector('[data-slot="separator"]') as HTMLElement;
+    // Fixed icons first, then the file tabs, parted by a gap rather than a line (RCP-12).
+    expect(strip().querySelector('[data-slot="separator"]')).toBeNull();
+    const usage = strip().querySelector('button[aria-label="Usage"]') as HTMLElement;
     const firstTab = tabs()[0];
-    expect(
-      divider.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(usage.compareDocumentPosition(firstTab) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(strip().querySelector('button[aria-label="Usage"]')).not.toBeNull();
     // A file holds the body, so no fixed icon reads as pressed.
     expect(strip().querySelectorAll('button[aria-pressed="true"]')).toHaveLength(0);

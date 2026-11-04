@@ -124,10 +124,12 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
       ref={host}
       data-card-path={entry.path}
       // `data-flash` is set and cleared by the Changes view on a list press, outside rendering.
-      className="border-b data-flash:shadow-[inset_2px_0_0_var(--primary)]"
+      // RCP-22: a rounded card on `--card-bg`; it clips (`overflow: clip`, not `hidden`) so its
+      // head sticks to the stack's scroller. `.dock-card[data-flash]` draws the flash bar.
+      className="dock-card relative overflow-clip rounded-(--radius-tab) bg-(--card-bg)"
     >
       <div
-        className="group/card-header sticky top-0 z-10 box-border flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        className="group/card-header sticky top-0 z-10 box-border flex h-(--row-24) items-center gap-(--space-icon-label) bg-(--card-bg) pr-(--space-pad-row) pl-1"
         // `box-border`: the row height includes the bottom rule, as a list row's does; there is
         // no global box-sizing reset. The path button `shrink`s so its folder part can clip.
         // The header's one verb is the fold: a press anywhere but on a button folds the card. The
@@ -162,7 +164,7 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
         {counts.kind === "counts" ? (
           <ChangeCounts added={counts.added} removed={counts.removed} sans />
         ) : counts.kind === "binary" ? (
-          <span className="shrink-0 text-xs text-muted-foreground">binary</span>
+          <span className="shrink-0 text-xs text-(--text-faint)">binary</span>
         ) : null}
         {entry.status === "deleted" ? null : (
           <Tooltip>
@@ -222,7 +224,7 @@ export function DockChangesStack({
   ports = defaultStackPorts,
 }: DockChangesStackProps) {
   return (
-    <div role="group" aria-label="File diffs">
+    <div role="group" aria-label="File diffs" className="flex flex-col gap-2 p-2">
       {entries.map((entry) => (
         <Card
           key={entry.path}

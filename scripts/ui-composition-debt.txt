@@ -18,9 +18,6 @@
 
 src/files/ui/changes-list.tsx phosphor 1
 src/files/ui/diff-column-header.tsx phosphor 1
-src/files/ui/file-icons.ts phosphor 1
-src/files/ui/tree-root-actions.tsx phosphor 1
-src/files/ui/view-mode-toggle.tsx phosphor 1
 src/launcher/agent-launch-cards.tsx phosphor 1
 src/launcher/agent-launch-context.tsx phosphor 1
 src/launcher/agent-launch-page.tsx phosphor 1
@@ -42,11 +39,6 @@ src/terminal/search-bar.ts phosphor 1
 src/ui/agent-board-bar.tsx phosphor 1
 src/ui/agent-board-card.tsx phosphor 1
 src/ui/agent-board.tsx phosphor 1
-src/ui/agent-dock/dock-changes-card-body.tsx shadow 2
-src/ui/agent-dock/dock-changes-stack.tsx shadow 1
-src/ui/agent-dock/dock-changes-tree.tsx ring 3
-src/ui/agent-dock/dock-changes.tsx weight 1
-src/ui/agent-dock/dock-file-body.tsx weight 1
 src/ui/agent-quick-picker.tsx phosphor 1
 src/ui/agent-rail.tsx phosphor 1
 src/ui/command-settings/command-settings-live-row.tsx arbitrary 1

@@ -33,7 +33,7 @@ import { createEntryRequest } from "../../chrome/events";
 import type { EntryKind } from "../../host/file-create-host";
 import { TreeRootActions } from "./tree-root-actions";
 import type { FileSurfaceController } from "../file-surface-controller";
-import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE, GLYPH_ROW } from "../../ui/controls/deck-icon";
 import { chevronForRow, iconForRow } from "./file-icons";
 import { LoadError } from "../../ui/controls/load-error";
 import { TreeMetricsContext } from "./tree-metrics";
@@ -369,13 +369,13 @@ export function FileTreeView(props: FileTreeViewProps) {
               class="file-tree__chevron"
               style={{ visibility: row.directory ? "visible" : "hidden" }}
             >
-              <DeckIcon icon={chevronForRow(row)} size={ROW_ICON} />
+              <DeckIcon icon={chevronForRow(row)} size={GLYPH_INLINE} />
             </span>
             {/* Design §3.2: no type glyph on the root — the caret at depth 0
                 already says "this is the folder everything is in". */}
             {isRoot ? null : (
               <span class="file-tree__icon">
-                <DeckIcon icon={iconForRow(row)} size={ROW_ICON} />
+                <DeckIcon icon={iconForRow(row)} size={GLYPH_ROW} />
               </span>
             )}
             {/* DL-19: a data row keeps its content's real casing. */}
