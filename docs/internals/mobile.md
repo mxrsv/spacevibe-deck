@@ -41,7 +41,9 @@ secret, so the phone can claim the pairing at the relay once, but the relay cann
 phone's proof. That proof is the `pair-hello` box: sealed with a key derived from the X25519 secret
 and the QR secret ([`pairing.ts`](../../mobile/protocol/src/pairing.ts)). The desktop opens it,
 marks the secret used and stores the record. A second `pair-hello`, valid or not, is refused as
-`used`, and both sides refuse an expired code. A bad proof does not burn the code.
+`used`, and both sides refuse an expired code. A bad proof does not burn the code on the desktop,
+but the relay's claim is spent by the first phone that makes it, so a phone that drops after
+claiming needs a new code.
 
 Keys live in `safeStorage` on the desktop (`mobile-pairings.json`, one encrypted envelope, the way
 [`session-store.ts`](../../electron/account/session-store.ts) keeps the account) and in the
@@ -98,13 +100,15 @@ event and the phone opens a direct socket with the same handshake
 channel as the relay and only decides who may open a socket:
 
 - **Private IPv4 only.** It binds each RFC 1918 address separately (10/8, 172.16/12,
-  192.168/16), never a wildcard, because a wildcard would also answer on a public Wi-Fi or a VPN.
+  192.168/16), never a wildcard, so it never answers on a public interface. Private ranges include
+  café and hotel networks, so what protects it there is the pairing key and the limits below.
   Interfaces are re-read every 30 s.
 - **Only while needed:** the switch is on and at least one phone is paired. The last revoke stops
   it.
 - **Narrow surface.** The path must carry a known pairing id; everything else, plain HTTP included,
-  gets an empty 404. At most eight sockets, and a socket whose channel is not open within 5 s is
-  closed.
+  gets an empty 404. At most eight WebSockets and twice that many raw connections; a connection
+  that has not upgraded, or whose channel is not open, within 5 s is closed, so idle sockets cannot
+  exhaust Deck's file descriptors.
 - **Binary only.** The hand-written RFC 6455 server
   ([`ws-server.ts`](../../electron/mobile/ws-server.ts)) accepts masked binary frames of at most
   128 KiB, because the LAN path carries exactly the relay's peer frames. No dependency was added

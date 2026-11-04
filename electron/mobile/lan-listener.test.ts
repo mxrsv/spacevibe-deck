@@ -100,6 +100,13 @@ async function started(over: Partial<LanListenerDeps> = {}) {
   return { ...h, port };
 }
 
+/** A raw TCP client; the server destroying it shows up as ECONNRESET, which is the point. */
+function rawConnect(port: number): net.Socket {
+  const socket = net.connect(port, "127.0.0.1");
+  socket.on("error", () => {});
+  return socket;
+}
+
 function connect(port: number, path = `/v1/${PAIRING}/socket`) {
   const socket = new WebSocket(`ws://127.0.0.1:${port}${path}`);
   socket.binaryType = "arraybuffer";
@@ -243,5 +250,40 @@ describe("lan listener", () => {
     t.listener.stop();
     expect(t.onAddresses).toHaveBeenLastCalledWith([]);
     expect(await connect(port).opened).toBe(false);
+  });
+
+  it("destroys raw connections beyond twice the socket cap and frees slots when they close", async () => {
+    const t = await started({ maxSockets: 2 });
+    const sockets = Array.from({ length: 6 }, () => rawConnect(t.port));
+    await Promise.all(sockets.map((socket) => new Promise((r) => socket.on("connect", r))));
+    // The cap is 4: two connections beyond it are dropped, the rest stay open.
+    await new Promise((r) => setTimeout(r, 200));
+    const dropped = sockets.filter((socket) => socket.destroyed);
+    expect(dropped).toHaveLength(2);
+    sockets.find((socket) => !socket.destroyed)!.destroy();
+    await vi.waitFor(() => expect(sockets.filter((s) => s.destroyed)).toHaveLength(3));
+    // Give the server a moment to see the close and free the slot.
+    await new Promise((r) => setTimeout(r, 100));
+    const again = rawConnect(t.port);
+    await new Promise((r) => again.on("connect", r));
+    await new Promise((r) => setTimeout(r, 100));
+    expect(again.destroyed).toBe(false);
+    again.destroy();
+    for (const socket of sockets) socket.destroy();
+  });
+
+  it("destroys a connection that never completes the upgrade", async () => {
+    const t = await started({ handshakeTimeoutMs: 150 });
+    const idle = rawConnect(t.port);
+    await new Promise((r) => idle.on("connect", r));
+    const closed = new Promise<void>((resolve) => idle.on("close", () => resolve()));
+    await closed;
+    expect(idle.destroyed).toBe(true);
+    // A real upgrade within the deadline is not cut by the raw timer.
+    t.opened.value = true;
+    const client = connect(t.port);
+    await client.opened;
+    await new Promise((r) => setTimeout(r, 300));
+    expect(client.socket.readyState).toBe(WebSocket.OPEN);
   });
 });

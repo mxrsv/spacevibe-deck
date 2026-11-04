@@ -9,6 +9,7 @@ import {
   encodeFrame,
   judgeHandshake,
   WS_CLOSE,
+  type WsEvent,
   type WsConnection,
 } from "./ws-server";
 
@@ -182,6 +183,18 @@ describe("frame parser", () => {
     body.writeUInt16BE(1001, 0);
     expect(parser.push(clientFrame(0x8, body))).toEqual([{ kind: "close", code: 1001 }]);
     expect(parser.push(clientFrame(0x2, Buffer.from("late")))).toEqual([]);
+  });
+
+  it("parses a frame fed one byte at a time, in linear time", () => {
+    const parser = createFrameParser(200_000);
+    const frame = clientFrame(0x2, Buffer.alloc(128 * 1024 - 100, 5));
+    const started = performance.now();
+    const events: WsEvent[] = [];
+    for (let i = 0; i < frame.length; i += 1) events.push(...parser.push(frame.subarray(i, i + 1)));
+    expect(events).toHaveLength(1);
+    expect((events[0] as { data: Uint8Array }).data.length).toBe(128 * 1024 - 100);
+    // Quadratic concatenation took seconds here; linear takes milliseconds.
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 
   it("reads 16-bit and 64-bit extended lengths", () => {

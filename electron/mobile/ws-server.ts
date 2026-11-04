@@ -130,15 +130,51 @@ export interface FrameParser {
  * Incremental client-frame parser. After the first `error` or `close` event it ignores all input.
  */
 export function createFrameParser(maxMessageBytes: number): FrameParser {
-  let pending: Buffer = Buffer.alloc(0);
+  // Received bytes as a list with a running length: a byte-at-a-time peer costs O(1) per read,
+  // and bytes are joined only when a whole frame is present.
+  let chunks: Buffer[] = [];
+  let size = 0;
   const fragments: Buffer[] = [];
   let assembled = 0;
   let inMessage = false;
   let dead = false;
 
+  /** Copies the first `count` buffered bytes (at most the buffered amount) without consuming them. */
+  function peek(count: number): Buffer {
+    const out = Buffer.allocUnsafe(Math.min(count, size));
+    let at = 0;
+    for (const part of chunks) {
+      if (at >= out.length) break;
+      at += part.copy(out, at, 0, out.length - at);
+    }
+    return out;
+  }
+
+  /** Removes and returns the first `count` buffered bytes. */
+  function take(count: number): Buffer {
+    const out = peek(count);
+    let left = count;
+    let used = 0;
+    while (left > 0) {
+      const part = chunks[used]!;
+      if (part.length <= left) {
+        left -= part.length;
+        used += 1;
+      } else {
+        chunks[used] = part.subarray(left);
+        left = 0;
+      }
+    }
+    // One splice for the consumed parts, not a shift per part.
+    chunks = used === 0 ? chunks : chunks.slice(used);
+    size -= count;
+    return out;
+  }
+
   function fail(events: WsEvent[], code: number, reason: string): void {
     dead = true;
-    pending = Buffer.alloc(0);
+    chunks = [];
+    size = 0;
     fragments.length = 0;
     events.push({ kind: "error", code, reason });
   }
@@ -147,9 +183,13 @@ export function createFrameParser(maxMessageBytes: number): FrameParser {
     push(chunk) {
       const events: WsEvent[] = [];
       if (dead) return events;
-      pending = pending.length === 0 ? Buffer.from(chunk) : Buffer.concat([pending, chunk]);
+      if (chunk.length > 0) {
+        chunks.push(Buffer.from(chunk));
+        size += chunk.length;
+      }
       for (;;) {
-        if (pending.length < 2) return events;
+        if (size < 2) return events;
+        const pending = peek(14);
         const first = pending[0]!;
         const second = pending[1]!;
         const fin = (first & 0x80) !== 0;
@@ -166,11 +206,11 @@ export function createFrameParser(maxMessageBytes: number): FrameParser {
         let length = second & 0x7f;
         let offset = 2;
         if (length === 126) {
-          if (pending.length < 4) return events;
+          if (size < 4) return events;
           length = pending.readUInt16BE(2);
           offset = 4;
         } else if (length === 127) {
-          if (pending.length < 10) return events;
+          if (size < 10) return events;
           const wide = pending.readBigUInt64BE(2);
           if (wide > BigInt(maxMessageBytes)) {
             fail(events, WS_CLOSE.tooBig, "message too big");
@@ -202,11 +242,11 @@ export function createFrameParser(maxMessageBytes: number): FrameParser {
           return events;
         }
         const total = offset + 4 + length;
-        if (pending.length < total) return events;
-        const mask = pending.subarray(offset, offset + 4);
-        const payload = Buffer.from(pending.subarray(offset + 4, total));
+        if (size < total) return events;
+        const frame = take(total);
+        const mask = frame.subarray(offset, offset + 4);
+        const payload = frame.subarray(offset + 4, total);
         for (let i = 0; i < payload.length; i += 1) payload[i] = payload[i]! ^ mask[i % 4]!;
-        pending = pending.subarray(total);
 
         if (isControl) {
           if (opcode === OP_PING) events.push({ kind: "ping", data: payload });

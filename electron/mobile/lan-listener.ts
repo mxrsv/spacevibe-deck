@@ -4,16 +4,20 @@
  * who may open a socket and for how long.
  *
  * Why it is narrow:
- * - **Private interfaces only.** A listener on `0.0.0.0` would also answer on a public interface
- *   (a hotel or café network, a VPN). We bind each RFC 1918 IPv4 address on its own and never a
- *   wildcard, never IPv6 (no private-range rule is as simple to state), never link-local, CGNAT
- *   (shared carrier space) or loopback. The check runs again at bind time, whatever the caller
- *   injected, so a wildcard cannot be bound by a bug upstream.
+ * - **Never a public interface.** A listener on `0.0.0.0` would answer on every interface. We
+ *   bind each RFC 1918 IPv4 address on its own and never a wildcard, never IPv6 (no private-range
+ *   rule is as simple to state), never link-local, CGNAT (shared carrier space) or loopback. The
+ *   check runs again at bind time, whatever the caller injected. Private does not mean trusted:
+ *   10/8 and 192.168/16 include café, hotel and office networks, so any host on them can reach the
+ *   port. The protection is the pairing key (the channel proves it) plus the limits below.
  * - **Only a known pairing.** The path carries the pairing id; an unknown or malformed one is a
  *   404, the same answer as any other path, so a scanner learns nothing. The secure channel still
  *   proves the phone holds the pairing key; the path check just keeps strangers from costing a
  *   handshake.
- * - **Bounded.** `LAN_MAX_SOCKETS` sockets in total (a ninth gets a 503), and a socket that has
+ * - **Bounded.** Raw TCP connections are capped at twice the socket cap, and one that has not
+ *   completed the upgrade within the handshake deadline is destroyed: idle connections that never
+ *   send a request would otherwise exhaust the process's file descriptors, which PTY spawns and
+ *   file saves share. `LAN_MAX_SOCKETS` sockets in total (a ninth gets a 503), and a socket that has
  *   not opened the channel within `LAN_HANDSHAKE_TIMEOUT_MS` is closed. Messages are capped at
  *   `RELAY_MAX_FRAME_BYTES`.
  * - **Silent over HTTP.** Anything that is not the upgrade is a 404 with no body.
@@ -123,8 +127,30 @@ export function createLanListener(deps: LanListenerDeps): LanListener {
   // Refreshes run one at a time, so two binds never interleave.
   let queue: Promise<void> = Promise.resolve();
   let live = 0;
+  // Raw TCP connections of every server, upgraded or not; the file-descriptor guard.
+  let raw = 0;
+  const preUpgrade = new WeakMap<Duplex, NodeJS.Timeout>();
+
+  function onConnection(socket: Duplex): void {
+    if (raw >= maxSockets * 2) {
+      socket.destroy();
+      return;
+    }
+    raw += 1;
+    const timer = setTimeout(() => socket.destroy(), handshakeMs);
+    timer.unref();
+    preUpgrade.set(socket, timer);
+    socket.once("close", () => {
+      clearTimeout(timer);
+      raw -= 1;
+    });
+    socket.on("error", () => socket.destroy());
+  }
 
   function onUpgrade(request: http.IncomingMessage, socket: Duplex, head: Buffer): void {
+    // Past the raw deadline: from here `refuseUpgrade` and the handshake deadline own the socket.
+    const pending = preUpgrade.get(socket);
+    if (pending !== undefined) clearTimeout(pending);
     socket.on("error", () => socket.destroy());
     const pairingId = PATH.exec((request.url ?? "").split("?")[0] ?? "")?.[1];
     if (pairingId === undefined || !isPairingId(pairingId) || !deps.isKnown(pairingId)) {
@@ -174,6 +200,7 @@ export function createLanListener(deps: LanListenerDeps): LanListener {
       server.maxHeadersCount = 64;
       server.headersTimeout = handshakeMs;
       server.requestTimeout = handshakeMs;
+      server.on("connection", onConnection);
       server.on("upgrade", onUpgrade);
       // One port for every address if it is free there; an address that cannot take it is skipped.
       const actual = await listenOn(server, port, address);
