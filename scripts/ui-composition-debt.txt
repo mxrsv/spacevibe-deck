@@ -23,9 +23,6 @@ src/ui/agent-board-bar.tsx phosphor 1
 src/ui/agent-board-card.tsx phosphor 1
 src/ui/agent-board.tsx phosphor 1
 src/ui/agent-rail.tsx phosphor 1
-src/ui/command-settings/command-settings-live-row.tsx arbitrary 1
-src/ui/command-settings/command-settings-rows.tsx weight 2
-src/ui/command-settings/command-settings.tsx arbitrary 1
 src/ui/controls/color-row.tsx phosphor 1
 src/ui/controls/deck-icon.tsx phosphor 1
 src/ui/controls/font-row.tsx phosphor 1

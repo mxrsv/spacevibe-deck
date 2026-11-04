@@ -140,7 +140,8 @@ export function Footer({
   readonly esc: string;
 }) {
   return (
-    <footer className="flex h-9 shrink-0 items-center justify-end gap-4 bg-muted/50 px-4 text-xs text-muted-foreground">
+    // RCP-21, DL-21.7: the panel footer is a 32 strip on the resting wash, a step, not a line.
+    <footer className="flex h-(--row-32) shrink-0 items-center justify-end gap-(--space-group-md) bg-(--tab-rest-bg) px-(--space-12) text-xs text-(--text-faint)">
       {move ? <Hint keys="↑↓" label="Move" /> : null}
       {enter ? <Hint keys="↵" label={enter} /> : null}
       <Hint keys="Esc" label={esc} />

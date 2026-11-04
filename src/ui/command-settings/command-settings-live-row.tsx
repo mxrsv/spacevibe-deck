@@ -50,8 +50,9 @@ export function RowShell({
         if (commandActiveKey.peek() !== itemKey) commandActiveKey.value = itemKey;
       }}
       className={cn(
-        "grid min-h-9 grid-cols-[8px_minmax(0,1fr)_auto_28px] items-center gap-x-2.5 rounded-md px-2.5 py-1 text-sm text-foreground",
-        active && "bg-muted",
+        // RCP-7: a setting row is at least 44; the keyboard's row paints as hover (CMP-11).
+        "grid min-h-(--row-44) grid-cols-[8px_minmax(0,1fr)_auto_28px] items-center gap-x-2.5 rounded-(--radius-control) px-(--space-pad-row) py-1 text-sm text-(--text-primary)",
+        active && "bg-(--state-hover-bg)",
       )}
     >
       <span className="flex justify-center">
@@ -64,10 +65,11 @@ export function RowShell({
       </span>
       <span className="flex min-w-0 items-baseline gap-2">
         {typeof label === "string" ? <span className="truncate">{label}</span> : label}
-        {crumb ? <span className="shrink-0 text-xs text-muted-foreground">{crumb}</span> : null}
+        {crumb ? <span className="shrink-0 text-xs text-(--text-faint)">{crumb}</span> : null}
       </span>
       <span className="flex items-center justify-end gap-2">{control}</span>
       <span className="flex justify-end">{reset}</span>
+      {/* ui-scale: the help lines up under the label, past the 8 dot and its 10 gap */}
       {below ? <div className="col-span-4 pb-1.5 pl-[18px]">{below}</div> : null}
     </li>
   );
