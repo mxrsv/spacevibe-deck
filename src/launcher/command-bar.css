@@ -4,9 +4,17 @@
    destination line and key hints. This sheet is unlayered, so its layout rules beat the
    preset's reset. */
 .command-bar {
-  /* The raised surface of the floating panel and the menu: the preset's popover step, built from
-     the tokens a chrome stylesheet may read. */
-  --command-bar-raised: color-mix(in oklch, var(--background), var(--foreground) 7%);
+  /* Surfaces come from the theme's chrome ladder, which holds the mock's greys in graphite: the
+     rail step for the bar and the floating panel, the input step for a chip at rest and the bar
+     over a live space, the first chrome step for the menu. A mix of the preset's --background and
+     --foreground is not a step of any theme: oklch mixing a hueless grey lands on hue 0 and reads
+     brown. */
+  --command-bar-raised: var(--chrome-1);
+  --command-bar-chip: var(--input-bg);
+  /* The mock's two quiet inks, as alpha steps of the theme's muted text so they follow the surface
+     they sit on. */
+  --command-bar-ink-2: color-mix(in srgb, var(--text-muted) 88%, transparent);
+  --command-bar-ink-3: color-mix(in srgb, var(--text-muted) 70%, transparent);
   --command-bar-row: 32px;
   /* About 6.5 rows: the half row shows the list scrolls. */
   --command-bar-list: calc(var(--command-bar-row) * 6.5);
@@ -27,7 +35,7 @@
   gap: 12px;
   padding: 12px;
   border-radius: 12px;
-  background: var(--command-bar-raised);
+  background: var(--sidebar-bg);
   box-shadow:
     0 0 0 1px var(--control-frame),
     0 20px 56px color-mix(in oklch, black 45%, transparent);
@@ -40,8 +48,12 @@
   height: 56px;
   padding: 8px;
   border-radius: 10px;
-  background: var(--sidebar);
+  background: var(--sidebar-bg);
   box-shadow: inset 0 0 0 1px var(--control-frame);
+}
+/* Over a live space the panel takes the rail's step, so the bar and the hits sink one step. */
+.command-bar--floating :is(.command-bar__bar, .command-bar__hits) {
+  background: var(--command-bar-chip);
 }
 .command-bar__bar:focus-within {
   box-shadow:
@@ -51,7 +63,7 @@
 .command-bar__meta {
   font-size: var(--type-meta);
   font-weight: 400;
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-3);
 }
 .command-bar__avatar {
   display: grid;
@@ -61,7 +73,7 @@
   height: 22px;
   border-radius: 5px;
   background: color-mix(in oklch, var(--foreground) 12%, transparent);
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-2);
   font-size: var(--type-meta);
   font-weight: 600;
 }
@@ -71,6 +83,7 @@
    bar, and both texts truncate inside it. */
 .command-bar .command-bar__project {
   gap: 8px;
+  padding: 0 10px 0 8px;
   flex: 0 1 auto;
   min-width: 0;
   max-width: 50%;
@@ -96,19 +109,23 @@
   white-space: nowrap;
 }
 .command-bar__caret-mark {
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-3);
 }
 .command-bar .command-bar__filter {
   flex: 1;
   height: 40px;
+  padding-left: 6px;
   border-color: transparent;
   background: transparent;
   font-size: var(--type-body);
 }
+.command-bar .command-bar__filter::placeholder {
+  color: var(--command-bar-ink-3);
+}
 .command-bar__first-hint {
   padding: 0 6px;
   font-size: var(--type-meta);
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-3);
 }
 
 /* Run: one split button. */
@@ -128,7 +145,8 @@
   /* A hairline between the halves, from the label's own ink. */
   border-left: 1px solid color-mix(in oklch, var(--primary-foreground) 18%, transparent);
 }
-.command-bar__run kbd {
+.command-bar__run kbd,
+.command-bar__open kbd[data-slot="kbd"] {
   background: color-mix(in oklch, var(--primary-foreground) 12%, transparent);
   color: color-mix(in oklch, var(--primary-foreground) 62%, transparent);
   font-size: var(--type-meta);
@@ -145,7 +163,7 @@
   gap: 2px;
   padding: 4px;
   border-radius: 8px;
-  background: var(--sidebar);
+  background: var(--sidebar-bg);
 }
 .command-bar__hit {
   justify-content: flex-start;
@@ -174,6 +192,10 @@
   gap: 6px;
   margin-left: auto;
 }
+.command-bar__hint kbd {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  color: var(--command-bar-ink-3);
+}
 .command-bar__chips[data-off] {
   opacity: 0.35;
   pointer-events: none;
@@ -187,13 +209,18 @@
   min-width: 36px;
   gap: 0;
   padding: 0 9px;
+  border-width: 0;
+  background: var(--command-bar-chip);
   transition:
     background-color 160ms,
     gap 200ms var(--ease, ease);
 }
+.command-bar .command-bar__chip:not([data-on]):hover {
+  background: var(--chrome-1);
+}
 .command-bar .command-bar__chip[data-on] {
   gap: 8px;
-  background: color-mix(in oklch, var(--muted), var(--foreground) 10%);
+  background: color-mix(in srgb, var(--chrome-2), var(--text-primary) 3%);
 }
 .command-bar__glyph {
   width: 18px;
@@ -249,7 +276,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--type-meta);
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-3);
 }
 .command-bar__destination b {
   min-width: 0;
@@ -257,7 +284,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  color: color-mix(in oklch, var(--muted-foreground), var(--foreground) 40%);
+  color: var(--command-bar-ink-2);
 }
 
 /* The project menu: search, a list that scrolls inside itself, a rule, two fixed actions. */
@@ -278,7 +305,7 @@
 .command-bar-menu__search {
   position: relative;
   margin-bottom: 4px;
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-3);
 }
 .command-bar-menu__search > svg {
   position: absolute;
@@ -310,7 +337,7 @@
   font-weight: 400;
 }
 .command-bar-menu__row[data-highlighted] {
-  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  background: color-mix(in oklch, var(--foreground) 7%, transparent);
 }
 .command-bar-menu__name {
   min-width: 0;
@@ -319,7 +346,7 @@
   white-space: nowrap;
 }
 .command-bar-menu__name[data-filtered] {
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-2);
 }
 .command-bar-menu__name b {
   font-weight: 600;
@@ -335,7 +362,7 @@
   height: var(--command-bar-row);
   padding: 0 10px;
   font-size: var(--type-meta);
-  color: var(--muted-foreground);
+  color: var(--command-bar-ink-3);
 }
 .command-bar-menu__rule {
   height: 1px;

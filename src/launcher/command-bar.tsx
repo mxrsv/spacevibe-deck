@@ -164,7 +164,12 @@ export function CommandBar(props: CommandBarProps) {
       <div class="command-bar__bar">
         {firstRun ? (
           <>
-            <Button size="xl" ref={openField} onClick={props.onOpenFolder}>
+            <Button
+              size="xl"
+              ref={openField}
+              className="command-bar__open"
+              onClick={props.onOpenFolder}
+            >
               <DeckIcon icon={FolderOpen} size={ROW_ICON} />
               Open folder
               <Chord keys={props.openFolderKeys ?? DEFAULT_OPEN_FOLDER_KEYS} />

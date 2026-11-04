@@ -46,10 +46,10 @@ export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRow
             className="size-3 shrink-0 opacity-50 grayscale transition-[filter,opacity] group-hover/item:opacity-100 group-hover/item:grayscale-0 group-focus-within/item:opacity-100 group-focus-within/item:grayscale-0"
           />
         </span>
-        <span className="truncate text-sm leading-5 text-muted-foreground group-hover/item:text-foreground group-focus-within/item:text-foreground">
+        <span className="truncate text-sm leading-5 text-muted-foreground/85 group-hover/item:text-foreground group-focus-within/item:text-foreground">
           {title}
         </span>
-        <span className="col-start-2 flex min-h-5 min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground">
+        <span className="col-start-2 flex min-h-5 min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground/70">
           {branch === null ? null : (
             <span className="flex min-w-0 shrink items-center gap-1">
               <DeckIcon icon={GitBranchIcon} size={GLYPH_INLINE} class="shrink-0" />

@@ -52,6 +52,9 @@ const UsageReposSection = lazy(() =>
 const LaunchProfilesSection = lazy(() =>
   import("./sections/launch-profiles-section").then((m) => m.LaunchProfilesSection),
 );
+const LauncherSection = lazy(() =>
+  import("./sections/launcher-section").then((m) => m.LauncherSection),
+);
 const PresetControlsSection = lazy(() =>
   import("./sections/preset-controls-section").then((m) => m.PresetControlsSection),
 );
@@ -110,4 +113,5 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   },
   { id: "explorer-changes", label: "explorer changes", Section: ExplorerChangesSection },
   { id: "usage-page", label: "usage page", Section: UsagePageSection },
+  { id: "launcher", label: "stage launcher", Section: LauncherSection, scopedThemes: true },
 ];
