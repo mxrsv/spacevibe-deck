@@ -46,7 +46,9 @@ export function List({ items, active, sources, crumbs, locked, focusSearch }: Li
     ? shortcutContext(sources)
     : null;
   return (
-    <ul className="m-0 list-none">
+    // Two columns: a setting row is short, so a pair shares a line instead of stretching across the
+    // whole dialog. Everything not marked `data-pair` (headings, pieces, long rows) spans both.
+    <ul className="m-0 grid list-none grid-cols-2 gap-x-2 [&>li:not([data-pair])]:col-span-2">
       {items.map((item) => {
         switch (item.type) {
           case "head":
