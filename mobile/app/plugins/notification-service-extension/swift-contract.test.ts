@@ -9,9 +9,9 @@ const read = (relative: string) => readFileSync(path.resolve(here, relative), "u
 const require = createRequire(import.meta.url);
 const constants = require("./constants.js") as typeof import("./constants");
 const plugin = require("./withNotificationServiceExtension.js") as {
-  (config: object): { mods?: { ios?: Record<string, unknown> }; extra?: any };
+  (config: object): { mods?: { ios?: Record<string, unknown> }; extra?: Record<string, unknown> };
   applyAppEntitlements(entitlements: object): Record<string, unknown>;
-  applyEasExtension(config: object): { extra: any };
+  applyEasExtension(config: object): { extra: Record<string, unknown> };
   extensionEntitlements(): Record<string, unknown>;
 };
 

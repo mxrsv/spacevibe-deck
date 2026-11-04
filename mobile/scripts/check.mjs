@@ -34,7 +34,7 @@ run("prettier", "npx", ["prettier", "--check", "."]);
 run("oxlint", "npx", [
   "oxlint",
   "-c",
-  ".oxlintrc.json",
+  "oxlint.config.json",
   "--deny-warnings",
   "protocol",
   "scripts",

@@ -53,6 +53,9 @@
     post({ t: "inited" });
   }
 
+  // The page's one global entry point, which the React Native side calls through injectJavaScript;
+  // the underscores keep it clear of xterm's names.
+  // oxlint-disable-next-line no-underscore-dangle -- see above
   window.__deck = function (cmd) {
     try {
       if (cmd.t === "init") return create(cmd);

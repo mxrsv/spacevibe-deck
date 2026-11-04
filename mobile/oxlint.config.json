@@ -1,5 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  // Not named `.oxlintrc.json`: the root's oxlint loads nested configs of that name, and one here
+  // overrode the root's `mobile/**` ignore, so `npm run lint` at the root linted this tree too.
   "plugins": ["typescript", "import", "vitest", "react"],
   "categories": {
     "correctness": "error",

@@ -9,7 +9,7 @@
     "prestart": "npm run terminal-html",
     "start": "expo start --go",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "lint": "../node_modules/.bin/oxlint -c ../.oxlintrc.json --deny-warnings src",
+    "lint": "../node_modules/.bin/oxlint -c ../oxlint.config.json --deny-warnings src plugins scripts",
     "test": "vitest run",
     "bundle": "node scripts/bundle-check.mjs",
     "check": "npm run terminal-html && npm run typecheck && npm run lint && npm run test && npm run bundle",

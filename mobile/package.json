@@ -8,7 +8,7 @@
     "check": "node scripts/check.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p protocol/tsconfig.json && tsc -p protocol/tsconfig.core.json",
-    "lint": "oxlint -c .oxlintrc.json protocol scripts relay/src",
+    "lint": "oxlint -c oxlint.config.json protocol scripts relay/src",
     "format": "prettier --write .",
     "repro": "tsx protocol/repro/client.ts",
     "vectors": "tsx protocol/scripts/make-test-vectors.ts"
