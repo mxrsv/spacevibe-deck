@@ -8,7 +8,7 @@ switch, no consent question, and an "off" recorded by a development build is ove
 than honoured. The one state that still stops a send is a `telemetry.json` Deck cannot read.
 This page is the contract: what leaves the machine, who owns the state, and when a POST
 fires. Settings → Privacy states exactly what is sent. Electron only: 1.0.0 and the Tauri
-host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-10-08/index.html).
+host send nothing. See the [versioned privacy notice](../../marketing/public/privacy/2026-11-05/index.html).
 Crash and error reports are a separate channel, sent to Sentry by
 [`electron/crash-reporting/`](../../electron/crash-reporting/init.ts) and the renderer's
 [`crash-reporting.ts`](../../src/telemetry/crash-reporting.ts) with home paths scrubbed; the
@@ -18,9 +18,10 @@ same notice discloses them, and nothing on this page covers them.
 
 [`src/telemetry/payload.ts`](../../src/telemetry/payload.ts) is the one readable statement of
 what a Deck install sends, and its snapshot test is the privacy contract in
-executable form: adding a field turns it red. `schemaVersion` is 1. `updates` was added to schema
-1 without a bump, so the service accepts a payload with or without it — releases up to 1.2.0
-never send it.
+executable form: adding a field turns it red. `schemaVersion` is 1. `updates` and `mobile` were
+added to schema 1 without a bump, so the service accepts a payload with or without either —
+releases up to 1.2.0 never send `updates`, and releases before the phone companion never send
+`mobile`.
 
 | Field              | Meaning                                                                 |
 | ------------------ | ----------------------------------------------------------------------- |
@@ -33,10 +34,13 @@ never send it.
 | `maxTabs`, `maxPanes` | The busiest single window's high-water marks that day                |
 | `restoredSessions` | Whether reopening the last session materialized at least one pane       |
 | `updates`          | Update-check outcomes that day, every key present: `checked`, `checkFailed`, `available`, `downloaded`, `downloadFailed`, `installAttempted` |
+| `mobile`           | Phone-companion use that day, every key present: `pairedPhones` (a gauge: phones paired when the snapshot is sent) and the counts `phoneSessions`, `phoneSends`, `phoneOpenedAgents` |
+| `mobile`           | Phone-companion use that day, every key present: `pairedPhones` (a gauge, phones paired when the snapshot is sent), `phoneSessions`, `phoneSends`, `phoneOpenedAgents` (counts) |
 
 Deliberately absent: a permanent install identifier, file paths, repository names, branch
 names, file names, terminal output, prompts, agent replies, hostname, username, locale,
-timezone, and any per-action timestamp. Every custom agent folds into the single `custom`
+timezone, and any per-action timestamp. `mobile` carries no phone name, pairing id or
+push token either, and the phone app itself sends no analytics (spec decision 18). Every custom agent folds into the single `custom`
 bucket in the renderer before anything leaves it, because a custom agent's name is a string
 the user typed. Public copy never calls the payload "anonymous"; the copy test pins that word
 out.
@@ -58,6 +62,13 @@ out.
   [`updater.ts`](../../electron/updater/updater.ts) through `TelemetryHandle.countUpdate`, so
   they never cross IPC. `installAttempted` is counted before `prepareForInstall`, because that
   step's `flushOnQuit` is the last POST the process makes.
+- **Phone-companion counts are main's too,** and deliberately not reachable from the renderer:
+  the mobile service calls `countMobile("session" | "send" | "openedAgent")` and
+  `setPairedPhones(n)` on the [service](../../electron/telemetry/service.ts), while `count` — the
+  one entry point `telemetry_count` exposes — rejects the `mobile` kind. `pairedPhones` is held
+  in memory and read when a snapshot is built, so it is 0 until the mobile service has loaded its
+  pairings and a restart never replays a stale value. The three counts live in the day buffer and
+  start over each local day with everything else; a changed gauge marks the buffer dirty.
 - Three flat channels: `telemetry_count` (fire and forget), `telemetry_state` (also the
   "a window is ready" signal) and `telemetry_set_enabled`; one broadcast event,
   `telemetry:state-changed`. The event outlived the switch it synchronized: nothing in
@@ -151,4 +162,6 @@ release that sends a field the live Worker does not accept loses each install's 
 not only the new field — every day, until the Worker catches up. Before tagging a release
 whose [`payload.ts`](../../src/telemetry/payload.ts) changed, run `npm run migrate` and
 `npm run deploy` in `backend/`. The contract test proves the code in this tree agrees, not
-what is deployed.
+what is deployed. `mobile` is the next such change: it needs
+[migration 0004](../../backend/migrations/0004-mobile-counters.sql) first, and the aggregate
+sums `pairedPhones` over install-days, so it reads as phone-days, not distinct phones.

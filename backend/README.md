@@ -3,7 +3,7 @@
 The desktop-side contract is [internals/telemetry.md](../docs/internals/telemetry.md) `current`.
 This directory is deployed independently from the desktop and landing. It shares no database
 with sibling SpaceVibe products. Entry point: [Worker](src/worker.mjs) `current`;
-[deployment configuration](wrangler.jsonc) `current`; [privacy notice](../marketing/public/privacy/2026-10-08/index.html) `current`.
+[deployment configuration](wrangler.jsonc) `current`; [privacy notice](../marketing/public/privacy/2026-11-05/index.html) `current`.
 
 ## Run and deploy
 
@@ -29,6 +29,9 @@ serves a dated static document; retain prior dates when publishing a new notice.
 4096 bytes, UUID v4 daily IDs, valid calendar days, closed dimensions/counter keys, and
 integer counters in 0–1,000,000. Unknown fields are rejected. `updates` is the one optional
 field: clients up to 1.2.0 omit it, and when present it must carry all six update keys.
+`mobile` is the other (phone-companion counts: `pairedPhones`, `phoneSessions`, `phoneSends`,
+`phoneOpenedAgents`): clients before the companion omit it, and when present it must carry all
+four keys.
 Deploy and migrate before any client release that changes the payload — a 400 is terminal on
 the client and drops that install's whole day. The
 [handler](src/worker.mjs) `current` accepts the preceding 30 UTC calendar days through
@@ -52,7 +55,9 @@ day of margin inside the 35-day live-data target. D1 `batch` atomically groups c
 by schema/day/version/platform/architecture and deletes the raw rows. An error rejects the
 invocation and rolls back both operations. Aggregates contain no daily ID and remain internal;
 no public surface shows usage data. See [migration](migrations/0001-usage.sql) `current`
-and [the update-counter column](migrations/0002-update-counters.sql).
+[the update-counter column](migrations/0002-update-counters.sql) and
+[the mobile-counter column](migrations/0004-mobile-counters.sql). `pairedPhones` is a daily gauge,
+so the aggregate holds phone-days, not distinct phones.
 
 ## Feedback
 
@@ -121,7 +126,7 @@ counts toward the daily budget and remains private for owner cleanup.
 
 Hiding is not erasure. To erase a report, remove its Storage objects and then its
 row through Studio; partial uploads use the same report-ID folder. There is no
-automatic feedback expiry. The [privacy notice](../marketing/public/privacy/2026-10-08/index.html)
+automatic feedback expiry. The [privacy notice](../marketing/public/privacy/2026-11-05/index.html)
 describes text drafts, screenshots and the separate feedback storage lifecycle.
 
 ## Accounts

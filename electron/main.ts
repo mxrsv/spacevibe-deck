@@ -206,6 +206,14 @@ const agentControl =
 // The renderer reports every pane's phase and attention here whether or not the switch is on
 // (a report is cheap); only the control router reads it.
 const mainPaneMirror = createPaneMirror({ now: () => Date.now() });
+// ------------------------------------------------------- Usage analytics
+// Opt-in only (spec 2026-08-22): with consent unanswered, declined or the
+// state file unreadable, this registers handlers that count nothing, create
+// no id and start no timer. Registered above the mobile service, which
+// counts into it, and above the quit block, whose chain sends the
+// best-effort final snapshot.
+const telemetry = registerTelemetry({ stores, windows, emitTo });
+
 // The iPhone companion (spec 2026-11-04-mobile-companion); null while `mobileCompanion` is off.
 // Not gated on `hooksSupported()`: the phone needs the mirror, not the CLI's router.
 const mobile = createMobileForMain({
@@ -218,6 +226,8 @@ const mobile = createMobileForMain({
   broadcastChanged: () => {
     for (const label of windows.keys()) emitTo(label, EVENTS.mobileChanged, {});
   },
+  onUsage: (kind) => telemetry.countMobile(kind === "open" ? "openedAgent" : kind),
+  onPairedPhones: (count) => telemetry.setPairedPhones(count),
 });
 // Every report also re-evaluates keep-awake (MOB12).
 const paneMirror = mobile?.observeMirror(mainPaneMirror) ?? mainPaneMirror;
@@ -615,13 +625,6 @@ registerSettingsIpc({
     await syncAgentIntegrations(settings);
   },
 });
-
-// ------------------------------------------------------- Usage analytics
-// Opt-in only (spec 2026-08-22): with consent unanswered, declined or the
-// state file unreadable, this registers handlers that count nothing, create
-// no id and start no timer. Registered above the quit block because the quit
-// chain below sends the best-effort final snapshot.
-const telemetry = registerTelemetry({ stores, windows, emitTo });
 
 // ------------------------------------------------------------- Account
 // Optional Google account (spec 2026-10-20-accounts). Signed out by default,

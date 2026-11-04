@@ -100,6 +100,30 @@ test("update counters are stored and summed; a legacy snapshot stores an empty o
   assert.deepEqual(JSON.parse(aggregate.updates), updates);
 });
 
+test("mobile counters are stored and summed; a pre-companion snapshot stores an empty object", async (t) => {
+  const { sqlite, binding } = database();
+  t.after(() => sqlite.close());
+  const repository = createUsageRepository(binding);
+  const mobile = { pairedPhones: 2, phoneSessions: 3, phoneSends: 40, phoneOpenedAgents: 1 };
+  await repository.upsert({ ...snapshot, mobile }, 1000);
+  await repository.upsert({ ...snapshot, dailyId: "0f2ce125-9b07-41a5-8476-94cff98463c5" }, 1000);
+  await repository.upsert(
+    { ...snapshot, dailyId: "1f2ce125-9b07-41a5-8476-94cff98463c5", mobile },
+    1000,
+  );
+  const rows = sqlite.prepare("SELECT daily_id, mobile FROM usage_days ORDER BY daily_id").all();
+  assert.deepEqual(JSON.parse(rows[0].mobile), {});
+  assert.deepEqual(JSON.parse(rows[1].mobile), mobile);
+  await repository.expire(1000 + PURGE_AFTER_MS);
+  const aggregate = sqlite.prepare("SELECT mobile FROM usage_aggregates").get();
+  assert.deepEqual(JSON.parse(aggregate.mobile), {
+    pairedPhones: 4,
+    phoneSessions: 6,
+    phoneSends: 80,
+    phoneOpenedAgents: 2,
+  });
+});
+
 test("35-day cron aggregates then deletes, preserves younger rows, and repeats harmlessly", async (t) => {
   const { sqlite, binding } = database();
   t.after(() => sqlite.close());
@@ -178,6 +202,7 @@ test("aggregation preserves every metric and separates cohort dimensions", async
         agents: JSON.parse(row.agents),
         surfaces: JSON.parse(row.surfaces),
         updates: JSON.parse(row.updates),
+        mobile: JSON.parse(row.mobile),
       },
       {
         schema_version: 1,
@@ -207,6 +232,7 @@ test("aggregation preserves every metric and separates cohort dimensions", async
           downloadFailed: 0,
           installAttempted: 0,
         },
+        mobile: { pairedPhones: 0, phoneSessions: 0, phoneSends: 0, phoneOpenedAgents: 0 },
       },
     );
   }

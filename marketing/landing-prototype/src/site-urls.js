@@ -44,4 +44,4 @@ export const FEEDBACK_URL = PROD ? "/feedback" : "/landing-prototype/feedback/";
  * `/privacy` (a `vercel.json` rewrite); dev has no rewrites, so it names the
  * dated file that rewrite points at. Bump the date here when `vercel.json` does.
  */
-export const PRIVACY_URL = PROD ? "/privacy" : "/privacy/2026-10-08/index.html";
+export const PRIVACY_URL = PROD ? "/privacy" : "/privacy/2026-11-05/index.html";

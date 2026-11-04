@@ -22,7 +22,7 @@ import { writeFileAtomically } from "../fs/write";
 import { sharedUsageService } from "../ipc/register-services";
 import { createPairingStore } from "./pairing-store";
 import { resolveRelayUrl } from "./relay-config";
-import { createMobileService, type MobileService } from "./service";
+import { createMobileService, type MobileService, type MobileUsageKind } from "./service";
 
 export const PAIRINGS_FILE = "mobile-pairings.json";
 
@@ -51,6 +51,9 @@ export function createMobileForMain(deps: {
   readonly mostRecentlyFocused: () => string | null;
   readonly mainLabel: string;
   readonly broadcastChanged: () => void;
+  /** Usage analytics (MOB27): counts only, never an id or a name. */
+  readonly onUsage: (kind: MobileUsageKind) => void;
+  readonly onPairedPhones: (count: number) => void;
 }): MobileService | null {
   if (!mobileCompanionEnabled()) return null;
   const service = createMobileService({
@@ -76,10 +79,18 @@ export function createMobileForMain(deps: {
     },
     usage: () => sharedUsageService().snapshot(),
     blocker: powerSaveBlocker,
-    broadcastChanged: deps.broadcastChanged,
+    // Every change may be a pairing or a revoke, so the gauge is re-read with each one.
+    broadcastChanged: () => {
+      deps.broadcastChanged();
+      deps.onPairedPhones(service.state().phones.length);
+    },
+    onUsage: deps.onUsage,
     log: (message) => console.warn(message),
   });
-  void app.whenReady().then(() => service.start());
+  void app
+    .whenReady()
+    .then(() => service.start())
+    .then(() => deps.onPairedPhones(service.state().phones.length));
   app.once("will-quit", () => service.dispose());
   return service;
 }

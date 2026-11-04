@@ -17,6 +17,8 @@ export const UPDATE_KEYS = [
   "downloadFailed",
   "installAttempted",
 ];
+/** Phone-companion use (MOB27): `pairedPhones` is a gauge, the rest are day counts. */
+export const MOBILE_KEYS = ["pairedPhones", "phoneSessions", "phoneSends", "phoneOpenedAgents"];
 export const BODY_LIMIT = 4096;
 export const COUNTER_CAP = 1_000_000;
 const REQUIRED_FIELDS = [
@@ -35,9 +37,9 @@ const REQUIRED_FIELDS = [
 /**
  * Added to schema 1 without a bump (DECK-74): clients up to 1.2.0 omit it and
  * must keep landing, because a 400 is terminal and would drop their whole day.
- * When present it must carry every key.
+ * When present it must carry every key. `mobile` follows the same rule.
  */
-const OPTIONAL_FIELDS = ["updates"];
+const OPTIONAL_FIELDS = ["updates", "mobile"];
 export const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const VERSION =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -85,7 +87,9 @@ export function validPayload(value) {
     count(value.maxTabs) &&
     count(value.maxPanes) &&
     typeof value.restoredSessions === "boolean" &&
-    (!Object.hasOwn(value, "updates") || counters(value.updates, UPDATE_KEYS, true))
+    (!Object.hasOwn(value, "updates") || counters(value.updates, UPDATE_KEYS, true)) &&
+    // Same rule as `updates`: clients before the phone companion omit it.
+    (!Object.hasOwn(value, "mobile") || counters(value.mobile, MOBILE_KEYS, true))
   );
 }
 

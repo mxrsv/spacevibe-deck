@@ -277,7 +277,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
   - **Security:** run `security-review` before merge, and note the firewall prompt in the user
     guide.
   - **Verify:** same Wi-Fi uses LAN; leaving the network moves to the relay without re-pairing.
-- [ ] **T11: Telemetry and privacy (MOB26–27, F7).**
+- [x] **T11: Telemetry and privacy (MOB26–27, F7).** Done 2026-11-05 (before T5 and T8, which were still running); the backend deploy and the migration stay the owner's.
   - **Telemetry:** the counters, `internals/telemetry.md`, and the backend validation, deployed
     first.
   - **Privacy:** a new dated notice under `marketing/public/privacy/<date>/`; the App Store
@@ -448,6 +448,18 @@ All four are environmental and pre-existing:
   windows with the prompt after idle and focus unmoved; real `powerSaveBlocker` and `safeStorage`;
   no push while any Deck window is focused; revoke reaching the phone within 10 s.
 
+**T11 (telemetry and privacy):**
+- `npx vitest run electron/telemetry/ src/telemetry/ electron/mobile/ electron/ipc/ scripts/
+  src/styles/` → `Test Files 61 passed (61)`, `Tests 803 passed | 1 skipped`: the four mobile
+  counters reach the daily payload, reset on the next local day, carry no identifier, and are not
+  reachable from the renderer's `telemetry_count` channel.
+- `cd backend && npm test` → `# pass 57 # fail 0`: the optional `mobile` object validates, older
+  payloads without it still validate, and the new notice is the current `/privacy`.
+- `npm run build:landing` built. `tsc` (renderer and main) clean.
+- **Owner:** apply `backend/migrations/0004-mobile-counters.sql` and deploy the backend **before**
+  a client release that sends the counters (backend README rule); enter the App Store privacy
+  answers from `mobile/app/store/privacy-answers.md`.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -497,6 +509,12 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
     pattern has no `:`. Opening a custom agent from the phone waits for a protocol bump.
 18. **`DECK_RELAY_URL` is read only by unpackaged runs**, as `DECK_SUPABASE_URL` is: a packaged app
     cannot be redirected by its environment.
+19. **The mobile counters are a separate `mobile` object** in the payload, optional on the backend,
+    and main-side only. `pairedPhones` is a gauge read on every change, so the backend's aggregate
+    reads as phone-days, not distinct phones (the migration and `telemetry.md` say so).
+20. **App Store privacy answer:** "Device ID" (the push token and pairing id), not linked to the
+    user, no tracking, for app functionality. "Data Not Collected" is the alternative, noted in the
+    file; the owner picks when entering it.
 
 ## Handoff
 
