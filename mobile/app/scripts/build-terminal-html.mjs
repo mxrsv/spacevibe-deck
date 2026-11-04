@@ -1,6 +1,6 @@
 // Generates src/terminal/terminal-html.generated.ts: one self-contained HTML string with xterm.js,
 // its stylesheet and the page script inlined, so the terminal WebView needs no network and no
-// bundler support for .html or .css assets. Run by `npm run check` and `npm start`.
+// bundler support for .html or .css assets. Run on install (`postinstall`), by `npm start` and by `npm run check`; `npx expo start` relies on the install.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";

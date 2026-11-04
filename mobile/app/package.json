@@ -4,12 +4,15 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
+    "terminal-html": "node scripts/build-terminal-html.mjs",
+    "postinstall": "npm run terminal-html",
+    "prestart": "npm run terminal-html",
     "start": "expo start",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "lint": "../node_modules/.bin/oxlint -c ../.oxlintrc.json --deny-warnings src",
     "test": "vitest run",
     "bundle": "node scripts/bundle-check.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run bundle"
+    "check": "npm run terminal-html && npm run typecheck && npm run lint && npm run test && npm run bundle"
   },
   "dependencies": {
     "@noble/ciphers": "^2.4.0",
