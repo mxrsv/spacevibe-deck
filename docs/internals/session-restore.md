@@ -15,7 +15,8 @@ tabs into `session.json` continuously, debounced 1 second, so the file is curren
 power-off rather than only at a clean quit.
 
 - Keys: `window:<label>` records,
-  `archive` (per-workspace, the rail's remembered rows) and `restoreAttempt` (the marker).
+  `archive` (per-workspace, the rail's remembered rows), `restoreAttempt` (the marker) and,
+  behind the `stageLauncher` switch, `remembered` (see [Remembered panes](#remembered-panes)).
 - The [store IPC](../../electron/ipc/register-store.ts) derives the virtual `windowLabels`
   read from record keys in main. Renderers never maintain a shared index array; a legacy
   index cannot hide a record or resurrect one that was deleted.
@@ -47,6 +48,33 @@ tab count and workspace names. The offer ends one of three ways, all in
   cleared at that moment, or they would fold into the next launch's offer as ghost tabs.
 - A crash-loop marker left set means the last reopen crashed Deck; boot clears it and offers
   nothing, so the session that crashed is not offered back.
+
+## Remembered panes
+
+With the `stageLauncher` switch on, the offer is never shown. The rail lists the previous
+session's agent panes as dimmed rows instead, and each row resumes one pane
+([`remembered-panes.ts`](../../src/terminal/remembered-panes.ts),
+[`remembered-boot.ts`](../../src/ui/project-rail/remembered-boot.ts)). Constraints a maintainer
+would otherwise get wrong:
+
+- **Why the archive can't carry them.** The `archive` cannot hold these rows: the journal
+  replaces a workspace's archive entry on every write while that workspace has a live tab, so
+  resuming one of two remembered panes would erase the other. The rows live in their own key and
+  leave it only when resumed or forgotten.
+- **Seeding.** Boot merges the main window record into `remembered` before the journal's first
+  write. Secondary window records are not merged: nothing clears them under this switch, so
+  merging would bring back rows the user had forgotten.
+- **Releasing the held record.** Once seeding succeeds, `holdEmpty` releases the held record
+  (`shouldHoldRecord`), so a forgotten row cannot return through a re-merge. As a consequence, the
+  last-session record is gone after a switch-on boot, also for a later switch-off build.
+  - If seeding fails (the store is unreadable or write-locked), the record stays held, and
+    nothing writes over the unreadable store.
+- **Identity and caps.** An entry's id is `agent:cwd:sessionId`, or `agent:cwd` when the pane had
+  no session, so two conversations in one checkout stay two rows. Caps: 24 entries per workspace,
+  and as many workspaces as the archive keeps.
+- **Resume path.** A press resolves one pane through the same `resume_lookup` request restore
+  builds (the recorded session id first). With no answer it starts the agent fresh with its
+  recorded command only if that command is one of the agent's launch choices.
 
 ## Restoring
 

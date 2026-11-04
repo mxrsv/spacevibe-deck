@@ -225,7 +225,8 @@ holds it: choosing a theme under Settings → Appearance decides it. Not: theme 
 **Release switch** — A temporary feature gate in
 [`release-switches.ts`](../../src/lib/release-switches.ts): off in a packaged release until
 its activation commit, on in every development build. The project-first rail, Command
-Settings, the stacked dock and the flush stage sit behind one each. Not: live switch (a
+Settings, the stacked dock, the flush stage, the in-pane `deck` command and the stage launcher
+sit behind one each. Not: live switch (a
 typed constant kept for a safety, consent or retirement decision).
 
 **UI preset** — The generated shadcn/Base UI stylesheet in
