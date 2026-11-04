@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · window</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token */
+      .wd-dock-cards {
+        flex: 1 1 0;
+      }
+      .wd-dock-list {
+        flex: none;
+        height: calc(var(--row-24) * 6 + var(--space-16));
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const D = window.Deck;
+      const LONG_TITLE =
+        "Refactor the entire rail row component so long titles clamp to one line without shifting the mark";
+      const RANK = { failed: 5, needs: 4, unread: 3, working: 2, idle: 1 };
+      const loudest = (p) =>
+        p.rows
+          .filter((r) => r.live)
+          .reduce((best, r) => ((RANK[r.state] || 0) > (RANK[best] || 0) ? r.state : best), "");
+
+      /* ---------- rail ---------- */
+      const headActions =
+        D.rowAction("plus", "New agent here") + D.rowAction("more", "Project menu");
+      const projectBlock = (p, open, selectedId, menuId) => {
+        const head = D.groupHead({
+          name: p.name,
+          open,
+          count: open ? null : p.rows.length,
+          rollup: open ? "" : loudest(p),
+          actions: headActions,
+        });
+        const rows = open
+          ? p.rows
+              .map((r) =>
+                D.row({
+                  agent: r.agent,
+                  title: r.title,
+                  branch: r.branch,
+                  state: r.state,
+                  when: r.when,
+                  live: r.live,
+                  actions: r.live
+                    ? D.rowAction("more", "Row menu")
+                    : D.rowAction("close", "Forget"),
+                  forced: r.id === menuId ? "hover" : r.id === selectedId ? "selected" : "",
+                  attrs: `data-rid="${D.esc(r.id)}"`,
+                }),
+              )
+              .join("")
+          : "";
+        return `<section class="grp">${head}${rows}</section>`;
+      };
+
+      const rail = (data, worst) => `
+  <div class="bar">${D.field({ icon: "search", placeholder: "Search", size: 28, cls: "grow" })}${D.iconButton({ icon: "filter", label: "Filter" })}${D.iconButton({ icon: "plus", label: "Add project" })}</div>
+  <div class="rail-list">${data.projects.map((p, i) => projectBlock(p, !(worst ? i >= 1 : i === 2), "d1", "d3")).join("")}</div>
+  ${D.railFoot()}`;
+
+      /* ---------- stage ---------- */
+      const stageFrame = (data) => {
+        const p = data.projects[0];
+        return (
+          `<div class="crumbs grow"><button class="crumb">${D.esc(p.name)}</button>${D.icon("caretRight", 12, "ico-faint")}<button class="crumb">${D.esc(p.branch)}</button></div>` +
+          D.chip({ icon: "bell", label: String(data.attention.length), tone: "need" }) +
+          D.chip({ icon: "server", label: String(data.devServers.length) }) +
+          D.ibSplit({
+            icon: "external",
+            label: "Open in Cursor",
+            caretLabel: "Choose which app opens a path",
+          }) +
+          D.iconButton({ icon: "more", label: "More" }) +
+          D.iconButton({ icon: "sidebarRight", label: "Toggle dock", attrs: 'aria-pressed="true"' })
+        );
+      };
+
+      const tabBar = (data) =>
+        `<div class="bar"><div class="tabstrip grow" role="tablist">${data.tabs
+          .map((t) =>
+            D.tab({
+              title: t.title,
+              agent: t.agent,
+              state: t.active ? "selected" : "",
+              mark: t.state === "idle" ? "" : t.state,
+            }),
+          )
+          .join("")}</div>${D.iconButton({ icon: "plus", label: "New tab" })}</div>`;
+
+      const panes = (data, worst) =>
+        `<div class="panes">${data.panes.map((p, i) => (i ? D.resize() : "") + D.pane({ ...p, title: worst ? LONG_TITLE : p.title }, { active: i === 0 })).join("")}</div>`;
+
+      /* ---------- dock: Changes; the list pane's pressed row flashes its card ---------- */
+      const dock = (data) => {
+        const sum = (k) => data.changes.reduce((n, c) => n + c[k], 0);
+        const views = [
+          ["diff", "Changes", true],
+          ["usage", "Usage"],
+          ["clock", "History"],
+          ["tree", "Files"],
+        ];
+        const statusClass = { M: "is-mod", A: "is-add", D: "is-del" };
+        return `<div class="frame">${views.map(([ic, label, on]) => D.iconButton({ icon: ic, label, state: on ? "selected" : "" })).join("")}</div>
+    <div class="col gap-6 pad-8 scroll wd-dock-cards">${data.diffs
+      .slice(0, 3)
+      .map((d, i) => D.diffCard(d, { flash: i === 1 }))
+      .join("")}</div>
+    <div class="bar"><span class="t-meta t-ellipsis t-num">${data.changes.length} files</span>${D.counts(sum("add"), sum("del"))}${D.seg(
+      [
+        { id: "list", icon: "list" },
+        { id: "tree", icon: "tree" },
+      ],
+      "list",
+      { size: 28, cls: "end" },
+    )}</div>
+    <div class="col gap-2 pad-8 scroll wd-dock-list">${data.changes.map((c, i) => D.row({ size: 24, icon: "fileText", title: c.path, forced: i === 1 ? "selected" : "", end: `<span class="tree-status ${statusClass[c.status]}">${c.status}</span>` })).join("")}</div>`;
+      };
+
+      /* ---------- context menu on a rail row: groups separate by spacing ---------- */
+      const ctxMenu = () =>
+        `<div class="z-menu" id="wd-ctx">${D.menu(
+          [
+            D.menuItem({ icon: "undo", label: "Resume", kbd: "↵" }),
+            D.menuItem({ icon: "edit", label: "Rename", kbd: "F2" }),
+            D.menuItem({ icon: "pin", label: "Pin to top" }),
+            D.menuItem({ icon: "copy", label: "Copy resume command" }),
+          ].join("") +
+            D.gap() +
+            D.menuItem({ icon: "archive", label: "Archive" }) +
+            D.menuItem({ icon: "trash", label: "Remove from rail", danger: true }),
+        )}</div>`;
+
+      /* ---------- legend (review chrome) ---------- */
+      const LEGEND = [
+        ["Window frame", ".frame .lights .ib"],
+        ["Rail search row", ".bar .field.sz-28 .ib"],
+        ["Project header", ".grp-head .av .grp-count .row-actions"],
+        ["Agent row", ".row-44 .row-lead .mark .is-needs .is-selected"],
+        ["Remembered row", ".row.is-remembered .row-age .row-when"],
+        ["Rail footer", "Deck.railFoot: .rail-foot .ring .rail-tools"],
+        ["Context menu", ".menu .menu-item .menu-gap, --elev-1"],
+        ["Stage frame", ".crumbs .chip-need .ib-split"],
+        ["Tab strip", ".bar .tabstrip .tab .mark"],
+        ["Pane", "Deck.paneHead: .pane-status .pane-actions; .resize"],
+        ["Dock views", ".win-dock.is-wide .frame .ib"],
+        ["Diff card", ".card .card-head .diff (DOCK-10) .is-flash"],
+        ["Changes list", ".bar .t-num .seg .row-24 .tree-status"],
+      ];
+      const legend = () =>
+        `<div class="gx-sheet"><section><h3 class="gx-h">Recipe per region</h3><div class="gx-grid" style="--gx-col: 280px">${LEGEND.map(([region, recipes]) => `<div class="gx-cell"><span class="gx-cap t-strong">${region}</span><span class="gx-cap">${recipes}</span></div>`).join("")}</div></section></div>`;
+
+      D.mount(
+        "window",
+        (data, ctx) => {
+          const win = D.windowShell({
+            rail: rail(data, ctx.worst),
+            stageFrame: stageFrame(data),
+            stage: tabBar(data) + panes(data, ctx.worst),
+            dock: dock(data),
+            dockWide: true,
+            overlay: ctxMenu(),
+          });
+          return win + legend();
+        },
+        (el) => {
+          // place the menu beside its target row, in unscaled window coordinates
+          const win = el.querySelector(".win"),
+            row = el.querySelector('[data-rid="d3"]'),
+            menu = el.querySelector("#wd-ctx");
+          if (!win || !row || !menu) return;
+          let x = 0,
+            y = 0,
+            n = row;
+          while (n && n !== win) {
+            x += n.offsetLeft;
+            y += n.offsetTop;
+            n = n.offsetParent;
+          }
+          menu.style.left = Math.round(x + row.offsetWidth) + "px"; // opens at the pointer on the row's right edge, so the rail marks stay readable
+          menu.style.top =
+            Math.min(
+              Math.round(y + row.offsetHeight - 12),
+              win.offsetHeight - menu.offsetHeight - 8,
+            ) + "px";
+        },
+      );
+    </script>
+  </body>
+</html>

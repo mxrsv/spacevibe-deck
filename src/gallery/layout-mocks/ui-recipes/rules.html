@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · rules</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token. The beds, swatches and matrix cells are review chrome (gx-*) in chrome.css */
+      .rl-cols {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 5fr) minmax(0, 4fr);
+        gap: var(--space-24);
+        align-items: start;
+      }
+      .rl-col {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-24);
+        min-width: 0;
+      }
+      .rl-stack {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-16);
+      }
+      .rl-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-8);
+      }
+      .rl-lab {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-4) var(--space-8);
+      }
+      .rl-type {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-12);
+      }
+      .rl-ctl {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-8);
+      }
+      .rl-ctl .field {
+        width: calc(var(--control-h-40) * 3);
+      }
+      .rl-space {
+        display: grid;
+        grid-template-columns: calc(var(--control-h-40) * 5) 1fr;
+        align-items: center;
+        height: var(--row-24);
+      }
+      .rl-elev {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-12);
+      }
+      .rl-elev .menu,
+      .rl-elev .panel,
+      .rl-elev .modal {
+        width: auto;
+        max-width: var(--popover-w);
+      }
+      .rl-sw-set {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: var(--space-12) var(--space-16);
+      }
+      .rl-sw {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        min-width: 0;
+      }
+      .rl-cells {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-16) var(--space-24);
+        align-items: flex-start;
+      }
+      .rl-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-4);
+        min-width: 0;
+      }
+      .rl-sep {
+        width: var(--menu-w);
+      }
+      .rl-wk {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-12) var(--space-24);
+        align-items: center;
+      }
+      .rl-wk-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        min-width: 0;
+      }
+      .rl-wk-item > :first-child {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .rl-wk-item > .gx-cap {
+        flex: none;
+        width: calc(var(--control-h-40) + var(--space-8));
+      }
+      .rl-wk-bed {
+        border-radius: var(--radius-control);
+      }
+      .rl-wk-bed.on-rail {
+        background: var(--sidebar-bg);
+      }
+      .rl-wk-bed.on-bar {
+        background: var(--chrome-2);
+      }
+      .rl-wk-marks {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-16);
+        padding: var(--space-8);
+        border-radius: var(--radius-control);
+        background: var(--sidebar-bg);
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const D = window.Deck;
+      const T = (name, nameOnly) =>
+        `<code class="gx-cap" data-tok="${name}"${nameOnly ? " data-name-only" : ""}></code>`;
+      const sec = (title, body, cls = "") =>
+        `<section class="${cls}"><h3 class="gx-h">${title}</h3>${body}</section>`;
+      const STATES = [
+        ["rest", ""],
+        ["hover", "is-hover"],
+        ["focus-visible", "is-focus"],
+        ["selected", "is-selected"],
+        ["pressed", "is-pressed"],
+        ["disabled", "is-disabled"],
+      ];
+      const MX = [
+        {
+          name: "primary",
+          na: ["selected"],
+          cell: (c) => D.button({ label: "Run", variant: "primary", cls: c }),
+        },
+        { name: "secondary", cell: (c) => D.button({ label: "Open", cls: c }) },
+        {
+          name: "ghost / icon",
+          cell: (c) => D.iconButton({ icon: "settings", label: "Settings", cls: c }),
+        },
+        { name: "chip", cell: (c) => D.chip({ label: "main", icon: "branch", cls: c }) },
+        {
+          name: "input",
+          na: ["selected", "pressed"],
+          cell: (c) => D.field({ icon: "search", value: "Filter", cls: c }),
+        },
+        {
+          name: "rail row",
+          surface: "on-rail",
+          cell: (c) =>
+            D.row({
+              agent: "codex",
+              title: "Usage parser",
+              branch: "main",
+              state: "idle",
+              forced: c,
+            }),
+        },
+        {
+          name: "menu item",
+          surface: "on-menu",
+          cell: (c) => D.menuItem({ icon: "folderOpen", label: "Open", kbd: "⌘O", cls: c }),
+        },
+      ];
+      const matrix = () =>
+        `<div class="gx-mx"><span></span>${STATES.map(([n]) => `<span class="gx-cap">${n}</span>`).join("")}${MX.map((r) => `<span class="gx-cap">${r.name}</span>${STATES.map(([n, c]) => ((r.na || []).includes(n) ? `<span class="gx-mx-cell ${r.surface || ""} gx-cap">n/a</span>` : `<span class="gx-mx-cell ${r.surface || ""}">${r.cell(c)}</span>`)).join("")}`).join("")}</div>`;
+      const SW = [
+        "--bg",
+        "--sidebar-bg",
+        "--chrome-1",
+        "--chrome-2",
+        "--chrome-3",
+        "--input-bg",
+        "--well-bg",
+        "--card-bg",
+        "--popover-bg",
+        "--tab-active-bg",
+        "--tab-active-focus-bg",
+        "--seam-raised",
+        "--seam-recessed",
+        "--primary",
+        "--primary-fg",
+        "--red",
+        "--green",
+        "--yellow",
+        "--accent",
+        "--control-frame",
+        "--hair",
+        "--state-hover-bg",
+        "--state-pressed-bg",
+        "--state-dragover-bg",
+        "--state-needs-you-bg",
+        "--status-idle",
+        "--ring",
+        "--diff-add-bg",
+        "--diff-add-gutter",
+        "--diff-del-bg",
+        "--diff-del-gutter",
+        "--diff-hunk-bg",
+      ];
+      const INK = [
+        "--text-primary",
+        "--text-muted",
+        "--text-faint",
+        "--ink-need",
+        "--ink-fail",
+        "--ink-ok",
+      ];
+
+      D.mount(
+        "rules",
+        () => {
+          const type =
+            [
+              ["--type-dialog", "Dialog title", "strong"],
+              ["--type-body", "Button, input, label", ""],
+              ["--type-body", "Row title", "strong"],
+              ["--type-meta", "Chip, badge, meta", ""],
+            ]
+              .map(
+                ([t, s, w]) =>
+                  `<div class="rl-type"><span style="font-size:var(${t});font-weight:var(--weight-${w ? "strong" : "regular"})">${s}</span>${T(t)}${T(w ? "--weight-strong" : "--weight-regular")}</div>`,
+              )
+              .join("") +
+            `<div class="rl-type"><span class="t-mono" style="font-size:var(--term-size)">Terminal</span>${T("--term-size")}</div>`;
+          const controls =
+            [28, 32, 36, 40]
+              .map(
+                (
+                  h,
+                ) => `<div class="rl-ctl"><div class="rl-lab">${T("--control-h-" + h)}${T(h <= 32 ? "--radius-control" : "--radius-control-lg")}${T("--control-pad-" + h)}</div>
+    <div class="rl-line">${D.button({ label: "Run", variant: "primary", size: h })}${D.button({ label: "Open", size: h })}${D.button({ label: "Skip", variant: "ghost", size: h })}${D.field({ icon: "search", placeholder: "Filter", size: h })}${D.select({ value: "Default", size: h })}</div></div>`,
+              )
+              .join("") +
+            `<div class="rl-ctl"><div class="rl-lab">${T("--switch-w")}${T("--icon-16")}</div><div class="rl-line">${D.toggle(true)}${D.toggle(false)}${D.check(true)}${D.check(false)}${D.check(true, { radio: true })}${D.seg(["List", "Tree"], "List", { size: 28 })}</div></div>`;
+          const small = `<div class="rl-cells">
+      <div class="rl-cell">${D.chip({ label: "main", icon: "branch" })}${T("--chip-h-24")}${T("--radius-control")}</div>
+      <div class="rl-cell">${D.chip({ label: "main", icon: "branch", size: 20 })}${T("--chip-h-20")}${T("--radius-tight")}</div>
+      <div class="rl-cell">${D.badge("12")}${T("--badge-h")}${T("--radius-pill")}</div>
+      <div class="rl-cell">${D.kbd("⌘O")}${T("--badge-h")}</div></div>
+    <div class="rl-cells" style="margin-top:var(--space-16)">
+      ${[
+        [28, 16],
+        [24, 14],
+        [20, 12],
+      ]
+        .map(
+          ([b, g]) =>
+            `<div class="rl-cell">${D.iconButton({ icon: "settings", size: b, label: "Settings" })}${T("--icon-box-" + b)}${T("--icon-" + g)}</div>`,
+        )
+        .join("")}
+      <div class="rl-cell"><span class="flex gap-4">${D.avatar("spacevibe-board")}${D.avatar("数据分析平台-大数据")}${D.avatar("🚀 launch-pad")}</span>${T("--icon-box-24")}</div></div>
+    <div class="rl-cells" style="margin-top:var(--space-16)">${["needs", "working", "unread", "failed", "idle", "ended"].map((s) => `<div class="rl-cell">${D.mark(s)}<span class="gx-cap">${s}</span></div>`).join("")}${T("--mark-slot")}</div>`;
+          const WK = [
+            ["a", "Dot ring", "Deck's real WorkspaceSpinner"],
+            ["b", "Braille", "DL-27.21 ten frames, 80ms"],
+            ["c", "Three dots", "calm, in sequence"],
+          ];
+          const wkItem = (v, still, html, bed = "") =>
+            `<div class="rl-wk-item"><div class="rl-wk-bed ${bed}">${D.withWorking(v, html, still)}</div><span class="gx-cap">${still ? "still" : "motion"}</span></div>`;
+          const wkRows = [
+            [
+              "rail row, 14",
+              "on-rail",
+              () =>
+                D.row({ agent: "claude", title: "Usage parser", branch: "main", state: "working" }),
+            ],
+            [
+              "tab",
+              "on-bar",
+              () =>
+                D.tab({ title: "Usage parser", agent: "claude", mark: "working", close: false }),
+            ],
+            [
+              "pane header",
+              "on-bar",
+              () =>
+                D.paneHead(
+                  { agent: "claude", state: "working", title: "Usage parser" },
+                  { actions: "" },
+                ),
+            ],
+          ];
+          const wkMarks = (v, still) =>
+            D.withWorking(
+              v,
+              () =>
+                [14, 12]
+                  .map(
+                    (px) =>
+                      `<div class="rl-cell"><span class="flex" style="--mark-slot:${px}px">${D.mark("working")}</span><span class="gx-cap">${px}</span></div>`,
+                  )
+                  .join("") +
+                ["needs", "failed", "unread"]
+                  .map(
+                    (st) =>
+                      `<div class="rl-cell">${D.mark(st)}<span class="gx-cap">${st}</span></div>`,
+                  )
+                  .join(""),
+              still,
+            );
+          const working = `<div class="rl-wk">${WK.map(([v, n, d]) => `<div class="rl-cell"><span class="t-strong">${v.toUpperCase()} · ${n}</span><span class="gx-cap">${d}</span></div>`).join("")}
+    ${wkRows.map(([, bed, html]) => WK.map(([v]) => `<div class="rl-stack">${wkItem(v, false, html, bed)}${wkItem(v, true, html, bed)}</div>`).join("")).join("")}
+    ${WK.map(([v]) => `<div class="rl-stack">${[false, true].map((still) => `<div class="rl-wk-item"><div class="rl-wk-marks">${wkMarks(v, still)}</div><span class="gx-cap">${still ? "still" : "motion"}</span></div>`).join("")}</div>`).join("")}
+  </div>`;
+          const SP = [
+            "--space-0",
+            "--space-2",
+            "--space-4",
+            "--space-6",
+            "--space-8",
+            "--space-10",
+            "--space-12",
+            "--space-16",
+            "--space-24",
+          ];
+          const space =
+            SP.map(
+              (t) =>
+                `<div class="rl-space">${T(t)}<i class="gx-bar" style="--w:var(${t})"></i></div>`,
+            ).join("") +
+            `<div class="rl-lab" style="margin-top:var(--space-12)">${["--space-list", "--space-in-sm", "--space-in-md", "--space-in-lg", "--space-icon-label", "--space-pad-row", "--space-group-sm", "--space-group-md", "--space-section"].map((t) => T(t)).join("")}</div>`;
+          const rows = `<div class="rl-stack">
+    <div class="rl-cell">${D.row({ size: 24, icon: "fileText", title: "launcher.tsx", forced: "hover" })}${T("--row-24")}</div>
+    <div class="rl-cell">${D.row({ size: 32, icon: "folderOpen", title: "Open folder", end: D.kbd("⌘O"), forced: "hover" })}${T("--row-32")}</div>
+    <div class="rl-cell">${D.row({ size: 44, agent: "claude", title: "Notch usage refresh", branch: "main", state: "working", forced: "hover" })}${T("--row-44")}</div>
+    <div class="rl-cell">${D.row({ size: 44, agent: "codex", title: "Usage parser review", branch: "main", when: "1h", live: false })}${T("--row-44")}</div></div>`;
+          const elevItem = (lvl, s) => {
+            const name = "--elev-" + lvl + (s ? "-" + s : "");
+            const shadow = `box-shadow:var(${name})`;
+            const body =
+              lvl === 1
+                ? `<div class="menu" style="${shadow}">${D.menuItem({ icon: "folderOpen", label: "Open folder", kbd: "⌘O" })}${D.menuItem({ icon: "download", label: "Clone repository" })}${D.menuItem({ icon: "fork", label: "New worktree", state: "hover" })}</div>`
+                : lvl === 2
+                  ? `<div class="panel pad-12 col gap-8" style="${shadow}">${D.field({ icon: "search", placeholder: "Project" })}<div class="flex gap-6">${D.chip({ label: "Claude Code", icon: "terminal" })}${D.chip({ label: "main", icon: "branch" })}<span class="end">${D.button({ label: "Run", variant: "primary", kbd: "↵" })}</span></div></div>`
+                  : `<div class="modal" style="${shadow};--modal-w:var(--popover-w)"><span class="t-dialog">Remove project</span><div class="modal-foot">${D.button({ label: "Cancel" })}${D.button({ label: "Remove", variant: "danger" })}</div></div>`;
+            return `<div class="rl-elev">${body}${T(name)}</div>`;
+          };
+          const elev =
+            [1, 2, 3]
+              .map(
+                (lvl) =>
+                  `<div class="gx-bed">${["soft", "", "strong"].map((s) => elevItem(lvl, s)).join("")}</div>`,
+              )
+              .join("") + `<div class="rl-lab">${T("--elev-edge")}</div>`;
+          const names = [
+            "spacevibe-board",
+            "spacevibe-deck",
+            "spacevibe-academy",
+            "spacevibe-active",
+            "spacevibe-api",
+            "tinysift",
+            "dotfiles",
+            "voice-mvp",
+          ];
+          const sep = `<div class="menu rl-sep"><div class="menu-list scroll-show">${names.map((n) => D.menuItem({ label: n })).join("")}</div><div class="menu-sep"></div>${D.menuItem({ icon: "folderOpen", label: "Open folder", kbd: "⌘O" })}</div>
+    <div class="rl-lab" style="margin-top:var(--space-8)">${T("--menu-sep")}${T("--seam-w")}${T("--panel-frame")}</div>`;
+          const colours = `<div class="rl-sw-set">${SW.map((t) => `<div class="rl-sw"><i class="gx-swatch" style="background:var(${t})"></i>${T(t)}</div>`).join("")}${INK.map((t) => `<div class="rl-sw"><span class="gx-ink" style="color:var(${t})">Aa</span>${T(t)}</div>`).join("")}</div>`;
+          const motion = `<div class="rl-lab">${T("--duration")}${T("--ease")}${T("--ring-w")}${T("--focus-ring")}${T("--focus-border")}${T("--state-disabled-opacity")}</div>`;
+          return `<div class="gx-sheet">
+    <div class="rl-cols">
+      <div class="rl-col">${sec("type", `<div class="rl-stack">${type}</div>`)}${sec("space", space)}${sec("separator", sep)}</div>
+      <div class="rl-col">${sec("control", `<div class="rl-stack">${controls}</div>`)}${sec("row", rows)}${sec("motion, focus", motion)}</div>
+      <div class="rl-col">${sec("small", small)}</div>
+    </div>
+    ${sec("working mark: three candidates (the toolbar's Working: A · B · C switches every tab)", working)}
+    ${sec("elevation: soft / mid / strong, on the stage", elev)}
+    ${sec("state matrix", matrix())}
+    ${sec("colour", colours)}
+  </div>`;
+        },
+        () => {
+          const cs = getComputedStyle(document.documentElement);
+          document.querySelectorAll("[data-tok]").forEach((el) => {
+            const n = el.dataset.tok;
+            el.textContent = el.hasAttribute("data-name-only")
+              ? n
+              : `${n}  ${cs.getPropertyValue(n).trim()}`;
+          });
+        },
+      );
+    </script>
+  </body>
+</html>

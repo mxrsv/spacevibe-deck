@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · notices</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token */
+      .nt-win {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+        height: calc(var(--control-h-40) * 7);
+      }
+      .nt-launcher {
+        width: calc(100% - 2 * var(--space-24));
+      }
+      .nt-skel-tab {
+        width: calc(var(--control-h-40) * 3);
+      }
+      .nt-skel-head {
+        width: 40%;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const D = window.Deck;
+
+      /* a stage context: a one-column window (traffic lights + frame row) whose body and bottom bar the case fills */
+      const stageCtx = (data, { end = "", body, bottom = "" }) => {
+        const p = data.projects[0];
+        const crumbs = `<div class="crumbs grow"><button class="crumb">${D.esc(p.name)}</button>${D.icon("caretRight", 12, "ico-faint")}<button class="crumb">${D.esc(p.branch)}</button></div>`;
+        return `<div class="win nt-win"><section class="win-stage"><div class="frame"><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>${crumbs}${end}</div><div class="stage-body">${body}</div>${bottom}</section></div>`;
+      };
+      const panesStub = (data) =>
+        `<div class="panes">${data.panes.map((p, i) => (i ? D.resize() : "") + D.pane(p, { active: i === 0 })).join("")}</div>`;
+
+      /* persist-error bar: icon, text, Retry, Dismiss */
+      const persistBar = (text, tone) =>
+        `<div class="notice notice-${tone}" role="alert">${D.icon(tone === "fail" ? "alertCircle" : "alert", 16)}<span class="notice-text t-wrap">${D.esc(text)}</span>${D.button({ label: "Retry", size: 28 })}${D.iconButton({ icon: "close", label: "Dismiss" })}</div>`;
+
+      /* stage launcher failure: agent tiles and the failure line */
+      const launcherFail = (
+        text,
+      ) => `<div class="grow flex center"><div class="panel pad-16 col gap-12 nt-launcher">
+  <div class="flex gap-4 wrap">${["claude", "codex", "gemini", "opencode"].map((id, i) => `<button class="tile${i === 0 ? " is-selected" : ""}">${D.agentLogo(id, 16)}<span class="tile-name">${D.esc(D.agent(id).name)}</span></button>`).join("")}</div>
+  <div class="note-line is-fail top">${D.icon("alertCircle", 12)}<span class="grow t-wrap">${D.esc(text)}</span><button class="link-btn">Retry</button></div>
+</div></div>`;
+
+      const emptyStage = (name) =>
+        `<div class="grow flex center">${D.empty({ icon: "terminal", text: `No agents in ${name}`, action: D.button({ label: "New agent", icon: "plus", variant: "primary", kbd: "⌘T" }) })}</div>`;
+
+      const sk = (cls, style = "") => `<span class="skel ${cls}" style="${style}"></span>`;
+      const loadingStage =
+        () => `<div class="bar">${[0, 1, 2].map(() => sk("nt-skel-tab")).join("")}</div>
+  <div class="panes">${[0, 1].map(() => `<div class="pane"><div class="pane-head">${sk("nt-skel-head")}</div><div class="col gap-8 pad-16">${["70%", "90%", "55%", "80%", "40%"].map((w) => sk("", `width:${w}`)).join("")}</div></div>`).join("")}</div>`;
+
+      D.mount("notices", (data, ctx) => {
+        const n = data.notices;
+        const loadMsg = ctx.worst
+          ? n.persist
+          : "Recent workspaces could not be read. Showing an empty list.";
+        const cells = [
+          [
+            "persist error · save failed",
+            stageCtx(data, { body: panesStub(data), bottom: persistBar(n.persist, "fail") }),
+          ],
+          [
+            "persist error · load failed",
+            stageCtx(data, { body: panesStub(data), bottom: persistBar(loadMsg, "warn") }),
+          ],
+          [
+            "update · available",
+            stageCtx(data, { body: panesStub(data), end: D.update({ version: n.update.version }) }),
+          ],
+          [
+            "update · downloading",
+            stageCtx(data, {
+              body: panesStub(data),
+              end: D.update({ state: "downloading", pct: 62 }),
+            }),
+          ],
+          [
+            "update · ready to restart",
+            stageCtx(data, {
+              body: panesStub(data),
+              end: D.update({ state: "ready", notes: n.update.notes }),
+            }),
+          ],
+          ["stage launcher · failure line", stageCtx(data, { body: launcherFail(n.launchFail) })],
+          ["empty state", stageCtx(data, { body: emptyStage(data.projects[0].name) })],
+          ["loading state · skeleton", stageCtx(data, { body: loadingStage() })],
+        ];
+        return `<div class="gx-sheet"><div class="gx-grid" style="--gx-col: 560px">${cells.map(([label, html]) => `<div class="gx-cell fill"><span class="gx-cap t-strong">${label}</span>${html}</div>`).join("")}</div></div>`;
+      });
+    </script>
+  </body>
+</html>

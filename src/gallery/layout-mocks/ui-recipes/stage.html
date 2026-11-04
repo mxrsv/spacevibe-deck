@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · stage</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token or a placement */
+      .st-composed {
+        grid-template-columns: minmax(0, 1fr);
+        width: calc(var(--window-w) - var(--rail-w));
+        height: calc(var(--window-h) - var(--row-44));
+        transform: none;
+      }
+      .st-composed .frame > .tabstrip {
+        flex: 1 1 0;
+      }
+      .st-composed .frame > .st-right {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        flex: none;
+      }
+      .st-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-24);
+        width: 100%;
+      }
+      .st-two {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: var(--space-24);
+        align-items: start;
+      }
+      .st-hrow {
+        display: grid;
+        grid-template-columns: calc(var(--control-h-40) * 2) minmax(0, 1fr);
+        align-items: center;
+      }
+      .st-menus {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--space-24);
+      }
+      .st-heads {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-8);
+      }
+      .st-heads .pane {
+        flex: none;
+      }
+      .st-split {
+        height: calc(var(--control-h-40) * 8);
+      }
+      .st-split .panes {
+        height: 100%;
+        padding: 0;
+      }
+      .st-browser {
+        width: 100%;
+        height: calc(var(--control-h-40) * 8);
+      }
+      .st-mt {
+        margin-top: var(--space-16);
+      }
+      .st-divwrap {
+        display: flex;
+        width: 100%;
+        height: var(--control-h-28);
+      }
+      .st-menuw {
+        width: var(--menu-w);
+      }
+      .st-tips {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        gap: var(--space-16);
+        align-items: flex-start;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const D = window.Deck;
+      const ST = [
+        ["rest", ""],
+        ["hover", "hover"],
+        ["focus-visible", "focus"],
+        ["selected", "selected"],
+        ["pressed", "pressed"],
+        ["disabled", "disabled"],
+      ];
+      const sec = (t, body) => `<section><h3 class="gx-h">${t}</h3>${body}</section>`;
+      const cap = (t) => `<span class="gx-cap">${t}</span>`;
+      /* states matrix: rows {name, na[], cell(stateName)->html}; same shape as rules.html */
+      const mx = (rows) =>
+        `<div class="gx-mx"><span></span>${ST.map(([n]) => cap(n)).join("")}${rows.map((r) => `${cap(r.name)}${ST.map(([n, s]) => ((r.na || []).includes(n) ? `<span class="gx-mx-cell gx-cap">n/a</span>` : `<span class="gx-mx-cell">${r.cell(s)}</span>`)).join("")}`).join("")}</div>`;
+      const join = (...a) => a.filter(Boolean).join(" ");
+      const ib = (icon, label, o = {}) => D.iconButton({ icon, label, ...o });
+      const pick = (a, i) => a[i % a.length];
+
+      /* ---------- parts ---------- */
+      const tab = (t, state, extra = {}) =>
+        D.tab({
+          title: t.title,
+          agent: t.agent,
+          mark: t.state === "idle" ? "" : t.state,
+          state: join(state, t.state === "needs" ? "needs" : ""),
+          ...extra,
+        });
+      const attn = (d, o = {}) =>
+        D.chip({ icon: "bell", label: String(d.attention.length), tone: "need", ...o });
+      const dev = (d, o = {}) =>
+        D.chip({
+          icon: "server",
+          label: String(d.devServers.length),
+          end: `<span class="dot is-ok"></span>`,
+          ...o,
+        });
+      const paneHead = (p, state, full = true) =>
+        D.paneHead(
+          { ...p, state, status: state === "failed" ? "Failed · exit 1" : undefined },
+          { actions: D.paneActions("", full) },
+        );
+      const paneOf = (p, state, active) =>
+        D.pane({ ...p, state }, { active, actions: D.paneActions() });
+      const divider = (state, dir) => D.resize({ state, dir });
+      const tip = D.tooltip;
+
+      const overflowMenu = () =>
+        D.menu(
+          [
+            ["split", "Split right", "⌘D"],
+            ["split", "Split down", "⌘⇧D"],
+            ["expand", "Expand pane", "⌘⇧↵"],
+            ["close", "Close pane", "⌘W"],
+          ]
+            .map(([i, l, k], n) =>
+              D.menuItem({ icon: i, label: l, kbd: k, state: n === 0 ? "hover" : "" }),
+            )
+            .join("") +
+            D.gap() +
+            [
+              ["browser", "Browser", "⌘⇧B"],
+              ["message", "Prompts", "⌘⇧P"],
+              ["settings", "Settings", "⌘,"],
+            ]
+              .map(([i, l, k]) => D.menuItem({ icon: i, label: l, kbd: k }))
+              .join(""),
+        );
+      const openWithMenu = () =>
+        D.menu(
+          [
+            ["fileEdit", "Cursor", true],
+            ["terminal", "Terminal", false],
+            ["folderOpen", "Finder", false],
+            ["globe", "Browser", false],
+          ]
+            .map(([i, l, on], n) =>
+              D.menuItem({
+                icon: i,
+                label: l,
+                end: on ? D.icon("check", 12) : "",
+                state: n === 1 ? "hover" : "",
+              }),
+            )
+            .join(""),
+        );
+      const tabMenu = () =>
+        D.menu(
+          D.menuItem({ icon: "pin", label: "Pin", state: "hover" }) +
+            D.menuItem({ icon: "close", label: "Close", kbd: "⌘W" }) +
+            D.menuItem({ icon: "close", label: "Close Others" }) +
+            D.menuItem({ icon: "close", label: "Close to the Right", state: "disabled" }),
+          { style: "width:var(--menu-w)" },
+        );
+
+      const browser = (d, o = {}) => {
+        const url = d.worst
+          ? "http://localhost:5173/" + "a-very/deep/route/".repeat(8) + "?q=" + "x".repeat(40)
+          : "localhost:5173";
+        return `<div class="win-stage st-browser"><div class="bar">${ib("back", "Go back", { state: o.noBack ? "disabled" : "" })}${ib("forward", "Go forward")}${ib("reload", "Reload the page")}${D.field({ icon: "globe", value: url, size: 28, cls: "grow", error: o.error })}${ib("cursor", "Inspect element", { attrs: `aria-pressed="${Boolean(o.inspect)}"` })}${ib("close", "Close the browser tab")}</div>
+    ${o.error ? `<div class="note-line is-fail pad-8">${D.icon("alertCircle", 12)}<span class="t-ellipsis">That is not an address Deck can open.</span></div>` : ""}
+    <div class="page-area flex center">${o.empty ? D.empty({ icon: "globe", text: "Nothing loaded" }) : `<pre class="term">${D.esc("<h1>Deck</h1>\n\nlocalhost:5173")}</pre>`}</div></div>`;
+      };
+
+      D.mount("stage", (data) => {
+        const d = { ...data, worst: D.worst() };
+        const tabs = d.tabs;
+        /* --- composed stage 1016 x 756: bar, split panes --- */
+        const strip = `<div class="tabstrip" role="tablist">${tabs.map((t, i) => tab(t, i === 0 ? "selected" : "")).join("")}${ib("plus", "New tab", { size: 24 })}</div>`;
+        const right = `<span class="st-right">${attn(d)}${dev(d)}${D.ibSplit({ icon: "external", label: "Open in Cursor", caretLabel: "Choose which app opens a path" })}${ib("more", "More actions")}${ib("sidebarRight", "Hide the side panel", { attrs: 'aria-pressed="true"' })}</span>`;
+        const composed = `<div class="win st-composed"><section class="win-stage"><div class="frame">${strip}${right}</div><div class="stage-body"><div class="panes">${paneOf(d.panes[0], "needs", true)}${divider("")}${paneOf(d.panes[1], "working", false)}</div></div></section></div>`;
+
+        /* --- A: tab strip --- */
+        const tabRows = [
+          { name: "agent tab", cell: (s) => tab(pick(tabs, 0), s) },
+          {
+            name: "unread",
+            cell: (s) =>
+              D.tab({ title: pick(tabs, 1).title, agent: "codex", mark: "unread", state: s }),
+          },
+          {
+            name: "needs you",
+            cell: (s) =>
+              D.tab({
+                title: pick(tabs, 0).title,
+                agent: "claude",
+                mark: "needs",
+                state: join(s, "needs"),
+              }),
+          },
+          {
+            name: "working",
+            cell: (s) =>
+              D.tab({ title: pick(tabs, 1).title, agent: "codex", mark: "working", state: s }),
+          },
+          {
+            name: "failed",
+            cell: (s) =>
+              D.tab({ title: pick(tabs, 3).title, agent: "claude", mark: "failed", state: s }),
+          },
+          {
+            name: "file / browser",
+            cell: (s) =>
+              D.tab({
+                title: d.worst ? pick(tabs, 5).title : "rail-row.tsx",
+                icon: "fileText",
+                state: s,
+              }),
+          },
+        ];
+        /* --- B: chips --- */
+        const chipRows = [
+          { name: "attention chip", cell: (s) => attn(d, { state: s }) },
+          {
+            name: "attention, long",
+            cell: (s) =>
+              D.chip({ icon: "bell", label: d.attention[0].project, tone: "need", state: s }),
+          },
+          { name: "dev servers", cell: (s) => dev(d, { state: s }) },
+          {
+            name: "dev server down",
+            cell: (s) =>
+              D.chip({
+                icon: "server",
+                label: d.devServers[2].name,
+                end: `<span class="dot is-fail"></span>`,
+                state: s,
+              }),
+          },
+          {
+            name: "dev server starting",
+            cell: (s) => D.chip({ icon: "loader", label: d.devServers[1].name, state: s }),
+          },
+        ];
+        /* --- C: toolbar --- */
+        const tbRows = [
+          { name: "open in app", cell: (s) => ib("external", "Open in Cursor", { state: s }) },
+          {
+            name: "app caret",
+            cell: (s) => ib("caretDown", "Choose which app opens a path", { state: s }),
+          },
+          { name: "more", cell: (s) => ib("more", "More actions", { state: s }) },
+          {
+            name: "split: open + caret",
+            cell: (s) =>
+              D.ibSplit({
+                icon: "external",
+                label: "Open in Cursor",
+                caretLabel: "Choose which app opens a path",
+                state: s,
+              }),
+          },
+          {
+            name: "split: caret half",
+            cell: (s) =>
+              D.ibSplit({
+                icon: "external",
+                label: "Open in Cursor",
+                caretLabel: "Choose which app opens a path",
+                caretState: s,
+              }),
+          },
+        ];
+        /* --- D: toggles --- */
+        const togRows = [
+          {
+            name: "dock toggle, open",
+            na: ["selected"],
+            cell: (s) =>
+              ib("sidebarRight", "Hide the side panel", { state: s, attrs: 'aria-pressed="true"' }),
+          },
+          {
+            name: "dock toggle, closed",
+            na: ["selected"],
+            cell: (s) =>
+              ib("sidebarRight", "Show the side panel", {
+                state: s,
+                attrs: 'aria-pressed="false"',
+              }),
+          },
+          {
+            name: "sidebar toggle",
+            na: ["selected"],
+            cell: (s) =>
+              ib("sidebarLeft", "Collapse the sidebar", {
+                state: s,
+                attrs: 'aria-pressed="false"',
+              }),
+          },
+          {
+            name: "sidebar, collapsed",
+            na: ["selected"],
+            cell: (s) =>
+              ib("sidebarLeft", "Expand the sidebar", { state: s, attrs: 'aria-pressed="true"' }),
+          },
+        ];
+        /* --- E: pane header --- */
+        const p0 = d.panes[0],
+          p1 = d.panes[1];
+        const headCol = (active) =>
+          `<div class="st-heads">${["working", "idle", "needs", "unread", "failed", "ended"].map((s, i) => `<div class="st-hrow">${cap(s === "needs" ? "needs you" : s)}<div class="pane${active ? " is-active" : ""}">${paneHead({ agent: ["claude", "codex", "claude", "codex", "codex", "shell"][i], title: pick(d.panes, i).title }, s, i % 2 === 0)}</div></div>`).join("")}</div>`;
+        const actRows = [
+          { name: "split", cell: (s) => ib("split", "Split right", { size: 24, state: s }) },
+          { name: "expand", cell: (s) => ib("expand", "Expand pane", { size: 24, state: s }) },
+          { name: "close", cell: (s) => ib("close", "Close pane", { size: 24, state: s }) },
+        ];
+        const divRows = [
+          {
+            name: "divider",
+            na: ["selected", "disabled"],
+            cell: (s) => `<span class="st-divwrap">${divider(s)}</span>`,
+          },
+        ];
+        /* --- F: split panes --- */
+        const splitOf = (cls, state) =>
+          `<div class="st-split"><div class="panes ${cls}">${paneOf(p0, "working", true)}${divider(state, cls ? "row" : "col")}${paneOf(p1, "idle", false)}</div></div>`;
+
+        return `<div class="st-wrap">
+    ${composed}
+    <div class="gx-sheet">
+      ${sec("tab strip", mx(tabRows))}
+      ${sec("tab menu", `<div class="st-menus">${tabMenu()}<div class="col gap-8 st-menuw"><div class="tabstrip">${tab(tabs[0], "selected")}</div></div></div>`)}
+      ${sec("attention chip, dev servers chip", mx(chipRows))}
+      ${sec("toolbar: external app split, more", `${mx(tbRows)}<div class="st-menus st-mt">${overflowMenu()}${openWithMenu()}<div class="st-tips">${tip("Open in Cursor")}${tip("No workspace is open on this tab")}${tip("Hide the side panel", "⌘⌥B")}</div></div>`)}
+      ${sec("dock toggle, sidebar toggle", mx(togRows))}
+      ${sec("pane header", `<div class="st-two"><div class="col gap-8">${cap("active pane")}${headCol(true)}</div><div class="col gap-8">${cap("inactive pane")}${headCol(false)}</div></div><div class="st-mt">${mx(actRows)}</div>`)}
+      ${sec("split panes and divider", `<div class="st-two"><div class="col gap-8">${cap("divider at rest")}${splitOf("", "")}</div><div class="col gap-8">${cap("divider hover")}${splitOf("", "hover")}</div><div class="col gap-8">${cap("divider pressed (dragging)")}${splitOf("", "pressed")}</div><div class="col gap-8">${cap("column split")}${splitOf("is-col", "hover")}</div></div><div class="st-mt">${mx(divRows)}</div>`)}
+      ${sec("browser panel", `<div class="st-two"><div class="col gap-8">${cap("loaded, no history")}${browser(d, { noBack: true })}</div><div class="col gap-8">${cap("address error, inspect on")}${browser(d, { error: true, inspect: true, empty: true })}</div></div>`)}
+    </div></div>`;
+      });
+    </script>
+  </body>
+</html>

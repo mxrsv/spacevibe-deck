@@ -1,0 +1,374 @@
+/* =====================================================================================
+   tokens.css: the whole token layer of the Deck UI mock.
+   One recipe per thing (size, radius, space, row, state, focus, line, elevation, type,
+   weight, motion), each declared ONCE here and per theme where the value differs.
+   chrome.css and every tab page consume these names and never write a raw px value for
+   a recipe. Names are Deck's own (src/styles/01-tokens.css) where they exist; the few
+   NEW names are marked "new" in their comment.
+   Sources: DECISIONS.md > docs/specs/2026-11-03-ui-composition.md (CMP-1..15) >
+   docs/DESIGN-LANGUAGE.md. Dark = graphite, Light = Deck Light (src/settings/built-in-themes.ts).
+   Opaque ladder steps are precomputed hex (what derive-colors.ts yields); washes are
+   alpha mixes of --tone, so they flip per theme.
+   ===================================================================================== */
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+1E00-1EFF;
+  src: url("assets/fonts/inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+}
+
+/* ---------- [shared] geometry, type, rhythm, motion: identical in both themes ---------- */
+:root {
+  /* font: chrome uses one UI face (Deck: --ui-font). Terminal text is out of scale (CMP-10). */
+  --ui-font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --term-font-family:
+    ui-monospace, "SF Mono", Menlo, Consolas, monospace; /* new, mock only: terminal/editor placeholder text */
+  --term-size: 13px; /* terminal text: outside the 16/14/12 scale */
+  --term-leading: 20px;
+
+  /* type scale (CMP-10): 16 dialog title, 14 buttons/inputs/labels/row titles, 12 chips/badges/meta. Nothing below 12. */
+  --type-dialog: 16px; /* new: Deck has no name for the 16 rung yet */
+  --type-title: 14px;
+  --type-body: 14px;
+  --type-meta: 12px;
+  --type-micro: 12px; /* Deck keeps it declared at 12 */
+  --type-project: 14px;
+  --leading-dialog: 24px; /* new: line heights per rung */
+  --leading-body: 20px;
+  --leading-meta: 16px;
+  /* weights (Q20): 400 and 600 only, no 500 */
+  --weight-regular: 400; /* new */
+  --weight-strong: 600; /* new */
+
+  /* radius roles (DL-20.1) + the one literal 6 of CMP-2 */
+  --radius-flat: 2px; /* a control packed in a dense row; usage meter capsule */
+  --radius-tight: 3px; /* marks, bars, scrollbar thumbs, chip 20, icon box 20 */
+  --radius-tab: 4px; /* strip tabs, view buttons, panes, controls with a label <= 28 */
+  --radius-control: 4px; /* anything the pointer acts on up to 32 tall: rows, chips 24, icon boxes 28/24 */
+  --radius-control-lg: 6px; /* new alias for CMP-2's literal 6: controls 36 and 40 */
+  --radius-surface: 7px; /* anything that floats: menu, popover, tooltip, panel, modal */
+  --radius-pill: 999px; /* shape, not a scale step: badge, kbd, switch */
+  --window-radius: 10px; /* new, mock only: the OS window corner */
+
+  /* sizes (CMP-2, 5, 6, 7) */
+  --control-h-28: 28px;
+  --control-h-32: 32px;
+  --control-h-36: 36px;
+  --control-h-40: 40px; /* new */
+  --control-pad-28: 8px;
+  --control-pad-32: 12px;
+  --control-pad-36: 14px;
+  --control-pad-40: 16px; /* new, horizontal padding by height */
+  --chip-h-24: 24px;
+  --chip-h-20: 20px;
+  --chip-pad-24: 8px;
+  --chip-pad-20: 6px; /* new */
+  --badge-h: 20px;
+  --badge-pad: 8px; /* new: pill, read only */
+  --icon-box-28: 28px;
+  --icon-box-24: 24px;
+  --icon-box-20: 20px; /* new: an icon box of 20 offers a 24 hit area */
+  --icon-16: 16px;
+  --icon-14: 14px;
+  --icon-12: 12px; /* new: the glyph, tied to its box 28/24/20 */
+  --icon-hero: 48px; /* new: illustration glyph, outside the icon scale */
+  --icon-stroke: 2; /* Deck passes strokeWidth 2 to Hugeicons (GLYPH_STROKE) */
+
+  /* spacing (CMP-15): the scale ... */
+  --space-0: 0px;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px; /* new */
+  /* ... and its roles (Q12) */
+  --space-list: var(--space-2); /* between list rows */
+  --space-in-sm: var(--space-4); /* inside a group */
+  --space-in-md: var(--space-6);
+  --space-in-lg: var(--space-8);
+  --space-icon-label: var(--space-6); /* icon <-> label */
+  --space-pad-row: var(--space-8); /* row horizontal padding */
+  --space-group-sm: var(--space-12); /* between groups */
+  --space-group-md: var(--space-16);
+  --space-section: var(--space-24); /* between sections */
+
+  /* row heights (Q10, Q19) */
+  --row-24: 24px; /* dense list: Changes, file tree */
+  --row-32: 32px; /* menu item or one-line row */
+  --row-44: 44px; /* two-line rail row; live and remembered alike */
+
+  /* motion (DL-20.2) */
+  --duration: 150ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* functional geometry (outside the spacing scale, CMP-15): Deck's own values */
+  --frame-h: 34px;
+  --frame-lights-w: 78px;
+  --notice-h: 38px;
+  --status-h: 28px;
+  --sidebar-w: 275px;
+  --dock-w: 260px;
+  --rail-w: var(
+    --sidebar-w
+  ); /* new alias: Deck's default sidebar width is the one declared value (01-tokens.css, 275 since 2026-08-14) */
+  --rail-w-narrow: 200px; /* new: Deck's minimum sidebar width; the footer folds Tools to an icon */
+  --row-end-w: 32px; /* new: the fixed end cell of a remembered row; age and resume swap inside it, so nothing shifts */
+  --tab-title-min: 40px; /* new: a tab's title keeps this much before its close or mark could crowd it out */
+  --resize-w: 4px;
+  --resize-hit: 3px; /* new: Deck's pane split divider (06-stage-panes.css): a 4px gutter, hit area 3px past each side */
+  --diff-bar-w: 3px; /* new: DOCK-10 change bar in the gutter */
+  --flash-w: 2px; /* new: the card flash bar a press in the list pane draws on its card */
+  --update-max-w: 200px;
+  --update-meter-w: 40px; /* new: the frame's update action never grows past this */
+  --seam-w: 1px;
+  --ring-w: 3px;
+  --meter-h: 4px;
+  --scrollbar-w: 6px;
+  --mark-slot: 14px;
+  --mark-dot: 9px;
+  --mark-ring: 15px;
+  --mark-square: 7px;
+  --switch-w: 32px;
+  --switch-h: 20px;
+  --menu-rows: 6.5;
+  --gutter-w: 40px;
+  --tree-indent: 12px; /* new: functional geometry */
+  /* mock-only layout dimensions (new) */
+  --window-w: 1280px;
+  --window-h: 800px;
+  --menu-w: 240px;
+  --popover-w: 320px;
+  --modal-w: 440px;
+  --launcher-w: 640px;
+  --lights-d: 12px;
+  --tip-max-w: 240px;
+  --settings-nav-w: 220px;
+  --theme-card-w: 144px;
+}
+
+/* ---------- [dark] graphite ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* theme base (Deck names) */
+  --bg: #191c20;
+  --fg: #e7e8e9;
+  --accent: #47bfc5;
+  --red: #df7f78;
+  --green: #89ca92;
+  --yellow: #e4c285;
+  --magenta: #c591d5;
+  --cyan: #79cad3;
+  --tone: #ffffff; /* white on dark, black on light: every wash mixes from it */
+  /* the chrome ladder: side columns rise off the stage on dark */
+  --sidebar-bg: #24272b;
+  --sidebar-seam: #1f2226;
+  --chrome-1: #2c2f32;
+  --chrome-2: #33363a;
+  --chrome-3: #3e4144; /* chrome-3 new: one step above chrome-2 */
+  --input-bg: #1f2226;
+  --card-bg: #2c2f32; /* new: a card on the dock; chrome-1 on dark */
+  --well-bg: #131518; /* new: terminal/editor well, one step below the stage */
+  --popover-bg: #24272b; /* new: menu, popover, floating panel, modal body; not chrome-2 so hover (6%) stays under selected (10%) */
+  --seam-recessed: #1e2124;
+  --seam-raised: #383a3e;
+  --text-primary: #e7e8e9;
+  --text-muted: #c0c1c1;
+  --text-faint: #a8a8a8;
+  /* lines: tone alpha (hairlines, framed controls) */
+  --hair: color-mix(in srgb, var(--tone) 12%, transparent);
+  --seam-divider: color-mix(in srgb, var(--tone) 12%, transparent);
+  --seam-split: color-mix(in srgb, var(--tone) 20%, transparent);
+  --control-frame: oklch(1 0 0 / 15%);
+  --control-frame-hover: oklch(1 0 0 / 25%);
+  --menu-sep: color-mix(in srgb, var(--tone) 12%, transparent); /* new: the menu's one separator */
+  --panel-frame: transparent; /* new: dark panels are framed by the elevation hairline */
+  /* primary: ivory, filled, no edge (CMP-1, CMP-4); hover/press go a step darker like Deck's button */
+  --primary: oklch(0.93 0.025 85);
+  --primary-fg: oklch(0.2 0.01 60);
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, black);
+  --primary-pressed: color-mix(in oklch, var(--primary) 84%, black);
+  --primary-kbd-bg: color-mix(in srgb, var(--primary-fg) 12%, transparent);
+  --primary-kbd-fg: color-mix(in srgb, var(--primary-fg) 72%, transparent);
+  /* states, all from --tone (Q4, Q14) */
+  --state-hover-bg: color-mix(in srgb, var(--tone) 6%, transparent);
+  --tab-rest-bg: color-mix(in srgb, var(--tone) 3%, transparent);
+  --tab-active-bg: #3a3d40; /* selected: a full wash, no bar or border */
+  --tab-active-focus-bg: #4b4e51; /* new: selected + keyboard focus, 10% toward --fg (DL-21.1) */
+  --state-pressed-bg: color-mix(
+    in srgb,
+    black 8%,
+    transparent
+  ); /* new: the surface 8% toward black, layered as an overlay */
+  --state-disabled-opacity: 0.5; /* new */
+  --state-dragover-bg: color-mix(in srgb, var(--accent) 18%, transparent); /* new */
+  --state-needs-you-bg: color-mix(in srgb, var(--status-unread) 14%, transparent); /* new */
+  --focus-ring: color-mix(in srgb, var(--fg) 14%, transparent);
+  --focus-border: var(--text-muted); /* inputs only (CMP-9) */
+  /* status marks (Deck roles): working = --text-primary ring, failed = --red, asked/unread = --status-unread, idle = quiet gray */
+  --status-unread: var(--yellow);
+  --status-failed: var(--red);
+  --status-working: var(--text-primary);
+  --status-ok: var(--green); /* last three new */
+  --status-idle: color-mix(in srgb, var(--tone) 45%, transparent);
+  --danger-bg: color-mix(in srgb, var(--red) 20%, transparent);
+  --danger-bg-hover: color-mix(in srgb, var(--red) 30%, transparent); /* new */
+  /* DOCK-10 diff (dock-changes-card-body.tsx): a changed line is its hue mixed opaquely (lab) into the card, 20% on the code, 15% in the gutter */
+  --diff-add-bg: color-mix(in lab, var(--card-bg) 80%, var(--green));
+  --diff-del-bg: color-mix(in lab, var(--card-bg) 80%, var(--red)); /* new */
+  --diff-add-gutter: color-mix(in lab, var(--card-bg) 85%, var(--green));
+  --diff-del-gutter: color-mix(in lab, var(--card-bg) 85%, var(--red)); /* new */
+  --diff-hunk-bg: color-mix(in oklch, var(--card-bg) 94%, var(--fg)); /* new: the @@ line */
+  /* status ink: text in a status hue, stepped toward --text-primary so it holds 4.5:1 on tints and the selected wash; marks, dots and bars keep the pure hue */
+  --ink-need: color-mix(in lab, var(--status-unread) 80%, var(--text-primary));
+  --ink-fail: color-mix(in lab, var(--status-failed) 70%, var(--text-primary));
+  --ink-ok: color-mix(
+    in lab,
+    var(--status-ok) 80%,
+    var(--text-primary)
+  ); /* new; the least mix that holds 4.5:1 on every resting surface and tint */
+  --ink-fail-wash: color-mix(
+    in lab,
+    var(--status-failed) 50%,
+    var(--text-primary)
+  ); /* new: fail ink on the selected and drag-over washes, where 70% drops under 4.5:1 */
+  --ring: oklch(0.553 0.013 58.071); /* Deck preset .dark: the resize bar on hover and drag */
+  --tooltip-bg: var(--fg);
+  --tooltip-fg: var(--bg); /* new: inverted, as Deck's tooltip */
+  --scrim-bg: color-mix(in srgb, black 55%, transparent); /* new: modal scrim */
+  --scrim-filter: brightness(0.55) saturate(0.7); /* new: dims the window behind a floating launcher */
+  --logo-mono-filter: none; /* new: white single-colour logos (Codex, OpenCode) */
+  --selection-bg: #40454c; /* new: text selection = the theme's terminal selection */
+  --scrollbar-thumb: color-mix(in srgb, var(--tone) 20%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--tone) 32%, transparent); /* new */
+  --traffic-close: #ff5f57;
+  --traffic-min: #febc2e;
+  --traffic-max: #28c840; /* new */
+  --term-fg: #d6d8db;
+  --term-strong: #ffffff;
+  --term-muted: #8b8f95;
+  --term-accent: #e8927a;
+  --term-ok: #9fd08f; /* new: terminal palette, out of scale */
+  /* elevation (Q8): shadow + a 1px inset hairline. Written only through these tokens, floating elements only, never animated.
+     N = middle strength (default); N-soft and N-strong are the two other strengths the Rules tab shows. */
+  --elev-edge: inset 0 0 0 1px color-mix(in srgb, var(--tone) 8%, transparent);
+  --elev-1-soft: 0 4px 12px rgba(0, 0, 0, 0.28), var(--elev-edge);
+  --elev-1: 0 8px 24px rgba(0, 0, 0, 0.42), var(--elev-edge);
+  --elev-1-strong: 0 12px 36px rgba(0, 0, 0, 0.6), var(--elev-edge);
+  --elev-2-soft: 0 8px 28px rgba(0, 0, 0, 0.35), var(--elev-edge);
+  --elev-2: 0 16px 48px rgba(0, 0, 0, 0.5), var(--elev-edge);
+  --elev-2-strong: 0 24px 72px rgba(0, 0, 0, 0.68), var(--elev-edge);
+  --elev-3-soft: 0 12px 36px rgba(0, 0, 0, 0.4), var(--elev-edge);
+  --elev-3: 0 24px 64px rgba(0, 0, 0, 0.58), var(--elev-edge);
+  --elev-3-strong: 0 32px 96px rgba(0, 0, 0, 0.76), var(--elev-edge);
+}
+
+/* ---------- [light] Deck Light ---------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --fg: #272727;
+  --accent: #245fca;
+  --red: #b42318;
+  --green: #067647;
+  --yellow: #946200;
+  --magenta: #7a3fb0;
+  --cyan: #087c89;
+  --tone: #000000;
+  /* on light the columns recede below the stage */
+  --sidebar-bg: #e9eaec;
+  --sidebar-seam: #eff0f2;
+  --chrome-1: #e9eaec;
+  --chrome-2: #dfe0e2;
+  --chrome-3: #d8d8da;
+  --input-bg: #e6e7e9;
+  --card-bg: #f5f6f8; /* new: on light the columns recede, so a card is the stage tone */
+  --well-bg: #ffffff;
+  --popover-bg: #ffffff;
+  --seam-recessed: #f0f1f3;
+  --seam-raised: #d3d4d5;
+  --text-primary: #272727;
+  --text-muted: #464647;
+  --text-faint: #585959;
+  --hair: color-mix(in srgb, var(--tone) 12%, transparent);
+  --seam-divider: color-mix(in srgb, var(--tone) 12%, transparent);
+  --seam-split: color-mix(in srgb, var(--tone) 20%, transparent);
+  --control-frame: oklch(0 0 0 / 12%);
+  --control-frame-hover: oklch(0 0 0 / 22%);
+  --menu-sep: color-mix(in srgb, var(--tone) 10%, transparent);
+  --panel-frame: var(
+    --seam-raised
+  ); /* light panels have no inset hairline, so they carry this 1px frame */
+  --primary: oklch(0.24 0.012 60);
+  --primary-fg: oklch(0.97 0.012 85);
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, white);
+  --primary-pressed: color-mix(in oklch, var(--primary) 84%, black);
+  --primary-kbd-bg: color-mix(in srgb, var(--primary-fg) 16%, transparent);
+  --primary-kbd-fg: color-mix(in srgb, var(--primary-fg) 78%, transparent);
+  --state-hover-bg: color-mix(in srgb, var(--tone) 6%, transparent);
+  --tab-rest-bg: color-mix(in srgb, var(--tone) 3%, transparent);
+  --tab-active-bg: #d0d1d3;
+  --tab-active-focus-bg: #bfc0c2;
+  --state-pressed-bg: color-mix(in srgb, black 8%, transparent);
+  --state-disabled-opacity: 0.5;
+  --state-dragover-bg: color-mix(in srgb, var(--accent) 14%, transparent);
+  --state-needs-you-bg: color-mix(in srgb, var(--status-unread) 14%, transparent);
+  --focus-ring: color-mix(in srgb, var(--fg) 14%, transparent);
+  --focus-border: var(--text-muted);
+  --status-unread: var(--yellow);
+  --status-failed: var(--red);
+  --status-working: var(--text-primary);
+  --status-ok: var(--green);
+  --status-idle: color-mix(in srgb, var(--tone) 45%, transparent);
+  --danger-bg: color-mix(in srgb, var(--red) 10%, transparent);
+  --danger-bg-hover: color-mix(in srgb, var(--red) 18%, transparent);
+  --diff-add-bg: color-mix(in lab, var(--card-bg) 80%, var(--green));
+  --diff-del-bg: color-mix(in lab, var(--card-bg) 80%, var(--red));
+  --diff-add-gutter: color-mix(in lab, var(--card-bg) 85%, var(--green));
+  --diff-del-gutter: color-mix(in lab, var(--card-bg) 85%, var(--red));
+  --diff-hunk-bg: color-mix(in oklch, var(--card-bg) 94%, var(--fg));
+  --ink-need: color-mix(in lab, var(--status-unread) 55%, var(--text-primary));
+  --ink-fail: color-mix(in lab, var(--status-failed) 68%, var(--text-primary));
+  --ink-ok: color-mix(in lab, var(--status-ok) 62%, var(--text-primary));
+  --ink-fail-wash: var(--ink-fail);
+  --ring: oklch(0.709 0.01 56.259); /* Deck preset .preset-light */
+  --tooltip-bg: var(--fg);
+  --tooltip-fg: var(--bg);
+  --scrim-bg: color-mix(in srgb, black 32%, transparent);
+  --scrim-filter: brightness(0.82) saturate(0.7);
+  --logo-mono-filter: invert(1);
+  --selection-bg: #cddcff;
+  --scrollbar-thumb: color-mix(in srgb, var(--tone) 20%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--tone) 32%, transparent);
+  --traffic-close: #ff5f57;
+  --traffic-min: #febc2e;
+  --traffic-max: #28c840;
+  --term-fg: #272727;
+  --term-strong: #000000;
+  --term-muted: #585959;
+  --term-accent: #b42318;
+  --term-ok: #067647;
+  /* elevation: shadow only (no inset hairline) */
+  --elev-edge: 0 0 0 0 transparent;
+  --elev-1-soft: 0 2px 8px rgba(16, 20, 26, 0.1), var(--elev-edge);
+  --elev-1: 0 6px 20px rgba(16, 20, 26, 0.16), var(--elev-edge);
+  --elev-1-strong: 0 10px 32px rgba(16, 20, 26, 0.26), var(--elev-edge);
+  --elev-2-soft: 0 6px 24px rgba(16, 20, 26, 0.12), var(--elev-edge);
+  --elev-2: 0 14px 44px rgba(16, 20, 26, 0.2), var(--elev-edge);
+  --elev-2-strong: 0 22px 64px rgba(16, 20, 26, 0.32), var(--elev-edge);
+  --elev-3-soft: 0 10px 32px rgba(16, 20, 26, 0.14), var(--elev-edge);
+  --elev-3: 0 22px 60px rgba(16, 20, 26, 0.24), var(--elev-edge);
+  --elev-3-strong: 0 30px 90px rgba(16, 20, 26, 0.36), var(--elev-edge);
+}

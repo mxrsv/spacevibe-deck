@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · settings</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token */
+      .cs-frame {
+        width: min(100%, calc(var(--modal-w) + var(--popover-w)));
+      } /* the 760 Command Settings panel */
+      .cs-list {
+        max-height: calc(var(--row-44) * 8);
+      }
+      .cs-two {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-24);
+        align-items: start;
+      }
+      .cs-two .cs-frame {
+        width: calc(100% - 2 * var(--space-16));
+      }
+      .cs-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-16) var(--space-24);
+        align-items: flex-start;
+        margin-top: var(--space-16);
+      }
+      .cs-strip > .gx-cell {
+        max-width: 100%;
+      }
+      .cs-pat {
+        display: grid;
+        grid-template-columns: calc(var(--control-h-40) * 4) minmax(0, 1fr);
+        column-gap: var(--space-12);
+        row-gap: var(--space-2);
+        max-width: calc(var(--modal-w) + var(--popover-w) + var(--control-h-40) * 4);
+      }
+      .cs-pat-panel {
+        grid-column: 2;
+        display: grid;
+        grid-template-rows: subgrid;
+        padding: 0 var(--space-8);
+      }
+      .cs-pat-panel > span {
+        height: var(--space-8);
+      }
+      .cs-value {
+        max-width: calc(var(--control-h-40) * 5);
+      }
+      .cs-cmd {
+        max-width: calc(var(--control-h-40) * 4);
+      }
+      .cs-field {
+        width: calc(var(--control-h-40) * 4);
+      }
+      .cs-indent {
+        padding: var(--space-4) var(--space-8) var(--space-8) var(--space-24);
+      }
+      .cs-detail,
+      .cs-below {
+        padding: 0 var(--space-pad-row);
+        min-height: var(--row-32);
+      }
+      .cs-menu-end {
+        display: flex;
+        justify-content: flex-end;
+        padding: var(--space-4) var(--space-pad-row) var(--space-8);
+      }
+      .cs-below {
+        padding-left: var(--space-24);
+      }
+    </style>
+    <script src="settings.js"></script>
+    <script src="settings-rows.js"></script>
+  </head>
+  <body>
+    <script>
+      Deck.mount(
+        "settings",
+        (data, ctx) => `<div class="gx-sheet">${CS.frames(data, ctx)}${CS.rows(data, ctx)}</div>`,
+      );
+    </script>
+  </body>
+</html>
