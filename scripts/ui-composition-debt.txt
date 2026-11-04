@@ -16,9 +16,6 @@
 #
 # Seeded on 2026-11-05 with the tree's counts, so both suites were green on day one.
 
-src/files/ui/changes-list.tsx phosphor 1
-src/files/ui/diff-column-header.tsx phosphor 1
-src/terminal/search-bar.ts phosphor 1
 src/ui/agent-board-bar.tsx phosphor 1
 src/ui/agent-board-card.tsx phosphor 1
 src/ui/agent-board.tsx phosphor 1
@@ -44,7 +41,6 @@ src/ui/settings/sections/terminal-section.tsx phosphor 1
 src/ui/settings/settings-screen.tsx phosphor 1
 src/ui/settings/theme-gallery.tsx phosphor 1
 src/ui/sidebar-actions.tsx phosphor 1
-src/ui/usage/usage-dock-tab.tsx phosphor 1
 src/ui/workspace-icon.tsx phosphor 1
 src/ui/worktree-card-menus.tsx phosphor 1
 src/ui/worktree-card-row.tsx phosphor 1

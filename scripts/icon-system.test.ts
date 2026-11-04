@@ -103,7 +103,7 @@ const HUGEICONS_ONLY: readonly string[] = [
   "ui/agent-dock/",
   "ui/command-settings/",
   "ui/blocks/",
-  "terminal/pane-agent-header.tsx",
+  "terminal/",
   // The preset controls' own chevrons, checks and close glyphs.
   "ui/controls/button.tsx",
   "ui/controls/select.tsx",
@@ -120,14 +120,12 @@ const HUGEICONS_ONLY: readonly string[] = [
   "ui/sidebar-toggle.tsx",
   "ui/dock/dock-toggle.tsx",
   // Stage 4 and 5: the dock's file surfaces, the launcher, its forms, the prompt board, sessions.
-  "files/ui/file-icons.ts",
-  "files/ui/tree-root-actions.tsx",
-  "files/ui/view-mode-toggle.tsx",
+  "files/ui/",
   "launcher/",
   "open-board/",
   "prompts/",
   "ui/sessions/",
-  "ui/usage/usage-page.tsx",
+  "ui/usage/",
   "ui/usage-consent-modal.tsx",
   "ui/agent-quick-picker.tsx",
 ];

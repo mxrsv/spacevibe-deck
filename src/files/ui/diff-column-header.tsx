@@ -5,8 +5,13 @@
  * live in tooltips, and the name is the one item that shrinks.
  */
 import { useRef } from "preact/hooks";
-import { CaretLeft, CaretRight, FileText, X, type Icon } from "@phosphor-icons/react";
-import { CHROME_ICON, DeckIcon } from "../../ui/controls/deck-icon";
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  ArrowUpRight01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
+import { DeckIcon, type DeckGlyph } from "../../ui/controls/deck-icon";
 import {
   ActionTooltip,
   tooltipTriggerProps,
@@ -40,7 +45,7 @@ export interface DiffColumnHeaderProps {
 
 interface HeadActionProps {
   readonly id: string;
-  readonly icon: Icon;
+  readonly icon: DeckGlyph;
   readonly label: string;
   /** The key shown in the tooltip, when the control has one. */
   readonly shortcut: string | null;
@@ -69,7 +74,7 @@ function HeadAction(props: HeadActionProps) {
         }}
         {...tooltipTriggerProps(tooltip, ref)}
       >
-        <DeckIcon icon={props.icon} size={CHROME_ICON} />
+        <DeckIcon icon={props.icon} />
       </button>
       {tooltip.anchor !== null && (
         <ActionTooltip
@@ -118,7 +123,7 @@ export function DiffColumnHeader(props: DiffColumnHeaderProps) {
       )}
       <HeadAction
         id={`${props.id}-previous`}
-        icon={CaretLeft}
+        icon={ArrowLeft01Icon}
         label="Previous file"
         shortcut="["
         unavailable={props.onPrevious === null ? "This is the first file" : undefined}
@@ -126,7 +131,7 @@ export function DiffColumnHeader(props: DiffColumnHeaderProps) {
       />
       <HeadAction
         id={`${props.id}-next`}
-        icon={CaretRight}
+        icon={ArrowRight01Icon}
         label="Next file"
         shortcut="]"
         unavailable={props.onNext === null ? "This is the last file" : undefined}
@@ -135,7 +140,7 @@ export function DiffColumnHeader(props: DiffColumnHeaderProps) {
       {props.onOpenFile !== null && (
         <HeadAction
           id={`${props.id}-open`}
-          icon={FileText}
+          icon={ArrowUpRight01Icon}
           label="Open file"
           shortcut={null}
           onPress={props.onOpenFile}
@@ -143,7 +148,7 @@ export function DiffColumnHeader(props: DiffColumnHeaderProps) {
       )}
       <HeadAction
         id={`${props.id}-close`}
-        icon={X}
+        icon={Cancel01Icon}
         label="Close"
         shortcut="Esc"
         onPress={props.onClose}
