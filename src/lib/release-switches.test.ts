@@ -72,4 +72,8 @@ describe("the shipped switch table", () => {
     expect(isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(false))).toBe(false);
     expect(isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(true))).toBe(true);
   });
+  it("keeps stageLauncher dark in a release and lit in development", () => {
+    expect(isReleaseSwitchEnabled("stageLauncher", resolveReleaseSwitches(false))).toBe(false);
+    expect(isReleaseSwitchEnabled("stageLauncher", resolveReleaseSwitches(true))).toBe(true);
+  });
 });

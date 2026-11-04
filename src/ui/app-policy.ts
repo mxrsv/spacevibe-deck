@@ -157,6 +157,11 @@ interface StripSurfaceState {
 
 interface SidebarVisibilityState {
   readonly liveTabCount: number;
+  /**
+   * The `stageLauncher` switch: the rail stays up at zero live tabs, because the launcher in the
+   * stage replaces the start surface that used to take its column. Absent means off.
+   */
+  readonly railWithoutTabs?: boolean;
   readonly savedCollapsed: boolean;
   readonly dragCollapsed: boolean | null;
 }
@@ -167,8 +172,8 @@ interface DockVisibilityState {
 }
 
 /** The Agent Rail is a projection of live work, never persisted history. */
-export function liveRailAvailable(liveTabCount: number): boolean {
-  return liveTabCount > 0;
+export function liveRailAvailable(liveTabCount: number, railWithoutTabs = false): boolean {
+  return railWithoutTabs || liveTabCount > 0;
 }
 
 /**
@@ -176,7 +181,7 @@ export function liveRailAvailable(liveTabCount: number): boolean {
  * start surface. The persisted collapse choice is read, never rewritten.
  */
 export function sidebarEffectivelyCollapsed(state: SidebarVisibilityState): boolean {
-  if (!liveRailAvailable(state.liveTabCount)) {
+  if (!liveRailAvailable(state.liveTabCount, state.railWithoutTabs)) {
     return true;
   }
   // DL-34.1 had a second branch here — the Agent Board forced the column shut
@@ -199,7 +204,7 @@ interface SidebarPaintState extends SidebarVisibilityState {
  * by pointer capture. A window with no live work paints nothing (DL-18.9).
  */
 export function sidebarPaintWidth(state: SidebarPaintState): number {
-  if (!liveRailAvailable(state.liveTabCount)) {
+  if (!liveRailAvailable(state.liveTabCount, state.railWithoutTabs)) {
     return SIDEBAR_HIDDEN_WIDTH;
   }
   if (sidebarEffectivelyCollapsed(state)) {
@@ -336,6 +341,54 @@ export function livePresetOpensATab(boardIsOpen: boolean): boolean {
  */
 export function bootOpensTheBoard(boot: BootMode): boolean {
   return boot.kind === "normal";
+}
+
+/**
+ * Whether a boot raises the Open board. With the `stageLauncher` switch on the stage hosts the
+ * launcher instead, so a normal boot raises nothing; an adopt window never shows either
+ * (`bootOpensTheBoard` still names which boot is which).
+ */
+export function bootRaisesTheBoard(boot: BootMode, stageLauncher: boolean): boolean {
+  return bootOpensTheBoard(boot) && !stageLauncher;
+}
+
+interface StageLauncherSlotState {
+  readonly stageLauncher: boolean;
+  readonly liveTabCount: number;
+  /** File tabs plus the browser chip: surfaces that already hold the stage. */
+  readonly otherSurfaces: number;
+  readonly boardOpen: boolean;
+  readonly launchPageOpen: boolean;
+}
+
+/** Whether the stage paints the launcher slot: a window with nothing live and nothing else on the stage. */
+export function stageLauncherSlotShows(state: StageLauncherSlotState): boolean {
+  return (
+    state.stageLauncher &&
+    state.liveTabCount === 0 &&
+    state.otherSurfaces === 0 &&
+    !state.boardOpen &&
+    !state.launchPageOpen
+  );
+}
+
+interface LastCloseBoardState {
+  readonly stageLauncher: boolean;
+  readonly previousTabCount: number;
+  readonly liveTabCount: number;
+  readonly boardOpen: boolean;
+}
+
+/**
+ * Whether the Open board standing now is the one `disposeTab` raises when the last tab closes
+ * (tab-manager.ts, F1 of the launcher plan). With the `stageLauncher` switch on, App takes that
+ * board down again so the slot shows with the rail; a board opened at an already-empty window
+ * (Clone Repository…) did not come from a close and stays.
+ */
+export function boardRaisedByLastClose(state: LastCloseBoardState): boolean {
+  return (
+    state.stageLauncher && state.boardOpen && state.previousTabCount > 0 && state.liveTabCount === 0
+  );
 }
 
 /**

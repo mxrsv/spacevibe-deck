@@ -8,7 +8,9 @@ import {
   agentBoardClosesWithLastTab,
   archivedWorkspaceResumeAvailable,
   boardClosesAfterResume,
+  boardRaisedByLastClose,
   bootOpensTheBoard,
+  bootRaisesTheBoard,
   browserPanelObscured,
   startSurfaceFollowsBoardClose,
   closeSettingsPanel,
@@ -19,6 +21,7 @@ import {
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   sidebarPaintWidth,
+  stageLauncherSlotShows,
   stripShowsTabs,
   taskLaunchRecoveryValid,
   toggleSettingsPanel,
@@ -948,5 +951,97 @@ describe("the sidebar's painted width", () => {
     expect(sidebarPaintWidth({ ...open, liveTabCount: 0, savedCollapsed: true })).toBe(
       SIDEBAR_HIDDEN_WIDTH,
     );
+  });
+});
+
+describe("the stageLauncher switch in the shell policy", () => {
+  const empty = { liveTabCount: 0, savedCollapsed: false, dragCollapsed: null } as const;
+
+  it("keeps the rail at zero live tabs only with the switch on", () => {
+    expect(liveRailAvailable(0)).toBe(false);
+    expect(liveRailAvailable(0, false)).toBe(false);
+    expect(liveRailAvailable(0, true)).toBe(true);
+    expect(liveRailAvailable(2, false)).toBe(true);
+  });
+
+  it("leaves the empty window's sidebar collapsed and unpainted with the switch off", () => {
+    expect(sidebarEffectivelyCollapsed(empty)).toBe(true);
+    expect(sidebarEffectivelyCollapsed({ ...empty, railWithoutTabs: false })).toBe(true);
+    expect(
+      sidebarPaintWidth({ ...empty, savedWidth: 300, liveWidth: null, railWithoutTabs: false }),
+    ).toBe(SIDEBAR_HIDDEN_WIDTH);
+  });
+
+  it("gives the empty window the user's own sidebar choice with the switch on", () => {
+    const on = { ...empty, railWithoutTabs: true };
+    expect(sidebarEffectivelyCollapsed(on)).toBe(false);
+    expect(sidebarEffectivelyCollapsed({ ...on, savedCollapsed: true })).toBe(true);
+    expect(sidebarPaintWidth({ ...on, savedWidth: 300, liveWidth: null })).toBe(300);
+    expect(
+      sidebarPaintWidth({ ...on, savedCollapsed: true, savedWidth: 300, liveWidth: null }),
+    ).toBe(SIDEBAR_COLUMN_WIDTH);
+  });
+
+  it("raises the board on a normal boot only with the switch off", () => {
+    expect(bootRaisesTheBoard({ kind: "normal" }, false)).toBe(true);
+    expect(bootRaisesTheBoard({ kind: "normal" }, true)).toBe(false);
+  });
+
+  it("never raises the board for an adopt boot, with the switch either way", () => {
+    expect(bootRaisesTheBoard({ kind: "adopt", token: "t-1" }, false)).toBe(false);
+    expect(bootRaisesTheBoard({ kind: "adopt", token: "t-1" }, true)).toBe(false);
+    expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
+  });
+
+  describe("the launcher slot", () => {
+    const idle = {
+      stageLauncher: true,
+      liveTabCount: 0,
+      otherSurfaces: 0,
+      boardOpen: false,
+      launchPageOpen: false,
+    } as const;
+
+    it("shows on a normal boot's empty window", () => {
+      expect(stageLauncherSlotShows(idle)).toBe(true);
+    });
+
+    it("stays away with the switch off", () => {
+      expect(stageLauncherSlotShows({ ...idle, stageLauncher: false })).toBe(false);
+    });
+
+    it.each([
+      ["a live tab", { liveTabCount: 1 }],
+      ["a file tab or the browser", { otherSurfaces: 1 }],
+      ["the Open board", { boardOpen: true }],
+      ["the launch page", { launchPageOpen: true }],
+    ])("yields the stage to %s", (_label, over) => {
+      expect(stageLauncherSlotShows({ ...idle, ...over })).toBe(false);
+    });
+  });
+
+  describe("closing the last tab", () => {
+    const closed = {
+      stageLauncher: true,
+      previousTabCount: 1,
+      liveTabCount: 0,
+      boardOpen: true,
+    } as const;
+
+    it("takes down the board that the close raised", () => {
+      expect(boardRaisedByLastClose(closed)).toBe(true);
+    });
+
+    it("leaves the board alone with the switch off", () => {
+      expect(boardRaisedByLastClose({ ...closed, stageLauncher: false })).toBe(false);
+    });
+
+    it("leaves a board opened on an already-empty window", () => {
+      expect(boardRaisedByLastClose({ ...closed, previousTabCount: 0 })).toBe(false);
+    });
+
+    it("leaves the board while a tab remains", () => {
+      expect(boardRaisedByLastClose({ ...closed, liveTabCount: 1 })).toBe(false);
+    });
   });
 });

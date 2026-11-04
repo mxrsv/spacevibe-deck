@@ -1,5 +1,8 @@
 import { createMenuActionHandler } from "../terminal/action-availability";
 import { AgentLaunchPage } from "../launcher/agent-launch-page";
+import { installStageLauncherCloseGuard } from "../launcher/stage-launcher-close-guard";
+import { stageLauncherEnabled } from "../launcher/stage-launcher-enabled";
+import { StageLauncherSlot } from "../launcher/stage-launcher-slot";
 import type { AgentLaunchContextProps } from "../launcher/agent-launch-context";
 import { TERMINAL_LAUNCH_ID, type AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-launch-page-store";
@@ -263,6 +266,7 @@ import { AttentionSwitcher, BrowserSideSlot, DockSections, HunkQueue } from "./s
 import {
   boardClosesAfterResume,
   bootOpensTheBoard,
+  bootRaisesTheBoard,
   agentBoardClosesWithLastTab,
   browserPanelObscured,
   startSurfaceFollowsBoardClose,
@@ -274,6 +278,7 @@ import {
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   sidebarPaintWidth as sidebarPaintWidthFor,
+  stageLauncherSlotShows,
   stripShowsTabs,
   taskLaunchRecoveryValid,
   toggleSettingsPanel,
@@ -868,7 +873,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           isMain: true,
           holdEmpty: () => lastSession.value !== null,
         });
-        boardOpen.value = true;
+        // `stageLauncher` on: the stage hosts the launcher instead (LCH-1). The record is still
+        // read and held above, so nothing is erased; only the board that offered it stays down.
+        if (bootRaisesTheBoard(boot, stageLauncherEnabled())) {
+          boardOpen.value = true;
+        }
       })
       .catch((err: unknown) => {
         // Without this an init failure is an unhandled rejection AND the
@@ -877,7 +886,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         // live yet to capture.
         console.error("Failed to initialize terminals:", err);
         if (bootOpensTheBoard(boot)) {
-          boardOpen.value = true;
+          if (bootRaisesTheBoard(boot, stageLauncherEnabled())) {
+            boardOpen.value = true;
+          }
           return;
         }
         void getCurrentWindow().close();
@@ -1679,10 +1690,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   }
 
   const sidebar = updatePreview?.sidebar ?? settings.value.tabBarPosition === "left";
-  const railAvailable = liveRailAvailable(tabViews.value.length);
+  const railWithoutTabs = stageLauncherEnabled();
+  const railAvailable = liveRailAvailable(tabViews.value.length, railWithoutTabs);
   const effectiveSidebarCollapsed = (): boolean =>
     sidebarEffectivelyCollapsed({
       liveTabCount: tabViews.value.length,
+      railWithoutTabs,
       savedCollapsed: settings.value.sidebarCollapsed,
       dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
     });
@@ -1694,6 +1707,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const sidebarPaintWidth = (): number =>
     sidebarPaintWidthFor({
       liveTabCount: tabViews.value.length,
+      railWithoutTabs,
       savedCollapsed: settings.value.sidebarCollapsed,
       dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
       savedWidth: settings.value.sidebarWidth,
@@ -2001,12 +2015,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     closeAgentBoard();
-    if (startSurfaceFollowsBoardClose(zeroTabs)) {
+    // With `stageLauncher` on, the launcher slot is the start surface, not the board.
+    if (startSurfaceFollowsBoardClose(zeroTabs) && !stageLauncherEnabled()) {
       // `boardOpen` is the OPEN board's signal (chrome/events), never the
       // Agent Board's — the same write `disposeTab`'s else arm makes.
       boardOpen.value = true;
     }
   });
+  // `stageLauncher` (plan F1): the last tab's close does not leave the Open board standing.
+  useEffect(() => installStageLauncherCloseGuard(), []);
   const updateAction = (
     <UpdateAction
       view={updatePreview ?? updater.view.value}
@@ -2704,6 +2721,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             </div>
           ) : null}
           <div class="stage__tabs" ref={stagesRef} />
+          {stageLauncherSlotShows({
+            stageLauncher: stageLauncherEnabled(),
+            liveTabCount: tabViews.value.length,
+            otherSurfaces: fileController.total() + (browserOpen.value ? 1 : 0),
+            boardOpen: boardOpen.value,
+            launchPageOpen: agentLaunchPage.request.value !== null,
+          }) && <StageLauncherSlot />}
           {agentLaunchPage.request.value !== null && (
             <AgentLaunchPage
               target={agentLaunchPage.request.value.target}
@@ -2861,7 +2885,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           {boardOpen.value ? (
             <OpenBoard
               canBrowseSessions={sessionsSupported.value}
-              lastSession={lastSession.value}
+              lastSession={stageLauncherEnabled() ? null : lastSession.value}
               onReopenLastSession={async () => {
                 const manager = tabsRef.current;
                 if (manager === null) {

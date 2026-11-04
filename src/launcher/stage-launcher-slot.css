@@ -1,0 +1,24 @@
+/* The stage launcher's slot: the rectangle `.agent-launch-page` covers, with the rail left standing. */
+.stage-launcher {
+  position: absolute;
+  inset: var(--stage-gutter);
+  z-index: 25;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  color: var(--text-primary);
+  background: var(--bg);
+  container-type: inline-size;
+}
+.stage--strip > .stage-launcher {
+  top: calc(var(--frame-h) + var(--stage-gutter));
+}
+.stage--dock > .stage-launcher {
+  right: calc(var(--stage-inset) + var(--stage-gutter));
+}
+.stage--notice > .stage-launcher {
+  top: var(--notice-h);
+}
+.stage--strip.stage--notice > .stage-launcher {
+  top: calc(var(--frame-h) + var(--notice-h));
+}

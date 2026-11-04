@@ -22,6 +22,8 @@ export const RELEASE_SWITCHES = Object.freeze({
   shellStage: { enabled: false, createdOn: "2026-10-25" },
   /** The in-pane `deck` command and its control routes (spec 2026-11-03-agent-orchestration). */
   agentControl: { enabled: false, createdOn: "2026-11-03" },
+  /** The launcher in the stage replaces the Open board as the start surface (spec 2026-11-04-launcher-in-stage). */
+  stageLauncher: { enabled: false, createdOn: "2026-11-04" },
 } satisfies ReleaseSwitchDefinitions);
 export type ReleaseSwitchId = keyof typeof RELEASE_SWITCHES;
 
