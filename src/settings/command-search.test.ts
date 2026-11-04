@@ -380,6 +380,6 @@ describe("keyboard walk", () => {
   });
 });
 
-it("has one area per Settings category", () => {
-  expectTypeOf<CommandAreaId>().toEqualTypeOf<CategoryId>();
+it("has one area per Settings category, except Mobile, which only the classic screen draws", () => {
+  expectTypeOf<CommandAreaId>().toEqualTypeOf<Exclude<CategoryId, "mobile">>();
 });

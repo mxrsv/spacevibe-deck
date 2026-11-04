@@ -240,7 +240,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     - a keystroke echo produces no `working`;
     - a snapshot plus the stream draws a Claude Code TUI correctly;
     - no push while a Deck window is focused.
-- [ ] **T5: Desktop Settings → Mobile.**
+- [x] **T5: Desktop Settings → Mobile.** Done 2026-11-05; the owner's eye judgement is in T14.
   - **Mock, no early stop** (the owner's 2026-11-05 full-build call): build a gallery specimen
     from the real Settings rows and controls. It holds Pair a phone, the QR dialog, the paired
     list and revoke. Then build the surface from the same parts. The owner judges both by eye in
@@ -505,6 +505,19 @@ All four are environmental and pre-existing:
   Transport Security, the phone reporting "Same Wi-Fi", and leaving the network moving it to the
   relay without re-pairing.
 
+**T5 (Settings → Mobile):**
+- `npx tsc --noEmit` clean; `npx vitest run src/ui/settings src/ui/command-settings src/settings
+  src/gallery scripts/ src/styles/` → `Test Files 87 passed (87)`, `Tests 1361 passed | 1 skipped`.
+  Tested: no Mobile category, row or search hit with the switch off; Pair a phone shows the QR from
+  `mobile_pair_start` with the countdown; expiry offers Show a new code; a `mobile:changed` with
+  the new phone closes the dialog and lists it; Revoke confirms, then sends the flat
+  `{ pairingId }`; the error and storage-unavailable states.
+- Gallery specimen `settings-mobile` ("settings · mobile") renders the real rows and dialog bodies
+  over fixtures; a headless screenshot in scratch showed it rendering with no page errors (default
+  button chrome there is the headless browser's, the same on the existing `rows` specimen).
+- **The owner's eye (T14):** the dialog over Settings, the QR's size and a real iPhone camera
+  scanning it in dark themes, row spacing.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -578,6 +591,14 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
 26. **The phone keeps its relay socket while on the LAN**, for presence and push-token
     registration, and falls back to a fresh relay session (a used channel cannot take a second
     `hello`), replaying its subscriptions.
+27. **QR codes come from `uqr@0.1.3`** (MIT, zero dependencies) as an exact root devDependency:
+    every renderer library here is a devDependency because it is bundled, so the root still gains
+    no runtime dependency (F1). Turned down: a hand-written QR encoder. **For the owner to accept:**
+    `scripts/icon-system.test.ts` now allows one `<svg>` in `qr-code.tsx`, with its reason.
+28. **The Mobile section is on the classic Settings screen only.** The `commandSettings` variant's
+    areas are a closed set pinned by a type test; a Mobile area there is a follow-up when that
+    switch ships. The dialogs use a plain stylesheet (`src/styles/32-mobile-settings.css`) because
+    utility classes in app markup fail the preset-boundary test.
 
 ## Handoff
 

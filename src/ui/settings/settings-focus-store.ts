@@ -21,6 +21,8 @@ export function openSettingsAt(page: CategoryId, key?: keyof Settings): void {
   settingsQuery.value = "";
   activeCategory.value = page;
   settingsTarget.value = key ?? null;
-  revealInCommand(page, key !== undefined && isLiveKey(key) ? settingRowKey(key) : null);
+  if (page !== "mobile") {
+    revealInCommand(page, key !== undefined && isLiveKey(key) ? settingRowKey(key) : null);
+  }
   settingsOpen.value = true;
 }

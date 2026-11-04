@@ -3,7 +3,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { GithubStarButton } from "../controls/github-star-button";
 import { activeCategory } from "./active-category-store";
-import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings-categories";
+import { categoryTabId, SECTION_PANEL_ID, visibleSettingsCategories } from "./settings-categories";
 import { SETTINGS_PAGES, type SettingsPage } from "../../settings/settings-registry";
 import { PageResetBar } from "./page-reset-bar";
 import { SettingsNav } from "./settings-nav";
@@ -72,6 +72,10 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
       if (target instanceof Element && target.closest(".xterm")) {
         return;
       }
+      // A dialog opened from a section (pairing, revoke) owns Escape and Tab while it is up.
+      if (target instanceof Element && target.closest('[role="dialog"]')) {
+        return;
+      }
 
       if (event.key === "Escape") {
         // Blur first: a focused text field commits its draft on blur, so
@@ -97,9 +101,9 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
   // Falls back to the first category rather than rendering an empty panel:
   // an unknown id can only come from a stale signal, and a blank screen is a
   // worse answer than the default one.
+  const categories = visibleSettingsCategories();
   const active =
-    SETTINGS_CATEGORIES.find((category) => category.id === activeCategory.value) ??
-    SETTINGS_CATEGORIES[0];
+    categories.find((category) => category.id === activeCategory.value) ?? categories[0];
   const Section = active.Section;
   const studio = active.id === "appearance" || active.id === "agents";
   const loading = settingsLoadState.value.status === "loading";
