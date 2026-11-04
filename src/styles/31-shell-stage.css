@@ -209,8 +209,11 @@
    The grip sits outside the stage, so it keeps the :root `--stage-gutter` and its hover bar is
    that wide: with the gutter closed the bar would lie over the left pane's first pixels. The
    seam is the stage's own 1px left border, so the bar lights that line instead, as the flush
-   divider between panes does. */
+   divider between panes does. That border runs from the top of the window, so the light does too
+   (owner, 2026-11-05): lit only beside the rail it stopped short under the frame row. The grip
+   itself still starts under that row, which is a window drag surface (02-shell.css). */
 :root.shell-frame .sidebar-grip::after {
+  top: calc(-1 * var(--frame-h));
   width: 1px;
   border-radius: 0;
 }

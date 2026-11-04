@@ -212,7 +212,9 @@
      `-webkit-app-region: drag` surface: an element laid over it does not
      become droppable for the pointer, so the top 34px of the target would
      look draggable and not be. The line starting under the frame row is the
-     honest picture of where the seam can actually be grabbed. */
+     honest picture of where the seam can actually be grabbed. The flush shell
+     lights the stage's full-height border instead (31-shell-stage.css) while
+     this target stays in row 2. */
   grid-row: 2;
   justify-self: end;
   /* 9px, up from 7 (owner, 2026-08-19): the target was narrow enough that a
