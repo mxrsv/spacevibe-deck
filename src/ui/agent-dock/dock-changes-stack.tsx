@@ -125,7 +125,9 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
       className="border-b data-flash:shadow-[inset_2px_0_0_var(--primary)]"
     >
       <div
-        className="sticky top-0 z-10 flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        className="sticky top-0 z-10 box-border flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        // `box-border`: the row height includes the bottom rule, as a list row's does; there is
+        // no global box-sizing reset. The path button `shrink`s so its folder part can clip.
         // The header's one verb is the fold: a press anywhere but on a button folds the card. The
         // chevron folds on its own press, which is the keyboard's way in; the path opens instead.
         onClick={(event) => {
@@ -149,7 +151,7 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
           size="sm"
           title={entry.path}
           disabled={entry.status === "deleted"}
-          className="h-auto min-w-0 gap-0 rounded-sm px-1 py-0 text-xs hover:bg-transparent hover:underline focus-visible:bg-transparent"
+          className="h-auto min-w-0 shrink gap-0 rounded-sm px-1 py-0 text-xs hover:bg-transparent hover:underline focus-visible:bg-transparent"
           onClick={preview}
         >
           <CardPath entry={entry} />
