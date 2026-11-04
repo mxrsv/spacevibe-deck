@@ -1,7 +1,8 @@
 # UI recipes and the ratchet
 
 Status: `decided` (owner, 2026-11-04 to 2026-11-05, through an intent round and two grilling
-rounds). The visual standard is the multi-file mock `~/scratch/spacevibe-deck/launcher-flow-2026-11-04/`
+rounds). The visual standard is the multi-file mock
+[`src/gallery/layout-mocks/ui-recipes/`](../../src/gallery/layout-mocks/ui-recipes/index.html)
 (entry `index.html` with nine tabs, token layer `tokens.css`, recipes `chrome.css`), approved by eye;
 the binding record of every decision is `DECISIONS.md` in the same folder. The working mark is the
 braille spinner and the shadow strength is mid, both picked by eye on 2026-11-05.

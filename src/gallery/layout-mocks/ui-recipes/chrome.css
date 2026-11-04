@@ -242,9 +242,15 @@ p {
   display: none !important;
 }
 .dim {
-  filter: var(--scrim-filter);
+  position: relative;
   pointer-events: none;
-} /* window behind a floating launcher or modal */
+}
+.dim::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--scrim-bg);
+} /* window behind a floating launcher or modal: a colour scrim, never a filter (DL-1.3) */
 .bar-gap {
   margin-left: var(--space-8);
 } /* groups in a bar separate by spacing, never a line (CMP-14) */
@@ -303,11 +309,7 @@ p {
 }
 .logo-dim {
   opacity: var(--state-disabled-opacity);
-  filter: grayscale(1);
-}
-.logo-mono.logo-dim {
-  filter: var(--logo-mono-filter) grayscale(1);
-}
+} /* opacity alone: DL-1.3 bans filter */
 
 /* [STATES] one cascade for every pressable recipe: hover=focus-visible < selected < selected+focus < pressed (CMP-11, CMP-13, DL-21) */
 :is(
@@ -1049,11 +1051,7 @@ p {
 }
 .row.is-remembered .row-logo .logo {
   opacity: var(--state-disabled-opacity);
-  filter: grayscale(1);
-}
-.row.is-remembered .row-logo .logo-mono {
-  filter: var(--logo-mono-filter) grayscale(1);
-}
+} /* opacity alone: DL-1.3 bans filter */
 .row.is-remembered:is(:hover, :focus-visible, .is-hover, .is-focus) .row-when {
   visibility: hidden;
 }
@@ -1484,13 +1482,19 @@ p {
   background: var(--sidebar-bg);
 } /* [BACKDROP] a mini window, dimmed, under a modal or the settings panel (Deck.backdrop) */
 .backdrop-ground {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: 0 var(--space-12) var(--space-12);
-  filter: var(--scrim-filter);
   pointer-events: none;
 }
+.backdrop-ground::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--scrim-bg);
+} /* a colour scrim, never a filter (DL-1.3) */
 .scrim {
   position: absolute;
   inset: 0;
@@ -1656,10 +1660,6 @@ p {
 }
 .tile .logo {
   opacity: var(--state-disabled-opacity);
-  filter: grayscale(1);
-}
-.tile .logo-mono {
-  filter: var(--logo-mono-filter) grayscale(1);
 }
 .tile .tile-name {
   display: none;
@@ -1669,10 +1669,6 @@ p {
 }
 .tile:is([aria-pressed="true"], .is-selected) .logo {
   opacity: 1;
-  filter: none;
-}
-.tile:is([aria-pressed="true"], .is-selected) .logo-mono {
-  filter: var(--logo-mono-filter);
 }
 
 /* [NOTICE] full-width bar (persist error, update); [NOTE-LINE] inline failure line */

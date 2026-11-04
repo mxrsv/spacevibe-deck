@@ -67,7 +67,7 @@ Source: the /kyant-intent and /grilling rounds with the owner, 2026-11-04. Every
 
 ## Mock structure (Q23–Q31)
 
-- **Location:** stays in `~/scratch/spacevibe-deck/launcher-flow-2026-11-04/`. `index.html` becomes the entry page that links to the tabs.
+- **Location:** `src/gallery/layout-mocks/ui-recipes/` in the repo, shipped with the build PR. `index.html` is the entry page that links to the tabs.
 - **Files:**
   - `tokens.css` (the token layer, per theme);
   - `chrome.css` (every control and surface recipe);
@@ -183,3 +183,7 @@ The final pass rebuilt the tab workarounds as shared recipes. These choices were
   - **DL change:** DL-27.3's rail working mark changes from `WorkspaceSpinner` to the braille spinner. That is a pattern change, accepted by eye.
   - **Implementation:** reuse the app's existing braille spinner (DL-27.21). It must render from stacked frames, not depend on a host font for the glyphs, because on Windows the mono fallback may lack braille.
 - **Shadow strength = mid** for all three levels (`--elev-1` menu/popover/tooltip, `--elev-2` floating panel, `--elev-3` modal). The owner picked it on the Rules tab, 2026-11-05. The `-soft` / `-strong` variants are specimen-only and drop out of the spec.
+
+## Owner answers for the build (2026-11-05)
+
+- **Dims use no `filter`** (DL-1.3): a remembered row's logo and an unpicked tile's logo dim by opacity 0.5 alone, and the window behind a floating launcher or modal dims under the `--scrim-bg` colour scrim. The mock's greyscale and `brightness()` dims are gone. The other five answers are recorded in `docs/plans/2026-11-05-ui-recipes-ratchet.md`.

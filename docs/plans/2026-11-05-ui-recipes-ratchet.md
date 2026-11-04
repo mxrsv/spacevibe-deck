@@ -3,42 +3,48 @@
 Spec: [docs/specs/2026-11-05-ui-recipes-ratchet.md](../specs/2026-11-05-ui-recipes-ratchet.md) (RCP-1..32,
 AC-1..6). Parent: [docs/specs/2026-11-03-ui-composition.md](../specs/2026-11-03-ui-composition.md).
 
-**Visual standard:** the owner approved it by eye on 2026-11-05. It is a multi-file static mock on the branch `mock/ui-recipes`, under
-`src/gallery/layout-mocks/ui-recipes/`:
+**Visual standard:** the owner approved it by eye on 2026-11-05. It is a multi-file static mock under
+[`src/gallery/layout-mocks/ui-recipes/`](../../src/gallery/layout-mocks/ui-recipes/index.html), and it
+ships with this track's PR, so the standard lands on `main` beside the code it governs:
 - `index.html` plus nine tabs: window, launcher, rail, stage, dock, overlays, settings, notices, rules;
 - `tokens.css`, `chrome.css` and `app.js`;
 - `DECISIONS.md`, the record of every decision. If the spec is silent, DECISIONS.md decides.
 
-To read the mock, run `git fetch origin mock/ui-recipes` and
-`git show origin/mock/ui-recipes:src/gallery/layout-mocks/ui-recipes/<file>`, or check the branch out in
-a separate worktree. Never merge that branch.
+Open `src/gallery/layout-mocks/ui-recipes/index.html` in a browser, with `?theme=dark` or
+`?theme=light`. The gallery is never bundled (R7), so the mock costs the app nothing. Decision 5
+below already applies to it: its dims are opacity and a colour scrim, with no `filter`.
 
 Status: approved for a cloud build (owner, 2026-11-05).
 
 ## Operating contract
 
-Built in a cloud session on a fresh clone of `origin/main`.
+Built in a cloud session on branch `claude/ui-recipes-full`, cut from `mock/ui-recipes` so the mock
+stays in the tree for the whole run and lands on `main` with the PR.
 
 - **Work:** one branch for the whole track. Commit each stage below with `git commit -- <paths>` when its checks pass. Push the branch after each stage, and open one draft PR against `main` after stage 0.
 - **Merge:** do not merge. The owner merges after the final eye review (stage 7). This repo's rule: a UI change is not merged before the owner's eye approval.
 - **No Electron, no Playwright:** never launch Electron or drive the app with Playwright; the owner's rule. Gallery state sheets are the visual evidence. Capture them headless if the sandbox has Chromium; otherwise let [`pr-shots.yml`](../../.github/workflows/pr-shots.yml) take them on the PR.
 - **Stop only for:**
-  - an item in "Decisions pending" below, if the owner has not answered it;
   - a fork under `AGENTS.md` Forks that this plan does not name;
   - a red policy suite you cannot attribute;
   - the final eye review.
 - **Named forks, authorized with this plan:** the DL changes the spec's "Design-language changes" table lists as approved. They are DL-1.3, DL-20.5, the new §20 row and weight scales, the new §21 pressed rule, DL-27.3 and DL-14.1. Rewrite each in `docs/DESIGN-LANGUAGE.md` in the commit that ships it.
 
-## Decisions pending (owner, asked 2026-11-05)
+## Decisions (owner, answered 2026-11-05)
 
-Each has a recommended answer. If the owner answers in the PR or in this file, follow the answer. If they have not answered when a stage needs the item, stop that stage and ask.
+The owner approved all six recommendations. Each is now a named fork, authorized like the ones
+above.
 
-1. **DL-1.2:** the braille loop runs on the rail row, the strip tab and the pane header, and holds ⠹ under reduced motion. Recommended: approve.
-2. **DL-1.3 / DL-1.6:** preset popups use `--elev-*` instead of `shadow-md` and `ring-1`, the preset's weight 500 goes, and an `RCP-n` value wins over the preset's own. Recommended: approve.
-3. **DL-4.4:** the legacy type ladder gains the 16 rung (`--type-dialog`). Recommended: approve.
-4. **DL-21.7:** a panel footer and the avatar get the 3% resting wash. Recommended: approve.
-5. **Remembered-row dim:** DL forbids `filter`, so the mock's greyscale logo dim and its `brightness()` backdrop become opacity 0.5 on the logo and a colour scrim. Recommended: approve, and update the mock to match.
-6. **Unplaced surfaces:** the browser toolbar goes with stage (stage 3); notices, launcher forms and the usage page go with overlays (stage 5). Recommended: approve.
+1. **DL-1.2:** approved. The braille loop runs on the rail row, the strip tab and the pane header,
+   and holds ⠹ under reduced motion.
+2. **DL-1.3 / DL-1.6:** approved. Preset popups use `--elev-*` instead of `shadow-md` and `ring-1`,
+   the preset's weight 500 goes, and an `RCP-n` value wins over the preset's own.
+3. **DL-4.4:** approved. The legacy type ladder gains the 16 rung (`--type-dialog`).
+4. **DL-21.7:** approved. A panel footer and the avatar get the 3% resting wash.
+5. **Remembered-row dim:** approved. DL forbids `filter`, so the logo dims by opacity 0.5 alone and
+   a backdrop dims under a colour scrim; the mock was updated to match.
+6. **Unplaced surfaces:** approved. The browser toolbar ships with stage 3; notices, launcher forms
+   and the usage page ship with stage 5.
 
 ## Stages
 
@@ -49,7 +55,7 @@ Each has a recommended answer. If the owner answers in the PR or in this file, f
 | 2 Rail | RCP for rail, rows 44, leading mark, braille | The project rail and remembered rows reach the mock's rail tab. Debt for their files goes to 0, and DL-27.3 is rewritten. | Ledger rows for rail files are gone; rail tests pass; gallery sheet. |
 | 3 Stage bar and pane header | stage, toolbar, browser toolbar | Tab strip, chips, toolbar and split buttons, pane header and divider. | Same. |
 | 4 Dock | dock | Strip, file tabs, breadcrumb band, Changes stack, tree, Usage, History, Files. | Same. |
-| 5 Overlays | menus, popovers, tooltips, modals, forms, notices, usage page | Preset popups adopt `--elev-*`, once decision 2 is answered. | Same. |
+| 5 Overlays | menus, popovers, tooltips, modals, forms, notices, usage page | Preset popups adopt `--elev-*` (decision 2). | Same. |
 | 6 Command Settings | settings | Frame plus row patterns. | Same. |
 | 7 Owner eye review | AC-2, AC-3 | **Gallery sheets.** One gallery section per surface from the real components (`src/gallery/force-states.ts`), in graphite and Deck Light, beside the mock. Show every state: rest, hover, focus, selected, selected+focus, pressed, disabled, drag-over, needs you.<br>**Review.** The owner reviews by eye once, then runs the real app once. | The owner's yes. |
 
