@@ -90,13 +90,16 @@ export function forcedCss(nodes: readonly RuleNode[]): string {
   return buildForcedStates(hideColons(nodes)).css.replaceAll(HIDDEN_COLON, "\\:");
 }
 
-/** Appends the forced-state sheet and returns the undo. A document without the sheet gets nothing. */
-export function installControlStateForcing(): () => void {
+/**
+ * Appends the forced-state sheet of one section stylesheet (the small-UI section's by default)
+ * and returns the undo. A document without the sheet gets nothing.
+ */
+export function installControlStateForcing(sheetSuffix: string = SECTION_SHEET): () => void {
   const nodes: RuleNode[] = [];
   for (const sheet of Array.from(document.styleSheets)) {
     const owner = sheet.ownerNode;
     const id = owner instanceof HTMLElement ? owner.dataset.viteDevId : undefined;
-    if (id?.endsWith(SECTION_SHEET))
+    if (id?.endsWith(sheetSuffix))
       nodes.push(...ruleNodes(sheet.cssRules as ArrayLike<CssRuleLike>));
   }
   const style = document.createElement("style");
