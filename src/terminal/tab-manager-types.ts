@@ -179,6 +179,25 @@ export interface TabManagerDeps extends TerminalManagerDeps {
   onTabSwitch?: (from: number, to: number) => (() => void) | void;
 }
 
+/** One agent of a several-agent launch: its id and the command it types instead of the default. */
+export interface AgentLaunchRequest {
+  readonly agentId: string;
+  readonly override?: LaunchCommandOverride;
+}
+
+/**
+ * `receipts` are the panes already created, in order, whatever the outcome: a step that fails or
+ * is cancelled leaves the earlier panes open.
+ */
+export type AgentsLaunchResult =
+  | { readonly kind: "spawned"; readonly receipts: readonly AgentLaunchReceipt[] }
+  | { readonly kind: "cancelled"; readonly receipts: readonly AgentLaunchReceipt[] }
+  | {
+      readonly kind: "failed";
+      readonly message: string;
+      readonly receipts: readonly AgentLaunchReceipt[];
+    };
+
 /** Owns all tabs: routing, keyboard, agent launch; info polling lives in PaneInfoPoller. */
 export interface TabManager {
   captureAgentLaunchTarget(
@@ -192,6 +211,16 @@ export interface TabManager {
     checkoutRoots?: () => readonly string[],
     override?: LaunchCommandOverride,
   ): Promise<AgentLaunchResult>;
+  /**
+   * LCH-6: open 1..4 agents side by side in one space. The first takes `target`, each next one
+   * splits beside the pane before it. Each pane is journaled and counted on its own.
+   */
+  launchAgentsAtTarget(
+    target: AgentLaunchTarget,
+    agents: readonly AgentLaunchRequest[],
+    canCommit: () => boolean,
+    checkoutRoots?: () => readonly string[],
+  ): Promise<AgentsLaunchResult>;
   focusAgentLaunch(receipt: AgentLaunchReceipt): void;
   /** Install listeners + start polling. The app always opens on the board. */
   init(): Promise<void>;

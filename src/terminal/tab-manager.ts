@@ -149,6 +149,8 @@ import {
   type OpenFromPresetOptions,
   type TabManagerDeps,
   type TabManager,
+  type AgentLaunchRequest,
+  type AgentsLaunchResult,
 } from "./tab-manager-types";
 import { ACTION_SCOPE, DESTRUCTIVE_ACTIONS, COMMAND_ACTIONS } from "./tab-action-scope";
 
@@ -1674,6 +1676,35 @@ export function createTabManager(
     } finally {
       finishStartupSpawn?.();
     }
+  }
+
+  /**
+   * LCH-6: several agents in one space, by chaining the single-agent path. The first agent takes
+   * `target`; each next one splits beside the pane the previous step created. Chaining (not one
+   * N-leaf `materialize`) is what keeps a per-pane launch command in the journal and one analytics
+   * count per pane. Stops at the first step that does not spawn and reports the panes made so far.
+   */
+  async function launchAgentsAtTarget(
+    target: AgentLaunchTarget,
+    agents: readonly AgentLaunchRequest[],
+    canCommit: () => boolean,
+    checkoutRoots: () => readonly string[] = () => [],
+  ): Promise<AgentsLaunchResult> {
+    const receipts: AgentLaunchReceipt[] = [];
+    let next: AgentLaunchTarget = target;
+    for (const { agentId, override } of agents) {
+      const result = await launchAgentAtTarget(next, agentId, canCommit, checkoutRoots, override);
+      if (result.kind === "cancelled") return { kind: "cancelled", receipts };
+      if (result.kind === "failed") return { kind: "failed", message: result.message, receipts };
+      receipts.push(result.receipt);
+      next = {
+        kind: "split",
+        workspacePath: target.workspacePath,
+        tabKey: result.receipt.tabKey,
+        paneId: result.receipt.paneId,
+      };
+    }
+    return { kind: "spawned", receipts };
   }
 
   function focusAgentLaunch(receipt: AgentLaunchReceipt): void {
@@ -3685,6 +3716,7 @@ export function createTabManager(
     openQuickAgent,
     captureAgentLaunchTarget,
     launchAgentAtTarget,
+    launchAgentsAtTarget,
     focusAgentLaunch,
     launchTask,
     retryTaskPrompt,
