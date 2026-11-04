@@ -15,6 +15,12 @@ const config: ExpoConfig = {
     supportsTablet: true,
     buildNumber: "1",
     infoPlist: {
+      // The direct LAN path (MOB9) connects to the computer's private address; iOS asks once.
+      // In Expo Go the prompt is Expo Go's own, with Expo Go's wording.
+      NSLocalNetworkUsageDescription:
+        "Deck connects straight to your computer when you are on the same Wi-Fi, so it stays fast and works without the internet.",
+      // Plain ws:// to a private address needs this exemption. Local networking only; never NSAllowsArbitraryLoads.
+      NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
       NSCameraUsageDescription:
         "Deck scans the pairing code shown in Deck's Settings on your computer.",
       NSFaceIDUsageDescription:

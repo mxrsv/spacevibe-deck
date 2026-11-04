@@ -28,6 +28,8 @@ export interface FakeWorldOptions {
   readonly desktopVersion?: VersionRange;
   readonly pending?: PendingPairing;
   readonly claimToken?: string;
+  /** LAN addresses the desktop offers in its `desktop` event and answers on. */
+  readonly lan?: readonly { host: string; port: number }[];
 }
 
 const DESKTOP_INFO: DesktopInfo = { name: "Studio Mac", os: "macos", appVersion: "9.9.9" };
@@ -38,8 +40,9 @@ export function createFakeWorld(options: FakeWorldOptions) {
   const requests: { id: number; m: string; p: unknown }[] = [];
   let desktopOnline = true;
   let lastSeen: number | null = 1_700_000_000_000;
-  let channel: DesktopChannel | null = null;
-  let channelSocket: FakeSocket | null = null;
+  const channels = new Map<FakeSocket, DesktopChannel>();
+  let lanOffered = [...(options.lan ?? [])];
+  const lanReachable = new Set(lanOffered.map((a) => `${a.host}:${a.port}`));
   let pending = options.pending ?? null;
   let silent = false;
   let revoked = false;
@@ -80,7 +83,7 @@ export function createFakeWorld(options: FakeWorldOptions) {
       if (state === "open" && !silent) {
         next.sendMessage({
           ev: "desktop",
-          p: { name: "Studio Mac", os: "macos", appVersion: "9.9.9", protocol: 1, lan: [] },
+          p: { name: "Studio Mac", os: "macos", appVersion: "9.9.9", protocol: 1, lan: lanOffered },
         });
       }
     });
@@ -90,6 +93,8 @@ export function createFakeWorld(options: FakeWorldOptions) {
         requests.push(message.request);
         const { id, m } = message.request;
         if (m === "usage.get") next.sendMessage({ id, ok: true, r: { usage: { today: 1 } } });
+        else if (m === "tree.subscribe")
+          next.sendMessage({ id, ok: true, r: { tree: { projects: [] } } });
         else if (m === "pane.input")
           return; // never answered: lets a test observe a timeout
         else next.sendMessage({ id, ok: false, e: { code: "unavailable", message: "not now" } });
@@ -106,9 +111,10 @@ export function createFakeWorld(options: FakeWorldOptions) {
       toPhone(socket, result.reply);
       return;
     }
-    if (channel === null || channel.state === "closed" || channelSocket !== socket) {
+    let channel = channels.get(socket);
+    if (channel === undefined || channel.state === "closed") {
       channel = openDesktopChannel(socket);
-      channelSocket = socket;
+      channels.set(socket, channel);
     }
     channel.receive(bytes);
   }
@@ -173,6 +179,37 @@ export function createFakeWorld(options: FakeWorldOptions) {
     return handle;
   };
 
+  const lanSockets: FakeSocket[] = [];
+  /** The desktop's LAN listener: binary frames only, a path of `/v1/<pairingId>/socket`. */
+  const lanSocketFactory: SocketFactory = (url, events) => {
+    const socket: FakeSocket = { url, events, sent: [], authed: true, closedWith: null };
+    lanSockets.push(socket);
+    const match = /^ws:\/\/([^:/]+):(\d+)\/v1\/([^/]+)\/socket$/.exec(url);
+    const reachable =
+      match !== null &&
+      lanReachable.has(`${match[1]}:${match[2]}`) &&
+      match[3] === options.pairingId;
+    if (reachable) {
+      queueMicrotask(() => {
+        if (socket.closedWith === null) events.onOpen();
+      });
+    }
+    return {
+      send(data) {
+        if (socket.closedWith !== null || typeof data === "string") return; // text is refused on the LAN path
+        socket.sent.push(data);
+        queueMicrotask(() => {
+          if (socket.closedWith === null) fromPhoneBinary(socket, data);
+        });
+      },
+      close(code = 1000) {
+        if (socket.closedWith !== null) return;
+        socket.closedWith = code;
+        queueMicrotask(() => events.onClose(code, ""));
+      },
+    };
+  };
+
   return {
     socketFactory,
     sockets,
@@ -181,7 +218,10 @@ export function createFakeWorld(options: FakeWorldOptions) {
       return sockets.filter((s) => s.closedWith === null);
     },
     get channel(): DesktopChannel | null {
-      return channel;
+      return [...channels.values()].at(-1) ?? null;
+    },
+    get channelCount(): number {
+      return [...channels.values()].filter((c) => c.state !== "closed").length;
     },
     get pending(): PendingPairing | null {
       return pending;
@@ -190,7 +230,7 @@ export function createFakeWorld(options: FakeWorldOptions) {
     setDesktopOnline(online: boolean, seen: number | null = lastSeen): void {
       desktopOnline = online;
       lastSeen = seen;
-      if (!online) channel?.close("desktop-left");
+      if (!online) for (const c of channels.values()) c.close("desktop-left");
       for (const socket of sockets)
         if (socket.authed) text(socket, { t: "peer", online, lastSeen: seen });
     },
@@ -203,8 +243,28 @@ export function createFakeWorld(options: FakeWorldOptions) {
       silent = true;
     },
     sendEvent(message: object): void {
-      channel?.sendMessage(message);
+      for (const c of channels.values()) if (c.state === "open") c.sendMessage(message);
     },
+    /** The desktop's addresses changed: it tells every open session (the `desktop` event again). */
+    announceLan(addresses: readonly { host: string; port: number }[]): void {
+      lanOffered = [...addresses];
+      for (const a of addresses) lanReachable.add(`${a.host}:${a.port}`);
+      this.sendEvent({
+        ev: "desktop",
+        p: { name: "Studio Mac", os: "macos", appVersion: "9.9.9", protocol: 1, lan: lanOffered },
+      });
+    },
+    /** Make a LAN address answer (or stop answering: its sockets then never open). */
+    setLanReachable(host: string, port: number, reachable: boolean): void {
+      if (reachable) lanReachable.add(`${host}:${port}`);
+      else lanReachable.delete(`${host}:${port}`);
+    },
+    /** The LAN listener drops every LAN socket (the phone left the network). */
+    dropLan(): void {
+      for (const socket of lanSockets) closeFromRelay(socket, 1006);
+    },
+    lanSockets,
+    lanSocketFactory,
   };
 }
 

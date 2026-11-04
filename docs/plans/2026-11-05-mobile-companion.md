@@ -271,7 +271,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     open the pane.
   - **Verify:** the acceptance latency of 9 of 10 within 5 seconds on cellular, and the
     focused-window mute.
-- [ ] **T10: LAN path (MOB9, F6).**
+- [x] **T10: LAN path (MOB9, F6).** Done 2026-11-05 (before T5); the final review covers the listener's security.
   - **Contents:** the address offered over the channel; a direct connection with the same
     encryption; relay fallback; the path shown in host details.
   - **Security:** run `security-review` before merge, and note the firewall prompt in the user
@@ -487,6 +487,24 @@ All four are environmental and pre-existing:
   push while a Deck window is focused; tap opens the pane after unlock. In Expo Go only the
   generic line shows until the app is opened, and only with an EAS project id configured.
 
+**T10 (LAN path):**
+- Desktop: `npx vitest run electron/mobile/ electron/ipc/` → `Test Files 26 passed (26)`, `Tests 271
+  passed (271)`; `tsc -p tsconfig.electron.json` clean. Tested: the private-interface filter (each
+  RFC 1918 range in, link-local, CGNAT, public, internal and IPv6 out), never binding a wildcard,
+  refusing a wrong path, an unknown pairing, plain HTTP, a text frame, an unmasked frame, an
+  oversized message, a ninth socket and a socket that never completes its handshake; a full phone
+  handshake and request over a real loopback socket with the real channel; the listener stopping
+  on the last revoke; `lan` addresses in every `desktop` event and a fresh event on change.
+- Phone: `cd mobile && npm run check` → app vitest `Tests 185 passed (185)`. Tested: address
+  filtering, the LAN link's binary-only send and timeouts, the handshake over a fake LAN socket
+  against the protocol's desktop channel, LAN preferred with the relay socket kept for presence and
+  push, fallback to a fresh relay session with subscription replay, retry with backoff and on a new
+  address set, the "Same Wi-Fi" / "Relay" line.
+- **Verify on the Mac and iPhone on one Wi-Fi:** the macOS firewall prompt on first bind, the iOS
+  Local Network prompt (Expo Go's own wording in Expo Go), `ws://` to a private address under App
+  Transport Security, the phone reporting "Same Wi-Fi", and leaving the network moving it to the
+  relay without re-pairing.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -553,7 +571,13 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
 23. **No OS permission prompt at launch**: it appears when the first pairing completes or when the
     user turns Notifications on. Turning it off unregisters on the phone; the relay keeps the stale
     token until it is replaced, because its protocol has no "clear" message.
-24. **T9 was committed before T5**, which was still running.
+24. **T9 and T10 were committed before T5**, which was still running.
+25. **The LAN listener is a hand-written RFC 6455 server** on `node:http` (masked binary frames only,
+    128 KiB cap), so the root gains no `ws` dependency (F1). The Origin header is not checked: the
+    pairing key decides who may talk. A listener restart takes a new port.
+26. **The phone keeps its relay socket while on the LAN**, for presence and push-token
+    registration, and falls back to a fresh relay session (a used channel cannot take a second
+    `hello`), replaying its subscriptions.
 
 ## Handoff
 

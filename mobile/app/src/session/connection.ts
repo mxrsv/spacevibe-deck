@@ -3,7 +3,8 @@ import type { CryptoProvider } from "@protocol/crypto";
 import { parseAppMessage, type AppEvent, type LanAddress } from "@protocol/messages";
 import { RELAY_ERROR_TEXT, type ClientToRelay } from "@protocol/relay-messages";
 import { backoffDelay } from "./backoff";
-import type { Link, LinkDown, LinkFactory, LinkKind } from "./relay-link";
+import { createLanUpgrade, type LanUpgrade } from "./lan-upgrade";
+import type { Link, LinkDown, LinkFactory, LinkHandlers, LinkKind } from "./relay-link";
 import { createRpc, type RpcClient } from "./rpc";
 
 /** The desktop must answer `session.start` within this, or the attempt counts as failed. */
@@ -30,6 +31,11 @@ export interface ConnectionSnapshot {
   readonly status: ConnectionStatus;
   /** The path in use: the relay today, `lan` once T10 adds it. Null while not connected. */
   readonly path: LinkKind | null;
+  /**
+   * Counts moves between paths while the session stays online, so whoever holds subscriptions
+   * (tree, panes) knows to subscribe again on the new path.
+   */
+  readonly epoch: number;
   /** The relay's last-seen time for the desktop, in ms since the epoch. */
   readonly lastSeen: number | null;
   readonly block: VersionBlock | null;
@@ -60,16 +66,17 @@ export interface ConnectionDeps {
   readonly session: { readonly device: string; readonly appVersion: string };
   readonly random?: () => number;
   /**
-   * Paths to try, best first. T10 returns `["lan", "relay"]` once the desktop has offered a LAN
-   * address; a LAN failure falls through to the relay without waiting.
+   * Opens the direct LAN link to one address (MOB9). Without it the connection stays on the relay.
+   * The relay link stays up either way, for presence and push registration.
    */
-  readonly linkOrder?: (live: DesktopLive | null) => readonly LinkKind[];
+  readonly openLan?: (address: LanAddress, handlers: LinkHandlers) => Link;
 }
 
 const INITIAL: ConnectionSnapshot = {
   status: "connecting",
   path: null,
   lastSeen: null,
+  epoch: 0,
   block: null,
   problem: null,
   live: null,
@@ -89,7 +96,6 @@ const TERMINAL_RELAY_ERRORS = new Set([
 
 export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection {
   const random = deps.random ?? Math.random;
-  const order = deps.linkOrder ?? (() => ["relay"] as const);
   const listeners = new Set<() => void>();
   const eventListeners = new Set<(event: AppEvent) => void>();
 
@@ -98,12 +104,53 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
   let generation = 0; // a callback from a replaced link carries an old number and is dropped
   let link: Link | null = null;
   let channel: PhoneChannel | null = null;
-  let kindIndex = 0;
   let failures = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let handshakeTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const rpc = createRpc((message) => channel?.sendMessage(message) ?? "not-open");
+  let lan: LanUpgrade | null = null;
+  const baseRpc = createRpc((message) =>
+    lan?.active === true ? lan.send(message) : (channel?.sendMessage(message) ?? "not-open"),
+  );
+  // Streams opened over the relay channel keep running on the desktop after the phone stops
+  // listening to that channel, so a move to the LAN ends them first (the LAN gets its own).
+  let relayTree = false;
+  const relaySubs = new Set<string>();
+  let courtesyId = 1_000_000_000;
+  const rpc: RpcClient = {
+    ...baseRpc,
+    request(method, params, options) {
+      const onRelay = lan?.active !== true;
+      const pending = baseRpc.request(method, params, options);
+      if (onRelay) {
+        if (method === "tree.subscribe")
+          void pending.then(
+            () => (relayTree = true),
+            () => {},
+          );
+        if (method === "pane.subscribe") {
+          void pending.then(
+            (r) => {
+              if ("sub" in r) relaySubs.add(r.sub);
+            },
+            () => {},
+          );
+        }
+        if (method === "tree.unsubscribe") relayTree = false;
+        if (method === "pane.unsubscribe") relaySubs.delete((params as { sub: string }).sub);
+      }
+      return pending;
+    },
+  };
+  function endRelayStreams(): void {
+    const send = (m: string, p: object): void => {
+      channel?.sendMessage({ id: courtesyId++, m, p });
+    };
+    if (relayTree) send("tree.unsubscribe", {});
+    for (const sub of relaySubs) send("pane.unsubscribe", { sub });
+    relayTree = false;
+    relaySubs.clear();
+  }
 
   function set(patch: Partial<ConnectionSnapshot>): void {
     snapshot = { ...snapshot, ...patch };
@@ -134,13 +181,6 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
 
   function scheduleRetry(): void {
     if (!running) return;
-    const kinds = order(snapshot.live);
-    if (kindIndex + 1 < kinds.length) {
-      kindIndex++;
-      attempt();
-      return;
-    }
-    kindIndex = 0;
     const delay = backoffDelay(failures, random);
     failures++;
     retryTimer = setTimeout(attempt, delay);
@@ -180,12 +220,16 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
       handshakeTimer = null;
       failures = 0;
       set({ status: "online", problem: null });
+      lan?.setEligible(true); // a working relay session: the direct path may be tried
     }
     if (message.kind === "response") {
       rpc.handleResponse(message.response);
     } else if (message.kind === "event") {
       const { event } = message;
-      if (event.ev === "desktop") set({ live: event.p });
+      if (event.ev === "desktop") {
+        set({ live: event.p });
+        lan?.offer(event.p.lan);
+      }
       for (const listener of [...eventListeners]) listener(event);
     }
   }
@@ -207,13 +251,22 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
   }
 
   function goOffline(lastSeen: number | null): void {
+    // The relay's word on presence says nothing about a working direct path.
+    if (lan?.active === true) return;
+    lan?.setEligible(false);
     dropChannel("peer-offline");
     set({ status: "offline", path: link?.kind ?? null, lastSeen, problem: null });
   }
 
   function handleDown(down: LinkDown): void {
-    dropChannel("link-down");
     link = null;
+    if (lan?.active === true && down.kind !== "revoked") {
+      // The relay dropped but the direct path works: reconnect the relay quietly, keep the session.
+      scheduleRetry();
+      return;
+    }
+    lan?.setEligible(false);
+    dropChannel("link-down");
     if (down.kind === "revoked") {
       running = false;
       clearTimers();
@@ -244,21 +297,20 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
   function attempt(): void {
     retryTimer = null;
     if (!running) return;
-    const kinds = order(snapshot.live);
-    const kind = kinds[Math.min(kindIndex, kinds.length - 1)] ?? "relay";
     const mine = ++generation;
     const live = (): boolean => mine === generation;
-    const opened = deps.openLink(kind, {
+    const opened = deps.openLink("relay", {
       onUp(info) {
         if (!live()) return;
         failures = 0;
+        if (lan?.active === true) return; // already on the direct path; the relay is back for presence
         if (info.peerOnline) beginChannel();
         else goOffline(info.peerLastSeen);
       },
       onPeer(online, lastSeen) {
         if (!live()) return;
         if (!online) goOffline(lastSeen);
-        else if (channel === null) beginChannel();
+        else if (channel === null && lan?.active !== true) beginChannel();
       },
       onFrame(bytes) {
         if (live()) channel?.receive(bytes);
@@ -275,17 +327,50 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
     if (snapshot.status !== "offline") set({ status: "connecting", problem: null });
   }
 
+  if (deps.openLan !== undefined) {
+    lan = createLanUpgrade({
+      openLan: deps.openLan,
+      createChannel: (send) =>
+        createPhoneChannel({
+          crypto: deps.crypto,
+          pairing: deps.pairing,
+          send,
+          session: deps.session,
+        }),
+      random,
+      onActive() {
+        // Move the session: the relay channel goes (the desktop drops its streams for it), the
+        // relay socket stays for presence and push. Subscribers see the epoch change and subscribe
+        // again over the LAN.
+        endRelayStreams();
+        dropChannel("lan-active");
+        set({ status: "online", path: "lan", problem: null, epoch: snapshot.epoch + 1 });
+      },
+      onMessage: handleMessage,
+      onLost() {
+        // The direct path died: back to the relay at once, on a fresh relay session (the desktop's
+        // session on the old relay socket already did its handshake and cannot do another), and
+        // subscribers replay there.
+        dropChannel("lan-lost");
+        dropLink();
+        failures = 0;
+        set({ status: "connecting", path: null, epoch: snapshot.epoch + 1 });
+        if (running) attempt();
+      },
+    });
+  }
+
   function start(): void {
     if (running || snapshot.status === "revoked") return;
     running = true;
     failures = 0;
-    kindIndex = 0;
     attempt();
   }
 
   function stop(): void {
     running = false;
     clearTimers();
+    lan?.stop();
     dropChannel("stopped");
     dropLink();
     if (snapshot.status !== "revoked" && snapshot.status !== "blocked") {

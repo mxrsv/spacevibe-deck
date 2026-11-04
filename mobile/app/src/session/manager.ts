@@ -9,6 +9,7 @@ import {
 import type { ClientToRelay } from "@protocol/relay-messages";
 import type { PushKeyStore } from "@/push/push-key-store";
 import { createDesktopConnection, type DesktopConnection } from "./connection";
+import { createLanLink } from "./lan-link";
 import { createRelayLink } from "./relay-link";
 import { revokeOnRelay } from "./revoke-client";
 import type { SocketFactory } from "./socket";
@@ -64,6 +65,13 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       pairing: { pairingId: pairing.pairingId, pairKey: keys.pairKey },
       crypto: deps.crypto,
       session: deps.session,
+      openLan: (address, handlers) =>
+        createLanLink({
+          socketFactory: deps.socketFactory,
+          address,
+          pairingId: pairing.pairingId,
+          handlers,
+        }),
       openLink: (kind, handlers) =>
         kind === "relay"
           ? createRelayLink({
@@ -74,7 +82,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
               handlers,
               readyMessage: deps.pushRegistration,
             })
-          : null, // T10 adds the LAN link here
+          : null, // the LAN link is opened by `openLan`, once the desktop offers an address
     });
     if (active) connection.start();
     return { summary: summarize(pairing), connection };

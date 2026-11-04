@@ -39,7 +39,7 @@ function fakeConnection(initial: ConnectionSnapshot["status"]) {
   const eventListeners = new Set<(e: AppEvent) => void>();
   const request = vi.fn<() => Promise<{ tree: Tree }>>(async () => ({ tree: treeOf("first") }));
   const connection = {
-    getSnapshot: () => ({ status }) as ConnectionSnapshot,
+    getSnapshot: () => ({ status, epoch: 0 }) as ConnectionSnapshot,
     subscribe: (l: () => void) => {
       statusListeners.add(l);
       return () => statusListeners.delete(l);

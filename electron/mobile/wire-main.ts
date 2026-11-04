@@ -85,6 +85,8 @@ export function createMobileForMain(deps: {
       deps.onPairedPhones(service.state().phones.length);
     },
     onUsage: deps.onUsage,
+    // The LAN path (MOB9): defaults, private interfaces only; it still waits for a paired phone.
+    lan: {},
     log: (message) => console.warn(message),
   });
   void app

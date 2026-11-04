@@ -22,6 +22,7 @@ export function createTreeStore(connection: DesktopConnection): TreeStore {
   let stopStatus: (() => void) | null = null;
   let stopEvents: (() => void) | null = null;
   let requestedFor = false; // a tree.subscribe was sent for the current online stretch
+  let requestedEpoch = -1; // ...on this path (a move to the LAN or back needs a new one)
 
   const set = (patch: Partial<TreeSnapshot>): void => {
     snapshot = { ...snapshot, ...patch };
@@ -41,8 +42,10 @@ export function createTreeStore(connection: DesktopConnection): TreeStore {
   function onStatus(): void {
     const status = connection.getSnapshot().status;
     if (status !== snapshot.status) set({ status });
-    if (status === "online" && !requestedFor) {
+    const epoch = connection.getSnapshot().epoch;
+    if (status === "online" && (!requestedFor || epoch !== requestedEpoch)) {
       requestedFor = true;
+      requestedEpoch = epoch;
       void request();
     } else if (status !== "online") {
       requestedFor = false;

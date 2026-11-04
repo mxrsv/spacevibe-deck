@@ -14,6 +14,7 @@ const base: ConnectionSnapshot = {
   status: "online",
   path: "relay",
   lastSeen: null,
+  epoch: 0,
   block: null,
   problem: null,
   live: null,
@@ -27,7 +28,7 @@ describe("statusLine", () => {
       text: "macOS · Relay",
       blocked: false,
     });
-    expect(statusLine(summary, { ...base, path: "lan" }, NOW).text).toBe("macOS · Local network");
+    expect(statusLine(summary, { ...base, path: "lan" }, NOW).text).toBe("macOS · Same Wi-Fi");
   });
 
   it("shows offline with the last-seen age (MOB11)", () => {

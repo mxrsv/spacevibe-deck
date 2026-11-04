@@ -1,5 +1,5 @@
 /**
- * One phone on one transport (a relay socket today, a LAN socket later): the desktop end of the
+ * One phone on one transport (a relay socket or a LAN socket; the transport is just `send` and `receive`): the desktop end of the
  * secure channel plus the request loop on top of it. The channel owns the handshake, the version
  * gate (MOB10) and the sealing; this module answers `session.start` with the `desktop` event,
  * parses every request (the phone is untrusted), hands it to the executor and writes the response,
@@ -46,6 +46,8 @@ export interface PhoneSessionDeps {
 export interface PhoneSession {
   receive(frame: Uint8Array): void;
   close(reason: string): void;
+  /** Sends a fresh `desktop` event (the LAN address set changed); nothing before the channel is open. */
+  announce(): void;
   readonly pairingId: string | null;
   readonly channel: DesktopChannel;
 }
@@ -114,13 +116,14 @@ export function createPhoneSession(deps: PhoneSessionDeps): PhoneSession {
     outcome.after?.();
   }
 
+  function announce(): void {
+    if (channel.state !== "open") return;
+    channel.sendMessage({ ev: "desktop", p: { ...deps.hello(), protocol: PROTOCOL_VERSION } });
+  }
+
   channel.onState((state, reason) => {
     if (state === "open" && channel.pairingId !== null) {
-      const hello = deps.hello();
-      channel.sendMessage({
-        ev: "desktop",
-        p: { ...hello, protocol: PROTOCOL_VERSION },
-      });
+      announce();
       deps.onOpen?.(channel.pairingId);
     } else if (state === "closed") {
       deps.executor.closeSession(sessionId);
@@ -139,6 +142,7 @@ export function createPhoneSession(deps: PhoneSessionDeps): PhoneSession {
   return {
     receive: (frame) => channel.receive(frame),
     close: (reason) => channel.close(reason),
+    announce,
     get pairingId() {
       return channel.pairingId;
     },

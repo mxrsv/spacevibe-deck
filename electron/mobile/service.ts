@@ -12,7 +12,7 @@ import { hostname } from "node:os";
 import type { CryptoProvider } from "../../mobile/protocol/src/crypto";
 import { b64urlDecode } from "../../mobile/protocol/src/encoding";
 import { derivePushKey } from "../../mobile/protocol/src/keys";
-import type { OS_NAMES } from "../../mobile/protocol/src/messages";
+import type { LanAddress, OS_NAMES } from "../../mobile/protocol/src/messages";
 import { sealPush, type PushEventKind } from "../../mobile/protocol/src/push";
 import type { ControlReplyPayload } from "../../src/lib/control-command";
 import {
@@ -31,6 +31,12 @@ import { createPhoneFiles } from "./phone-files";
 import { createPhoneForwarder } from "./phone-forwarder";
 import { createPhonePanes } from "./phone-panes";
 import { createQueryBroker, type QueryKind } from "./phone-queries";
+import {
+  createLanListener,
+  type LanListener,
+  type LanListenerDeps,
+  type LanSessionHandle,
+} from "./lan-listener";
 import { createPhoneSession, type PhoneSession } from "./phone-session";
 import { createStreamHub, type StreamMessage } from "./phone-streams";
 import { createTreeHub } from "./phone-tree";
@@ -39,6 +45,7 @@ import {
   type RelayConnection,
   type RelaySocketFactory,
 } from "./relay-client";
+import type { WsConnection } from "./ws-server";
 
 export type { MobileState, MobileStartResult };
 export const DISABLED_STATE = DISABLED_MOBILE_STATE;
@@ -76,6 +83,14 @@ export interface MobileServiceDeps {
   readonly blocker: PowerBlocker;
   readonly broadcastChanged: () => void;
   readonly createSocket?: RelaySocketFactory;
+  /**
+   * The LAN path (MOB9). Absent means no LAN listener at all (tests); `main` passes `{}` for the
+   * defaults. The overrides exist so tests can feed interface tables and short deadlines.
+   */
+  readonly lan?: Pick<
+    LanListenerDeps,
+    "listInterfaces" | "isAllowed" | "handshakeTimeoutMs" | "refreshMs" | "maxSockets"
+  >;
   readonly log: (message: string) => void;
   readonly now?: () => number;
   readonly onUsage?: (kind: MobileUsageKind) => void;
@@ -95,6 +110,8 @@ export interface MobileService {
   paneGone(paneId: number): void;
   /** Wraps the mirror so every report re-evaluates keep-awake. */
   observeMirror(mirror: PaneMirror): PaneMirror;
+  /** The LAN addresses currently offered to phones; empty while the listener is off. */
+  lanAddresses(): readonly LanAddress[];
   dispose(): void;
 }
 
@@ -187,6 +204,7 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
       const link = links.get(record.pairingId);
       if (link !== undefined) link.online = true;
       keepAwake.evaluate();
+      syncLan();
     },
     onRevoked: (record) => {
       const link = links.get(record.pairingId);
@@ -197,6 +215,10 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
         const timer = setTimeout(() => link.relay.close(), REVOKE_LINGER_MS);
         timer.unref?.();
       }
+      for (const entry of [...lanSessions.values()]) {
+        if (entry.pairingId === record.pairingId) entry.session.close("revoked");
+      }
+      syncLan();
       keepAwake.evaluate();
       deps.broadcastChanged();
     },
@@ -258,31 +280,82 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
     if (deps.store.get(pairingId) === null) return;
     if (frame[0] === HELLO_FRAME) {
       link.session?.close("replaced");
-      link.session = createPhoneSession({
-        crypto: deps.crypto,
-        lookup,
-        send: (out) => void link.relay.sendBinary(out),
-        executor,
-        hello: () => ({
-          name: hostName(),
-          os: (deps.platform === "darwin"
-            ? "macos"
-            : deps.platform === "win32"
-              ? "windows"
-              : "linux") satisfies (typeof OS_NAMES)[number],
-          appVersion: deps.appVersion,
-          // The LAN listener is a later slice (T10); nothing is offered yet.
-          lan: [],
-        }),
-        log: deps.log,
-        onOpen: () => {
-          deps.store.touch(pairingId, now());
-          usage("session");
-          deps.broadcastChanged();
-        },
-      });
+      link.session = buildSession(pairingId, (out) => void link.relay.sendBinary(out));
     }
     link.session?.receive(frame);
+  }
+
+  /** The desktop end of one phone on one transport; the relay and the LAN build it the same way. */
+  function buildSession(pairingId: string, send: (frame: Uint8Array) => void): PhoneSession {
+    return createPhoneSession({
+      crypto: deps.crypto,
+      lookup,
+      send,
+      executor,
+      hello: () => ({
+        name: hostName(),
+        os: (deps.platform === "darwin"
+          ? "macos"
+          : deps.platform === "win32"
+            ? "windows"
+            : "linux") satisfies (typeof OS_NAMES)[number],
+        appVersion: deps.appVersion,
+        lan: lanAddresses,
+      }),
+      log: deps.log,
+      onOpen: () => {
+        deps.store.touch(pairingId, now());
+        usage("session");
+        deps.broadcastChanged();
+      },
+    });
+  }
+
+  // ------------------------------------------------------------------ LAN (MOB9)
+  let lanAddresses: readonly LanAddress[] = [];
+  const lanSessions = new Map<WsConnection, { pairingId: string; session: PhoneSession }>();
+
+  function openLanSession(pairingId: string, connection: WsConnection): LanSessionHandle {
+    const session = buildSession(pairingId, (out) => void connection.send(out));
+    lanSessions.set(connection, { pairingId, session });
+    session.channel.onState((state) => {
+      if (state === "open" && session.pairingId !== pairingId) {
+        // The hello named another pairing than the path did: a client that is not our phone app.
+        session.close("pairing-mismatch");
+      }
+      if (state === "closed") {
+        lanSessions.delete(connection);
+        connection.close();
+      }
+    });
+    connection.onMessage((bytes) => session.receive(bytes));
+    return {
+      isOpen: () => session.channel.state === "open",
+      close: (reason) => session.close(reason),
+    };
+  }
+
+  const lanListener: LanListener | null =
+    deps.lan === undefined
+      ? null
+      : createLanListener({
+          ...deps.lan,
+          isKnown: (pairingId) => deps.store.get(pairingId) !== null,
+          openSession: openLanSession,
+          log: deps.log,
+          onAddresses: (addresses) => {
+            lanAddresses = addresses;
+            // Every open session learns the new address set; a stale one just fails and falls back.
+            for (const link of links.values()) link.session?.announce();
+            for (const { session } of lanSessions.values()) session.announce();
+          },
+        });
+
+  /** Listens only while at least one phone is paired and the service exists (switch on). */
+  function syncLan(): void {
+    if (lanListener === null) return;
+    if (!disposed && deps.store.list().length > 0) void lanListener.start();
+    else lanListener.stop();
   }
 
   /** The pending pairing needs a socket to hear `pair-hello`; drop it when the pairing ends unpaired. */
@@ -341,6 +414,7 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
     async start() {
       await deps.store.load();
       for (const record of deps.store.list()) connectRecord(record);
+      syncLan();
       keepAwake.evaluate();
     },
     state,
@@ -381,8 +455,11 @@ export function createMobileService(deps: MobileServiceDeps): MobileService {
         },
       };
     },
+    lanAddresses: () => lanAddresses,
     dispose() {
       disposed = true;
+      lanListener?.stop();
+      for (const { session } of [...lanSessions.values()]) session.close("quit");
       keepAwake.release();
       for (const link of links.values()) {
         link.session?.close("quit");

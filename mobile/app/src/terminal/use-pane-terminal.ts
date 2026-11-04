@@ -22,7 +22,9 @@ export function usePaneTerminal(entry: DesktopEntry, paneId: number, live: boole
   const palette = useTheme();
   const connection = entry.connection;
   const pairingId = entry.summary.pairingId;
-  const online = useConnectionSnapshot(connection).status === "online";
+  const connectionState = useConnectionSnapshot(connection);
+  const online = connectionState.status === "online";
+  const epoch = connectionState.epoch;
   const zoom = zoomFor(prefs, pairingId);
 
   // Plain holders, not refs read while rendering: only event handlers and effects touch them.
@@ -126,7 +128,7 @@ export function usePaneTerminal(entry: DesktopEntry, paneId: number, live: boole
       if (sub !== null) void connection.rpc.request("pane.unsubscribe", { sub }).catch(() => {});
     };
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `replay` is a re-run trigger (a gap or reload asks for a fresh subscription), not a value the effect reads
-  }, [connection, online, paneId, feed, replay]);
+  }, [connection, online, epoch, paneId, feed, replay]);
 
   // Fit-to-width: the font size follows the screen width, the desktop's columns and the zoom.
   useEffect(() => {

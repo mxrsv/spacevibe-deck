@@ -45,7 +45,7 @@ class FakeSocket implements RelaySocket {
   }
 }
 
-function setup() {
+function setup(lan?: NonNullable<Parameters<typeof createMobileService>[0]["lan"]>) {
   const file = { text: null as string | null };
   const io: SessionFileIo = {
     read: async () => file.text,
@@ -91,6 +91,7 @@ function setup() {
       sockets.push(socket);
       return socket;
     },
+    ...(lan === undefined ? {} : { lan }),
     log: vi.fn(),
   });
   return { service, sockets, blocker, mirror, focus, changed, file };
@@ -232,5 +233,114 @@ describe("mobile service", () => {
     expect(socket.closed).toBe(true);
     t.service.push({ paneId: 1, kind: "completed", title: "x", body: "y" });
     expect(socket.controls().filter((m) => m.t === "push")).toEqual([]);
+  });
+
+  describe("LAN path (MOB9)", () => {
+    // A test cannot bind a LAN address, so loopback stands in for the private interface.
+    const loopback = {
+      listInterfaces: () => ({
+        lo: [
+          {
+            address: "127.0.0.1",
+            netmask: "255.0.0.0",
+            family: "IPv4" as const,
+            mac: "00:00:00:00:00:00",
+            internal: false,
+            cidr: "127.0.0.1/8",
+          },
+        ],
+      }),
+      isAllowed: (address: string) => address === "127.0.0.1",
+    };
+
+    /** Everything a real phone would do over the LAN socket, with the real channel. */
+    async function lanPhone(
+      t: ReturnType<typeof setup>,
+      paired: Awaited<ReturnType<typeof pairPhone>>,
+      port: number,
+    ) {
+      const socket = new WebSocket(`ws://127.0.0.1:${port}/v1/${paired.qr.pairingId}/socket`);
+      socket.binaryType = "arraybuffer";
+      const received: Record<string, unknown>[] = [];
+      const phone = createPhoneChannel({
+        crypto,
+        pairing: { pairingId: paired.qr.pairingId, pairKey: paired.attempt.pairKey },
+        send: (frame) => socket.send(frame),
+        session: { device: "iPhone", appVersion: "1" },
+      });
+      phone.onMessage((message) => received.push(message));
+      socket.onmessage = (event) => phone.receive(new Uint8Array(event.data as ArrayBuffer));
+      await new Promise((resolve) => (socket.onopen = resolve));
+      phone.start();
+      return { socket, phone, received, t };
+    }
+
+    it("serves a phone over a real socket with the same channel and offers the address", async () => {
+      const t = setup(loopback);
+      const paired = await pairPhone(t);
+      await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
+      const [{ port }] = t.service.lanAddresses() as [{ port: number }];
+      const lan = await lanPhone(t, paired, port);
+      await vi.waitFor(() => expect(lan.phone.state).toBe("open"));
+      await vi.waitFor(() =>
+        expect(lan.received[0]).toMatchObject({
+          ev: "desktop",
+          p: { os: "macos", appVersion: "9.9.9", lan: [{ host: "127.0.0.1", port }] },
+        }),
+      );
+      lan.phone.sendMessage({ id: 1, m: "tree.unsubscribe", p: {} });
+      await vi.waitFor(() => expect(lan.received.at(-1)).toEqual({ id: 1, ok: true, r: {} }));
+      lan.socket.close();
+      t.service.dispose();
+    });
+
+    it("tells open sessions when the address set changes, and each transport has its own session", async () => {
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+      let up = true;
+      const t = setup({
+        ...loopback,
+        listInterfaces: () => (up ? loopback.listInterfaces() : {}),
+        refreshMs: 1_000,
+      });
+      const paired = await pairPhone(t);
+      await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
+      const [{ port }] = t.service.lanAddresses() as [{ port: number }];
+      const lan = await lanPhone(t, paired, port);
+      await vi.waitFor(() => expect(lan.phone.state).toBe("open"));
+      up = false;
+      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.waitFor(() =>
+        expect(lan.received.filter((m) => m.ev === "desktop").at(-1)).toMatchObject({
+          p: { lan: [] },
+        }),
+      );
+      lan.socket.close();
+      t.service.dispose();
+    });
+
+    it("stops listening when the last phone is revoked, and closes its LAN session", async () => {
+      const t = setup(loopback);
+      const paired = await pairPhone(t);
+      await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
+      const [{ port }] = t.service.lanAddresses() as [{ port: number }];
+      const lan = await lanPhone(t, paired, port);
+      await vi.waitFor(() => expect(lan.phone.state).toBe("open"));
+      const gone = new Promise<void>((resolve) => (lan.socket.onclose = () => resolve()));
+      await t.service.revoke(paired.qr.pairingId);
+      await gone;
+      expect(t.service.lanAddresses()).toEqual([]);
+      const late = new WebSocket(`ws://127.0.0.1:${port}/v1/${paired.qr.pairingId}/socket`);
+      await new Promise((resolve) => (late.onerror = resolve));
+    });
+
+    it("does not listen with no phone paired, starts on pairing and stops on dispose", async () => {
+      const t = setup(loopback);
+      await t.service.start();
+      expect(t.service.lanAddresses()).toEqual([]);
+      await pairPhone(t);
+      await vi.waitFor(() => expect(t.service.lanAddresses()).toHaveLength(1));
+      t.service.dispose();
+      expect(t.service.lanAddresses()).toEqual([]);
+    });
   });
 });

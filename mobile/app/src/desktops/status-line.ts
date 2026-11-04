@@ -30,7 +30,7 @@ export function formatAge(from: number, now: number): string {
 }
 
 export function pathLabel(path: ConnectionSnapshot["path"]): string {
-  return path === "lan" ? "Local network" : "Relay";
+  return path === "lan" ? "Same Wi-Fi" : "Relay";
 }
 
 export interface StatusLine {
