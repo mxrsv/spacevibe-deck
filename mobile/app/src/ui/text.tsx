@@ -27,6 +27,10 @@ interface TxtProps extends Omit<TextProps, "style"> {
   readonly variant?: TypeName;
   readonly tone?: TextTone;
   readonly center?: boolean;
+  /** Menlo, for code and file contents. */
+  readonly monospace?: boolean;
+  /** An explicit colour, for the few places a tone does not fit (diff rows). */
+  readonly color?: string;
   readonly children: ReactNode;
 }
 
@@ -38,6 +42,8 @@ export function Txt({
   variant = "body",
   tone = "text",
   center = false,
+  monospace = false,
+  color,
   children,
   ...rest
 }: TxtProps) {
@@ -47,7 +53,8 @@ export function Txt({
       {...rest}
       style={[
         type[variant],
-        { color: toneColor(palette, tone) },
+        { color: color ?? toneColor(palette, tone) },
+        monospace ? { fontFamily: "Menlo" } : null,
         center ? { textAlign: "center" } : null,
       ]}
     >

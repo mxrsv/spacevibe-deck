@@ -17,14 +17,18 @@ export function Composer({
   choices,
   onSend,
   onKeys,
+  draft,
+  onDraftChange,
 }: {
   readonly agentName: string;
   readonly choices: readonly Choice[] | null;
   readonly onSend: (text: string) => Promise<void>;
   readonly onKeys: (data: string) => Promise<void>;
+  /** Controlled by the pane screen so a held first prompt can be placed in the box. */
+  readonly draft: string;
+  readonly onDraftChange: (text: string) => void;
 }) {
   const palette = useTheme();
-  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -91,7 +95,7 @@ export function Composer({
         <TextInput
           accessibilityLabel={`Reply to ${agentName}`}
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={onDraftChange}
           placeholder={`Reply to ${agentName}`}
           placeholderTextColor={palette.textFaint}
           multiline
@@ -118,7 +122,7 @@ export function Composer({
           onPress={() =>
             void run(
               () => onSend(draft),
-              () => setDraft(""),
+              () => onDraftChange(""),
             )
           }
           style={{

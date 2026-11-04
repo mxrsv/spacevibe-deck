@@ -25,6 +25,7 @@ export function PaneHeader({
   live,
   onBack,
   onToggleLive,
+  onMenu,
 }: {
   readonly title: string;
   readonly subtitle: string;
@@ -32,6 +33,7 @@ export function PaneHeader({
   readonly live: boolean;
   readonly onBack: () => void;
   readonly onToggleLive: () => void;
+  readonly onMenu: (() => void) | null;
 }) {
   const palette = useTheme();
   const insets = useSafeAreaInsets();
@@ -79,7 +81,10 @@ export function PaneHeader({
             {subtitle}
           </Txt>
         </View>
-        <View style={{ width: 110, alignItems: "flex-end" }}>
+        <View style={{ width: 110, flexDirection: "row", justifyContent: "flex-end" }}>
+          {onMenu === null ? null : (
+            <IconButton name="ellipsis.circle" label="Files, changes and usage" onPress={onMenu} />
+          )}
           <IconButton
             name={live ? "keyboard.fill" : "keyboard"}
             label={live ? "Turn off Live mode" : "Turn on Live mode"}

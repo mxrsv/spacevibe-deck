@@ -18,6 +18,10 @@ export default function RootLayout() {
           <Stack.Screen name="pair" options={{ presentation: "modal" }} />
           <Stack.Screen name="desktop/[id]" />
           <Stack.Screen name="needs-you" />
+          <Stack.Screen name="new-agent" options={{ presentation: "modal" }} />
+          <Stack.Screen name="checkout/[desktopId]/index" />
+          <Stack.Screen name="checkout/[desktopId]/file" />
+          <Stack.Screen name="checkout/[desktopId]/diff" />
           <Stack.Screen name="pane/[desktopId]/[paneId]" />
         </Stack>
       </LockGate>

@@ -20,7 +20,9 @@ export default function DesktopsScreen() {
       title="Desktops"
       onRefresh={refresh}
       accessory={
-        <IconButton name="plus" label="Pair a desktop" onPress={() => router.push("/pair")} />
+        desktops.length === 0 ? undefined : (
+          <IconButton name="plus" label="New agent" onPress={() => router.push("/new-agent")} />
+        )
       }
     >
       {desktops.length === 0 ? (

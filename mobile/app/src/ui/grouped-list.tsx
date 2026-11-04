@@ -72,6 +72,8 @@ interface RowProps {
   readonly iconTone?: "muted" | "accent";
   readonly titleTone?: "text" | "accent" | "danger";
   readonly trailing?: ReactNode;
+  /** Replaces the icon box on the left (a status badge). */
+  readonly leading?: ReactNode;
   readonly chevron?: boolean;
   readonly onPress?: () => void;
   readonly accessibilityLabel?: string;
@@ -90,6 +92,7 @@ export function Row({
   iconTone = "muted",
   titleTone = "text",
   trailing,
+  leading,
   chevron = false,
   onPress,
   accessibilityLabel,
@@ -99,6 +102,7 @@ export function Row({
   const palette = useTheme();
   const content = (
     <>
+      {leading !== undefined ? leading : null}
       {icon !== undefined ? (
         <IconBox>
           <Symbol name={icon} tone={iconTone} />

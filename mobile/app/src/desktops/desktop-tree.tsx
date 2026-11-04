@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTreeSnapshot } from "@/home/use-home";
 import { openPane } from "@/home/open-pane";
@@ -42,21 +42,35 @@ export function DesktopTree({ entry }: { readonly entry: DesktopEntry }) {
           </View>
           {project.checkouts.map((checkout) => (
             <View key={checkout.path}>
-              <View
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${checkout.branch ?? checkout.name}, files, changes and usage`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/checkout/[desktopId]",
+                    params: {
+                      desktopId: entry.summary.pairingId,
+                      root: checkout.path,
+                      name: project.name,
+                    },
+                  })
+                }
                 style={{
+                  minHeight: 36,
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 6,
                   paddingHorizontal: 20,
-                  paddingBottom: 4,
-                  paddingTop: 4,
                 }}
               >
                 <Symbol name="arrow.triangle.branch" size={12} tone="faint" />
-                <Txt variant="footnote" tone="faint" numberOfLines={1}>
-                  {checkout.branch ?? checkout.name}
-                </Txt>
-              </View>
+                <View style={{ flex: 1 }}>
+                  <Txt variant="footnote" tone="faint" numberOfLines={1}>
+                    {checkout.branch ?? checkout.name}
+                  </Txt>
+                </View>
+                <Symbol name="chevron.right" size={10} tone="faint" />
+              </Pressable>
               {checkout.panes.length === 0 ? null : (
                 <Group>
                   {checkout.panes.map((pane) => (

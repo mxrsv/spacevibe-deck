@@ -6,6 +6,8 @@ import { paneName } from "@/home/pane-state";
 import { sendKeys, sendReply } from "@/home/send-to-pane";
 import { usePaneChoices } from "@/home/use-pane-choices";
 import { useHome, useTreeSnapshot } from "@/home/use-home";
+import { guardBanner } from "@/newagent/guarded-prompt";
+import { useGuardedPrompt } from "@/pane/use-guarded-prompt";
 import { Composer } from "@/pane/composer";
 import { LiveAccessory } from "@/pane/live-accessory";
 import { PaneHeader } from "@/pane/pane-header";
@@ -21,7 +23,13 @@ function findPane(tree: Tree | null, paneId: number) {
   for (const project of tree?.projects ?? []) {
     for (const checkout of project.checkouts) {
       const pane = checkout.panes.find((p) => p.paneId === paneId);
-      if (pane !== undefined) return { pane, project: project.name, checkout: checkout.name };
+      if (pane !== undefined)
+        return {
+          pane,
+          project: project.name,
+          checkout: checkout.name,
+          checkoutPath: checkout.path,
+        };
     }
   }
   return null;
@@ -45,6 +53,15 @@ function PaneBody({
 
   const found = findPane(tree, paneId);
   const choices = usePaneChoices(entry.connection, found?.pane ?? null);
+  const guard = useGuardedPrompt(
+    entry.connection,
+    entry.summary.pairingId,
+    paneId,
+    found?.pane ?? null,
+  );
+  // A prompt the guard held (a question first, a timeout) lands in the composer until edited or sent.
+  const [edited, setEdited] = useState<string | null>(null);
+  const draft = edited ?? (guard.state.phase === "held" ? (guard.prompt ?? "") : "");
 
   const desktopId = entry.summary.pairingId;
   const position = needs.all.findIndex(
@@ -70,6 +87,7 @@ function PaneBody({
       : null;
 
   const name = found === null ? "Pane" : paneName(found.pane);
+  const banner = guardBanner(guard.state, name);
   const subtitle =
     found === null ? entry.summary.desktopName : `${found.project} · ${found.checkout}`;
   return (
@@ -84,6 +102,15 @@ function PaneBody({
         live={live}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))}
         onToggleLive={() => setLive((on) => !on)}
+        onMenu={
+          found === null
+            ? null
+            : () =>
+                router.push({
+                  pathname: "/checkout/[desktopId]",
+                  params: { desktopId, root: found.checkoutPath, name: found.project },
+                })
+        }
       />
       <View style={{ flex: 1 }}>
         <TerminalView
@@ -115,6 +142,15 @@ function PaneBody({
           </Txt>
         </Pressable>
       </View>
+      {guard.prompt === null || banner === null ? null : (
+        <View
+          style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: palette.needsYouBg }}
+        >
+          <Txt variant="footnote" accessibilityLiveRegion="polite">
+            {banner}
+          </Txt>
+        </View>
+      )}
       {live ? (
         <LiveAccessory onKey={terminal.sendKeys} onExit={() => setLive(false)} />
       ) : (
@@ -123,6 +159,8 @@ function PaneBody({
           choices={choices}
           onSend={(text) => sendReply(entry.connection, paneId, text)}
           onKeys={(data) => sendKeys(entry.connection, paneId, data)}
+          draft={draft}
+          onDraftChange={setEdited}
         />
       )}
     </KeyboardAvoidingView>

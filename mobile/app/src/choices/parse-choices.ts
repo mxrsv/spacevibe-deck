@@ -117,3 +117,24 @@ function continuation(lines: readonly string[], from: number, to: number): boole
 export function choiceInput(choice: Choice): string {
   return String(choice.number);
 }
+
+/** Opening words of a first-run or approval question that reads as idle (a trust dialog). */
+const QUESTION_WORDS =
+  /\b(do you (trust|want)|would you like|trust the files|press enter to continue|allow this)\b/i;
+/** Non-empty content rows at the end of the screen, without borders or key hints. */
+const TAIL_ROWS = 8;
+
+/**
+ * Whether the screen ends with something the agent is asking: a numbered list, a line ending in a
+ * question mark, or a trust / "Do you ..." prompt. Used before a prompt is typed into a fresh
+ * agent: a first-run trust question reads as idle, and the prompt would answer it.
+ */
+export function screenAsksQuestion(screen: string): boolean {
+  if (parseChoices(screen) !== null) return true;
+  const rows = screen
+    .split(/\r?\n/)
+    .map(clean)
+    .filter((line) => line !== "" && !BORDER.test(line) && !HINT.test(line))
+    .slice(-TAIL_ROWS);
+  return rows.some((line) => /\?$/.test(line) || QUESTION_WORDS.test(line));
+}

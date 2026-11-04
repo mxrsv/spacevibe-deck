@@ -88,6 +88,22 @@ function Detail({ entry }: { readonly entry: DesktopEntry }) {
           </Group>
         </>
       ) : null}
+      {snapshot.status === "online" ? (
+        <>
+          <SectionTitle>Agents</SectionTitle>
+          <Group>
+            <Row
+              title="New agent"
+              icon="plus.circle"
+              iconTone="accent"
+              titleTone="accent"
+              onPress={() =>
+                router.push({ pathname: "/new-agent", params: { desktopId: summary.pairingId } })
+              }
+            />
+          </Group>
+        </>
+      ) : null}
       <View style={{ height: 24 }} />
       <Group>
         <Row

@@ -262,7 +262,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
   - **Terminal:** the terminal view, Live mode with the accessory row, and the composer.
   - **Verify:** parser tests; Simulator and real-device runs against `electron:dev`; a pinned
     answer lands without opening the pane.
-- [ ] **T8: New agent, Files, Changes, Usage (MOB20–21).**
+- [x] **T8: New agent, Files, Changes, Usage (MOB20–21).** Done 2026-11-05; the desktop handlers landed with T4's executor.
   - **New agent:** `open` follows the orchestration spec's guarded flow, because a first-run
     trust dialog reads as idle.
   - **Verify:** a tab appears on the desktop and its focus does not move.
@@ -460,6 +460,17 @@ All four are environmental and pre-existing:
   a client release that sends the counters (backend README rule); enter the App Store privacy
   answers from `mobile/app/store/privacy-answers.md`.
 
+**T8 (`mobile/app/`, desktop handlers in T4):**
+- `cd mobile && npm run check` → app vitest `Tests 148 passed (148)`, `iOS Bundled … (1302 modules)`.
+  Tested: the new-agent flow and its error text; the guarded first prompt (idle → sent, a question
+  on screen → held in the composer, timeout → held, agent exited → error, out-of-order events
+  ignored); file navigation never leaving the checkout; the diff line classifier (with the
+  desktop's synthetic untracked-file diff); usage formatting with the unpriced-tokens note; chunk
+  assembly with the response before or after its chunks, gaps and timeouts.
+- **Verify on the iPhone against `electron:dev`:** a fresh folder's trust question holds the prompt
+  and a known folder gets it; the tab appears on the desktop without taking focus; sheet,
+  segmented control, wide-diff scroll and large-file viewing on the device.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -515,6 +526,11 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
 20. **App Store privacy answer:** "Device ID" (the push token and pairing id), not linked to the
     user, no tracking, for app functionality. "Data Not Collected" is the alternative, noted in the
     file; the owner picks when entering it.
+21. **The phone runs the guarded first prompt itself** (MOB20): it opens the agent with no prompt,
+    waits for its first idle, reads the screen, and sends only when no question shows; otherwise
+    the prompt waits in the composer with a banner. Turned down: the desktop's prompt-on-first-idle
+    path (the CLI's `--prompt`), which a first-run trust dialog would swallow. The protocol keeps
+    the field; the phone always sends null.
 
 ## Handoff
 
