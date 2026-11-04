@@ -547,6 +547,27 @@ All four are environmental and pre-existing:
   (getting-started, keyboard-shortcuts, settings), which this change does not stamp.
 - `npx vitest run scripts/ src/styles/` → `Test Files 32 passed (32)`, `Tests 512 passed`.
 
+**Independent review (two fresh-context reviewers over `origin/main...HEAD`, 2026-11-05):**
+- Security (pairing, crypto, relay, LAN): no critical or high finding; the key schedule, nonces,
+  replay and reordering, key confirmation, the relay never seeing the QR secret, constant-time
+  token checks, the WebSocket parser's masking and length checks, the WebView's isolation and the
+  `safeStorage` envelope held up. Fixed: a hostile relay could keep a revoked phone's session alive
+  over another pairing's socket (medium); viewing a pane forwarded xterm's own query replies into
+  the PTY (medium); idle TCP connections could exhaust the LAN listener's file descriptors
+  (medium); a forged version verdict, a non-durable revoke, unlimited relay registration and
+  self-claimed pairings, a tap routed by an unauthenticated pane id, quadratic frame buffering
+  (low). Hardening: keys `THIS_DEVICE_ONLY`; Linux `basic_text` `safeStorage` counts as none.
+- Correctness: the hard constraints held (input only through `paneIo.writePty`, the CLI untouched,
+  snapshot-then-live with nothing lost or doubled, push before `isEnabled()` with dedupe and the
+  focus gate, keep-awake). Fixed: the desktop's relay session outliving the phone, so the tree poll
+  and streams ran forever (high); a custom agent label with a space dropping a whole tree (high);
+  the telemetry payload changing with the switch off, which the deployed backend would refuse
+  (medium); a subscribe in flight during the move to the LAN (medium); the tail of a PTY's output,
+  resize ordering, `moved` read as closed, an orphan relay link, UTF-16 inline sizes (low); stream
+  pacing so busy panes cannot trip the relay's rate limit.
+- Each fix carries its own test; the reviewers' failing scratch tests were reproduced as repo tests
+  where the agents fixed them.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -636,8 +657,37 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
 31. **The runtime version is `protocol-<N>`** and the release constants sit in a CommonJS module
     (`src/release/release.js`), because Expo's config loader cannot import TypeScript from
     `app.config.ts`; a test checks it against the protocol's real export.
+32. **Copy code** in the pairing dialog puts the QR text on the clipboard, for the phone's code
+    field and the repro client. It is as one-time and short-lived as the QR. Turned down: no text
+    form at all, which left the repro client and the Simulator path unusable.
+33. **Relay rate raised to 1500 messages / 10 s per socket**, with the desktop pacing each stream to
+    one message per 50 ms and ending a stream with `overflow` past a 1 MiB backlog. Turned down:
+    keeping 400, which four busy panes would exceed and close the desktop's socket.
+34. **The LAN listener does not check Origin**; the pairing key decides who may talk.
+35. **Phone push off leaves the relay's stored token** until it is replaced: the relay protocol has
+    no "clear" message yet.
 
 ## Handoff
+
+2026-11-05 (cloud run): T1–T13 built on `claude/mobile-companion`, one commit per task plus fix
+commits, all pushed; draft PR https://github.com/mxrsv/spacevibe-deck/pull/97. Everything sits
+behind `mobileCompanion` (on in dev builds, off in releases). Nothing deployed, no secrets set, no
+Expo/EAS/App Store action taken.
+- **Next (T14, the owner on the Mac, no Xcode):** the PR's "Cách test" checklist: `npm install`,
+  `npm --prefix mobile run setup`, `npm --prefix mobile/relay run dev`, `DECK_RELAY_URL=http://<mac
+  LAN ip>:8787 npm run electron:dev`, `cd mobile/app && npm start` in Expo Go, pair, then each
+  acceptance item. Everything marked **verify on the Mac / iPhone** above is open.
+- **Still the owner's:** deploying the relay and its route and secrets; applying the backend
+  migration and deploying the backend before a client release sends the counters; `eas init`, the
+  App Store Connect record, capabilities, the APNs key, a development build (S1), TestFlight; the
+  switch flip; the CHANGELOG entry at merge; accepting the icon-system ledger exemption for
+  `qr-code.tsx`.
+- **Not verified anywhere yet:** S1 (the extension decrypting on a device), S2 (a Worker reaching
+  APNs over HTTP/2), S3 (xterm in the WebView on a device), S5 in a running Electron main (Node 22's
+  `WebSocket` is there by version), the 9-of-10-in-5-s push latency, the LAN path on a real network.
+
+Earlier entries:
+
 
 2026-11-05: plan written, approved for a full build (see Record) and committed for a cloud session,
 together with the spec's link to it. The direction mock was pushed on its own branch,
