@@ -75,17 +75,13 @@ export interface DockColumnProps {
   readonly onClose: () => void;
 }
 
-/**
- * The selected view, or the first available one when the choice has no body here (no git, no
- * sessions). Derived on every render; the stored choice is left alone so it returns with its host.
- */
-export function effectiveDockView(selected: DockViewId, bodies: DockBodies): DockViewId {
-  const available = DOCK_VIEWS.filter(
+/** The views that have a body here: no git leaves out Changes, no sessions leaves out History. */
+function availableDockViews(bodies: DockBodies): readonly DockViewId[] {
+  return DOCK_VIEWS.filter(
     (view) =>
       (view !== "changes" || bodies.changes !== null) &&
       (view !== "history" || bodies.history !== null),
   );
-  return available.includes(selected) ? selected : available[0];
 }
 
 /**
@@ -113,8 +109,10 @@ export function DockColumn({
   closeChord,
   onClose,
 }: DockColumnProps) {
-  const view = effectiveDockView(dockView.value, bodies);
-  const views = DOCK_VIEWS.filter((id) => effectiveDockView(id, bodies) === id);
+  const views = availableDockViews(bodies);
+  // A choice with no body here falls back to the first view; the stored choice is left alone so
+  // it returns with its host.
+  const view = views.includes(dockView.value) ? dockView.value : views[0];
   const surface = effectiveDockSurface(root);
   // Write the settled surface back so the reveal chords and telemetry read what is on screen.
   useEffect(() => {

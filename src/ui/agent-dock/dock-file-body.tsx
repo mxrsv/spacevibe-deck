@@ -35,29 +35,37 @@ export interface DockFileBodyProps {
   readonly canCreate: boolean;
 }
 
-/** The width of `ref`'s element, or null before the first measure (and where nothing measures). */
-export function useWidth(
+/** An unmeasured body (first paint, tests) counts as wide: hiding on a guess would flash. */
+function roomyAt(width: number | null): boolean {
+  return width === null || width >= TREE_PANE_MIN_BODY;
+}
+
+/**
+ * Whether `ref`'s element has room for a side pane (`TREE_PANE_MIN_BODY`). It holds the answer,
+ * not the width, so a drag-resize renders the body only when the answer flips.
+ */
+export function useRoomyBody(
   ref: { readonly current: HTMLElement | null },
   mounted: boolean,
-): number | null {
-  const [width, setWidth] = useState<number | null>(null);
+): boolean {
+  const [roomy, setRoomy] = useState(true);
   useLayoutEffect(() => {
     const node = ref.current;
     if (node === null) {
       return;
     }
     const measured = node.clientWidth;
-    setWidth(measured > 0 ? measured : null);
+    setRoomy(roomyAt(measured > 0 ? measured : null));
     if (typeof ResizeObserver === "undefined") {
       return;
     }
     const observer = new ResizeObserver((entries) => {
-      setWidth(entries[entries.length - 1]?.contentRect.width ?? null);
+      setRoomy(roomyAt(entries[entries.length - 1]?.contentRect.width ?? null));
     });
     observer.observe(node);
     return () => observer.disconnect();
   }, [ref, mounted]);
-  return width;
+  return roomy;
 }
 
 /**
@@ -73,12 +81,11 @@ export function DockFileBody({ controller, workspacePath, canCreate }: DockFileB
   const body = useRef<HTMLDivElement>(null);
   const path = surfaceFor(workspacePath).activePath;
   // The element exists only while a file is active, so the measure follows that.
-  const width = useWidth(body, path !== null);
+  const roomy = useRoomyBody(body, path !== null);
   if (path === null) {
     return null;
   }
-  // An unmeasured body (first paint, tests) counts as wide: hiding on a guess would flash.
-  const treeOpen = dockTreePane.value ?? (width === null || width >= TREE_PANE_MIN_BODY);
+  const treeOpen = dockTreePane.value ?? roomy;
   const crumbs = crumbsFor(path, workspacePath);
   const hidden = crumbs.length > VISIBLE_CRUMBS ? crumbs.length - VISIBLE_CRUMBS : 0;
   const shown = crumbs.slice(hidden);

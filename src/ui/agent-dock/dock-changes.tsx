@@ -23,7 +23,7 @@ import {
 } from "./agent-dock-state";
 import { DockChangesStack } from "./dock-changes-stack";
 import { DockChangesTree } from "./dock-changes-tree";
-import { TREE_PANE_MIN_BODY, useWidth } from "./dock-file-body";
+import { useRoomyBody } from "./dock-file-body";
 import { watchedRoot } from "./dock-changes-watch";
 
 const NOT_A_REPOSITORY = "Not a git repository";
@@ -112,10 +112,9 @@ function DockChangesBody({
   const snapshot = live?.snapshot ?? null;
   const entries = snapshot?.entries ?? [];
   const body = useRef<HTMLDivElement>(null);
-  const width = useWidth(body, true);
-  // The list pane needs the room the file tree needs; an unmeasured body counts as wide. Below it
-  // the toggle is gone, and the user's choice waits for the dock to widen again.
-  const roomy = width === null || width >= TREE_PANE_MIN_BODY;
+  // The list pane needs the room the file tree needs. Below it the toggle is gone, and the user's
+  // choice waits for the dock to widen again.
+  const roomy = useRoomyBody(body, true);
   const list = roomy && dockChangesList.value;
   const listLabel = list ? "Hide file navigation" : "Show file navigation";
   const stack = useRef<HTMLDivElement>(null);
