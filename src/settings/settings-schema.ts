@@ -279,7 +279,12 @@ export function clampBrowserWidth(width: number): number {
 // 180px file tree cannot have one any more; one column serving three surfaces
 // takes its floor from the widest of them.
 export const DOCK_WIDTH_MIN = 360;
-export const DOCK_WIDTH_MAX = 720;
+// The hard ceiling a stored width may take. What a drag may actually reach is narrower and follows
+// the window (`dockWidthCeiling`), so this only has to cover the widest window we expect.
+export const DOCK_WIDTH_MAX = 1600;
+// The widest the dock may be on any window: below this the ceiling never drops, so a small window
+// still gets the range the dock always had.
+export const DOCK_WIDTH_ROOMY = 720;
 
 // The navigation sidebar's own range (DL-18.9). The floor is 200, below the
 // 275px default that `styles.css` still explains as a drag-affordance figure:

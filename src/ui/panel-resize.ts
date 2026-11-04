@@ -18,6 +18,7 @@
 import {
   DOCK_WIDTH_MAX,
   DOCK_WIDTH_MIN,
+  DOCK_WIDTH_ROOMY,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
 } from "../settings/settings-schema";
@@ -49,6 +50,26 @@ export const DOCK_DRAG_BOUNDS: PanelWidthBounds = {
   max: DOCK_WIDTH_MAX,
   collapseBelow: DOCK_WIDTH_MIN - PANEL_COLLAPSE_SLACK,
 };
+
+/** What the window keeps for the sidebar and a usable terminal beside a dragged-wide dock. */
+export const DOCK_STAGE_REMAINDER = 600;
+
+/**
+ * The widest the dock may be in a window `windowWidth` wide: everything the stage and sidebar
+ * do not need, never below `DOCK_WIDTH_ROOMY` and never above the stored maximum. A fixed cap
+ * kept a dock showing an editor beside its file tree from being widened on a large display.
+ */
+export function dockWidthCeiling(windowWidth: number): number {
+  return Math.min(
+    DOCK_WIDTH_MAX,
+    Math.max(DOCK_WIDTH_ROOMY, Math.round(windowWidth) - DOCK_STAGE_REMAINDER),
+  );
+}
+
+/** The dock's drag bounds in a window `windowWidth` wide. */
+export function dockDragBounds(windowWidth: number): PanelWidthBounds {
+  return { ...DOCK_DRAG_BOUNDS, max: dockWidthCeiling(windowWidth) };
+}
 
 export const SIDEBAR_DRAG_BOUNDS: PanelWidthBounds = {
   min: SIDEBAR_WIDTH_MIN,

@@ -4,11 +4,14 @@ import {
   PANEL_COLLAPSE_SLACK,
   SIDEBAR_DRAG_BOUNDS,
   SIDEBAR_HIDDEN_WIDTH,
+  dockDragBounds,
+  dockWidthCeiling,
   resolvePanelDrag,
 } from "./panel-resize";
 import {
   DOCK_WIDTH_MAX,
   DOCK_WIDTH_MIN,
+  DOCK_WIDTH_ROOMY,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
 } from "../settings/settings-schema";
@@ -26,8 +29,8 @@ describe("resolvePanelDrag", () => {
   });
 
   it("clamps to the ceiling without ever collapsing", () => {
-    expect(resolvePanelDrag(9000, DOCK_DRAG_BOUNDS)).toEqual({
-      width: DOCK_WIDTH_MAX,
+    expect(resolvePanelDrag(9000, dockDragBounds(0))).toEqual({
+      width: DOCK_WIDTH_ROOMY,
       collapsed: false,
     });
     expect(resolvePanelDrag(9000, SIDEBAR_DRAG_BOUNDS)).toEqual({
@@ -76,5 +79,19 @@ describe("SIDEBAR_HIDDEN_WIDTH", () => {
 
   it("sits below the floor a drag can land on, so hiding is never a resize", () => {
     expect(SIDEBAR_HIDDEN_WIDTH).toBeLessThan(SIDEBAR_WIDTH_MIN);
+  });
+});
+
+describe("dockWidthCeiling", () => {
+  it("keeps the old range on a small window", () => {
+    expect(dockWidthCeiling(1280)).toBe(DOCK_WIDTH_ROOMY);
+  });
+
+  it("follows the window once it has room beyond the stage's remainder", () => {
+    expect(dockWidthCeiling(1920)).toBe(1320);
+  });
+
+  it("never passes the stored maximum", () => {
+    expect(dockWidthCeiling(9000)).toBe(DOCK_WIDTH_MAX);
   });
 });

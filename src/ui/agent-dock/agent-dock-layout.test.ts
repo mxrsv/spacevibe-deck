@@ -54,6 +54,14 @@ describe("the width the stage leaves for the dock", () => {
     expect(dockStageWidth(DEFAULT_SETTINGS.dockWidth, 520)).toBe(520);
   });
 
+  it("keeps a wide width on a big window and trims it when the window is smaller", () => {
+    pinHost(true);
+    resizeTo(1920);
+    expect(dockStageWidth(1100)).toBe(1100);
+    resizeTo(1440);
+    expect(dockStageWidth(1100)).toBe(840);
+  });
+
   it("follows the pointer in the legacy dock too, with the switch off", () => {
     pinHost(false);
     expect(dockStageWidth(STORED, 520)).toBe(520);

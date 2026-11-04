@@ -11,6 +11,7 @@ import { computed, signal } from "@preact/signals";
 import { isReleaseSwitchEnabled } from "../../lib/release-switches";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { rendererReleaseSwitches } from "../../terminal/action-availability";
+import { dockWidthCeiling } from "../panel-resize";
 
 export const AGENT_DOCK_WIDTH = 320;
 export const AGENT_DOCK_EDGE_WIDTH = 32;
@@ -55,7 +56,11 @@ export function dockStageWidth(storedWidth: number, liveWidth: number | null = n
   if (dockMaximized.value) {
     return AGENT_DOCK_WIDE;
   }
-  return storedWidth === DEFAULT_SETTINGS.dockWidth ? AGENT_DOCK_WIDTH : storedWidth;
+  if (storedWidth === DEFAULT_SETTINGS.dockWidth) {
+    return AGENT_DOCK_WIDTH;
+  }
+  // A width dragged on a big display must not outgrow a smaller window it is reopened in.
+  return Math.min(storedWidth, dockWidthCeiling(windowWidth.value));
 }
 
 /** Whether the window can give the dock `AGENT_DOCK_WIDE` and still leave the stage its reserve. */

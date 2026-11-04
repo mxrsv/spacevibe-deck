@@ -1,5 +1,5 @@
 import { dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
-import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from "../panel-resize";
+import { dockDragBounds, resolvePanelDrag } from "../panel-resize";
 
 export interface DockResizeGripProps {
   /** The width the column is painted at when the drag starts. */
@@ -23,6 +23,7 @@ export function DockResizeGrip({ width, onWidthChange, onClose }: DockResizeGrip
     event.preventDefault();
     const startX = event.clientX;
     const startWidth = width;
+    const bounds = dockDragBounds(window.innerWidth);
     const target = event.currentTarget as HTMLElement;
     target.setPointerCapture(event.pointerId);
 
@@ -31,7 +32,7 @@ export function DockResizeGrip({ width, onWidthChange, onClose }: DockResizeGrip
       // The RAW width goes to `resolvePanelDrag`, not a clamped one: clamping
       // maps every overdrag onto the floor, and "past the floor" is exactly
       // what the collapse gesture is made of (DL-19.4).
-      const outcome = resolvePanelDrag(startWidth + (startX - moveEvent.clientX), DOCK_DRAG_BOUNDS);
+      const outcome = resolvePanelDrag(startWidth + (startX - moveEvent.clientX), bounds);
       dockWidthLive.value = outcome.width;
       dockCollapseArmed.value = outcome.collapsed;
     };

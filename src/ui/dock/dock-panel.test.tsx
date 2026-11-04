@@ -19,7 +19,8 @@ import {
   resetFileSurfaces,
 } from "../../files/file-surface-store";
 import type { FileClient } from "../../files/file-client";
-import { DOCK_WIDTH_MAX, DOCK_WIDTH_MIN } from "../../settings/settings-schema";
+import { DOCK_WIDTH_MIN } from "../../settings/settings-schema";
+import { dockWidthCeiling } from "../panel-resize";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 
 const WS = "/r";
@@ -114,7 +115,7 @@ describe("DockPanel resize", () => {
         }),
       );
     });
-    expect(dockWidthLive.value).toBe(DOCK_WIDTH_MAX);
+    expect(dockWidthLive.value).toBe(dockWidthCeiling(window.innerWidth));
 
     await act(async () => {
       grip.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true }));
@@ -122,7 +123,7 @@ describe("DockPanel resize", () => {
 
     // One settings write, on release — not on every pointermove.
     expect(onWidthChange).toHaveBeenCalledTimes(1);
-    expect(onWidthChange).toHaveBeenCalledWith(DOCK_WIDTH_MAX);
+    expect(onWidthChange).toHaveBeenCalledWith(dockWidthCeiling(window.innerWidth));
     // Cleared before the commit, same reasoning as the browser panel's grip:
     // the settings write is async, and leaving the live value up would jump
     // the column back to the old width for a frame if the write is slow.
