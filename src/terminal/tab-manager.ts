@@ -2867,6 +2867,7 @@ export function createTabManager(
     // Missing `onToggleSettings` = safe no-op, never a direct write.
     "toggle-settings": () => deps.onToggleSettings?.(),
     "clone-repository": () => deps.onCloneRepository?.(),
+    "open-folder": () => deps.onOpenFolder?.(),
     // Seam style, like `toggle-settings` above and unlike `toggle-prompts`
     // below: this one opens a full-window surface that must close Settings,
     // return focus on Escape, and refuse to open under a modal draft. All

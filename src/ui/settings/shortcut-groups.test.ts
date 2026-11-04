@@ -17,7 +17,11 @@ import {
 const switchFixture = vi.hoisted(() => ({ enabled: true }));
 vi.mock("../../lib/release-switches", async (original) => {
   const actual = await original<typeof import("../../lib/release-switches")>();
-  return { ...actual, resolveReleaseSwitches: () => ({ shortcutFixture: switchFixture.enabled }) };
+  // `stageLauncher` stays on so its real gated action (`open-folder`) is held to the same rows.
+  return {
+    ...actual,
+    resolveReleaseSwitches: () => ({ shortcutFixture: switchFixture.enabled, stageLauncher: true }),
+  };
 });
 vi.mock("../../terminal/action-registry", async (original) => {
   const actual = await original<typeof import("../../terminal/action-registry")>();

@@ -105,6 +105,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
 
   "toggle-settings": "app",
   "clone-repository": "app",
+  "open-folder": "app",
   "toggle-prompts": "app",
   // "app", not "panes": the panel is a surface of the window like Settings and
   // the Prompt Board, not something that acts on the focused pane.

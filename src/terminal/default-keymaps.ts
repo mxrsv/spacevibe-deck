@@ -133,6 +133,8 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { code: "BracketLeft", meta: true, action: "focus-prev" },
   { key: "e", meta: true, action: "toggle-expand" },
   { key: "t", meta: true, action: "new-tab" },
+  // No Windows twin: bare Ctrl+O is a terminal key there, and Ctrl+Shift+O is Mission Control.
+  { key: "o", meta: true, action: "open-folder" },
   // Same physical-key reasoning as focus-next/prev above: Shift+BracketRight
   // only produces "}" (and Shift+BracketLeft only "{") on a US layout. Same
   // F-C2 trade-off too — see the comment above focus-next/focus-prev.

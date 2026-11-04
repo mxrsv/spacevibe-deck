@@ -853,6 +853,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
       onCloneRepository: openCloneForm,
+      onOpenFolder: () => {
+        if (stageLauncherEnabled()) void openFolderFromStageLauncher();
+      },
       onToggleUsage: () => toggleUsage(),
       onOpenUsage: () => openUsage(),
       onToggleMissionControl: () => missionControlRef.current.toggle(),

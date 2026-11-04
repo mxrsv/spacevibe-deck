@@ -147,11 +147,8 @@ export function stageBarMode(state: StageBarState): StageBarMode {
   return empty && !state.boardOpen ? "resident" : "none";
 }
 
-/**
- * The registry action ⌘O belongs to. It is not in the registry yet: registering it needs a
- * dispatch entry in `tab-manager.ts` (see the plan's S6 handoff), so until then no chord is bound.
- */
-const OPEN_FOLDER_ACTION = "open-folder";
+/** The registry action ⌘O belongs to (macOS only; Windows leaves it unbound). */
+const OPEN_FOLDER_ACTION: ActionId = "open-folder";
 
 /**
  * The Open folder shortcut as key caps, read from the live keymap so the hint can never name a
@@ -161,7 +158,6 @@ export function openFolderKeys(
   platform: DesktopPlatform,
   keymap?: readonly KeyBinding[],
 ): readonly string[] {
-  // The cast names an action the registry does not hold yet; `shortcutCaps` just finds no row.
-  const caps = shortcutCaps(OPEN_FOLDER_ACTION as ActionId, platform, keymap);
+  const caps = shortcutCaps(OPEN_FOLDER_ACTION, platform, keymap);
   return caps ?? [];
 }

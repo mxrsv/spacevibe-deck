@@ -29,6 +29,7 @@ import { NO_KEYBINDING_OVERRIDES, withOverride } from "../../../lib/keybindings"
 import { matchBinding } from "../../../terminal/keymap";
 import { resetActiveKeymapCache } from "../../../terminal/active-keymap";
 import { ACTION_REGISTRY } from "../../../terminal/action-registry";
+import { isRegisteredActionAvailable } from "../../../terminal/action-availability";
 import { NOT_REBINDABLE } from "../shortcut-groups";
 
 function keyEvent(
@@ -101,7 +102,8 @@ describe("ShortcutsSection", () => {
         expect(labels.has(action.label), action.id).toBe(false);
         continue;
       }
-      expect(labels.has(action.label), action.id).toBe(true);
+      // An action behind a release switch that is off in this build has no row, by design.
+      expect(labels.has(action.label), action.id).toBe(isRegisteredActionAvailable(action.id));
     }
   });
 

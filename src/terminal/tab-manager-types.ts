@@ -98,6 +98,8 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * form, because App owns every overlay's open flow. Missing = no-op.
    */
   onCloneRepository?: () => void;
+  /** File ▸ Open Folder… / ⌘O (`open-folder`, stage launcher): App runs the rail's Folder verb. */
+  onOpenFolder?: () => void;
   /**
    * ⌘⇧U (`toggle-usage`) and the menu's "Token Usage" item route here rather
    * than reaching into the dock directly — the same reason `onToggleSettings`

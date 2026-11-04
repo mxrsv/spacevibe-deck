@@ -202,6 +202,15 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "File", group: "primary" },
   },
   {
+    // The stage launcher's Open folder (LCH-5): the rail's Folder verb, then the launcher aims at
+    // the new folder. Routed to App through the same seam as `clone-repository`.
+    id: "open-folder",
+    label: "Open Folder…",
+    scope: "board",
+    menu: { submenu: "File", group: "primary" },
+    releaseSwitch: "stageLauncher",
+  },
+  {
     // Opens the Open Board on its Clone form; intercepted by App like
     // `send-feedback`, so it never reaches TabManager and no chord exists.
     id: "clone-repository",
