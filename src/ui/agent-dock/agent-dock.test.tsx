@@ -311,9 +311,17 @@ async function dragGrip(dx: number, release: boolean): Promise<void> {
   // jsdom does not implement pointer capture.
   grip.setPointerCapture = vi.fn();
   grip.releasePointerCapture = vi.fn();
+  // `buttons: 1` on the move, because a move with no button held now ends the drag (sidebar-grip.test).
   const fire = async (type: string, clientX: number): Promise<void> => {
     await act(async () => {
-      grip.dispatchEvent(new PointerEvent(type, { clientX, pointerId: 1, bubbles: true }));
+      grip.dispatchEvent(
+        new PointerEvent(type, {
+          clientX,
+          pointerId: 1,
+          bubbles: true,
+          buttons: type === "pointermove" ? 1 : 0,
+        }),
+      );
     });
   };
   await fire("pointerdown", 1000);
