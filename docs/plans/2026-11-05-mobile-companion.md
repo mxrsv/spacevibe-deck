@@ -1,0 +1,337 @@
+# Mobile companion: control a running Deck from an iPhone
+
+Record: Draft task plan for the owner's approval. Written on 2026-11-05 when the owner said
+"ok làm đi" to writing it. Nothing is built.
+- **Approval covers:**
+  - the spec's defaults 21–24 and its chosen numbers;
+  - the forks table;
+  - the relay placement;
+  - the proposal to run spikes before the CLI ships;
+  - the Operating contract.
+- **Started:** 2026-11-05.
+- **Spec:** [Mobile companion](../specs/2026-11-04-mobile-companion.md) (MOB1–28, decisions 1–27).
+- **Direction mock (picked, E):** `~/scratch/spacevibe-deck/mobile-mock-2026-11-05/`, outside
+  the repo.
+- **Committed for cloud runs** on 2026-11-05, although `docs/plans/` is gitignored. The owner
+  said: "push lên remote, tôi sẽ run session này trên cloud". This follows `e3b269a9`. The
+  committed copy is the one to update; a local session pulls before editing it.
+- **Base revision:** `origin/main` `32ac87cf` plus this plan's commit. The dock test that
+  `207c717e` broke was fixed by its owner in `32ac87cf`.
+- **Gate to start building (spec decision 9):** the `deck` CLI ships. In concrete terms, the
+  [orchestration plan](2026-11-03-agent-orchestration.md) T6 walk is done, `agentControl` is
+  flipped on, and that release is published.
+
+## Requirements reference and delivery scope
+
+MOB1–28 of the spec, in the slices below, plus one final owner walk with eye approval. Out:
+everything under the spec's Out of scope, the browser-tab mirror (the next release) and Android.
+
+## Code facts the approach rests on (read 2026-11-05)
+
+- **The phase/attention mirror runs on every host.**
+  - **Where it lives:** `createPaneMirror` is built unconditionally (`electron/main.ts:204-206`).
+    `registerControl` wires its report channel on every host (`electron/main.ts:562-570`).
+  - **What is gated:** only the CLI router waits on `hooksSupported() && agentControl`
+    (`electron/main.ts:201-221`).
+- **The renderer always listens for control commands.**
+  - **Listener:** `listenControlCommands` (`src/terminal/tab-manager.ts:271-276`).
+  - **Handler:** `src/terminal/control-commands.ts` has open, send (`injectIntoPane`),
+    read (`serializePane`) and close. It carries no scope check.
+  - **Consequence:** Windows can be served once main has a forwarder that does not depend on
+    hooks.
+- **The CLI's scope is enforced inside the main-side commands**, not in the router:
+  - `control-pane-commands.ts:164` and `:209-222` call `openedBy.mayAct(caller, target, …)` and
+    `tokenFor(caller)`;
+  - `open` records the new pane against a caller pane (`:250-265`).
+
+  So the phone cannot reuse `createPaneCommands`. It builds on the layer below it:
+  `control-forward.ts`, the forwarder that delivers to the owning window and awaits the reply.
+- **Echo suppression is a renderer concern.**
+  - **The rule:** output within `DEFAULT_ECHO_MS` = 300 ms of the user's own input is ignored
+    by the heuristic (`src/terminal/agent-activity.ts:94`, `:183`).
+  - **Where input is noted:** input reaches `activity.noteInput` only through `paneIo.writePty`
+    (`tab-manager.ts:310`, `:2239`).
+
+  Phone keystrokes must therefore travel main → renderer → `paneIo.writePty`. Writing to the
+  PTY from main would read the echo as work, and every keystroke would end in a false
+  `completed` push.
+- **Serializer.** `pane.ts:531-533` uses `@xterm/addon-serialize`, which gives ANSI output with
+  scrollback. `deck read` strips that (`control-commands.ts:167-171`). The phone's terminal
+  needs the raw ANSI snapshot, followed in order by live output from the same renderer.
+- **The notifier is renderer-side.**
+  - **The gate:** `maybeNotify` returns early on `!isEnabled() || isWindowFocused()` or kind
+    `none`/`warning`, then dedupes on revision (`src/terminal/agent-notifier.ts:93-101`).
+  - **The copy:** `KIND_PHRASE` is `finished` / `needs attention` / `error` (`:58-62`).
+  - **Consequence:** phone push should branch from that decision, not be re-derived in main.
+- **Other facts:**
+  - **Secure storage:** there is a `safeStorage` precedent in `electron/account/session-store.ts`.
+  - **Switches:** release switches live in `src/lib/release-switches.ts:14-28`.
+  - **Electron:** `^43.8.1`.
+  - **Backend:** an independent Cloudflare Worker on `api.deck.spacevibe.dev`
+    (`backend/README.md`).
+- **This machine has no Xcode**: `xcodebuild` reports Command Line Tools only. There is
+  therefore no iOS Simulator.
+- **Reference app A's streaming notes (MIT, principles only):**
+  - **Message queues:** queue messages until the WebView reports ready and again until
+    xterm has initialized.
+  - **Subscribing:** a subscribe sends a scrollback snapshot and then live data.
+  - **Reconnecting:** replay subscriptions after a reconnect.
+  - **Debugging:** build a no-phone repro client first, and debug the bridge with it before
+    touching the phone UI.
+
+## Approach
+
+- **One contract, three consumers.**
+  - **What it is:** `mobile/protocol/` is plain TypeScript with no dependencies. It holds the
+    message types, the protocol version, the framing and the crypto interface.
+  - **Who imports it:** `electron/mobile/` (desktop), `mobile/relay/` (the Worker) and
+    `mobile/app/` (the phone). The structure template asks for exactly this: shared logic
+    defined once, as types.
+- **Crypto.** Keys are agreed with X25519 and HKDF-SHA256. Frames are sealed with
+  ChaCha20-Poly1305, with a nonce counter per direction.
+  - **Desktop:** `node:crypto`, so no new dependency.
+  - **Phone:** `@noble/curves` and `@noble/ciphers`.
+  - **Interop:** proven by shared test vectors in `mobile/protocol/`.
+  - **What the QR carries:** relay URL, pairing id, the desktop's public key, the one-time
+    secret and the expiry (MOB1).
+- **Desktop service `electron/mobile/`**, built only while the `mobileCompanion` switch is on:
+  - pairing and paired-phone records, with keys in `safeStorage` (MOB1–3);
+  - the relay client and, later, the LAN listener;
+  - a **phone executor**: forwarder-based, scoped to all panes (decision 22), with a callerless
+    `open` that names a project and checkout instead of a caller pane;
+  - a **stream bridge**: subscribe → the renderer sends the ANSI snapshot, then forwards that
+    pane's live output in order. The order holds because both come from the renderer;
+  - **keep-awake**: `powerSaveBlocker` while at least one pane is working and at least one phone
+    is paired (MOB12);
+  - **push**: the renderer notifier's decision, taken before `isEnabled()` (decision 24), with
+    dedupe and the focus gate kept (decision 23), and sent to main. Main seals the copy for each
+    phone and hands it to the relay (MOB22–23);
+  - a **version gate** in the handshake (MOB10).
+- **Relay `mobile/relay/`.** This answers the spec's open question with a third option under the
+  `mobile/` directory the owner already approved (decision 15).
+  - **Shape:** a Cloudflare Worker routed at `api.deck.spacevibe.dev/relay/*` (decision 17),
+    with one Durable Object per pairing, the WebSocket Hibernation API and per-pairing limits
+    (MOB6, MOB8).
+  - **Revoke:** the relay drops the pairing on revoke (MOB2).
+  - **APNs:** the relay sends to APNs, or through a fallback if spike S2 rules a direct send out.
+  - **What it stores:** ids, the APNs token and last-seen times only.
+- **Phone app `mobile/app/`:** Expo with React Native. It has its own `package.json`, lockfile,
+  type check, lint and tests, run from `mobile/`.
+  - **Navigation:** Expo Router.
+  - **Native modules:**
+    - `react-native-webview` with xterm.js for the terminal;
+    - `expo-camera` for the QR scan;
+    - `expo-secure-store` for keys;
+    - `expo-local-authentication` for Face ID;
+    - `expo-notifications` plus a Notification Service Extension for push;
+    - `expo-symbols` for SF Symbols.
+  - **Look:** Deck's graphite / Deck Light grounds and states, ported to a React Native theme
+    module. Text uses the iOS text styles (decisions 26–27).
+- **Numbered choices (MOB16, MOB18).** One agent-agnostic parser reads the screen's last option
+  list (`❯? N. text`). It is tested on captured Claude Code, Codex and opencode screens.
+- **No-phone repro first.** `mobile/protocol/` ships a Node test client that pairs, subscribes,
+  sends and reads through the real relay protocol. Every desktop slice is proven with it before
+  any phone UI exists.
+
+## Expected forks (authorized when the owner approves this plan)
+
+| #   | Fork in `AGENTS.md`                         | Where this plan touches it                                                                                         | Option taken                                                                                                                 |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| F1  | Dependency configuration                    | `mobile/app/package.json` (Expo SDK, the modules above, `@noble/*`); `mobile/relay/package.json` (Wrangler); `ws` only if T9 needs a LAN server | Separate packages under `mobile/`; the root `package.json` gains no runtime dependency                                         |
+| F2  | Bundle, signing, release channel, updater   | EAS Build and Update, an App Store Connect record, bundle ID `dev.spacevibe.deck.mobile`, an APNs key, TestFlight  | iOS only; Update channels per protocol version (MOB24); the desktop's electron-builder, updater and signing are untouched     |
+| F3  | PTY ownership                               | The stream bridge reads the pane's output in the renderer; phone input goes through `paneIo.writePty`               | No write path in main; no PTY tap in main; the only additions are renderer-side subscriptions                                 |
+| F4  | Tab materialization, window coordinator     | Callerless `open` from the phone picks the window that holds the project, or else the focused window                 | Reuse `MaterializeIntent`; the desktop's focus does not move (MOB20)                                                          |
+| F5  | New IPC channels and events                 | Pairing UI ↔ main, stream subscribe/data, phone input, push decision                                               | Pinned in `scripts/electron-ipc-contract.test.ts` and `electron/wire-contract.test.ts` in the same PR                           |
+| F6  | A network listener                          | The LAN listener (MOB9)                                                                                             | Private interfaces only, only while paired and switched on, the same encryption; a security review before merge              |
+| F7  | Telemetry contract                          | Mobile counters in the daily payload (MOB27)                                                                        | The backend validation deploys before the client release (backend README rule)                                               |
+| F8  | Lint/test exempt paths (R9)                 | Root vitest, `tsc`, oxlint, prettier, `check-changed.sh`, the pre-push sibling lookup and CI all exclude `mobile/`  | Each exclusion carries a comment naming what it protects; `mobile/` gets its own check command; the PR says so for the owner |
+
+A fork this table does not name stops the run.
+
+## Checkout contract
+
+The desktop-side and protocol slices follow the orchestration plan's pattern:
+- **Worktree:** one PR per slice, from `git worktree add .claude/worktrees/<slug> -b
+  worktree-<slug> main`, with `npm install` inside.
+- **Merging:** merged the same day by a rebase, a fast-forward and removing the worktree.
+- **The phone app:** lives in the same worktrees; `npm install` runs inside `mobile/app/` too.
+- **This plan:** committed (see Record). Update it in the checkout you work in, and commit it.
+- **Pushing:** push from a clean `/tmp` worktree, never from the primary. The primary's hook
+  also runs the nested `.claude/worktrees` suites.
+
+**Cloud run.** A Claude Code cloud session works on a fresh Linux clone of `origin/main`. Each
+slice gets a branch `claude/mobile-<slice>` and a PR against `main`; this replaces the local
+worktree, fast-forward and push steps, and the owner merges. The session runs `npm install` at
+the root and inside each `mobile/` package it touches.
+- **What the cloud cannot do:** run macOS, Xcode, an iPhone, a headed `electron:dev`, or read
+  the owner's `~/scratch`. The direction mock lives there; the spec records the pick.
+- **Work that waits for a Mac session:** S1–S3, T5's mock and eye step, the device checks in
+  T6–T9, T10 on a real network, and T13–T14.
+- **Work that runs in the cloud:**
+  - S4, plus S5 from Electron 43's documented Node version;
+  - T1–T3;
+  - T4 up to its unit and contract tests. Its repro run against `electron:dev` waits for a
+    display.
+
+  Each PR says which checks ran and which wait for the Mac.
+
+## Tasks
+
+- [x] **T0: Record.** This plan is written and the spec's Execution line links here
+  (2026-11-05).
+- [ ] **S0: Spikes.** These run in scratch only and change no repo code. **Proposal: run them
+  before the CLI ships**, so each risk is known early. This needs the owner's OK, because it
+  bends decision 9. Each result goes into Verification; a spike that fails stops the run and
+  brings the spec question to the owner.
+  - **S1:** decrypt a mutable-content push in a Notification Service Extension inside an Expo
+    app. Needs an EAS dev build on a registered iPhone.
+  - **S2:** a Cloudflare Worker sends to APNs, which needs HTTP/2 and token auth. If it cannot,
+    name the push service that carries the ciphertext instead.
+  - **S3:** xterm.js in a React Native WebView:
+    - a 64-column Claude Code screen at fit-to-width, with pinch zoom from 50 to 200%;
+    - a raw ANSI snapshot followed by a live stream, using the ready queues.
+  - **S4:** test vectors for X25519, HKDF and ChaCha20-Poly1305 that pass in both `node:crypto`
+    and `@noble/*`.
+  - **S5:** Electron 43's Node has a global `WebSocket` client usable in main. If it does not,
+    the relay client needs `ws` (F1).
+- [ ] **T1: Isolation of `mobile/` from root tooling (F8).**
+  - **Excluded from:** root vitest, `tsconfig`, `.oxlintrc.json` (with an R9 comment),
+    prettier, `scripts/check-changed.sh`, the `.githooks/pre-push` sibling lookup and CI paths.
+  - **Added:** a `mobile/` check script.
+  - **Verify:** a deliberately broken file under `mobile/` is invisible to `npm test` and
+    `npm run lint`, and is caught by the `mobile/` check.
+- [ ] **T2: Protocol and crypto (`mobile/protocol/`).**
+  - **Contents:** types, version, framing, the crypto interface with a Node implementation, the
+    S4 vectors, and the no-phone repro client.
+  - **Covers:** MOB7 (framing and auth failure) and MOB10.
+  - **Verify:** unit tests.
+- [ ] **T3: Relay (`mobile/relay/`).**
+  - **Contents:** the Durable Object per pairing, hibernation, limits, revoke, APNs, minimal
+    storage, and the canary test (MOB7). Covers MOB2, MOB6 and MOB8.
+  - **Verify:** Wrangler local tests. The repro client pairs and exchanges frames through
+    `wrangler dev`.
+  - **Deploying the route and secrets is an owner action.**
+- [ ] **T4: Desktop service (`electron/mobile/`) behind `mobileCompanion`.** Covers MOB1–3, MOB5,
+  MOB10–15 and decisions 21–24.
+  - **Contents:**
+    - the switch;
+    - pairing records in `safeStorage`;
+    - the relay client;
+    - the phone executor (all panes, callerless `open`, F4);
+    - the stream bridge and the renderer input path (F3);
+    - keep-awake;
+    - the push decision branch in `agent-notifier.ts`;
+    - the version gate.
+  - **No gate on `hooksSupported()`.**
+  - **IPC (F5):** pinned.
+  - **Verify:** the repro client against `electron:dev` with an isolated userData.
+    - open, send, read and wait on every pane;
+    - a keystroke echo produces no `working`;
+    - a snapshot plus the stream draws a Claude Code TUI correctly;
+    - no push while a Deck window is focused.
+- [ ] **T5: Desktop Settings → Mobile.**
+  - **Mock first, the only early stop:** a gallery specimen built from the real Settings rows
+    and controls, in the owner's theme, holding Pair a phone, the QR dialog, the paired list and
+    revoke. The owner picks; then build it.
+  - **Covers:** MOB1 (QR, 5-minute expiry) and MOB2 (list, revoke within 10 seconds).
+  - **Verify:** renderer tests; the repro client sees a revoke.
+- [ ] **T6: Phone app shell (`mobile/app/`).**
+  - **Contents:** the Expo project, a theme module from Deck's tokens, SF Symbols, the text
+    styles, the Face ID lock (MOB4), QR pairing (MOB1, MOB3), Settings (desktops, online and
+    offline, toggles), and the offline and version states (MOB10–11).
+  - **Verify:** Simulator screenshots next to the mock in both themes, with each difference
+    measured.
+  - **Needs Xcode:** an owner action, due before this task.
+- [ ] **T7: Home and pane (MOB16–19).**
+  - **Home:** tree E with the pinned Needs you section and See all. Every row shows its last line
+    and age.
+  - **Answers:** the numbered-choice parser with tests on captured Claude Code, Codex and opencode
+    screens; reply; open; and the pager.
+  - **Terminal:** the terminal view, Live mode with the accessory row, and the composer.
+  - **Verify:** parser tests; Simulator and real-device runs against `electron:dev`; a pinned
+    answer lands without opening the pane.
+- [ ] **T8: New agent, Files, Changes, Usage (MOB20–21).**
+  - **New agent:** `open` follows the orchestration spec's guarded flow, because a first-run
+    trust dialog reads as idle.
+  - **Verify:** a tab appears on the desktop and its focus does not move.
+- [ ] **T9: Push end to end (MOB22–23).**
+  - **Contents:** APNs registration, the NSE decrypt with its generic fallback line, and tap to
+    open the pane.
+  - **Verify:** the acceptance latency of 9 of 10 within 5 seconds on cellular, and the
+    focused-window mute.
+- [ ] **T10: LAN path (MOB9, F6).**
+  - **Contents:** the address offered over the channel; a direct connection with the same
+    encryption; relay fallback; the path shown in host details.
+  - **Security:** run `security-review` before merge, and note the firewall prompt in the user
+    guide.
+  - **Verify:** same Wi-Fi uses LAN; leaving the network moves to the relay without re-pairing.
+- [ ] **T11: Telemetry and privacy (MOB26–27, F7).**
+  - **Telemetry:** the counters, `internals/telemetry.md`, and the backend validation, deployed
+    first.
+  - **Privacy:** a new dated notice under `marketing/public/privacy/<date>/`; the App Store
+    privacy answers match it.
+- [ ] **T12: Docs (MOB28).**
+  - **User guide:** `docs/user/mobile.md`, covering pairing, revoke, offline, keep-awake and the
+    Windows limit, plus its `vi` translation (then `npm run docs:translations -- --stamp
+    vi/mobile`).
+  - **Internals:** `docs/internals/mobile.md`, covering the protocol, the encryption and the
+    traps. Plus glossary terms and the `docs/README.md` index.
+- [ ] **T13: Release pipeline (MOB24–25).**
+  - **Contents:** the EAS project; Update channels per protocol version; the minimum iOS
+    version and Expo SDK pinned; a public TestFlight beta.
+  - **Submitting is an owner action.**
+- [ ] **T14: Owner's walk and eye approval, one batch.**
+  - **Walk:** the spec's Acceptance list on a real iPhone against `electron:dev`.
+  - **Eye approval:** every UI from T5–T8 side by side with its mock.
+  - **Findings:** go back into T4–T13 as fixes.
+  - **Then:** the switch flip, the CHANGELOG entry and the App Store submission wait for the
+    owner. No Playwright launch of the app unless asked.
+
+## Owner actions, in the order they are needed
+
+1. **Spikes, if you accept running them early:**
+   - an Expo account;
+   - an EAS dev build on your iPhone, with the device registered under Team `DJDD3T8LH7`.
+2. **Before T6:** install Xcode, for the Simulator and the side-by-side screenshots.
+3. **Before T3 deploys:** the Worker's secrets (the APNs key) and the route on
+   `api.deck.spacevibe.dev/relay/*`.
+4. **Before T9:** an App Store Connect record for bundle ID `dev.spacevibe.deck.mobile` and an
+   APNs key (`.p8`).
+5. **Before the T11 client release:** deploy the backend validation.
+6. **T13:** the TestFlight external-beta submission (Beta App Review).
+
+## Operating contract
+
+Once the owner approves this plan, run T1 → T14 in order without asking again (S0 too, if
+accepted).
+- **Stop only for:**
+  - a fork the table does not name;
+  - a DL invariant;
+  - a dependency outside F1;
+  - a sibling repository;
+  - a failed spike;
+  - a spec requirement that turns out impossible as written;
+  - an owner action from the list above.
+
+  When stopping, post the question here and in chat.
+- **Done for a desktop task:** its tests, lint, `scripts/check-changed.sh` and the `scripts/` +
+  `src/styles/` suites pass. The `mobile/` check stands in for those in phone tasks.
+  `npm test`, `npm run build` and `electron:build` stay CI's.
+- **Merging and releasing:** merging each slice into local `main` is part of the task. Push,
+  deploy, the switch flip and every App Store or TestFlight action need the owner.
+- **Who implements:** Sonnet subagents (owner rule 2026-10-07).
+
+## Verification
+
+Evidence lands here, per task, with the command and the observed result.
+
+## Handoff
+
+2026-11-05: plan written and committed for a cloud session, together with the spec's link to it.
+Nothing is built; no worktree or branch exists.
+- **Not approved yet.** The Operating contract does not apply until the owner answers the
+  approval items in this plan's Record. A cloud session asks for that first and builds nothing
+  before it.
+- **After approval:** cloud-able spikes (S4, S5, if accepted), or T1 once the CLI gate is met.
+
+/goal Mobile companion (docs/specs/2026-11-04-mobile-companion.md): behind `mobileCompanion`, an iPhone app built with Expo pairs with a running Deck by QR without an account, over an end-to-end encrypted Cloudflare relay at api.deck.spacevibe.dev/relay/* with a LAN fast path. Its home is every desktop's tree with up to three waiting panes pinned and answered in place. It renders any pane in xterm.js with Live mode, sends replies and keystrokes through the renderer's input path, opens a new agent with a prompt, and reads files, changes and usage. Push for requested/completed reaches the phone within 5 seconds in 9 of 10 tries on cellular, muted while a Deck window is focused. Deck keeps the machine awake while panes work. The relay's storage and logs hold no terminal text; revoke cuts a phone off within 10 seconds. Tests for the protocol, relay, desktop service, parser and IPC contracts pass. The user guide, its vi translation, the internals page, the privacy notice and the telemetry counters land. The app installs from TestFlight with EAS Update working, and the owner's walk on a real iPhone passes.
