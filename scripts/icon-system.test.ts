@@ -94,8 +94,9 @@ const HUGEICONS_REACT_EXEMPT = (path: string): boolean => path.startsWith("galle
 /**
  * The cut-over set: surfaces that now draw Hugeicons only. A path ending in `/` is a directory,
  * anything else is a file. A surface joins this list in the change that converts it; a shared
- * file that an old surface still renders (`font-row`, `logo-row`, `github-star-button`, the
- * space bar's shipped caret) stays out until that surface is cut over.
+ * file that an old surface still renders (`font-row`, `logo-row`, `github-star-button`) stays out
+ * until that surface is cut over. A directory whose `phosphor` count in
+ * `ui-composition-debt.txt` reaches zero joins it (RCP-26).
  */
 const HUGEICONS_ONLY: readonly string[] = [
   "ui/project-rail/",
@@ -109,6 +110,15 @@ const HUGEICONS_ONLY: readonly string[] = [
   "ui/controls/dropdown-menu.tsx",
   "ui/controls/dialog.tsx",
   "ui/controls/sheet.tsx",
+  // Stage 3 of the UI recipes track (RCP-26): the stage bar, its toolbar and the browser toolbar.
+  "ui/dev-servers/",
+  "ui/toolbar/",
+  "ui/spaces/",
+  "browser/",
+  "ui/tab-strip.tsx",
+  "ui/tab-strip-menu.tsx",
+  "ui/sidebar-toggle.tsx",
+  "ui/dock/dock-toggle.tsx",
 ];
 
 const inCutOverSet = (path: string): boolean =>

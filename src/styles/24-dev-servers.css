@@ -167,9 +167,10 @@
   cursor: pointer;
 }
 
+/* RCP-9: hover and focus lay the hover wash over the control's own fill. */
 .dsv-select select:is(:hover, :focus-visible) {
   outline: none;
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background-image: linear-gradient(var(--state-hover-bg), var(--state-hover-bg));
 }
 
 .dsv-sr {
@@ -185,7 +186,7 @@
 .dsv-status {
   margin: 0;
   padding: 0 12px 6px;
-  min-height: 16px;
+  min-height: var(--leading-meta);
   color: var(--text-faint);
   font-size: var(--type-micro);
 }
@@ -228,6 +229,7 @@
   align-self: start;
   width: 8px;
   height: 8px;
+  /* ui-scale: centres the 8 mark on the first line of 12px text at 1.5 */
   margin-top: 5px;
   border: 1.5px solid var(--text-faint);
   border-radius: 50%;
@@ -334,19 +336,19 @@
 
 .dsv-pill:is(:hover, :focus-visible) {
   outline: none;
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background-image: linear-gradient(var(--state-hover-bg), var(--state-hover-bg));
 }
 
 /* DL-23.6: unavailable, not disabled — still focusable and quiet. Hover stays
    flat; focus keeps its step so the keyboard can see where it is. */
 .dsv-pill.is-unavailable,
 .dsv-pill.is-unavailable:hover {
-  background: var(--muted);
+  background-image: none;
   color: var(--text-faint);
   cursor: default;
 }
 .dsv-pill.is-unavailable:focus-visible {
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background-image: linear-gradient(var(--state-hover-bg), var(--state-hover-bg));
   color: var(--text-faint);
 }
 

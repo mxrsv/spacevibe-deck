@@ -627,14 +627,19 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
   presentation is set, and glyphs are imported by name; nothing else authors an `<svg>` and no
   glyph character stands in for an action (`scripts/icon-system.test.ts`).
   - **Hugeicons** (`@hugeicons/core-free-icons`, passed as `icon`) is the source for the new
-    shell: the project rail, the agent dock, Command Settings, the shared blocks and the
-    preset controls' own chevrons, check marks and close glyphs. `DeckIcon` renders it with
+    shell: the project rail, the stage bar (strip, toolbar, dev servers, the browser toolbar),
+    the agent dock, Command Settings, the shared blocks and the preset controls' own chevrons,
+    check marks and close glyphs. `DeckIcon` renders it with
     `strokeWidth={2}`, `aria-hidden`, `focusable="false"` and the unconditional `deck-icon`
     class. Nothing outside `deck-icon.tsx` imports `@hugeicons/react` except the gallery's
     layout mocks, and the test fails when a cut-over directory imports Phosphor. Which glyph
     means what follows the layout mock for that surface; an action the mock does not draw
     takes the nearest Hugeicons glyph.
-  - **Phosphor** (`@phosphor-icons/react`) is the source for every surface not yet cut over.
+  - **Phosphor** (`@phosphor-icons/react`) is the source for every surface not yet cut over,
+    under a ratchet (RCP-26): no new import lands anywhere under `src/`, each existing one is a
+    `phosphor` line of [`ui-composition-debt.txt`](../scripts/ui-composition-debt.txt) that only
+    falls, and a directory joins the test's cut-over set when its count reaches zero. A list
+    that carries either library (`ToolbarItem.icon`) draws through `ListIcon`.
     `DeckIcon` sets `color="currentColor"`, the weight, `aria-hidden`, `focusable="false"` and
     the `deck-icon` class, and adds a per-icon `deck-icon--<name>` modifier for tests.
   - Phosphor weight is `bold` (24/256, about 1.2px) for every icon and `fill` for icons with a
@@ -647,9 +652,8 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
   - The surface-scoped `filled` prop (Phosphor only) is a closed boolean, not a `weight` escape
     hatch. It is used by the rail's fallback project `Folder` in live and remembered headers
     ([`agent-rail.tsx`](../src/ui/agent-rail.tsx), DL-27.17), the three icon-only dock tabs
-    (`TreeView`, `Gauge`, `ClockCounterClockwise`) and the toolbar's `More` trigger
-    (`DotsThreeOutline`). `mirrored` (Phosphor only) flips a one-sided mark: the old dock's toggle
-    is `SidebarSimple` mirrored. The class is Deck's own `.deck-icon`, never a vendor name.
+    (`TreeView`, `Gauge`, `ClockCounterClockwise`). `mirrored` (Phosphor only) flips a one-sided
+    mark; the dock toggle now draws Hugeicons' own right-hand sidebar glyph instead. The class is Deck's own `.deck-icon`, never a vendor name.
   - Why: Phosphor's weight lives in path data, not an attribute, so `deck-icon.test.tsx`
     compares drawn output against the library's `bold` / `fill`, and `dock-tabs.test.tsx` pins
     the dock icons. A Hugeicons glyph has no name to derive a class from, so a test pins one by
@@ -664,9 +668,9 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
   (tab bar, titlebar), `ROW_ICON` 14 (config-row and popover actions), `BOARD_ICON` 15 (Open
   Board rows) and `RAIL_ICON` 16 (the `More` menu's rows, DL-23.9). `FEATURE_ICON` is the same 15
   for entry-point controls: the dock header's tab chips and panel toggle, and the toolbar's `More`
-  trigger (DL-23.8). Their `.iconbtn` box stays 24px; the stage-strip panel toggle and the
-  external-app split-button's caret stay at `CHROME_ICON`. The control sets padding and geometry,
-  never the icon.
+  trigger (DL-23.8). The glyph follows its box (RCP-4): `.iconbtn` is the 28 icon box with a 16
+  glyph, a 24 box holds 14 and a 20 box 12, so the external-app split's caret half carries 12.
+  The control sets padding and geometry, never the icon.
 - **DL-14.3** CSS does not set `width`, `height`, `fill`, `stroke` or `stroke-width` on an icon:
   those declarations beat SVG attributes and silently disable DL-14.1, and a stray `fill` erases
   the icon. Colour is `color`, reaching the icon through `currentColor`. Inside the preset
@@ -903,10 +907,12 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
   [`platform.ts`](../src/lib/platform.ts)). A 1px `--hair-strong` bottom border separates
   the row from navigation. Below it the Electron rail mounts the create row (DL-27.14); Tauri's
   `RepositoryRail` keeps a pinned `New Workspace` launcher.
-- **DL-18.10** A strip chip is a document or the browser, and both look identical: the same
-  height, `--radius-tab`, `--type-meta` label, `max-width` (full name in `title`), close
-  control and DL-21.1 wash when selected. A fixed 15px glyph slot holds one mark that says
-  what the chip opened: the tree's file-type icon for a document
+- **DL-18.10** A strip chip is a document or the browser, and both look identical: 28 high
+  (`--control-h-28`), padded 8, `--radius-tab`, a 14px label, a 240 `max-width` (full name in
+  `title`), the 20 close box and the DL-21.1 wash when selected (RCP-20). It never narrows past
+  its parts plus a 40 title (`--tab-title-min`), so the title truncates first and never
+  disappears, and close shows on keyboard focus as on hover. A fixed 14px glyph slot holds one
+  mark that says what the chip opened: the tree's file-type icon for a document
   ([`fileIcon`](../src/files/ui/file-icons.ts)), a globe for the browser. A chip says what
   is open and nothing else: no colour dot, no agent attention mark, no rename popover, and
   clicking the chip that holds the stage does nothing. The only dot is a document's unsaved
@@ -1599,9 +1605,15 @@ The launcher is the compact launch page plus the Open Board's agent cards, shari
   stays visible when the legacy shell pane bar is hidden; hover is neutral and keyboard focus
   explicit (`pane-agent-header.css`). On `.pane-slot.is-active` the bar takes
   the pane's `--bg` and a transparent bottom seam, so header and body read as one sheet inside
-  DL-18.12's focus edge; other panes keep `--chrome-2` (DL-3.3). The height is unchanged.
+  DL-18.12's focus edge; other panes keep `--chrome-2` (DL-3.3). The bar is 32
+  (`--row-32`), padded 8 at the start and 4 at the end.
   Why: the join needs xterm and `--bg` to read the same `theme.background`
   ([`theme-vars.ts`](../src/lib/theme-vars.ts)).
+  On the flush stage (RCP-20, [`31-shell-stage.css`](../src/styles/31-shell-stage.css)) the
+  header is the 32 bar on `--chrome-1`: the 14 logo, the name at 600, then the state as its mark
+  plus the DL-27.2 word (Needs you, Working, Failed, Finished, Ready, Ended) in status ink. In a
+  split the focused pane's header takes `--tab-active-bg`; a pane with no header keeps a 2px
+  line on its top edge. The resize handle paints `--ring` on hover, keyboard focus and drag.
 - **DL-32.8** The pane header draws no action buttons (owner, 2026-10-10): neither the Claude
   Effort picker nor Split horizontally, Split vertically, Focus expand and Close pane, which
   shipped on 2026-10-07 and were removed after the owner reviewed them. The pane operations

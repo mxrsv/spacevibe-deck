@@ -7,7 +7,25 @@ import { displayAgent, stateWord } from "../ui/agent-rail-card-model";
 import { paneSignal } from "../ui/agent-rail-model";
 import { AgentStateMark } from "../ui/blocks/agent-state-mark";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/controls/tooltip";
-import { railStatus } from "../ui/rail-view-model";
+import { railStatus, type RailStatus } from "../ui/rail-view-model";
+
+/** RCP-20: the DL-27.2 word a pane header prints beside its mark. */
+const STATUS_WORD: Readonly<Record<RailStatus, string>> = {
+  "needs-input": "Needs you",
+  working: "Working",
+  failed: "Failed",
+  unread: "Finished",
+  done: "Ready",
+  idle: "Ready",
+  ended: "Ended",
+};
+
+/** Which status ink the word reads in; the rest stay muted (RCP-10). */
+const STATUS_TONE: Readonly<Partial<Record<RailStatus, "need" | "fail">>> = {
+  "needs-input": "need",
+  unread: "need",
+  failed: "fail",
+};
 import { shellStageEnabled } from "../ui/shell-stage";
 import { PaneQuickAgents } from "./pane-quick-agents";
 import "./pane-agent-header.css";
@@ -80,6 +98,7 @@ function FlushIdentity({
   });
   const sentence = message.trim();
   const tip = sentence || state;
+  const status = railStatus({ state: signal.state, attention: pane.attention });
   return (
     <div class="pane-agent-header">
       <span class="pane-agent-header__identity">
@@ -92,8 +111,12 @@ function FlushIdentity({
         </TooltipContent>
       </Tooltip>
       {/* Always solid: beside the name a hollow ring (the inferred look) reads as the letter "O".
-          The tooltip and the rail still carry how sure Deck is. */}
-      <AgentStateMark status={railStatus({ state: signal.state, attention: pane.attention })} />
+          The tooltip and the rail still carry how sure Deck is. The word is for the eye; the
+          hidden line below says it to a screen reader with the sentence (RCP-20). */}
+      <span class="pane-agent-header__status" data-tone={STATUS_TONE[status]} aria-hidden="true">
+        <AgentStateMark status={status} />
+        {STATUS_WORD[status]}
+      </span>
       <span class="pane-agent-header__message pane-agent-header__message--hidden">
         {sentence ? `${state}. ${sentence}` : state}
       </span>

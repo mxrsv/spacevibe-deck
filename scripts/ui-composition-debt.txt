@@ -16,7 +16,6 @@
 #
 # Seeded on 2026-11-05 with the tree's counts, so both suites were green on day one.
 
-src/browser/browser-panel.tsx phosphor 1
 src/files/ui/changes-list.tsx phosphor 1
 src/files/ui/diff-column-header.tsx phosphor 1
 src/files/ui/file-icons.ts phosphor 1
@@ -83,12 +82,7 @@ src/ui/controls/tabs.tsx weight 1
 src/ui/controls/toggle-group.tsx arbitrary 1
 src/ui/controls/toggle.tsx weight 1
 src/ui/controls/tooltip.tsx arbitrary 1
-src/ui/dev-servers/dev-server-row.tsx phosphor 1
-src/ui/dev-servers/dev-servers-chip.tsx phosphor 1
-src/ui/dev-servers/dev-servers-panel.tsx phosphor 1
-src/ui/dev-servers/dev-servers-popover.tsx phosphor 1
 src/ui/dock/dock-tab-registry.ts phosphor 1
-src/ui/dock/dock-toggle.tsx phosphor 1
 src/ui/rail-create-row.tsx phosphor 1
 src/ui/repository-rail.tsx phosphor 1
 src/ui/sessions/session-row.tsx phosphor 1
@@ -106,13 +100,6 @@ src/ui/settings/sections/terminal-section.tsx phosphor 1
 src/ui/settings/settings-screen.tsx phosphor 1
 src/ui/settings/theme-gallery.tsx phosphor 1
 src/ui/sidebar-actions.tsx phosphor 1
-src/ui/sidebar-toggle.tsx phosphor 1
-src/ui/spaces/space-bar.tsx phosphor 1
-src/ui/tab-strip-menu.tsx phosphor 1
-src/ui/tab-strip.tsx phosphor 1
-src/ui/toolbar/deck-toolbar.tsx phosphor 1
-src/ui/toolbar/external-app-button.tsx phosphor 1
-src/ui/toolbar/feature-toolbar.tsx phosphor 1
 src/ui/usage-consent-modal.tsx phosphor 1
 src/ui/usage/usage-dock-tab.tsx phosphor 1
 src/ui/usage/usage-page.tsx phosphor 1
@@ -142,12 +129,6 @@ src/styles/03-repository-rail.css height 2
 src/styles/03-repository-rail.css spacing 3
 src/styles/03-repository-rail.css state-bg 2
 src/styles/03-repository-rail.css weight 2
-src/styles/05-tab-bar-toolbar.css height 7
-src/styles/05-tab-bar-toolbar.css spacing 2
-src/styles/05-tab-bar-toolbar.css state-bg 5
-src/styles/05-tab-bar-toolbar.css weight 1
-src/styles/06-stage-panes.css height 1
-src/styles/06-stage-panes.css state-bg 1
 src/styles/07-config-rows.css height 2
 src/styles/07-config-rows.css spacing 4
 src/styles/07-config-rows.css state-bg 1
@@ -185,13 +166,3 @@ src/styles/18-new-task-launcher.css spacing 6
 src/styles/18-new-task-launcher.css state-bg 10
 src/styles/18-new-task-launcher.css weight 20
 src/styles/23-attention-popover.css height 2
-src/styles/24-dev-servers.css height 1
-src/styles/24-dev-servers.css spacing 1
-src/styles/24-dev-servers.css state-bg 4
-src/styles/31-shell-stage.css height 1
-src/styles/31-shell-stage.css spacing 1
-src/styles/31-shell-stage.css state-bg 3
-src/styles/31-shell-stage.css weight 2
-src/terminal/pane-agent-header.css height 3
-src/terminal/pane-agent-header.css state-bg 1
-src/terminal/pane-agent-header.css weight 1

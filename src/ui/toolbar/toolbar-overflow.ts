@@ -11,12 +11,12 @@ import { TOOLBAR_GROUP_ORDER, type ToolbarGroup, type ToolbarItem } from "./tool
  * separators is checked here, not inferred from a screenshot.
  */
 
-/** `.iconbtn` — one icon control, geometry owned by `styles.css`. */
-export const TOOLBAR_CONTROL_WIDTH = 24;
+/** `.iconbtn` — one icon control, the 28 icon box (RCP-4), geometry owned by `styles.css`. */
+export const TOOLBAR_CONTROL_WIDTH = 28;
 /** `.ftoolbar` gap between any two adjacent units. */
 export const TOOLBAR_GAP = 3;
-/** `.tabbar__sep` — the 1px hairline plus its 5px margins. */
-export const TOOLBAR_SEPARATOR_WIDTH = 11;
+/** `.tabbar__sep` — the 4 of space that, with the toolbar's gaps, parts two groups by 8 (RCP-12). */
+export const TOOLBAR_SEPARATOR_WIDTH = 4;
 
 export interface ToolbarGroupView {
   readonly group: ToolbarGroup;

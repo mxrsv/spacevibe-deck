@@ -209,11 +209,14 @@
   overflow: hidden;
 }
 
+/* RCP-7: the browser toolbar is a 36 bar holding 28 controls. */
 .browser-panel__bar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 6px;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  height: var(--control-h-36);
+  padding: 0 var(--space-in-lg);
 }
 
 .browser-panel__form {
@@ -225,8 +228,8 @@
 .browser-panel__url {
   flex: 1;
   min-width: 0;
-  height: 28px;
-  padding: 0 8px;
+  height: var(--control-h-28);
+  padding: 0 var(--control-pad-28);
   border: 1px solid var(--control-frame);
   border-radius: var(--radius-control);
   background: var(--input-bg);
@@ -245,8 +248,8 @@
 }
 
 .browser-panel__url:focus {
-  border-color: var(--muted-foreground);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 var(--ring-w) var(--focus-ring);
 }
 
 .browser-panel__url::placeholder {
@@ -668,22 +671,22 @@
 /* xterm 6 replaced the native viewport scrollbar with DomScrollableElement
    (VS Code-style .scrollbar > .slider). ::-webkit-scrollbar rules never apply. */
 .pane__term .xterm-scrollable-element > .scrollbar.vertical {
-  width: 6px !important;
+  width: var(--scrollbar-w) !important;
 }
 
 .pane__term .xterm-scrollable-element > .scrollbar.vertical > .slider {
-  width: 6px !important;
+  width: var(--scrollbar-w) !important;
   left: 0 !important;
   border-radius: var(--radius-tight);
-  background: color-mix(in srgb, var(--fg) 25%, transparent) !important;
+  background: var(--scrollbar-thumb) !important;
 }
 
 .pane__term .xterm-scrollable-element > .scrollbar > .slider:hover {
-  background: color-mix(in srgb, var(--fg) 40%, transparent) !important;
+  background: var(--scrollbar-thumb-hover) !important;
 }
 
 .pane__term .xterm-scrollable-element > .scrollbar > .slider.active {
-  background: color-mix(in srgb, var(--fg) 50%, transparent) !important;
+  background: var(--scrollbar-thumb-hover) !important;
 }
 
 /* ── Status bar ──────────────────────────────────────────── */
@@ -715,7 +718,7 @@
 
 .status__vsep {
   width: 1px;
-  height: 13px;
+  height: var(--icon-14);
   background: var(--hair);
   flex-shrink: 0;
 }

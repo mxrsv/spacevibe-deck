@@ -188,6 +188,11 @@ function isGlyph(props: DeckIconProps): props is GlyphIconProps {
   return Array.isArray(props.icon);
 }
 
+/** True for a Hugeicons glyph, false for a Phosphor component: a list that carries either. */
+export function isDeckGlyph(icon: DeckGlyph | DeckIconComponent): icon is DeckGlyph {
+  return Array.isArray(icon);
+}
+
 function GlyphIcon({ icon, size = 16, class: className }: GlyphIconProps) {
   return (
     <HugeiconsIcon
@@ -223,4 +228,25 @@ function PhosphorIcon({
 
 export function DeckIcon(props: DeckIconProps) {
   return isGlyph(props) ? <GlyphIcon {...props} /> : <PhosphorIcon {...props} />;
+}
+
+/**
+ * An icon from a list that carries either library (`ToolbarItem.icon`): a Phosphor icon draws at
+ * `size`, a glyph at the step of the glyph ladder its box holds (RCP-4), 14 for a 14 and 16
+ * otherwise.
+ */
+export function ListIcon({
+  icon,
+  size,
+  filled,
+}: {
+  readonly icon: DeckGlyph | DeckIconComponent;
+  readonly size: DeckIconSize;
+  readonly filled?: boolean;
+}) {
+  return isDeckGlyph(icon) ? (
+    <GlyphIcon icon={icon} size={size === 14 ? GLYPH_ROW : GLYPH_FEATURE} />
+  ) : (
+    <PhosphorIcon icon={icon} size={size} filled={filled} />
+  );
 }

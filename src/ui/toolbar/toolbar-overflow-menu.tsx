@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
+import { ListIcon, RAIL_ICON } from "../controls/deck-icon";
 import { groupToolbarItems } from "./toolbar-overflow";
 import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar-item";
 
@@ -120,7 +120,7 @@ export function ToolbarOverflowMenu({ items, anchor, triggerEl, onClose }: Overf
                 {/* DL-23.9: `RAIL_ICON`, not the popover's usual `ROW_ICON` —
                     the row's label went one rung up the ladder and a 14px
                     glyph beside 14px text stops reading as the leading mark. */}
-                <DeckIcon icon={item.icon} size={RAIL_ICON} />
+                <ListIcon icon={item.icon} size={RAIL_ICON} />
                 <span class="toolbar-menu__label">{item.label}</span>
                 {reason === null ? (
                   item.shortcut !== null && <kbd class="toolbar-menu__kbd">{item.shortcut}</kbd>

@@ -27,6 +27,7 @@ vi.mock("../controls/deck-icon", () => ({
   RAIL_ICON: 16,
   FEATURE_ICON: 15,
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
+  ListIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
 import { SidebarActions, type SidebarActionsProps } from "../sidebar-actions";

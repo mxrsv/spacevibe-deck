@@ -67,9 +67,12 @@
   border-radius: 0;
 }
 
+/* RCP-20: the resize handle paints `--ring` on hover, keyboard focus and drag, never the
+   pressed black. */
 .stage--flush .split__divider:hover,
+.stage--flush .split__divider:focus-visible,
 .stage--flush .split__divider.is-dragging {
-  background: var(--primary);
+  background: var(--ring);
 }
 
 /* No card: no corner, and the edge is transparent rather than gone so the active pane's border
@@ -91,15 +94,15 @@
   border-color: transparent;
 }
 
-/* In a split a 2px bar on the top edge names the focused pane. `is-active` is set only while the
-   tab holds more than one pane (layout, R4), so a lone pane has nothing to tell apart and no bar.
-   The bar is `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
-.stage--flush .pane-slot.is-active::after {
+/* In a split the focused pane's header takes the selection wash (RCP-20, below). A pane with
+   no header names its focus by a 2px line on its top edge instead. `is-active` is set only while
+   the tab holds more than one pane (layout, R4), so a lone pane has nothing to tell apart. The
+   line is `::after`, which paints over `.pane` (a positioned `::before` would paint under it). */
+.stage--flush .pane-slot.is-active:not(:has(.pane--agent-header))::after {
   content: "";
   position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: var(--foreground);
+  inset: 0;
+  box-shadow: inset 0 var(--flash-w) 0 var(--text-primary);
   pointer-events: none;
 }
 
@@ -122,6 +125,7 @@
 .stage--flush .tabbar__tabs .tab,
 :root.shell-frame .tabbar .tabbar__tabs .tab {
   gap: 2px;
+  min-width: 0;
   padding: 0 4px;
 }
 
@@ -129,25 +133,29 @@
    Logo, name, state mark, latest sentence. The header keeps its surface in every state: the
    focused pane no longer drops its lid, because the bar above says focus. 32px; it parts from
    the terminal by its `--card` step, with no line under it (CMP-14). */
-.stage--flush .pane--agent-header > .pane__bar,
-.stage--flush .pane-slot.is-active .pane--agent-header > .pane__bar {
+.stage--flush .pane--agent-header > .pane__bar {
   box-sizing: border-box;
-  height: 32px;
-  padding: 0 12px;
-  background: var(--card);
+  height: var(--row-32);
+  padding: 0 var(--space-4) 0 var(--space-pad-row);
+  background: var(--chrome-1);
   border-bottom-color: transparent;
 }
 
+/* RCP-20: the focused pane of a split names itself by the selection wash on its header. */
+.stage--flush .pane-slot.is-active .pane--agent-header > .pane__bar {
+  background: var(--tab-active-bg);
+}
+
 .stage--flush .pane-agent-header__logo {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
 }
 
 .stage--flush .pane-agent-header__name {
   flex-shrink: 0;
-  color: var(--foreground);
+  color: var(--text-primary);
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* In a split only the focused pane's name is full ink. A lone pane has no `.has-multiple-panes`
@@ -162,6 +170,7 @@
   position: absolute;
   width: 1px;
   height: 1px;
+  /* ui-scale: the visually-hidden clip pattern, not a spacing choice */
   margin: -1px;
   padding: 0;
   overflow: hidden;
@@ -190,7 +199,7 @@
 }
 
 .stage--flush .space-bar__space {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* 600, not the strip's 500: the Windows weight ledger answers a selector by prefixing it with

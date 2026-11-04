@@ -1,4 +1,4 @@
-import { SquareSplitHorizontal } from "@phosphor-icons/react";
+import { SquareSplitHorizontalIcon } from "@hugeicons/core-free-icons";
 import { describe, expect, it } from "vitest";
 import type { ToolbarGroup, ToolbarItem } from "./toolbar-item";
 import {
@@ -20,7 +20,7 @@ function item(id: string, group: ToolbarGroup, overflowOrder: number | null): To
   return {
     id,
     label: id,
-    icon: SquareSplitHorizontal,
+    icon: SquareSplitHorizontalIcon,
     group,
     shortcut: null,
     state: { kind: "idle" },

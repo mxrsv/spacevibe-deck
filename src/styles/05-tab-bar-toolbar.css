@@ -44,12 +44,12 @@
 }
 
 .agent-view-switch .agent-view-switch__tab.is-active {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
 }
 
 .agent-view-switch .agent-view-switch__tab.is-active:focus-visible {
-  background: color-mix(in oklch, var(--background) 90%, var(--foreground));
+  background: var(--tab-active-focus-bg);
 }
 
 /* The frame's existing spacer keeps the view choices beside the actions. */
@@ -66,24 +66,28 @@
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 24px;
-  max-width: 210px;
+  gap: var(--space-icon-label);
+  height: var(--control-h-28);
+  max-width: 240px;
   box-sizing: border-box;
-  padding: 0 4px 0 6px;
+  padding: 0 var(--space-8);
   border-radius: var(--radius-tab);
   /* Not transparent (DL-21.7): every chip is a visible object at rest, and the
      three states are one ladder — 3% at rest, 6% on hover, `--tab-active-bg`
      when selected. */
   background: var(--tab-rest-bg);
   color: var(--text-muted);
-  font-size: var(--type-meta);
+  font-size: var(--type-body);
   cursor: pointer;
   user-select: none;
-  min-width: 0;
+  min-width: calc(
+    2 * var(--space-8) + var(--icon-14) + var(--space-icon-label) + var(--tab-title-min) +
+      var(--tab-close)
+  );
   transition:
     background var(--duration) var(--ease),
     color var(--duration) var(--ease);
+  --tab-close: 0px;
 }
 
 .tab:hover,
@@ -101,8 +105,19 @@
   background: var(--tab-active-bg);
 }
 
+/* RCP-20: the min width is the tab's parts plus a 40 title, so the title
+   truncates first and never disappears; close counts when it is there. */
+.tab:has(> .tab__close) {
+  --tab-close: calc(var(--icon-box-20) + var(--space-icon-label));
+}
+
+/* A pressed tab lays the pressed layer over its wash (RCP-9). */
+.tab:active {
+  background-image: linear-gradient(var(--state-pressed-bg), var(--state-pressed-bg));
+}
+
 .tab.is-active:focus-visible {
-  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+  background: var(--tab-active-focus-bg);
 }
 
 /* DL-18.6: every chip leads with ONE glyph slot, whatever it opened — an
@@ -111,8 +126,8 @@
    13px icon and a 7px dot both sit centred in it. */
 .tab__glyph {
   position: relative;
-  width: 15px;
-  height: 15px;
+  width: var(--icon-14);
+  height: var(--icon-14);
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -120,8 +135,8 @@
 }
 
 .tab__logo {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-14);
+  height: var(--icon-14);
   border-radius: var(--radius-tight);
   display: block;
   object-fit: contain;
@@ -171,9 +186,9 @@
 }
 
 .tab__close {
-  margin-left: 2px;
-  width: 20px;
-  height: 20px;
+  margin-left: auto;
+  width: var(--icon-box-20);
+  height: var(--icon-box-20);
   border: none;
   padding: 0;
   border-radius: var(--radius-tight);
@@ -191,7 +206,10 @@
     color var(--duration) var(--ease);
 }
 
+/* Close shows on keyboard focus as on hover (RCP-20, CMP-11). */
 .tab:hover .tab__close,
+.tab:focus-visible .tab__close,
+.tab:focus-within .tab__close,
 .tab.is-active .tab__close {
   opacity: 1;
 }
@@ -231,10 +249,8 @@
    2026-08-16 when the two chip segments became one row (DL-18.6); the toolbar
    still groups its buttons, so the rule stays. */
 .tabbar__sep {
-  width: 1px;
-  height: 16px;
-  background: var(--hair);
-  margin: 0 5px;
+  width: var(--space-4);
+  align-self: stretch;
 }
 
 /* ── Functional icons (DeckIcon → @phosphor-icons/react) ──────────────
@@ -264,8 +280,8 @@
 }
 
 .iconbtn {
-  width: 24px;
-  height: 24px;
+  width: var(--icon-box-28);
+  height: var(--icon-box-28);
   border: none;
   border-radius: var(--radius-control);
   background: transparent;
@@ -474,7 +490,7 @@
 }
 
 .toolbar-menu__row.is-active:focus-visible {
-  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+  background: var(--tab-active-focus-bg);
 }
 
 .toolbar-menu__row.is-unavailable,
@@ -511,17 +527,15 @@
    through DeckIcon — DL-14.3's "CSS never sizes an icon" governs the
    authored SVG set, which this is deliberately not part of. ── */
 .extapp {
-  gap: 0;
+  gap: var(--space-2);
   /* The frame's border must not make the pair taller than the 24px controls
      beside it — border-box, per the Known trap (no global box-sizing reset). */
   box-sizing: border-box;
-  height: 24px;
-  border: 1px solid var(--control-frame);
-  border-radius: var(--radius-control);
+  height: var(--icon-box-28);
 }
 
 .extapp .iconbtn {
-  height: 22px;
+  height: var(--icon-box-28);
   /* The UA gives a <button> ~6px of horizontal padding, which `.iconbtn`
      never resets — its 13px SVGs overflow the padded content box by a
      bezel-invisible 0.5px, but this control's 15px raster mark landed 6px
@@ -532,17 +546,16 @@
 }
 
 .extapp__open {
-  width: 24px;
+  width: var(--icon-box-28);
   border-top-left-radius: var(--radius-control);
   border-bottom-left-radius: var(--radius-control);
 }
 
 .extapp__caret {
-  width: 18px;
+  width: var(--icon-box-20);
   box-sizing: border-box;
   border-top-right-radius: var(--radius-control);
   border-bottom-right-radius: var(--radius-control);
-  border-left: 1px solid var(--control-frame);
 }
 
 /* 18px, above every DL-14.2 rung on purpose — those size authored GLYPHS,
@@ -551,8 +564,8 @@
    rungs it reads a step smaller than the 13px chrome icons beside it. Owner
    asked for the step up on 2026-08-20. */
 .extapp__icon {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   object-fit: contain;
 }
 
@@ -563,8 +576,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   border-radius: var(--radius-tight);
   background: var(--chrome-2);
   color: var(--text-muted);
@@ -574,8 +587,8 @@
 /* The picker menu reuses `.toolbar-menu`; only its leading mark differs. */
 .toolbar-menu__row .extapp__icon,
 .toolbar-menu__row .extapp__initial {
-  width: 16px;
-  height: 16px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
 }
 
@@ -597,37 +610,53 @@
 }
 
 .update-action {
-  height: 24px;
-  padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
-  border-radius: var(--radius-tab);
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
-  font: 500 var(--type-meta)/1 var(--ui-font);
+  height: var(--control-h-28);
+  padding: 0 var(--control-pad-28);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font: 600 var(--type-meta) / 1 var(--ui-font);
   white-space: nowrap;
   cursor: pointer;
   transition:
     background var(--duration) var(--ease),
     color var(--duration) var(--ease),
     border-color var(--duration) var(--ease);
+  max-width: var(--update-max-w);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .update-action:hover:not(:disabled),
 .update-action:focus-visible:not(:disabled) {
   outline: none;
-  background: color-mix(in srgb, var(--accent) 23%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+  background: var(--primary-hover);
+}
+
+/* Downloading or installing: a framed status, not pressable (RCP-20). */
+.update-action[aria-busy="true"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--seam-w) var(--control-frame);
+  color: var(--text-muted);
+}
+
+.update-action--failed:hover:not(:disabled),
+.update-action--failed:focus-visible:not(:disabled) {
+  background: var(--danger-bg-hover);
+}
+
+.update-action:disabled:not([aria-busy="true"]) {
+  opacity: var(--state-disabled-opacity);
 }
 
 .update-action:disabled {
-  opacity: 0.5;
   cursor: default;
 }
 
 .update-action--failed {
-  border-color: color-mix(in srgb, var(--red) 42%, transparent);
-  background: color-mix(in srgb, var(--red) 13%, transparent);
-  color: var(--red);
+  background: var(--danger-bg);
+  color: var(--ink-fail);
 }
 
 .update-action__compact {
@@ -639,6 +668,7 @@
   width: 1px;
   height: 1px;
   padding: 0;
+  /* ui-scale: the visually-hidden clip pattern, not a spacing choice */
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);

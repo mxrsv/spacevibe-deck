@@ -1,4 +1,4 @@
-import { SidebarSimple } from "@phosphor-icons/react";
+import { SidebarRightIcon } from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import {
@@ -6,25 +6,25 @@ import {
   useTooltipVisibility,
   tooltipTriggerProps,
 } from "../controls/action-tooltip";
-import { CHROME_ICON, DeckIcon, type DeckIconSize } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE, type DeckGlyphSize } from "../controls/deck-icon";
 
 interface DockToggleProps {
   readonly open: boolean;
   /**
-   * `CHROME_ICON` unless a mount says otherwise. Explicit rather than derived
+   * `GLYPH_FEATURE` (16 in the 28 box) unless a mount says otherwise. Explicit rather than derived
    * from `open`, which happens to correlate: the dock header draws the larger
    * glyph because it is a cluster of feature entry points (DL-14.2), not
    * because the column is open, and keying geometry off state would make the
    * next mount's size an accident.
    */
-  readonly size?: DeckIconSize;
+  readonly size?: DeckGlyphSize;
   onToggle(): void;
 }
 
 /**
  * The docked side panel's own hide control — the mirror of `SidebarToggle`
  * (`src/ui/sidebar-toggle.tsx`), same `iconbtn` class, same `aria-pressed`-only
- * shape (no painted state, DL-21.8), drawing the same `SidebarSimple` mirrored since this
+ * shape (no painted state, DL-21.8), drawing the right-hand sidebar glyph since this
  * one hides a column on the opposite edge — Phosphor draws the mark facing
  * left only, so the flip is a prop rather than a second icon
  * (2026-08-16). It has two mounts, exactly as `SidebarToggle` does
@@ -44,7 +44,7 @@ interface DockToggleProps {
  * from settings. `shortcutLabel` reads the keymap during render, which is how
  * a rebind reaches the tooltip.
  */
-export function DockToggle({ open, size = CHROME_ICON, onToggle }: DockToggleProps) {
+export function DockToggle({ open, size = GLYPH_FEATURE, onToggle }: DockToggleProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const tooltip = useTooltipVisibility();
   const label = open ? "Hide the side panel" : "Show the side panel";
@@ -62,7 +62,7 @@ export function DockToggle({ open, size = CHROME_ICON, onToggle }: DockTogglePro
         {...tooltipTriggerProps(tooltip, ref)}
         onClick={onToggle}
       >
-        <DeckIcon icon={SidebarSimple} size={size} mirrored />
+        <DeckIcon icon={SidebarRightIcon} size={size} />
       </button>
       {tooltip.anchor !== null && (
         <ActionTooltip

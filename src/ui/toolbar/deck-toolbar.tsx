@@ -1,12 +1,12 @@
 import {
-  ArrowsOut,
-  ChatText,
-  Gear,
-  Globe,
-  SquareSplitHorizontal,
-  SquareSplitVertical,
-  XSquare,
-} from "@phosphor-icons/react";
+  ArrowExpand01Icon,
+  CancelSquareIcon,
+  GlobeIcon,
+  Message01Icon,
+  Settings02Icon,
+  SquareSplitHorizontalIcon,
+  SquareSplitVerticalIcon,
+} from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import { FeatureToolbar } from "./feature-toolbar";
@@ -119,7 +119,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "split-row",
       label: toolbarLabel("split-row"),
-      icon: SquareSplitHorizontal,
+      icon: SquareSplitHorizontalIcon,
       group: "pane",
       shortcut: shortcutLabel("split-row"),
       state: IDLE,
@@ -129,7 +129,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "split-column",
       label: toolbarLabel("split-column"),
-      icon: SquareSplitVertical,
+      icon: SquareSplitVerticalIcon,
       group: "pane",
       shortcut: shortcutLabel("split-column"),
       state: IDLE,
@@ -139,7 +139,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-expand",
       label: toolbarLabel("toggle-expand"),
-      icon: ArrowsOut,
+      icon: ArrowExpand01Icon,
       group: "pane",
       shortcut: shortcutLabel("toggle-expand"),
       state: props.expandActive ? ACTIVE : IDLE,
@@ -150,7 +150,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "close-pane",
       label: toolbarLabel("close-pane"),
-      icon: XSquare,
+      icon: CancelSquareIcon,
       group: "pane",
       shortcut: shortcutLabel("close-pane"),
       state: IDLE,
@@ -168,7 +168,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-browser",
       label: toolbarLabel("toggle-browser"),
-      icon: Globe,
+      icon: GlobeIcon,
       group: "global",
       shortcut: shortcutLabel("toggle-browser"),
       state: props.browserActive ? ACTIVE : IDLE,
@@ -179,7 +179,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-prompts",
       label: toolbarLabel("toggle-prompts"),
-      icon: ChatText,
+      icon: Message01Icon,
       group: "global",
       shortcut: shortcutLabel("toggle-prompts"),
       state:
@@ -196,7 +196,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-settings",
       label: toolbarLabel("toggle-settings"),
-      icon: Gear,
+      icon: Settings02Icon,
       group: "global",
       shortcut: shortcutLabel("toggle-settings"),
       state: props.settingsOpen ? ACTIVE : IDLE,

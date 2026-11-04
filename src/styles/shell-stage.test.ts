@@ -65,9 +65,18 @@ describe("the flush stage stylesheet", () => {
     expect(value(".stage--flush .tabbar__tabs .tab__label", "display")).toBe("none");
   });
 
-  it("draws no ring on a focused pane, only the bar in a split", () => {
+  it("draws no ring on a focused pane: in a split its header takes the wash (RCP-20)", () => {
     expect(value(".stage--flush .pane-slot.is-active > .pane", "border-color")).toBe("transparent");
-    expect(value(".stage--flush .pane-slot.is-active::after", "height")).toBe("2px");
+    expect(
+      value(".stage--flush .pane-slot.is-active .pane--agent-header > .pane__bar", "background"),
+    ).toBe("var(--tab-active-bg)");
+    // A pane with no header keeps a 2px line on its top edge, drawn as a line, not a fill.
+    expect(
+      value(
+        ".stage--flush .pane-slot.is-active:not(:has(.pane--agent-header))::after",
+        "box-shadow",
+      ),
+    ).toBe("inset 0 var(--flash-w) 0 var(--text-primary)");
     const selectors = rules.flatMap((rule) => rule.selectors);
     expect(selectors.filter((selector) => selector.includes(":focus-within"))).toEqual([]);
   });
@@ -82,6 +91,10 @@ describe("the flush stage stylesheet", () => {
     expect(value(":root.shell-frame .tabbar .space-bar__name", "font-size")).toBe("var(--text-xs)");
     expect(value(":root.shell-frame .tabbar .space-bar__space", "font-weight")).toBe("600");
     expect(value(":root.shell-frame .tabbar .tabbar__tabs .tab__label", "display")).toBe("none");
+  });
+
+  it("paints the resize handle in --ring on hover, focus and drag (RCP-20)", () => {
+    expect(value(".stage--flush .split__divider:focus-visible", "background")).toBe("var(--ring)");
   });
 
   it("lights the seam, not a gutter, when the grip is hovered", () => {

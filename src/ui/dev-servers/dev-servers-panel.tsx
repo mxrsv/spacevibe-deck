@@ -1,8 +1,8 @@
-import { FolderSimple, GitBranch } from "@phosphor-icons/react";
+import { Folder01Icon, GitBranchIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { DevServerSnapshot } from "../../dev-servers/dev-server-types";
 import type { RepositoryScan } from "../../repositories/repository-client";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../controls/deck-icon";
 import { LoadError } from "../controls/load-error";
 import {
   runDevServerAction,
@@ -133,11 +133,11 @@ export function DevServersPanel(props: DevServersPanelProps) {
     <div class="dsv">
       <div class="dsv-head">
         <div class="dsv-scope">
-          <DeckIcon icon={FolderSimple} size={ROW_ICON} class="dsv-scope__ico" />
+          <DeckIcon icon={Folder01Icon} size={GLYPH_ROW} class="dsv-scope__ico" />
           <span class="dsv-scope__name">{subject.name}</span>
           {subject.branch !== null && (
             <span class="dsv-scope__branch">
-              <DeckIcon icon={GitBranch} size={ROW_ICON} />
+              <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} />
               {subject.branch}
             </span>
           )}

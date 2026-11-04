@@ -13,9 +13,15 @@
  * focal stage, spec §4.2's cover-don't-unmount rule) and reuses the same
  * `iconbtn` the tab bar uses so the surface's buttons are the app's buttons.
  */
-import { ArrowClockwise, ArrowLeft, ArrowRight, CursorClick, X } from "@phosphor-icons/react";
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Cancel01Icon,
+  CursorPointer01Icon,
+  ReloadIcon,
+} from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE } from "../ui/controls/deck-icon";
 import { shortcutLabel } from "../lib/shortcut-label";
 import { getDesktopEnvironment } from "../lib/platform";
 import { defaultBrowserClient, type BrowserClient } from "./browser-client";
@@ -137,7 +143,7 @@ export function BrowserPanel({
           aria-label="Go back"
           onClick={() => fire(client.back())}
         >
-          <DeckIcon icon={ArrowLeft} size={CHROME_ICON} />
+          <DeckIcon icon={ArrowLeft01Icon} size={GLYPH_FEATURE} />
         </button>
         <button
           type="button"
@@ -147,7 +153,7 @@ export function BrowserPanel({
           aria-label="Go forward"
           onClick={() => fire(client.forward())}
         >
-          <DeckIcon icon={ArrowRight} size={CHROME_ICON} />
+          <DeckIcon icon={ArrowRight01Icon} size={GLYPH_FEATURE} />
         </button>
         <button
           type="button"
@@ -156,7 +162,7 @@ export function BrowserPanel({
           aria-label="Reload the page"
           onClick={() => fire(client.reload())}
         >
-          <DeckIcon icon={ArrowClockwise} size={CHROME_ICON} />
+          <DeckIcon icon={ReloadIcon} size={GLYPH_FEATURE} />
         </button>
         <form class="browser-panel__form" onSubmit={submitUrl}>
           <input
@@ -189,7 +195,7 @@ export function BrowserPanel({
           aria-pressed={state.inspect}
           onClick={() => fire(client.setInspect(!state.inspect))}
         >
-          <DeckIcon icon={CursorClick} size={CHROME_ICON} />
+          <DeckIcon icon={CursorPointer01Icon} size={GLYPH_FEATURE} />
         </button>
         <button
           type="button"
@@ -198,7 +204,7 @@ export function BrowserPanel({
           aria-label="Close the browser tab"
           onClick={onClose}
         >
-          <DeckIcon icon={X} size={CHROME_ICON} />
+          <DeckIcon icon={Cancel01Icon} size={GLYPH_FEATURE} />
         </button>
       </div>
       {state.error !== null ? (

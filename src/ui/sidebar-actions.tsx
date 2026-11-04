@@ -16,7 +16,7 @@ import {
   tooltipTriggerProps,
   useTooltipVisibility,
 } from "./controls/action-tooltip";
-import { DeckIcon, RAIL_ICON, type DeckIconComponent } from "./controls/deck-icon";
+import { DeckIcon, ListIcon, RAIL_ICON, type DeckIconComponent } from "./controls/deck-icon";
 import { RailToolsMenu } from "./rail-tools-menu";
 import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar/toolbar-item";
 import { toolbarLabel } from "./toolbar/toolbar-label";
@@ -146,7 +146,7 @@ function ToolButton({ item, tooltipSuppressed }: ToolButtonProps) {
           item.onActivate();
         }}
       >
-        <DeckIcon icon={item.icon} size={RAIL_ICON} />
+        <ListIcon icon={item.icon} size={RAIL_ICON} />
       </button>
       {showTooltip && tooltip.anchor !== null && (
         <ActionTooltip

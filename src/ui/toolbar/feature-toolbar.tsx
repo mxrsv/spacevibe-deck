@@ -1,4 +1,4 @@
-import { DotsThreeOutline } from "@phosphor-icons/react";
+import { MoreHorizontalIcon } from "@hugeicons/core-free-icons";
 import { Fragment, type ComponentChildren, type RefObject } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
@@ -6,7 +6,7 @@ import {
   useTooltipVisibility,
   tooltipTriggerProps,
 } from "../controls/action-tooltip";
-import { CHROME_ICON, DeckIcon, FEATURE_ICON, type DeckIconSize } from "../controls/deck-icon";
+import { CHROME_ICON, FEATURE_ICON, ListIcon, type DeckIconSize } from "../controls/deck-icon";
 import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar-item";
 import { TOOLBAR_GAP, fitToolbarItems } from "./toolbar-overflow";
 import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
@@ -98,7 +98,7 @@ function ToolbarControl({
           item.onActivate();
         }}
       >
-        <DeckIcon icon={item.icon} size={iconSize} filled={iconFilled} />
+        <ListIcon icon={item.icon} size={iconSize} filled={iconFilled} />
       </button>
       {showTooltip && tooltip.anchor !== null && (
         <ActionTooltip
@@ -231,7 +231,7 @@ export function FeatureToolbar({
   const moreItem: ToolbarItem = {
     id: "toolbar-more",
     label: "More actions",
-    icon: DotsThreeOutline,
+    icon: MoreHorizontalIcon,
     group: "global",
     shortcut: null,
     state: menu !== null ? { kind: "active" } : { kind: "idle" },
