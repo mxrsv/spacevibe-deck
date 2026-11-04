@@ -14,8 +14,8 @@ intent interview and four rounds of questions.
 Nothing is built.
 Depends on: the [agent orchestration](2026-11-03-agent-orchestration.md) spec shipping, because
 the phone reuses the main → renderer operations behind `deck pane open|send|read|wait`.
-Execution: implementation plan not written yet (it will be `docs/plans/2026-11-04-mobile-companion.md`,
-gitignored, primary checkout only).
+Execution: [implementation plan](../plans/2026-11-05-mobile-companion.md) (gitignored, primary
+checkout only; draft awaiting the owner's approval).
 Baseline: local `main` `c4ebaf7c`, 59 commits ahead of `origin/main`.
 Hosts: the desktop side runs on macOS and Windows. The phone side is iOS only in this scope.
 
