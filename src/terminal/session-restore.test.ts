@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  lookupRememberedRef,
   readLastSession,
   restoreSession,
   resumeWorkspace,
@@ -885,5 +886,34 @@ describe("readLastSession", () => {
     expect((await readLastSession(deps)).size).toBe(0);
     expect(mocks.clear).toHaveBeenCalledTimes(1);
     expect(mocks.readWindowRecords).not.toHaveBeenCalled();
+  });
+});
+
+describe("lookupRememberedRef", () => {
+  const row = { agent: "claude", cwd: "/w", savedAt: 9, sessionId: null };
+
+  it("sends one request shaped like the batch's and answers its ref", async () => {
+    const lookup = vi.fn(async (): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc" }]);
+    await expect(lookupRememberedRef(lookup, row)).resolves.toEqual({ kind: "id", id: "abc" });
+    expect(lookup).toHaveBeenCalledWith([{ agent: "claude", cwd: "/w", lastSeenAt: 9 }]);
+  });
+
+  it("pins the conversation the registry confirmed", async () => {
+    const lookup = vi.fn(async (): Promise<readonly ResumeRef[]> => [null]);
+    await lookupRememberedRef(lookup, { ...row, sessionId: "s1" });
+    expect(lookup).toHaveBeenCalledWith([
+      { agent: "claude", cwd: "/w", lastSeenAt: 9, preferredId: "s1" },
+    ]);
+  });
+
+  it("does not ask about an agent the resolver does not know", async () => {
+    const lookup = vi.fn(async (): Promise<readonly ResumeRef[]> => [{ kind: "latest" }]);
+    await expect(lookupRememberedRef(lookup, { ...row, agent: "My Agent" })).resolves.toBeNull();
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("reads an empty answer as no resolution", async () => {
+    const lookup = vi.fn(async (): Promise<readonly ResumeRef[]> => []);
+    await expect(lookupRememberedRef(lookup, row)).resolves.toBeNull();
   });
 });

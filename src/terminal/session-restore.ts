@@ -166,6 +166,22 @@ function paneKey(tabIndex: number, paneIndex: number): string {
   return `${tabIndex}:${paneIndex}`;
 }
 
+/** The lookup request for one pane, or null when the pane is not asked about
+ *  (plain shell, dead cwd, custom agent: those have nothing to resolve). */
+function requestFor(pane: LivePane, lastSeenAt: number): ResumeRequest | null {
+  if (pane.agent === null || pane.skipLookup || !BUILTIN_AGENT_IDS.has(pane.agent)) {
+    return null;
+  }
+  return {
+    agent: pane.agent,
+    cwd: pane.cwd,
+    lastSeenAt,
+    // The conversation the registry confirmed this pane was in (stage 1):
+    // main reopens it when it is still on disk and ranks only when not.
+    ...(pane.sessionId === null ? {} : { preferredId: pane.sessionId }),
+  };
+}
+
 function buildResumeRequests(tabs: readonly LiveTab[]): {
   readonly requests: readonly ResumeRequest[];
   readonly keys: readonly string[];
@@ -174,20 +190,46 @@ function buildResumeRequests(tabs: readonly LiveTab[]): {
   const keys: string[] = [];
   tabs.forEach((tab, tabIndex) => {
     tab.panes.forEach((pane, paneIndex) => {
-      if (pane.agent !== null && !pane.skipLookup && BUILTIN_AGENT_IDS.has(pane.agent)) {
-        requests.push({
-          agent: pane.agent,
-          cwd: pane.cwd,
-          lastSeenAt: tab.lastSeenAt,
-          // The conversation the registry confirmed this pane was in (stage 1):
-          // main reopens it when it is still on disk and ranks only when not.
-          ...(pane.sessionId === null ? {} : { preferredId: pane.sessionId }),
-        });
+      const request = requestFor(pane, tab.lastSeenAt);
+      if (request !== null) {
+        requests.push(request);
         keys.push(paneKey(tabIndex, paneIndex));
       }
     });
   });
   return { requests, keys };
+}
+
+/**
+ * The rail's remembered row: the same `resume_lookup` the restore sends, with
+ * one request. Null when the agent is not asked about (a custom agent) or the
+ * resolver found nothing. The caller has already checked the cwd is alive.
+ */
+export async function lookupRememberedRef(
+  lookup: RestoreDeps["lookup"],
+  pane: {
+    readonly agent: string;
+    readonly cwd: string;
+    readonly savedAt: number;
+    readonly sessionId: string | null;
+  },
+): Promise<ResumeRef> {
+  const request = requestFor(
+    {
+      cwd: pane.cwd,
+      agent: pane.agent,
+      skipLookup: false,
+      launchCommand: null,
+      taskPrompt: null,
+      sessionId: pane.sessionId,
+    },
+    pane.savedAt,
+  );
+  if (request === null) {
+    return null;
+  }
+  const [ref] = await lookup([request]);
+  return ref ?? null;
 }
 
 /** One batched `resume_lookup` for every surviving built-in-agent pane. */

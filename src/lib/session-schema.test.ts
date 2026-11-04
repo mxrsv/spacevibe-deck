@@ -5,6 +5,11 @@ import {
   validateArchive,
   validateWindowRecord,
   MAX_ARCHIVE_WORKSPACES,
+  MAX_REMEMBERED_PER_WORKSPACE,
+  normalizeRememberedPanes,
+  rememberedPaneId,
+  validateRememberedPanes,
+  type RememberedPane,
   MAX_TASK_PROMPT_BYTES,
   TASK_PROMPT_CUT_MARK,
 } from "./session-schema";
@@ -278,5 +283,90 @@ describe("SessionPane.sessionId (agent-signal contract layer, stage 1)", () => {
     expect(unsafe?.agent).toBe("claude");
     expect(paneOf(null)?.sessionId).toBeUndefined();
     expect(paneOf(undefined)).not.toHaveProperty("sessionId");
+  });
+});
+
+describe("validateRememberedPanes", () => {
+  const PANE_ROW: RememberedPane = {
+    id: rememberedPaneId("claude", "/w/a"),
+    workspacePath: "/w",
+    cwd: "/w/a",
+    agent: "claude",
+    launchCommand: "claude --model opus",
+    title: "Fix rail",
+    branch: "main",
+    sessionId: "abc-123",
+    savedAt: 100,
+  };
+
+  it("accepts a well-formed entry unchanged", () => {
+    expect(validateRememberedPanes([PANE_ROW])).toEqual([PANE_ROW]);
+  });
+
+  it("reads anything that is not an array as empty", () => {
+    expect(validateRememberedPanes(undefined)).toEqual([]);
+    expect(validateRememberedPanes({ [PANE_ROW.id]: PANE_ROW })).toEqual([]);
+    expect(validateRememberedPanes("x")).toEqual([]);
+  });
+
+  it("drops entries missing a required field, one by one", () => {
+    const { cwd: _cwd, ...noCwd } = PANE_ROW;
+    const raw = [
+      noCwd,
+      { ...PANE_ROW, id: "" },
+      { ...PANE_ROW, agent: 3 },
+      { ...PANE_ROW, savedAt: Number.NaN },
+      null,
+      "x",
+      { ...PANE_ROW, id: "kept", agent: "codex" },
+    ];
+    expect(validateRememberedPanes(raw).map((pane) => pane.id)).toEqual(["kept"]);
+  });
+
+  it("keeps the row but nulls optional fields that fail their check", () => {
+    const [pane] = validateRememberedPanes([
+      {
+        ...PANE_ROW,
+        launchCommand: "claude; rm -rf /",
+        sessionId: "a b",
+        title: "",
+        branch: 4,
+      },
+    ]);
+    expect(pane).toMatchObject({
+      launchCommand: null,
+      sessionId: null,
+      title: null,
+      branch: null,
+    });
+  });
+
+  it("keeps only the newest per agent + cwd", () => {
+    const older = { ...PANE_ROW, savedAt: 1, title: "old" };
+    const newer = { ...PANE_ROW, id: "other-id", savedAt: 2, title: "new" };
+    const result = validateRememberedPanes([older, newer]);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toBe("new");
+  });
+
+  it("caps each workspace at the newest MAX_REMEMBERED_PER_WORKSPACE, leaving others alone", () => {
+    const crowd = Array.from({ length: MAX_REMEMBERED_PER_WORKSPACE + 6 }, (_, index) => ({
+      ...PANE_ROW,
+      id: `p${index}`,
+      cwd: `/w/${index}`,
+      savedAt: index,
+    }));
+    const lone = { ...PANE_ROW, id: "lone", workspacePath: "/other", cwd: "/other", savedAt: 0 };
+    const result = validateRememberedPanes([...crowd, lone]);
+    const inW = result.filter((pane) => pane.workspacePath === "/w");
+    expect(inW).toHaveLength(MAX_REMEMBERED_PER_WORKSPACE);
+    expect(Math.min(...inW.map((pane) => pane.savedAt))).toBe(6);
+    expect(result.some((pane) => pane.id === "lone")).toBe(true);
+  });
+
+  it("on a savedAt tie keeps the entry that came first", () => {
+    const first = { ...PANE_ROW, title: "first" };
+    const second = { ...PANE_ROW, title: "second" };
+    expect(normalizeRememberedPanes([first, second])[0]?.title).toBe("first");
   });
 });

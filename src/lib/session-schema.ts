@@ -7,6 +7,8 @@ export const SESSION_VERSION = 1;
 // Sanity bounds so a corrupt file cannot flood the rail or a boot restore.
 export const MAX_ARCHIVE_WORKSPACES = 24;
 export const MAX_JOURNAL_TABS = 32;
+/** The rail's remembered rows kept per workspace; the newest survive. */
+export const MAX_REMEMBERED_PER_WORKSPACE = 24;
 /** Spec §11.2's 4 KiB cap on a persisted task prompt. */
 export const MAX_TASK_PROMPT_BYTES = 4096;
 /** Appended to a prompt cut at the cap, so a card never claims the whole text. */
@@ -296,4 +298,107 @@ export function pushArchiveEntry(
   const oldestFirst = Object.entries(next).sort(([, a], [, b]) => a.savedAt - b.savedAt);
   const drop = new Set(oldestFirst.slice(0, overflow).map(([key]) => key));
   return Object.fromEntries(Object.entries(next).filter(([key]) => !drop.has(key)));
+}
+
+/**
+ * One agent pane of a past session, kept until it is resumed or forgotten;
+ * key `remembered` in session.json (a flat array, newest first). A pane, not a
+ * tab: the per-workspace `archive` is rewritten for every workspace with a live
+ * tab, so it cannot hold a row the user has not touched yet.
+ */
+export interface RememberedPane {
+  /** Stable for one agent + cwd, so merging the same pane twice is a no-op. */
+  readonly id: string;
+  readonly workspacePath: string;
+  readonly cwd: string;
+  readonly agent: string;
+  /** The pane's own recorded command, for the fresh-start fallback. */
+  readonly launchCommand: string | null;
+  readonly title: string | null;
+  readonly branch: string | null;
+  /** The registry-confirmed conversation, so a resume pins it like Reopen does. */
+  readonly sessionId: string | null;
+  readonly savedAt: number;
+}
+
+/** What makes two remembered panes the same row. */
+export function rememberedPaneId(agent: string, cwd: string): string {
+  return `${agent}:${cwd}`;
+}
+
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value !== "";
+}
+
+function validateRememberedPane(raw: unknown): RememberedPane | null {
+  if (typeof raw !== "object" || raw === null) {
+    return null;
+  }
+  const source = raw as Record<string, unknown>;
+  if (
+    !nonEmptyString(source.id) ||
+    !nonEmptyString(source.workspacePath) ||
+    !nonEmptyString(source.cwd) ||
+    !nonEmptyString(source.agent) ||
+    typeof source.savedAt !== "number" ||
+    !Number.isFinite(source.savedAt)
+  ) {
+    return null;
+  }
+  return {
+    id: source.id,
+    workspacePath: source.workspacePath,
+    cwd: source.cwd,
+    agent: source.agent,
+    // Same drop-not-repair rule as a journaled pane: a command nobody vetted
+    // is never typed into a shell, but the row is still worth showing.
+    launchCommand: isLaunchCommand(source.launchCommand) ? source.launchCommand : null,
+    title: nonEmptyString(source.title) ? source.title : null,
+    branch: nonEmptyString(source.branch) ? source.branch : null,
+    sessionId:
+      typeof source.sessionId === "string" && SESSION_ID_SAFE.test(source.sessionId)
+        ? source.sessionId
+        : null,
+    savedAt: source.savedAt,
+  };
+}
+
+/**
+ * Newest first, one row per agent + cwd and per id (a tie keeps the entry
+ * that came first, so merging a record twice changes nothing), at most
+ * `MAX_REMEMBERED_PER_WORKSPACE` per workspace. Every write and read goes
+ * through here, so the stored array is always in this shape.
+ */
+export function normalizeRememberedPanes(
+  panes: readonly RememberedPane[],
+): readonly RememberedPane[] {
+  const newestFirst = [...panes].sort((a, b) => b.savedAt - a.savedAt);
+  const seen = new Set<string>();
+  const perWorkspace = new Map<string, number>();
+  const kept: RememberedPane[] = [];
+  for (const pane of newestFirst) {
+    const sameRow = rememberedPaneId(pane.agent, pane.cwd);
+    if (seen.has(sameRow) || seen.has(pane.id)) {
+      continue;
+    }
+    const count = perWorkspace.get(pane.workspacePath) ?? 0;
+    if (count >= MAX_REMEMBERED_PER_WORKSPACE) {
+      continue;
+    }
+    seen.add(sameRow);
+    seen.add(pane.id);
+    perWorkspace.set(pane.workspacePath, count + 1);
+    kept.push(pane);
+  }
+  return kept;
+}
+
+/** Not an array → empty; invalid entries are dropped one by one. */
+export function validateRememberedPanes(raw: unknown): readonly RememberedPane[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return normalizeRememberedPanes(
+    raw.map(validateRememberedPane).filter((pane): pane is RememberedPane => pane !== null),
+  );
 }
