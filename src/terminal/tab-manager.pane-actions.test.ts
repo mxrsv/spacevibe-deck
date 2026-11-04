@@ -313,6 +313,64 @@ describe("injectIntoPane", () => {
     expect(outcomeBeforeFirstCompletes).toBe("busy");
     manager.dispose();
   });
+
+  describe("bound to an agent process (diff comments)", () => {
+    const BOUND = {
+      autoSend: true,
+      expectedAgent: "claude",
+      expectedProcessId: 1000,
+      submitDelayMs: 40,
+    } as const;
+    const REPLACED = [processInfo(1, "/repo", "claude", "agent", "claude")].map((info) => ({
+      ...info,
+      processId: 4242,
+    }));
+
+    it("pastes and submits after the delay when the same process is idle", async () => {
+      const { manager, pty } = await mountManagerWithAgentPane("claude");
+      const started = Date.now();
+      await expect(manager.injectIntoPane(1, "In a.ts:L1: x", BOUND)).resolves.toBe("sent");
+      expect(Date.now() - started).toBeGreaterThanOrEqual(35);
+      expect(pty.writes.map((write) => write.data)).toEqual(["In a.ts:L1: x", "\r"]);
+      manager.dispose();
+    });
+
+    it("writes nothing when the binding was lost before the paste", async () => {
+      const { manager, pty } = await mountManagerWithAgentPane("claude");
+      pty.ptyInfo = async () => REPLACED;
+      await expect(manager.injectIntoPane(1, "x", BOUND)).resolves.toBe("stale");
+      expect(pty.writes).toEqual([]);
+      manager.dispose();
+    });
+
+    it("pastes but does not submit when the process was replaced during the delay", async () => {
+      const { manager, pty } = await mountManagerWithAgentPane("claude");
+      const injection = manager.injectIntoPane(1, "x", BOUND);
+      await flush();
+      pty.ptyInfo = async () => REPLACED;
+      await expect(injection).resolves.toBe("pasted");
+      expect(pty.writes.map((write) => write.data)).toEqual(["x"]);
+      manager.dispose();
+    });
+
+    it("pastes but does not submit when a latch appears during the delay", async () => {
+      const { manager, pty, emitSignal } = await mountManagerWithAgentPane("claude");
+      const injection = manager.injectIntoPane(1, "x", BOUND);
+      await flush();
+      emitSignal(1, { kind: "requested", source: "osc-notification" });
+      await expect(injection).resolves.toBe("pasted");
+      expect(pty.writes.map((write) => write.data)).toEqual(["x"]);
+      manager.dispose();
+    });
+
+    it("pastes but does not submit while the agent is working", async () => {
+      const { manager, pty } = await mountManagerWithAgentPane("claude");
+      pty.emitOutput(1, "\x1b]9;4;3\x07"); // indeterminate progress → working
+      await expect(manager.injectIntoPane(1, "x", BOUND)).resolves.toBe("pasted");
+      expect(pty.writes.map((write) => write.data)).toEqual(["x"]);
+      manager.dispose();
+    });
+  });
 });
 
 describe("toggle-prompts", () => {

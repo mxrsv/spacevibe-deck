@@ -1,0 +1,169 @@
+/* Frame layout and drawings for the diff comment composer specimens. Prefixed
+   gx-dc so nothing here can be mistaken for shipping CSS (R7); only shipping
+   tokens, no new ones. */
+.gx-dc-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.gx-dc-frame {
+  margin: 0;
+  min-width: 0;
+}
+
+.gx-dc-label {
+  margin: 0 0 4px;
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+}
+
+.gx-dc-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 520px;
+  height: 330px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  border: 1px solid var(--hair);
+}
+
+.gx-dc-column-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: var(--frame-h);
+  box-sizing: border-box;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gx-dc-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gx-dc-code {
+  font-family: var(--board-font);
+  font-size: var(--type-meta);
+  line-height: 18px;
+}
+
+.gx-dc-line {
+  display: flex;
+  white-space: pre;
+}
+
+.gx-dc-num {
+  flex: none;
+  width: 36px;
+  padding-right: 10px;
+  text-align: right;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-dc-line[data-kind="add"] {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+
+.gx-dc-line[data-kind="del"] {
+  background: color-mix(in srgb, var(--red) 14%, transparent);
+}
+
+.gx-dc-line[data-selected] {
+  box-shadow: inset 2px 0 0 var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* The composer, shared: a raised surface on the hair seam. */
+.gx-dc-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 8px;
+  background: var(--seam-raised);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-tight);
+}
+
+.gx-dc-composer--inline {
+  margin: 4px 12px 4px 36px;
+}
+
+.gx-dc-composer--anchored {
+  position: absolute;
+  top: 110px;
+  right: 12px;
+  width: 270px;
+}
+
+.gx-dc-composer--footer {
+  flex-shrink: 0;
+  border-width: 1px 0 0;
+  border-radius: 0;
+}
+
+.gx-dc-head,
+.gx-dc-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--type-meta);
+}
+
+.gx-dc-where {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-dc-panes {
+  display: flex;
+  gap: 2px;
+}
+
+.gx-dc-pane {
+  padding: 1px 8px;
+  border-radius: var(--radius-tab);
+  color: var(--text-muted);
+}
+
+.gx-dc-pane[aria-checked="true"] {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.gx-dc-field {
+  min-height: 34px;
+  padding: 6px 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+}
+
+.gx-dc-hint {
+  color: var(--text-faint);
+}
+
+.gx-dc-notice {
+  color: var(--status-unread);
+}
+
+.gx-dc-send {
+  flex: none;
+  white-space: nowrap;
+  padding: 2px 10px;
+  border-radius: var(--radius-control);
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}

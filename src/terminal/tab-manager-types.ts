@@ -13,7 +13,7 @@ import type { ShortcutAction } from "./keymap";
 import type { TerminalManager, TerminalManagerDeps } from "./terminal-manager";
 import type { PaneAttentionSnapshot } from "./agent-attention";
 import type { AgentNotifier } from "./agent-notifier";
-import type { InjectOutcome } from "../prompts/inject";
+import type { InjectOptions, InjectOutcome } from "../prompts/inject";
 import type { MaterializeIntent, PaneLaunchReceipt } from "./tab-materialize";
 import type { LaunchTaskOutcome, LaunchTaskResult } from "./task-prompt-send";
 import type { Settings } from "../settings/settings-schema";
@@ -307,14 +307,11 @@ export interface TabManager {
   /**
    * Paste `text` into `paneId`, then submit only when the triple gate still
    * holds (spec §7). Never throws: a failed gate degrades to `"pasted"`, a
-   * failed paste to `"failed"`, an overlapping attempt to `"busy"`, and an
-   * unknown pane to `"no-target"`.
+   * failed paste to `"failed"`, an overlapping attempt to `"busy"`, an
+   * unknown pane to `"no-target"` and a pane that no longer runs
+   * `opts.expectedProcessId` to `"stale"` (nothing written).
    */
-  injectIntoPane(
-    paneId: number,
-    text: string,
-    opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
-  ): Promise<InjectOutcome>;
+  injectIntoPane(paneId: number, text: string, opts: InjectOptions): Promise<InjectOutcome>;
   /**
    * Materialize one single-pane tab and hand its agent the first prompt
    * exactly once (task launcher design §8). `prompt` null or blank opens the
