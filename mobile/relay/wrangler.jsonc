@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spacevibe-deck-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-30",
+  "workers_dev": false,
+  "preview_urls": false,
+  "logpush": false,
+  // Counts and codes only: the relay's own log lines carry no ids or content (src/log.ts), and
+  // invocation logs are off because a request URL contains the pairing id.
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": false
+    }
+  },
+  // The zone is the same as the analytics Worker's custom domain; this Worker takes only /relay/*.
+  "routes": [
+    {
+      "pattern": "api.deck.spacevibe.dev/relay/*",
+      "zone_name": "spacevibe.dev"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "PAIRINGS", "class_name": "PairingRoom" }]
+  },
+  // SQLite-backed classes are the only kind the Workers Free plan allows.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PairingRoom"] }],
+  "vars": {
+    "APNS_TOPIC": "dev.spacevibe.deck.mobile"
+  }
+  // Secrets, never committed: APNS_KEY_P8 (the .p8 file's contents), APNS_KEY_ID, APNS_TEAM_ID.
+  // The owner sets them with `wrangler secret put <NAME>`; see README.md.
+}

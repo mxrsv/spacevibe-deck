@@ -216,7 +216,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     S4 vectors, and the no-phone repro client.
   - **Covers:** MOB7 (framing and auth failure) and MOB10.
   - **Verify:** unit tests.
-- [ ] **T3: Relay (`mobile/relay/`).**
+- [x] **T3: Relay (`mobile/relay/`).** Done 2026-11-05; deploying stays the owner's.
   - **Contents:** the Durable Object per pairing, hibernation, limits, revoke, APNs, minimal
     storage, and the canary test (MOB7). Covers MOB2, MOB6 and MOB8.
   - **Verify:** Wrangler local tests. The repro client pairs and exchanges frames through
@@ -386,6 +386,21 @@ All four are environmental and pre-existing:
 - The repro client (`npm run repro -- …`) typechecks and parses its arguments; its run against a
   real relay and `electron:dev` is **verify on the Mac**.
 
+**T3 (`mobile/relay/`):**
+- `cd mobile/relay && npm run check` (tsc + `node --test`, the Worker bundled by esbuild and run in
+  Miniflare with SQLite Durable Objects, Node's `WebSocket` as the client) → `# tests 32 # pass 32
+  # fail 0`: registration (201/409/bad bodies/expiry bounds), one-time claim, claim after expiry,
+  the unclaimed-pairing alarm, auth for both roles, binary forwarding and drop when the peer is
+  offline, `peer` notices, revoke from either side reaching the other and later connects reading
+  `unknown`, 4413 frame size, 4429 rate, the third socket closing the oldest, APNs and Expo request
+  shapes against a faked outbound service (generic alert only, `d: { p, c }`), push rate limit, the
+  APNs-secrets-missing no-op, and **MOB7's canary**: a canary sent in binary frames and in a push is
+  absent from every Durable Object storage value and every captured log line, raw, base64 (three
+  alignments), base64url and hex.
+- `npx wrangler deploy --dry-run --outdir dist` → 24.23 KiB, bindings `PAIRINGS`, `APNS_TOPIC`.
+  `wrangler dev` answered `{"ok":true,"protocol":1}` on `/v1/health` and `/relay/v1/health`.
+- **Verify after the owner deploys (S2):** whether a Worker's `fetch` reaches APNs over HTTP/2.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -409,6 +424,11 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
    one long-lived key with persisted counters, which a crash or a second transport can reuse.
 7. **The relay never sees the QR secret**: it holds `sha256(claimToken)`, where `claimToken` is an
    HKDF of the secret, so it cannot forge the phone's pairing proof.
+9. **Expo's push service is the Expo Go path** (`kind: "expo"`), next to direct APNs. It carries
+   the same generic line and ciphertext only; the privacy notice names it. Turned down: no push at
+   all in Expo Go, which the owner's test tomorrow runs in.
+10. **A socket for an unknown pairing is accepted as a plain socket and closed at once**, because
+    closing a just-accepted hibernatable socket left the client waiting 10 s for the close.
 8. **Relay URL parsing is string-based** (`parseRelayUrl`): React Native's `URL` cannot set a
    protocol or a path.
 

@@ -21,6 +21,11 @@
       "rules": { "no-console": "off" }
     },
     {
+      // The relay's one log line: Workers Logs read stdout, and this file closes the vocabulary.
+      "files": ["relay/src/log.ts"],
+      "rules": { "no-console": "off" }
+    },
+    {
       // The repro client is a command-line tool; its stdout is the product.
       "files": ["**/repro/**"],
       "rules": { "no-console": "off" }
