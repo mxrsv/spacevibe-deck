@@ -49,6 +49,8 @@ test("Worker schema accepts snapshots emitted by the actual Deck telemetry servi
     version: "1.1.0",
     platform: "darwin",
     arch: "arm64",
+    // The mobile object is sent only while the mobileCompanion switch is on; this contract covers it.
+    mobileEnabled: true,
     store: {
       unreadable: () => false,
       read: () => undefined,
