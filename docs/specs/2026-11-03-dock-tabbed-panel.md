@@ -47,8 +47,11 @@ files) pushes every section below it out of reach, and the column carries more f
   has a sticky header (a chevron, the path, `+a −d`) and a body of unified hunks with three lines of
   context; a file's diff loads only when its card nears the viewport.
   - **One verb per part of the header.** The chevron or any empty part of the header, the counts
-    included, folds the card. The path opens the real file as a preview tab (DOCK-6). Right-click
-    opens the file's menu. Neither the path nor right-click folds.
+    included, folds the card. The path adds the real file as a preview tab (DOCK-6) and the body
+    stays on Changes: nothing in Changes takes you to the file surface except an explicit open. An
+    open icon (↗) at the end of the header, shown on hover or keyboard focus and absent for a
+    deleted file, keeps the tab and shows it; the right-click menu's Open does the same. The strip
+    brings a tab opened from Changes into view. Neither the path, the icon nor right-click folds.
   - **The path is repo-relative and clips from the left**, so the file name always shows in full:
     the folder part muted and the first to shrink, then `/`, then the name in medium weight. The
     full path is the tooltip. A deleted file's path cannot be pressed.
@@ -60,6 +63,12 @@ files) pushes every section below it out of reach, and the column carries more f
   - **Folds follow the files.** A refresh that drops a file forgets its fold, so a file that comes
     back starts unfolded.
   - **One row height.** Every list row, card header and Explorer tree row is 24px.
+  - **The change reads from the gutter** (owner, 2026-11-04). Each diff line has a line number: the
+    old one on a removed line, the new one on an added or context line. A changed line is the
+    theme's green or red mixed opaquely into the diff's ground (about 20%), its gutter cell a
+    calmer mix with the number in the full ink and a 3px bar, and its `+`/`−` in the same ink.
+    Context lines and `@@` carry no colour and sit close to the ground. The gutter stays put while
+    the code scrolls sideways and is left out of a copy and of screen readers.
 
   The stack uses a small in-repo line diff over the two texts the diff column already reads
   (`HEAD` and the working copy): no Monaco instance per file and no new dependency. Binary,
