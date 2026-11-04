@@ -15,6 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../controls/dropdown-menu";
+import { isContextMenuKey } from "../context-menu-key";
 
 /**
  * Every action a changed file has lives here, in one place: its row in the list and its card
@@ -34,7 +35,7 @@ export function useFileMenu() {
         setOpen(true);
       },
       onKeyDown: (event: KeyboardEvent) => {
-        if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        if (isContextMenuKey(event)) {
           event.preventDefault();
           setOpen(true);
         }

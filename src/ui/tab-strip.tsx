@@ -27,6 +27,7 @@ import { sessionEntries } from "../sessions/sessions-store";
 import { TabStripMenu, type StripMenuAction, type StripMenuAnchor } from "./tab-strip-menu";
 import { createTabStripDrag } from "./tab-strip-drag";
 import { closeChips, closeTargets, type TabCloseTarget } from "./tab-strip-close";
+import { isContextMenuKey } from "./context-menu-key";
 import { SpaceBar } from "./spaces/space-bar";
 import { buildSpaces, type Space } from "./spaces/space-model";
 import { currentSpaceLayout } from "./spaces/space-order";
@@ -292,7 +293,7 @@ export function TabStrip(props: TabStripProps) {
               }}
               onKeyDown={(event) => {
                 if (event.target !== event.currentTarget) return;
-                if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                if (isContextMenuKey(event)) {
                   event.preventDefault();
                   event.stopPropagation();
                   const rect = event.currentTarget.getBoundingClientRect();

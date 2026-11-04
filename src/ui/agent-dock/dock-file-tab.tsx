@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../controls/dropdown-menu";
+import { isContextMenuKey } from "../context-menu-key";
 import { closeTargets } from "./dock-file-tabs-close";
 
 export type CloseAction = "one" | "others" | "right" | "all";
@@ -75,7 +76,7 @@ export function DockFileTab({
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect();
-        } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        } else if (isContextMenuKey(event)) {
           event.preventDefault();
           setMenuOpen(true);
         }

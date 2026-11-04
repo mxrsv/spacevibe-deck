@@ -13,6 +13,7 @@ import {
   spaceLabel,
   type Space,
 } from "./space-model";
+import { isContextMenuKey } from "../context-menu-key";
 import { useEdgeNeeds } from "./space-edge";
 import { SpaceRenameField } from "./space-rename-field";
 
@@ -300,7 +301,7 @@ export function SpaceBar({
                       onMenu(space, event.currentTarget, event.clientX, event.clientY);
                     }}
                     onKeyDown={(event) => {
-                      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                      if (isContextMenuKey(event)) {
                         event.preventDefault();
                         event.stopPropagation();
                         card.hide();

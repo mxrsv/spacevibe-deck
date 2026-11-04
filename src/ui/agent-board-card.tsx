@@ -4,6 +4,7 @@ import { stateWordFor, type BoardCard } from "./agent-board-model";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
 import { RailStatusMark } from "./controls/rail-status-mark";
+import { isContextMenuKey } from "./context-menu-key";
 
 /**
  * One Agent Board card (spec §5.3–§5.6, DL-34.2–DL-34.4). A DL-27.1
@@ -66,8 +67,7 @@ export function AgentBoardCard({ card, actions, tabIndex, onFocusRequest }: Agen
     hitRef.current?.focus();
   };
   const onCardKey = (event: KeyboardEvent): void => {
-    const contextMenu = event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey);
-    if (!contextMenu || menuOpen) return;
+    if (!isContextMenuKey(event) || menuOpen) return;
     event.preventDefault();
     event.stopPropagation();
     setMenuOpen(true);
