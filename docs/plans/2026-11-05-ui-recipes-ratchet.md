@@ -14,7 +14,9 @@ Open `src/gallery/layout-mocks/ui-recipes/index.html` in a browser, with `?theme
 `?theme=light`. The gallery is never bundled (R7), so the mock costs the app nothing. Decision 5
 below already applies to it: its dims are opacity and a colour scrim, with no `filter`.
 
-Status: approved for a cloud build (owner, 2026-11-05).
+Status: stages 0–6 and stage 7's build half built (2026-11-05), in draft PR
+[mxrsv/spacevibe-deck#98](https://github.com/mxrsv/spacevibe-deck/pull/98); waiting for the
+owner's eye review.
 
 ## Operating contract
 
@@ -70,9 +72,23 @@ The full suite and builds are CI's job. A suite red on the clean clone before an
 ## Progress
 
 - 2026-11-05: intent, grilling (Q1–Q31) and mock approved; shadow mid and the braille working mark picked. Spec `3e64b007`. Mock pushed to `mock/ui-recipes`.
+- 2026-11-05: one cloud run on `claude/ui-recipes-full` built stages 0–6 and stage 7's build half, in draft PR [mxrsv/spacevibe-deck#98](https://github.com/mxrsv/spacevibe-deck/pull/98):
+  - stage 0 `6a7a16a`: the tokens and `deriveRecipeTokens`, the RCP-25/26 ratchet seeded at 187 ledger lines (357 hits), `ui-scale: <reason>`, `DeckGlyphSize`; AC-4's seeded tests pass;
+  - stage 1 `cb4293a`: the live classes moved to `04-rail-frame.css` and `14b-dock-surfaces.css`;
+  - stage 2 `566f4a3`: the project rail and the braille mark (DL-1.2, DL-27.3); its guide line was put back by the closing commit (see Handoff);
+  - stage 3 `4fa43fd`: the tab strip, toolbar, update action, pane header and browser toolbar;
+  - stage 4 `a6fb92d`, with `d0865ec` for the Usage tab, Changes list, diff header and find bar glyphs;
+  - stage 5 `af46497`: preset popups on `--elev-*`, controls at 400/600, the legacy floating surfaces, launcher, forms, usage page and sessions;
+  - stage 6 `1a0c41c`: Command Settings;
+  - stage 7 build `8c12a4a`: gallery sections `recipe-rail`, `recipe-stage`, `recipe-dock`, `recipe-overlays`, `recipe-settings`.
+- The ledger now holds 47 lines (61 hits), none on a surface the mock draws. AC-1, AC-4, AC-5 and AC-6 are met for the live surfaces; AC-2 and AC-3 wait on the review.
+- Final checks on `0471439` (the closing commit touches only docs and `CHANGELOG.md`): `npm run lint` exit 0 (warnings only); `npm test` 9730 passed, 2 failed, both failing on the clean base too (`shell-bootstrap`, `protocol` over IPv6); `npm run build` and `npm run electron:build` exit 0.
 
 ## Handoff
 
-Nothing built yet.
+- **Next:** stage 7's review half. The owner opens the five gallery sections beside the mock (`npm run prototype:gallery`, then `gallery.html?section=recipe-…`), runs `npm run electron:dev` once, and answers on the PR. Fix what the review names on the same branch, then merge.
+- **Not run:** the E2E gate (`test-deck-app`); this run's brief forbade Electron and Playwright. Screenshots come from `pr-shots.yml` on the PR.
+- **Ledger left, all on old or content surfaces:** the old Settings screen (`07-config-rows.css`, `11-settings-*.css`, `ui/settings/**`, the shared `color-row`, `font-row`, `logo-row`, `github-star-button`), the old rail (`03-repository-rail.css`, `agent-rail`, `repository-rail`, `rail-create-row`, `sidebar-actions`, `worktree-card*`, `workspace-icon`'s fallback), the retired Agent Board, the legacy dock column (`dock-tab-registry`), `17-markdown.css`, and `deck-icon.tsx`'s Phosphor wrapper. Each line goes when its surface is cut over or deleted.
+- **User guides:** `getting-started.md` keeps describing the old Agent Rail's dot ring. The braille mark draws only behind the `projectRail` and `shellStage` release switches, which packaged builds leave off, so the guide's working-mark line changes in the change that turns `projectRail` on. `vi/getting-started`, `vi/keyboard-shortcuts` and `vi/settings` were already stale on the base.
 
 `/goal` Ship docs/specs/2026-11-05-ui-recipes-ratchet.md per docs/plans/2026-11-05-ui-recipes-ratchet.md: stage 0's tokens and ratchet with a seeded ledger, the CMP-20 leak moved, then rail, stage, dock, overlays and Command Settings each at zero debt with their tests and policy suites green (AC-1, AC-4–AC-6), then gallery state sheets in graphite and Deck Light and the owner's eye approval (AC-2, AC-3) before merge.
