@@ -217,6 +217,17 @@ export interface TerminalManager {
    */
   serializePane(id: number, lines: number): string | null;
   /**
+   * What a phone needs to start watching one pane (mobile spec MOB13): the raw buffer and the
+   * pane's own size, taken at the instant of the call (see `Pane.snapshotForStream`). Null for a
+   * pane this manager does not have. Never resizes the pane (MOB14).
+   */
+  snapshotForStream(
+    id: number,
+    lines: number,
+  ): Promise<{ data: string; cols: number; rows: number }> | null;
+  /** The pane's current size in cells, or null for a pane this manager does not have. */
+  paneSize(id: number): { cols: number; rows: number } | null;
+  /**
    * Whether this pane's PTY is still running (Agent Board spec §7's disabled
    * actions). `pasteIntoPane` and `submitPane` already fail on the same fact;
    * this states it, rather than leaving a caller to infer it from a null

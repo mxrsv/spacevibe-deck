@@ -792,6 +792,13 @@ export function createTerminalManager(
       // panel is for (DL-34.6). `paneAlive` below answers the other question.
       return pane.serializeScrollback(lines);
     },
+    paneSize(id) {
+      const pane = life.panes.get(id);
+      return pane === undefined ? null : { cols: pane.cols, rows: pane.rows };
+    },
+    snapshotForStream(id, lines) {
+      return life.panes.get(id)?.snapshotForStream(lines) ?? null;
+    },
     paneAlive(id) {
       return life.panes.has(id) && !life.exited.has(id);
     },

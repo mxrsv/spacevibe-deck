@@ -55,6 +55,8 @@ export interface PaneMirror {
   forget(paneId: number): void;
   /** How many reports this pane has had; 0 for a pane main has never heard of. */
   revisionOf(paneId: number): number;
+  /** Every pane main has a report for, as `get` would answer it. */
+  list(): readonly { readonly paneId: number; readonly state: PaneSnapshot }[];
   wait(paneId: number, target: WaitTarget, options: WaitOptions): Promise<WaitResult>;
 }
 
@@ -163,6 +165,9 @@ export function createPaneMirror(options: { readonly now: () => number }): PaneM
     },
     revisionOf(paneId) {
       return records.get(paneId)?.revision ?? 0;
+    },
+    list() {
+      return [...records.entries()].map(([paneId, record]) => ({ paneId, state: view(record) }));
     },
     wait(paneId, target, { capMs, afterRevision, sentAt, signal }) {
       return new Promise<WaitResult>((resolve) => {

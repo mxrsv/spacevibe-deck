@@ -116,6 +116,17 @@ export interface Pane {
    */
   serializeScrollback(lines: number): string;
   /**
+   * The buffer for a phone that is about to watch this pane: raw escape sequences with up to
+   * `lines` rows of scrollback, plus the size they were drawn at.
+   *
+   * The snapshot is taken INSIDE xterm's write callback, in the same turn as the empty write that
+   * queued it, so it holds exactly the output received before this call and nothing after. A
+   * caller that buffers live output from the moment it calls this therefore neither loses a byte
+   * nor sends one twice (awaiting `flush()` and serializing afterwards would let the parser move
+   * on first). Empty `data` when serialization fails.
+   */
+  snapshotForStream(lines: number): Promise<{ data: string; cols: number; rows: number }>;
+  /**
    * Current terminal geometry in cells — travels with the pane across a move
    * (spec §10.2) and is what the destination constructs its terminal at, so
    * nothing has to resize while the route is `Transferring`.
@@ -528,6 +539,14 @@ export function createPane(
     });
   }
 
+  function snapshotForStream(lines: number): Promise<{ data: string; cols: number; rows: number }> {
+    return new Promise((resolve) => {
+      term.write("", () => {
+        resolve({ data: serializeScrollback(lines), cols: term.cols, rows: term.rows });
+      });
+    });
+  }
+
   function serializeScrollback(lines: number): string {
     try {
       return serializeAddon.serialize({ scrollback: lines });
@@ -631,6 +650,7 @@ export function createPane(
     write,
     flush,
     serializeScrollback,
+    snapshotForStream,
     // Getters, never captured values: a pane that resized after construction
     // must report what the user last saw, not what it was born with.
     get cols() {

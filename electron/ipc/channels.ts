@@ -235,6 +235,24 @@ export const CHANNELS = {
   cloneStart: "clone_start",
   cloneStatus: "clone_status",
   cloneCancel: "clone_cancel",
+  // The iPhone companion (docs/specs/2026-11-04-mobile-companion.md), all behind the
+  // `mobileCompanion` switch: with it off every handler answers disabled and does nothing.
+  // Electron-only, flat payloads per R6. `mobile_state`, `mobile_pair_start` and
+  // `mobile_pair_cancel` take no payload; `mobile_revoke` is `{ pairingId }`.
+  mobileState: "mobile_state",
+  mobilePairStart: "mobile_pair_start",
+  mobilePairCancel: "mobile_pair_cancel",
+  mobileRevoke: "mobile_revoke",
+  // The renderer's answer to one `mobile:query-request` (the rail's tree, project choices, agent
+  // catalog): `{ requestId, kind, payload }`. Main settles it only for a window it asked.
+  mobileQueryReport: "mobile_query_report",
+  // One piece of a pane's stream for a phone: `{ subscriptionId, paneId, kind, data, cols, rows }`,
+  // every key present, `kind` one of snapshot | data | resize | end. Main accepts it only from the
+  // window the subscription was started in.
+  mobileStreamData: "mobile_stream_data",
+  // The notifier's phone branch: `{ paneId, kind, title, body }`. Refused for a pane the sender
+  // does not own; main drops it while any Deck window is focused.
+  mobilePush: "mobile_push",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
@@ -283,6 +301,19 @@ export const EVENTS = {
   accountState: "account:state-changed",
   // One full `CloneJob` snapshot, sent only to the window that owns the job.
   cloneChanged: "clone:changed",
+  // The paired-phones list, a pairing or its presence changed. Empty payload; the Settings
+  // section re-reads `mobile_state`.
+  mobileChanged: "mobile:changed",
+  // Main asks a window what only it knows: flat `{ requestId, kind }`, answered by
+  // `mobile_query_report`.
+  mobileQueryRequest: "mobile:query-request",
+  // Start or stop streaming one pane to a phone, delivered to the window that owns the pane:
+  // `{ subscriptionId, paneId }` and `{ subscriptionId }`.
+  mobileStreamSubscribe: "mobile:stream-subscribe",
+  mobileStreamUnsubscribe: "mobile:stream-unsubscribe",
+  // A phone's keystrokes for a pane, delivered to its owner, which writes them through the pane's
+  // own `writePty` so they count as input: `{ paneId, data }`.
+  mobileInput: "mobile:input",
 } as const;
 
 /**

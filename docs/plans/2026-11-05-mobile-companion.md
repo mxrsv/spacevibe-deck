@@ -222,7 +222,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
   - **Verify:** Wrangler local tests. The repro client pairs and exchanges frames through
     `wrangler dev`.
   - **Deploying the route and secrets is an owner action.**
-- [ ] **T4: Desktop service (`electron/mobile/`) behind `mobileCompanion`.** Covers MOB1–3, MOB5,
+- [x] **T4: Desktop service (`electron/mobile/`) behind `mobileCompanion`.** Done 2026-11-05. Covers MOB1–3, MOB5,
   MOB10–15 and decisions 21–24.
   - **Contents:**
     - the switch;
@@ -427,6 +427,27 @@ All four are environmental and pre-existing:
   scroll; the header swipe; and whether a bare digit selects an option in each real agent (no real
   captures were available here; opencode's permission dialog has no numbers, so it gets Reply).
 
+**T4 (desktop service):**
+- `npx tsc --noEmit` and `npx tsc -p tsconfig.electron.json --noEmit` → clean.
+- `npx vitest run src/terminal/ src/host/ src/lib/ src/ui/settings electron/control/ electron/ipc/
+  electron/mobile/` → `Test Files 204 passed (204)`, `Tests 3145 passed (3145)`; the 24 files T4
+  added or changed alone → 304 tests. Covered: pairing (the registration hash, the 5-minute expiry
+  checked at start and at `pair-hello`, one-time use, a bad proof that does not burn the QR, the
+  refusal when `safeStorage` cannot encrypt), the store (an unreadable file is never overwritten),
+  the relay client (auth, ping, backoff, stopping on a terminal close code), a full phone session
+  through the real channel with the version gate and the `desktop` event, every executor method
+  with chunked bodies and error mapping, agent `send` with `expectedAgent` versus shell input,
+  callerless `open` picking its window and holding the prompt until the first idle, the stream
+  order (snapshot, buffered output, live output, with the snapshot holding exactly the output before
+  the call), phone input reaching `paneIo.writePty`, push gated on focus and sealed per phone,
+  keep-awake, revoke, the notifier's phone branch, and every new channel pinned in
+  `scripts/electron-ipc-contract.test.ts` and `electron/wire-contract.test.ts`.
+- **Verify on the Mac (`electron:dev`, isolated userData, repro client or phone):** Electron main's
+  global `WebSocket` against `wrangler dev` (S5); a keystroke echo giving no `working` and no false
+  `completed` push; a Claude Code TUI drawn from snapshot plus stream; callerless open across
+  windows with the prompt after idle and focus unmoved; real `powerSaveBlocker` and `safeStorage`;
+  no push while any Deck window is focused; revoke reaching the phone within 10 s.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -465,6 +486,17 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
     first. Each task still has its own commit.
 13. **A numbered choice sends the bare digit**, the same for every agent (MOB18: parsed buttons are
     agent-agnostic). Turned down: per-agent key recipes, which the spec rules out.
+14. **Callerless `open` routes through a synthetic pane id** mapped to the chosen window, so
+    `control-forward.ts` and the CLI stay untouched (F4). Turned down: a window field on the
+    control command, which would change its twelve pinned keys.
+15. **The renderer builds the tree** with the rail's own `buildRail` and main overlays the pane
+    mirror. Turned down: grouping panes in main, a second copy of the rail's rules.
+16. **Paths the phone may name are the ones a window reported** (projects and checkouts);
+    `files.*`, `changes.*` and `open` refuse anything else with `outside-root`.
+17. **Custom agents (`custom:` ids) are left out of `agents.list`** for now: the protocol's id
+    pattern has no `:`. Opening a custom agent from the phone waits for a protocol bump.
+18. **`DECK_RELAY_URL` is read only by unpackaged runs**, as `DECK_SUPABASE_URL` is: a packaged app
+    cannot be redirected by its environment.
 
 ## Handoff
 

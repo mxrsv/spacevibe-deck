@@ -83,6 +83,9 @@ export function fakePane(
     flush() {
       return Promise.resolve();
     },
+    snapshotForStream() {
+      return Promise.resolve({ data: buffer, cols: 80, rows: 24 });
+    },
     serializeScrollback() {
       return buffer;
     },

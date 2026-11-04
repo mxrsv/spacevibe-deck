@@ -81,6 +81,8 @@ import { createPaneInfoPoller } from "./pane-info-poller";
 import { createAgentActivity } from "./agent-activity";
 import { createAgentAttentionTracker, type PaneAttentionSnapshot } from "./agent-attention";
 import { createAgentNotifier, type AgentNotifier } from "./agent-notifier";
+import { createHostedMobileBridge, listenForMobile } from "./mobile-bridge-host";
+import { sendMobilePush } from "../host/mobile-host";
 import type { PaneAttentionSignal } from "./pane";
 import { popClosedTab, pushClosedTab, type ClosedTabSnapshot } from "./closed-tabs";
 import { confirmClose } from "./close-guard";
@@ -283,6 +285,9 @@ export function createTabManager(
       isEnabled: () => settings.value.agentNotifications,
       isWindowFocused: () => windowFocused,
       send: sendAgentNotification,
+      // The phone branch: main drops it unless the companion is on, a phone is paired and no
+      // Deck window is focused (mobile spec decisions 23-24).
+      sendPhone: sendMobilePush,
     });
   // Working→idle can expire with no event attached (3s of silence). The 2s
   // poll usually resyncs, but a one-shot timer per pane makes the transition
@@ -311,6 +316,15 @@ export function createTabManager(
       return pty.writePty(id, data);
     },
   };
+  // What a paired phone sees and types into (mobile spec F3): streams, input through `paneIo` so
+  // it counts as input, and the tree. Inert wherever the Electron bridge is not.
+  const mobileBridge = createHostedMobileBridge({
+    screenText: (paneId) => serializePane(paneId, 24) ?? "",
+    hasPane: (paneId) => ownerOf(paneId) !== undefined,
+    paneSize: (paneId) => ownerOf(paneId)?.manager.paneSize(paneId) ?? null,
+    snapshot: (paneId, lines) => ownerOf(paneId)?.manager.snapshotForStream(paneId, lines) ?? null,
+    writePty: (paneId, data) => void paneIo.writePty(paneId, data),
+  });
   // Recently closed tabs (Cmd+Shift+T), newest last; in-memory only.
   let closedTabs: readonly ClosedTabSnapshot[] = [];
   let nextKey = 1;
@@ -3554,6 +3568,7 @@ export function createTabManager(
         // previous loop over every tab was O(tabs) no-ops plus one real write.
         const owner = tabs.find((t) => t.manager.hasPane(id));
         owner?.manager.handleOutput(id, data);
+        mobileBridge.noteOutput(id, data);
         // Feed every ordered transition into the tracker, in order — the
         // process gate drops them when the pane isn't a recognized agent, so
         // never pre-filter here (the tracker owns the gate). A non-null return
@@ -3644,6 +3659,7 @@ export function createTabManager(
         // to notify about — forwarding it could only duplicate a notification
         // already sent (or send a bare "none"/no-op). The tracker bookkeeping
         // and `syncViews` re-render still run as before.
+        mobileBridge.noteExit(id);
         const exitSnap = tracker.noteExit(id, exitCode);
         for (const tab of tabs) {
           tab.manager.handleExit(id);
@@ -3665,6 +3681,9 @@ export function createTabManager(
     }
     if (hookEventsListen !== null) {
       await registerUnlisten(hookEventsListen(onHookEvent));
+    }
+    for (const unlisten of await listenForMobile(mobileBridge)) {
+      await registerUnlisten(Promise.resolve(unlisten));
     }
     // `deck pane open | send | read | close`: this window answers for the panes it owns.
     if (controlListen !== null && controlReply !== null) {
@@ -3803,6 +3822,7 @@ export function createTabManager(
       for (const unlisten of unlisteners) {
         unlisten();
       }
+      mobileBridge.dispose();
       for (const tab of tabs) {
         tab.manager.dispose();
       }

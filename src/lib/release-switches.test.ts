@@ -68,6 +68,11 @@ describe("temporary release switches", () => {
 });
 
 describe("the shipped switch table", () => {
+  it("keeps mobileCompanion dark in a release and lit in development", () => {
+    expect(isReleaseSwitchEnabled("mobileCompanion", resolveReleaseSwitches(false))).toBe(false);
+    expect(isReleaseSwitchEnabled("mobileCompanion", resolveReleaseSwitches(true))).toBe(true);
+  });
+
   it("keeps agentControl dark in a release and lit in development", () => {
     expect(isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(false))).toBe(false);
     expect(isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(true))).toBe(true);
