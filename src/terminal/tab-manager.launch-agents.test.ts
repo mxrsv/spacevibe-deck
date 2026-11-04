@@ -203,6 +203,8 @@ describe("several agents in one space (LCH-6)", () => {
   // (`chooseTilePlacement`), and the target pane only fixes the folder. On the 1024x768 stage
   // jsdom stands in for, N = 2 is two equal columns, but N = 3 and 4 tile into a 2-column grid,
   // not three or four equal columns. LCH-6 asks for side by side; see the report.
+  // The N = 3 and N = 4 rows PIN Deck's current tiling, not the spec: whether they should become
+  // equal columns (LCH-6) awaits an owner decision, and these two expectations change with it.
   it.each([
     [2, { type: "split", direction: "row", ratio: 0.5, first: leaf, second: leaf }],
     [3, { type: "split", direction: "row", ratio: 0.5, first: stack, second: leaf }],

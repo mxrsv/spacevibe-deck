@@ -182,37 +182,44 @@ export function createAgentLaunchPageStore() {
     placement: AgentLaunchPlacement = "target",
     from?: AgentLaunchTarget,
   ): Promise<void> {
-    if (agents.length === 0) return;
-    await attempt({ agentId: agents[0].agentId, placement, agents }, async (current, isCurrent) => {
-      const launchMany = current.launchMany;
-      if (launchMany === undefined) throw new Error("This launcher cannot start several agents");
-      const result = await launchMany(agents, isCurrent, from ?? current.target);
-      const [first] = result.receipts;
-      if (result.kind === "spawned" && first !== undefined) {
-        return { result: { kind: "spawned", receipt: first } };
-      }
-      if (result.kind === "failed") {
-        const last = result.receipts.at(-1);
-        const rest = agents.slice(result.receipts.length);
-        return {
-          result: { kind: "failed", message: result.message },
-          resume:
-            last === undefined
-              ? undefined
-              : {
-                  agentId: rest[0].agentId,
-                  agents: rest,
-                  target: {
-                    kind: "split",
-                    workspacePath: current.target.workspacePath,
-                    tabKey: last.tabKey,
-                    paneId: last.paneId,
+    const opened = request.value;
+    if (agents.length === 0 || opened === null) return;
+    // The target this attempt runs from is stored with its failure, so a second Retry after a
+    // partial failure still splits beside the opened pane instead of opening a new space.
+    const target = from ?? opened.target;
+    await attempt(
+      { agentId: agents[0].agentId, placement, agents, target },
+      async (current, isCurrent) => {
+        const launchMany = current.launchMany;
+        if (launchMany === undefined) throw new Error("This launcher cannot start several agents");
+        const result = await launchMany(agents, isCurrent, target);
+        const [first] = result.receipts;
+        if (result.kind === "spawned" && first !== undefined) {
+          return { result: { kind: "spawned", receipt: first } };
+        }
+        if (result.kind === "failed") {
+          const last = result.receipts.at(-1);
+          const rest = agents.slice(result.receipts.length);
+          return {
+            result: { kind: "failed", message: result.message },
+            resume:
+              last === undefined
+                ? undefined
+                : {
+                    agentId: rest[0].agentId,
+                    agents: rest,
+                    target: {
+                      kind: "split",
+                      workspacePath: current.target.workspacePath,
+                      tabKey: last.tabKey,
+                      paneId: last.paneId,
+                    },
                   },
-                },
-        };
-      }
-      return { result: { kind: "cancelled" } };
-    });
+          };
+        }
+        return { result: { kind: "cancelled" } };
+      },
+    );
   }
 
   /** Repeats the failed attempt: the same agent(s), placement and profile pick. */

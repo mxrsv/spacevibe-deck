@@ -4,9 +4,15 @@ import { installStageLauncherCloseGuard } from "../launcher/stage-launcher-close
 import { stageLauncherEnabled } from "../launcher/stage-launcher-enabled";
 import { StageLauncherBar } from "../launcher/stage-launcher-bar";
 import { StageLauncherForm } from "../launcher/stage-launcher-form";
+import {
+  createStageLauncherActions,
+  missingPaths,
+  settleLaunchMany,
+  startFreshInWorkspace,
+} from "../launcher/stage-launcher-actions";
 import { cloneFinished, dropIntoStageLauncher } from "../launcher/stage-launcher-flows";
 import { closeStageForm, openStageForm, stageForm } from "../launcher/stage-launcher-form-store";
-import { launcherRequests, stageBarMode } from "../launcher/stage-launcher-props";
+import { stageBarMode } from "../launcher/stage-launcher-props";
 import { addFolderToRail, rememberOnRail } from "./rail-add-folder";
 import { requestWorktreeForm } from "./project-rail/project-rail-worktree-request";
 import type { AgentLaunchContextProps } from "../launcher/agent-launch-context";
@@ -280,7 +286,7 @@ import {
   remove as removeRememberedPane,
   rememberedPanes,
 } from "../terminal/remembered-panes";
-import { seedRememberedPanes } from "./project-rail/remembered-boot";
+import { seedRememberedPanes, shouldHoldRecord } from "./project-rail/remembered-boot";
 import { createRememberedPress, freshLaunchRequest } from "./project-rail/remembered-press";
 import { readLastSession } from "../terminal/session-restore";
 import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
@@ -740,7 +746,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // folder is not necessarily one the sessions scan has looked at.
       const paths = [...new Set([entry.cwd, entry.workspacePath])];
       const exists = await defaultPtyClient.dirsExist(paths);
-      const missing = new Set(paths.filter((_, index) => exists[index] === false));
+      const missing = missingPaths(paths, exists);
       return resumeRememberedPane(entry, {
         materialize: (intent) => tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
         customAgents: settings.value.customAgents,
@@ -751,27 +757,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     startFresh: async (entry, command) => {
       const manager = tabsRef.current;
       if (manager === null) return { ok: false };
-      const { agentId, override } = freshLaunchRequest(entry, command, settings.value);
-      const result = await manager.launchAgentAtTarget(
-        { kind: "new-space", workspacePath: entry.cwd },
-        agentId,
-        () => true,
-        () =>
-          [...repositoryScans.value.values()].flatMap((scan) =>
-            scan.kind === "repository" ? scan.worktrees.map((item) => item.path) : [],
+      return startFreshInWorkspace(entry, freshLaunchRequest(entry, command, settings.value), {
+        launch: (target, agentId, override) =>
+          manager.launchAgentAtTarget(
+            target,
+            agentId,
+            () => true,
+            () =>
+              [...repositoryScans.value.values()].flatMap((scan) =>
+                scan.kind === "repository" ? scan.worktrees.map((item) => item.path) : [],
+              ),
+            override,
           ),
-        override,
-      );
-      if (result.kind !== "spawned") {
-        return { ok: false, message: result.kind === "failed" ? result.message : undefined };
-      }
-      const index = tabViews.value.findIndex((tab) => tab.key === result.receipt.tabKey);
-      const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? entry.agent;
-      if (index >= 0) manager.renameTab(index, autoSpaceName(folderName(entry.cwd), label));
-      requestAnimationFrame(() => {
-        if (!settingsOpen.value && !boardOpen.value) manager.focusAgentLaunch(result.receipt);
+        nameNewSpace,
+        reveal: (receipt) =>
+          requestAnimationFrame(() => {
+            if (!settingsOpen.value && !boardOpen.value) manager.focusAgentLaunch(receipt);
+          }),
       });
-      return { ok: true };
     },
     remove: removeRememberedPane,
     notify: reportChromeMessage,
@@ -981,7 +984,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           capture: () => manager.captureSession(),
           windowLabel: label,
           isMain: true,
-          holdEmpty: () => lastSession.value !== null && !rememberedSeeded,
+          holdEmpty: () => shouldHoldRecord(lastSession.value !== null, rememberedSeeded),
         });
         // `stageLauncher` on: the stage hosts the launcher instead (LCH-1). The record is still
         // read and held above, so nothing is erased; only the board that offered it stays down.
@@ -1713,25 +1716,19 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         return result;
       },
       // The command bar's Run: every picked agent, chained from the captured target (LCH-6).
-      launchMany: async (agents, canCommit, current) => {
-        const result = await manager.launchAgentsAtTarget(current, agents, canCommit, roots);
-        const first = result.receipts[0];
-        if (first !== undefined) {
-          // The launch is the project's choice now; a resident bar must not keep the older one.
-          stageLauncherChoice.value = null;
-          // The folder's remembered agent is the one last run there; it is the bar's next default.
-          recordWorkspaceOpen(current.workspacePath, undefined, agents[0].agentId);
-          if (result.kind === "spawned" && current.kind === "new-space") {
-            const index = tabViews.value.findIndex((tab) => tab.key === first.tabKey);
-            const label =
-              launcherAgents().find((agent) => agent.id === agents[0].agentId)?.label ??
-              agents[0].agentId;
-            if (index >= 0)
-              manager.renameTab(index, autoSpaceName(folderName(current.workspacePath), label));
-          }
-        }
-        return result;
-      },
+      launchMany: async (agents, canCommit, current) =>
+        settleLaunchMany(
+          await manager.launchAgentsAtTarget(current, agents, canCommit, roots),
+          agents,
+          current,
+          {
+            clearChoice: () => {
+              stageLauncherChoice.value = null;
+            },
+            recordOpen: (path, agentId) => recordWorkspaceOpen(path, undefined, agentId),
+            nameNewSpace,
+          },
+        ),
       reveal: (receipt, canFocus) =>
         requestAnimationFrame(() => {
           if (canFocus() && !settingsOpen.value && !boardOpen.value)
@@ -1809,79 +1806,73 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     );
   };
 
-  /** The command bar's Run: opens the request first when the resident bar has none yet. */
+  const stageActions = createStageLauncherActions({
+    setNotice: (message) => {
+      stageLauncherNotice.value = message;
+    },
+    hasRequest: () => agentLaunchPage.request.value !== null,
+    residentPath: residentLauncherPath,
+    requestPath: () => agentLaunchPage.request.value?.target.workspacePath ?? null,
+    beginRequest: beginLaunchRequest,
+    runMany: (requests) => agentLaunchPage.runMany(requests),
+    shownPaths: () => shownWorkspaces.value.map((recent) => recent.path),
+    rememberOnRail,
+    aim: aimStageLauncher,
+    addFolder: addFolderToRail,
+    recentHead: () => workspacesData.value.recents[0],
+    barMode: stageBarModeNow,
+    openLauncher: openAgentLaunchPage,
+    closeForm: closeStageForm,
+    focusBar: focusStageBar,
+    repoRootOf: (path) => {
+      const scan = path === null ? undefined : repositoryScans.value.get(path);
+      return scan?.kind === "repository"
+        ? (scan.worktrees.find((entry) => !entry.bare)?.path ?? path)
+        : path;
+    },
+    railVisible: () => Boolean(sidebar && railAvailable && !effectiveSidebarCollapsed()),
+    requestRailWorktreeForm: requestWorktreeForm,
+    openStageWorktreeForm: (repo) => openStageForm("worktree", repo),
+  });
+
+  /** A space a launch created for a folder is named for it and the agent (DL-35.3). */
+  function nameNewSpace(tabKey: number, workspacePath: string, agentId: string): void {
+    const manager = tabsRef.current;
+    const index = tabViews.value.findIndex((tab) => tab.key === tabKey);
+    if (manager === null || index < 0) return;
+    const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId;
+    manager.renameTab(index, autoSpaceName(folderName(workspacePath), label));
+  }
+
   function runFromStageLauncher(
     agentIds: readonly string[],
     overrides: Readonly<Record<string, LaunchCommandOverride>>,
   ): void {
-    stageLauncherNotice.value = null;
-    if (agentLaunchPage.request.value === null) {
-      const path = residentLauncherPath();
-      if (path === null) return;
-      beginLaunchRequest(path);
-    }
-    void agentLaunchPage.runMany(launcherRequests(agentIds, overrides));
+    stageActions.run(agentIds, overrides);
   }
 
-  /**
-   * A project picked in the bar: one the rail does not list joins it first, at the top of recency
-   * (LCH-5). The rail lists the newest few, so a project far down the menu's history counts too.
-   */
   function pickStageLauncherProject(path: string): void {
-    stageLauncherNotice.value = null;
-    if (!shownWorkspaces.value.some((recent) => recent.path === path)) rememberOnRail(path);
-    aimStageLauncher(path);
+    stageActions.pickProject(path);
   }
 
-  /** The rail's Folder verb, then the bar aims at the folder it added. */
-  async function openFolderFromStageLauncher(): Promise<void> {
-    const before = workspacesData.value.recents[0];
-    stageLauncherNotice.value = await addFolderToRail();
-    const head = workspacesData.value.recents[0];
-    // A cancelled picker leaves the head untouched; an added folder is always a fresh head.
-    if (head !== undefined && head !== before) showStageLauncherAt(head.path);
+  function openFolderFromStageLauncher(): Promise<void> {
+    return stageActions.openFolder();
   }
 
-  /**
-   * Aim the launcher at a project and make sure it is on screen: the resident bar and an open
-   * request just retarget, and over a live space with no launcher up it opens one there.
-   */
   function showStageLauncherAt(path: string): void {
-    aimStageLauncher(path);
-    if (stageBarModeNow() === "none") openAgentLaunchPage(path);
+    stageActions.showAt(path);
   }
 
-  /**
-   * A stage form is done (LCH-8). `path` is the workspace it made, which the launcher is aimed at;
-   * a cancel (`null`) goes back to whatever the launcher was, or to the live space it covered.
-   */
   function leaveStageForm(path: string | null): void {
-    closeStageForm();
-    if (path !== null) showStageLauncherAt(path);
-    else focusStageBar();
+    stageActions.leaveForm(path);
   }
 
-  /**
-   * The rail's Worktree form, on the repository the bar is aimed at. It opens in the rail's
-   * popover while the rail is on screen, and in the stage when the rail is collapsed or absent,
-   * where that popover would hang from a hidden strip.
-   */
   function newWorktreeFromStageLauncher(): void {
-    const path = agentLaunchPage.request.value?.target.workspacePath ?? residentLauncherPath();
-    const scan = path === null ? undefined : repositoryScans.value.get(path);
-    const repo =
-      scan?.kind === "repository"
-        ? (scan.worktrees.find((entry) => !entry.bare)?.path ?? path)
-        : path;
-    if (sidebar && railAvailable && !effectiveSidebarCollapsed()) requestWorktreeForm(repo);
-    else openStageForm("worktree", repo);
+    stageActions.newWorktree();
   }
 
-  /** A press on a project header while the bar is up aims it at that project; false when none is up. */
   function retargetStageLauncher(path: string): boolean {
-    if (stageBarModeNow() === "none") return false;
-    aimStageLauncher(path);
-    return true;
+    return stageActions.retarget(path);
   }
 
   /** Editor confirm: save the preset, then materialize a new tab. */

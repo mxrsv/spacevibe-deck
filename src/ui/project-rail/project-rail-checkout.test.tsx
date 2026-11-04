@@ -26,6 +26,10 @@ vi.mock("../controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
+// `pinHost` turns every switch on; the launcher's is pinned apart so both menus stay testable.
+const stage = vi.hoisted(() => ({ on: false }));
+vi.mock("../../launcher/stage-launcher-enabled", () => ({ stageLauncherEnabled: () => stage.on }));
+
 import { WORKSPACES_VERSION } from "../../lib/workspace-recents";
 import { workspacesData } from "../../open-board/workspaces-store";
 import { tabViews } from "../../terminal/tabs-store";
@@ -52,6 +56,7 @@ installRailHarness();
 
 beforeEach(() => {
   pinHost(true);
+  stage.on = false;
 });
 
 const MAIN = "/r/.git";
@@ -119,17 +124,14 @@ describe("rowless checkout", () => {
     mount({ cardActions });
     await settle();
 
-    // The stage launcher is on in the development host the harness pins (LCH-4): one item
-    // opens the launcher where the per-agent list used to be.
     expect(await openMenuByRightClick("checkout:/r/side")).toBe(true);
-    expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
+    expect(menuLabels()).toEqual(["Claude Code", "Open shell", "New split here"]);
     await closeMenu();
 
     await activate(sideLine()?.querySelector('button[aria-label^="Actions for"]'));
-    expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
-    await pick("New agent…");
-    expect(cardActions.onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/r/side");
-    expect(cardActions.onRunAgent).not.toHaveBeenCalled();
+    expect(menuLabels()).toEqual(["Claude Code", "Open shell", "New split here"]);
+    await pick("Claude Code");
+    expect(cardActions.onRunAgent).toHaveBeenCalledExactlyOnceWith("claude", "/r/side");
 
     await openMenuByRightClick("checkout:/r/side");
     await pick("Open shell");
@@ -140,14 +142,48 @@ describe("rowless checkout", () => {
     expect(cardActions.onSplitHere).toHaveBeenCalledExactlyOnceWith("/r/side");
   });
 
-  it("still offers the one New agent… item when no quick agent is available", async () => {
-    const cardActions = actions({ agents: [] });
+  it("points at Settings when no quick agent is available", async () => {
+    const onManageAgents = vi.fn();
     rememberedRepository();
-    mount({ cardActions });
+    mount({ cardActions: actions({ agents: [], onManageAgents }) });
     await settle();
 
     await openMenuByRightClick("checkout:/r/side");
-    expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
+    expect(menuLabels()).toEqual(["Choose quick agents", "Open shell", "New split here"]);
+    await pick("Choose quick agents");
+    expect(onManageAgents).toHaveBeenCalledOnce();
+  });
+
+  describe("with the stage launcher on (LCH-4)", () => {
+    beforeEach(() => {
+      stage.on = true;
+    });
+
+    it("replaces the per-agent list with one New agent… item that opens the launcher", async () => {
+      const cardActions = actions();
+      rememberedRepository();
+      mount({ cardActions });
+      await settle();
+
+      expect(await openMenuByRightClick("checkout:/r/side")).toBe(true);
+      expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
+      await closeMenu();
+
+      await activate(sideLine()?.querySelector('button[aria-label^="Actions for"]'));
+      expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
+      await pick("New agent…");
+      expect(cardActions.onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/r/side");
+      expect(cardActions.onRunAgent).not.toHaveBeenCalled();
+    });
+
+    it("keeps the one New agent… item when no quick agent is available", async () => {
+      rememberedRepository();
+      mount({ cardActions: actions({ agents: [], onManageAgents: vi.fn() }) });
+      await settle();
+
+      await openMenuByRightClick("checkout:/r/side");
+      expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
+    });
   });
 
   it("is left out while a search is set", async () => {

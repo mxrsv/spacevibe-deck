@@ -352,26 +352,6 @@ export function bootRaisesTheBoard(boot: BootMode, stageLauncher: boolean): bool
   return bootOpensTheBoard(boot) && !stageLauncher;
 }
 
-interface StageLauncherSlotState {
-  readonly stageLauncher: boolean;
-  readonly liveTabCount: number;
-  /** File tabs plus the browser chip: surfaces that already hold the stage. */
-  readonly otherSurfaces: number;
-  readonly boardOpen: boolean;
-  readonly launchPageOpen: boolean;
-}
-
-/** Whether the stage paints the launcher slot: a window with nothing live and nothing else on the stage. */
-export function stageLauncherSlotShows(state: StageLauncherSlotState): boolean {
-  return (
-    state.stageLauncher &&
-    state.liveTabCount === 0 &&
-    state.otherSurfaces === 0 &&
-    !state.boardOpen &&
-    !state.launchPageOpen
-  );
-}
-
 interface LastCloseBoardState {
   readonly stageLauncher: boolean;
   readonly previousTabCount: number;

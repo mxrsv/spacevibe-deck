@@ -21,7 +21,6 @@ import {
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   sidebarPaintWidth,
-  stageLauncherSlotShows,
   stripShowsTabs,
   taskLaunchRecoveryValid,
   toggleSettingsPanel,
@@ -991,33 +990,6 @@ describe("the stageLauncher switch in the shell policy", () => {
     expect(bootRaisesTheBoard({ kind: "adopt", token: "t-1" }, false)).toBe(false);
     expect(bootRaisesTheBoard({ kind: "adopt", token: "t-1" }, true)).toBe(false);
     expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
-  });
-
-  describe("the launcher slot", () => {
-    const idle = {
-      stageLauncher: true,
-      liveTabCount: 0,
-      otherSurfaces: 0,
-      boardOpen: false,
-      launchPageOpen: false,
-    } as const;
-
-    it("shows on a normal boot's empty window", () => {
-      expect(stageLauncherSlotShows(idle)).toBe(true);
-    });
-
-    it("stays away with the switch off", () => {
-      expect(stageLauncherSlotShows({ ...idle, stageLauncher: false })).toBe(false);
-    });
-
-    it.each([
-      ["a live tab", { liveTabCount: 1 }],
-      ["a file tab or the browser", { otherSurfaces: 1 }],
-      ["the Open board", { boardOpen: true }],
-      ["the launch page", { launchPageOpen: true }],
-    ])("yields the stage to %s", (_label, over) => {
-      expect(stageLauncherSlotShows({ ...idle, ...over })).toBe(false);
-    });
   });
 
   describe("closing the last tab", () => {

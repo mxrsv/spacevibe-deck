@@ -458,6 +458,57 @@ describe("running several agents (the command bar's Run N)", () => {
     expect(launchMany.mock.calls[1][2]).toBe(target);
   });
 
+  it("keeps the split beside the opened pane across two consecutive retries", async () => {
+    const page = createAgentLaunchPageStore();
+    const three = [...two, { agentId: "gemini" }] as const;
+    const beside = (paneId: number) => ({
+      kind: "split",
+      workspacePath: "/repo",
+      tabKey: 1,
+      paneId,
+    });
+    const launchMany = vi
+      .fn<Many>()
+      .mockResolvedValueOnce({ kind: "failed", message: "one", receipts: [receipt(10)] })
+      // The first Retry opens nothing: the second must still split beside pane 10.
+      .mockResolvedValueOnce({ kind: "failed", message: "two", receipts: [] })
+      // The second Retry opens one more pane, then fails: the third resumes beside pane 11.
+      .mockResolvedValueOnce({ kind: "failed", message: "three", receipts: [receipt(11)] })
+      .mockResolvedValueOnce({ kind: "spawned", receipts: [receipt(12)] });
+    page.open({ target, launch: vi.fn(), launchMany, restoreFocus: vi.fn(), reveal: vi.fn() });
+    await page.runMany(three);
+    await page.retry();
+    expect(launchMany.mock.calls[1][2]).toEqual(beside(10));
+    expect(page.failure.value?.agents).toEqual([three[1], three[2]]);
+    await page.retry();
+    expect(launchMany.mock.calls[2][0]).toEqual([three[1], three[2]]);
+    expect(launchMany.mock.calls[2][2]).toEqual(beside(10));
+    await page.retry();
+    expect(launchMany.mock.calls[3][0]).toEqual([three[2]]);
+    expect(launchMany.mock.calls[3][2]).toEqual(beside(11));
+  });
+
+  it("keeps the split target when a retry throws", async () => {
+    const page = createAgentLaunchPageStore();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const launchMany = vi
+      .fn<Many>()
+      .mockResolvedValueOnce({ kind: "failed", message: "one", receipts: [receipt(10)] })
+      .mockRejectedValueOnce(new Error("bridge down"))
+      .mockResolvedValueOnce({ kind: "spawned", receipts: [receipt(11)] });
+    page.open({ target, launch: vi.fn(), launchMany, restoreFocus: vi.fn(), reveal: vi.fn() });
+    await page.runMany(two);
+    await page.retry();
+    await page.retry();
+    expect(launchMany.mock.calls[2][2]).toEqual({
+      kind: "split",
+      workspacePath: "/repo",
+      tabKey: 1,
+      paneId: 10,
+    });
+    error.mockRestore();
+  });
+
   it("says so, without stranding the page, when the request cannot start several", async () => {
     const page = createAgentLaunchPageStore();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
