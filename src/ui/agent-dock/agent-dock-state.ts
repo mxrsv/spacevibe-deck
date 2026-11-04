@@ -93,18 +93,11 @@ export function pruneDockFoldedCards(root: string, paths: readonly string[]): vo
   }
 }
 
-/**
- * The narrow-window sheet. The native browser view paints above every DOM layer, so `App` yields
- * it while this is true; the host resets it when it unmounts or the window widens.
- */
-export const dockSheetOpen = signal(false);
-
 export function resetAgentDockState(): void {
   dockView.value = DEFAULT_VIEW;
   dockSurface.value = "view";
   dockTreePane.value = null;
   dockChangesList.value = false;
   dockFoldedCards.value = new Set();
-  dockSheetOpen.value = false;
   dockWideRequested.value = false;
 }

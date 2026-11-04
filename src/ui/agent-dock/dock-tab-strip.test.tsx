@@ -205,16 +205,10 @@ describe("the strip's maximize control", () => {
     await view.unmount();
   });
 
-  it("is disabled when the window cannot spare the width, and hidden in a narrow window", async () => {
+  it("is disabled when the window cannot spare the width", async () => {
     resizeTo(1440);
     const view = (await mountStrip()).view;
     expect(button("Widen the panel")?.disabled).toBe(true);
     await view.unmount();
-
-    resizeTo(1200);
-    const narrow = (await mountStrip()).view;
-    expect(button("Widen the panel")).toBeNull();
-    expect(button("Restore the panel width")).toBeNull();
-    await narrow.unmount();
   });
 });

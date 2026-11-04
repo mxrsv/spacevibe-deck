@@ -19,12 +19,7 @@ import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
 import { Kbd } from "../controls/kbd";
 import { Separator } from "../controls/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
-import {
-  dockMaximized,
-  dockNarrow,
-  dockWideAffordable,
-  toggleDockMaximized,
-} from "./agent-dock-layout";
+import { dockMaximized, dockWideAffordable, toggleDockMaximized } from "./agent-dock-layout";
 import {
   selectDockExplorer,
   selectDockFile,
@@ -313,33 +308,29 @@ export function DockTabStrip({
         </TooltipTrigger>
         <TooltipContent side="bottom">Open a file</TooltipContent>
       </Tooltip>
-      {dockNarrow.value ? null : (
-        <>
-          <Tooltip>
-            {/* A disabled button takes no pointer events, so the span carries the tooltip. */}
-            <TooltipTrigger render={<span className="shrink-0" />}>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={maximized ? "Restore the panel width" : "Widen the panel"}
-                aria-pressed={maximized}
-                disabled={!maximized && !canWiden}
-                className="text-muted-foreground"
-                onClick={toggleDockMaximized}
-              >
-                <DeckIcon icon={maximized ? Minimize01Icon : Maximize01Icon} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {maximized
-                ? "Restore the panel width"
-                : canWiden
-                  ? "Widen the panel"
-                  : "The window is too narrow to widen the panel"}
-            </TooltipContent>
-          </Tooltip>
-        </>
-      )}
+      <Tooltip>
+        {/* A disabled button takes no pointer events, so the span carries the tooltip. */}
+        <TooltipTrigger render={<span className="shrink-0" />}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={maximized ? "Restore the panel width" : "Widen the panel"}
+            aria-pressed={maximized}
+            disabled={!maximized && !canWiden}
+            className="text-muted-foreground"
+            onClick={toggleDockMaximized}
+          >
+            <DeckIcon icon={maximized ? Minimize01Icon : Maximize01Icon} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {maximized
+            ? "Restore the panel width"
+            : canWiden
+              ? "Widen the panel"
+              : "The window is too narrow to widen the panel"}
+        </TooltipContent>
+      </Tooltip>
       <Tooltip>
         <TooltipTrigger
           render={

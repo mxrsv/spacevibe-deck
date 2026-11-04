@@ -198,16 +198,6 @@ describe("Ask", () => {
     expect(selectTab).not.toHaveBeenCalled();
     await view.unmount();
   });
-
-  it("shows in the narrow sheet too", async () => {
-    await resizeTo(1000);
-    tabViews.value = [tab({ panes: [pane({ focused: true, attention: "requested" })] })];
-    const view = await mount(dock());
-    expect(ask()).toBeNull();
-    await click(document.body.querySelector('[aria-label^="Open the side panel"]') as HTMLElement);
-    expect(ask()).not.toBeNull();
-    await view.unmount();
-  });
 });
 
 describe("the order of the dock", () => {

@@ -30,11 +30,10 @@ import {
   type PaneView,
   type TabView,
 } from "../../terminal/tabs-store";
-import { browserPanelObscured } from "../app-policy";
-import { byRole, click, mount, press, settle, waitUntil } from "../controls/preset-test-kit";
+import { click, mount, settle } from "../controls/preset-test-kit";
 import { testFileBodies } from "./dock-files-test-kit";
 import { AgentDock } from "./agent-dock";
-import { dockSheetOpen, dockView, resetAgentDockState, setDockView } from "./agent-dock-state";
+import { dockView, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { resetRevealDockTabForTests } from "./use-reveal-dock-tab";
 
 const NOW = 1_800_000_000_000;
@@ -135,18 +134,6 @@ const pressed = (): (string | null)[] =>
 const bodyText = (): string => document.body.textContent ?? "";
 const named = (label: string): HTMLElement | null =>
   document.body.querySelector<HTMLElement>(`[aria-label^="${label}"]`);
-const scrim = (): HTMLElement | null =>
-  document.body.querySelector<HTMLElement>('[data-slot="sheet-overlay"]');
-
-/** A press on the scrim, as a pointer delivers it: down, up, then the click. */
-async function pressScrim(target: HTMLElement): Promise<void> {
-  await act(async () => {
-    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
-      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }));
-    }
-  });
-  await settle();
-}
 
 beforeEach(() => {
   pinHost(true);
@@ -458,132 +445,6 @@ describe("the folder the views show", () => {
     tabViews.value = twoAgents(null);
     const view = await mount(dock());
     expect(bodyText()).toContain("changes body at no folder");
-    await view.unmount();
-  });
-});
-
-describe("the tabbed dock under 1360px", () => {
-  beforeEach(() => resizeTo(1000));
-
-  it("has no resize grip, and its own control hides the dock", async () => {
-    const onClose = vi.fn();
-    const view = await mount(dock({ onClose }));
-    expect(document.body.querySelector('[role="separator"]')).toBeNull();
-    await click(named("Hide the side panel") as HTMLElement);
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(dockSheetOpen.value).toBe(false);
-    await view.unmount();
-  });
-
-  it("is a handle: no strip, no sheet, and the browser is not asked to yield", async () => {
-    const view = await mount(dock());
-    expect(named("Open the side panel")).not.toBeNull();
-    expect(strip()).toBeNull();
-    expect(byRole("dialog")).toBeNull();
-    expect(dockSheetOpen.value).toBe(false);
-    await view.unmount();
-  });
-
-  it("names the focused agent and its state on the handle", async () => {
-    const view = await mount(dock());
-    expect(named("Open the side panel")?.getAttribute("aria-label")).toBe(
-      "Open the side panel, Claude, done",
-    );
-    await view.unmount();
-  });
-
-  it("opens the column in a sheet, which makes the browser yield", async () => {
-    const view = await mount(dock());
-    await click(named("Open the side panel") as HTMLElement);
-    const sheet = byRole("dialog") as HTMLElement;
-    expect(sheet.textContent).toContain("changes body");
-    expect(icons()).toEqual(["Changes", "Usage", "History", "Open a file", "Close the side panel"]);
-    expect(dockSheetOpen.value).toBe(true);
-    expect(
-      browserPanelObscured({
-        overlayCoversPane: false,
-        agentQuickPickerOpen: false,
-        usageConsentOpen: false,
-        railCardMenuOpen: false,
-        agentBoardActive: false,
-        promptsOpen: false,
-        createEntryOpen: false,
-        persistErrorVisible: false,
-        settingsLoadError: false,
-        dockSheetOpen: dockSheetOpen.value,
-      }),
-    ).toBe(true);
-    await view.unmount();
-  });
-
-  it("is 320px wide, not three quarters of the window", async () => {
-    const view = await mount(dock());
-    await click(named("Open the side panel") as HTMLElement);
-    const classes = (byRole("dialog") as HTMLElement).className.split(/\s+/);
-    expect(classes).toContain("data-[side=right]:w-80");
-    expect(classes).toContain("data-[side=right]:sm:max-w-80");
-    expect(classes).not.toContain("data-[side=right]:w-3/4");
-    expect(classes).not.toContain("data-[side=right]:sm:max-w-sm");
-    await view.unmount();
-  });
-
-  it("closes on Escape and gives focus back to the handle", async () => {
-    const view = await mount(dock());
-    const handle = named("Open the side panel") as HTMLElement;
-    handle.focus();
-    await click(handle);
-    expect(dockSheetOpen.value).toBe(true);
-
-    await press(byRole("dialog") as HTMLElement, { key: "Escape" });
-    await waitUntil(() => byRole("dialog") === null);
-    expect(dockSheetOpen.value).toBe(false);
-    await waitUntil(() => document.activeElement === handle);
-    await view.unmount();
-  });
-
-  it("closes when the scrim is pressed and gives focus back to the handle", async () => {
-    const view = await mount(dock());
-    const handle = named("Open the side panel") as HTMLElement;
-    handle.focus();
-    await click(handle);
-    expect(scrim()).not.toBeNull();
-
-    await pressScrim(scrim() as HTMLElement);
-    await waitUntil(() => byRole("dialog") === null);
-    expect(dockSheetOpen.value).toBe(false);
-    await waitUntil(() => document.activeElement === handle);
-    await view.unmount();
-  });
-
-  it("closes the sheet from its own control without hiding the dock", async () => {
-    const onClose = vi.fn();
-    const view = await mount(dock({ onClose }));
-    await click(named("Open the side panel") as HTMLElement);
-    await click(named("Close the side panel") as HTMLElement);
-    await waitUntil(() => byRole("dialog") === null);
-    expect(onClose).not.toHaveBeenCalled();
-    expect(named("Open the side panel")).not.toBeNull();
-    await view.unmount();
-  });
-
-  it("clears the browser's yield when the dock goes away with the sheet open", async () => {
-    const view = await mount(dock());
-    await click(named("Open the side panel") as HTMLElement);
-    expect(dockSheetOpen.value).toBe(true);
-    await view.unmount();
-    expect(dockSheetOpen.value).toBe(false);
-  });
-
-  it("clears the browser's yield and shows the column when the window widens", async () => {
-    const view = await mount(dock());
-    await click(named("Open the side panel") as HTMLElement);
-    expect(dockSheetOpen.value).toBe(true);
-
-    await resizeTo(1440);
-    await settle();
-    expect(dockSheetOpen.value).toBe(false);
-    expect(byRole("dialog")).toBeNull();
-    expect(named("Hide the side panel")).not.toBeNull();
     await view.unmount();
   });
 });

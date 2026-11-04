@@ -74,7 +74,8 @@ files) pushes every section below it out of reach, and the column carries more f
   (`HEAD` and the working copy): no Monaco instance per file and no new dependency. Binary,
   too-large and unreadable files show a one-line note instead of hunks; a file renamed from outside
   the folder says so above its lines. The separate diff column stays for the legacy dock only.
-- **DOCK-11 Width.** The dock keeps its resize grip and, below 1360px, its edge handle and sheet. A
+- **DOCK-11 Width.** The dock keeps its resize grip at every window width; the 32px edge handle and
+  sheet it once had below 1360px are gone (owner, 2026-11-05). A
   view must stay usable at 320px; the side panes are the part that gives way. While the body is
   narrower than 560px the file tree pane starts hidden, and the Changes list toggle and pane are not
   shown at all: the stack takes the full width, and the user's list choice applies again once the

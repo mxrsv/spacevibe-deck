@@ -31,15 +31,6 @@
   padding-left: 12px;
 }
 
-/* The edge handle's top cell: the frame row's height and hairline, so the handle's seam lines up
-   with the stage strip beside it. `box-sizing` is declared because no global reset exists. */
-.agent-dock__edge-head {
-  flex-shrink: 0;
-  height: var(--frame-h);
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--sidebar-border);
-}
-
 /* A file in the tabbed dock (dock-file-body.tsx): the legacy panel without its header, filling the
    editor side. The tree pane draws the seam, so the panel's own right border would double it. */
 .dock-file .file-panel {

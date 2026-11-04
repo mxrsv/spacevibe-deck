@@ -14,10 +14,9 @@ import {
   updateSettings,
 } from "../../settings/settings-store";
 import type { DockTab } from "../../settings/settings-schema";
-import { agentDockEnabled, dockNarrow } from "./agent-dock-layout";
+import { agentDockEnabled } from "./agent-dock-layout";
 import { surfaceFor } from "../../files/file-surface-store";
 import {
-  dockSheetOpen,
   dockSurface,
   dockView,
   selectDockExplorer,
@@ -80,8 +79,7 @@ export function revealDockTab(tab: DockTab): boolean {
 
 /**
  * Whether the dock shows the surface of `tab` right now, given that it is open and `activeTab`
- * is the tabbed dock's current one. Tabbed: its view is selected and, under 1360px, the sheet
- * holding it is open. Telemetry's visibility counters and the file surface's focus guard ask it.
+ * is the tabbed dock's current one. Tabbed: its view is selected. Telemetry's visibility counters and the file surface's focus guard ask it.
  */
 export function dockShows(tab: DockTab, activeTab: DockTab): boolean {
   if (!agentDockEnabled()) {
@@ -92,5 +90,5 @@ export function dockShows(tab: DockTab, activeTab: DockTab): boolean {
     tab === "explorer"
       ? dockSurface.value !== "view"
       : dockSurface.value === "view" && dockView.value === VIEW_OF_TAB[tab];
-  return shown && (!dockNarrow.value || dockSheetOpen.value);
+  return shown;
 }

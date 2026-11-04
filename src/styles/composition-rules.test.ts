@@ -53,11 +53,6 @@ const KEPT_LINES: readonly Allowed[] = [
   { selector: ".usage-overview td", reason: "numeric table row rule" },
   { selector: ".usage-timeline__stack", reason: "chart baseline" },
   { selector: ".md-doc hr", reason: "markdown thematic break is content, not a divider" },
-  {
-    selector: ".agent-dock__edge-head",
-    file: "src/styles/27-dock-stacked.css",
-    reason: "held by a peer session; leave it listed until that work lands",
-  },
 ];
 
 /**

@@ -2,13 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
-import {
-  AGENT_DOCK_EDGE_WIDTH,
-  AGENT_DOCK_NARROW_BELOW,
-  AGENT_DOCK_WIDTH,
-  dockNarrow,
-  dockStageWidth,
-} from "./agent-dock-layout";
+import { AGENT_DOCK_WIDTH, dockStageWidth } from "./agent-dock-layout";
 
 /** Pin the host the way `action-availability.test.ts` does; the switch follows `isDevelopment`. */
 function pinHost(isDevelopment: boolean): void {
@@ -67,16 +61,9 @@ describe("the width the stage leaves for the dock", () => {
     expect(dockStageWidth(STORED, 520)).toBe(520);
   });
 
-  it("shrinks to the 32px handle under 1360px and grows back at 1360px", () => {
+  it("keeps the 320px column in a narrow window instead of shrinking to a handle", () => {
     pinHost(true);
-    resizeTo(AGENT_DOCK_NARROW_BELOW - 1);
-    expect(dockNarrow.value).toBe(true);
-    expect(dockStageWidth(STORED)).toBe(AGENT_DOCK_EDGE_WIDTH);
-    expect(dockStageWidth(STORED, 500)).toBe(AGENT_DOCK_EDGE_WIDTH);
-    expect(AGENT_DOCK_EDGE_WIDTH).toBe(32);
-
-    resizeTo(AGENT_DOCK_NARROW_BELOW);
-    expect(dockNarrow.value).toBe(false);
+    resizeTo(1000);
     expect(dockStageWidth(DEFAULT_SETTINGS.dockWidth)).toBe(AGENT_DOCK_WIDTH);
   });
 });

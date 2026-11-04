@@ -18,11 +18,6 @@ interface BrowserPanelObscuredState {
   readonly createEntryOpen: boolean;
   readonly persistErrorVisible: boolean;
   readonly settingsLoadError: boolean;
-  /**
-   * The narrow-window dock sheet is open over the stage (spec OD-4). Absent means closed: only
-   * the stacked dock behind the `agentDock` switch raises it.
-   */
-  readonly dockSheetOpen?: boolean;
 }
 
 /** Native browser views must hide whenever DOM chrome paints over the stage. */
@@ -36,8 +31,7 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
     state.promptsOpen ||
     state.createEntryOpen ||
     state.persistErrorVisible ||
-    state.settingsLoadError ||
-    state.dockSheetOpen === true
+    state.settingsLoadError
   );
 }
 

@@ -250,7 +250,7 @@ import { AgentDock } from "./agent-dock/agent-dock";
 import { DockFileBody } from "./agent-dock/dock-file-body";
 import { DockFileTree } from "./agent-dock/dock-file-tree";
 import { agentDockEnabled, dockStageWidth } from "./agent-dock/agent-dock-layout";
-import { dockSheetOpen, selectDockFile } from "./agent-dock/agent-dock-state";
+import { selectDockFile } from "./agent-dock/agent-dock-state";
 import { dockShows, openDockTab, revealDockTab } from "./agent-dock/dock-reveal";
 import { DockChanges } from "./agent-dock/dock-changes";
 import { DockHistory } from "./agent-dock/dock-history";
@@ -2382,8 +2382,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       createEntryOpen: createEntryRequest.value !== null,
       persistErrorVisible: persistError.value !== null,
       settingsLoadError: settingsLoadState.value.status === "error",
-      // The narrow-window dock sheet is DOM over the stage (spec OD-4).
-      dockSheetOpen: dockSheetOpen.value,
     });
 
   /**

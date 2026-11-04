@@ -18,13 +18,7 @@ import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from ".
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
 import { surfaceFor, openFileTab, resetFileSurfaces } from "../../files/file-surface-store";
-import {
-  dockSheetOpen,
-  dockSurface,
-  dockView,
-  resetAgentDockState,
-  setDockView,
-} from "./agent-dock-state";
+import { dockSurface, dockView, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { dockRoot } from "./dock-root";
 import { dockShows, openDockTab, revealDockTab } from "./dock-reveal";
 
@@ -130,14 +124,6 @@ describe("what the dock shows", () => {
     revealDockTab("explorer");
     expect(dockShows("explorer", "usage")).toBe(true);
     expect(dockShows("usage", "usage")).toBe(false);
-  });
-
-  it("needs the sheet open under 1360px", () => {
-    revealDockTab("explorer");
-    resizeTo(1000);
-    expect(dockShows("explorer", "explorer")).toBe(false);
-    dockSheetOpen.value = true;
-    expect(dockShows("explorer", "explorer")).toBe(true);
   });
 
   it("is the stored tab with the switch off", () => {
