@@ -6,11 +6,15 @@ import { createPairingStore } from "@/pairing/pairing-store";
 import { createPrefsController, type PrefsController } from "@/prefs/prefs-store";
 import { createSessionManager, type SessionManager } from "@/session/manager";
 import { createRnSocket } from "@/session/socket";
+import { createPushController, type PushController } from "@/push/push-controller";
+import { environmentFacts, notificationApi } from "@/push/notifications-api";
+import { pushKeyStore } from "@/push/secure-push-backend";
 import { secureKeyValue } from "@/storage/secure-kv";
 
 export interface AppServices {
   readonly manager: SessionManager;
   readonly prefs: PrefsController;
+  readonly push: PushController;
   readonly pairingDeps: {
     readonly phone: {
       readonly name: string;
@@ -30,12 +34,16 @@ function appVersion(): string {
 export function createServices(): AppServices {
   const deviceName = Constants.deviceName ?? "iPhone";
   const build = Constants.expoConfig?.ios?.buildNumber ?? "1";
+  const push = createPushController(environmentFacts(), notificationApi);
   return {
+    push,
     manager: createSessionManager({
       store: createPairingStore(secureKeyValue),
       crypto: deviceCrypto,
       socketFactory: createRnSocket,
       session: { device: deviceName, appVersion: appVersion() },
+      pushKeys: pushKeyStore,
+      pushRegistration: () => push.registration(),
     }),
     prefs: createPrefsController(secureKeyValue),
     pairingDeps: {

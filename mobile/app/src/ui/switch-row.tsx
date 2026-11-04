@@ -11,9 +11,10 @@ interface SwitchRowProps {
   readonly icon: SFSymbol;
   readonly value: boolean;
   readonly onValueChange: (value: boolean) => void;
+  readonly disabled?: boolean;
 }
 
-export function SwitchRow({ title, icon, value, onValueChange }: SwitchRowProps) {
+export function SwitchRow({ title, icon, value, onValueChange, disabled = false }: SwitchRowProps) {
   const palette = useTheme();
   return (
     <View
@@ -35,6 +36,7 @@ export function SwitchRow({ title, icon, value, onValueChange }: SwitchRowProps)
       <Switch
         accessibilityLabel={title}
         value={value}
+        disabled={disabled}
         onValueChange={onValueChange}
         trackColor={{ false: palette.switchTrack, true: palette.status.done }}
         thumbColor={palette.switchThumb}

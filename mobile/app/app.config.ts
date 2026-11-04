@@ -41,7 +41,18 @@ const config: ExpoConfig = {
           "Deck unlocks with Face ID so your agents stay private if you lose your phone.",
       },
     ],
-    "expo-notifications",
+    [
+      "expo-notifications",
+      {
+        // The `aps-environment` entitlement: development for debug builds, production for EAS
+        // production builds. A mismatch makes the APNs token useless, so the relay is told which
+        // host to use (`env`, see src/push/push-environment.ts).
+        mode: process.env.EAS_BUILD_PROFILE === "production" ? "production" : "development",
+      },
+    ],
+    // Encrypted push: the Notification Service Extension. Runs only at prebuild/EAS build; Expo Go
+    // and `expo export` never load it.
+    "./plugins/notification-service-extension/withNotificationServiceExtension",
   ],
   experiments: { typedRoutes: true },
 };

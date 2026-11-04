@@ -29,6 +29,8 @@ export interface LinkHandlers {
 export interface Link {
   readonly kind: "relay" | "lan";
   send(frame: Uint8Array): void;
+  /** A relay control message (the push token); only the relay link has it. */
+  control?(message: ClientToRelay): void;
   close(): void;
 }
 
@@ -47,6 +49,11 @@ export function createRelayLink(options: {
   readonly phoneToken: string;
   readonly handlers: LinkHandlers;
   readonly pingIntervalMs?: number;
+  /**
+   * Sent right after the relay says `ready`, on every connection: push tokens rotate, so the
+   * phone says again which one is current. Null sends nothing (push off or unavailable).
+   */
+  readonly readyMessage?: () => ClientToRelay | null;
 }): Link {
   const { handlers } = options;
   let pendingError: RelayErrorCode | "revoked" | null = null;
@@ -88,9 +95,12 @@ export function createRelayLink(options: {
       const message = parseRelayToClient(text);
       if (message === null) return; // a newer relay dialect: ignore, never guess
       switch (message.t) {
-        case "ready":
+        case "ready": {
+          const extra = options.readyMessage?.() ?? null;
+          if (extra !== null) sendControl(extra);
           handlers.onUp({ peerOnline: message.peerOnline, peerLastSeen: message.peerLastSeen });
           break;
+        }
         case "peer":
           handlers.onPeer(message.online, message.lastSeen);
           break;
@@ -118,6 +128,9 @@ export function createRelayLink(options: {
     kind: "relay",
     send(frame) {
       if (open && !down) socket.send(frame);
+    },
+    control(message) {
+      if (open && !down) sendControl(message);
     },
     close() {
       if (down) return;

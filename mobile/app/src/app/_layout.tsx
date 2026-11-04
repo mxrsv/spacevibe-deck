@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AppProvider } from "@/app-state/app-provider";
+import { PushBridge } from "@/push/push-bridge";
+import { TapRouter } from "@/push/tap-router";
 import { LockGate } from "@/lock/lock-gate";
 import { useTheme } from "@/theme/use-theme";
 
@@ -10,6 +12,7 @@ export default function RootLayout() {
     <AppProvider>
       {/* oxlint-disable-next-line react/style-prop-object -- expo-status-bar's `style` is a string union ("auto"), not a style object */}
       <StatusBar style="auto" />
+      <PushBridge />
       <LockGate>
         <Stack
           screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.ground } }}
@@ -24,6 +27,7 @@ export default function RootLayout() {
           <Stack.Screen name="checkout/[desktopId]/diff" />
           <Stack.Screen name="pane/[desktopId]/[paneId]" />
         </Stack>
+        <TapRouter />
       </LockGate>
     </AppProvider>
   );

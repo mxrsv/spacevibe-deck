@@ -14,7 +14,7 @@ export type PairState =
 
 /** The pairing screen's state: a code is read, the user confirms the desktop it names, then pairing runs. */
 export function usePairing(onPaired: () => void) {
-  const { manager, pairingDeps } = useServices();
+  const { manager, pairingDeps, push, prefs } = useServices();
   const [state, setState] = useState<PairState>({ phase: "idle" });
   // The camera reports the same QR many times a second; the ref makes the phase check immediate.
   const phase = useRef<PairState["phase"]>("idle");
@@ -58,12 +58,17 @@ export function usePairing(onPaired: () => void) {
       );
       if (!result.ok) return fail(pairErrorText(result.error));
       await manager.addPairing(result.pairing);
+      // A finished pairing is the moment push makes sense to the user: the one place the OS
+      // permission prompt may appear unasked (the Settings switch is the other).
+      void push
+        .sync(prefs.getSnapshot().prefs.notifications, true)
+        .then(() => manager.announcePush());
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onPaired();
     } catch {
       fail("Could not save this pairing on the phone. Try again.");
     }
-  }, [state, move, fail, manager, pairingDeps, onPaired]);
+  }, [state, move, fail, manager, pairingDeps, onPaired, push, prefs]);
 
   const reset = useCallback(() => move({ phase: "idle" }), [move]);
 

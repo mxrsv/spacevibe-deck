@@ -6,6 +6,8 @@ import {
   type PairingSummary,
   type StoredPairing,
 } from "@/pairing/pairing-store";
+import type { ClientToRelay } from "@protocol/relay-messages";
+import type { PushKeyStore } from "@/push/push-key-store";
 import { createDesktopConnection, type DesktopConnection } from "./connection";
 import { createRelayLink } from "./relay-link";
 import { revokeOnRelay } from "./revoke-client";
@@ -28,6 +30,10 @@ export interface SessionManager {
   /** Foreground starts every connection, background stops them (iOS suspends sockets anyway). */
   setActive(active: boolean): void;
   find(pairingId: string): DesktopEntry | null;
+  /** A pairing's push key as bytes, for opening a sealed push; null for an unknown pairing. */
+  pushKeyOf(pairingId: string): Uint8Array | null;
+  /** Tell every connected relay link the current push registration (a token appeared or rotated). */
+  announcePush(): void;
 }
 
 export interface ManagerDeps {
@@ -35,6 +41,10 @@ export interface ManagerDeps {
   readonly crypto: CryptoProvider;
   readonly socketFactory: SocketFactory;
   readonly session: { readonly device: string; readonly appVersion: string };
+  /** Where the extension reads push keys; optional so tests and Expo Go builds can omit it. */
+  readonly pushKeys?: PushKeyStore;
+  /** The push registration to send on every relay `ready`, or null when there is none. */
+  readonly pushRegistration?: () => ClientToRelay | null;
 }
 
 export function createSessionManager(deps: ManagerDeps): SessionManager {
@@ -62,6 +72,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
               pairingId: pairing.pairingId,
               phoneToken: keys.phoneToken,
               handlers,
+              readyMessage: deps.pushRegistration,
             })
           : null, // T10 adds the LAN link here
     });
@@ -80,10 +91,16 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       for (const entry of entries) entry.connection.stop();
       stored.clear();
       for (const pairing of pairings) stored.set(pairing.pairingId, pairing);
+      // Pairings made before the extension existed (or before an app update) get their key written now.
+      await Promise.all(
+        pairings.map((p) => deps.pushKeys?.ensure(p.pairingId, p.pushKey).catch(() => {})),
+      );
       publish(pairings.map(open));
     },
     async addPairing(pairing) {
       await deps.store.save(pairing);
+      // A failed write is repaired by the launch migration; it must not undo the pairing.
+      await deps.pushKeys?.write(pairing.pairingId, pairing.pushKey).catch(() => {});
       stored.set(pairing.pairingId, pairing);
       publish([...entries.filter((e) => e.summary.pairingId !== pairing.pairingId), open(pairing)]);
     },
@@ -103,6 +120,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
           phoneToken: pairing.phoneToken,
         }));
       await deps.store.remove(pairingId);
+      await deps.pushKeys?.remove(pairingId).catch(() => {});
       stored.delete(pairingId);
       publish(entries.filter((e) => e.summary.pairingId !== pairingId));
       return { revokedOnRelay };
@@ -113,6 +131,15 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         if (next) entry.connection.start();
         else entry.connection.stop();
       }
+    },
+    pushKeyOf(pairingId) {
+      const pairing = stored.get(pairingId);
+      return pairing === undefined ? null : pairingKeys(pairing).pushKey;
+    },
+    announcePush() {
+      const message = deps.pushRegistration?.() ?? null;
+      if (message === null) return;
+      for (const entry of entries) entry.connection.sendControl(message);
     },
     find: (pairingId) => entries.find((e) => e.summary.pairingId === pairingId) ?? null,
   };

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useRouter } from "expo-router";
 import { useDesktopEntries, usePrefsState, useServices } from "@/app-state/app-provider";
 import { DesktopRow } from "@/desktops/desktop-row";
@@ -9,7 +9,8 @@ import { SwitchRow } from "@/ui/switch-row";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { prefs: controller, versionLine } = useServices();
+  const { prefs: controller, versionLine, push, manager } = useServices();
+  const pushStatus = useSyncExternalStore(push.subscribe, push.status);
   const { prefs } = usePrefsState();
   const entries = useDesktopEntries();
 
@@ -22,6 +23,25 @@ export default function SettingsScreen() {
     },
     [controller],
   );
+
+  // The switch shows what is true: on only while a token is registered. Turning it on is the
+  // moment the OS permission prompt may appear.
+  const setNotifications = useCallback(
+    async (on: boolean) => {
+      await controller.update({ notifications: on });
+      await push.sync(on, on);
+      manager.announcePush();
+    },
+    [controller, push, manager],
+  );
+  const notificationsNote =
+    pushStatus.state === "unavailable"
+      ? pushStatus.reason
+      : pushStatus.state === "denied"
+        ? "Notifications are off for Deck in iOS Settings. Turn them on there."
+        : pushStatus.state === "error"
+          ? "Could not register for notifications. Try again later."
+          : null;
 
   return (
     <Screen title="Settings">
@@ -56,10 +76,12 @@ export default function SettingsScreen() {
         <SwitchRow
           title="Notifications"
           icon="bell"
-          value={prefs.notifications}
-          onValueChange={(on) => void controller.update({ notifications: on })}
+          value={prefs.notifications && pushStatus.state === "on"}
+          disabled={pushStatus.state === "unavailable"}
+          onValueChange={(on) => void setNotifications(on)}
         />
       </Group>
+      {notificationsNote === null ? null : <SectionFooter>{notificationsNote}</SectionFooter>}
       <SectionFooter>{versionLine}</SectionFooter>
     </Screen>
   );

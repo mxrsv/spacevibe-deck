@@ -1,7 +1,7 @@
 import { createPhoneChannel, type PhoneChannel } from "@protocol/channel";
 import type { CryptoProvider } from "@protocol/crypto";
 import { parseAppMessage, type AppEvent, type LanAddress } from "@protocol/messages";
-import { RELAY_ERROR_TEXT } from "@protocol/relay-messages";
+import { RELAY_ERROR_TEXT, type ClientToRelay } from "@protocol/relay-messages";
 import { backoffDelay } from "./backoff";
 import type { Link, LinkDown, LinkFactory, LinkKind } from "./relay-link";
 import { createRpc, type RpcClient } from "./rpc";
@@ -45,6 +45,8 @@ export interface DesktopConnection {
   /** Desktop events (`tree`, `term.data`, ...) once the session is open. */
   onEvent(listener: (event: AppEvent) => void): () => void;
   readonly rpc: RpcClient;
+  /** Sends a relay control message on the current link; false when no relay link is up. */
+  sendControl(message: ClientToRelay): boolean;
   start(): void;
   stop(): void;
   /** Drop whatever state the connection is in and try now (pull to refresh, a tap on "Retry"). */
@@ -301,6 +303,11 @@ export function createDesktopConnection(deps: ConnectionDeps): DesktopConnection
     onEvent(listener) {
       eventListeners.add(listener);
       return () => eventListeners.delete(listener);
+    },
+    sendControl(message) {
+      if (link?.control === undefined || snapshot.status === "failed") return false;
+      link.control(message);
+      return true;
     },
     start,
     stop,

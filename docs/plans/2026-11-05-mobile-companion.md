@@ -266,7 +266,7 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
   - **New agent:** `open` follows the orchestration spec's guarded flow, because a first-run
     trust dialog reads as idle.
   - **Verify:** a tab appears on the desktop and its focus does not move.
-- [ ] **T9: Push end to end (MOB22–23).**
+- [x] **T9: Push end to end (MOB22–23).** Done 2026-11-05 as code and config (before T5); the extension builds only in an EAS build.
   - **Contents:** APNs registration, the NSE decrypt with its generic fallback line, and tap to
     open the pane.
   - **Verify:** the acceptance latency of 9 of 10 within 5 seconds on cellular, and the
@@ -471,6 +471,22 @@ All four are environmental and pre-existing:
   and a known folder gets it; the tab appears on the desktop without taking focus; sheet,
   segmented control, wide-diff scroll and large-file viewing on the device.
 
+**T9 (push):**
+- Desktop: the notifier's phone branch and main's focus gate and sealing landed in T4; the relay's
+  APNs and Expo senders in T3.
+- `cd mobile && npm run check` → app vitest `Tests 175 passed (175)` (including the
+  `swift-contract.test.ts` that pins the AAD, nonce length, Keychain service and access group and
+  the `d.p`/`d.c` keys between `NotificationService.swift` and `push.ts`), `iOS Bundled … (1374
+  modules)`. Tested: environment → token kind and env, the registration message, re-registration
+  on every relay `ready` and on rotation, the off switch sending nothing, the push key written,
+  migrated and deleted under the extension's Keychain contract, the tap router, and the foreground
+  decrypt of a `sealPush` payload (a tampered one keeps the generic line).
+- **Verify with an EAS dev build on the iPhone (owner actions first: App Group and Keychain Sharing
+  on both App IDs, an APNs key as Worker secrets, the relay deployed):** S1 — the extension
+  rewrites "An agent needs you" into the real copy; the 9-of-10-within-5-s latency on cellular; no
+  push while a Deck window is focused; tap opens the pane after unlock. In Expo Go only the
+  generic line shows until the app is opened, and only with an EAS project id configured.
+
 ## Decisions taken (cloud run, 2026-11-05)
 
 Each is the reversible option closest to the spec, taken without stopping (Operating contract).
@@ -531,6 +547,13 @@ Each is the reversible option closest to the spec, taken without stopping (Opera
     the prompt waits in the composer with a banner. Turned down: the desktop's prompt-on-first-idle
     path (the CLI's `--prompt`), which a first-run trust dialog would swallow. The protocol keeps
     the field; the phone always sends null.
+22. **The push extension reads its key from a Keychain group the app shares**: the config plugin
+    makes that group the app's only Keychain access group, so `expo-secure-store` writes there
+    without the team id in JavaScript; the extension reads the resolved group from its Info.plist.
+23. **No OS permission prompt at launch**: it appears when the first pairing completes or when the
+    user turns Notifications on. Turning it off unregisters on the phone; the relay keeps the stale
+    token until it is replaced, because its protocol has no "clear" message.
+24. **T9 was committed before T5**, which was still running.
 
 ## Handoff
 
