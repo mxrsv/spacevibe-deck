@@ -155,6 +155,12 @@ const rowKeys = (): (string | null)[] =>
     r.getAttribute("data-change-row"),
   );
 const text = (): string => document.body.textContent ?? "";
+const foldButton = (path: string): HTMLElement =>
+  document.body.querySelector(`[data-card-path="${path}"] button[aria-expanded]`) as HTMLElement;
+const flashed = (): (string | null)[] =>
+  [...document.body.querySelectorAll("[data-flash]")].map((card) =>
+    card.getAttribute("data-card-path"),
+  );
 const squash = (value: string | null | undefined): string => (value ?? "").replace(/\s+/g, " ");
 
 /** Resize the window the way the browser reports it: the column's tree is a wide-window thing. */
@@ -197,7 +203,7 @@ describe("the Changes view's tree", () => {
     await view.unmount();
   });
 
-  it("sets names and counts in the UI face, not mono", async () => {
+  it("sets names in the UI face, not mono", async () => {
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
     expect(row("file:src/lib/c.ts").querySelector(".font-mono:not([role])")).toBeNull();
@@ -205,7 +211,7 @@ describe("the Changes view's tree", () => {
     await view.unmount();
   });
 
-  it("rolls lines up through folders and folds a lone folder chain into one row", async () => {
+  it("shows a folder's file count only while it is closed, and folds a lone chain into one row", async () => {
     const { controller } = fakeChanges({
       snapshot: snapshot([
         entry({ path: "src/ui/a.ts", added: 5, removed: 2 }),
@@ -215,12 +221,28 @@ describe("the Changes view's tree", () => {
       ]),
     });
     const view = await mount(section(controller));
-    expect(squash(row("folder:src").textContent)).toBe("src3+18 −3");
-    expect(squash(row("folder:src/ui").textContent)).toBe("ui2+8 −3");
-    expect(squash(row("folder:src/lib").textContent)).toBe("lib1+10 −0");
+    expect(squash(row("folder:src").textContent)).toBe("src");
+    expect(squash(row("folder:src/ui").textContent)).toBe("ui");
     // `pkg/inner/only` holds nothing but one folder at each step, so it is one row.
-    expect(squash(row("folder:pkg/inner/only").textContent)).toBe("pkg/inner/only1+1 −1");
+    expect(squash(row("folder:pkg/inner/only").textContent)).toBe("pkg/inner/only");
     expect(row("folder:pkg")).toBeNull();
+
+    await click(row("folder:src/ui"));
+    const count = row("folder:src/ui").lastElementChild as HTMLElement;
+    expect(squash(row("folder:src/ui").textContent)).toBe("ui2");
+    expect(count.className).toContain("text-muted-foreground");
+    expect(count.className).toContain("tabular-nums");
+    await click(row("folder:src"));
+    expect(squash(row("folder:src").textContent)).toBe("src3");
+    await view.unmount();
+  });
+
+  it("lists names only: no line counts and no binary label on any row", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    const pane = document.body.querySelector('[aria-label="Changed files"]') as HTMLElement;
+    expect(pane.textContent).not.toMatch(/[+−]\d/);
+    expect(row("file:img.png").textContent).not.toContain("binary");
     await view.unmount();
   });
 
@@ -232,9 +254,7 @@ describe("the Changes view's tree", () => {
     expect(status("file:scratch.txt")).toBe("(Untracked)");
     expect(status("file:img.png")).toBe("(Added)");
     expect(row("file:old.txt").querySelector('[role="img"]')).toBeNull();
-    expect(row("file:old.txt").textContent).toContain("+0 −9");
     expect(row("file:old.txt").querySelector(".line-through")).not.toBeNull();
-    expect(row("file:img.png").textContent).toContain("binary");
     await view.unmount();
   });
 
@@ -277,7 +297,7 @@ describe("the list pane", () => {
     await view.unmount();
   });
 
-  it("scrolls to the card of a pressed file and marks it, opening no diff and no tab", async () => {
+  it("unfolds, scrolls to and flashes a pressed file's card, then leaves no mark and opens nothing", async () => {
     const scrolled: (string | undefined)[] = [];
     const original = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = function (this: Element) {
@@ -286,17 +306,56 @@ describe("the list pane", () => {
     const openFile = vi.spyOn(files, "openFile");
     const { controller } = fakeChanges();
     const view = await mount(section(controller));
+    await click(foldButton("src/lib/c.ts"));
+    expect(foldButton("src/lib/c.ts").getAttribute("aria-expanded")).toBe("false");
+    const before = [...document.body.querySelectorAll("[data-card-path]")];
+
     await click(row("file:src/lib/c.ts"));
+    expect(foldButton("src/lib/c.ts").getAttribute("aria-expanded")).toBe("true");
     expect(scrolled).toEqual(["src/lib/c.ts"]);
-    expect(document.body.querySelector("[data-marked]")?.getAttribute("data-card-path")).toBe(
-      "src/lib/c.ts",
-    );
-    expect(row("file:src/lib/c.ts").getAttribute("aria-current")).toBe("true");
+    expect(flashed()).toEqual(["src/lib/c.ts"]);
+    // The press re-mounts no card: the stack keeps its nodes, and with them its scroll.
+    const after = [...document.body.querySelectorAll("[data-card-path]")];
+    expect(after.every((card, index) => card === before[index])).toBe(true);
+    expect(row("file:src/lib/c.ts").hasAttribute("aria-current")).toBe(false);
     expect(openFile).not.toHaveBeenCalled();
     expect(diff.selection.value).toBeNull();
     expect(diffFocusRequested.value).toBe(false);
+
+    await waitUntil(() => flashed().length === 0, 2500);
+    expect(document.body.querySelector("[data-marked]")).toBeNull();
     Element.prototype.scrollIntoView = original;
     openFile.mockRestore();
+    await view.unmount();
+  });
+
+  it("moves the flash to the newest press", async () => {
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await click(row("file:src/lib/c.ts"));
+    await click(row("file:old.txt"));
+    expect(flashed()).toEqual(["old.txt"]);
+    Element.prototype.scrollIntoView = original;
+    await view.unmount();
+  });
+
+  it("forgets a fold when a refresh drops the file, so the file comes back unfolded", async () => {
+    const { controller, state } = fakeChanges();
+    const view = await mount(section(controller));
+    await click(foldButton("src/lib/c.ts"));
+    await click(foldButton("src/ui/a.ts"));
+    const without = ENTRIES.filter((item) => item.path !== "src/lib/c.ts");
+    await act(async () => {
+      state.value = { ...state.value, snapshot: snapshot(without) };
+    });
+    await act(async () => {
+      state.value = { ...state.value, snapshot: snapshot(ENTRIES) };
+    });
+    expect(foldButton("src/lib/c.ts").getAttribute("aria-expanded")).toBe("true");
+    // A file every read kept keeps its fold.
+    expect(foldButton("src/ui/a.ts").getAttribute("aria-expanded")).toBe("false");
     await view.unmount();
   });
 });

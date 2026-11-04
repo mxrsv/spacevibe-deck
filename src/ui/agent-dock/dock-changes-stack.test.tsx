@@ -98,7 +98,6 @@ function stack(entries: ChangeEntry[]) {
       initial={false}
       controller={files}
       reads={1}
-      markedPath={null}
       ports={ports}
     />
   );

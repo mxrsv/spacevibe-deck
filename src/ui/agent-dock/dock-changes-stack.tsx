@@ -15,7 +15,7 @@ import type { FileSurfaceController } from "../../files/file-surface-controller"
 import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
-import { dockFoldedCards, selectDockFile, toggleDockCardFold } from "./agent-dock-state";
+import { cardKey, dockFoldedCards, selectDockFile, toggleDockCardFold } from "./agent-dock-state";
 import { CardBody } from "./dock-changes-card-body";
 import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
 
@@ -29,8 +29,6 @@ export const defaultStackPorts: DiffSidesPorts = {
   readHeadFile,
 };
 
-export const cardKey = (root: string, path: string): string => `${root}\0${path}`;
-
 interface CardProps {
   readonly root: string;
   readonly entry: ChangeEntry;
@@ -39,7 +37,6 @@ interface CardProps {
   readonly ports: DiffSidesPorts;
   /** The controller's read counter: a read that left the entry's counts alone can still change its text. */
   readonly reads: number;
-  readonly marked: boolean;
 }
 
 /**
@@ -76,7 +73,7 @@ function CardPath({ entry }: { entry: ChangeEntry }) {
 const stampOf = (entry: ChangeEntry): string =>
   [entry.status, entry.oldPath, entry.added, entry.removed, entry.binary].join("\0");
 
-function Card({ root, entry, initial, controller, ports, reads, marked }: CardProps) {
+function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
   const key = cardKey(root, entry.path);
   const folded = dockFoldedCards.value.has(key);
   const sides = useMemo(() => createDiffSides(ports), [ports]);
@@ -124,8 +121,8 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
     <div
       ref={host}
       data-card-path={entry.path}
-      data-marked={marked ? "" : undefined}
-      className={cn("border-b", marked && "shadow-[inset_2px_0_0_var(--primary)]")}
+      // `data-flash` is set and cleared by the Changes view on a list press, outside rendering.
+      className="border-b data-flash:shadow-[inset_2px_0_0_var(--primary)]"
     >
       <div
         className="sticky top-0 z-10 flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
@@ -184,8 +181,6 @@ export interface DockChangesStackProps {
   readonly initial: boolean;
   readonly controller: FileSurfaceController;
   readonly reads: number;
-  /** The card a press in the list pane marked, or null. */
-  readonly markedPath: string | null;
   /** Test seam; the window's file and git channels otherwise. */
   readonly ports?: DiffSidesPorts;
 }
@@ -201,7 +196,6 @@ export function DockChangesStack({
   initial,
   controller,
   reads,
-  markedPath,
   ports = defaultStackPorts,
 }: DockChangesStackProps) {
   return (
@@ -215,7 +209,6 @@ export function DockChangesStack({
           controller={controller}
           ports={ports}
           reads={reads}
-          marked={entry.path === markedPath}
         />
       ))}
     </div>

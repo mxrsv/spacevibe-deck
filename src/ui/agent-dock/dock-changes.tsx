@@ -1,5 +1,5 @@
 import { Refresh01Icon, SidebarLeft01Icon } from "@hugeicons/core-free-icons";
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import {
   changesController,
   type ChangesController,
@@ -14,12 +14,34 @@ import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
-import { dockChangesList, selectDockFile } from "./agent-dock-state";
+import {
+  cardKey,
+  dockChangesList,
+  pruneDockFoldedCards,
+  selectDockFile,
+  unfoldDockCard,
+} from "./agent-dock-state";
 import { DockChangesStack } from "./dock-changes-stack";
 import { DockChangesTree } from "./dock-changes-tree";
 import { watchedRoot } from "./dock-changes-watch";
 
 const NOT_A_REPOSITORY = "Not a git repository";
+/** How long a list press lights the card it brought up (the mock's flash). */
+const FLASH_MS = 1400;
+
+interface Flash {
+  readonly card: HTMLElement;
+  readonly timer: number;
+}
+
+/** Clear the lit card: its time is up, another press took over, or the view went away. */
+function endFlash(flash: { current: Flash | null }): void {
+  if (flash.current !== null) {
+    clearTimeout(flash.current.timer);
+    flash.current.card.removeAttribute("data-flash");
+    flash.current = null;
+  }
+}
 
 export interface DockChangesProps {
   /** The folder the section shows (`dock-root.ts`), or null when the window has none. */
@@ -89,14 +111,33 @@ function DockChangesBody({
   const snapshot = live?.snapshot ?? null;
   const entries = snapshot?.entries ?? [];
   const list = dockChangesList.value;
-  const [markedPath, setMarkedPath] = useState<string | null>(null);
   const stack = useRef<HTMLDivElement>(null);
-  // A press in the list pane brings that file's card up and marks it; nothing opens.
-  const scrollToCard = (path: string): void => {
-    setMarkedPath(path);
-    [...(stack.current?.querySelectorAll<HTMLElement>("[data-card-path]") ?? [])]
-      .find((card) => card.dataset.cardPath === path)
-      ?.scrollIntoView({ block: "start" });
+  const flash = useRef<Flash | null>(null);
+  useEffect(() => () => endFlash(flash), []);
+  useEffect(() => {
+    if (snapshot !== null) {
+      pruneDockFoldedCards(
+        root,
+        snapshot.entries.map((entry) => entry.path),
+      );
+    }
+  }, [root, snapshot]);
+  // A press in the list pane unfolds that file's card, brings it to the top and flashes it once;
+  // nothing opens and nothing stays marked. The flash is an attribute written here, not state, so
+  // the stack does not render again and keeps its scroll.
+  const showCard = (path: string): void => {
+    const card = [...(stack.current?.querySelectorAll<HTMLElement>("[data-card-path]") ?? [])].find(
+      (element) => element.dataset.cardPath === path,
+    );
+    if (card === undefined) {
+      return;
+    }
+    unfoldDockCard(cardKey(root, path));
+    endFlash(flash);
+    card.setAttribute("data-flash", "");
+    flash.current = { card, timer: window.setTimeout(() => endFlash(flash), FLASH_MS) };
+    // After the unfold has rendered, or a folded card near the end could not reach the top.
+    requestAnimationFrame(() => card.scrollIntoView({ block: "start" }));
   };
   // The file as a dock tab: what pressing a card's name does, and what a row's menu offers.
   const openFile = (entry: ChangeEntry): void => {
@@ -158,8 +199,7 @@ function DockChangesBody({
               <DockChangesTree
                 root={root}
                 entries={entries}
-                selectedPath={markedPath}
-                onOpen={(entry) => scrollToCard(entry.path)}
+                onOpen={(entry) => showCard(entry.path)}
                 onOpenFile={openFile}
               />
             </div>
@@ -171,7 +211,6 @@ function DockChangesBody({
               initial={snapshot?.initial ?? false}
               controller={controller}
               reads={changes.readCount.value}
-              markedPath={markedPath}
               ports={ports}
             />
           </div>

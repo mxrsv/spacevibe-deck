@@ -57,7 +57,10 @@ export const dockTreePane = signal<boolean | null>(null);
 /** The Changes view's own list pane beside the card stack (DOCK-10); off until the user asks. */
 export const dockChangesList = signal(false);
 
-/** `root\0path` of the Changes cards the user folded; window-scoped so a view switch keeps them. */
+/** A Changes card's key in `dockFoldedCards`: NUL cannot sit in a path, so no two roots collide. */
+export const cardKey = (root: string, path: string): string => `${root}\0${path}`;
+
+/** `cardKey`s of the Changes cards the user folded; window-scoped so a view switch keeps them. */
 export const dockFoldedCards = signal<ReadonlySet<string>>(new Set());
 
 export function toggleDockCardFold(key: string): void {
@@ -66,6 +69,28 @@ export function toggleDockCardFold(key: string): void {
     next.add(key);
   }
   dockFoldedCards.value = next;
+}
+
+/** Unfold one card; an unfolded card writes nothing, so the stack does not render again. */
+export function unfoldDockCard(key: string): void {
+  if (dockFoldedCards.value.has(key)) {
+    const next = new Set(dockFoldedCards.value);
+    next.delete(key);
+    dockFoldedCards.value = next;
+  }
+}
+
+/**
+ * Forget the folds of `root`'s cards whose file left the list, so a file that comes back starts
+ * unfolded. Other roots' folds stay: this read says nothing about them.
+ */
+export function pruneDockFoldedCards(root: string, paths: readonly string[]): void {
+  const prefix = cardKey(root, "");
+  const live = new Set(paths.map((path) => cardKey(root, path)));
+  const kept = [...dockFoldedCards.value].filter((key) => !key.startsWith(prefix) || live.has(key));
+  if (kept.length !== dockFoldedCards.value.size) {
+    dockFoldedCards.value = new Set(kept);
+  }
 }
 
 /**

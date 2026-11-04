@@ -2,7 +2,7 @@ import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import type { ChangeEntry } from "../../host/git-changes-host";
-import { baseName, countsFor, STATUS_WORD } from "../../files/changes/changes-model";
+import { baseName, STATUS_WORD } from "../../files/changes/changes-model";
 import {
   buildChangesTree,
   fileKey,
@@ -10,7 +10,6 @@ import {
   visibleRows,
   type ChangeFolder,
 } from "../../files/changes/changes-tree-model";
-import { ChangeCounts } from "../blocks/change-counts";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
 import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
@@ -24,9 +23,7 @@ export interface DockChangesTreeProps {
   /** The folder the entries are relative to. */
   readonly root: string;
   readonly entries: readonly ChangeEntry[];
-  /** The path whose diff is open, or null. */
-  readonly selectedPath: string | null;
-  /** Opens one entry's diff, as a row of the legacy Changes list does. */
+  /** Brings the entry's card up in the stack; the list only navigates. */
   onOpen(entry: ChangeEntry): void;
   /** Opens an entry's file as a dock tab, from the row's menu. */
   onOpenFile(entry: ChangeEntry): void;
@@ -36,7 +33,6 @@ interface TreeState {
   readonly root: string;
   readonly closed: ReadonlySet<string>;
   readonly tabStop: string | undefined;
-  readonly selectedPath: string | null;
   toggle(path: string): void;
   onOpen(entry: ChangeEntry): void;
   onOpenFile(entry: ChangeEntry): void;
@@ -45,8 +41,6 @@ interface TreeState {
 
 function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tree: TreeState }) {
   const key = fileKey(entry);
-  const selected = entry.path === tree.selectedPath;
-  const counts = countsFor(entry);
   const menu = useFileMenu();
   return (
     <>
@@ -55,12 +49,11 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         type="button"
         data-change-row={key}
         tabIndex={tree.tabStop === key ? 0 : -1}
-        aria-current={selected ? "true" : undefined}
         onClick={() => tree.onOpen(entry)}
         onFocus={() => tree.onFocus(key)}
         {...menu.triggerProps}
         style={{ paddingLeft: INDENT + depth * STEP + 18 }}
-        className={cn(ROW, "relative", selected && "bg-muted")}
+        className={cn(ROW, "relative")}
       >
         <span
           className={cn(
@@ -74,11 +67,6 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
             <span className="sr-only"> (from {entry.oldPath})</span>
           ) : null}
         </span>
-        {counts.kind === "counts" ? (
-          <ChangeCounts added={counts.added} removed={counts.removed} sans />
-        ) : counts.kind === "binary" ? (
-          <span className="shrink-0 text-xs text-muted-foreground">binary</span>
-        ) : null}
         <DockChangesFileMenu
           root={tree.root}
           entry={entry}
@@ -115,10 +103,12 @@ function FolderRow({
           <DeckIcon icon={open ? ArrowDown01Icon : ArrowRight01Icon} size={GLYPH_INLINE} />
         </span>
         <span className="min-w-0 flex-1 truncate text-xs text-foreground">{folder.label}</span>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          {folder.fileCount}
-        </span>
-        <ChangeCounts added={folder.added} removed={folder.removed} sans />
+        {/* An open folder shows what it holds; a closed one says how many. */}
+        {open ? null : (
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {folder.fileCount}
+          </span>
+        )}
       </CollapsibleTrigger>
       <CollapsibleContent>
         <Rows folder={folder} depth={depth + 1} tree={tree} />
@@ -141,13 +131,13 @@ function Rows({ folder, depth, tree }: { folder: ChangeFolder; depth: number; tr
 }
 
 /**
- * The changed files as folders with roll-up counts (LAY-6). One row is a Tab stop and the arrow
- * keys walk the rest, as the legacy list's roving tabindex does; Enter and Space press a row.
+ * The changed files as folders, for navigation only (DOCK-10): names, no line counts, and a
+ * closed folder's file count. One row is a Tab stop and the arrow keys walk the rest, as the
+ * legacy list's roving tabindex does; Enter and Space press a row.
  */
 export function DockChangesTree({
   root: folder,
   entries,
-  selectedPath,
   onOpen,
   onOpenFile,
 }: DockChangesTreeProps) {
@@ -205,7 +195,6 @@ export function DockChangesTree({
     root: folder,
     closed,
     tabStop,
-    selectedPath,
     toggle,
     onOpen,
     onOpenFile,
