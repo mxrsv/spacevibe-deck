@@ -24,6 +24,10 @@ function StateAge({ changedAt }: { readonly changedAt: number }) {
   return <>{formatShortAge(changedAt, railNow.value)}</>;
 }
 
+/** The row button's box, shared with the remembered variant (`remembered-row.tsx`). */
+export const ROW_LAYOUT =
+  "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors";
+
 export interface ProjectRailRowProps {
   readonly item: RailItem;
   /** The one row of the list Tab reaches; arrow keys move between the others. */
@@ -112,7 +116,7 @@ export function ProjectRailRow({
               }
             }}
             className={cn(
-              "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors",
+              ROW_LAYOUT,
               // Focus paints as hover does on an idle row; the selected row has no hover step, so
               // focus takes one step beyond its fill instead of lightening it.
               focused

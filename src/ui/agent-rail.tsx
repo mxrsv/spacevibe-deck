@@ -26,7 +26,7 @@ import { WorkspaceIcon } from "./workspace-icon";
 import { buildRailAvatars } from "./agent-rail-collapsed-model";
 import { RailAvatarColumn } from "./agent-rail-column";
 import { RailCreate } from "./rail-create";
-import { ProjectRail } from "./project-rail/project-rail";
+import { ProjectRail, type RememberedRail } from "./project-rail/project-rail";
 import { ProjectRailAttentionPill } from "./project-rail/project-rail-attention-pill";
 import { stageAttentionPillEnabled, withPaneFlash } from "./shell-stage";
 import { onProjectRailKeyDown, ProjectRailControls } from "./project-rail/project-rail-controls";
@@ -135,6 +135,8 @@ export interface AgentRailProps {
    * a launcher that opens nothing is worse than none.
    */
   readonly cardActions?: CardActions;
+  /** `stageLauncher`: the previous session's agents, dimmed, under their projects. */
+  readonly remembered?: RememberedRail;
   /**
    * Pinned under the scrolling list: the rail's tools row (`SidebarActions`,
    * DL §28). `App` builds it, the same way it builds the toolbar once for both
@@ -366,6 +368,7 @@ function WorktreeCardRail(props: AgentRailProps) {
             onCloseTab={props.onCloseTab}
             onRenameTab={props.onRenameTab}
             cardActions={props.cardActions}
+            remembered={props.remembered}
             onCloseProject={props.onCloseProject}
             onRemoveWorkspace={props.onRemoveWorkspace}
             onOpenBoard={props.legacy.onOpenWorkspace}

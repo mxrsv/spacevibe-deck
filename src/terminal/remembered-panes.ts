@@ -62,6 +62,15 @@ export async function loadRememberedPanes(options: { store?: StoreSeam } = {}): 
 }
 
 /**
+ * True when the last load succeeded, so the rows are safely on disk after a merge. Boot uses it to
+ * decide whether the previous main record may be replaced: a write-locked store has not taken the
+ * rows, and the record is then the only copy.
+ */
+export function rememberedStoreWritable(): boolean {
+  return writable !== null;
+}
+
+/**
  * One entry per agent pane of a window record. A pane without a cwd, or in a
  * tab without a workspace, has no row to sit under and is skipped (the archive
  * skips workspace-less tabs the same way).

@@ -6,6 +6,7 @@ import {
   remove,
   rememberedFromRecord,
   rememberedPanes,
+  rememberedStoreWritable,
   resetRememberedPanes,
 } from "./remembered-panes";
 import {
@@ -249,6 +250,18 @@ describe("loadRememberedPanes", () => {
     await mergeFromRecord(record([tab([pane()])]));
     expect(store.set).not.toHaveBeenCalled();
     expect(persistError.value).not.toBeNull();
+  });
+
+  it("reports writable only after a load that trusted the store", async () => {
+    expect(rememberedStoreWritable()).toBe(false);
+    await loadRememberedPanes({ store: createFakeStore({}, "unreadable").store });
+    expect(rememberedStoreWritable()).toBe(false);
+    await loadRememberedPanes({ store: createFakeStore().store });
+    expect(rememberedStoreWritable()).toBe(true);
+    const throwing = createFakeStore().store;
+    vi.mocked(throwing.get).mockRejectedValueOnce(new Error("boom"));
+    await loadRememberedPanes({ store: throwing });
+    expect(rememberedStoreWritable()).toBe(false);
   });
 
   it("a mutation before any load writes nothing", async () => {

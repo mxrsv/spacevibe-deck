@@ -12,6 +12,8 @@ import { isRailItemFocused, type RailSelection } from "./project-rail-model";
 import { ArchivedSection, HiddenSection } from "./project-rail-parked";
 import { projectCommandsFor, type ProjectDeps } from "./project-rail-project-commands";
 import { FlatSection, ProjectSection, type RailRowEnv } from "./project-rail-sections";
+import type { RememberedPane } from "../../lib/session-schema";
+import { rememberedRowsByProject } from "./remembered-rows";
 import {
   foldedProjects,
   railNow,
@@ -35,9 +37,20 @@ function checkoutsByProject(
   return byKey;
 }
 
+/** The remembered agent panes the rail lists, dimmed, under their projects (`stageLauncher`). */
+export interface RememberedRail {
+  readonly panes: readonly RememberedPane[];
+  /** A press on a row: resume it, else start it fresh. */
+  readonly onResume: (pane: RememberedPane) => void;
+  /** Its ✕: forget it. */
+  readonly onForget: (pane: RememberedPane) => void;
+}
+
 export interface ProjectRailProps extends RailSelection, ProjectDeps {
   /** The view `AgentRail` already builds, so the two rails cannot disagree about it. */
   readonly view: AgentRailView;
+  /** Absent with the switch off: no remembered row is drawn. */
+  readonly remembered?: RememberedRail;
 }
 
 /**
@@ -89,7 +102,13 @@ function onListKeyDown(event: KeyboardEvent): void {
  * The project-first rail's list (spec LAY-1..LAY-4), mounted by `AgentRail` behind the
  * `projectRail` release switch in place of its cluster list.
  */
-export function ProjectRail({ view, onFocusPane, onSelectTab, ...deps }: ProjectRailProps) {
+export function ProjectRail({
+  view,
+  onFocusPane,
+  onSelectTab,
+  remembered,
+  ...deps
+}: ProjectRailProps) {
   useEffect(() => runRailClock(), []);
   const state = railViewState.value;
   const searching = state.query.trim() !== "";
@@ -115,6 +134,7 @@ export function ProjectRail({ view, onFocusPane, onSelectTab, ...deps }: Project
     rows.find(isRailItemFocused) ??
     rows[0]
   )?.id;
+  const checkouts = checkoutsByProject(view);
   const env: RailRowEnv = {
     tabStopId,
     activeId,
@@ -122,8 +142,18 @@ export function ProjectRail({ view, onFocusPane, onSelectTab, ...deps }: Project
     selection: { onFocusPane, onSelectTab },
     deps,
     projects: byProject ? projectCommandsFor(model.groups, view.stream, deps) : new Map(),
-    checkouts: checkoutsByProject(view),
+    checkouts,
     searching,
+    // Remembered panes have no state to bucket by: they show By project only.
+    remembered:
+      remembered === undefined || !byProject
+        ? undefined
+        : {
+            rows: rememberedRowsByProject(remembered.panes, checkouts),
+            query: state.query,
+            onResume: remembered.onResume,
+            onForget: remembered.onForget,
+          },
   };
   // A row that archived, hid or closed took the keyboard with it: hand it to a neighbour.
   useEffect(recoverRailFocus);

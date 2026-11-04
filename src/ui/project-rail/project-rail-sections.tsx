@@ -8,6 +8,11 @@ import { selectRailItem, type RailSelection } from "./project-rail-model";
 import { ProjectRailRow } from "./project-rail-row";
 import type { ProjectCommands, ProjectDeps } from "./project-rail-project-commands";
 import { toggleProjectFolded } from "./project-rail-state";
+import { RememberedRailRow } from "./remembered-row";
+import { rememberedRowMatches, type RememberedRowModel } from "./remembered-rows";
+import type { RememberedPane } from "../../lib/session-schema";
+
+const noop = (): void => {};
 
 /** What every row of the list needs besides its own item. */
 export interface RailRowEnv {
@@ -24,6 +29,13 @@ export interface RailRowEnv {
   readonly checkouts: ReadonlyMap<string, readonly RailWorktreeGroup[]>;
   /** While a search is set the list shows matches only: no checkout line stands in for none. */
   readonly searching: boolean;
+  /** `stageLauncher` only: the remembered rows of each project, with what their presses do. */
+  readonly remembered?: {
+    readonly rows: ReadonlyMap<string, readonly RememberedRowModel[]>;
+    readonly query: string;
+    readonly onResume: (pane: RememberedPane) => void;
+    readonly onForget: (pane: RememberedPane) => void;
+  };
 }
 
 export function RailRows({
@@ -81,6 +93,9 @@ export function ProjectSection({
 }) {
   const { onFocusPane, onSelectTab } = env.selection;
   const rowless = rowlessCheckouts(group, env);
+  const remembered = (env.remembered?.rows.get(group.key) ?? []).filter((row) =>
+    rememberedRowMatches(row, group.label, env.remembered?.query ?? ""),
+  );
   const firstCheckout = env.checkouts.get(group.key)?.[0];
   // As the shipped header: a press focuses the project (its active checkout, else the first
   // with something open) and then folds or unfolds it.
@@ -112,6 +127,16 @@ export function ProjectSection({
         }}
       />
       {folded ? null : <RailRows items={group.items} env={env} named={false} />}
+      {folded || env.remembered === undefined
+        ? null
+        : remembered.map((row) => (
+            <RememberedRailRow
+              key={row.pane.id}
+              row={row}
+              onResume={env.remembered?.onResume ?? noop}
+              onForget={env.remembered?.onForget ?? noop}
+            />
+          ))}
       {folded
         ? null
         : rowless.map((checkout) => (
@@ -125,7 +150,7 @@ export function ProjectSection({
               onSelectTab={onSelectTab}
             />
           ))}
-      {!folded && group.items.length === 0 && rowless.length === 0 ? (
+      {!folded && group.items.length === 0 && rowless.length === 0 && remembered.length === 0 ? (
         <p className="px-6 py-2 text-xs text-muted-foreground">No sessions</p>
       ) : null}
     </section>

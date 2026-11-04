@@ -67,6 +67,7 @@ import {
   promptsOpen,
   railCardMenuOpen,
   railKeyboardMenuFor,
+  reportChromeMessage,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
@@ -113,7 +114,8 @@ import {
   type LaunchTaskResult,
 } from "../terminal/task-prompt-send";
 import type { SessionEntry } from "../lib/session-history";
-import { resumeSession } from "../sessions/resume-session";
+import { resumeRememberedPane, resumeSession } from "../sessions/resume-session";
+import { resumeLookup } from "../host/resume-host";
 import { installRecentActivitySync } from "../sessions/recent-activity-sync";
 import { deadProjects, refreshSessions, sessionsSupported } from "../sessions/sessions-store";
 import { PresetEditor } from "../presets/preset-editor";
@@ -262,8 +264,16 @@ import {
   clearWindowRecord,
   flushSessionJournal,
   initSessionJournal,
+  readWindowRecords,
   suspendSessionJournal,
 } from "../terminal/session-journal";
+import {
+  forget as forgetRememberedPane,
+  remove as removeRememberedPane,
+  rememberedPanes,
+} from "../terminal/remembered-panes";
+import { seedRememberedPanes } from "./project-rail/remembered-boot";
+import { createRememberedPress, freshLaunchRequest } from "./project-rail/remembered-press";
 import { readLastSession } from "../terminal/session-restore";
 import { lastSession, summarizeLastSession } from "../terminal/last-session-store";
 import type { WindowRecord } from "../lib/session-schema";
@@ -704,6 +714,54 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return resumed;
   };
 
+  /**
+   * A remembered rail row's press (`stageLauncher`, LCH-2). Built once per window so its
+   * in-flight set survives re-renders; every seam is read at call time.
+   */
+  const rememberedPress = useRef<ReturnType<typeof createRememberedPress> | null>(null);
+  rememberedPress.current ??= createRememberedPress({
+    resume: async (entry) => {
+      // The directories are checked on disk first: `isDead` is synchronous, and a remembered
+      // folder is not necessarily one the sessions scan has looked at.
+      const paths = [...new Set([entry.cwd, entry.workspacePath])];
+      const exists = await defaultPtyClient.dirsExist(paths);
+      const missing = new Set(paths.filter((_, index) => exists[index] === false));
+      return resumeRememberedPane(entry, {
+        materialize: (intent) => tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
+        customAgents: settings.value.customAgents,
+        isDead: (path) => missing.has(path),
+        lookup: resumeLookup,
+      });
+    },
+    startFresh: async (entry, command) => {
+      const manager = tabsRef.current;
+      if (manager === null) return { ok: false };
+      const { agentId, override } = freshLaunchRequest(entry, command, settings.value);
+      const result = await manager.launchAgentAtTarget(
+        { kind: "new-space", workspacePath: entry.cwd },
+        agentId,
+        () => true,
+        () =>
+          [...repositoryScans.value.values()].flatMap((scan) =>
+            scan.kind === "repository" ? scan.worktrees.map((item) => item.path) : [],
+          ),
+        override,
+      );
+      if (result.kind !== "spawned") {
+        return { ok: false, message: result.kind === "failed" ? result.message : undefined };
+      }
+      const index = tabViews.value.findIndex((tab) => tab.key === result.receipt.tabKey);
+      const label = launcherAgents().find((agent) => agent.id === agentId)?.label ?? entry.agent;
+      if (index >= 0) manager.renameTab(index, autoSpaceName(folderName(entry.cwd), label));
+      requestAnimationFrame(() => {
+        if (!settingsOpen.value && !boardOpen.value) manager.focusAgentLaunch(result.receipt);
+      });
+      return { ok: true };
+    },
+    remove: removeRememberedPane,
+    notify: reportChromeMessage,
+  });
+
   /** Restore the newest archived tab set belonging to one legacy rail row. */
   const resumeArchivedWorktreeForRail = (path: string): void =>
     resumeArchivedWorktree(path, {
@@ -879,11 +937,20 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           return new Map<string, WindowRecord>();
         });
         lastSession.value = summarizeLastSession(records, label);
+        // `stageLauncher`: fold the previous main record into the remembered rows BEFORE the
+        // journal's first write replaces it. Once the rows are safely stored the record need not
+        // be held any more; held, it would be merged again next boot and bring back a row the
+        // user forgot in between.
+        const rememberedSeeded = await seedRememberedPanes({
+          enabled: stageLauncherEnabled(),
+          mainLabel: label,
+          readRecords: readWindowRecords,
+        });
         await initSessionJournal({
           capture: () => manager.captureSession(),
           windowLabel: label,
           isMain: true,
-          holdEmpty: () => lastSession.value !== null,
+          holdEmpty: () => lastSession.value !== null && !rememberedSeeded,
         });
         // `stageLauncher` on: the stage hosts the launcher instead (LCH-1). The record is still
         // read and held above, so nothing is erased; only the board that offered it stays down.
@@ -2716,6 +2783,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             }
             onFocusPane={focusRailPane}
             cardActions={railCardActions}
+            remembered={
+              stageLauncherEnabled()
+                ? {
+                    panes: rememberedPanes.value,
+                    onResume: (pane) => void rememberedPress.current?.(pane),
+                    onForget: (pane) => void forgetRememberedPane(pane.id),
+                  }
+                : undefined
+            }
             // A remembered header's close: forget the folder by dropping its
             // history entries; the rail re-derives from `workspacesData`.
             onRemoveWorkspace={removeWorkspaceRecents}
