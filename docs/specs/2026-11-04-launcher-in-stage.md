@@ -40,10 +40,12 @@ The owner's CLI corpus (measured 2026-08-16) shows why that common case matters:
   - **Pressing a row** opens that one pane in its project and resumes its conversation. It uses the
     same resolution the last-session restore uses: the exact id where the resolver finds one, else
     that agent's `latest` where the table allows it.
-  - **No resolution:** the row reopens the agent with its recorded launch command and says it
-    started fresh.
+  - **No resolution:** the row reopens the agent with its recorded launch command, or the agent's
+    default command when none was recorded, and says it started fresh.
   - **Pressing a running row** shows its pane.
   - **Forgetting:** closing a row (its ✕) forgets it.
+  - **Lifetime:** a row survives other rows being resumed, later journal writes and later quits,
+    until it is resumed or forgotten.
 - **LCH-3 Offer, not restore.** Boot never resumes anything unasked, which keeps the 2026-09-27
   decision. The Open board's **Last session** line and its **Reopen** go away; the rail rows replace
   them. Reopening a whole session at once is out of scope.
