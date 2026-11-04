@@ -5,7 +5,8 @@ import {
   type ChangesController,
   type ChangesState,
 } from "../../files/changes/changes-controller";
-import { failureLine, omittedLabel } from "../../files/changes/changes-model";
+import { absolutePath, failureLine, omittedLabel } from "../../files/changes/changes-model";
+import type { ChangeEntry } from "../../host/git-changes-host";
 import type { DiffSidesPorts } from "../../files/changes/diff-sides";
 import type { FileSurfaceController } from "../../files/file-surface-controller";
 import { repositoryScans } from "../../repositories/repositories-store";
@@ -13,7 +14,7 @@ import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
-import { dockChangesList } from "./agent-dock-state";
+import { dockChangesList, selectDockFile } from "./agent-dock-state";
 import { DockChangesStack } from "./dock-changes-stack";
 import { DockChangesTree } from "./dock-changes-tree";
 import { watchedRoot } from "./dock-changes-watch";
@@ -97,6 +98,10 @@ function DockChangesBody({
       .find((card) => card.dataset.cardPath === path)
       ?.scrollIntoView({ block: "start" });
   };
+  // The file as a dock tab: what pressing a card's name does, and what a row's menu offers.
+  const openFile = (entry: ChangeEntry): void => {
+    void controller.openFile(root, absolutePath(root, entry.path), true).then(selectDockFile);
+  };
   return (
     <div className="flex h-full min-h-0 flex-col">
       {live?.failure ? <Note failure>{failureLine(live.failure)}</Note> : null}
@@ -151,9 +156,11 @@ function DockChangesBody({
           {list ? (
             <div className="w-2/5 shrink-0 overflow-y-auto border-r">
               <DockChangesTree
+                root={root}
                 entries={entries}
                 selectedPath={markedPath}
                 onOpen={(entry) => scrollToCard(entry.path)}
+                onOpenFile={openFile}
               />
             </div>
           ) : null}

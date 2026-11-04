@@ -13,6 +13,7 @@ import {
 import { ChangeCounts } from "../blocks/change-counts";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../controls/collapsible";
+import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
 
 const INDENT = 8;
 const STEP = 12;
@@ -29,19 +30,25 @@ export const STATUS_LOOK: Readonly<Record<ChangeStatus, { letter: string; ink: s
 };
 
 export interface DockChangesTreeProps {
+  /** The folder the entries are relative to. */
+  readonly root: string;
   readonly entries: readonly ChangeEntry[];
   /** The path whose diff is open, or null. */
   readonly selectedPath: string | null;
   /** Opens one entry's diff, as a row of the legacy Changes list does. */
   onOpen(entry: ChangeEntry): void;
+  /** Opens an entry's file as a dock tab, from the row's menu. */
+  onOpenFile(entry: ChangeEntry): void;
 }
 
 interface TreeState {
+  readonly root: string;
   readonly closed: ReadonlySet<string>;
   readonly tabStop: string | undefined;
   readonly selectedPath: string | null;
   toggle(path: string): void;
   onOpen(entry: ChangeEntry): void;
+  onOpenFile(entry: ChangeEntry): void;
   onFocus(key: string): void;
 }
 
@@ -49,6 +56,7 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
   const key = fileKey(entry);
   const selected = entry.path === tree.selectedPath;
   const counts = countsFor(entry);
+  const menu = useFileMenu();
   return (
     <>
       {/* raw-control: a whole-row press target; no Button variant spans a tree row */}
@@ -59,8 +67,9 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         aria-current={selected ? "true" : undefined}
         onClick={() => tree.onOpen(entry)}
         onFocus={() => tree.onFocus(key)}
+        {...menu.triggerProps}
         style={{ paddingLeft: INDENT + depth * STEP + 18 }}
-        className={cn(ROW, selected && "bg-muted")}
+        className={cn(ROW, "relative", selected && "bg-muted")}
       >
         <span
           className={cn(
@@ -79,6 +88,13 @@ function FileRow({ entry, depth, tree }: { entry: ChangeEntry; depth: number; tr
         ) : counts.kind === "binary" ? (
           <span className="shrink-0 text-xs text-muted-foreground">binary</span>
         ) : null}
+        <DockChangesFileMenu
+          root={tree.root}
+          entry={entry}
+          open={menu.open}
+          onOpenChange={menu.setOpen}
+          onOpenFile={tree.onOpenFile}
+        />
       </button>
     </>
   );
@@ -137,7 +153,13 @@ function Rows({ folder, depth, tree }: { folder: ChangeFolder; depth: number; tr
  * The changed files as folders with roll-up counts (LAY-6). One row is a Tab stop and the arrow
  * keys walk the rest, as the legacy list's roving tabindex does; Enter and Space press a row.
  */
-export function DockChangesTree({ entries, selectedPath, onOpen }: DockChangesTreeProps) {
+export function DockChangesTree({
+  root: folder,
+  entries,
+  selectedPath,
+  onOpen,
+  onOpenFile,
+}: DockChangesTreeProps) {
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
   const [focused, setFocused] = useState<string | null>(null);
   const root = buildChangesTree(entries);
@@ -188,7 +210,16 @@ export function DockChangesTree({ entries, selectedPath, onOpen }: DockChangesTr
     }
   }
 
-  const tree: TreeState = { closed, tabStop, selectedPath, toggle, onOpen, onFocus: setFocused };
+  const tree: TreeState = {
+    root: folder,
+    closed,
+    tabStop,
+    selectedPath,
+    toggle,
+    onOpen,
+    onOpenFile,
+    onFocus: setFocused,
+  };
   return (
     <div role="group" aria-label="Changed files" onKeyDown={onKeyDown}>
       <Rows folder={root} depth={0} tree={tree} />

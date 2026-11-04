@@ -16,6 +16,18 @@ vi.mock("../../host/store-host", () => ({
 }));
 vi.mock("../../host/dialog-host", () => ({ open: vi.fn(async () => null) }));
 vi.mock("../../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
+// The file menu copies a path and hands one to an installed app: both are observed, not run.
+vi.mock("../../host/shell-host", async () => {
+  const actual =
+    await vi.importActual<typeof import("../../host/shell-host")>("../../host/shell-host");
+  return { ...actual, writeText: vi.fn(async () => {}) };
+});
+vi.mock("../../host/external-apps-host", async () => {
+  const actual = await vi.importActual<typeof import("../../host/external-apps-host")>(
+    "../../host/external-apps-host",
+  );
+  return { ...actual, available: true, openInApp: vi.fn(async () => {}) };
+});
 vi.mock("../../repositories/repositories-store", async () => {
   const actual = await vi.importActual<typeof import("../../repositories/repositories-store")>(
     "../../repositories/repositories-store",
@@ -31,7 +43,10 @@ import { createDiffSelection, type DiffSelectionStore } from "../../files/change
 import { repositoryScans } from "../../repositories/repositories-store";
 import type { RepositoryScan } from "../../repositories/repository-client";
 import { tabViews, type TabView } from "../../terminal/tabs-store";
-import { click, mount, press } from "../controls/preset-test-kit";
+import { openInApp } from "../../host/external-apps-host";
+import { writeText } from "../../host/shell-host";
+import { installedExternalApps } from "../../links/external-apps-store";
+import { byRole, click, mount, press, waitUntil } from "../controls/preset-test-kit";
 import { dockChangesList, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
 import { testFileBodies } from "./dock-files-test-kit";
@@ -497,6 +512,90 @@ describe("the keyboard", () => {
     expect(row("folder:src/ui").getAttribute("aria-expanded")).toBe("false");
     await press(row("folder:src/ui"), { key: "ArrowRight" });
     expect(row("folder:src/ui").getAttribute("aria-expanded")).toBe("true");
+    await view.unmount();
+  });
+});
+
+describe("a changed file's menu", () => {
+  const menuItems = (): string[] =>
+    [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
+      (item) => item.textContent ?? "",
+    );
+  async function rightClick(target: HTMLElement): Promise<void> {
+    await act(async () => {
+      target.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    });
+    await waitUntil(() => byRole("menu") !== null);
+  }
+  const pick = (label: string): Promise<void> =>
+    click(
+      [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+        (item) => item.textContent === label,
+      ) as HTMLElement,
+    );
+
+  beforeEach(() => {
+    vi.mocked(writeText).mockClear();
+    vi.mocked(openInApp).mockClear();
+    installedExternalApps.value = [
+      { id: "cursor", label: "Cursor", group: "editor", iconDataUrl: null },
+      { id: "finder", label: "Finder", group: "files", iconDataUrl: null },
+    ];
+  });
+  afterEach(() => {
+    installedExternalApps.value = [];
+  });
+
+  it("offers open, reveal, an editor and copy on a row, and copies the absolute path", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await rightClick(row("file:src/lib/c.ts"));
+    expect(menuItems()).toEqual(["Open", "Reveal in Finder", "Open with", "Copy path"]);
+    await pick("Copy path");
+    expect(writeText).toHaveBeenCalledWith(`${ROOT}/src/lib/c.ts`);
+    await view.unmount();
+  });
+
+  it("reveals the file in the installed files app", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await rightClick(row("file:src/lib/c.ts"));
+    await pick("Reveal in Finder");
+    expect(openInApp).toHaveBeenCalledWith({
+      appId: "finder",
+      path: `${ROOT}/src/lib/c.ts`,
+      isDirectory: false,
+      line: 1,
+      column: 1,
+    });
+    await view.unmount();
+  });
+
+  it("leaves out what this machine does not have", async () => {
+    installedExternalApps.value = [];
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await rightClick(row("file:src/lib/c.ts"));
+    expect(menuItems()).toEqual(["Open", "Copy path"]);
+    await view.unmount();
+  });
+
+  it("offers only the path for a deleted file, which has nothing to open", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await rightClick(row("file:old.txt"));
+    expect(menuItems()).toEqual(["Copy path"]);
+    await view.unmount();
+  });
+
+  it("opens from a card header as well as from a row", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    const header = document.body.querySelector(
+      '[data-card-path="src/lib/c.ts"] .sticky',
+    ) as HTMLElement;
+    await rightClick(header);
+    expect(menuItems()).toContain("Copy path");
     await view.unmount();
   });
 });

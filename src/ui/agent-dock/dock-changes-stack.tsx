@@ -16,6 +16,7 @@ import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import { dockFoldedCards, selectDockFile, toggleDockCardFold } from "./agent-dock-state";
 import { STATUS_LOOK } from "./dock-changes-tree";
+import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
 
 /** How far past the viewport a card starts reading its two sides. */
 const NEAR_MARGIN = "600px 0px";
@@ -149,6 +150,10 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
   const counts = countsFor(entry);
   const mark = STATUS_LOOK[entry.status];
   const label = folded ? "Unfold" : "Fold";
+  const menu = useFileMenu();
+  const openFile = (): void => {
+    void controller.openFile(root, absolutePath(root, entry.path), true).then(selectDockFile);
+  };
   return (
     <div
       ref={host}
@@ -156,7 +161,10 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
       data-marked={marked ? "" : undefined}
       className={cn("border-b", marked && "shadow-[inset_2px_0_0_var(--primary)]")}
     >
-      <div className="sticky top-0 z-10 flex h-7.5 items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1">
+      <div
+        className="sticky top-0 z-10 flex h-7.5 items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        {...menu.triggerProps}
+      >
         <Button
           variant="ghost"
           size="icon-xs"
@@ -182,11 +190,7 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
             "h-auto min-w-0 rounded-sm px-1 py-0 text-xs hover:bg-transparent hover:underline focus-visible:bg-transparent",
             entry.status === "deleted" && "line-through",
           )}
-          onClick={() =>
-            void controller
-              .openFile(root, absolutePath(root, entry.path), true)
-              .then(selectDockFile)
-          }
+          onClick={openFile}
         >
           <span className="truncate">{baseName(entry.path)}</span>
         </Button>
@@ -196,6 +200,13 @@ function Card({ root, entry, initial, controller, ports, reads, marked }: CardPr
         ) : counts.kind === "binary" ? (
           <span className="shrink-0 text-xs text-muted-foreground">binary</span>
         ) : null}
+        <DockChangesFileMenu
+          root={root}
+          entry={entry}
+          open={menu.open}
+          onOpenChange={menu.setOpen}
+          onOpenFile={openFile}
+        />
       </div>
       {folded ? null : near || loadedFor.current !== null ? (
         <CardBody view={sides.view.value} />
