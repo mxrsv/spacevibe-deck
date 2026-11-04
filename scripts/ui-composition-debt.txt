@@ -50,8 +50,6 @@ src/ui/agent-dock/dock-changes.tsx weight 1
 src/ui/agent-dock/dock-file-body.tsx weight 1
 src/ui/agent-quick-picker.tsx phosphor 1
 src/ui/agent-rail.tsx phosphor 1
-src/ui/blocks/agent-state-mark.tsx arbitrary 2
-src/ui/blocks/chip.tsx weight 1
 src/ui/command-settings/command-settings-live-row.tsx arbitrary 1
 src/ui/command-settings/command-settings-rows.tsx weight 2
 src/ui/command-settings/command-settings.tsx arbitrary 1
@@ -91,10 +89,6 @@ src/ui/dev-servers/dev-servers-panel.tsx phosphor 1
 src/ui/dev-servers/dev-servers-popover.tsx phosphor 1
 src/ui/dock/dock-tab-registry.ts phosphor 1
 src/ui/dock/dock-toggle.tsx phosphor 1
-src/ui/project-rail/project-rail-checkout.tsx spacing-step 2
-src/ui/project-rail/project-rail-header.tsx weight 1
-src/ui/project-rail/project-rail-row.tsx weight 1
-src/ui/project-rail/project-rail-sections.tsx weight 1
 src/ui/rail-create-row.tsx phosphor 1
 src/ui/repository-rail.tsx phosphor 1
 src/ui/sessions/session-row.tsx phosphor 1
@@ -180,8 +174,6 @@ src/styles/13-sessions.css height 9
 src/styles/13-sessions.css spacing 7
 src/styles/13-sessions.css state-bg 2
 src/styles/13-sessions.css weight 3
-src/styles/15-rail-footer.css state-bg 1
-src/styles/15-rail-footer.css weight 1
 src/styles/16-launch-profiles.css height 1
 src/styles/16-launch-profiles.css spacing 3
 src/styles/16-launch-profiles.css weight 1

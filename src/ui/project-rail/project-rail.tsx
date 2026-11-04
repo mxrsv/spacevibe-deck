@@ -189,7 +189,7 @@ export function ProjectRail({
           setActiveId(owner.getAttribute("data-rail-item"));
         }
       }}
-      className="ui-preset min-w-0 bg-transparent pb-3"
+      className="ui-preset min-w-0 bg-transparent pt-(--space-2) pb-(--space-group-sm)"
     >
       {model.groups.map((group) =>
         byProject ? (
@@ -200,12 +200,12 @@ export function ProjectRail({
       )}
       {model.groups.length === 0 && !searching && stageLauncherEnabled() ? (
         // First run (spec LCH-7): no project and no live tab, so say where projects will appear.
-        <p className="flex items-center gap-2 px-2 py-6 text-xs text-muted-foreground">
+        <p className="flex h-(--row-32) items-center gap-(--space-icon-label) px-(--space-pad-row) text-xs text-(--text-faint)">
           <DeckIcon icon={Folder01Icon} size={GLYPH_INLINE} />
           Projects you open land here
         </p>
       ) : model.groups.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-6 text-center text-xs text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 px-(--space-pad-row) py-(--space-24) text-center text-xs text-(--text-faint)">
           <p>{searching ? "No sessions match" : "Nothing here"}</p>
           {searching ? (
             <Button variant="outline" size="sm" onClick={() => setRailQuery("")}>

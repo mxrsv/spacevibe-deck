@@ -4,7 +4,7 @@ import {
   FolderOpenIcon,
   GitBranchIcon,
   GitForkIcon,
-  PlusSignIcon,
+  MoreHorizontalIcon,
   Settings02Icon,
   SquareSplitHorizontalIcon,
 } from "@hugeicons/core-free-icons";
@@ -16,12 +16,13 @@ import { checkoutLine, subjectOf } from "../agent-rail-card-model";
 import type { RailWorktreeGroup } from "../agent-rail-model";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { Button } from "../controls/button";
-import { DeckIcon, GLYPH_INLINE, type DeckGlyph } from "../controls/deck-icon";
+import { STATE_DISABLED, rowActionsGround, stateClasses } from "../blocks/recipe-classes";
+import { DeckIcon, GLYPH_FEATURE, type DeckGlyph } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuGap,
   DropdownMenuTrigger,
 } from "../controls/dropdown-menu";
 import { focusCheckout } from "../worktree-card";
@@ -49,7 +50,7 @@ export function ProjectRailCheckoutRows({ groups }: { readonly groups: CheckoutA
     <>
       {groups.map((rows, at) => (
         <Fragment key={rows[0]?.id ?? at}>
-          {at === 0 ? null : <DropdownMenuSeparator />}
+          {at === 0 ? null : <DropdownMenuGap />}
           {rows.map((row) =>
             row.kind === "note" ? (
               <DropdownMenuItem key={row.id} disabled>
@@ -118,7 +119,7 @@ export function ProjectRailCheckout({
   return (
     <div
       data-rail-item={`checkout:${checkout.key}`}
-      className="group/item relative mx-1.5"
+      className="group/item relative"
       onContextMenu={(event: MouseEvent) => {
         if (groups.length > 0) {
           event.preventDefault();
@@ -133,15 +134,19 @@ export function ProjectRailCheckout({
         aria-label={hasRows ? `Focus ${where}` : `New agent in ${where}`}
         disabled={press === undefined}
         onClick={press}
-        className="flex h-6 w-full items-center gap-1.5 rounded-md pr-8 pl-7 text-left text-xs text-muted-foreground outline-none hover:bg-sidebar-accent/50 focus-visible:bg-sidebar-accent/50"
+        className={cn(
+          "flex h-(--row-32) w-full items-center gap-2 rounded-(--radius-control) pr-(--space-pad-row) pl-(--space-16) text-left text-sm text-(--text-muted)",
+          stateClasses(false),
+          STATE_DISABLED,
+        )}
       >
-        <DeckIcon icon={GlyphIcon} size={GLYPH_INLINE} class="shrink-0" />
+        <DeckIcon icon={GlyphIcon} size={GLYPH_FEATURE} class="shrink-0" />
         <span className="min-w-0 truncate">{line.name}</span>
         {/* The tag is a word for assistive technology only: the glyph says it to the eye. */}
         {line.tag === null ? null : <span className="sr-only">{line.tag}</span>}
       </button>
       {groups.length === 0 ? null : (
-        <div className={cn("absolute top-0 right-1.5 flex items-center", REVEAL)}>
+        <div className={cn(rowActionsGround(false), REVEAL)}>
           <DropdownMenu
             open={menuOpen}
             onOpenChange={setMenuOpen}
@@ -152,13 +157,13 @@ export function ProjectRailCheckout({
             }}
           >
             <Tip
-              label="New here"
+              label="More"
               button={
                 <DropdownMenuTrigger
                   render={
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
                       tabIndex={active ? 0 : -1}
                       aria-label={`Actions for ${where}`}
                     />
@@ -166,7 +171,7 @@ export function ProjectRailCheckout({
                 />
               }
             >
-              <DeckIcon icon={PlusSignIcon} />
+              <DeckIcon icon={MoreHorizontalIcon} />
             </Tip>
             <DropdownMenuContent align="end" className="min-w-44">
               <RailPopupGuard />

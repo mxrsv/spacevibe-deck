@@ -41,6 +41,10 @@ const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
   // (DL-2.2) without a `filter` (DL-1.3). Brand marks, not action icons.
   ["lib/agent-logos.ts", 1],
   ["ui/controls/agent-glyph.tsx", 1],
+  // The braille working mark (RCP-15): each frame's dots drawn, because the
+  // Windows monospace fallback may lack the braille block. A status visual,
+  // not an action.
+  ["ui/blocks/braille-spinner.tsx", 1],
 ]);
 
 /**

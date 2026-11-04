@@ -8,12 +8,13 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { cn } from "@/lib/cn";
+import { rowActionsGround } from "../blocks/recipe-classes";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuSeparator,
+  DropdownMenuGap,
   DropdownMenuTrigger,
 } from "../controls/dropdown-menu";
 import { recoverRailFocus } from "./project-rail-focus";
@@ -47,13 +48,13 @@ export function ProjectRailHeaderActions({
   // The menu hands focus back to its trigger as it closes; the dialog must open after that.
   const removeWhenClosed = useRef(false);
   return (
-    <div className={cn("absolute top-1 right-1 flex items-center gap-0.5", REVEAL_HEADER)}>
+    <div className={cn(rowActionsGround(false), REVEAL_HEADER)}>
       <Tip
         label="New agent"
         button={
           <Button
             variant="ghost"
-            size="icon-xs"
+            size="icon-sm"
             tabIndex={tabIndex}
             disabled={agentDisabled}
             aria-label={`New agent in ${name}`}
@@ -85,7 +86,7 @@ export function ProjectRailHeaderActions({
               render={
                 <Button
                   variant="ghost"
-                  size="icon-xs"
+                  size="icon-sm"
                   tabIndex={tabIndex}
                   aria-label={`${name} menu`}
                 />
@@ -107,7 +108,7 @@ export function ProjectRailHeaderActions({
           >
             Move down
           </MenuEntry>
-          <DropdownMenuSeparator />
+          <DropdownMenuGap />
           <MenuEntry icon={ViewOffIcon} onClick={commands.hide}>
             Hide
           </MenuEntry>

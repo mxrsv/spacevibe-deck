@@ -44,10 +44,14 @@ cites it.
   `background-color`, for at most 300ms, with no infinite loop and nothing moving while the
   user is idle. Three scoped exceptions loop, each only while its state exists, each with
   `transform`/`opacity` alone, and each still under reduced motion:
-  - the rail's `asked` mark radiates on a 1.8s loop (DL-27.3);
-  - a worktree-card row shows a braille spinner while its agent works: ten stacked frames
-    shown by `opacity`, 80ms each, an 800ms loop, only under `[data-state="working"]`;
-    reduced motion keeps the first frame (DL-27.21);
+  - the old agent rail's `asked` mark radiates on a 1.8s loop (DL-27.3), until CMP-20 deletes
+    it;
+  - the braille spinner marks a working agent wherever a working state shows: the project
+    rail's row, a strip tab, a pane header (`AgentStateMark`, RCP-15) and the old rail's
+    worktree-card row (DL-27.21). Ten stacked frames shown by `opacity`, 80ms each, an 800ms
+    loop, only under `[data-state="working"]`. Reduced motion holds ⠹ on the new marks and the
+    first frame on the card row. The new marks draw each frame's dots rather than typing the
+    character, because the Windows monospace fallback may lack braille;
   - the dev servers chip's 6px dot sends one ring out on a 1.8s loop while at least one
     server runs in the active checkout; zero servers or a failed scan (a still red dot)
     draw nothing moving; reduced motion keeps the still green dot (DL-36.1).
@@ -1178,10 +1182,18 @@ shadow.
     focuses the pane, or output arrives while the pane is visible), then reverts to the shell it
     now is. A latched `error` or `warning` outranks the end; a `requested` or `completed` is
     dropped with the agent.
-  - `working` is not a dot but `WorkspaceSpinner`, the ring the workspace avatar uses: 14px in
-    `--text-primary`, 8 round dots holding still while a bright head runs around them on a
-    staggered opacity cycle (`wschase`, 1.2s). The Electron row's working mark is the braille
-    spinner of DL-27.21.
+  - `working` is not a dot but the braille spinner (DL-1.2): ten frames of drawn dots in
+    `--status-working`, 80ms each, holding ⠹ under reduced motion
+    ([`BrailleSpinner`](../src/ui/blocks/braille-spinner.tsx)). It replaced
+    `WorkspaceSpinner`'s turning ring on the rail by the owner's pick (2026-11-05). The old
+    rail's card row draws the same spinner from typed glyphs (DL-27.21).
+
+  On the project rail the mark leads the row in its 14 slot (`--mark-slot`), drawn by
+  [`AgentStateMark`](../src/ui/blocks/agent-state-mark.tsx) and
+  [`32-state-mark.css`](../src/styles/32-state-mark.css): a 9 dot (`--mark-dot`) in a status
+  token (`--status-failed`, `--status-unread`, `--status-idle`), a 15 hairline ring
+  (`--mark-ring`) round the needs-you dot, held still, and a 7 square (`--mark-square`) for
+  ended. A remembered row keeps the slot empty, so the titles line up (RCP-18).
 
   When panes fold into one mark the loudest speaks: failed > asked > ended > working > done >
   idle. `failed` never reads as `idle`.
@@ -1197,7 +1209,7 @@ shadow.
   name ([card status styles](../src/styles/04c-rail-worktree-card.css)).
   Why: a dark surface must not turn a dot's centre into a dark hole.
 
-  `asked` radiates: a 13px disc under the dot expands to 2.1x and fades on a 1.8s loop, so
+  On the old agent rail `asked` radiates: a 13px disc under the dot expands to 2.1x and fades on a 1.8s loop, so
   unread is the one state that radiates. The loop is infinite only while `[data-state="asked"]`
   is on the element, animates `transform` and `opacity` only, and runs while the user is idle
   (DL-1.2's second scoped exception). The ripple is an absolutely positioned `::after`, so the

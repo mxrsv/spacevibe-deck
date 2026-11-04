@@ -241,6 +241,23 @@ const DropdownMenuSeparator = withRef(function DropdownMenuSeparator({
   );
 });
 
+/**
+ * RCP-12: groups in a menu separate by an 8 gap, not a line. The line (`DropdownMenuSeparator`)
+ * stays only between a list that scrolls and the fixed actions under it.
+ */
+const DropdownMenuGap = withRef(function DropdownMenuGap({
+  className,
+  ...props
+}: Omit<MenuPrimitive.Separator.Props, "ref">) {
+  return (
+    <MenuPrimitive.Separator
+      data-slot="dropdown-menu-gap"
+      className={cn("h-2", className)}
+      {...props}
+    />
+  );
+});
+
 const DropdownMenuShortcut = withRef(function DropdownMenuShortcut({
   className,
   ...props
@@ -269,6 +286,7 @@ export {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuGap,
   DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubTrigger,

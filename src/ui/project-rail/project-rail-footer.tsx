@@ -101,8 +101,9 @@ export function ProjectRailFooter({ usage, ...tools }: ProjectRailFooterProps) {
     // preset's reset (margins, borders, line height, font) would restyle it. The row of
     // controls takes the preset, and the rings sit in that row so their `text-*` utilities
     // resolve.
-    <div className="sidebar-actions__slot relative shrink-0 pb-1.5">
-      <div className="ui-preset flex items-center justify-between bg-transparent px-2 pt-1.5">
+    // RCP-17: a 40 bar; at the 200 minimum width Tools folds to its icon (the container query).
+    <div className="sidebar-actions__slot @container relative shrink-0">
+      <div className="ui-preset flex h-(--control-h-40) items-center justify-between gap-(--space-4) bg-transparent px-(--space-in-lg)">
         {settings === undefined ? (
           <span />
         ) : (
@@ -111,7 +112,7 @@ export function ProjectRailFooter({ usage, ...tools }: ProjectRailFooterProps) {
         <AgentUsageViewContext.Provider value={ProjectRailUsageRings}>
           {usage}
         </AgentUsageViewContext.Provider>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-(--space-4)">
           {sessions === undefined ? null : (
             <FooterIconButton item={sessions} id="toggle-sessions" />
           )}
@@ -122,8 +123,8 @@ export function ProjectRailFooter({ usage, ...tools }: ProjectRailFooterProps) {
               }
             }}
           >
-            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
-              Tools
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" aria-label="Tools" />}>
+              <span className="@max-[15rem]:hidden">Tools</span>
               <DeckIcon icon={ArrowDown01Icon} />
             </DropdownMenuTrigger>
             <DropdownMenuContent

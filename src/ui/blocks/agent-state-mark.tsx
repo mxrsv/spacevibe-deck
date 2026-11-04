@@ -1,15 +1,14 @@
 import { cn } from "@/lib/cn";
 import type { SignalConfidence } from "../../terminal/agent-attention";
 import type { RailStatus } from "../rail-view-model";
+import { BrailleSpinner } from "./braille-spinner";
 
 /**
- * The agent state mark of the redesigned shell (layout mock), one drawing per `RailStatus` so
- * the rail, the dock and the stage say a state the same way. A fixed 10px box: geometry never
- * moves between states. Only `working` (a turning ring) and `needs-input` (one ripple) move,
- * and only while they hold. An inferred `needs-input`, `unread` or `done` is drawn hollow.
- * `failed` and the neutral marks read the preset's `destructive` and `muted-foreground`. The preset
- * has no warning or info role, so the amber of `needs-input` and the sky of `unread` stay the
- * mock's palette colours until the theme work gives them one.
+ * The agent state mark (RCP-15, DL-27.3), one drawing per `RailStatus` so the rail, the strip,
+ * the pane header and the dock say a state the same way. A 14 slot whose geometry never moves
+ * between states: a 9 dot in a status token, a 15 ring round the needs-you dot, a 7 square for
+ * ended, and the braille spinner for working. An inferred needs-you, unread or done is drawn
+ * hollow. `32-state-mark.css` draws it.
  */
 export function AgentStateMark({
   status,
@@ -21,43 +20,14 @@ export function AgentStateMark({
   /** Layout only. */
   readonly className?: string;
 }) {
-  const hollow = confidence === "inferred" && status !== "failed" && status !== "working";
   return (
     <span
       aria-hidden="true"
       data-state={status}
-      className={cn(
-        "relative inline-flex size-2.5 shrink-0 items-center justify-center",
-        className,
-      )}
+      data-confidence={confidence}
+      className={cn("state-mark", className)}
     >
-      {status === "working" ? (
-        <span className="size-2.5 animate-spin rounded-full border-[1.5px] border-foreground/25 border-t-foreground motion-reduce:animate-none" />
-      ) : status === "ended" ? (
-        <span className="size-[7px] rounded-[1.5px] bg-muted-foreground" />
-      ) : status === "idle" ? null : (
-        <>
-          {status === "needs-input" ? (
-            <span className="absolute inset-0 animate-ping rounded-full bg-amber-500/60 motion-reduce:hidden dark:bg-amber-400/50" />
-          ) : null}
-          <span
-            className={cn(
-              "relative size-2 rounded-full",
-              status === "failed" && "bg-destructive",
-              status === "needs-input" &&
-                (hollow
-                  ? "border-[1.5px] border-amber-600 dark:border-amber-400"
-                  : "bg-amber-600 dark:bg-amber-400"),
-              status === "unread" &&
-                (hollow
-                  ? "border-[1.5px] border-sky-600 dark:border-sky-400"
-                  : "bg-sky-600 dark:bg-sky-400"),
-              status === "done" &&
-                (hollow ? "border-[1.5px] border-muted-foreground" : "bg-muted-foreground"),
-            )}
-          />
-        </>
-      )}
+      {status === "working" ? <BrailleSpinner /> : null}
     </span>
   );
 }

@@ -4,9 +4,10 @@ import type { RememberedPane } from "../../lib/session-schema";
 import { formatShortAge } from "../agent-rail-model";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { Button } from "../controls/button";
-import { DeckIcon, GLYPH_INLINE, GLYPH_ROW } from "../controls/deck-icon";
+import { rowActionsGround, stateClasses } from "../blocks/recipe-classes";
+import { DeckIcon, GLYPH_FEATURE, GLYPH_INLINE } from "../controls/deck-icon";
 import { REVEAL, Tip } from "./project-rail-menu-parts";
-import { ROW_LAYOUT } from "./project-rail-row";
+import { ROW_LAYOUT, ROW_LEAD, ROW_LOGO, ROW_MAIN, ROW_META } from "./project-rail-row";
 import { railNow } from "./project-rail-state";
 import type { RememberedRowModel } from "./remembered-rows";
 
@@ -22,67 +23,70 @@ export interface RememberedRailRowProps {
 }
 
 /**
- * A remembered agent pane (launcher spec LCH-2): the live row's box with the agent mark muted,
- * the title quieter, and nothing running. Hover or focus gives the age up to a resume mark and
- * lays the forget ✕ over the trailing edge, where a live row's actions sit. Not in the Tab order
- * (the arrow keys walk the list); a press resumes.
+ * A remembered agent pane (launcher spec LCH-2, RCP-18): the live row's box, quiet. No state
+ * mark (its slot stays empty), the logo at half opacity, the title muted, no needs-you tint and
+ * no fail ink. Hover or focus swaps the age for a resume mark inside the fixed end cell and lays
+ * the forget ✕ before it. Not in the Tab order (the arrow keys walk the list); a press resumes.
  */
 export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRowProps) {
   const { pane, title, branch } = row;
   const id = `remembered:${pane.id}`;
   return (
-    <div data-rail-item={id} data-remembered className="group/item relative mx-1.5">
+    <div data-rail-item={id} data-remembered className="group/item relative">
       {/* raw-control: a whole-row click target; no Button variant spans a two-line row */}
       <button
         type="button"
         data-rail-row={id}
         tabIndex={-1}
         onClick={() => onResume(pane)}
-        className={cn(ROW_LAYOUT, "hover:bg-sidebar-accent/50 focus-visible:bg-sidebar-accent/50")}
+        className={cn(ROW_LAYOUT, stateClasses(false))}
       >
-        <span className="flex h-5 w-2.5 items-center justify-center">
+        {/* RCP-18: the slot stays, empty, so the titles line up with the live rows'. */}
+        <span className={ROW_LEAD} />
+        <span className={ROW_LOGO}>
+          {/* Opacity alone dims it: DL-1.3 bans `filter`. */}
           <AgentGlyph
             agent={pane.agent}
-            className="size-3 shrink-0 opacity-50 grayscale transition-[filter,opacity] group-hover/item:opacity-100 group-hover/item:grayscale-0 group-focus-within/item:opacity-100 group-focus-within/item:grayscale-0"
+            className="size-(--icon-16) shrink-0 opacity-(--state-disabled-opacity)"
           />
         </span>
-        <span className="truncate text-sm leading-5 text-muted-foreground/85 group-hover/item:text-foreground group-focus-within/item:text-foreground">
-          {title}
+        <span className={ROW_MAIN}>
+          <span className="truncate text-sm leading-(--leading-body) text-(--text-muted)">
+            {title}
+          </span>
+          <span className={ROW_META}>
+            {branch === null ? null : (
+              <>
+                <DeckIcon icon={GitBranchIcon} size={GLYPH_INLINE} class="shrink-0" />
+                <span className="min-w-0 truncate">{branch}</span>
+              </>
+            )}
+          </span>
         </span>
-        <span className="col-start-2 flex min-h-5 min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground/70">
-          {branch === null ? null : (
-            <span className="flex min-w-0 shrink items-center gap-1">
-              <DeckIcon icon={GitBranchIcon} size={GLYPH_INLINE} class="shrink-0" />
-              <span className="truncate">{branch}</span>
-            </span>
-          )}
-          <span className="ml-auto flex shrink-0 items-center tabular-nums">
-            <span className="group-hover/item:hidden group-focus-within/item:hidden">
-              <SavedAge savedAt={pane.savedAt} />
-            </span>
-            <span
-              data-resume-mark
-              className="hidden text-foreground group-hover/item:block group-focus-within/item:block"
-            >
-              {/* Rotate01 turns clockwise; resume reads as going back, so mirror it. */}
-              <DeckIcon icon={Rotate01Icon} size={GLYPH_ROW} class="-scale-x-100" />
-            </span>
+        {/* The fixed end cell: the age and the resume mark swap in one grid cell, so nothing
+            moves (RCP-18). */}
+        <span className="grid w-(--row-end-w) shrink-0 items-center justify-items-end text-xs leading-(--leading-meta) text-(--text-faint) tabular-nums">
+          <span className="[grid-area:1/1] group-hover/item:invisible group-focus-within/item:invisible">
+            <SavedAge savedAt={pane.savedAt} />
+          </span>
+          <span
+            data-resume-mark
+            className="invisible flex text-(--text-primary) [grid-area:1/1] group-hover/item:visible group-focus-within/item:visible"
+          >
+            {/* Rotate01 turns clockwise; resume reads as going back, so mirror it. */}
+            <DeckIcon icon={Rotate01Icon} size={GLYPH_FEATURE} class="-scale-x-100" />
           </span>
         </span>
         <span className="sr-only">Resume this conversation</span>
       </button>
-      <div
-        className={cn(
-          "absolute top-1 right-1.5 flex items-center gap-0.5 rounded-md bg-sidebar-accent p-0.5",
-          REVEAL,
-        )}
-      >
+      {/* RCP-19: on a remembered row the actions sit before the age cell. */}
+      <div className={cn(rowActionsGround(false), "right-(--row-end-w) rounded-none", REVEAL)}>
         <Tip
           label="Forget"
           button={
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               tabIndex={-1}
               aria-label={`Forget ${title}`}
               onClick={() => onForget(pane)}

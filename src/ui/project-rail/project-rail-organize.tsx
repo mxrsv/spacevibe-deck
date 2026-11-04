@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
+  DropdownMenuGap,
   DropdownMenuTrigger,
 } from "../controls/dropdown-menu";
 import type { RailGrouping, RailSorting } from "../rail-view-state";
@@ -61,7 +61,7 @@ export function ProjectRailOrganize() {
             ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuGap />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Sort</DropdownMenuLabel>
           <DropdownMenuRadioGroup
@@ -75,7 +75,7 @@ export function ProjectRailOrganize() {
             ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuGap />
         <DropdownMenuCheckboxItem
           checked={showArchived.value}
           onCheckedChange={(checked: boolean) => (showArchived.value = checked)}
