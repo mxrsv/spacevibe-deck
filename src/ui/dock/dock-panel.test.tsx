@@ -379,7 +379,10 @@ describe("DockPanel header", () => {
 
   // The icon-only tabs and toggle form one compact cluster at the outer edge.
   it("pins the tab group beside the trailing hide control", () => {
-    const sheet = readFileSync("src/styles/14-dock.css", "utf8");
+    // The header moved to `14b-dock-surfaces.css` (RCP-28); the old tab group stays in 14.
+    const sheet = ["src/styles/14-dock.css", "src/styles/14b-dock-surfaces.css"]
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
     const tabsStart = sheet.indexOf("\n.dock-tabs {");
     expect(tabsStart, "no trailing-edge rule for the dock's tab group").toBeGreaterThan(-1);
     const tabsBody = sheet.slice(sheet.indexOf("{", tabsStart) + 1, sheet.indexOf("}", tabsStart));
@@ -478,16 +481,16 @@ describe("dock header height (aligned with the stage strip)", () => {
   }
 
   it("takes its height from --frame-h, the same token the stage strip does", () => {
-    const header = ruleBody("src/styles/14-dock.css", ".dock-panel__header");
+    const header = ruleBody("src/styles/14b-dock-surfaces.css", ".dock-panel__header");
     const strip = ruleBody("src/styles/06-stage-panes.css", ".stage__strip");
     expect(header).toMatch(/height:\s*var\(--frame-h\)/);
     expect(strip).toMatch(/height:\s*var\(--frame-h\)/);
   });
 
-  it("keeps its own seam off that height, so both hairlines land on one row", () => {
-    const header = ruleBody("src/styles/14-dock.css", ".dock-panel__header");
-    expect(header).toMatch(/border-bottom:\s*1px solid/);
-    // No global reset in this app: without border-box the seam adds a pixel.
+  it("draws no seam under itself, as the strip draws none (CMP-14)", () => {
+    const header = ruleBody("src/styles/14b-dock-surfaces.css", ".dock-panel__header");
+    expect(header).not.toMatch(/border-bottom/);
+    // No global reset in this app: border-box keeps a padding off the height.
     expect(header).toMatch(/box-sizing:\s*border-box/);
   });
 });

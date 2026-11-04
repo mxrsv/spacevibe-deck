@@ -142,7 +142,7 @@ src/open-board/board-agent-launcher.css state-bg 2
 src/open-board/board-agent-launcher.css weight 3
 src/styles/02-shell.css height 1
 src/styles/02-shell.css spacing 3
-src/styles/02-shell.css state-bg 3
+src/styles/02-shell.css state-bg 2
 src/styles/02-shell.css weight 1
 src/styles/03-repository-rail.css height 2
 src/styles/03-repository-rail.css spacing 3

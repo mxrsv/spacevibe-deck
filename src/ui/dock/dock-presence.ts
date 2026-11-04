@@ -23,7 +23,7 @@ import { useEffect, useState } from "preact/hooks";
 /**
  * DL §7's slide-over figure, in ms, inside DL-1.2's 300ms ceiling.
  *
- * The CSS duration in `14-dock.css` and this constant are the same number
+ * The CSS duration in `14b-dock-surfaces.css` and this constant are the same number
  * twice: the stylesheet decides how long the slide takes, this decides how
  * long the panel outlives its close. A shorter figure here would cut the exit
  * off mid-slide.

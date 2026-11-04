@@ -51,7 +51,7 @@ const STATE_TOKENS: ReadonlySet<string> = new Set([
 const STATE_SELECTOR =
   /:hover|:active|:focus-visible|\[aria-(?:selected|current|pressed)\b|\.is-[a-z][\w-]*/;
 /** The pane split gutter may paint `--ring` (RCP-20); nothing else may. */
-const RESIZE_GUTTER = /divider|resize|gutter|splitter/;
+const RESIZE_GUTTER = /divider|resize|gutter|splitter|grip/;
 const FOCUS = /:focus(-visible|-within)?(?![\w-])/;
 
 const LENGTH = /(-?\d*\.?\d+)(px|rem)(?![\w-])/g;
@@ -231,5 +231,6 @@ export const CSS_RECIPE_HOW: Readonly<Record<CssRule, string>> = {
   "state-bg":
     "a state background reads `--state-hover-bg`, `--tab-active-bg`, `--tab-active-focus-bg`, `--state-pressed-bg`, `--state-dragover-bg` or `--state-needs-you-bg` (RCP-9)",
   shadow: "a blurred shadow is one static `var(--elev-1|2|3)`, on a floating element (RCP-11)",
-  weight: "use 400 or 600, `var(--weight-regular)` or `var(--weight-strong)` (RCP-5)",
+  weight:
+    "use 400 or 600 as a number: the Windows weight ledger reads numbers, not `var()` (RCP-5, DL-4.6)",
 };

@@ -354,8 +354,9 @@ only the pre-JS fallbacks.
   [`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) and, as a bracketed
   class, [`ui-composition-gate.test.ts`](../scripts/ui-composition-gate.test.ts).
 - **DL-20.7** Two weights: 400 (`--weight-regular`, `font-normal`) and 600 (`--weight-strong`,
-  `font-semibold`), never 500 (RCP-5). DL-4.6's Windows ledger still maps them for Segoe UI and
-  is exempt from the check.
+  `font-semibold`), never 500 (RCP-5). A stylesheet writes the number, because DL-4.6's Windows
+  ledger reads authored weights as numbers; the ledger itself maps them for Segoe UI and is
+  exempt from the check.
 - **DL-20.8** An off-scale value that must stay carries `ui-scale: <reason>` on the line above
   it, as a CSS or a JSX comment, and the change that adds one says so in its PR (RCP-27). The
   ratchet's ledger, [`ui-composition-debt.txt`](../scripts/ui-composition-debt.txt), counts what

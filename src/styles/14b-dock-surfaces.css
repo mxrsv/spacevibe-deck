@@ -1,0 +1,409 @@
+/* ── The dock surfaces the agent dock shares ────────────────────────────────
+   Not a CMP-20 partial. The agent dock's root rides the `.dock-panel` box and
+   its grip, its Files view draws `FilePanel` and `FileTreeView`, and the
+   stage insets on `.stage--dock`. These rules stood in `14-dock.css`, which
+   the composition suites skip, so they escaped every check (RCP-28). They
+   import right after it, so the cascade order is the one they had. */
+
+/* ── Explorer panel: a docked column on the right of the stage (DL-19) ────
+   See docs/internals/file-surface.md.
+   `.stage__tabs`' own inset shrinks by exactly the panel's width, so
+   terminal panes resize around it (DL-19.1) instead of being covered.
+   `--dock-w` is set inline by `App` from the live-drag-or-settled width
+   (DL-19.4); the value here is only the fallback for a mount with no `App`
+   around it (the gallery, this panel's own isolated tests). */
+
+/* The stage's right inset is the dock plus the diff column, when one is docked
+   left of it (`--diff-w`, published by `App` from the open column; DL-19.11).
+   Every rule that stops a stage child at the dock's edge reads this one
+   variable. It is declared on the stage itself, where both `--dock-w` and
+   `--diff-w` are written, and not on `:root`, where `calc` would resolve
+   against the wrong element. */
+.stage--dock {
+  --stage-inset: calc(var(--dock-w) + var(--diff-w, 0px));
+}
+
+.stage--dock .stage__tabs {
+  right: var(--stage-inset);
+}
+
+.dock-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--dock-w);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* The stage's `--bg`, not the rail's `--sidebar-bg` (owner, 2026-10-15): only
+     the navigation rail keeps a colour of its own (DL-18.7, DL-19.2). */
+  background: var(--bg);
+  /* DL-19.2: the seam is a single hairline, never a shadow. */
+  border-left: 1px solid var(--hair);
+  /* DL §7's panel slide-over, and the resting state is the CLOSED one: the
+     column is mounted for one painted frame here before `is-open` arrives, and
+     it stays mounted at this transform for the length of the slide on the way
+     out (`dock-presence.ts` owns both). 0.28s on `transform` + `opacity` only
+     — inside DL-1.2's 300ms ceiling and on the two properties it allows.
+     Off-stage by its own full width, which `#root`'s `overflow: clip` swallows
+     rather than turning into a scrollable overhang.
+     The CURVE is the app's own entrance easing, the one every other surface
+     already uses (`.usage-screen`, `.sessions-screen`, `rise-in`) — DL §7
+     names a duration and calls it "ease-out cubic", and the slide-over it
+     cited as existing is gone, so the choice is this app's curve at §7's
+     figure rather than a second easing nothing else shares.
+     `width` is deliberately NOT in this transition: a resize drag writes it
+     every pointermove, and an eased width would trail the cursor. */
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
+}
+
+.dock-panel.is-open {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* DL-19.4: the drag target for the width, on the seam itself. Wider than
+   the hairline it sits on so it can be hit, and transparent so it does not
+   draw a second one. */
+.dock-panel__grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* 9px, up from 7 (owner, 2026-08-19), split 4 outside / 5 inside — the
+     sidebar's seam took the same widening for the same reason: a pointer
+     moving along a 7px target crossed its edge repeatedly and the cursor
+     changed on every crossing. */
+  left: -4px;
+  width: 9px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1;
+}
+
+/* DL-19.4, amended 2026-08-19: the target still paints nothing at rest, and
+   hovering or dragging it lights the panel's own hairline in the accent — the
+   same answer `.split__divider:hover` gives, and the same one the sidebar's
+   seam now draws. 4px in, which is where `border-left` sits once the target
+   starts 4px outside the panel: the existing hairline lights up rather than
+   gaining a second line beside it. */
+.dock-panel__grip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: transparent;
+  transition: background var(--duration) var(--ease);
+}
+
+/* RCP-20: a resize handle paints `--ring` on hover and drag, as the pane
+   gutter does. */
+.dock-panel__grip:hover::after,
+.dock-panel__grip.is-dragging::after {
+  background: var(--ring);
+}
+
+/* DL-19.4, amended 2026-08-19: a drag past the floor closes the column UNDER
+   THE POINTER now, so there is nothing to dim. The 45% wash that used to stand
+   here existed for one reason — unmounting the grip mid-drag would have ended
+   the gesture with no way back — and `useDockPresence`'s hold removes that
+   constraint instead of working around it: the panel is pushed off-stage while
+   the mount, and with it the captured grip, stays.
+   The slide-over is OFF for the whole gesture. Animation is for the toggle and
+   the chord; inside a drag the pointer is the clock, and 280ms of easing reads
+   as the column lagging the hand. */
+.dock-panel.is-dragging {
+  transition: none;
+}
+
+/* DL-19.3, amended 2026-08-16: the header row carries the tab row rather than
+   a single surface's title and hide control. Still one hairline-separated row
+   of the app's own controls.
+   Amended again 2026-08-19: the hide control is back in this row, last, and
+   only while the column is open — DL-18.9's arrangement mirrored, a shown
+   column carrying its own control at its OUTER edge. The stage strip keeps
+   the closed half, because a closed column cannot hold its own way back out. */
+.dock-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  /* `--frame-h`, not a literal: the stage strip beside it is exactly that
+     tall, and the two rows sit side by side across one seam. At 28px the
+     dock's hairline landed 5px above the strip's `--seam-recessed` line, so
+     the boundary between chrome and work area broke in the middle of the
+     window (owner, 2026-08-16). One token now moves both. */
+  height: var(--frame-h);
+  /* No line under it (CMP-14), as the strip beside it draws none. This file
+     has no global box-sizing reset, so border-box keeps the padding off the
+     height and the two rows stay the same height. */
+  box-sizing: border-box;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+/* The icon-only tab group takes `margin-left: auto`, putting it immediately
+   before the hide control at the column's OUTER edge. The toggle never
+   shrinks: the way out must remain available at every dock width. */
+.dock-panel__header > .iconbtn {
+  flex-shrink: 0;
+}
+
+.dock-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.file-tree-shell {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+/* DL-19.5: one status line, directly under the header, `--text-faint` — or
+   `--red` when it reports a failure (DL-3.2). */
+.file-tree-shell__status {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  line-height: 1.4;
+}
+
+.file-tree-shell__status.is-failure {
+  color: var(--red);
+}
+
+.file-tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  outline: none;
+}
+
+/* Its height is `rows.length * 22px` (plan T4's windowing math), set inline
+   from the row count — this is what keeps the scrollbar's size honest while
+   only the rows near the viewport are actually mounted. */
+.file-tree__rows {
+  position: relative;
+}
+
+.file-tree__row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* The height is the row's inline style, from `TreeMetricsContext`: the
+     virtual list computes every offset from the same number. */
+  padding-right: 8px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  cursor: pointer;
+  user-select: none;
+  /* DL-20.1's 28px clause: the row is a control with a text label, so its
+     hover and its selection take the tab corner. Square, the selection would
+     be the one wash in the dock with no corner. */
+  border-radius: var(--radius-tab);
+  transition: background var(--duration) var(--ease);
+}
+
+/* DL-19.9: an ignored entry shown by Show ignored files rests at the hint tone.
+   Before the hover and active rules, so those raise it like any other row. */
+.file-tree__row.is-ignored {
+  color: var(--text-faint);
+}
+
+/* DL-21.2: hover is the quieter wash — the same signifier used everywhere
+   else, per DL-19's own citation of that rule. */
+.file-tree__row:hover {
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+
+/* CMP-11: keyboard focus paints as hover; only a text field has a ring. */
+.file-tree__row:focus-visible {
+  outline: none;
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+
+/* DL-19.10: the document on the stage. DL-21.1's full wash, set after the
+   hover rule so a hovered selection stays selected. */
+.file-tree__row.is-active {
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+}
+
+.file-tree__chevron,
+.file-tree__icon {
+  display: flex;
+  flex-shrink: 0;
+  /* DL §8/§19's file-type icon rule: monochrome at --text-faint, and the
+     marked row's icon takes its ink below. */
+  color: var(--text-faint);
+}
+
+.file-tree__row.is-active .file-tree__icon {
+  color: var(--text-primary);
+}
+
+.file-tree__name {
+  /* DL-19: a data row keeps its content's real casing. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Design §4.6: the NAME gives way, never the controls. A flex item will not
+     shrink below its content without this. */
+  min-width: 0;
+}
+
+/* DL-19.9: the tab's own actions, hanging off the row that names what the tab
+   is showing. Always visible — the drawn hover-reveal was declined. */
+.file-tree__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Design §4.2: `.asr-cluster__add`'s box exactly, because it solves exactly
+   this problem one row height up. NOT `.iconbtn` — its 24px box overflows a
+   22px row by 1px above and below, and `ROW_HEIGHT` is the constant every
+   index in the virtual list is computed from, so the row cannot grow. It is
+   the 20 icon box (RCP-4) instead. The `padding: 0` here is load-bearing: the
+   UA gives every button 1px 6px, which would push the glyph out of the box. */
+.file-tree__action {
+  display: flex;
+  width: var(--icon-box-20);
+  height: var(--icon-box-20);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-tight);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease);
+}
+
+/* DL-21.2: hover is the neutral step to `--text-primary`, the same signifier
+   every other chrome control uses. */
+.file-tree__action:hover {
+  color: var(--text-primary);
+}
+
+/* CMP-11: keyboard focus paints as hover. */
+.file-tree__action:focus-visible {
+  outline: none;
+  color: var(--text-primary);
+}
+
+/* Design §3.2: the root's name is `--text-primary` where the rows are
+   `--text-muted`. That one step is the whole reason the row reads as the root
+   — it keeps the tree's 22px height and `--ui-font` (DL-19), because it is a
+   row of the tree and not a header above it. */
+.file-tree__row.is-root .file-tree__name {
+  color: var(--text-primary);
+}
+
+.file-tree__status {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  line-height: 1.4;
+}
+
+.file-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--hair);
+  overflow: hidden;
+}
+
+.file-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+}
+
+.file-panel__files {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  color: var(--text-primary);
+  background: var(--bg);
+  border: none;
+  font: inherit;
+  font-size: var(--type-meta);
+  text-overflow: ellipsis;
+}
+
+.file-panel__action {
+  padding: 4px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: var(--type-meta);
+  cursor: pointer;
+}
+
+.file-panel__action:hover:not(:disabled) {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.file-panel__action:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.file-panel__action:focus-visible,
+.file-panel__files:focus-visible {
+  outline: none;
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.file-panel__header .md-view-toggle {
+  position: static;
+}
+
+.file-panel__content {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.file-panel__content > .fileview {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-radius: 0;
+}
