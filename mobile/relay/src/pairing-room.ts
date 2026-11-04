@@ -1,6 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import {
   MAX_PUSH_BYTES,
+  RELAY_IDLE_PAIRING_MS,
+  RELAY_MAX_UNAUTH_SOCKETS,
   RELAY_AUTH_TIMEOUT_MS,
   RELAY_MAX_FRAME_BYTES,
   RELAY_MAX_SOCKETS_PER_ROLE,
@@ -75,6 +77,8 @@ function parseAttachment(value: unknown): Attachment {
  */
 export class PairingRoom extends DurableObject<Env> {
   private pairing: PairingRecord | null = null;
+  // The rate buckets and the push window below are memory only and reset when the object
+  // hibernates; persisting them would cost a storage write per message (accepted, see README).
   private readonly buckets = new WeakMap<WebSocket, Bucket>();
   private readonly handshaking = new WeakSet<WebSocket>();
   private pushWindow: Window = { start: 0, count: 0 };
@@ -129,6 +133,21 @@ export class PairingRoom extends DurableObject<Env> {
       this.fail(server, "unknown");
       return new Response(null, { status: 101, webSocket: client });
     }
+    // Someone who knows the id could otherwise pile up silent sockets and slow every forward.
+    const waiting = this.ctx
+      .getWebSockets()
+      .filter((ws) => ws.readyState === OPEN && !parseAttachment(ws.deserializeAttachment()).authed)
+      .sort(
+        (a, b) =>
+          parseAttachment(a.deserializeAttachment()).connectedAt -
+          parseAttachment(b.deserializeAttachment()).connectedAt,
+      );
+    for (const old of waiting.slice(
+      0,
+      Math.max(0, waiting.length - (RELAY_MAX_UNAUTH_SOCKETS - 1)),
+    )) {
+      this.fail(old, "auth-timeout");
+    }
     this.ctx.acceptWebSocket(server);
     const attachment: Attachment = { role: null, authed: false, connectedAt: Date.now() };
     server.serializeAttachment(attachment);
@@ -177,6 +196,14 @@ export class PairingRoom extends DurableObject<Env> {
     const now = Date.now();
     const pairing = this.pairing;
     if (pairing !== null && pairing.phoneTokenHash === null && now >= pairing.expiresAt) {
+      await this.destroy("expired");
+      return;
+    }
+    if (
+      pairing !== null &&
+      this.idleDeadline(pairing) !== null &&
+      now >= this.idleDeadline(pairing)!
+    ) {
       await this.destroy("expired");
       return;
     }
@@ -328,6 +355,8 @@ export class PairingRoom extends DurableObject<Env> {
     this.pairing = { ...pairing, [lastSeenKey(role)]: now };
     this.notify(otherRole(role), { t: "peer", online: false, lastSeen: now });
     await this.persist();
+    // Both sides may now be absent: start the idle clock (once per departure, never per message).
+    await this.reschedule();
   }
 
   /** Deletes the pairing for good and tells every socket why. Later connects get `unknown`. */
@@ -389,11 +418,26 @@ export class PairingRoom extends DurableObject<Env> {
     if (this.pairing !== null) await this.ctx.storage.put(STORAGE_KEY, this.pairing);
   }
 
-  /** One alarm serves two deadlines: the unclaimed pairing's expiry and unauthenticated sockets. */
+  /**
+   * When a claimed pairing with nobody connected is deleted, or null while it is unclaimed or
+   * someone is online. Without it an abuser could claim a pairing of their own and keep it forever.
+   */
+  private idleDeadline(pairing: PairingRecord): number | null {
+    if (pairing.phoneTokenHash === null) return null;
+    if (this.authedSockets("desktop").length + this.authedSockets("phone").length > 0) return null;
+    return (
+      Math.max(pairing.desktopLastSeen ?? 0, pairing.phoneLastSeen ?? 0, pairing.createdAt) +
+      RELAY_IDLE_PAIRING_MS
+    );
+  }
+
+  /** One alarm serves three deadlines: unclaimed expiry, idle expiry and unauthenticated sockets. */
   private async reschedule(): Promise<void> {
     const deadlines: number[] = [];
     const pairing = this.pairing;
     if (pairing !== null && pairing.phoneTokenHash === null) deadlines.push(pairing.expiresAt);
+    const idle = pairing === null ? null : this.idleDeadline(pairing);
+    if (idle !== null) deadlines.push(idle);
     for (const ws of this.ctx.getWebSockets()) {
       const { authed, connectedAt } = parseAttachment(ws.deserializeAttachment());
       if (!authed && ws.readyState === OPEN) deadlines.push(connectedAt + RELAY_AUTH_TIMEOUT_MS);

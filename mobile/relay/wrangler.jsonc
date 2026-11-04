@@ -30,6 +30,15 @@
   },
   // SQLite-backed classes are the only kind the Workers Free plan allows.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PairingRoom"] }],
+  // Registration is unauthenticated, so it is limited per client address (RELAY_REGISTER_RATE in
+  // protocol/src/limits.ts mirrors this; the binding only allows 10 or 60 second periods).
+  "ratelimits": [
+    {
+      "name": "REGISTER_LIMITER",
+      "namespace_id": "34211",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
   "vars": {
     "APNS_TOPIC": "dev.spacevibe.deck.mobile"
   }

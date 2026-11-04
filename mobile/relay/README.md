@@ -46,9 +46,19 @@ From [`protocol/src/limits.ts`](../protocol/src/limits.ts) `current`, enforced p
 the relay has no accounts: frames up to 128 KiB (`4413`), 400 messages per 10 s per socket as a
 token bucket (`4429`), two live sockets per role (a newer one closes the oldest with `4430`), 30
 pushes a minute (extra pushes are dropped, not errors), 10 s to authenticate (`4400`).
-Registration is unauthenticated by design, so an abuser can create pairings; they cost one small
-record and vanish after at most 10 minutes unless claimed. Add a Cloudflare rate-limiting rule on
-`POST /relay/v1/pairings` if that ever matters.
+Registration is unauthenticated by design, so it is limited to 10 per minute per client address
+by the Workers Rate Limiting binding `REGISTER_LIMITER` (429 over it; the address is a rate-limit
+key held by Cloudflare, never stored or logged by the relay). An unclaimed pairing vanishes after
+at most 10 minutes. A claimed one is deleted by an alarm once both sides have been absent for 30
+days (`RELAY_IDLE_PAIRING_MS`); the alarm is set when the last socket leaves and cleared when one
+returns, never per message. At most 4 sockets per pairing may wait unauthenticated; a newer one
+closes the oldest with `auth-timeout`, so knowing a pairing id cannot slow a live pairing.
+
+The per-socket rate buckets and the push window live in memory and reset when the object
+hibernates. That is accepted: persisting them would cost a storage write per message.
+
+The relay uses up the claim before the desktop sees the phone's proof (`pair-hello`). A socket
+that drops right after the claim therefore burns that QR; the desktop then shows a new code.
 
 ## Run locally
 

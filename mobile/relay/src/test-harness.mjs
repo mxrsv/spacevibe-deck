@@ -35,7 +35,7 @@ export default {
 };
 `;
 
-export async function startRelay({ bindings = {}, outboundService } = {}) {
+export async function startRelay({ bindings = {}, outboundService, ratelimits } = {}) {
   const bundle = await build({
     stdin: { contents: WRAPPER, resolveDir: SRC, loader: "js", sourcefile: "wrapper.js" },
     bundle: true,
@@ -53,6 +53,7 @@ export async function startRelay({ bindings = {}, outboundService } = {}) {
     durableObjects: { PAIRINGS: { className: "PairingRoom", useSQLite: true } },
     bindings: { APNS_TOPIC: "dev.spacevibe.deck.mobile", ...bindings },
     outboundService,
+    ratelimits,
     handleRuntimeStdio(stdout, stderr) {
       for (const stream of [stdout, stderr]) stream.on("data", (chunk) => logs.push(String(chunk)));
     },

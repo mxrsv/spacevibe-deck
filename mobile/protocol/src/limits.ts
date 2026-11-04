@@ -22,6 +22,12 @@ export const RELAY_RATE = { messages: 400, perMs: 10_000 } as const;
 export const RELAY_PUSH_RATE = { messages: 30, perMs: 60_000 } as const;
 /** Live sockets per role per pairing; a reconnect may overlap the socket it replaces. */
 export const RELAY_MAX_SOCKETS_PER_ROLE = 2;
+/** Sockets per pairing that have connected but not authenticated; the oldest makes room. */
+export const RELAY_MAX_UNAUTH_SOCKETS = 4;
+/** Registrations one client address may make in a window (the Worker's rate-limit binding). */
+export const RELAY_REGISTER_RATE = { messages: 10, perMs: 60_000 } as const;
+/** A claimed pairing with both sides absent this long is deleted by an alarm. */
+export const RELAY_IDLE_PAIRING_MS = 30 * 24 * 60 * 60_000;
 /** A socket that has not authenticated by then is closed. */
 export const RELAY_AUTH_TIMEOUT_MS = 10_000;
 /** Largest sealed push body the desktop may hand the relay. */

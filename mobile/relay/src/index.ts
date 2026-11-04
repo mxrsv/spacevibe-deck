@@ -40,6 +40,14 @@ async function readCapped(request: Request, max: number): Promise<string | null>
 }
 
 async function registerPairing(request: Request, env: Env): Promise<Response> {
+  // The address is only a rate-limit key: it is handed to the binding and never stored or logged.
+  const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+  if (
+    env.REGISTER_LIMITER !== undefined &&
+    !(await env.REGISTER_LIMITER.limit({ key: client })).success
+  ) {
+    return json({ error: "rate-limited" }, 429);
+  }
   const text = await readCapped(request, MAX_BODY_BYTES);
   if (text === null) return json({ error: "too-large" }, 413);
   let body: unknown;
