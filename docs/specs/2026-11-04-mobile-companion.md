@@ -3,7 +3,9 @@
 Date: 2026-11-04
 Status: Draft for the owner's review. The direction was decided in chat on 2026-11-04, after an
 intent interview and four rounds of questions.
-- **The owner's picks:** items 1–20 under [Decisions](#decisions-owner-2026-11-04).
+- **The owner's picks:** items 1–20 under [Decisions](#decisions-owner-2026-11-04), plus items
+  25–27, which the owner picked on 2026-11-05 from a direction mock (scratch, outside the repo:
+  `~/scratch/spacevibe-deck/mobile-mock-2026-11-05/`).
 - **Defaults this spec adds:** items 21–24, plus the numbers it chose. Those numbers are the QR
   expiry (MOB1), the revoke window (MOB2), the relock delay (MOB4) and the 9-of-10 latency bar
   (Acceptance).
@@ -94,6 +96,23 @@ Defaults this spec adds:
     notifier uses, so the phone stays quiet while the user sits at the desk.
 24. **Phone push ignores the desktop's notification setting.** The phone app has its own
     switch for it, so turning off desktop banners does not silence the phone.
+
+Picked on the direction mock (owner, 2026-11-05):
+
+25. **Home is every desktop's tree, with the waiting panes pinned on top** (MOB16). Deck can
+    miss a needs-you, so the full tree stays on Home:
+    - **The heuristic:** without an explicit signal it can only produce `completed`.
+    - **Windows:** has no hooks.
+    - **A first-run trust dialog:** reads as idle.
+
+    The pinned section gives the fast path.
+    - Turned down: a queue-only home (a missed pane vanishes from it); a timeline home; one
+      desktop at a time.
+26. **Icons are SF Symbols.**
+    - Turned down: Deck's Hugeicons, which would match the desktop but not iOS.
+27. **Text uses the iOS text styles** at their default Dynamic Type sizes, at weights 400 and 600
+    only.
+    - Turned down: the desktop's 14/12 scale, which is too small on a phone.
 
 ## How the reference apps do it
 
@@ -213,6 +232,17 @@ app A also its MIT source. The apps are not named in this repository.
 - **MOB16**: The home screen lists desktops, each with its machine name, OS and online state.
   Inside a desktop the order is projects, then checkouts, then panes, with the phase and
   attention states the rail shows.
+  - **Every pane row:** shows the pane's last line and its age, so a pane whose attention Deck
+    missed still reads as stuck.
+  - **Above the tree:** a **Needs you** section pins up to 3 panes whose attention is `requested`
+    or `error`, newest first. More than 3 adds **See all**.
+  - **Answering from the pinned section:**
+    - **A numbered choice:** when the pane's screen ends in a numbered option list (`1.`, `2.` …),
+      each option is a button that sends its digit.
+    - **A question:** a reply field that sends like MOB19.
+    - **A failure:** an open action.
+  - **Inside a pane opened from there:** a pager moves to the next waiting pane.
+  - **Tabs:** Desktops and Settings.
 - **MOB17**: The terminal view renders the pane with xterm.js.
   - **Size:** it fits the desktop pane's columns to the screen width. Text size runs from 50 to
     200% over that, with pinch zoom snapping to the same steps, and is kept per device.
@@ -221,7 +251,8 @@ app A also its MIT source. The apps are not named in this repository.
   - **Accessory row:** Esc, Tab, Shift+Tab, Ctrl+C, the four arrows and Enter.
   - **Keyboard:** autocorrect and autocapitalize are off.
   - **Approving and answering:** agent permission and question prompts are answered by
-    typing, like on the desktop. No parsed buttons in this scope.
+    typing, like on the desktop. The only parsed buttons are MOB16's numbered choices, found
+    from the screen text and the same for every agent.
 - **MOB19**: Outside Live mode, a composer sends its text the way `deck pane send` does: paste,
   then a gated Enter.
 - **MOB20**: **New agent** asks for a desktop, then a project and checkout, then an agent from
@@ -284,6 +315,8 @@ app A also its MIT source. The apps are not named in this repository.
   - **Latency:** over 10 tries, push arrives within 5 seconds of a pane becoming `requested`
     in at least 9 of them.
   - **Reply:** a reply typed on the phone lands in that pane, and the agent continues.
+  - **Pinned answer:** a numbered choice pressed in the pinned Needs you section lands in that
+    pane. Neither the agent nor the pane's tab has to be opened.
 - **Live mode:** typing works in a shell and in an agent's TUI, and the desktop pane keeps its
   size.
 - **New agent:** opened from the phone with a prompt in an existing project. The tab appears on
