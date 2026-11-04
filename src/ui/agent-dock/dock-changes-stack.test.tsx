@@ -18,6 +18,7 @@ vi.mock("../../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
 
 import type { DiffSidesPorts } from "../../files/changes/diff-sides";
 import type { ReadFileResponse } from "../../files/file-client";
+import { resetFileSurfaces, surfaceFor } from "../../files/file-surface-store";
 import type { ChangeEntry } from "../../host/git-changes-host";
 import { click, mount, settle } from "../controls/preset-test-kit";
 import { dockSurface, resetAgentDockState } from "./agent-dock-state";
@@ -65,6 +66,8 @@ const card = (path: string): HTMLElement =>
 
 const pathButton = (path: string): HTMLElement =>
   card(path).querySelector(`button[title="${path}"]`) as HTMLElement;
+const openIcon = (path: string): HTMLElement | null =>
+  card(path).querySelector<HTMLElement>('button[aria-label="Open in File"]');
 const chevron = (path: string): HTMLElement =>
   card(path).querySelector("button[aria-expanded]") as HTMLElement;
 
@@ -126,6 +129,7 @@ afterEach(() => {
   observed.clear();
   vi.unstubAllGlobals();
   resetAgentDockState();
+  resetFileSurfaces();
 });
 
 describe("the Changes stack", () => {
@@ -173,15 +177,36 @@ describe("the Changes stack", () => {
     await view.unmount();
   });
 
-  it("opens the real file as a preview tab when the path is pressed, and does not fold", async () => {
-    const open = vi.spyOn(files, "openFile").mockResolvedValue(undefined);
+  it("adds a preview tab when the path is pressed, and stays on Changes without folding", async () => {
     const view = await mount(stack([entry("src/a.ts")]));
     await click(pathButton("src/a.ts"));
-    expect(open).toHaveBeenCalledWith(ROOT, `${ROOT}/src/a.ts`, false);
-    expect(chevron("src/a.ts").getAttribute("aria-expanded")).toBe("true");
     await settle();
+    expect(surfaceFor(ROOT).tabs).toEqual([
+      expect.objectContaining({ path: `${ROOT}/src/a.ts`, preview: true }),
+    ]);
+    expect(dockSurface.value).toBe("view");
+    expect(chevron("src/a.ts").getAttribute("aria-expanded")).toBe("true");
+    await view.unmount();
+  });
+
+  it("opens the file as a kept tab and shows it from the open icon, without folding", async () => {
+    const view = await mount(stack([entry("src/a.ts")]));
+    await click(openIcon("src/a.ts") as HTMLElement);
+    await settle();
+    expect(surfaceFor(ROOT).tabs).toEqual([
+      expect.objectContaining({ path: `${ROOT}/src/a.ts`, preview: false }),
+    ]);
     expect(dockSurface.value).toBe("file");
-    open.mockRestore();
+    expect(chevron("src/a.ts").getAttribute("aria-expanded")).toBe("true");
+    await view.unmount();
+  });
+
+  it("offers no open icon for a deleted file", async () => {
+    const view = await mount(
+      stack([entry("src/a.ts"), entry("src/gone.ts", { status: "deleted" })]),
+    );
+    expect(openIcon("src/a.ts")).not.toBeNull();
+    expect(openIcon("src/gone.ts")).toBeNull();
     await view.unmount();
   });
 

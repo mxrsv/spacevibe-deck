@@ -132,6 +132,60 @@ describe("the strip's tab scroll arrows", () => {
   });
 });
 
+describe("a file opened while a view holds the body", () => {
+  /** Lay the file tabs out 100px wide, at the offset `left` names for each path. */
+  function stubTabOffsets(left: Readonly<Record<string, number>>): () => void {
+    const proto = HTMLElement.prototype;
+    const saved = ["offsetLeft", "offsetWidth"].map(
+      (key) => [key, Object.getOwnPropertyDescriptor(proto, key)] as const,
+    );
+    Object.defineProperty(proto, "offsetLeft", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return left[this.dataset.path ?? ""] ?? 0;
+      },
+    });
+    Object.defineProperty(proto, "offsetWidth", { configurable: true, get: () => 100 });
+    return () => {
+      for (const [key, descriptor] of saved) {
+        if (descriptor !== undefined) {
+          Object.defineProperty(proto, key, descriptor);
+        }
+      }
+    };
+  }
+
+  it("brings that file's tab into the strip once per open, not on every render", async () => {
+    const restore = stubTabOffsets({ [`${ROOT}/a.ts`]: 0, [`${ROOT}/c.ts`]: 400 });
+    const { view, files } = await mountStrip();
+    stubScrollMetrics(tabList(), { scrollWidth: 600, clientWidth: 200 });
+    await act(async () => {
+      await files.controller.openFileInBackground(ROOT, `${ROOT}/a.ts`, true);
+      await files.controller.openFileInBackground(ROOT, `${ROOT}/c.ts`, false);
+    });
+    await settle();
+    expect(tabList().scrollLeft).toBe(300);
+
+    tabList().scrollLeft = 0;
+    await view.update(
+      <DockTabStrip
+        views={["changes"]}
+        view="changes"
+        surface="view"
+        root={ROOT}
+        controller={files.controller}
+        closeLabel="Hide the side panel"
+        closeChord="⌘B"
+        onClose={() => {}}
+      />,
+    );
+    await settle();
+    expect(tabList().scrollLeft).toBe(0);
+    restore();
+    await view.unmount();
+  });
+});
+
 describe("the strip's maximize control", () => {
   const painted = (): number => dockStageWidth(settings.value.dockWidth, null);
 

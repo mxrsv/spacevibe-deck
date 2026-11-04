@@ -1,4 +1,4 @@
-import { ArrowDown01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, ArrowRight01Icon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { readHeadFile, type ChangeEntry } from "../../host/git-changes-host";
@@ -15,6 +15,7 @@ import type { FileSurfaceController } from "../../files/file-surface-controller"
 import { ChangeCounts } from "../blocks/change-counts";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { cardKey, dockFoldedCards, selectDockFile, toggleDockCardFold } from "./agent-dock-state";
 import { CardBody } from "./dock-changes-card-body";
 import { DockChangesFileMenu, useFileMenu } from "./dock-changes-file-menu";
@@ -110,9 +111,10 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
   const label = folded ? "Unfold" : "Fold";
   const menu = useFileMenu();
   const absolute = absolutePath(root, entry.path);
-  // One press on the path is a preview tab (DOCK-6); the menu's Open keeps the tab.
+  // A press on the path adds a preview tab (DOCK-6) and the diffs stay on screen; the open icon
+  // and the menu's Open keep the tab and show it.
   const preview = (): void => {
-    void controller.openFile(root, absolute, false).then(selectDockFile);
+    void controller.openFileInBackground(root, absolute, false);
   };
   const keep = (): void => {
     void controller.openFile(root, absolute, true).then(selectDockFile);
@@ -125,7 +127,7 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
       className="border-b data-flash:shadow-[inset_2px_0_0_var(--primary)]"
     >
       <div
-        className="sticky top-0 z-10 box-border flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
+        className="group/card-header sticky top-0 z-10 box-border flex h-(--dock-row-h) items-center gap-1.5 border-b bg-sidebar pr-2.5 pl-1"
         // `box-border`: the row height includes the bottom rule, as a list row's does; there is
         // no global box-sizing reset. The path button `shrink`s so its folder part can clip.
         // The header's one verb is the fold: a press anywhere but on a button folds the card. The
@@ -162,6 +164,25 @@ function Card({ root, entry, initial, controller, ports, reads }: CardProps) {
         ) : counts.kind === "binary" ? (
           <span className="shrink-0 text-xs text-muted-foreground">binary</span>
         ) : null}
+        {entry.status === "deleted" ? null : (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Open in File"
+                  // Only under the pointer or the keyboard, so a narrow header keeps its path.
+                  className="hidden group-focus-within/card-header:inline-flex group-hover/card-header:inline-flex"
+                  onClick={keep}
+                />
+              }
+            >
+              <DeckIcon icon={ArrowUpRight01Icon} />
+            </TooltipTrigger>
+            <TooltipContent side="left">Open in File</TooltipContent>
+          </Tooltip>
+        )}
         <DockChangesFileMenu
           root={root}
           entry={entry}

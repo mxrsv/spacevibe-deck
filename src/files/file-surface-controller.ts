@@ -84,6 +84,12 @@ export interface FileSurfaceController extends SurfaceStrip {
     keep: boolean,
     position?: { readonly line: number; readonly column: number },
   ): Promise<void>;
+  /**
+   * Open a file's tab without bringing it to the stage: no `beforeActivate`, no editor focus.
+   * The dock's Changes view uses it, so pressing a path adds a preview tab and the diffs stay
+   * on screen until the user picks that tab.
+   */
+  openFileInBackground(workspacePath: string, path: string, keep: boolean): Promise<void>;
   /** Bring an already-open file tab to the stage. */
   activateFile(workspacePath: string, path: string, focus?: boolean): void;
   /** Expand or collapse a directory, loading its listing on demand. */
@@ -380,6 +386,16 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
     }
   }
 
+  /** The tab and its document, without the stage: what both opens share. */
+  async function openTab(workspacePath: string, path: string, keep: boolean): Promise<void> {
+    const isNew = openFileTab(workspacePath, path, { keep });
+    notify();
+    refreshWatch();
+    if (isNew) {
+      await readDocument(workspacePath, path);
+    }
+  }
+
   async function closePath(workspacePath: string, path: string): Promise<void> {
     const document = documentFor(path);
     if (document?.dirty === true && !(await confirmDiscard([path]))) {
@@ -437,14 +453,11 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         requestReveal(path, position.line, position.column);
       }
       deps.beforeActivate?.();
-      const isNew = openFileTab(workspacePath, path, { keep });
-      notify();
-      refreshWatch();
-      if (isNew) {
-        await readDocument(workspacePath, path);
-      }
+      await openTab(workspacePath, path, keep);
       if (activeFileTab.value === path && deps.canFocus?.() !== false) focusEditor?.();
     },
+
+    openFileInBackground: openTab,
 
     activateFile(workspacePath, path, focus = true) {
       deps.beforeActivate?.();

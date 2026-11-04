@@ -113,6 +113,20 @@ export interface DockTabStripProps {
   readonly controller: FileSurfaceController;
 }
 
+/** Scroll the tab region by the least that shows `tab` whole; only this region scrolls. */
+function bringIntoStrip(container: HTMLElement | null, tab: HTMLElement | null | undefined): void {
+  if (container === null || tab === null || tab === undefined) {
+    return;
+  }
+  const left = tab.offsetLeft;
+  const right = left + tab.offsetWidth;
+  if (left < container.scrollLeft) {
+    container.scrollLeft = left;
+  } else if (right > container.scrollLeft + container.clientWidth) {
+    container.scrollLeft = right - container.clientWidth;
+  }
+}
+
 /**
  * The dock's one strip (DOCK-1, DOCK-6): the fixed view icons, a divider, then the file tabs in a
  * region of their own that scrolls sideways while the icons and `+` stay put, and the active tab
@@ -151,18 +165,31 @@ export function DockTabStrip({
   // Only this region scrolls, so bring the selected tab in by its own offsets.
   useEffect(() => {
     const container = list.current;
-    const tab = container?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
-    if (container === null || tab === null || tab === undefined) {
+    bringIntoStrip(
+      container,
+      container?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]'),
+    );
+  }, [activePath, surface, tabs.length]);
+
+  // A file opened while a view keeps the body (a Changes path press) has no selected tab, so its
+  // tab comes in by path, once per open; going back to a view must not scroll to the last file.
+  const openedPath = surfaceState.activePath;
+  const revealedPath = useRef(openedPath);
+  useEffect(() => {
+    if (openedPath === revealedPath.current) {
       return;
     }
-    const left = tab.offsetLeft;
-    const right = left + tab.offsetWidth;
-    if (left < container.scrollLeft) {
-      container.scrollLeft = left;
-    } else if (right > container.scrollLeft + container.clientWidth) {
-      container.scrollLeft = right - container.clientWidth;
+    revealedPath.current = openedPath;
+    if (surface === "view" && openedPath !== null) {
+      const container = list.current;
+      bringIntoStrip(
+        container,
+        [...(container?.querySelectorAll<HTMLElement>('[role="tab"][data-path]') ?? [])].find(
+          (tab) => tab.dataset.path === openedPath,
+        ),
+      );
     }
-  }, [activePath, surface, tabs.length]);
+  }, [openedPath, surface]);
 
   const leaveExplorer = (): void => {
     if (surfaceState.activePath !== null) {

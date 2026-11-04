@@ -23,6 +23,7 @@ function fakeController(overrides: Partial<FileSurfaceController> = {}): FileSur
   return {
     init: vi.fn(async () => {}),
     openFile: vi.fn(async () => {}),
+    openFileInBackground: vi.fn(async () => {}),
     activateFile: vi.fn(),
     toggleDirectory: vi.fn(),
     toggleRoot: vi.fn(),

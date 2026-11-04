@@ -46,8 +46,9 @@ import { tabViews, type TabView } from "../../terminal/tabs-store";
 import { openInApp } from "../../host/external-apps-host";
 import { writeText } from "../../host/shell-host";
 import { installedExternalApps } from "../../links/external-apps-store";
-import { byRole, click, mount, press, waitUntil } from "../controls/preset-test-kit";
-import { dockChangesList, resetAgentDockState, setDockView } from "./agent-dock-state";
+import { resetFileSurfaces, surfaceFor } from "../../files/file-surface-store";
+import { byRole, click, mount, press, settle, waitUntil } from "../controls/preset-test-kit";
+import { dockChangesList, dockSurface, resetAgentDockState, setDockView } from "./agent-dock-state";
 import { DockChanges } from "./dock-changes";
 import { testFileBodies } from "./dock-files-test-kit";
 import { changedFileCount, DockChangesWatch } from "./dock-changes-watch";
@@ -183,6 +184,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   repositoryScans.value = new Map();
   resetAgentDockState();
+  resetFileSurfaces();
 });
 
 describe("the Changes view's tree", () => {
@@ -609,6 +611,38 @@ describe("the keyboard", () => {
     expect(row("folder:src/ui").getAttribute("aria-expanded")).toBe("false");
     await press(row("folder:src/ui"), { key: "ArrowRight" });
     expect(row("folder:src/ui").getAttribute("aria-expanded")).toBe("true");
+    await view.unmount();
+  });
+});
+
+describe("opening a file from its card", () => {
+  const header = (path: string): HTMLElement =>
+    document.body.querySelector(`[data-card-path="${path}"] .sticky`) as HTMLElement;
+
+  it("keeps Changes on screen for a path press, through the window's real file controller", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await click(
+      header("src/lib/c.ts").querySelector('button[title="src/lib/c.ts"]') as HTMLElement,
+    );
+    await settle();
+    expect(dockSurface.value).toBe("view");
+    expect(document.body.querySelectorAll("[data-card-path]")).toHaveLength(ENTRIES.length);
+    expect(surfaceFor(ROOT).tabs).toEqual([
+      expect.objectContaining({ path: `${ROOT}/src/lib/c.ts`, preview: true }),
+    ]);
+    await view.unmount();
+  });
+
+  it("shows the file for the open icon and the menu's Open", async () => {
+    const { controller } = fakeChanges();
+    const view = await mount(section(controller));
+    await click(header("src/lib/c.ts").querySelector('[aria-label="Open in File"]') as HTMLElement);
+    await settle();
+    expect(dockSurface.value).toBe("file");
+    expect(surfaceFor(ROOT).tabs).toEqual([
+      expect.objectContaining({ path: `${ROOT}/src/lib/c.ts`, preview: false }),
+    ]);
     await view.unmount();
   });
 });
