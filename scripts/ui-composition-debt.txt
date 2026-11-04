@@ -1,8 +1,205 @@
-# Small text and hand-drawn chips in shipping src/**/*.tsx that predate
-# scripts/ui-composition-gate.test.ts (spec 2026-11-03-ui-composition, CMP-5 to CMP-7, CMP-10),
-# one `path rule count` line each, rule being `small-text` or `chip-like`. A file may hold at most
-# its count. Lower a count when you move an element onto Chip, Badge or Button or a text size onto
-# `text-xs` or larger, and remove the line at zero; never raise one or add a file.
+# The UI composition ledger: off-recipe values that predate the ratchet, one `path rule count`
+# line per file and rule. Two suites count against it:
 #
-# Empty on 2026-11-03: the tree held no size under 12px and, once a block `<div>` row is not
-# counted as a chip, no hand-drawn chip.
+# - scripts/ui-composition-gate.test.ts reads the `.tsx` and `.ts` lines. Rules: `small-text` and
+#   `chip-like` (spec 2026-11-03-ui-composition, CMP-5 to CMP-7, CMP-10), and `arbitrary`,
+#   `spacing-step`, `weight`, `shadow`, `ring` and `phosphor` (spec 2026-11-05-ui-recipes-ratchet,
+#   RCP-26).
+# - src/styles/composition-rules.test.ts reads the `.css` lines. Rules: `radius`, `height`,
+#   `spacing`, `focus`, `state-bg`, `shadow` and `weight` (RCP-25). Its three older checks (a
+#   size under 12, a focus outline, a divider line) have no line here: they stay at zero.
+#
+# A file may hold at most its count, and a file not listed holds no hit. A count only falls:
+# lower it when you move a value onto its recipe, and remove the line at zero. Never raise one or
+# add a file (AC-5). A value that must stay off its scale carries `ui-scale: <reason>` on the line
+# above instead, and the change that adds one says so in its PR (RCP-27, R9).
+#
+# Seeded on 2026-11-05 with the tree's counts, so both suites were green on day one.
+
+src/browser/browser-panel.tsx phosphor 1
+src/files/ui/changes-list.tsx phosphor 1
+src/files/ui/diff-column-header.tsx phosphor 1
+src/files/ui/file-icons.ts phosphor 1
+src/files/ui/tree-root-actions.tsx phosphor 1
+src/files/ui/view-mode-toggle.tsx phosphor 1
+src/launcher/agent-launch-cards.tsx phosphor 1
+src/launcher/agent-launch-context.tsx phosphor 1
+src/launcher/agent-launch-page.tsx phosphor 1
+src/launcher/command-bar-profile-menu.tsx phosphor 1
+src/launcher/command-bar-project-menu.tsx phosphor 1
+src/launcher/command-bar.tsx phosphor 1
+src/launcher/launch-checkout-picker.tsx phosphor 1
+src/launcher/launch-profile-popover.tsx phosphor 1
+src/launcher/launcher-fields.tsx phosphor 1
+src/open-board/board-agent-launcher.tsx phosphor 1
+src/open-board/board-composer.tsx phosphor 1
+src/open-board/clone-workspace-form.tsx phosphor 1
+src/open-board/create-workspace-form.tsx phosphor 1
+src/open-board/open-board-home.tsx phosphor 1
+src/open-board/open-board-worktree-form.tsx phosphor 1
+src/open-board/workspace-picker.tsx phosphor 1
+src/prompts/prompt-popover.tsx phosphor 1
+src/terminal/search-bar.ts phosphor 1
+src/ui/agent-board-bar.tsx phosphor 1
+src/ui/agent-board-card.tsx phosphor 1
+src/ui/agent-board.tsx phosphor 1
+src/ui/agent-dock/dock-changes-card-body.tsx shadow 2
+src/ui/agent-dock/dock-changes-stack.tsx shadow 1
+src/ui/agent-dock/dock-changes-tree.tsx ring 3
+src/ui/agent-dock/dock-changes.tsx weight 1
+src/ui/agent-dock/dock-file-body.tsx weight 1
+src/ui/agent-quick-picker.tsx phosphor 1
+src/ui/agent-rail.tsx phosphor 1
+src/ui/blocks/agent-state-mark.tsx arbitrary 2
+src/ui/blocks/chip.tsx weight 1
+src/ui/command-settings/command-settings-live-row.tsx arbitrary 1
+src/ui/command-settings/command-settings-rows.tsx weight 2
+src/ui/command-settings/command-settings.tsx arbitrary 1
+src/ui/controls/badge.tsx weight 1
+src/ui/controls/button.tsx weight 1
+src/ui/controls/color-row.tsx phosphor 1
+src/ui/controls/deck-icon.tsx phosphor 1
+src/ui/controls/dialog.tsx weight 1
+src/ui/controls/dropdown-menu.tsx shadow 2
+src/ui/controls/dropdown-menu.tsx spacing-step 7
+src/ui/controls/dropdown-menu.tsx weight 1
+src/ui/controls/field.tsx spacing-step 3
+src/ui/controls/field.tsx weight 2
+src/ui/controls/font-row.tsx phosphor 1
+src/ui/controls/github-star-button.tsx phosphor 1
+src/ui/controls/input.tsx weight 1
+src/ui/controls/kbd.tsx weight 1
+src/ui/controls/label.tsx weight 1
+src/ui/controls/logo-row.tsx phosphor 1
+src/ui/controls/popover.tsx shadow 1
+src/ui/controls/popover.tsx weight 1
+src/ui/controls/scroll-area.tsx spacing-step 1
+src/ui/controls/select.tsx shadow 1
+src/ui/controls/select.tsx spacing-step 1
+src/ui/controls/sheet.tsx shadow 1
+src/ui/controls/sheet.tsx weight 1
+src/ui/controls/switch.tsx arbitrary 2
+src/ui/controls/tabs.tsx arbitrary 3
+src/ui/controls/tabs.tsx shadow 1
+src/ui/controls/tabs.tsx weight 1
+src/ui/controls/toggle-group.tsx arbitrary 1
+src/ui/controls/toggle.tsx weight 1
+src/ui/controls/tooltip.tsx arbitrary 1
+src/ui/dev-servers/dev-server-row.tsx phosphor 1
+src/ui/dev-servers/dev-servers-chip.tsx phosphor 1
+src/ui/dev-servers/dev-servers-panel.tsx phosphor 1
+src/ui/dev-servers/dev-servers-popover.tsx phosphor 1
+src/ui/dock/dock-tab-registry.ts phosphor 1
+src/ui/dock/dock-toggle.tsx phosphor 1
+src/ui/project-rail/project-rail-checkout.tsx spacing-step 2
+src/ui/project-rail/project-rail-header.tsx weight 1
+src/ui/project-rail/project-rail-row.tsx weight 1
+src/ui/project-rail/project-rail-sections.tsx weight 1
+src/ui/rail-create-row.tsx phosphor 1
+src/ui/repository-rail.tsx phosphor 1
+src/ui/sessions/session-row.tsx phosphor 1
+src/ui/sessions/sessions-nav.tsx phosphor 1
+src/ui/settings/agent-choice-value.tsx phosphor 1
+src/ui/settings/agent-launch-flags.tsx phosphor 1
+src/ui/settings/launch-profile-editor.tsx phosphor 1
+src/ui/settings/sections/agents-section.tsx phosphor 1
+src/ui/settings/sections/appearance-section.tsx phosphor 1
+src/ui/settings/sections/links-editor-section.tsx phosphor 1
+src/ui/settings/sections/privacy-section.tsx phosphor 1
+src/ui/settings/sections/reset-section.tsx phosphor 1
+src/ui/settings/sections/shortcuts-section.tsx phosphor 1
+src/ui/settings/sections/terminal-section.tsx phosphor 1
+src/ui/settings/settings-screen.tsx phosphor 1
+src/ui/settings/theme-gallery.tsx phosphor 1
+src/ui/sidebar-actions.tsx phosphor 1
+src/ui/sidebar-toggle.tsx phosphor 1
+src/ui/spaces/space-bar.tsx phosphor 1
+src/ui/tab-strip-menu.tsx phosphor 1
+src/ui/tab-strip.tsx phosphor 1
+src/ui/toolbar/deck-toolbar.tsx phosphor 1
+src/ui/toolbar/external-app-button.tsx phosphor 1
+src/ui/toolbar/feature-toolbar.tsx phosphor 1
+src/ui/usage-consent-modal.tsx phosphor 1
+src/ui/usage/usage-dock-tab.tsx phosphor 1
+src/ui/usage/usage-page.tsx phosphor 1
+src/ui/workspace-icon.tsx phosphor 1
+src/ui/worktree-card-menus.tsx phosphor 1
+src/ui/worktree-card-row.tsx phosphor 1
+src/ui/worktree-card.tsx phosphor 1
+src/launcher/agent-launch-page.css height 2
+src/launcher/agent-launch-page.css spacing 1
+src/launcher/agent-launch-page.css state-bg 7
+src/launcher/agent-launch-page.css weight 2
+src/launcher/command-bar.css focus 1
+src/launcher/command-bar.css height 2
+src/launcher/command-bar.css radius 7
+src/launcher/command-bar.css shadow 2
+src/launcher/command-bar.css spacing 4
+src/launcher/command-bar.css state-bg 1
+src/launcher/stage-launcher-slot.css spacing 1
+src/open-board/board-agent-launcher.css spacing 1
+src/open-board/board-agent-launcher.css state-bg 2
+src/open-board/board-agent-launcher.css weight 3
+src/styles/02-shell.css height 1
+src/styles/02-shell.css spacing 3
+src/styles/02-shell.css state-bg 3
+src/styles/02-shell.css weight 1
+src/styles/03-repository-rail.css height 2
+src/styles/03-repository-rail.css spacing 3
+src/styles/03-repository-rail.css state-bg 2
+src/styles/03-repository-rail.css weight 2
+src/styles/05-tab-bar-toolbar.css height 7
+src/styles/05-tab-bar-toolbar.css spacing 2
+src/styles/05-tab-bar-toolbar.css state-bg 5
+src/styles/05-tab-bar-toolbar.css weight 1
+src/styles/06-stage-panes.css height 1
+src/styles/06-stage-panes.css state-bg 1
+src/styles/07-config-rows.css height 2
+src/styles/07-config-rows.css spacing 4
+src/styles/07-config-rows.css state-bg 1
+src/styles/07-config-rows.css weight 1
+src/styles/08-popovers.css state-bg 1
+src/styles/09-open-board.css height 5
+src/styles/09-open-board.css spacing 3
+src/styles/09-open-board.css state-bg 16
+src/styles/09-open-board.css weight 8
+src/styles/10-modals.css focus 1
+src/styles/10-modals.css state-bg 4
+src/styles/11-settings-screen.css height 1
+src/styles/11-settings-screen.css spacing 2
+src/styles/11-settings-screen.css state-bg 2
+src/styles/11-settings-screen.css weight 2
+src/styles/11-settings-search.css spacing 1
+src/styles/11-settings-search.css state-bg 1
+src/styles/11-settings-studio.css height 1
+src/styles/12-usage.css height 4
+src/styles/12-usage.css spacing 3
+src/styles/12-usage.css state-bg 4
+src/styles/12-usage.css weight 1
+src/styles/13-sessions.css height 9
+src/styles/13-sessions.css spacing 7
+src/styles/13-sessions.css state-bg 2
+src/styles/13-sessions.css weight 3
+src/styles/15-rail-footer.css state-bg 1
+src/styles/15-rail-footer.css weight 1
+src/styles/16-launch-profiles.css height 1
+src/styles/16-launch-profiles.css spacing 3
+src/styles/16-launch-profiles.css weight 1
+src/styles/17-markdown.css height 1
+src/styles/17-markdown.css spacing 2
+src/styles/17-markdown.css state-bg 2
+src/styles/18-new-task-launcher.css height 1
+src/styles/18-new-task-launcher.css spacing 6
+src/styles/18-new-task-launcher.css state-bg 10
+src/styles/18-new-task-launcher.css weight 20
+src/styles/23-attention-popover.css height 2
+src/styles/24-dev-servers.css height 1
+src/styles/24-dev-servers.css spacing 1
+src/styles/24-dev-servers.css state-bg 4
+src/styles/31-shell-stage.css height 1
+src/styles/31-shell-stage.css spacing 1
+src/styles/31-shell-stage.css state-bg 3
+src/styles/31-shell-stage.css weight 2
+src/terminal/pane-agent-header.css height 3
+src/terminal/pane-agent-header.css state-bg 1
+src/terminal/pane-agent-header.css weight 1

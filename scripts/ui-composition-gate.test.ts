@@ -2,12 +2,16 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { findCompositionHits } from "./ui-composition-gate";
 import {
   auditComposition,
-  findCompositionHits,
+  emptyExceptions,
   parseDebt,
+  TSX_RULES,
   type CompositionHit,
-} from "./ui-composition-gate";
+  type LedgerScope,
+} from "./ui-composition-ledger";
+import { findRecipeHits } from "./ui-recipe-classes";
 
 /**
  * The small UI has sizes (spec 2026-11-03-ui-composition): nothing under 12px (CMP-10) and chips,
@@ -19,40 +23,78 @@ import {
  * Not scanned: `*.test.tsx`; `src/gallery/` (not shipping); `src/ui/controls/` (the definition
  * site: Badge and Kbd draw their own box). The size of an arbitrary `text-[Npx]` is also counted
  * by the oxlint rule `deck/no-arbitrary-font-size`; the two counts do not interfere.
+ *
+ * The recipe ratchet's `.tsx` half (spec 2026-11-05-ui-recipes-ratchet, RCP-26) counts in the same
+ * file: arbitrary values, off-scale spacing steps, weights, shadows, focus rings outside Input and
+ * Phosphor imports. It reads `src/ui/controls/` too, where the preset's weights, shadows and rings
+ * live, and reads `.ts` files for Phosphor only. Its limits are in `ui-recipe-classes.ts`.
  */
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEBT_FILE = "scripts/ui-composition-debt.txt";
-const UNSCANNED = [/\.test\.tsx$/, /^src\/gallery\//, /^src\/ui\/controls\//];
+const UNSCANNED = [/\.test\.tsx?$/, /\.d\.ts$/, /^src\/gallery\//];
+/** `small-text` and `chip-like` keep their scope: the controls are where chips are defined. */
+const CHIP_SITES = /^src\/ui\/controls\//;
 
 const toPath = (full: string): string => relative(ROOT, full).replaceAll("\\", "/");
 
-function tsxFiles(dir: string): string[] {
+function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) return tsxFiles(full);
-    return entry.name.endsWith(".tsx") ? [full] : [];
+    if (entry.isDirectory()) return sourceFiles(full);
+    return /\.tsx?$/.test(entry.name) ? [full] : [];
   });
 }
 
+const sources = new Map<string, string>();
 const scanned = new Map<string, CompositionHit[]>();
-for (const full of tsxFiles(join(ROOT, "src"))) {
+for (const full of sourceFiles(join(ROOT, "src"))) {
   const path = toPath(full);
-  if (!UNSCANNED.some((pattern) => pattern.test(path))) {
-    scanned.set(path, findCompositionHits(readFileSync(full, "utf8")));
-  }
+  if (UNSCANNED.some((pattern) => pattern.test(path))) continue;
+  const text = readFileSync(full, "utf8");
+  sources.set(path, text);
+  const old = path.endsWith(".tsx") && !CHIP_SITES.test(path) ? findCompositionHits(text) : [];
+  scanned.set(path, [...old, ...findRecipeHits(text, path)]);
 }
+
+const SCOPE: LedgerScope = {
+  rules: TSX_RULES,
+  owns: (path) => /\.tsx?$/.test(path),
+  how: {
+    "small-text": "use `text-xs` (12px) or larger; nothing in the app is below 12 (CMP-10)",
+    "chip-like":
+      "use `Chip` (a pressable), `Badge` (read only) or `Button` from src/ui, not a hand-drawn element (CMP-5 to CMP-7)",
+    arbitrary:
+      "read a token instead of a bracketed value: `h-(--row-32)`, `p-(--space-8)`, `rounded-(--radius-control)` (RCP-26)",
+    "spacing-step":
+      "use a step on 0/2/4/6/8/10/12/16/24 (`p-2`, `gap-1.5`) or a `--space-*` token (RCP-6)",
+    weight: "use `font-normal` (400) or `font-semibold` (600); nothing is 500 (RCP-5)",
+    shadow:
+      "a floating element reads `shadow-(--elev-1|2|3)`; anything else is `shadow-none` (RCP-11)",
+    ring: "only the Input control paints a focus ring; paint focus like hover (RCP-9, CMP-11)",
+    phosphor: "draw the icon from Hugeicons through `DeckIcon` (RCP-14)",
+  },
+};
 
 describe("the tree", () => {
   it("scans shipping files at all — an empty scan would pass everything", () => {
     expect(scanned.size).toBeGreaterThan(100);
     expect(scanned.has("src/ui/app.tsx")).toBe(true);
+    expect(scanned.has("src/ui/controls/button.tsx")).toBe(true);
+    expect(scanned.has("src/terminal/search-bar.ts")).toBe(true);
   });
 
-  it("holds no small text or hand-drawn chip beyond the debt file", () => {
+  it("holds no small text, hand-drawn chip or off-recipe class beyond the debt file", () => {
     const { debt, problems } = parseDebt(readFileSync(join(ROOT, DEBT_FILE), "utf8"));
     expect(problems).toEqual([]);
-    expect(auditComposition(scanned, debt)).toEqual([]);
+    expect(auditComposition(scanned, debt, SCOPE)).toEqual([]);
+  });
+
+  it("writes no `ui-scale:` without a reason (RCP-27)", () => {
+    const empty = [...sources].flatMap(([path, text]) =>
+      emptyExceptions(text).map((line) => `${path}:${line}`),
+    );
+    expect(empty).toEqual([]);
   });
 });
 
@@ -155,13 +197,14 @@ describe("parseDebt", () => {
     ]);
   });
 
-  it("reports a malformed, unknown-rule or repeated line instead of skipping it", () => {
+  it("reports a malformed, unknown-rule, zero or repeated line instead of skipping it", () => {
     const { problems } = parseDebt(
-      "src/a.tsx 3\nsrc/b.tsx tiny 1\nsrc/c.tsx chip-like 1\nsrc/c.tsx chip-like 2\n",
+      "src/a.tsx 3\nsrc/b.tsx tiny 1\nsrc/d.css radius 0\nsrc/c.tsx chip-like 1\nsrc/c.tsx chip-like 2\n",
     );
     expect(problems).toEqual([
-      'debt line 1 is not "path small-text|chip-like count": src/a.tsx 3',
-      'debt line 2 is not "path small-text|chip-like count": src/b.tsx tiny 1',
+      'debt line 1 is not "path rule count" with a known rule: src/a.tsx 3',
+      'debt line 2 is not "path rule count" with a known rule: src/b.tsx tiny 1',
+      'debt line 3 is not "path rule count" with a known rule: src/d.css radius 0',
       "debt lists src/c.tsx chip-like twice",
     ]);
   });
@@ -171,7 +214,7 @@ describe("auditComposition", () => {
   const hits = (rule: CompositionHit["rule"], n: number): CompositionHit[] =>
     Array.from({ length: n }, (_, i) => ({ rule, line: i + 1, detail: "x" }));
   const audit = (files: Record<string, CompositionHit[]>, debt: Record<string, number>) =>
-    auditComposition(new Map(Object.entries(files)), new Map(Object.entries(debt)));
+    auditComposition(new Map(Object.entries(files)), new Map(Object.entries(debt)), SCOPE);
 
   it("passes a file at its debt and a clean file", () => {
     expect(
@@ -211,6 +254,16 @@ describe("auditComposition", () => {
   it("fails an entry whose file is gone or not scanned", () => {
     expect(audit({}, { "src/gone.tsx small-text": 1 })).toEqual([
       expect.stringContaining("src/gone.tsx is in the debt file but is not a scanned"),
+    ]);
+  });
+
+  it("leaves the stylesheets' lines to the CSS suite", () => {
+    expect(audit({}, { "src/styles/02-shell.css radius": 1 })).toEqual([]);
+  });
+
+  it("fails a line whose rule does not apply to its kind of file", () => {
+    expect(audit({ "src/a.tsx": [] }, { "src/a.tsx radius": 1 })).toEqual([
+      "src/a.tsx radius: radius is not a rule for this kind of file",
     ]);
   });
 });

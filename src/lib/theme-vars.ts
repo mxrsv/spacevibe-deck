@@ -1,6 +1,11 @@
 import { UI_TOKEN_KEYS, type Theme } from "../settings/theme-schema";
 import { DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
-import { contrastRatio, deriveChromeColors, type ChromeColors } from "./derive-colors";
+import {
+  contrastRatio,
+  deriveChromeColors,
+  deriveRecipeTokens,
+  type ChromeColors,
+} from "./derive-colors";
 
 /**
  * Deck's two default themes wear the preset's own values, which `preset.css` declares and which
@@ -87,6 +92,9 @@ export function applyThemeVars(rootStyle: CSSStyleDeclaration, theme: Theme): vo
   rootStyle.setProperty("--seam-divider", chrome.seamDivider);
   rootStyle.setProperty("--seam-split", chrome.seamSplit);
   rootStyle.setProperty("--seam-raised", chrome.seamRaised);
+  for (const [name, value] of Object.entries(deriveRecipeTokens(theme))) {
+    rootStyle.setProperty(name, value);
+  }
   // Inline beats `.dark` in preset.css, so going back to a default theme has to clear these.
   const preset = presetTokens(theme, chrome);
   const native = wearsPresetValues(theme);

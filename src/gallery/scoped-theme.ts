@@ -7,6 +7,8 @@ import type { Theme } from "../settings/theme-schema";
  */
 export function applyScopedTheme(node: HTMLElement, theme: Theme): void {
   applyThemeVars(node.style, theme);
+  // `01-tokens.css` re-declares its `var()`-holding recipe tokens here, against this cell's palette.
+  node.dataset.themeScope = theme.id;
   node.classList.toggle("dark", theme.type === "dark");
   node.classList.toggle("preset-light", theme.type === "light");
 }

@@ -59,11 +59,18 @@ cites it.
   `transition-all` on state changes and the `tw-animate-css` enter and exit of popups (fade,
   zoom, slide), each 100–150ms, never looping and never while idle. Reduced motion shortens
   all of it to 0.01ms by scope.
-- **DL-1.3** No blurred or offset `box-shadow`, no `filter`, no `backdrop-filter`, no
-  `requestAnimationFrame` loop and no timer that exists only to drive visuals. Depth comes
-  from background steps and 1px lines; `box-shadow: inset 0 0 0 1px <color>` is a hairline
-  and allowed. One exception: `.modal-scrim` uses `backdrop-filter` (DL-29.5), because its
-  layer exists only while a modal is open. Inside the preset boundary (DL-1.6) popups carry
+- **DL-1.3** No `filter`, no `backdrop-filter`, no `requestAnimationFrame` loop and no timer
+  that exists only to drive visuals. Depth comes from background steps and 1px lines;
+  `box-shadow: inset 0 0 0 1px <color>` is a hairline and allowed. A blurred or offset
+  `box-shadow` is allowed only as one of three static elevation levels, read through its token
+  and on a floating element: `--elev-1` (menu, popover, tooltip), `--elev-2` (a floating panel:
+  the launcher over a space, a slide-over) and `--elev-3` (a modal). Each is derived per theme
+  ([`deriveRecipeTokens`](../src/lib/derive-colors.ts)); a dark theme adds the 1px `--elev-edge`
+  hairline, and a light floating panel or modal carries a 1px `--panel-frame` instead. An
+  elevation never transitions or animates, and the rail, stage, dock and any repeated row or cell
+  get none ([`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) fails any
+  other blurred shadow). One exception: `.modal-scrim` uses `backdrop-filter` (DL-29.5), because
+  its layer exists only while a modal is open. Inside the preset boundary (DL-1.6) popups carry
   the preset's `shadow-md` and `ring-1`, and the dialog's overlay blurs what is behind it.
 - **DL-1.4** Native inputs (`<select>`, `<input type="color">`) laid invisibly over a styled
   pill are preferred to custom pickers: no JS, no extra DOM, native accessibility. Inside the
@@ -133,6 +140,9 @@ only the pre-JS fallbacks.
 | `--type-title` … `--type-micro`                                                               | the four standard text sizes (DL-4.4)        | fixed   |
 | `--radius-flat` / `--radius-tab` / `--radius-tight` / `--radius-control` / `--radius-surface` | the five radius roles (DL-20.1)              | fixed   |
 | `--duration` / `--ease`                                                                       | chrome state-change motion (DL-20.2)         | fixed   |
+| `--space-*` / `--row-*` / `--control-h-*` / `--chip-h-*` / `--icon-box-*` / `--weight-*`         | the recipe scales (DL-20.5 to DL-20.7)       | fixed   |
+| `--state-pressed-bg` / `--state-needs-you-bg` / `--focus-ring` / `--status-*` / `--diff-*`      | recipe states and inks on one formula        | fixed   |
+| `--tab-active-focus-bg` / `--state-dragover-bg` / `--ink-*` / `--elev-*` / `--popover-bg` / `--card-bg` / `--well-bg` / `--chrome-3` | the recipe tokens that differ by theme (RCP-2) | derived |
 
 - **DL-2.1** Components never hardcode a color. Every color is a token, or comes from the
   live theme object (a swatch previewing a theme's own colors). Inside the preset boundary
@@ -171,7 +181,8 @@ only the pre-JS fallbacks.
   top.
   Why: the owner wants the two counts apart at a glance (2026-10-10), as every diff tool shows
   them.
-- **DL-3.3** Structure comes from spacing and background steps, not from color or shadow. A
+- **DL-3.3** Structure comes from spacing and background steps, not from color or shadow; the
+  floating elevation of DL-1.3 is the one shadow, and it marks a layer, not a structure. A
   line between two large regions appears only when they would otherwise merge, and none between
   rows, groups or section headers (CMP-14). Legacy stylesheets follow the same rule now (CMP-19);
   a horizontal line stays only where the structure would be unreadable without it, and the
@@ -224,15 +235,17 @@ only the pre-JS fallbacks.
   - `.settings-screen__title`, `letter-spacing: -0.02em`: optical correction at 24px;
   - `.board-label` (Agent Board): uppercase with `var(--label-tracking)` (0.06em), weight
     400, `--text-faint`, for the nav's two group headings and the state word only.
-- **DL-4.4** Standard chrome text uses four named sizes, on two values (CMP-10):
+- **DL-4.4** Standard chrome text uses five named sizes, on three values (CMP-10, RCP-5):
 
-  | role      | variable       | size | carries                                                 |
-  | --------- | -------------- | ---- | ------------------------------------------------------- |
-  | title     | `--type-title` | 14px | screen and panel titles, `More` menu rows, group labels |
-  | body      | `--type-body`  | 14px | keys, row names, the text read as content               |
-  | metadata  | `--type-meta`  | 12px | values, counts, paths, branches, status copy            |
-  | microcopy | `--type-micro` | 12px | descriptions, column headers, hints                     |
+  | role      | variable        | size | line height        | carries                                                 |
+  | --------- | --------------- | ---- | ------------------ | ------------------------------------------------------- |
+  | dialog    | `--type-dialog` | 16px | `--leading-dialog` | a dialog title                                          |
+  | title     | `--type-title`  | 14px | `--leading-body`   | screen and panel titles, `More` menu rows, group labels |
+  | body      | `--type-body`   | 14px | `--leading-body`   | keys, row names, the text read as content               |
+  | metadata  | `--type-meta`   | 12px | `--leading-meta`   | values, counts, paths, branches, status copy            |
+  | microcopy | `--type-micro`  | 12px | `--leading-meta`   | descriptions, column headers, hints                     |
 
+  The line heights are 24, 20 and 16px.
   A group label heading a list of rows is title-sized in `--text-muted` (the rail's
   cluster header via a local `--type-project` alias, DL-27.9; the footer's `Tools`; and
   `.cfg-group`). A column header is not a group label and stays at 12px faint (DL-15.5).
@@ -288,7 +301,8 @@ only the pre-JS fallbacks.
   - `--radius-surface` (7px): anything that floats above chrome — popovers, dialogs, the
     file view.
 
-  `50%` and the 999px capsule are shapes, not scale values, and `6px` is the one literal: the
+  `50%` and the 999px capsule (`--radius-pill`: badge, kbd, switch) are shapes, not scale
+  values, and `6px` is the one literal: the
   radius of a control 36 or 40 high (CMP-2). Full-bleed screens such as Settings have no
   radius. The design-language test fails a block that declares a height under 36px with `6px`, and
   one that declares 36 to 40px with `--radius-control`, without a matching width;
@@ -309,13 +323,43 @@ only the pre-JS fallbacks.
   the Windows overlay opens at the same height (`FRAME_HEIGHT_PX`). It stays physical under GUI
   zoom, so `--frame-h` is `calc(34px / var(--gui-zoom, 1))`;
   [`window-options.test.ts`](../electron/window-options.test.ts) holds the two together.
-- **DL-20.5** There is no weight, border-width or layer scale. Spacing moves in 2px steps, with
-  the values and roles of CMP-15; sizes that are functional geometry (hairlines, tree indent,
-  window controls, the frame height) stay outside it. Legacy stylesheets follow the steps where
-  a value is a plain spacing choice (CMP-19); the surfaces CMP-20 names keep theirs until
-  deleted. No token declares the steps.
-  The z-index order is behavioural (Settings under the modal scrim depends on 40 > 35), not a
-  token.
+- **DL-20.5** Spacing moves in 2px steps on the values of CMP-15, each a token: `--space-0`,
+  `--space-2`, `--space-4`, `--space-6`, `--space-8`, `--space-10`, `--space-12`, `--space-16` and
+  `--space-24`. A role reads its role token (RCP-6):
+
+  | role                       | value                                 | token                                             |
+  | -------------------------- | ------------------------------------- | ------------------------------------------------- |
+  | icon ↔ label               | 6                                     | `--space-icon-label`                              |
+  | control horizontal padding | 8 / 12 / 14 / 16 at 28 / 32 / 36 / 40 | `--control-pad-28` to `--control-pad-40`          |
+  | row horizontal padding     | 8                                     | `--space-pad-row`                                 |
+  | inside a group             | 4 / 6 / 8                             | `--space-in-sm`, `--space-in-md`, `--space-in-lg` |
+  | between groups             | 12 / 16                               | `--space-group-sm`, `--space-group-md`            |
+  | between sections           | 24                                    | `--space-section`                                 |
+  | between list rows          | 2                                     | `--space-list`                                    |
+
+  Sizes that are functional geometry stay outside it with named tokens of their own: hairlines
+  (`--seam-w`), the tree indent (`--tree-indent`), the frame, notice and status heights, the
+  mark slot, the resize gutter (`--resize-w`), a remembered row's end cell (`--row-end-w`) and the
+  36 control's 14 padding. The surfaces CMP-20 names keep theirs until deleted. There is no
+  border-width or layer scale: the z-index order is behavioural (Settings under the modal scrim
+  depends on 40 > 35), not a token.
+- **DL-20.6** Rows and bars have heights, not picks (RCP-7). A row is 24 in a dense list (Changes,
+  the file tree, a card head, a section label, breadcrumbs), 32 for a menu item, a project
+  header, a pane header or a one-line row, and 44 for a two-line rail row (`--row-24`,
+  `--row-32`, `--row-44`); live and remembered rail rows are both 44 and a setting row is at
+  least 44. A bar is 36 (a toolbar, search row or footer), 34 in the frame row (`--frame-h`) and
+  40 as a view header band. Controls are 28, 32, 36 and 40 (`--control-h-28` to
+  `--control-h-40`), chips 24 and 20, a badge 20, icon boxes 28, 24 and 20 holding a 16, 14 or 12
+  glyph. A height from 12 to 48px outside 20/24/28/32/36/40/44 fails
+  [`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) and, as a bracketed
+  class, [`ui-composition-gate.test.ts`](../scripts/ui-composition-gate.test.ts).
+- **DL-20.7** Two weights: 400 (`--weight-regular`, `font-normal`) and 600 (`--weight-strong`,
+  `font-semibold`), never 500 (RCP-5). DL-4.6's Windows ledger still maps them for Segoe UI and
+  is exempt from the check.
+- **DL-20.8** An off-scale value that must stay carries `ui-scale: <reason>` on the line above
+  it, as a CSS or a JSX comment, and the change that adds one says so in its PR (RCP-27). The
+  ratchet's ledger, [`ui-composition-debt.txt`](../scripts/ui-composition-debt.txt), counts what
+  predates it per file and rule; a count only falls.
 
 ## 21. Interaction states
 
@@ -325,7 +369,8 @@ only the pre-JS fallbacks.
   `--radius-tab` corner and has no frame (DL-18.10). One scoped exception: the Electron card
   rail's focused agent row is an inverted fill (DL-27.22). A selected item that also has
   keyboard focus (a roving-tabindex group puts Tab on it) paints one step stronger than the
-  wash, `--tab-active-bg` mixed 10% toward `--foreground`; otherwise focus would paint nothing.
+  wash, `--tab-active-focus-bg` (`--tab-active-bg` mixed 10% toward the text); otherwise focus
+  would paint nothing.
 - **DL-21.2** Hover is a 6% `--tone` wash, quieter than selection and never the same
   value. Why: a hover that paints "selected" tells the user they chose something they did
   not.
@@ -351,6 +396,14 @@ only the pre-JS fallbacks.
   Inspect) paints no active state: hover, focus and unavailable only. The surface it opens
   is the readout. `aria-pressed` / `aria-expanded` stay on the button. Rows in the `More`
   menu still report their state (DL-23.5).
+- **DL-21.9** Pressed is `--state-pressed-bg`, black at 8% laid over the surface as a background
+  layer (`background-image: linear-gradient(...)`), the same in both themes, so a selected item
+  keeps its wash beneath it. A filled primary steps its own fill instead (`--primary-hover`,
+  `--primary-pressed`), and a danger control to `--danger-bg-hover`. The cascade is hover = focus
+  < selected < selected with focus (`--tab-active-focus-bg`) < pressed; drag-over
+  (`--state-dragover-bg`) and needs-you (`--state-needs-you-bg`) sit under it. A state
+  background reads one of these tokens or clears to `transparent`;
+  [`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) fails any other.
 
 ## 9. Agent checklist (anti-drift)
 

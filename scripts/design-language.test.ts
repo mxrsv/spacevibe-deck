@@ -86,6 +86,8 @@ const RADIUS_VALUES = new Set([
   "6px",
   "50%",
   "999px",
+  // RCP-8: the capsule's name; still a shape, not a scale step.
+  "var(--radius-pill)",
   "0",
   // PROVISIONAL (rail-worktree-card plan, Task 7): the worktree card's two
   // pinned radius values, shipped ahead of a DL-20.1 edit rather than after
@@ -305,6 +307,7 @@ describe("design-language radius scale", () => {
  * ladder declared beside it.
  */
 const TYPE_LADDER: Record<string, string> = {
+  "--type-dialog": "16px",
   "--type-title": "14px",
   "--type-body": "14px",
   "--type-meta": "12px",

@@ -22,8 +22,9 @@
  *
  * Derived, never declared: `--tone` (from `type`), `--tab-active-bg` (the
  * selection wash), `--state-hover-bg`, `--tab-rest-bg`, `--hair`,
- * `--hair-strong`, `--sidebar-seam`, the four `--seam-*` tokens, and
- * `--status-unread` (the theme's `yellow`).
+ * `--hair-strong`, `--sidebar-seam`, the four `--seam-*` tokens,
+ * `--status-unread` (the theme's `yellow`), and the recipe tokens of `deriveRecipeTokens`
+ * (`--elev-*`, `--ink-*`, the grounds and the per-theme state washes).
  */
 
 export const THEME_TYPES = ["dark", "light"] as const;

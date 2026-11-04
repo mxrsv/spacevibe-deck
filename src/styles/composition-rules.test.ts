@@ -3,6 +3,14 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+  auditComposition,
+  CSS_RULES,
+  emptyExceptions,
+  parseDebt,
+  type CompositionHit,
+} from "../../scripts/ui-composition-ledger";
+import { countedCssRecipeHits, CSS_RECIPE_HOW } from "./css-recipe-hits";
 import { parseRules, type Rule } from "./css-weight-sites";
 
 /**
@@ -10,6 +18,8 @@ import { parseRules, type Rule } from "./css-weight-sites";
  * every surface by CMP-19): nothing under 12px, no outline on keyboard focus outside text
  * fields, and no horizontal divider line except the named ones. Read from stylesheet text, so a
  * regression fails here instead of surviving until someone looks at the screen.
+ *
+ * It also holds the recipe ratchet's CSS half (RCP-24 to RCP-27, read by `css-recipe-hits.ts`).
  */
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -160,8 +170,23 @@ function lineHits(rules: readonly Rule[]): Hit[] {
   });
 }
 
-const rules: Rule[] = cssFiles().flatMap((file) =>
-  parseRules(file, readFileSync(join(ROOT, file), "utf8")),
+const sources = new Map(cssFiles().map((file) => [file, readFileSync(join(ROOT, file), "utf8")]));
+const rules: Rule[] = [...sources].flatMap(([file, text]) => parseRules(file, text));
+
+const DEBT = "scripts/ui-composition-debt.txt";
+/** DL-4.6: the Windows ledger maps the authored weights for Segoe UI; they are not authored. */
+const WEIGHT_LEDGER = "src/styles/21-windows-weights.css";
+const isTextField = (s: string): boolean =>
+  TEXT_FIELD_FOCUS.some(({ token }) => hasToken(s, token));
+
+const recipeHits = new Map<string, CompositionHit[]>(
+  [...sources].map(([file, text]) => {
+    const own = rules.filter((rule) => rule.file === file);
+    return [
+      file,
+      countedCssRecipeHits(text, own, { isTextField, weights: file !== WEIGHT_LEDGER }),
+    ];
+  }),
 );
 
 describe("composition rules in the legacy stylesheets", () => {
@@ -225,6 +250,23 @@ describe("composition rules in the legacy stylesheets", () => {
         ),
     ).map((kept) => kept.selector);
     expect(stale, "delete the KEPT_LINES entry: no rule draws this line any more").toEqual([]);
+  });
+});
+
+describe("the recipe ratchet in the stylesheets (RCP-24, RCP-25)", () => {
+  it("holds no off-recipe value beyond the debt file, and no reasonless `ui-scale:`", () => {
+    const empty = [...sources].flatMap(([file, text]) =>
+      emptyExceptions(text).map((line) => `${file}:${line}`),
+    );
+    expect(empty, "say why the value stays off its scale: `/* ui-scale: <reason> */`").toEqual([]);
+    const { debt, problems } = parseDebt(readFileSync(join(ROOT, DEBT), "utf8"));
+    expect(problems).toEqual([]);
+    const scope = {
+      rules: CSS_RULES,
+      owns: (p: string) => p.endsWith(".css"),
+      how: CSS_RECIPE_HOW,
+    };
+    expect(auditComposition(recipeHits, debt, scope)).toEqual([]);
   });
 });
 

@@ -38,8 +38,8 @@
      the owner could not see how many tabs were open. Defined here rather than
      in `derive-colors.ts` on purpose: it is one step of the same `--tone`
      ladder hover and selection already ride, and JS keeps `--tone` current, so
-     a second derived value would only be another thing to keep in sync. */
-  --tab-rest-bg: color-mix(in srgb, var(--tone) 3%, transparent);
+     a second derived value would only be another thing to keep in sync.
+     Declared with the recipe tokens below, under `[data-theme-scope]` too. */
   /* An input RECEDES, so it sinks from the sidebar back toward the stage
      rather than climbing the chrome ladder with everything else. */
   --input-bg: color-mix(in srgb, var(--sidebar-bg) 50%, var(--bg));
@@ -189,8 +189,164 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Flat design rule: no drop shadows anywhere in this file.
-   Depth comes from background steps and 1px hairline borders only. */
+/* ── Recipes (spec 2026-11-05-ui-recipes-ratchet, RCP-1 to RCP-16) ──────────
+   One token per recipe: size, radius, spacing, row height, state, line,
+   elevation, type and weight. A stylesheet reads them through `var()`, a
+   class through a token reference (`h-(--row-32)`), and the ratchet in
+   `composition-rules.test.ts` and `ui-composition-gate.test.ts` fails an
+   off-scale literal. The values that differ by theme are derived per theme
+   in `deriveRecipeTokens` (lib/derive-colors.ts) and published with the
+   theme; the ones below them are their pre-JS fallbacks, graphite's. */
+:root {
+  /* RCP-5: the 16 rung (a dialog title, DL-4.4), a line height per rung, and
+     the two weights. Nothing is 500. */
+  --type-dialog: 16px;
+  --leading-dialog: 24px;
+  --leading-body: 20px;
+  --leading-meta: 16px;
+  --weight-regular: 400;
+  --weight-strong: 600;
+
+  /* RCP-8: the capsule is a shape, not a scale step (badge, kbd, switch). */
+  --radius-pill: 999px;
+
+  /* RCP-3 and RCP-4: controls 28 to 40 with their horizontal padding; chips,
+     badges, icon boxes and the glyph each box holds. */
+  --control-h-28: 28px;
+  --control-h-32: 32px;
+  --control-h-36: 36px;
+  --control-h-40: 40px;
+  --control-pad-28: 8px;
+  --control-pad-32: 12px;
+  --control-pad-36: 14px;
+  --control-pad-40: 16px;
+  --chip-h-24: 24px;
+  --chip-h-20: 20px;
+  --chip-pad-24: 8px;
+  --chip-pad-20: 6px;
+  --badge-h: 20px;
+  --badge-pad: 8px;
+  --icon-box-28: 28px;
+  --icon-box-24: 24px;
+  --icon-box-20: 20px;
+  --icon-16: 16px;
+  --icon-14: 14px;
+  --icon-12: 12px;
+
+  /* RCP-6 (DL-20.5): the spacing scale and its roles. */
+  --space-0: 0px;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-list: var(--space-2);
+  --space-in-sm: var(--space-4);
+  --space-in-md: var(--space-6);
+  --space-in-lg: var(--space-8);
+  --space-icon-label: var(--space-6);
+  --space-pad-row: var(--space-8);
+  --space-group-sm: var(--space-12);
+  --space-group-md: var(--space-16);
+  --space-section: var(--space-24);
+
+  /* RCP-7 (DL-20.6): row heights. 24 a dense list, 32 a menu item or
+     one-line row, 44 a two-line rail row. */
+  --row-24: 24px;
+  --row-32: 32px;
+  --row-44: 44px;
+
+  /* Functional geometry, outside the spacing scale (RCP-6, CMP-15). */
+  --rail-w: var(--sidebar-w);
+  --rail-w-narrow: 200px;
+  --row-end-w: 32px;
+  --tab-title-min: 40px;
+  --resize-w: 4px;
+  --tree-indent: 12px;
+  --diff-bar-w: 3px;
+  --flash-w: 2px;
+  --update-max-w: 200px;
+  --update-meter-w: 40px;
+  --seam-w: 1px;
+  --ring-w: 3px;
+  --scrollbar-w: 6px;
+  --menu-rows: 6.5;
+  /* RCP-15 (DL-27.3): every agent state mark sits in a 14 slot. */
+  --mark-slot: 14px;
+  --mark-dot: 9px;
+  --mark-ring: 15px;
+  --mark-square: 7px;
+
+  /* RCP-9 and DL-21.9: pressed lays black at 8% over the surface as a
+     background layer, the same in both themes; disabled is 50% opacity. */
+  --state-pressed-bg: color-mix(in srgb, black 8%, transparent);
+  --state-disabled-opacity: 0.5;
+
+  /* Per-theme fallbacks: `deriveRecipeTokens` publishes the live values. */
+  --tab-active-focus-bg: color-mix(in srgb, var(--tab-active-bg) 90%, var(--fg));
+  --chrome-3: color-mix(in srgb, var(--chrome-2) 94.5%, var(--tone));
+  --popover-bg: var(--sidebar-bg);
+  --card-bg: var(--chrome-1);
+  --well-bg: color-mix(in srgb, var(--bg) 75%, black);
+  --selection-bg: #40454c;
+  --menu-sep: color-mix(in srgb, var(--tone) 12%, transparent);
+  --panel-frame: transparent;
+  --scrim-bg: color-mix(in srgb, black 55%, transparent);
+  --state-dragover-bg: color-mix(in srgb, var(--accent) 18%, transparent);
+  --danger-bg: color-mix(in srgb, var(--red) 20%, transparent);
+  --danger-bg-hover: color-mix(in srgb, var(--red) 30%, transparent);
+  --primary-hover: color-mix(in oklch, var(--primary) 92%, black);
+  --primary-kbd-bg: color-mix(in srgb, var(--primary-foreground) 12%, transparent);
+  --primary-kbd-fg: color-mix(in srgb, var(--primary-foreground) 72%, transparent);
+  --ink-need: color-mix(in lab, var(--status-unread) 80%, var(--text-primary));
+  --ink-fail: color-mix(in lab, var(--red) 70%, var(--text-primary));
+  --ink-ok: color-mix(in lab, var(--green) 80%, var(--text-primary));
+  --ink-fail-wash: color-mix(in lab, var(--red) 50%, var(--text-primary));
+  /* RCP-11 (DL-1.3): three static levels, floating elements only. */
+  --elev-edge: inset 0 0 0 1px color-mix(in srgb, var(--tone) 8%, transparent);
+  --elev-1: 0 8px 24px rgba(0, 0, 0, 0.42), var(--elev-edge);
+  --elev-2: 0 16px 48px rgba(0, 0, 0, 0.5), var(--elev-edge);
+  --elev-3: 0 24px 64px rgba(0, 0, 0, 0.58), var(--elev-edge);
+}
+
+/* The recipe tokens that are the same formula in every theme but read a
+   theme colour. Re-declared on a gallery cell that wears a second theme
+   (`[data-theme-scope]`, set by `applyScopedTheme`), because a custom
+   property holding `var()` is resolved where it is declared. */
+:root,
+[data-theme-scope] {
+  --primary-pressed: color-mix(in oklch, var(--primary) 84%, black);
+  /* DL-21.7: the resting wash, half of hover's 6%. */
+  --tab-rest-bg: color-mix(in srgb, var(--tone) 3%, transparent);
+  /* RCP-9: drag-over and needs-you sit under the other states. */
+  --state-needs-you-bg: color-mix(in srgb, var(--status-unread) 14%, transparent);
+  /* RCP-9 (DL-21.3): the one focus ring, a text input's. */
+  --focus-ring: color-mix(in srgb, var(--fg) 14%, transparent);
+  --focus-border: var(--text-muted);
+  /* RCP-15: state marks read a status token, never a palette colour. */
+  --status-failed: var(--red);
+  --status-ok: var(--green);
+  --status-working: var(--text-primary);
+  --status-idle: color-mix(in srgb, var(--tone) 45%, transparent);
+  /* RCP-16: the scrollbar thumb, on the tone. */
+  --scrollbar-thumb: color-mix(in srgb, var(--tone) 20%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--tone) 32%, transparent);
+  /* RCP-21: the tooltip is inverted. */
+  --tooltip-bg: var(--fg);
+  --tooltip-fg: var(--bg);
+  /* RCP-22 (DOCK-10): a changed line is its hue mixed into the card. */
+  --diff-add-bg: color-mix(in lab, var(--card-bg) 80%, var(--green));
+  --diff-del-bg: color-mix(in lab, var(--card-bg) 80%, var(--red));
+  --diff-add-gutter: color-mix(in lab, var(--card-bg) 85%, var(--green));
+  --diff-del-gutter: color-mix(in lab, var(--card-bg) 85%, var(--red));
+  --diff-hunk-bg: color-mix(in oklch, var(--card-bg) 94%, var(--fg));
+}
+
+/* Depth comes from background steps and 1px hairlines; the one shadow is
+   `--elev-*`, on floating elements only (DL-1.3). */
 
 /* `clip`, not `hidden` (2026-08-16). `overflow: hidden` still makes a SCROLL
    CONTAINER — it only hides the scrollbar — so any descendant that overhangs
@@ -233,8 +389,8 @@ body,
    Base layer on purpose. A surface that needs a different thumb still wins by
    coming later in the cascade; what it must not do is re-declare this one. */
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: var(--scrollbar-w);
+  height: var(--scrollbar-w);
 }
 
 *::-webkit-scrollbar-track {
@@ -247,9 +403,14 @@ body,
 }
 
 *:hover::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--fg) 20%, transparent);
+  background: var(--scrollbar-thumb);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--fg) 32%, transparent);
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* RCP-16: text selection is the theme's terminal selection. */
+::selection {
+  background: var(--selection-bg);
 }
