@@ -214,6 +214,19 @@ describe("the Changes stack", () => {
     await view.unmount();
   });
 
+  it("prints a zero side of the counts in neutral ink, the other in green or red", async () => {
+    const view = await mount(
+      stack([entry("src/new.ts", { status: "added", added: 3, removed: 0 })]),
+    );
+    const side = (text: string): HTMLElement =>
+      [...card("src/new.ts").querySelectorAll<HTMLElement>("span")].find(
+        (s) => s.textContent === text,
+      ) as HTMLElement;
+    expect(side("+3").className).toBe("text-(--term-ok)");
+    expect(side("−0").className).toBe("text-muted-foreground");
+    await view.unmount();
+  });
+
   it("strikes a deleted file's name and leaves nothing to open", async () => {
     const view = await mount(stack([entry("src/gone.ts", { status: "deleted" })]));
     const path = pathButton("src/gone.ts");

@@ -1,8 +1,9 @@
 /**
  * A change's added and removed line counts (`+12 −3`), as Changes, the dock and the hunk queue
- * show them. `--term-ok` and `--term-err` are the terminal palette's green and red: the layout
- * mock declares them in `mocks.css`, the app on `.agent-dock__column` (27-dock-stacked.css). A
- * region that uses this block outside the dock declares them on its own root.
+ * show them; a zero side is neutral ink, not green or red (DL-3.2). `--term-ok` and `--term-err`
+ * are the terminal palette's green and red: the layout mock declares them in `mocks.css`, the app
+ * on `.agent-dock__column` (27-dock-stacked.css). A region that uses this block outside the dock
+ * declares them on its own root.
  */
 export function ChangeCounts({
   added,
@@ -20,8 +21,10 @@ export function ChangeCounts({
         sans ? "shrink-0 text-xs tabular-nums" : "shrink-0 font-mono text-code tabular-nums"
       }
     >
-      <span className="text-(--term-ok)">+{added}</span>{" "}
-      <span className="text-(--term-err)">−{removed}</span>
+      <span className={added > 0 ? "text-(--term-ok)" : "text-muted-foreground"}>+{added}</span>{" "}
+      <span className={removed > 0 ? "text-(--term-err)" : "text-muted-foreground"}>
+        −{removed}
+      </span>
     </span>
   );
 }
