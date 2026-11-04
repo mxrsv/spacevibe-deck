@@ -89,6 +89,10 @@ export function ProjectSection({
     const target =
       owned.find((checkout) => checkout.active) ??
       owned.find((checkout) => checkout.entries.length > 0);
+    // `stageLauncher`: a launcher that is up aims itself at the pressed project instead of
+    // moving focus to one of its panes, which would dismiss the launcher.
+    const aim = target ?? owned[0];
+    if (aim !== undefined && env.deps.cardActions?.onRetargetLauncher?.(aim.path) === true) return;
     if (target !== undefined) {
       focusCheckout(target, onFocusPane, onSelectTab);
     }

@@ -149,6 +149,13 @@
   gap: 6px;
   align-items: center;
 }
+/* The key hint rides the chip row's right end (mock A, `.a-hint`). */
+.command-bar__hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
 .command-bar__chips[data-off] {
   opacity: 0.35;
   pointer-events: none;

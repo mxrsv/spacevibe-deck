@@ -365,3 +365,106 @@ describe("agent launch page state", () => {
     });
   });
 });
+
+describe("running several agents (the command bar's Run N)", () => {
+  type Many = NonNullable<AgentLaunchRequest["launchMany"]>;
+  const receipt = (paneId: number) => ({ tabKey: 1, paneId, canFocus: () => true });
+  const two = [
+    { agentId: "claude" },
+    { agentId: "codex", override: { kind: "profile", command: "codex --full-auto" } as const },
+  ] as const;
+
+  it("starts both agents with one call carrying two requests, and reveals the first pane", async () => {
+    const page = createAgentLaunchPageStore();
+    const launchMany = vi.fn<Many>(async () => ({
+      kind: "spawned",
+      receipts: [receipt(10), receipt(11)],
+    }));
+    const reveal = vi.fn();
+    page.open({ target, launch: vi.fn(), launchMany, restoreFocus: vi.fn(), reveal });
+    await page.runMany(two);
+    expect(launchMany).toHaveBeenCalledOnce();
+    expect(launchMany.mock.calls[0][0]).toEqual(two);
+    expect(launchMany.mock.calls[0][2]).toBe(target);
+    expect(reveal.mock.calls[0][0].paneId).toBe(10);
+    expect(page.request.value).toBeNull();
+  });
+
+  it("drops the result of a run that a close and reopen superseded", async () => {
+    const page = createAgentLaunchPageStore();
+    let finish!: (result: Awaited<ReturnType<Many>>) => void;
+    const launchMany = vi.fn<Many>(
+      () =>
+        new Promise((done) => {
+          finish = done;
+        }),
+    );
+    const reveal = vi.fn();
+    const other = { kind: "first-pane", workspacePath: "/other" } as const;
+    page.open({
+      target,
+      launch: vi.fn(),
+      launchMany,
+      retarget: () => other,
+      restoreFocus: vi.fn(),
+      reveal,
+    });
+    const running = page.runMany(two);
+    // A re-target is refused while the run is pending; a navigation that closes the page is not.
+    expect(page.retarget("/other")).toBe(false);
+    const canCommit = launchMany.mock.calls[0][1];
+    page.close();
+    page.open({ target, launch: vi.fn(), launchMany, restoreFocus: vi.fn(), reveal });
+    expect(canCommit()).toBe(false);
+    finish({ kind: "spawned", receipts: [receipt(10), receipt(11)] });
+    await running;
+    expect(reveal).not.toHaveBeenCalled();
+    expect(page.request.value).not.toBeNull();
+    expect(page.failure.value).toBeNull();
+  });
+
+  it("retries only the agents that did not open, split beside the last pane that did", async () => {
+    const page = createAgentLaunchPageStore();
+    const launchMany = vi
+      .fn<Many>()
+      .mockResolvedValueOnce({ kind: "failed", message: "boom", receipts: [receipt(10)] })
+      .mockResolvedValueOnce({ kind: "spawned", receipts: [receipt(11)] });
+    const reveal = vi.fn();
+    page.open({ target, launch: vi.fn(), launchMany, restoreFocus: vi.fn(), reveal });
+    await page.runMany(two);
+    expect(page.failure.value?.message).toBe("boom");
+    expect(page.failure.value?.agents).toEqual([two[1]]);
+    await page.retry();
+    expect(launchMany.mock.calls[1][0]).toEqual([two[1]]);
+    expect(launchMany.mock.calls[1][2]).toEqual({
+      kind: "split",
+      workspacePath: "/repo",
+      tabKey: 1,
+      paneId: 10,
+    });
+    expect(reveal).toHaveBeenCalledOnce();
+  });
+
+  it("retries a failure that opened nothing with the whole set at the same target", async () => {
+    const page = createAgentLaunchPageStore();
+    const launchMany = vi
+      .fn<Many>()
+      .mockResolvedValueOnce({ kind: "failed", message: "nope", receipts: [] })
+      .mockResolvedValueOnce({ kind: "cancelled", receipts: [] });
+    page.open({ target, launch: vi.fn(), launchMany, restoreFocus: vi.fn(), reveal: vi.fn() });
+    await page.runMany(two);
+    await page.retry();
+    expect(launchMany.mock.calls[1][0]).toEqual(two);
+    expect(launchMany.mock.calls[1][2]).toBe(target);
+  });
+
+  it("says so, without stranding the page, when the request cannot start several", async () => {
+    const page = createAgentLaunchPageStore();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    page.open({ target, launch: vi.fn(), restoreFocus: vi.fn(), reveal: vi.fn() });
+    await page.runMany(two);
+    expect(page.failure.value?.message).toBe("Could not open the agent. Try again.");
+    expect(page.pending.value).toBe(false);
+    error.mockRestore();
+  });
+});

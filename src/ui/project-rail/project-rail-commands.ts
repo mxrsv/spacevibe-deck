@@ -5,6 +5,7 @@
  * Nothing here decides how a tab closes or renames (R4); it only calls the callbacks.
  */
 import { writeText } from "../../host/shell-host";
+import { stageLauncherEnabled } from "../../launcher/stage-launcher-enabled";
 import { subjectOf } from "../agent-rail-card-model";
 import type { RailItem } from "../rail-view-model";
 import { actionGroups, type CardActions } from "../worktree-card-menus";
@@ -78,15 +79,18 @@ export function rowCommands(item: RailItem, deps: RailRowDeps, archived = false)
 
 /**
  * Start an agent where the shipped create row's Agent button does: the launch page on `path`
- * when it is wired, else the board (also what a project with no checkout to name gets).
+ * when it is wired, else the board (also what a project with no checkout to name gets). With the
+ * `stageLauncher` switch on there is always a launcher to open, so a missing path no longer
+ * falls to the board: the launcher aims itself at the most recent project.
  */
 export function launchAgent(
   path: string | null,
   actions: CardActions | undefined,
   onOpenBoard: () => void,
 ): void {
-  if (path !== null && actions?.onOpenAgentLauncher !== undefined) {
-    actions.onOpenAgentLauncher(path);
+  const open = actions?.onOpenAgentLauncher;
+  if (open !== undefined && (path !== null || stageLauncherEnabled())) {
+    open(path);
     return;
   }
   onOpenBoard();

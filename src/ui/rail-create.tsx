@@ -4,6 +4,7 @@ import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { workspaceLabel } from "../lib/workspace-label";
 import type { RailStreamGroup, RailWorktreeGroup } from "./agent-rail-model";
 import type { NewPaneDropDeps } from "./new-pane-drag";
+import { launchAgent } from "./project-rail/project-rail-commands";
 import { RailCreateRow, type RailCreateVariant } from "./rail-create-row";
 import { addFolderToRail } from "./rail-add-folder";
 import { RailWorktreeForm, type RailRepository } from "./rail-worktree-form";
@@ -85,13 +86,7 @@ export function RailCreate({
         ? workspaceLabel(workspace)
         : null;
 
-  const openAgent = (): void => {
-    if (agentPath !== null && actions?.onOpenAgentLauncher !== undefined) {
-      actions.onOpenAgentLauncher(agentPath);
-      return;
-    }
-    onOpenBoard();
-  };
+  const openAgent = (): void => launchAgent(agentPath, actions, onOpenBoard);
 
   const repositories = railRepositories(stream);
   const initialRepo =

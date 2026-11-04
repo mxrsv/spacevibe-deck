@@ -285,6 +285,9 @@ export function CommandBar(props: CommandBarProps) {
             }
           />
         ))}
+        <span class="command-bar__hint command-bar__meta">
+          <Kbd>⇧</Kbd> adds
+        </span>
       </div>
       {props.failure ? (
         <div class="command-bar__failure" role="alert">

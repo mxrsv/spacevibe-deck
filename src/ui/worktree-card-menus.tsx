@@ -6,9 +6,11 @@ import {
   Gear,
   GitFork,
   Info,
+  Plus,
   SquareHalf,
   TerminalWindow,
 } from "@phosphor-icons/react";
+import { stageLauncherEnabled } from "../launcher/stage-launcher-enabled";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { subjectWhere, type MenuSubject } from "./agent-rail-card-model";
@@ -304,7 +306,14 @@ export interface CardActions {
   /** `openQuickAgent(agentId, destination)` — the destination overrides both
    * cwd and workspace tag, which is what that argument was built for. */
   onRunAgent(agentId: string, workspacePath: string): void;
-  onOpenAgentLauncher?(workspacePath: string): void;
+  /** Raises the launcher aimed at a checkout; null aims it at the most recent project. */
+  onOpenAgentLauncher?(workspacePath: string | null): void;
+  /**
+   * A press on a project's rail header while the stage launcher is up: aim it at that project.
+   * Wired only with the `stageLauncher` switch on. True when a launcher took the press, so the
+   * caller leaves the project's panes alone; false when none is showing.
+   */
+  onRetargetLauncher?(workspacePath: string): boolean;
   /** Open a plain shell in a new Deck tab at this checkout. */
   onOpenShell?(workspacePath: string): void;
   /**
@@ -389,6 +398,8 @@ const ACTION_GLYPHS = {
   // open folder two rows above it (the glyph-uniqueness rule the 2026-08-30
   // change recorded for this column).
   board: FolderPlus,
+  // The stage launcher's single `New agent…` row.
+  agent: Plus,
 } as const;
 
 /**
@@ -402,6 +413,21 @@ const ACTION_GLYPHS = {
  * can only come from a settled probe.
  */
 function agentRows(actions: CardActions, subject: MenuSubject): readonly MenuRow[] {
+  // `stageLauncher` (LCH-4): one launcher, so one row opens it on this checkout, whatever
+  // discovery has answered; the launcher lists the agents.
+  const openLauncher = actions.onOpenAgentLauncher;
+  if (openLauncher !== undefined && stageLauncherEnabled()) {
+    return [
+      {
+        kind: "action",
+        id: "new-agent",
+        title: "New agent…",
+        detail: "Choose agents for this checkout",
+        glyph: "agent",
+        run: () => openLauncher(subject.path),
+      },
+    ];
+  }
   if (!actions.agentsResolved) {
     return [
       {

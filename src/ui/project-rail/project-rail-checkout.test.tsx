@@ -119,14 +119,17 @@ describe("rowless checkout", () => {
     mount({ cardActions });
     await settle();
 
+    // The stage launcher is on in the development host the harness pins (LCH-4): one item
+    // opens the launcher where the per-agent list used to be.
     expect(await openMenuByRightClick("checkout:/r/side")).toBe(true);
-    expect(menuLabels()).toEqual(["Claude Code", "Open shell", "New split here"]);
+    expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
     await closeMenu();
 
     await activate(sideLine()?.querySelector('button[aria-label^="Actions for"]'));
-    expect(menuLabels()).toEqual(["Claude Code", "Open shell", "New split here"]);
-    await pick("Claude Code");
-    expect(cardActions.onRunAgent).toHaveBeenCalledExactlyOnceWith("claude", "/r/side");
+    expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
+    await pick("New agent…");
+    expect(cardActions.onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/r/side");
+    expect(cardActions.onRunAgent).not.toHaveBeenCalled();
 
     await openMenuByRightClick("checkout:/r/side");
     await pick("Open shell");
@@ -137,16 +140,14 @@ describe("rowless checkout", () => {
     expect(cardActions.onSplitHere).toHaveBeenCalledExactlyOnceWith("/r/side");
   });
 
-  it("points at Settings when no quick agent is available", async () => {
-    const onManageAgents = vi.fn();
+  it("still offers the one New agent… item when no quick agent is available", async () => {
+    const cardActions = actions({ agents: [] });
     rememberedRepository();
-    mount({ cardActions: actions({ agents: [], onManageAgents }) });
+    mount({ cardActions });
     await settle();
 
     await openMenuByRightClick("checkout:/r/side");
-    expect(menuLabels()).toEqual(["Choose quick agents", "Open shell", "New split here"]);
-    await pick("Choose quick agents");
-    expect(onManageAgents).toHaveBeenCalledOnce();
+    expect(menuLabels()).toEqual(["New agent…", "Open shell", "New split here"]);
   });
 
   it("is left out while a search is set", async () => {

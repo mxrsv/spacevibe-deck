@@ -51,4 +51,14 @@ describe("StageLauncherSlot", () => {
     expect(slot?.querySelector('[data-testid="bar"]')).not.toBeNull();
     act(() => render(null, host));
   });
+
+  it("is flat by default and a scrim over the panes when floating", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    act(() => render(<StageLauncherSlot />, host));
+    expect(host.querySelector(".stage-launcher--floating")).toBeNull();
+    act(() => render(<StageLauncherSlot floating />, host));
+    expect(host.querySelector(".stage-launcher--floating")).not.toBeNull();
+    act(() => render(null, host));
+  });
 });

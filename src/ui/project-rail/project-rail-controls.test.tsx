@@ -37,6 +37,7 @@ import { resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { addFolderToRail, rememberOnRail } from "../rail-add-folder";
 import type { CardActions } from "../worktree-card-menus";
 import { byRole, waitUntil } from "../controls/preset-test-kit";
+import { requestWorktreeForm, worktreeFormRequest } from "./project-rail-worktree-request";
 import {
   activate,
   click,
@@ -381,6 +382,18 @@ describe('the "+" menu', () => {
       field.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
+
+  it("opens the same form when the launcher asks for it, once", async () => {
+    mount();
+    await settle();
+    expect(form()).toBeNull();
+
+    act(() => requestWorktreeForm(null));
+    await waitUntil(() => form() !== null);
+    await waitUntil(() => document.activeElement === branch());
+    // The rail took the request: a later remount does not open the form again.
+    expect(worktreeFormRequest.value).toBeNull();
+  });
 
   it("creates a worktree through the shipped flow and starts nothing", async () => {
     vi.mocked(addWorktree).mockResolvedValue({ ok: true, path: "/r/main-worktrees/feat-x" });

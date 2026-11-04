@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { actionGroups, type CardActions } from "./worktree-card-menus";
 import type { MenuSubject } from "./agent-rail-card-model";
 
@@ -133,5 +134,49 @@ describe("actionGroups", () => {
       "run:claude",
       "split",
     ]);
+  });
+});
+
+describe("actionGroups with the stage launcher", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetDesktopEnvironmentForTests();
+  });
+  function pinHost(isDevelopment: boolean): void {
+    vi.stubGlobal("__deckHost", {});
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/home/test", isDevelopment });
+  }
+
+  it("replaces the per-agent list with one New agent… item that opens the launcher on the checkout", () => {
+    pinHost(true);
+    const onOpenAgentLauncher = vi.fn();
+    const groups = actionGroups(
+      actions({
+        agents: [
+          { id: "claude", label: "Claude", detail: "" },
+          { id: "codex", label: "Codex", detail: "" },
+        ],
+        onOpenAgentLauncher,
+      }),
+      CHECKOUT,
+    );
+    expect(ids(groups)).toEqual(["new-agent", "split"]);
+    const row = groups.flat().find((candidate) => candidate.id === "new-agent");
+    expect(row && row.kind === "action" && row.title).toBe("New agent…");
+    if (row?.kind === "action") row.run();
+    expect(onOpenAgentLauncher).toHaveBeenCalledExactlyOnceWith("/repo/wt");
+  });
+
+  it("keeps the per-agent list when the switch is off", () => {
+    pinHost(false);
+    expect(ids(actionGroups(actions({ onOpenAgentLauncher: vi.fn() }), CHECKOUT))).toEqual([
+      "run:claude",
+      "split",
+    ]);
+  });
+
+  it("keeps the per-agent list where nothing wires the launcher", () => {
+    pinHost(true);
+    expect(ids(actionGroups(actions(), CHECKOUT))).toEqual(["run:claude", "split"]);
   });
 });

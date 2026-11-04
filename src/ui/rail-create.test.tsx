@@ -9,8 +9,10 @@ vi.mock("./rail-add-folder", () => ({ rememberOnRail: vi.fn(), addFolderToRail: 
 vi.mock("./worktree-card-row", () => ({ whereOf: () => "repo · main" }));
 vi.mock("./controls/deck-icon", () => ({ ROW_ICON: 14, DeckIcon: () => <span /> }));
 
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import type { RailStreamGroup } from "./agent-rail-model";
 import { RailCreate } from "./rail-create";
+import type { CardActions } from "./worktree-card-menus";
 
 const STREAM = [
   {
@@ -29,6 +31,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => render(null, host));
   host.remove();
+  vi.unstubAllGlobals();
+  resetDesktopEnvironmentForTests();
 });
 
 function mount(stream: readonly RailStreamGroup[]): void {
@@ -54,5 +58,56 @@ describe("RailCreate worktree target (ROW-C1, ROW-C7)", () => {
     expect(button?.getAttribute("aria-label") ?? button?.getAttribute("title")).toBe(
       "New worktree",
     );
+  });
+});
+
+describe("RailCreate Agent button and the stage launcher", () => {
+  function pinHost(isDevelopment: boolean): void {
+    vi.stubGlobal("__deckHost", {});
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/home/test", isDevelopment });
+  }
+  const cardActions = (onOpenAgentLauncher: CardActions["onOpenAgentLauncher"]): CardActions => ({
+    agents: [],
+    agentsResolved: true,
+    onRunAgent: () => {},
+    onSplitHere: () => {},
+    onOpenAgentLauncher,
+  });
+  function pressAgent(stream: readonly RailStreamGroup[], actions: CardActions): () => number {
+    const onOpenBoard = vi.fn();
+    act(() => {
+      render(
+        <RailCreate variant="column" stream={stream} actions={actions} onOpenBoard={onOpenBoard} />,
+        host,
+      );
+    });
+    act(() => {
+      host.querySelector<HTMLElement>('.rail-create__button[data-verb="agent"]')?.click();
+    });
+    return () => onOpenBoard.mock.calls.length;
+  }
+
+  it("opens the launcher on the focused checkout", () => {
+    pinHost(true);
+    const open = vi.fn();
+    const boardOpens = pressAgent(STREAM, cardActions(open));
+    expect(open).toHaveBeenCalledExactlyOnceWith("/r/main");
+    expect(boardOpens()).toBe(0);
+  });
+
+  it("opens the launcher with no checkout to name when the switch is on, not the board", () => {
+    pinHost(true);
+    const open = vi.fn();
+    const boardOpens = pressAgent([], cardActions(open));
+    expect(open).toHaveBeenCalledExactlyOnceWith(null);
+    expect(boardOpens()).toBe(0);
+  });
+
+  it("keeps raising the board with no checkout to name when the switch is off", () => {
+    pinHost(false);
+    const open = vi.fn();
+    const boardOpens = pressAgent([], cardActions(open));
+    expect(open).not.toHaveBeenCalled();
+    expect(boardOpens()).toBe(1);
   });
 });

@@ -22,3 +22,10 @@
 .stage--strip.stage--notice > .stage-launcher {
   top: calc(var(--frame-h) + var(--notice-h));
 }
+/* Over a live space the slot is a scrim, not a page: the panes below stay visible and dimmed. They are
+   inert and the slot is only an overlay, so no pane resizes and no PTY hears of it. A flat wash of the
+   stage ground like `.modal-scrim`, without its blur, which would repaint with every terminal frame. */
+.stage-launcher--floating {
+  overflow: visible;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}

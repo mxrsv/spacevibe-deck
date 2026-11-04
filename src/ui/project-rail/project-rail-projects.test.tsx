@@ -115,6 +115,45 @@ describe("project header", () => {
     expect(calls.mock.calls).toEqual([["/r/main"]]);
   });
 
+  describe("pressing a header with the stage launcher", () => {
+    const pressHeader = (key: string) =>
+      click(header(key)?.querySelector<HTMLElement>("[data-rail-project]"));
+
+    it("aims a launcher that is up at the project and leaves its panes unfocused, still folding it", async () => {
+      const onRetargetLauncher = vi.fn(() => true);
+      const onFocusPane = vi.fn();
+      mount({ cardActions: { ...launcher(vi.fn()), onRetargetLauncher }, onFocusPane });
+      await settle();
+
+      const button = header(MAIN)?.querySelector<HTMLElement>("[data-rail-project]");
+      const expanded = button?.getAttribute("aria-expanded");
+      click(button);
+      expect(onRetargetLauncher).toHaveBeenCalledOnce();
+      expect(onFocusPane).not.toHaveBeenCalled();
+      expect(button?.getAttribute("aria-expanded")).not.toBe(expanded);
+    });
+
+    it("aims a launcher at a remembered project that has nothing open", async () => {
+      const onRetargetLauncher = vi.fn(() => true);
+      mount({ cardActions: { ...launcher(vi.fn()), onRetargetLauncher } });
+      await settle();
+
+      pressHeader(NOTES);
+      expect(onRetargetLauncher).toHaveBeenCalledExactlyOnceWith("/w/notes");
+    });
+
+    it("focuses the project's pane as before when no launcher is up", async () => {
+      const onRetargetLauncher = vi.fn(() => false);
+      const onFocusPane = vi.fn();
+      mount({ cardActions: { ...launcher(vi.fn()), onRetargetLauncher }, onFocusPane });
+      await settle();
+
+      pressHeader(MAIN);
+      expect(onRetargetLauncher).toHaveBeenCalledOnce();
+      expect(onFocusPane).toHaveBeenCalledOnce();
+    });
+  });
+
   it("opens the board where nothing wires the launcher, and honours a disabled board", async () => {
     const onOpenWorkspace = vi.fn();
     mount({ legacy: { onOpenWorkspace, onResumeWorktree: () => {} } });

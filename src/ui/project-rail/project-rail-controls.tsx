@@ -1,6 +1,6 @@
 import { Search01Icon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
-import { useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { Input } from "../controls/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../controls/popover";
@@ -10,6 +10,7 @@ import { RailPopupGuard } from "./project-rail-menu-parts";
 import { ProjectRailOrganize } from "./project-rail-organize";
 import { railViewState, setRailQuery } from "./project-rail-state";
 import { ProjectRailWorktreeForm } from "./project-rail-worktree-form";
+import { worktreeFormRequest } from "./project-rail-worktree-request";
 
 const SEARCH = "input[data-rail-search]";
 
@@ -64,14 +65,31 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
   // The same targets the shipped form takes: the focused checkout's repository, else the first.
   const repositories = railRepositories(props.stream);
   const focused = focusedCheckout(props.stream);
+  // The launcher's "New worktree…" opens this same form, on the repository it is aimed at.
+  const [askedRepo, setAskedRepo] = useState<string | null>(null);
+  const asked = worktreeFormRequest.value;
+  useEffect(() => {
+    if (asked === null) return;
+    worktreeFormRequest.value = null;
+    setAskedRepo(asked.repoPath);
+    setFormOpen(true);
+  }, [asked]);
   const initialRepo =
-    focused?.group.labelled === true
-      ? focused.group.repositoryPath
-      : (repositories[0]?.path ?? null);
+    askedRepo !== null && repositories.some((repository) => repository.path === askedRepo)
+      ? askedRepo
+      : focused?.group.labelled === true
+        ? focused.group.repositoryPath
+        : (repositories[0]?.path ?? null);
   return (
     <div className="ui-preset relative shrink-0 bg-transparent pb-1">
       {/* The form hangs under the whole strip, so a trigger that is only the strip's outline stands in. */}
-      <Popover open={formOpen} onOpenChange={setFormOpen}>
+      <Popover
+        open={formOpen}
+        onOpenChange={(open: boolean) => {
+          setFormOpen(open);
+          if (!open) setAskedRepo(null);
+        }}
+      >
         <PopoverTrigger
           nativeButton={false}
           tabIndex={-1}
@@ -88,7 +106,10 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
             repositories={repositories}
             initialRepo={initialRepo}
             branchRef={branchRef}
-            onClose={() => setFormOpen(false)}
+            onClose={() => {
+              setFormOpen(false);
+              setAskedRepo(null);
+            }}
           />
         </PopoverContent>
       </Popover>

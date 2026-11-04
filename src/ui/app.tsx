@@ -2,9 +2,16 @@ import { createMenuActionHandler } from "../terminal/action-availability";
 import { AgentLaunchPage } from "../launcher/agent-launch-page";
 import { installStageLauncherCloseGuard } from "../launcher/stage-launcher-close-guard";
 import { stageLauncherEnabled } from "../launcher/stage-launcher-enabled";
-import { StageLauncherSlot } from "../launcher/stage-launcher-slot";
+import { StageLauncherBar } from "../launcher/stage-launcher-bar";
+import { launcherRequests, stageBarMode } from "../launcher/stage-launcher-props";
+import { addFolderToRail, rememberOnRail } from "./rail-add-folder";
+import { requestWorktreeForm } from "./project-rail/project-rail-worktree-request";
 import type { AgentLaunchContextProps } from "../launcher/agent-launch-context";
-import { TERMINAL_LAUNCH_ID, type AgentLaunchTarget } from "../terminal/agent-launch-target";
+import {
+  TERMINAL_LAUNCH_ID,
+  type AgentLaunchTarget,
+  type LaunchCommandOverride,
+} from "../terminal/agent-launch-target";
 import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-launch-page-store";
 import { createAgentInstallHost } from "../launcher/agent-install-host";
 import { registerAgentInstallHost } from "../launcher/agent-install-store";
@@ -278,7 +285,6 @@ import {
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   sidebarPaintWidth as sidebarPaintWidthFor,
-  stageLauncherSlotShows,
   stripShowsTabs,
   taskLaunchRecoveryValid,
   toggleSettingsPanel,
@@ -325,6 +331,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const taskOperationPending = useSignal<LauncherPending | null>(null);
   const workspaceDropChecking = useSignal(false);
   const boardSelectionPending = useSignal(false);
+  /** The resident launcher's own project choice, while no request holds the target. */
+  const stageLauncherChoice = useSignal<string | null>(null);
+  /** A folder the launcher could not add, printed in the bar's failure line. */
+  const stageLauncherNotice = useSignal<string | null>(null);
   const taskOperationFlight = useRef<Promise<LaunchTaskOutcome> | null>(null);
   const launchAttempt = useSignal<TaskLaunchAttempt | null>(null);
   const tabsRef = useRef<TabManager | null>(null);
@@ -497,10 +507,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * it upward would widen that component's API for one focus call.
    */
   const restoreFocusAfterSettings = (): void => {
-    if (agentLaunchPage.request.value !== null) {
+    if (agentLaunchPage.request.value !== null || stageBarModeNow() === "resident") {
       requestAnimationFrame(() =>
         document
-          .querySelector<HTMLElement>(".agent-launch-page [data-launch-primary]:not(:disabled)")
+          .querySelector<HTMLElement>(
+            ".agent-launch-page [data-launch-primary]:not(:disabled), .stage-launcher .command-bar__filter",
+          )
           ?.focus(),
       );
       return;
@@ -1455,6 +1467,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * old `null` branch had when no tab was active.
    */
   function openTaskLauncher(workspacePath: string | null): void {
+    // `stageLauncher`: with no live space the resident bar is the launcher, so the chord focuses it
+    // instead of raising the Open board.
+    if (agentLaunchPageAvailable && workspacePath === null && stageLauncherEnabled()) {
+      if (agentLaunchPage.request.value !== null) agentLaunchPage.close(true);
+      else openAgentLaunchPage(null);
+      return;
+    }
     if (agentLaunchPageAvailable && workspacePath !== null) {
       if (agentLaunchPage.request.value !== null) agentLaunchPage.close(true);
       else openAgentLaunchPage(workspacePath);
@@ -1482,7 +1501,37 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     railKeyboardMenuFor.value = workspacePath;
   }
 
-  function openAgentLaunchPage(workspacePath: string): void {
+  /** How the command bar shows now: not at all, as the stage's own surface, or over a live space. */
+  function stageBarModeNow() {
+    return stageBarMode({
+      stageLauncher: stageLauncherEnabled(),
+      liveTabCount: tabViews.value.length,
+      otherSurfaces: fileController.total() + (browserOpen.value ? 1 : 0),
+      boardOpen: boardOpen.value,
+      requestOpen: agentLaunchPage.request.value !== null,
+      requestResident: agentLaunchPage.request.value?.resident === true,
+    });
+  }
+
+  /** The project the resident bar is aimed at while no request holds a target. */
+  function residentLauncherPath(): string | null {
+    return stageLauncherChoice.value ?? workspacesData.value.recents[0]?.path ?? null;
+  }
+
+  function focusStageBar(): void {
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>(".stage-launcher .command-bar__filter")?.focus(),
+    );
+  }
+
+  /** Aim the bar at a project: the open request's target, else the resident bar's own choice. */
+  function aimStageLauncher(path: string): void {
+    ensureRepositoriesScanned([path]);
+    if (agentLaunchPage.request.value !== null) agentLaunchPage.retarget(path);
+    else stageLauncherChoice.value = path;
+  }
+
+  function openAgentLaunchPage(requested: string | null): void {
     if (
       taskOperationPending.value !== null ||
       settingsOpen.value ||
@@ -1492,6 +1541,19 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       usageConsentOpen.value
     )
       return;
+    // The resident bar is the surface already: aim it and give it the keyboard.
+    if (stageBarModeNow() === "resident") {
+      if (requested !== null) aimStageLauncher(requested);
+      focusStageBar();
+      return;
+    }
+    const workspacePath = requested ?? workspacesData.value.recents[0]?.path ?? null;
+    if (workspacePath === null) return;
+    beginLaunchRequest(workspacePath);
+  }
+
+  /** Opens the launcher's request on a workspace: the captured target and how to launch from it. */
+  function beginLaunchRequest(workspacePath: string): void {
     const manager = tabsRef.current;
     const roots = () =>
       [...repositoryScans.value.values()].flatMap((scan) =>
@@ -1516,6 +1578,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     agentLaunchPage.open({
       target,
       returnToBoard,
+      resident: stageBarModeNow() === "resident",
       releaseStage: () => {
         for (const element of document.querySelectorAll<HTMLElement>(
           ".stage > .stage__tabs, .stage > .stage__surface",
@@ -1548,6 +1611,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               : (launcherAgents().find((agent) => agent.id === agentId)?.label ?? agentId);
           if (index >= 0)
             manager.renameTab(index, autoSpaceName(folderName(current.workspacePath), label));
+        }
+        return result;
+      },
+      // The command bar's Run: every picked agent, chained from the captured target (LCH-6).
+      launchMany: async (agents, canCommit, current) => {
+        const result = await manager.launchAgentsAtTarget(current, agents, canCommit, roots);
+        const first = result.receipts[0];
+        if (first !== undefined) {
+          // The launch is the project's choice now; a resident bar must not keep the older one.
+          stageLauncherChoice.value = null;
+          // The folder's remembered agent is the one last run there; it is the bar's next default.
+          recordWorkspaceOpen(current.workspacePath, undefined, agents[0].agentId);
+          if (result.kind === "spawned" && current.kind === "new-space") {
+            const index = tabViews.value.findIndex((tab) => tab.key === first.tabKey);
+            const label =
+              launcherAgents().find((agent) => agent.id === agents[0].agentId)?.label ??
+              agents[0].agentId;
+            if (index >= 0)
+              manager.renameTab(index, autoSpaceName(folderName(current.workspacePath), label));
+          }
         }
         return result;
       },
@@ -1627,6 +1710,54 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }),
     );
   };
+
+  /** The command bar's Run: opens the request first when the resident bar has none yet. */
+  function runFromStageLauncher(
+    agentIds: readonly string[],
+    overrides: Readonly<Record<string, LaunchCommandOverride>>,
+  ): void {
+    stageLauncherNotice.value = null;
+    if (agentLaunchPage.request.value === null) {
+      const path = residentLauncherPath();
+      if (path === null) return;
+      beginLaunchRequest(path);
+    }
+    void agentLaunchPage.runMany(launcherRequests(agentIds, overrides));
+  }
+
+  /** A project picked in the bar: a folder history lacks joins the rail first (LCH-5). */
+  function pickStageLauncherProject(path: string): void {
+    stageLauncherNotice.value = null;
+    if (!workspacesData.value.recents.some((recent) => recent.path === path)) rememberOnRail(path);
+    aimStageLauncher(path);
+  }
+
+  /** The rail's Folder verb, then the bar aims at the folder it added. */
+  async function openFolderFromStageLauncher(): Promise<void> {
+    const before = workspacesData.value.recents[0];
+    stageLauncherNotice.value = await addFolderToRail();
+    const head = workspacesData.value.recents[0];
+    // A cancelled picker leaves the head untouched; an added folder is always a fresh head.
+    if (head !== undefined && head !== before) aimStageLauncher(head.path);
+  }
+
+  /** The rail's Worktree form, on the repository the bar is aimed at. */
+  function newWorktreeFromStageLauncher(): void {
+    const path = agentLaunchPage.request.value?.target.workspacePath ?? residentLauncherPath();
+    const scan = path === null ? undefined : repositoryScans.value.get(path);
+    requestWorktreeForm(
+      scan?.kind === "repository"
+        ? (scan.worktrees.find((entry) => !entry.bare)?.path ?? path)
+        : path,
+    );
+  }
+
+  /** A press on a project header while the bar is up aims it at that project; false when none is up. */
+  function retargetStageLauncher(path: string): boolean {
+    if (stageBarModeNow() === "none") return false;
+    aimStageLauncher(path);
+    return true;
+  }
 
   /** Editor confirm: save the preset, then materialize a new tab. */
   async function handleEditorCreate(name: string, artifact: PresetArtifact): Promise<void> {
@@ -2471,6 +2602,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     // launch agents came to offer none.
     agentsResolved: agentsProbed.value,
     ...(agentLaunchPageAvailable ? { onOpenAgentLauncher: openAgentLaunchPage } : {}),
+    ...(stageLauncherEnabled() ? { onRetargetLauncher: retargetStageLauncher } : {}),
     onRunAgent: (agentId, workspacePath) => {
       agentLaunchPage.close();
       void tabsRef.current?.openQuickAgent(agentId, workspacePath);
@@ -2721,14 +2853,54 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             </div>
           ) : null}
           <div class="stage__tabs" ref={stagesRef} />
-          {stageLauncherSlotShows({
-            stageLauncher: stageLauncherEnabled(),
-            liveTabCount: tabViews.value.length,
-            otherSurfaces: fileController.total() + (browserOpen.value ? 1 : 0),
-            boardOpen: boardOpen.value,
-            launchPageOpen: agentLaunchPage.request.value !== null,
-          }) && <StageLauncherSlot />}
-          {agentLaunchPage.request.value !== null && (
+          {stageBarModeNow() !== "none" && (
+            <StageLauncherBar
+              mode={stageBarModeNow() as "resident" | "floating"}
+              targetPath={
+                agentLaunchPage.request.value?.target.workspacePath ?? residentLauncherPath()
+              }
+              target={agentLaunchPage.request.value?.target ?? null}
+              recents={workspacesData.value.recents}
+              livePaths={tabViews.value.flatMap((tab) =>
+                tab.workspacePath === null ? [] : [tab.workspacePath],
+              )}
+              scans={repositoryScans.value}
+              tabs={tabViews.value}
+              now={Date.now()}
+              agents={launchPageAgents(launcherAgents(), settings.value.quickAgentIds, {
+                probed: agentsProbed.value,
+                disabledAgents: settings.value.disabledAgents,
+              })}
+              commands={launchPageCommands()}
+              pending={agentLaunchPage.pending.value}
+              failure={agentLaunchPage.failure.value?.message ?? stageLauncherNotice.value}
+              active={
+                !settingsOpen.value &&
+                !boardOpen.value &&
+                editorRequest.value === null &&
+                !saveDialogOpen.value &&
+                !agentQuickPickerOpen.value &&
+                !usageConsentOpen.value
+              }
+              onRun={runFromStageLauncher}
+              onPickProject={pickStageLauncherProject}
+              onOpenFolder={() => void openFolderFromStageLauncher()}
+              onNewWorktree={newWorktreeFromStageLauncher}
+              onClone={() => {
+                agentLaunchPage.close();
+                openCloneForm();
+              }}
+              onRetry={() => {
+                if (agentLaunchPage.failure.value === null) stageLauncherNotice.value = null;
+                else void agentLaunchPage.retry();
+              }}
+              onClose={() => {
+                if (agentLaunchPage.request.value !== null) agentLaunchPage.close(true);
+              }}
+              onEditProfiles={() => openSettingsAt("agents")}
+            />
+          )}
+          {!stageLauncherEnabled() && agentLaunchPage.request.value !== null && (
             <AgentLaunchPage
               target={agentLaunchPage.request.value.target}
               contextRow={launchContextRow(agentLaunchPage.request.value.target)}
