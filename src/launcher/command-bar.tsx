@@ -196,7 +196,7 @@ export function CommandBar(props: CommandBarProps) {
               {current?.branch ? (
                 <span class="command-bar__branch command-bar__meta">
                   <DeckIcon icon={GitBranch} size={ROW_ICON} />
-                  {current.branch}
+                  <span class="command-bar__branch-name">{current.branch}</span>
                 </span>
               ) : null}
               <DeckIcon icon={CaretDown} size={ROW_ICON} class="command-bar__caret-mark" />

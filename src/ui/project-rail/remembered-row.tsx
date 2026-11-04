@@ -64,7 +64,8 @@ export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRow
               data-resume-mark
               className="hidden text-foreground group-hover/item:block group-focus-within/item:block"
             >
-              <DeckIcon icon={Rotate01Icon} size={GLYPH_ROW} />
+              {/* Rotate01 turns clockwise; resume reads as going back, so mirror it. */}
+              <DeckIcon icon={Rotate01Icon} size={GLYPH_ROW} class="-scale-x-100" />
             </span>
           </span>
         </span>

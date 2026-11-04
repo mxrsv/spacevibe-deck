@@ -67,15 +67,33 @@
 }
 
 /* Project chip and filter. */
-.command-bar__project {
+/* A long name or branch gives way before the filter and Run do: the chip may shrink to half the
+   bar, and both texts truncate inside it. */
+.command-bar .command-bar__project {
   gap: 8px;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
   font-weight: 600;
+}
+.command-bar__project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .command-bar__branch {
   display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
   align-items: center;
   gap: 3px;
+}
+.command-bar__branch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .command-bar__caret-mark {
   color: var(--muted-foreground);
@@ -227,12 +245,17 @@
 }
 .command-bar__destination {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 6px;
   font-size: var(--type-meta);
   color: var(--muted-foreground);
 }
 .command-bar__destination b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
   color: color-mix(in oklch, var(--muted-foreground), var(--foreground) 40%);
 }
