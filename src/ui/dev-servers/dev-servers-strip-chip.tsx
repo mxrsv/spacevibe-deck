@@ -6,7 +6,7 @@ import {
   type DevServerStore,
 } from "../../dev-servers/dev-server-store";
 import { openUrl, writeText } from "../../host/shell-host";
-import { workspacesData } from "../../open-board/workspaces-store";
+import { shownWorkspaces } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import type { DevServerActionDeps } from "./dev-server-actions";
@@ -45,7 +45,7 @@ export function DevServersStripChip({
 }: DevServersStripChipProps) {
   const roots = devServerRoots(
     tabViews.value.map((tab) => tab.workspacePath),
-    workspacesData.value.recents.map((recent) => recent.path),
+    shownWorkspaces.value.map((recent) => recent.path),
     repositoryScans.value,
   );
   const key = JSON.stringify(roots);

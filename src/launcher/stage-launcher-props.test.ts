@@ -218,8 +218,16 @@ describe("stageBarMode", () => {
 });
 
 describe("openFolderKeys", () => {
-  it("writes the platform's primary key", () => {
-    expect(openFolderKeys("macos")).toEqual(["⌘", "O"]);
-    expect(openFolderKeys("windows")).toEqual(["Ctrl", "O"]);
+  // The registry holds no `open-folder` action yet, so the fixtures stand in for its binding.
+  const bound = (binding: object) => [{ ...binding, action: "open-folder" }] as never;
+
+  it("writes the bound chord's key caps for the platform", () => {
+    expect(openFolderKeys("macos", bound({ key: "o", meta: true }))).toEqual(["⌘", "O"]);
+    expect(openFolderKeys("windows", bound({ key: "o", ctrl: true }))).toEqual(["Ctrl", "O"]);
+  });
+
+  it("shows nothing while no chord is bound, rather than a chord that does nothing", () => {
+    expect(openFolderKeys("macos", [])).toEqual([]);
+    expect(openFolderKeys("macos")).toEqual([]);
   });
 });

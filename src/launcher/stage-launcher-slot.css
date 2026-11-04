@@ -29,3 +29,33 @@
   overflow: visible;
   background: color-mix(in srgb, var(--bg) 72%, transparent);
 }
+
+/* A form in the slot (spec LCH-8): the Open board's Clone, Create workspace and Worktree forms were
+   authored for `.open-board`, which gave them border-box and a column to fill. Both come from here. */
+.stage-launcher-form,
+.stage-launcher-form * {
+  box-sizing: border-box;
+}
+.stage-launcher-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.stage-launcher-form__sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(680px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: clamp(24px, 6vh, 56px) 0 24px;
+}
+.stage-launcher-form__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stage-launcher-form__head h1 {
+  margin: 0;
+  font-size: var(--type-title);
+  font-weight: 600;
+}

@@ -20,6 +20,18 @@ vi.mock("../../terminal/file-drop", () => ({
 }));
 vi.mock("../../host/worktree-host", () => ({ addWorktree: vi.fn(), available: true }));
 vi.mock("../rail-add-folder", () => ({ addFolderToRail: vi.fn(), rememberOnRail: vi.fn() }));
+// The `stageLauncher` switch is pinned apart from `pinHost`, which turns every switch on: the
+// shipped menu below is the switch-off case, and its own describe turns the switch on.
+const stage = vi.hoisted(() => ({ on: false }));
+vi.mock("../../launcher/stage-launcher-enabled", () => ({ stageLauncherEnabled: () => stage.on }));
+vi.mock("../../host/clone-host", async (original) => ({
+  ...(await original<object>()),
+  available: true,
+}));
+vi.mock("../../host/workspace-create-host", async (original) => ({
+  ...(await original<object>()),
+  available: true,
+}));
 vi.mock("../controls/deck-icon", () => ({
   CHROME_ICON: 13,
   GLYPH_INLINE: 12,
@@ -33,6 +45,8 @@ vi.mock("../controls/deck-icon", () => ({
 import { railCardMenuOpen } from "../../chrome/events";
 import { addWorktree } from "../../host/worktree-host";
 import { agentLaunchPage } from "../../launcher/agent-launch-page-store";
+import { closeStageForm, stageForm } from "../../launcher/stage-launcher-form-store";
+import { sessionsSupported } from "../../sessions/sessions-store";
 import { resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { addFolderToRail, rememberOnRail } from "../rail-add-folder";
 import type { CardActions } from "../worktree-card-menus";
@@ -61,6 +75,8 @@ import {
 installRailHarness();
 
 beforeEach(() => {
+  stage.on = false;
+  closeStageForm();
   vi.mocked(addWorktree).mockReset();
   vi.mocked(addFolderToRail).mockReset();
   vi.mocked(rememberOnRail).mockReset();
@@ -435,6 +451,76 @@ describe('the "+" menu', () => {
     expect(document.body.querySelector('[role="alert"]')?.textContent).not.toBe("");
     expect(rememberOnRail).not.toHaveBeenCalled();
     expect(form()).not.toBeNull();
+  });
+});
+
+describe('the "+" menu with the stage launcher on', () => {
+  beforeEach(() => {
+    stage.on = true;
+    sessionsSupported.value = true;
+  });
+
+  it("offers what the Open board held, in the mock's order", async () => {
+    mount();
+    await settle();
+
+    await activate(trigger("New"));
+    expect(menuLabels()).toEqual([
+      "New agent",
+      "Open folder…",
+      "Clone repository…",
+      "New worktree…",
+      "Create workspace…",
+      "Resume a session…",
+    ]);
+    await closeMenu();
+  });
+
+  it("drops the session entry on a host that cannot list sessions", async () => {
+    sessionsSupported.value = false;
+    mount();
+    await settle();
+
+    await activate(trigger("New"));
+    expect(menuLabels()).not.toContain("Resume a session…");
+    await closeMenu();
+  });
+
+  it.each([
+    ["Clone repository…", "clone"],
+    ["Create workspace…", "create"],
+    ["Resume a session…", "sessions"],
+  ] as const)("%s opens its form in the stage", async (label, kind) => {
+    mount();
+    await settle();
+
+    await activate(trigger("New"));
+    await pick(label);
+
+    expect(stageForm.value).toEqual({ kind, repoPath: null });
+  });
+
+  it("adds a folder through the shipped path", async () => {
+    vi.mocked(addFolderToRail).mockResolvedValueOnce(null);
+    mount();
+    await settle();
+
+    await activate(trigger("New"));
+    await pick("Open folder…");
+
+    expect(addFolderToRail).toHaveBeenCalledOnce();
+    expect(stageForm.value).toBeNull();
+  });
+
+  it("opens the rail's own worktree form, since the rail is on screen", async () => {
+    mount();
+    await settle();
+
+    await activate(trigger("New"));
+    await pick("New worktree…");
+    await waitUntil(() => document.body.querySelector('form[aria-label="New worktree"]') !== null);
+
+    expect(stageForm.value).toBeNull();
   });
 });
 

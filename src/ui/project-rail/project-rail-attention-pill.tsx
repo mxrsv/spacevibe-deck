@@ -1,6 +1,6 @@
 import { withPaneFlash } from "../shell-stage";
 import { useMemo } from "preact/hooks";
-import { workspacesData } from "../../open-board/workspaces-store";
+import { shownWorkspaces } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
 import { settings } from "../../settings/settings-store";
 import { paneTails } from "../../terminal/session-tail-store";
@@ -90,7 +90,7 @@ export function StageAttentionPill({ onFocusPane, onSelectTab }: RailSelection) 
   const tabs = tabViews.value;
   const activeIndex = activeTabIndex.value;
   const scans = repositoryScans.value;
-  const recents = workspacesData.value.recents;
+  const recents = shownWorkspaces.value;
   const tails = paneTails.value;
   const railOrder = settings.value.railOrder;
   const view = useMemo(

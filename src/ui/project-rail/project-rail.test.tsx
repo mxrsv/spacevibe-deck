@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "preact/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The same host stubs `agent-rail.test.tsx` needs: the rail's import graph reaches the host.
 vi.mock("../../host/store-host", () => ({
@@ -28,10 +28,15 @@ vi.mock("../controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
+// `pinHost` turns every switch on; the launcher's is pinned apart so the shipped empty state stays testable.
+const stage = vi.hoisted(() => ({ on: false }));
+vi.mock("../../launcher/stage-launcher-enabled", () => ({ stageLauncherEnabled: () => stage.on }));
+
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { resetDesktopEnvironmentForTests } from "../../lib/platform";
-import { WORKSPACES_VERSION } from "../../lib/workspace-recents";
+import { MAX_RECENTS, WORKSPACES_VERSION } from "../../lib/workspace-recents";
 import { workspacesData } from "../../open-board/workspaces-store";
+import { setRailQuery } from "./project-rail-state";
 import {
   click,
   headers,
@@ -226,6 +231,72 @@ describe("project list", () => {
 
     expect(headers()).toHaveLength(0);
     expect(text(host.querySelector("section[aria-label='Open agents']"))).toBe("Nothing here");
+  });
+});
+
+describe("a long workspace history", () => {
+  it("lists the newest few remembered projects, as it did when the store held only those", async () => {
+    pinHost(true);
+    tabViews.value = [];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: Array.from({ length: 23 }, (_, i) => ({ path: `/w/p${i}`, lastOpenedAt: 100 - i })),
+    };
+    mount();
+    await settle();
+
+    expect(headers()).toHaveLength(MAX_RECENTS);
+    expect(names()).toContain("p0");
+    expect(names()).not.toContain("p8");
+  });
+});
+
+describe("the first-run hint (stageLauncher)", () => {
+  const empty = () => {
+    tabViews.value = [];
+    workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
+  };
+  const list = () => text(host.querySelector("section[aria-label='Open agents']"));
+
+  beforeEach(() => {
+    pinHost(true);
+    stage.on = true;
+  });
+  afterEach(() => {
+    stage.on = false;
+  });
+
+  it("says where projects will land when there is no project and no live tab", async () => {
+    empty();
+    mount();
+    await settle();
+
+    expect(list()).toBe("Projects you open land here");
+    expect(
+      host.querySelector("section[aria-label='Open agents'] [data-deck-icon-size='12']"),
+    ).not.toBeNull();
+  });
+
+  it("is gone once a workspace is remembered", async () => {
+    tabViews.value = [];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/api", lastOpenedAt: NOW }],
+    };
+    mount();
+    await settle();
+
+    expect(list()).not.toContain("Projects you open land here");
+    expect(headers()).toHaveLength(1);
+  });
+
+  it("leaves a search with no match saying so", async () => {
+    mount();
+    await settle();
+    act(() => setRailQuery("zzzz"));
+    await settle();
+
+    expect(list()).toContain("No sessions match");
   });
 });
 

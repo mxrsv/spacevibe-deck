@@ -36,6 +36,13 @@ import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from ".
 import { resetLauncherStore, newTaskDraft } from "../launcher/launcher-store";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 import { OpenBoard } from "./open-board";
+import { workspacesData } from "./workspaces-store";
+import {
+  pushRecent,
+  WORKSPACES_VERSION,
+  MAX_RECENTS,
+  type RecentWorkspace,
+} from "../lib/workspace-recents";
 
 const settle = async (): Promise<void> => {
   await act(async () => {
@@ -136,5 +143,22 @@ describe("OpenBoard create-workspace flow", () => {
     expect(newTaskDraft.value.workspacePath).toBe("/Users/dev/sandbox");
     expect(host.querySelector(".nt-create-workspace")).toBeNull();
     expect(host.querySelector(".nt-board__head")).not.toBeNull();
+  });
+
+  it("lists the newest few folders even though the store keeps the whole history", async () => {
+    let recents: readonly RecentWorkspace[] = [];
+    for (let i = 0; i < 23; i += 1) recents = pushRecent(recents, `/Users/dev/p${i}`, 1_000 + i);
+    workspacesData.value = { version: WORKSPACES_VERSION, recents };
+    await mount();
+
+    await pickerButtons();
+    const listed = [
+      ...host.querySelectorAll<HTMLElement>('.nt-workspace-picker__menu [role="menuitemradio"]'),
+    ].map((row) => row.title);
+
+    expect(workspacesData.value.recents).toHaveLength(23);
+    expect(listed).toHaveLength(MAX_RECENTS);
+    expect(listed[0]).toBe("/Users/dev/p22");
+    workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
   });
 });

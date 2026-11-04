@@ -4,11 +4,13 @@ import {
   forgetAgent,
   formatRelativeTime,
   MAX_RECENTS,
+  MAX_STORED_RECENTS,
   partitionRecents,
   pushRecent,
   removeRecents,
   resolveAgent,
   resolveAgentChoice,
+  shownRecents,
   validateWorkspaces,
   WORKSPACES_VERSION,
 } from "./workspace-recents";
@@ -112,13 +114,25 @@ describe("pushRecent", () => {
     expect(again[0].lastOpenedAt).toBe(NOW + 2);
   });
 
-  it("caps the list at MAX_RECENTS, dropping the oldest", () => {
+  it("caps the list at MAX_STORED_RECENTS, dropping the oldest", () => {
     let list = pushRecent([], "/0", NOW);
-    for (let i = 1; i <= MAX_RECENTS; i += 1) {
+    for (let i = 1; i <= MAX_STORED_RECENTS; i += 1) {
       list = pushRecent(list, `/${i}`, NOW + i);
     }
-    expect(list).toHaveLength(MAX_RECENTS);
+    expect(list).toHaveLength(MAX_STORED_RECENTS);
     expect(list.some((r) => r.path === "/0")).toBe(false);
+  });
+
+  it("keeps more history than any list shows, and shownRecents cuts it to MAX_RECENTS", () => {
+    let list: ReturnType<typeof pushRecent> = [];
+    for (let i = 0; i < 23; i += 1) {
+      list = pushRecent(list, `/${i}`, NOW + i);
+    }
+    expect(list).toHaveLength(23);
+    expect(shownRecents(list).map((r) => r.path)).toEqual(
+      list.slice(0, MAX_RECENTS).map((r) => r.path),
+    );
+    expect(shownRecents(list)).toHaveLength(MAX_RECENTS);
   });
 
   it("records the layout + agent combo on the entry", () => {
@@ -197,6 +211,15 @@ describe("validateWorkspaces", () => {
       ],
     };
     expect(validateWorkspaces(raw).recents).toEqual([{ path: "/a", lastOpenedAt: NOW }]);
+  });
+
+  it("keeps a 50-entry file whole and cuts a longer one on read", () => {
+    const entries = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({ path: `/p${i}`, lastOpenedAt: NOW - i }));
+    expect(validateWorkspaces({ version: 2, recents: entries(50) }).recents).toHaveLength(50);
+    const longer = validateWorkspaces({ version: 2, recents: entries(80) }).recents;
+    expect(longer).toHaveLength(MAX_STORED_RECENTS);
+    expect(longer[0].path).toBe("/p0");
   });
 
   it("reads a v1 file, keeping entries that lack the combo fields", () => {

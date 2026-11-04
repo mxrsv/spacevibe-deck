@@ -1,7 +1,24 @@
 import { normalizeWorkspacePath } from "./workspace-label";
 
 export const WORKSPACES_VERSION = 2;
+/**
+ * How many folders the Open board, the rail and every other list of workspaces show. The store
+ * keeps more (`MAX_STORED_RECENTS`); a list that shows history slices it with `shownRecents`.
+ */
 export const MAX_RECENTS = 8;
+
+/**
+ * How many folders `workspaces.json` keeps, capped on write (`pushRecent`) and on read
+ * (`validateWorkspaces`). Only the launcher's project menu lists them all (spec LCH-5, AC-5).
+ * An older build reads such a file by slicing to its own cap, so it keeps the newest 8 and its
+ * next write drops the rest; `WORKSPACES_VERSION` stays because a bumped one would read as empty.
+ */
+export const MAX_STORED_RECENTS = 50;
+
+/** The first `MAX_RECENTS` of the history: what every list but the launcher's project menu shows. */
+export function shownRecents(recents: readonly RecentWorkspace[]): readonly RecentWorkspace[] {
+  return recents.slice(0, MAX_RECENTS);
+}
 
 /** The agent CLI a workspace last opened with; `null` = Shell only. */
 export type AgentChoice = string | null;
@@ -38,7 +55,7 @@ export function validateWorkspaces(raw: unknown): WorkspacesData {
     return empty;
   }
   const recents: RecentWorkspace[] = [];
-  for (const entry of source.recents.slice(0, MAX_RECENTS)) {
+  for (const entry of source.recents.slice(0, MAX_STORED_RECENTS)) {
     if (typeof entry !== "object" || entry === null) {
       continue;
     }
@@ -101,7 +118,7 @@ export function pushRecent(
     ...(nextPresetId !== undefined ? { lastPresetId: nextPresetId } : {}),
     ...(nextAgent !== undefined ? { lastAgent: nextAgent } : {}),
   };
-  return [head, ...rest].slice(0, MAX_RECENTS);
+  return [head, ...rest].slice(0, MAX_STORED_RECENTS);
 }
 
 /** Split rows into live and missing folders, keeping each side's order. */

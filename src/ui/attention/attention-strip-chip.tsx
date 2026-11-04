@@ -1,4 +1,4 @@
-import { workspacesData } from "../../open-board/workspaces-store";
+import { shownWorkspaces } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
 import { settings } from "../../settings/settings-store";
 import { paneTails } from "../../terminal/session-tail-store";
@@ -41,7 +41,7 @@ export function currentAttentionList(): AttentionList {
       tabs: tabViews.value,
       activeIndex: activeTabIndex.value,
       scans: repositoryScans.value,
-      workspaceHistoryPaths: workspacesData.value.recents.map((recent) => recent.path),
+      workspaceHistoryPaths: shownWorkspaces.value.map((recent) => recent.path),
       tails: paneTails.value,
       railOrder: settings.value.railOrder,
       now: Date.now(),

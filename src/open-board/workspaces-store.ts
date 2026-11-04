@@ -1,9 +1,10 @@
-import { signal } from "@preact/signals";
+import { computed, signal } from "@preact/signals";
 import { Store } from "../host/store-host";
 import {
   forgetAgent,
   pushRecent,
   removeRecents,
+  shownRecents,
   validateWorkspaces,
   WORKSPACES_VERSION,
   type AgentChoice,
@@ -15,10 +16,14 @@ const STORE_FILE = "workspaces.json";
 const STORE_KEY = "workspaces";
 const CLONE_PARENT_KEY = "cloneParent";
 
+/** The whole history, up to `MAX_STORED_RECENTS`: only the launcher's project menu reads this. */
 export const workspacesData = signal<WorkspacesData>({
   version: WORKSPACES_VERSION,
   recents: [],
 });
+
+/** The newest `MAX_RECENTS` of the history: what the Open board, the rail and every other list show. */
+export const shownWorkspaces = computed(() => shownRecents(workspacesData.value.recents));
 
 let store: Store | null = null;
 let cloneParent: string | null = null;

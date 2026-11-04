@@ -11,7 +11,7 @@ import {
 } from "../repositories/repositories-store";
 import { paneTails } from "../terminal/session-tail-store";
 import type { FileSurfaceController } from "../files/file-surface-controller";
-import { workspacesData } from "../open-board/workspaces-store";
+import { shownWorkspaces } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
@@ -189,7 +189,7 @@ function WorktreeCardRail(props: AgentRailProps) {
   // still invalidates the memo, exactly like the old inline build.
   const activeIndex = activeTabIndex.value;
   const scans = repositoryScans.value;
-  const recents = workspacesData.value.recents;
+  const recents = shownWorkspaces.value;
   const tails = paneTails.value;
   const sessions = sessionEntries.value;
   const railOrder = settings.value.railOrder;
@@ -283,7 +283,7 @@ function WorktreeCardRail(props: AgentRailProps) {
       ...tabViews.value
         .map((tab) => tab.workspacePath)
         .filter((path): path is string => path !== null),
-      ...workspacesData.value.recents.map((recent) => recent.path),
+      ...shownWorkspaces.value.map((recent) => recent.path),
     ]);
   });
 

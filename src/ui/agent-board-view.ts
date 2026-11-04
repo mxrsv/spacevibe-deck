@@ -1,7 +1,7 @@
 import { paneSignal } from "./agent-rail-model";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { PaneAgent } from "../lib/process-info";
-import { workspacesData } from "../open-board/workspaces-store";
+import { shownWorkspaces } from "../open-board/workspaces-store";
 import type { RepositoryScan } from "../repositories/repository-client";
 import { repositoryScans } from "../repositories/repositories-store";
 import { settings } from "../settings/settings-store";
@@ -133,7 +133,7 @@ export function useAgentBoardView(): AgentBoardView {
       tabs: tabViews.value,
       activeIndex: activeTabIndex.value,
       scans: repositoryScans.value,
-      workspaceHistoryPaths: workspacesData.value.recents.map((recent) => recent.path),
+      workspaceHistoryPaths: shownWorkspaces.value.map((recent) => recent.path),
       tails: paneTails.value,
       tasks: paneTaskPrompts.value,
       // Task 2 retired the store's map: every ordinal reaches the model on

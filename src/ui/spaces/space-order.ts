@@ -5,7 +5,7 @@
  * Control's shelf all read this one list, so a mark sits where its tab sits in
  * the sidebar and never moves because something else was opened.
  */
-import { workspacesData } from "../../open-board/workspaces-store";
+import { shownWorkspaces } from "../../open-board/workspaces-store";
 import { repositoryScans } from "../../repositories/repositories-store";
 import { activeRepositoryTabIndexes } from "../../repositories/repository-model";
 import { settings } from "../../settings/settings-store";
@@ -62,7 +62,7 @@ export function currentSpaceLayout(): SpaceLayout {
     tabs: tabViews.value,
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
-    workspaceHistoryPaths: workspacesData.value.recents.map((recent) => recent.path),
+    workspaceHistoryPaths: shownWorkspaces.value.map((recent) => recent.path),
     railOrder: settings.value.railOrder,
   });
 }

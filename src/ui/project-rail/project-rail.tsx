@@ -1,6 +1,9 @@
+import { Folder01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useState } from "preact/hooks";
+import { stageLauncherEnabled } from "../../launcher/stage-launcher-enabled";
 import type { AgentRailView, RailWorktreeGroup } from "../agent-rail-model";
 import { Button } from "../controls/button";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { buildRailView } from "../rail-view-model";
 import {
   forgetRailFocus,
@@ -195,7 +198,13 @@ export function ProjectRail({
           <FlatSection key={group.key} group={group} env={env} />
         ),
       )}
-      {model.groups.length === 0 ? (
+      {model.groups.length === 0 && !searching && stageLauncherEnabled() ? (
+        // First run (spec LCH-7): no project and no live tab, so say where projects will appear.
+        <p className="flex items-center gap-2 px-2 py-6 text-xs text-muted-foreground">
+          <DeckIcon icon={Folder01Icon} size={GLYPH_INLINE} />
+          Projects you open land here
+        </p>
+      ) : model.groups.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-4 py-6 text-center text-xs text-muted-foreground">
           <p>{searching ? "No sessions match" : "Nothing here"}</p>
           {searching ? (

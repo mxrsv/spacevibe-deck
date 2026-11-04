@@ -1,10 +1,11 @@
 import type { AgentOption } from "../lib/agent-catalog";
 import type { DesktopPlatform } from "../lib/platform";
-import { primaryModifierKeycap } from "../lib/shortcut-label";
+import { shortcutCaps } from "../lib/shortcut-label";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { AgentLaunchTarget, LaunchCommandOverride } from "../terminal/agent-launch-target";
+import type { ActionId, KeyBinding } from "../terminal/action-registry";
 import type { AgentLaunchRequest } from "../terminal/tab-manager-types";
 import { formatShortAge } from "../ui/agent-rail-model";
 import type { CommandBarProject } from "./command-bar-model";
@@ -146,7 +147,21 @@ export function stageBarMode(state: StageBarState): StageBarMode {
   return empty && !state.boardOpen ? "resident" : "none";
 }
 
-/** The Open folder shortcut as key caps the platform writes: ⌘ O, or Ctrl O. */
-export function openFolderKeys(platform: DesktopPlatform): readonly string[] {
-  return [primaryModifierKeycap(platform), "O"];
+/**
+ * The registry action ⌘O belongs to. It is not in the registry yet: registering it needs a
+ * dispatch entry in `tab-manager.ts` (see the plan's S6 handoff), so until then no chord is bound.
+ */
+const OPEN_FOLDER_ACTION = "open-folder";
+
+/**
+ * The Open folder shortcut as key caps, read from the live keymap so the hint can never name a
+ * chord that is not bound: empty while the action has none (or the user unbound it).
+ */
+export function openFolderKeys(
+  platform: DesktopPlatform,
+  keymap?: readonly KeyBinding[],
+): readonly string[] {
+  // The cast names an action the registry does not hold yet; `shortcutCaps` just finds no row.
+  const caps = shortcutCaps(OPEN_FOLDER_ACTION as ActionId, platform, keymap);
+  return caps ?? [];
 }

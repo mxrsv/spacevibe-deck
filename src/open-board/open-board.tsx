@@ -18,7 +18,7 @@ import {
 } from "../terminal/agent-detection-store";
 import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from "../lib/agent-catalog";
 import { settings } from "../settings/settings-store";
-import { recordWorkspaceOpen, removeWorkspaceRecents, workspacesData } from "./workspaces-store";
+import { recordWorkspaceOpen, removeWorkspaceRecents, shownWorkspaces } from "./workspaces-store";
 import type { SessionEntry } from "../lib/session-history";
 import { formatShortcutBinding } from "../lib/shortcut-label";
 import { BoardComposer, type LastSessionOffer } from "./board-composer";
@@ -171,7 +171,7 @@ export function OpenBoard({
       : { key: "o", meta: true, action: "new-tab" },
     platform,
   );
-  const recents = workspacesData.value.recents;
+  const recents = shownWorkspaces.value;
   const recoveryWasAvailable = useRef(false);
   const home = getDesktopEnvironment().homeDir;
   const view = useSignal<BoardView>("home");

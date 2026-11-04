@@ -121,4 +121,29 @@ describe("StageLauncherBar", () => {
     expect(document.body.textContent).toContain("Clone");
     await view.unmount();
   });
+
+  it("lists the whole 23-project history in its menu, which the shown lists cut to eight", async () => {
+    const history: RecentWorkspace[] = Array.from({ length: 23 }, (_, i) => ({
+      path: `/w/project-${i}`,
+      lastOpenedAt: NOW - i * 1000,
+    }));
+    const view = await mount(
+      <StageLauncherBar {...props({ recents: history, targetPath: "/w/project-0" })} />,
+    );
+
+    await click(document.querySelector(".command-bar__project") as HTMLElement);
+
+    expect(document.querySelectorAll('.command-bar-menu__list [role="option"]')).toHaveLength(23);
+    await view.unmount();
+  });
+
+  it("disables the chips and makes Open folder the primary action on a first run", async () => {
+    const view = await mount(<StageLauncherBar {...props({ recents: [], targetPath: null })} />);
+
+    const chips = [...document.querySelectorAll<HTMLButtonElement>(".command-bar__chip")];
+    expect(chips.length).toBeGreaterThan(0);
+    expect(chips.every((chip) => chip.disabled)).toBe(true);
+    expect(document.querySelector(".command-bar__project")).toBeNull();
+    await view.unmount();
+  });
 });

@@ -3,6 +3,9 @@ import { AgentLaunchPage } from "../launcher/agent-launch-page";
 import { installStageLauncherCloseGuard } from "../launcher/stage-launcher-close-guard";
 import { stageLauncherEnabled } from "../launcher/stage-launcher-enabled";
 import { StageLauncherBar } from "../launcher/stage-launcher-bar";
+import { StageLauncherForm } from "../launcher/stage-launcher-form";
+import { cloneFinished, dropIntoStageLauncher } from "../launcher/stage-launcher-flows";
+import { closeStageForm, openStageForm, stageForm } from "../launcher/stage-launcher-form-store";
 import { launcherRequests, stageBarMode } from "../launcher/stage-launcher-props";
 import { addFolderToRail, rememberOnRail } from "./rail-add-folder";
 import { requestWorktreeForm } from "./project-rail/project-rail-worktree-request";
@@ -55,6 +58,7 @@ import { presetsData, savePreset } from "../presets/presets-store";
 import {
   recordWorkspaceOpen,
   removeWorkspaceRecents,
+  shownWorkspaces,
   workspacesData,
 } from "../open-board/workspaces-store";
 import {
@@ -195,7 +199,11 @@ import { activeUpdateController } from "../updater/active-update-controller";
 import { appVersion, loadAppVersion } from "../updater/app-version";
 import { feedbackUrl, SEND_FEEDBACK_ACTION } from "../lib/feedback-url";
 import { available as cloneHostAvailable } from "../host/clone-host";
-import { cloneFormRequest, getCloneController } from "../open-board/clone-session";
+import {
+  cloneFormRequest,
+  getCloneController,
+  pendingCloneSelection,
+} from "../open-board/clone-session";
 import { UpdateAction } from "../updater/update-action";
 // It answers the Electron host and fails soft in a browser preview.
 import {
@@ -374,7 +382,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     });
   }
   const fileController = fileControllerRef.current;
-  const agentPageOpen = agentLaunchPage.request.value !== null;
+  // A stage form (`stageLauncher`, LCH-8) covers the stage the way the page does.
+  const stageFormOpen = stageLauncherEnabled() && stageForm.value !== null;
+  const agentPageOpen = agentLaunchPage.request.value !== null || stageFormOpen;
   useLayoutEffect(() => {
     const covered = [
       ...document.querySelectorAll<HTMLElement>(".stage > .stage__tabs, .stage > .stage__surface"),
@@ -552,6 +562,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   /** File ▸ Clone Repository…: the Open Board, opened on its Clone form. */
   const openCloneForm = (): void => {
     if (!cloneHostAvailable) {
+      return;
+    }
+    // `stageLauncher`: the Clone form renders in the stage's launcher slot, not on the board.
+    if (stageLauncherEnabled()) {
+      openStageForm("clone");
       return;
     }
     cloneFormRequest.value += 1;
@@ -808,6 +823,19 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       void refreshSessions();
     }
   }, [boardOpen.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
+
+  // `stageLauncher`: a finished clone aims the launcher at the new workspace (the board's own
+  // consumer is not mounted). The Clone form closes unless it has a warning to be read, as the
+  // board's does; a clone that ends while the form is shut aims the bar without surfacing it.
+  /* oxlint-disable react-hooks/exhaustive-deps -- keyed on the signal; the handlers are rebuilt every render */
+  useEffect(() => {
+    const path = pendingCloneSelection.value;
+    if (path === null || !stageLauncherEnabled()) return;
+    pendingCloneSelection.value = null;
+    const warned = (getCloneController().state.value.job?.warnings.length ?? 0) > 0;
+    cloneFinished(path, warned, { aim: aimStageLauncher, leaveForm: leaveStageForm });
+  }, [pendingCloneSelection.value]);
   /* oxlint-enable react-hooks/exhaustive-deps */
 
   /* oxlint-disable react-hooks/exhaustive-deps -- boot-once: the window's TabManager is built a single time */
@@ -1640,7 +1668,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     ensureRepositoriesScanned([
       workspacePath,
       ...tabViews.value.flatMap((tab) => (tab.workspacePath === null ? [] : [tab.workspacePath])),
-      ...workspacesData.value.recents.map((recent) => recent.path),
+      ...shownWorkspaces.value.map((recent) => recent.path),
     ]);
     agentLaunchPage.open({
       target,
@@ -1722,7 +1750,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   /** The launch page's context row, derived from the rail so both name projects alike. */
   function launchContextRow(target: AgentLaunchTarget): AgentLaunchContextProps {
     const tabs = tabViews.value;
-    const recents = workspacesData.value.recents.map((recent) => recent.path);
+    const recents = shownWorkspaces.value.map((recent) => recent.path);
     const stream = buildAgentRail({
       tabs,
       activeIndex: activeTabIndex.value,
@@ -1792,10 +1820,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     void agentLaunchPage.runMany(launcherRequests(agentIds, overrides));
   }
 
-  /** A project picked in the bar: a folder history lacks joins the rail first (LCH-5). */
+  /**
+   * A project picked in the bar: one the rail does not list joins it first, at the top of recency
+   * (LCH-5). The rail lists the newest few, so a project far down the menu's history counts too.
+   */
   function pickStageLauncherProject(path: string): void {
     stageLauncherNotice.value = null;
-    if (!workspacesData.value.recents.some((recent) => recent.path === path)) rememberOnRail(path);
+    if (!shownWorkspaces.value.some((recent) => recent.path === path)) rememberOnRail(path);
     aimStageLauncher(path);
   }
 
@@ -1805,18 +1836,42 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     stageLauncherNotice.value = await addFolderToRail();
     const head = workspacesData.value.recents[0];
     // A cancelled picker leaves the head untouched; an added folder is always a fresh head.
-    if (head !== undefined && head !== before) aimStageLauncher(head.path);
+    if (head !== undefined && head !== before) showStageLauncherAt(head.path);
   }
 
-  /** The rail's Worktree form, on the repository the bar is aimed at. */
+  /**
+   * Aim the launcher at a project and make sure it is on screen: the resident bar and an open
+   * request just retarget, and over a live space with no launcher up it opens one there.
+   */
+  function showStageLauncherAt(path: string): void {
+    aimStageLauncher(path);
+    if (stageBarModeNow() === "none") openAgentLaunchPage(path);
+  }
+
+  /**
+   * A stage form is done (LCH-8). `path` is the workspace it made, which the launcher is aimed at;
+   * a cancel (`null`) goes back to whatever the launcher was, or to the live space it covered.
+   */
+  function leaveStageForm(path: string | null): void {
+    closeStageForm();
+    if (path !== null) showStageLauncherAt(path);
+    else focusStageBar();
+  }
+
+  /**
+   * The rail's Worktree form, on the repository the bar is aimed at. It opens in the rail's
+   * popover while the rail is on screen, and in the stage when the rail is collapsed or absent,
+   * where that popover would hang from a hidden strip.
+   */
   function newWorktreeFromStageLauncher(): void {
     const path = agentLaunchPage.request.value?.target.workspacePath ?? residentLauncherPath();
     const scan = path === null ? undefined : repositoryScans.value.get(path);
-    requestWorktreeForm(
+    const repo =
       scan?.kind === "repository"
         ? (scan.worktrees.find((entry) => !entry.bare)?.path ?? path)
-        : path,
-    );
+        : path;
+    if (sidebar && railAvailable && !effectiveSidebarCollapsed()) requestWorktreeForm(repo);
+    else openStageForm("worktree", repo);
   }
 
   /** A press on a project header while the bar is up aims it at that project; false when none is up. */
@@ -2929,7 +2984,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             </div>
           ) : null}
           <div class="stage__tabs" ref={stagesRef} />
-          {stageBarModeNow() !== "none" && (
+          {stageFormOpen && stageForm.value !== null && (
+            <StageLauncherForm
+              form={stageForm.value}
+              recents={shownWorkspaces.value}
+              onLeave={leaveStageForm}
+              onResumeSession={(entry) => resumeSessionEntry(entry)}
+            />
+          )}
+          {!stageFormOpen && stageBarModeNow() !== "none" && (
             <StageLauncherBar
               mode={stageBarModeNow() as "resident" | "floating"}
               targetPath={
@@ -2962,10 +3025,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onPickProject={pickStageLauncherProject}
               onOpenFolder={() => void openFolderFromStageLauncher()}
               onNewWorktree={newWorktreeFromStageLauncher}
-              onClone={() => {
-                agentLaunchPage.close();
-                openCloneForm();
-              }}
+              onClone={openCloneForm}
               onRetry={() => {
                 if (agentLaunchPage.failure.value === null) stageLauncherNotice.value = null;
                 else void agentLaunchPage.retry();
@@ -3256,10 +3316,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               workspaceDropChecking.value = checking;
             }}
             onSelect={(path, paths) => {
-              for (const root of [...paths].reverse()) recordWorkspaceOpen(root);
-              selectDraftWorkspace(path);
               settingsOpen.value = false;
               usageOpen.value = false;
+              // `stageLauncher`: a dropped folder joins the rail and the launcher aims at it,
+              // instead of raising the Open board.
+              if (stageLauncherEnabled()) {
+                dropIntoStageLauncher(path, paths, showStageLauncherAt);
+                return;
+              }
+              for (const root of [...paths].reverse()) recordWorkspaceOpen(root);
+              selectDraftWorkspace(path);
               openTaskBoard();
             }}
           />

@@ -1,12 +1,21 @@
 import {
+  Clock01Icon,
+  Download01Icon,
   FolderAddIcon,
+  FolderLibraryIcon,
+  FolderOpenIcon,
   GitBranchIcon,
   PlusSignIcon,
   UserAdd01Icon,
 } from "@hugeicons/core-free-icons";
 import type { RefObject } from "preact";
 import { useRef } from "preact/hooks";
+import { available as cloneHostAvailable } from "../../host/clone-host";
+import { available as workspaceCreateAvailable } from "../../host/workspace-create-host";
 import { available as worktreeHostAvailable } from "../../host/worktree-host";
+import { openStageForm, type StageFormKind } from "../../launcher/stage-launcher-form-store";
+import { stageLauncherEnabled } from "../../launcher/stage-launcher-enabled";
+import { sessionsSupported } from "../../sessions/sessions-store";
 import type { RailStreamGroup } from "../agent-rail-model";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
@@ -36,6 +45,10 @@ export interface ProjectRailCreateProps {
  * shipped create row with the same targets (`rail-create.tsx`): the focused checkout, else the
  * active tab's workspace. The worktree form opens in a popover under the button once the
  * menu has closed (`onNewWorktree`); `ProjectRailControls` hosts it.
+ *
+ * With `stageLauncher` on it also holds what the Open board held (spec LCH-8), in the mock's
+ * order: Open folder…, Clone repository…, New worktree…, Create workspace…, and the session
+ * list. Clone, Create and the session list render in the stage (`openStageForm`).
  */
 export function ProjectRailCreate({
   stream,
@@ -54,6 +67,22 @@ export function ProjectRailCreate({
   const focused = focusedCheckout(stream);
   const agentPath = focused?.group.path ?? (focused === null ? activeTabWorkspace() : null);
   const openAgent = (): void => launchAgent(agentPath, actions, onOpenBoard);
+
+  const openWorktree = (): void => {
+    onNotice(null);
+    formDue.current = true;
+    chosen.current = true;
+  };
+  // The form takes the keyboard in the stage, so the menu does not hand focus back to "+".
+  const openInStage = (kind: StageFormKind): void => {
+    onNotice(null);
+    chosen.current = true;
+    openStageForm(kind);
+  };
+  const openFolder = (): void => {
+    onNotice(null);
+    void addFolderToRail().then(onNotice);
+  };
 
   return (
     <div className="relative shrink-0">
@@ -85,27 +114,44 @@ export function ProjectRailCreate({
           <MenuEntry icon={UserAdd01Icon} disabled={disabled} onClick={openAgent}>
             New agent
           </MenuEntry>
-          {worktreeHostAvailable ? (
-            <MenuEntry
-              icon={GitBranchIcon}
-              onClick={() => {
-                onNotice(null);
-                formDue.current = true;
-                chosen.current = true;
-              }}
-            >
-              New worktree
-            </MenuEntry>
-          ) : null}
-          <MenuEntry
-            icon={FolderAddIcon}
-            onClick={() => {
-              onNotice(null);
-              void addFolderToRail().then(onNotice);
-            }}
-          >
-            Open folder
-          </MenuEntry>
+          {stageLauncherEnabled() ? (
+            <>
+              <MenuEntry icon={FolderOpenIcon} onClick={openFolder}>
+                Open folder…
+              </MenuEntry>
+              {cloneHostAvailable ? (
+                <MenuEntry icon={Download01Icon} onClick={() => openInStage("clone")}>
+                  Clone repository…
+                </MenuEntry>
+              ) : null}
+              {worktreeHostAvailable ? (
+                <MenuEntry icon={GitBranchIcon} onClick={openWorktree}>
+                  New worktree…
+                </MenuEntry>
+              ) : null}
+              {workspaceCreateAvailable ? (
+                <MenuEntry icon={FolderLibraryIcon} onClick={() => openInStage("create")}>
+                  Create workspace…
+                </MenuEntry>
+              ) : null}
+              {sessionsSupported.value ? (
+                <MenuEntry icon={Clock01Icon} onClick={() => openInStage("sessions")}>
+                  Resume a session…
+                </MenuEntry>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {worktreeHostAvailable ? (
+                <MenuEntry icon={GitBranchIcon} onClick={openWorktree}>
+                  New worktree
+                </MenuEntry>
+              ) : null}
+              <MenuEntry icon={FolderAddIcon} onClick={openFolder}>
+                Open folder
+              </MenuEntry>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

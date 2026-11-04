@@ -22,7 +22,7 @@ import {
 } from "../repositories/repository-model";
 import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
-import { workspacesData } from "../open-board/workspaces-store";
+import { shownWorkspaces } from "../open-board/workspaces-store";
 
 /**
  * The repository → worktree navigation rail.
@@ -151,7 +151,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
       collapsed: collapsedRepositories.value,
       archivedPaths: new Set(Object.keys(sessionArchive.value)),
     }),
-    workspacesData.value.recents.map((recent) => recent.path),
+    shownWorkspaces.value.map((recent) => recent.path),
   );
   const lastSelectedTabKeys = useSignal<ReadonlyMap<string, number>>(new Map());
   const selectedWorktree = groups
