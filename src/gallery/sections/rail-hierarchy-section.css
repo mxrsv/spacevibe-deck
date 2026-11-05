@@ -7,13 +7,14 @@
 @source "./rail-hierarchy-marks.tsx";
 
 .rh-compare {
-  --rh-slot: 12px;
-  --rh-glyph: 8px;
+  --rh-slot: 10px;
+  --rh-glyph: 7px;
   --rh-row: 32px;
   --rh-text: 11px;
   --rh-meta: 10px;
-  /* Row pad 4 + mark 12 + gap 2 + logo 16 + gap 2 + 1: where an agent's text starts. */
-  --rh-text-x: 37px;
+  /* Row pad 8 + mark 10 + gap 2 + logo 16 + gap 2 + 1: where an agent's text starts. The row's
+     pad is the header's, so the mark's left edge sits under the workspace logo's. */
+  --rh-text-x: 39px;
   --rh-indent: 14px;
   display: grid;
   grid-template-columns: repeat(2, 17rem);
@@ -50,15 +51,15 @@
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: var(--rh-slot, 12px);
-  height: var(--rh-slot, 12px);
+  width: var(--rh-slot, 10px);
+  height: var(--rh-slot, 10px);
   color: var(--status-working);
 }
 
 .rh-mark::before {
   content: "";
-  width: var(--rh-glyph, 8px);
-  height: var(--rh-glyph, 8px);
+  width: var(--rh-glyph, 7px);
+  height: var(--rh-glyph, 7px);
   background: var(--rh-ink);
 }
 
@@ -97,8 +98,8 @@
   --rh-ink: var(--status-unread);
 }
 .rh-mark[data-state="unread"]::before {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
 }
 
@@ -122,12 +123,12 @@
 
 /* Ended: a small square. Idle: a short dash, the quietest ink. */
 .rh-mark[data-state="ended"]::before {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: var(--radius-flat);
 }
 .rh-mark[data-state="idle"]::before {
-  width: 6px;
+  width: 5px;
   height: 1.5px;
   border-radius: 1px;
 }
@@ -232,7 +233,7 @@
   gap: 2px;
   width: 100%;
   height: var(--rh-row, 32px);
-  padding: 0 var(--space-pad-row) 0 4px;
+  padding: 0 var(--space-pad-row);
   border-radius: var(--radius-control);
   text-align: left;
 }
