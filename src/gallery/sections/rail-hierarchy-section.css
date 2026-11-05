@@ -442,3 +442,28 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+
+/* The status-icon toggle (owner, 2026-11-06): the proposal without its marks. The text still
+   starts where the workspace name starts: row pad 8 + logo 16 + what is left. */
+.rh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.rh-toggle__note {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.rh-compare[data-marks="off"] {
+  --rh-text-x: 32px;
+}
+.rh-compare[data-marks="off"] .rh-mark,
+.rh-compare[data-marks="off"] .rh-circles,
+.rh-compare[data-marks="off"] .rh-head .rh-logo-wrap::after {
+  display: none;
+}
+.rh-compare[data-marks="off"] .rh-row__main {
+  /* Row gap 2 is left once the mark is gone. */
+  margin-left: calc(var(--rh-text-x) - 8px - 16px - 2px);
+}

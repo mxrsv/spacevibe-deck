@@ -1,4 +1,6 @@
+import { useState } from "preact/hooks";
 import { AgentStateMark } from "../../ui/blocks/agent-state-mark";
+import { Button } from "../../ui/controls/button";
 import { ProjectRailHeader } from "../../ui/project-rail/project-rail-header";
 import type { RowCommands } from "../../ui/project-rail/project-rail-commands";
 import type { ProjectCommands } from "../../ui/project-rail/project-rail-project-commands";
@@ -165,6 +167,8 @@ function MarkSheet() {
 }
 
 export function RailHierarchySection() {
+  // The owner's A/B: the proposal with and without its status icons (2026-11-06).
+  const [marks, setMarks] = useState(true);
   return (
     <>
       <SectionHead
@@ -175,8 +179,22 @@ export function RailHierarchySection() {
         name="rail"
         note="9 workspaces, 34 agents, all 7 statuses; row 44→32, agent text 13→11, logo box 28→20, mark slot 14→12"
       >
+        <div className="rh-toggle ui-preset">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={marks}
+            onClick={() => setMarks((on) => !on)}
+          >
+            Status icons: {marks ? "on" : "off"}
+          </Button>
+          <span className="rh-toggle__note">
+            Off hides every status icon in the proposal (rows and the folded header's circles); the
+            title weight, tint, branch colour and shimmer stay.
+          </span>
+        </div>
         <ThemePair ground="--sidebar-bg">
-          <div className="rh-compare ui-preset">
+          <div className="rh-compare ui-preset" data-marks={marks ? "on" : "off"}>
             <div className="rh-column">
               <span className="rh-column__title">before (real components)</span>
               <div className="rh-frame">
