@@ -292,19 +292,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* The branch takes its status mark's ink (owner, 2026-11-06). The `--ink-*` steps keep it legible
+/* The whole meta line (branch icon, branch, age) takes its status mark's ink (owner, 2026-11-06). The `--ink-*` steps keep it legible
    on both themes; working wears the mark's own primary ink; ended and idle stay faint. */
-.rh-row__branch[data-status="needs-input"],
-.rh-row__branch[data-status="unread"] {
+.rh-row__meta[data-status="needs-input"],
+.rh-row__meta[data-status="unread"] {
   color: var(--ink-need);
 }
-.rh-row__branch[data-status="failed"] {
+.rh-row__meta[data-status="failed"] {
   color: var(--ink-fail);
 }
-.rh-row__branch[data-status="done"] {
+.rh-row__meta[data-status="done"] {
   color: var(--ink-ok);
 }
-.rh-row__branch[data-status="working"] {
+.rh-row__meta[data-status="working"] {
   color: var(--status-working);
 }
 .rh-row__age {
