@@ -255,3 +255,12 @@ Approved after PR #98 shipped tokens only. This ledger is binding: the app's com
   - **Size:** 12 in a 20 box.
   - **Accessible name and tooltip:** "Modified", "Added" or "Deleted".
   - **Folders:** a folder holding changes keeps its single dot.
+- **P12–P19 (owner, 2026-11-05):**
+  - **P12:** tab strip as the mock draws it; rewrite DL-35.3.
+  - **P13:** rail + menu = LCH-8's four plus Resume a session….
+  - **P14:** the Changes list pane sits beside the cards.
+  - **P15:** the persist-error bar has no Retry and keeps Dismiss.
+  - **P16:** narrow widths shrink and truncate with an ellipsis, never wrap.
+  - **P17:** session titles are re-checked with a real agent at the eye review.
+  - **P18:** Open-in-app shows the target app's own icon.
+  - **P19:** the release switches flip in a separate cut-over after eye approval.

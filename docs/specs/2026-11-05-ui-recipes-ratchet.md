@@ -435,22 +435,17 @@ difference named. An item marked **open** waits for the owner and is listed unde
 
 Each item blocks only its own surface's commit.
 
-1. **Tab strip (MPR-4):** draw it as the mock does and rewrite DL-35.3, or keep the rail as the tab
-   list and remove the strip from the mock.
-2. **Rail + menu contents (MPR-3):** the mock's three items, or LCH-8's four plus Resume a
-   session….
-3. **Changes list pane (MPR-5):** under the card stack with the footer (window tab) or beside it
-   (dock tab).
-4. **Files status letters (MPR-5):** resolved by P11 (icons, no letters).
-5. **Persist-error Retry (MPR-8):** add a retry-save action, or draw the bar without Retry.
-6. **Narrow widths (MPR-2, MPR-4):** the launcher and stage below the mock's width (LAU-10,
-   STA-06); the mock draws neither.
-7. **Session titles (MPR-3):** re-check WIN-09 with a real agent's session in the P8 capture.
-8. **Open-in-app glyph (MPR-4):** the mock's generic external icon may be a stand-in for the app's
-   own icon, which the app shows today (WIN-04).
-9. **Release switch (RCP-30):** DECISIONS.md notes, undecided, that the release switches keep the
-   new surfaces off in packaged builds, so a release looks like the mock only after LCH-10's
-   cut-over.
+All resolved by the owner on 2026-11-05 (P12–P19):
+
+1. **Tab strip (MPR-4), P12:** drawn as the mock does; DL-35.3 is rewritten.
+2. **Rail + menu (MPR-3), P13:** LCH-8's four items plus Resume a session…; the mock's three are the minimum.
+3. **Changes list pane (MPR-5), P14:** beside the card stack, as the mock's dock tab draws it.
+4. **Files status (MPR-5), P11:** icons, no letters.
+5. **Persist-error Retry (MPR-8), P15:** no Retry; the bar keeps Dismiss.
+6. **Narrow widths (MPR-2, MPR-4), P16:** the launcher and stage shrink, and text truncates with an ellipsis; nothing wraps.
+7. **Session titles (MPR-3), P17:** re-checked with a real agent's session at the owner's eye review, with no change before that.
+8. **Open-in-app glyph (MPR-4), P18:** the target app's own icon; the mock's generic icon is a stand-in.
+9. **Release switch (RCP-30), P19:** not flipped in this track. The cut-over is its own step after the owner's eye approval.
 
 ### Ratchet
 
@@ -646,6 +641,14 @@ a requirement and an acceptance check. "A1" to "A6" are the owner's six answers 
 | P7 | Superseded by P10 | MPR-2 | AC-9 |
 | P10 | `--primary` is one ivory in every theme; a theme changes only background surfaces | RCP-30a, MPR-2, MPR-6 | AC-9 |
 | P11 | Change status shown as icons (dot, +, −), no M/A/D letters, in Changes and the Files tree | MPR-5 | AC-9 |
+| P12 | Tab strip drawn as the mock; DL-35.3 rewritten | MPR-4 | AC-9 |
+| P13 | Rail + menu: LCH-8's four plus Resume a session… | MPR-3 | AC-9 |
+| P14 | Changes list pane beside the cards | MPR-5 | AC-9 |
+| P15 | Persist-error bar without Retry | MPR-8 | AC-9 |
+| P16 | Narrow widths shrink and truncate, never wrap | MPR-2, MPR-4 | AC-9 |
+| P17 | Session titles re-checked with a real agent at eye review | MPR-3 | AC-9 |
+| P18 | Open-in-app shows the target app's icon | MPR-4 | AC-9 |
+| P19 | Release switches flip in a separate cut-over | RCP-30 | AC-9 |
 | P8 | Capture the composed real app with an isolated userData run | MPR-0 | AC-7, AC-16 |
 | P9 | Command bar controls 32 inside a 40 frame | MPR-2, RCP-3 | AC-9 |
 | Noted | Release switches keep the new surfaces off in packaged builds | RCP-30, open item 9 | AC-17 |
