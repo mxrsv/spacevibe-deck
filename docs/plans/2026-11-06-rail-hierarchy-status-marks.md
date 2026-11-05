@@ -77,6 +77,14 @@ call): the pre-push hook runs the tests beside the changed files, lint, `scripts
 job unless asked. Report what actually ran. E2E gate: skipped, this is styling and a refactor of an
 existing surface, and the owner's no-Playwright-app rule stands.
 
+Known red at the baseline (2026-11-06, also red on local `main` without the mock; the owner allowed
+the first push of this branch with `--no-verify` for that reason): `scripts/ui-preset-boundary.test.ts`
+(chrome markup names a utility the preset also generates), `scripts/ui-raw-controls.test.ts`
+(`src/terminal/pane-header-action-buttons.tsx`, 2 raw buttons), `src/styles/composition-rules.test.ts`
+(`src/terminal/pane-agent-header.css`, `gap: 1px`). List them under Evidence as pre-existing and do
+not chase them; a build task that touches those files (T2 touches the pane header) must not add to
+them.
+
 Measurable checks per requirement are in the spec's traceability table. In the running app measure
 with the same script shape used on the mock: computed row height, font sizes and weights, the x of
 the workspace name and of the title (equal), and the absence of any `.state-mark` in a rail row.
