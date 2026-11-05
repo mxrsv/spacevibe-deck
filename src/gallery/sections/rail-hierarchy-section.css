@@ -225,7 +225,8 @@
 .rh-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  /* Mark to logo is 2; the title's own margin makes logo to text 3. */
+  gap: 2px;
   width: 100%;
   height: var(--rh-row, 32px);
   padding: 0 var(--space-pad-row) 0 4px;
@@ -243,8 +244,7 @@
 }
 
 .rh-row__main {
-  /* Row gap 4 less 1: the logo to the text is 3. */
-  margin-left: -1px;
+  margin-left: 1px;
   display: flex;
   flex: 1;
   flex-direction: column;
