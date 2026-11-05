@@ -1,8 +1,9 @@
 import { ArrowDown01Icon, GitBranchIcon } from "@hugeicons/core-free-icons";
+import { Folder } from "@phosphor-icons/react";
 import { cn } from "@/lib/cn";
 import { WorkspaceIcon } from "../../ui/workspace-icon";
 import { AgentGlyph } from "../../ui/controls/agent-glyph";
-import { DeckIcon, GLYPH_INLINE } from "../../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE, type DeckIconSize } from "../../ui/controls/deck-icon";
 import { STATE_NEEDS_YOU, stateClasses } from "../../ui/blocks/recipe-classes";
 import type { MockAgent, MockLogo, MockWorkspace } from "./rail-hierarchy-data";
 import {
@@ -12,6 +13,9 @@ import {
   type CircleVariant,
 } from "./rail-hierarchy-marks";
 import "./rail-hierarchy-section.css";
+
+/** The fallback folder inside the logo's 16 box: 13, the smallest step a Phosphor icon draws at, where the shipped rail draws 15 (owner, 2026-11-06). */
+const FOLDER_GLYPH: DeckIconSize = 13;
 
 /** The words a screen reader gets in place of the mark (RH-16). */
 const STATUS_WORDS: Readonly<Record<string, string>> = {
@@ -45,6 +49,7 @@ function LogoBox({ logo, badge }: { readonly logo: MockLogo; readonly badge: num
           path={null}
           marks
           size={16}
+          fallback={<DeckIcon icon={Folder} size={FOLDER_GLYPH} filled />}
           className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted)"
         />
       ) : (
