@@ -447,9 +447,14 @@
    starts where the workspace name starts: row pad 8 + logo 16 + what is left. */
 .rh-toggle {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+.rh-toggle__group {
+  display: inline-flex;
+  gap: 4px;
 }
 .rh-toggle__note {
   font-size: 12px;

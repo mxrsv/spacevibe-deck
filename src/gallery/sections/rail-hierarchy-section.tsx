@@ -13,7 +13,7 @@ import {
   type RailStatus,
 } from "../../ui/rail-view-model";
 import { SectionHead, Specimen } from "../specimen";
-import { AfterWorkspace } from "./rail-hierarchy-after";
+import { AfterWorkspace, type NoGitMeta } from "./rail-hierarchy-after";
 import { MOCK_WORKSPACES, type MockAgent, type MockWorkspace } from "./rail-hierarchy-data";
 import { HierarchyMark } from "./rail-hierarchy-marks";
 import { ThemePair } from "./recipe-states-kit";
@@ -65,6 +65,8 @@ function realItem(workspace: MockWorkspace, agent: MockAgent, index: number): Ra
       : BASE.entry;
   return {
     ...BASE,
+    // A folder git does not know: the real row falls back to the folder icon and name.
+    checkout: workspace.git === false ? { ...BASE.checkout, labelled: false } : BASE.checkout,
     id: `pane:${workspace.key}-${index}`,
     projectKey: workspace.key,
     project: workspace.name,
@@ -166,9 +168,17 @@ function MarkSheet() {
   );
 }
 
+const NO_GIT_OPTIONS: readonly { readonly value: NoGitMeta; readonly label: string }[] = [
+  { value: "folder", label: "No git: folder name" },
+  { value: "agent", label: "No git: agent name" },
+  { value: "none", label: "No git: date only" },
+];
+
 export function RailHierarchySection() {
   // The owner's A/B: the proposal with and without its status icons (2026-11-06).
   const [marks, setMarks] = useState(true);
+  // What a non-git workspace's meta line reads (the owner's open question, 2026-11-06).
+  const [noGit, setNoGit] = useState<NoGitMeta>("folder");
   return (
     <>
       <SectionHead
@@ -188,6 +198,19 @@ export function RailHierarchySection() {
           >
             Status icons: {marks ? "on" : "off"}
           </Button>
+          <span className="rh-toggle__group" role="group" aria-label="No-git meta line">
+            {NO_GIT_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                aria-pressed={noGit === option.value}
+                onClick={() => setNoGit(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </span>
           <span className="rh-toggle__note">
             Off hides every status icon in the proposal (rows and the folded header's circles); the
             title weight, tint, branch colour and shimmer stay.
@@ -207,7 +230,7 @@ export function RailHierarchySection() {
               <span className="rh-column__title">after (proposal)</span>
               <div className="rh-frame">
                 {MOCK_WORKSPACES.map((workspace) => (
-                  <AfterWorkspace key={workspace.key} workspace={workspace} />
+                  <AfterWorkspace key={workspace.key} workspace={workspace} noGit={noGit} />
                 ))}
               </div>
             </div>

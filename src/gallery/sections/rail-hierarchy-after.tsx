@@ -1,7 +1,8 @@
-import { ArrowDown01Icon, GitBranchIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, Folder01Icon, GitBranchIcon } from "@hugeicons/core-free-icons";
 import { Folder } from "@phosphor-icons/react";
 import { cn } from "@/lib/cn";
 import { WorkspaceIcon } from "../../ui/workspace-icon";
+import { displayAgent } from "../../ui/agent-rail-card-model";
 import { AgentGlyph } from "../../ui/controls/agent-glyph";
 import { DeckIcon, GLYPH_INLINE, type DeckIconSize } from "../../ui/controls/deck-icon";
 import { STATE_NEEDS_YOU, stateClasses } from "../../ui/blocks/recipe-classes";
@@ -11,6 +12,9 @@ import "./rail-hierarchy-section.css";
 
 /** The fallback folder inside the logo's 16 box: 13, the smallest step a Phosphor icon draws at, where the shipped rail draws 15 (owner, 2026-11-06). */
 const FOLDER_GLYPH: DeckIconSize = 13;
+
+/** What the meta line reads where git has no branch to give (the option under review). */
+export type NoGitMeta = "folder" | "agent" | "none";
 
 /** The words a screen reader gets in place of the mark (RH-16). */
 const STATUS_WORDS: Readonly<Record<string, string>> = {
@@ -54,7 +58,15 @@ function LogoBox({ logo, badge }: { readonly logo: MockLogo; readonly badge: num
  * an 11px title over an 11px faint meta line. Unread and needs-you titles are 600; only
  * needs-you is tinted.
  */
-export function AfterRow({ agent }: { readonly agent: MockAgent }) {
+export function AfterRow({
+  agent,
+  git = true,
+  noGit = "folder",
+}: {
+  readonly agent: MockAgent;
+  readonly git?: boolean;
+  readonly noGit?: NoGitMeta;
+}) {
   const loud = agent.status === "needs-input" || agent.status === "unread";
   return (
     <div className="rh-row-wrap">
@@ -75,8 +87,20 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
         <span className="rh-row__main">
           <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
           <span className="rh-row__meta" data-status={agent.status}>
-            <DeckIcon icon={GitBranchIcon} size={GLYPH_INLINE} class="shrink-0" />
-            <span className="rh-row__branch">{agent.branch}</span>
+            {git || noGit === "folder" ? (
+              <DeckIcon
+                icon={git ? GitBranchIcon : Folder01Icon}
+                size={GLYPH_INLINE}
+                class="shrink-0"
+              />
+            ) : null}
+            <span className="rh-row__branch">
+              {git || noGit === "folder"
+                ? agent.branch
+                : noGit === "agent"
+                  ? displayAgent(agent.agent)
+                  : null}
+            </span>
             <span className="rh-row__age">{agent.age}</span>
           </span>
         </span>
@@ -90,7 +114,13 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
  * One workspace (RH-7, RH-9, RH-10): a sticky header in muted ink, then its rows indented behind
  * a guide line. Folded, the header carries one coloured circle per unread / pending status.
  */
-export function AfterWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
+export function AfterWorkspace({
+  workspace,
+  noGit = "folder",
+}: {
+  readonly workspace: MockWorkspace;
+  readonly noGit?: NoGitMeta;
+}) {
   const { agents, folded } = workspace;
   // The count is for a folded workspace only: an open one lists its agents.
   const badge = folded ? agents.length : 0;
@@ -110,7 +140,7 @@ export function AfterWorkspace({ workspace }: { readonly workspace: MockWorkspac
       {folded || agents.length === 0 ? null : (
         <div className="rh-rows">
           {agents.map((agent) => (
-            <AfterRow key={agent.title} agent={agent} />
+            <AfterRow key={agent.title} agent={agent} git={workspace.git !== false} noGit={noGit} />
           ))}
         </div>
       )}

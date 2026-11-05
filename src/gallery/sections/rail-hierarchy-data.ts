@@ -1,7 +1,7 @@
 import type { RailStatus } from "../../ui/rail-view-model";
 
 /**
- * Worst-case data for the rail hierarchy mock (ledger RH-18): 9 workspaces, 34 agents, every
+ * Worst-case data for the rail hierarchy mock (ledger RH-18): 10 workspaces, 37 agents, every
  * status present, one workspace with six live agents, a folded one holding all four attention
  * kinds, a long name, a one-word name, a long Vietnamese title, a long branch, an empty one.
  * `src/gallery` only: nothing here ships.
@@ -26,6 +26,8 @@ export interface MockWorkspace {
   readonly name: string;
   readonly logo: MockLogo;
   readonly folded: boolean;
+  /** False for a folder git does not know: its rows have no branch (default true). */
+  readonly git?: boolean;
   readonly agents: readonly MockAgent[];
 }
 
@@ -105,6 +107,18 @@ const BASE_WORKSPACES: readonly MockWorkspace[] = [
     agents: [
       a("Tóm tắt các PR đang mở", "unread", "11m", "main"),
       a("Dọn thư mục scratch", "done", "5h", "main"),
+    ],
+  },
+  {
+    key: "notes",
+    name: "notes",
+    logo: "folder",
+    folded: false,
+    git: false,
+    agents: [
+      a("Summarise the meeting recordings", "working", "now", "notes"),
+      a("Draft the weekly update", "unread", "40m", "notes"),
+      a("Tidy the reading list", "done", "3h", "notes"),
     ],
   },
   { key: "active", name: "spacevibe-active", logo: "folder", folded: false, agents: [] },
