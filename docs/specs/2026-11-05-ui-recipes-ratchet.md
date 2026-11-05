@@ -382,14 +382,15 @@ difference named. An item marked **open** waits for the owner and is listed unde
     icon (`dock.js:93-96`, `dock.js:183-188`, `dock.js:345-355`).
   - **Files:** the band with the search field, refresh and New file; the tree with its folder dots;
     a file tab with the breadcrumb band, Open-in split, Wrap lines and tree toggle, and the
-    external-change bar (`dock.js:190-258`). A preview tab is italic. Status letters in the Files
-    tree: the window tab prints M, A, D in the Changes list (`window.html:125`), the dock tab's
-    Files tree prints none; **open**.
+    external-change bar (`dock.js:190-258`). A preview tab is italic. No status letter anywhere, in the Changes list or the Files tree (P11).
+    - **File marks:** a modified file ends in a small accent dot, an added file in a green `+` glyph, and a deleted file in a red `−` glyph with its name struck through. Each glyph is 12 in a 20 box.
+    - **Accessible name and tooltip:** "Modified", "Added" or "Deleted".
+    - **Folders:** a folder holding changes keeps its single dot.
   - **Recipes:** RCP-7 (24 rows, 34 strip, 40 band), RCP-21 (panel footer), RCP-22 (cards and
     diff), RCP-4 (icon boxes).
   - **Closes:** WIN-07 and DOC-01 (no Files icon), WIN-08 and DOC-02 (no list/tree pane), DOC-03
     (Usage plain line), DOC-04 (History plain line; rows need recorded sessions, measured in P8),
-    DOC-05 (Files tree, status letters **open**), DOC-06 (file tab; the editor stays out of scope),
+    DOC-05 (Files tree, status icons by P11), DOC-06 (file tab; the editor stays out of scope),
     DOC-08 (no panel footer), DOC-09 (24 box in a 40 row).
 - **MPR-6 Overlays** (`overlays.html`, `overlays.js`, `overlays-forms.js`, `overlays-modals.js`).
   - **Menus:** the rail row menu and its New here submenu (`overlays.js:40-61`), the checkout menu
@@ -440,7 +441,7 @@ Each item blocks only its own surface's commit.
    session….
 3. **Changes list pane (MPR-5):** under the card stack with the footer (window tab) or beside it
    (dock tab).
-4. **Files status letters (MPR-5):** whether the Files tree prints M, A, D.
+4. **Files status letters (MPR-5):** resolved by P11 (icons, no letters).
 5. **Persist-error Retry (MPR-8):** add a retry-save action, or draw the bar without Retry.
 6. **Narrow widths (MPR-2, MPR-4):** the launcher and stage below the mock's width (LAU-10,
    STA-06); the mock draws neither.
@@ -644,6 +645,7 @@ a requirement and an acceptance check. "A1" to "A6" are the owner's six answers 
 | P6 | Launcher ⇧ only with a tooltip; + and split icons on the destination | MPR-2 | AC-9 |
 | P7 | Superseded by P10 | MPR-2 | AC-9 |
 | P10 | `--primary` is one ivory in every theme; a theme changes only background surfaces | RCP-30a, MPR-2, MPR-6 | AC-9 |
+| P11 | Change status shown as icons (dot, +, −), no M/A/D letters, in Changes and the Files tree | MPR-5 | AC-9 |
 | P8 | Capture the composed real app with an isolated userData run | MPR-0 | AC-7, AC-16 |
 | P9 | Command bar controls 32 inside a 40 frame | MPR-2, RCP-3 | AC-9 |
 | Noted | Release switches keep the new surfaces off in packaged builds | RCP-30, open item 9 | AC-17 |

@@ -250,3 +250,8 @@ Approved after PR #98 shipped tokens only. This ledger is binding: the app's com
   - mock approved by eye 2026-11-05;
   - the six pending DL items approved through the cloud prompt.
 - **P10 (owner, 2026-11-05, supersedes P7):** `--primary` is one ivory in every theme, light included. Switching themes only changes some background surfaces. Accent, status and focus colours stay shared.
+- **P11 (owner, 2026-11-05):** change status is shown as icons, never M/A/D letters, in Changes and the Files tree.
+  - **Glyphs:** modified = accent dot, added = green `+`, deleted = red `−` with the name struck through.
+  - **Size:** 12 in a 20 box.
+  - **Accessible name and tooltip:** "Modified", "Added" or "Deleted".
+  - **Folders:** a folder holding changes keeps its single dot.
