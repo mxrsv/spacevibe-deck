@@ -6,12 +6,7 @@ import { AgentGlyph } from "../../ui/controls/agent-glyph";
 import { DeckIcon, GLYPH_INLINE, type DeckIconSize } from "../../ui/controls/deck-icon";
 import { STATE_NEEDS_YOU, stateClasses } from "../../ui/blocks/recipe-classes";
 import type { MockAgent, MockLogo, MockWorkspace } from "./rail-hierarchy-data";
-import {
-  CountBadge,
-  FoldedCircles,
-  HierarchyMark,
-  type CircleVariant,
-} from "./rail-hierarchy-marks";
+import { CountBadge, FoldedCircles, HierarchyMark } from "./rail-hierarchy-marks";
 import "./rail-hierarchy-section.css";
 
 /** The fallback folder inside the logo's 16 box: 13, the smallest step a Phosphor icon draws at, where the shipped rail draws 15 (owner, 2026-11-06). */
@@ -27,14 +22,6 @@ const STATUS_WORDS: Readonly<Record<string, string>> = {
   ended: "ended",
   idle: "idle",
 };
-
-/** Where a header puts what it knows: the circle style and where the agent count goes. */
-export interface HeaderStyle {
-  readonly circles: CircleVariant;
-  /** `badge`: on the logo's corner; `end`: a plain number at the header's end. */
-  readonly total: "badge" | "end";
-}
-export const DEFAULT_HEADER: HeaderStyle = { circles: "count", total: "badge" };
 
 /**
  * The workspace's logo in its fixed 16 box (RL-10). A workspace without one gets the real
@@ -103,16 +90,10 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
  * One workspace (RH-7, RH-9, RH-10): a sticky header in muted ink, then its rows indented behind
  * a guide line. Folded, the header carries one coloured circle per unread / pending status.
  */
-export function AfterWorkspace({
-  workspace,
-  header = DEFAULT_HEADER,
-}: {
-  readonly workspace: MockWorkspace;
-  readonly header?: HeaderStyle;
-}) {
+export function AfterWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
   const { agents, folded } = workspace;
   // The count is for a folded workspace only: an open one lists its agents.
-  const badge = header.total === "badge" && folded ? agents.length : 0;
+  const badge = folded ? agents.length : 0;
   return (
     <section aria-label={workspace.name} className="rh-ws">
       {/* raw-control: a whole-row disclosure target, as the shipped header */}
@@ -124,12 +105,7 @@ export function AfterWorkspace({
           size={GLYPH_INLINE}
           class={cn("shrink-0 text-(--text-faint)", folded && "-rotate-90")}
         />
-        <span className="rh-head__end">
-          {folded ? <FoldedCircles agents={agents} variant={header.circles} /> : null}
-          {header.total === "end" && agents.length > 0 ? (
-            <span className="rh-head__count">{agents.length}</span>
-          ) : null}
-        </span>
+        <span className="rh-head__end">{folded ? <FoldedCircles agents={agents} /> : null}</span>
       </button>
       {folded || agents.length === 0 ? null : (
         <div className="rh-rows">

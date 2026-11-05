@@ -30,17 +30,8 @@ const FOLDED_KINDS: readonly { readonly status: RailStatus; readonly words: stri
   { status: "unread", words: "unread" },
 ];
 
-/** `count`: the number sits inside the circle; `plain`: a bare coloured circle. */
-export type CircleVariant = "count" | "plain";
-
 /** One filled circle per status present, in that status's own colour. */
-export function FoldedCircles({
-  agents,
-  variant,
-}: {
-  readonly agents: readonly MockAgent[];
-  readonly variant: CircleVariant;
-}) {
+export function FoldedCircles({ agents }: { readonly agents: readonly MockAgent[] }) {
   const present = FOLDED_KINDS.map((kind) => ({
     ...kind,
     count: agents.filter((agent) => agent.status === kind.status).length,
@@ -53,13 +44,8 @@ export function FoldedCircles({
       className="rh-circles"
     >
       {present.map((kind) => (
-        <span
-          key={kind.status}
-          data-state={kind.status}
-          data-variant={variant}
-          className="rh-circle"
-        >
-          {variant === "count" ? kind.count : null}
+        <span key={kind.status} data-state={kind.status} className="rh-circle">
+          {kind.count}
         </span>
       ))}
     </span>
