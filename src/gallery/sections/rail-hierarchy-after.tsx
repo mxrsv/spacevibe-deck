@@ -15,9 +15,11 @@ const FOLDER_GLYPH: DeckIconSize = 13;
 
 /** The word a no-git workspace's meta line reads (owner's proposal, 2026-11-06). */
 const NO_GIT_LABEL = "no git";
+/** The owner's second word for the same state. */
+const FOLDER_ONLY_LABEL = "folder only";
 
 /** What the meta line reads where git has no branch to give (the option under review). */
-export type NoGitMeta = "label" | "icon" | "folder" | "agent" | "none";
+export type NoGitMeta = "label" | "folder-only" | "folder" | "agent" | "none";
 
 /** The words a screen reader gets in place of the mark (RH-16). */
 const STATUS_WORDS: Readonly<Record<string, string>> = {
@@ -90,7 +92,7 @@ export function AfterRow({
         <span className="rh-row__main">
           <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
           <span className="rh-row__meta" data-status={agent.status}>
-            {git || noGit === "folder" || noGit === "label" || noGit === "icon" ? (
+            {git || noGit === "folder" || noGit === "label" || noGit === "folder-only" ? (
               <DeckIcon
                 icon={git ? GitBranchIcon : Folder01Icon}
                 size={GLYPH_INLINE}
@@ -102,11 +104,13 @@ export function AfterRow({
                 ? agent.branch
                 : noGit === "label"
                   ? NO_GIT_LABEL
-                  : noGit === "folder"
-                    ? agent.branch
-                    : noGit === "agent"
-                      ? displayAgent(agent.agent)
-                      : null}
+                  : noGit === "folder-only"
+                    ? FOLDER_ONLY_LABEL
+                    : noGit === "folder"
+                      ? agent.branch
+                      : noGit === "agent"
+                        ? displayAgent(agent.agent)
+                        : null}
             </span>
             {agent.status === "working" ? (
               // A running agent has no time in state worth reading: three dots stand in.

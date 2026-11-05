@@ -170,7 +170,7 @@ function MarkSheet() {
 
 const NO_GIT_OPTIONS: readonly { readonly value: NoGitMeta; readonly label: string }[] = [
   { value: "label", label: 'No git: "no git"' },
-  { value: "icon", label: "No git: folder icon only" },
+  { value: "folder-only", label: 'No git: "folder only"' },
   { value: "folder", label: "No git: folder name" },
   { value: "agent", label: "No git: agent name" },
   { value: "none", label: "No git: date only" },
