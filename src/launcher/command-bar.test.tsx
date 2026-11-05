@@ -68,6 +68,16 @@ async function type(field: HTMLInputElement, value: string): Promise<void> {
   await settle();
 }
 
+/** A double-click: the two clicks a browser sends, then the dblclick, with a render between. */
+async function doubleClick(target: HTMLElement, shiftKey = false): Promise<void> {
+  for (const type of ["click", "click", "dblclick"]) {
+    await act(async () => {
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, shiftKey }));
+    });
+    await settle();
+  }
+}
+
 /** A click with the shift key held, which `click()` cannot send. */
 async function shiftClick(target: HTMLElement): Promise<void> {
   await act(async () => {
@@ -130,7 +140,7 @@ describe("CommandBar picking", () => {
     await press(document.body, { key: "Tab" });
     chip("Claude Code").focus();
     await waitUntil(() => tip() !== undefined);
-    expect(tip()).toBe("claude");
+    expect(tip()).toBe("claudeDouble-click to run");
     await view.unmount();
   });
 
@@ -149,6 +159,26 @@ describe("CommandBar run", () => {
     await shiftClick(chip("Claude Code"));
     await click(runButton());
     expect(p.onRun).toHaveBeenCalledWith(["codex", "claude"], {});
+    await view.unmount();
+  });
+
+  it("a double-click runs that agent alone, even with a group picked", async () => {
+    const p = props();
+    const view = await mount(<CommandBar {...p} />);
+    await shiftClick(chip("Amp"));
+    expect(pressed()).toEqual(["Codex", "Amp"]);
+    await doubleClick(chip("Claude Code"));
+    expect(p.onRun).toHaveBeenCalledTimes(1);
+    expect(p.onRun).toHaveBeenCalledWith(["claude"], {});
+    await view.unmount();
+  });
+
+  it("a shift double-click toggles twice and runs nothing", async () => {
+    const p = props();
+    const view = await mount(<CommandBar {...p} />);
+    await doubleClick(chip("Amp"), true);
+    expect(p.onRun).not.toHaveBeenCalled();
+    expect(pressed()).toEqual(["Codex"]);
     await view.unmount();
   });
 

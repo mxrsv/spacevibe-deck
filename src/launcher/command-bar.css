@@ -157,6 +157,15 @@
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: var(--type-meta);
 }
+.command-bar__tip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.command-bar__tip-hint {
+  font-size: var(--type-meta);
+  opacity: 0.7;
+}
 
 /* Matching projects under the bar. */
 .command-bar__hits {

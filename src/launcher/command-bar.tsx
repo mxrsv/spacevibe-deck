@@ -294,6 +294,7 @@ export function CommandBar(props: CommandBarProps) {
             onPress={(additive) =>
               setPickState({ key: pickKey, ids: togglePick(picked, agent.id, additive) })
             }
+            onOpen={() => run([agent.id])}
           />
         ))}
         <span class="command-bar__hint command-bar__meta">
@@ -333,10 +334,12 @@ interface AgentChipProps {
   /** The exact command a press of this agent types now. */
   readonly command: string | null;
   readonly onPress: (additive: boolean) => void;
+  /** Double-click: run this agent alone, as `Run` would with it picked. */
+  readonly onOpen: () => void;
 }
 
 /** Icon-only and muted until picked; a picked chip carries its name. */
-function AgentChip({ agent, on, disabled, command, onPress }: AgentChipProps) {
+function AgentChip({ agent, on, disabled, command, onPress, onOpen }: AgentChipProps) {
   const glyph = (
     <>
       <AgentGlyph
@@ -361,13 +364,20 @@ function AgentChip({ agent, on, disabled, command, onPress }: AgentChipProps) {
             aria-label={agent.label}
             disabled={disabled}
             onClick={(event: MouseEvent) => onPress(event.shiftKey)}
+            // Shift keeps one meaning, add or remove: two shift-clicks toggle twice, so they never run.
+            onDblClick={(event: MouseEvent) => {
+              if (!event.shiftKey) onOpen();
+            }}
           />
         }
       >
         {glyph}
       </TooltipTrigger>
       <TooltipContent>
-        <code class="command-bar__command">{command ?? agent.label}</code>
+        <span class="command-bar__tip">
+          <code class="command-bar__command">{command ?? agent.label}</code>
+          <span class="command-bar__tip-hint">Double-click to run</span>
+        </span>
       </TooltipContent>
     </Tooltip>
   );
