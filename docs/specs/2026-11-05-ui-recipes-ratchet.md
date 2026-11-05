@@ -294,6 +294,8 @@ difference named. An item marked **open** waits for the owner and is listed unde
   moment (Q30); directions B and C dropped (Q26). The owner approved it by eye on 2026-11-05. A
   change to a surface's standard is a change to the mock first, approved by eye. The real side of
   every comparison is the composed app captured from an isolated-userData run (P8).
+- **RCP-30a Themes change backgrounds only (P10, owner 2026-11-05).** `--primary` and its ink, hover and pressed are one ivory in every built-in and custom theme, light included. A theme only changes the background surfaces (stage, rail/sidebar, chrome ladder, inputs, cards, popovers) and the inks derived from them. Accent, status and focus colours stay shared. This rewrites how `src/lib/theme-vars.ts` and `src/lib/derive-colors.ts` map a theme. In particular, `primary = ui.accent` goes. It amends DL §3, an invariant the owner approved here. Light themes keep the ivory fill, and the button needs no frame as long as its fill against the surface stays visible on the eye sheet; that check is part of AC-9.
+
 - **MPR-1 Window frame** (`window.html`, `app.js:593-594` `railFrame`).
   - **Structure:** the frame row holds the traffic lights and the sidebar toggle only. The "Deck"
     logo, name and the DEV or version chip leave the frame (P5).
@@ -307,8 +309,7 @@ difference named. An item marked **open** waits for the owner and is listed unde
 - **MPR-2 Launcher** (`launcher.html`, `launcher.js:263-384`; LCH-5 owns its behaviour).
   - **Command bar:** one 40 frame holding 32 controls, the project chip, the filter input with a
     leading search icon and the Run split, 640 wide (P9, `launcher.js:368-370`, RCP-3).
-  - **Run:** ivory in graphite, scoped to the launcher's primary action; `--primary` is unchanged,
-    so every other primary keeps the theme's own colour (P7).
+  - **Run:** ivory, like every primary action in every theme (P10, which supersedes P7).
   - **Agent tiles:** one row of 36 tiles with the mock's padding, radius and selected wash
     (`launcher.js:323-334`). An agent that is not installed stays in the row as a dimmed 36 tile
     with a download mark; pressing it installs. There is no framed Install button, so the row
@@ -325,8 +326,7 @@ difference named. An item marked **open** waits for the owner and is listed unde
   - **Over a live space:** a floating panel at `--elev-2` over the `--scrim-bg` colour scrim, with
     no `filter` dim (owner answer 5, RCP-11).
   - **Project menu:** as `launcher.js:335-355` (see MPR-6 for its chord badge).
-  - **Closes:** WIN-10 and LAU-02 (teal Run, closed by P7's scoped ivory; the other teal primaries
-    are an accepted difference by P7), LAU-01 (frame 700 and 40 controls), LAU-03 (no search icon),
+  - **Closes:** WIN-10 and LAU-02 (teal Run, closed by P10: `--primary` is ivory in every theme), LAU-01 (frame 700 and 40 controls), LAU-03 (no search icon),
     LAU-04 (Install buttons wrap the row; closed by P2, which overrides the mock's installed-only
     row), LAU-05 (tile padding 8 and wash), LAU-06 (plain destination text), LAU-07 ("adds" word),
     LAU-08 (no selected header or arrow; "No sessions"), LAU-09 (no breadcrumb at zero tabs),
@@ -412,8 +412,7 @@ difference named. An item marked **open** waits for the owner and is listed unde
     `overlays.js:46-49`; the remaining difference is gaps in place of separators, RCP-12), RAI-05
     and OVE-03 (no difference: the mock's checkout menu has no New worktree…, which sits in the
     New here submenu, `overlays.js:56-61`), OVE-04 (two badges for ⌘O), OVE-05 (the Folder01Icon
-    label), OVE-06 (two-line head, no Close, an arrow glyph in place of the ↵ badge; the primary's teal
-    stays, an accepted difference by P7).
+    label), OVE-06 (two-line head, no Close, an arrow glyph in place of the ↵ badge; the primary turns ivory by P10).
 - **MPR-7 Command Settings** (`settings.html`, `settings.js`, `settings-rows.js`).
   - **Frame:** search, area chips at 12 and 400 (RCP-4, Q20), the list, and the footer whose hints
     read Move, Open and Close for every row, results included (`settings.js:52-53`).
@@ -643,7 +642,8 @@ a requirement and an acceptance check. "A1" to "A6" are the owner's six answers 
 | P4 | Usage empty: icon, centred, plus the Today band | MPR-5 | AC-12 |
 | P5 | No brand in the frame; dev dot on the toggle; keep drag and caption room | MPR-1 | AC-8 |
 | P6 | Launcher ⇧ only with a tooltip; + and split icons on the destination | MPR-2 | AC-9 |
-| P7 | Launcher Run ivory in graphite; `--primary` unchanged | MPR-2 | AC-9 |
+| P7 | Superseded by P10 | MPR-2 | AC-9 |
+| P10 | `--primary` is one ivory in every theme; a theme changes only background surfaces | RCP-30a, MPR-2, MPR-6 | AC-9 |
 | P8 | Capture the composed real app with an isolated userData run | MPR-0 | AC-7, AC-16 |
 | P9 | Command bar controls 32 inside a 40 frame | MPR-2, RCP-3 | AC-9 |
 | Noted | Release switches keep the new surfaces off in packaged builds | RCP-30, open item 9 | AC-17 |

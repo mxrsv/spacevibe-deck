@@ -249,3 +249,4 @@ Approved after PR #98 shipped tokens only. This ledger is binding: the app's com
   - working mark = braille (B);
   - mock approved by eye 2026-11-05;
   - the six pending DL items approved through the cloud prompt.
+- **P10 (owner, 2026-11-05, supersedes P7):** `--primary` is one ivory in every theme, light included. Switching themes only changes some background surfaces. Accent, status and focus colours stay shared.
