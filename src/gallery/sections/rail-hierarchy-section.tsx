@@ -86,10 +86,7 @@ function realGroup(workspace: MockWorkspace): RailGroup {
 function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
   const group = realGroup(workspace);
   return (
-    <section
-      aria-label={workspace.name}
-      className="mb-(--space-group-sm) flex flex-col gap-(--space-list)"
-    >
+    <section aria-label={workspace.name} className="mb-(--space-group-sm) flex flex-col">
       <ProjectRailHeader
         group={group}
         markPath={null}
@@ -98,9 +95,9 @@ function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
         active={false}
         onToggle={NOOP}
       />
-      {workspace.folded
-        ? null
-        : group.items.map((item, index) => (
+      {workspace.folded || group.items.length === 0 ? null : (
+        <div className="flex flex-col gap-(--space-list)">
+          {group.items.map((item, index) => (
             <ProjectRailRow
               key={item.id}
               item={item}
@@ -110,11 +107,8 @@ function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
               onSelect={NOOP}
             />
           ))}
-      {!workspace.folded && group.items.length === 0 ? (
-        <p className="flex h-(--row-24) items-center px-(--space-pad-row) text-xs text-(--text-faint)">
-          No sessions
-        </p>
-      ) : null}
+        </div>
+      )}
     </section>
   );
 }
