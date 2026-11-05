@@ -202,7 +202,10 @@ every check.
 - **RCP-14 Icons.** Functional icons come from Hugeicons only (`@hugeicons/core-free-icons` through
   `DeckIcon`, stroke 2). No new `@phosphor-icons/react` import lands anywhere under `src/`; the
   existing ones are debt (RCP-26) and leave surface by surface.
-- **RCP-15 State marks.** Every agent state mark sits in a 14 slot (`--mark-slot`) with DL-27.3's
+- **RCP-15 State marks.** _Amended 2026-11-06 (rail hierarchy, SR-7): `AgentStateMark` draws a new
+  shape set in a `--mark-size` box (12) sized per surface, only on the pane header and the stage
+  bar's pill; the project rail draws none, and `--mark-dot`, `--mark-ring` and `--mark-square` are
+  gone. Read the paragraph below as the shipped record._ Every agent state mark sits in a 14 slot (`--mark-slot`) with DL-27.3's
   geometry: a 9 dot (`--mark-dot`), a 15 ring round the needs-you dot (`--mark-ring`) and a 7
   square for ended (`--mark-square`), drawn in a status token (`--status-unread`,
   `--status-failed`, `--status-working`, `--status-idle`), never a palette colour.
