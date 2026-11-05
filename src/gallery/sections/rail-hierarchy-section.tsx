@@ -169,6 +169,8 @@ function MarkSheet() {
 }
 
 const NO_GIT_OPTIONS: readonly { readonly value: NoGitMeta; readonly label: string }[] = [
+  { value: "label", label: 'No git: "no git"' },
+  { value: "icon", label: "No git: folder icon only" },
   { value: "folder", label: "No git: folder name" },
   { value: "agent", label: "No git: agent name" },
   { value: "none", label: "No git: date only" },
@@ -178,7 +180,7 @@ export function RailHierarchySection() {
   // The owner's A/B: the proposal with and without its status icons (2026-11-06).
   const [marks, setMarks] = useState(true);
   // What a non-git workspace's meta line reads (the owner's open question, 2026-11-06).
-  const [noGit, setNoGit] = useState<NoGitMeta>("folder");
+  const [noGit, setNoGit] = useState<NoGitMeta>("label");
   return (
     <>
       <SectionHead

@@ -13,8 +13,11 @@ import "./rail-hierarchy-section.css";
 /** The fallback folder inside the logo's 16 box: 13, the smallest step a Phosphor icon draws at, where the shipped rail draws 15 (owner, 2026-11-06). */
 const FOLDER_GLYPH: DeckIconSize = 13;
 
+/** The word a no-git workspace's meta line reads (owner's proposal, 2026-11-06). */
+const NO_GIT_LABEL = "no git";
+
 /** What the meta line reads where git has no branch to give (the option under review). */
-export type NoGitMeta = "folder" | "agent" | "none";
+export type NoGitMeta = "label" | "icon" | "folder" | "agent" | "none";
 
 /** The words a screen reader gets in place of the mark (RH-16). */
 const STATUS_WORDS: Readonly<Record<string, string>> = {
@@ -61,7 +64,7 @@ function LogoBox({ logo, badge }: { readonly logo: MockLogo; readonly badge: num
 export function AfterRow({
   agent,
   git = true,
-  noGit = "folder",
+  noGit = "label",
 }: {
   readonly agent: MockAgent;
   readonly git?: boolean;
@@ -87,7 +90,7 @@ export function AfterRow({
         <span className="rh-row__main">
           <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
           <span className="rh-row__meta" data-status={agent.status}>
-            {git || noGit === "folder" ? (
+            {git || noGit === "folder" || noGit === "label" || noGit === "icon" ? (
               <DeckIcon
                 icon={git ? GitBranchIcon : Folder01Icon}
                 size={GLYPH_INLINE}
@@ -95,11 +98,15 @@ export function AfterRow({
               />
             ) : null}
             <span className="rh-row__branch">
-              {git || noGit === "folder"
+              {git
                 ? agent.branch
-                : noGit === "agent"
-                  ? displayAgent(agent.agent)
-                  : null}
+                : noGit === "label"
+                  ? NO_GIT_LABEL
+                  : noGit === "folder"
+                    ? agent.branch
+                    : noGit === "agent"
+                      ? displayAgent(agent.agent)
+                      : null}
             </span>
             {agent.status === "working" ? (
               // A running agent has no time in state worth reading: three dots stand in.
@@ -125,7 +132,7 @@ export function AfterRow({
  */
 export function AfterWorkspace({
   workspace,
-  noGit = "folder",
+  noGit = "label",
 }: {
   readonly workspace: MockWorkspace;
   readonly noGit?: NoGitMeta;
