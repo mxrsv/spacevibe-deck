@@ -1,11 +1,6 @@
 import { UI_TOKEN_KEYS, type Theme } from "../settings/theme-schema";
 import { DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
-import {
-  contrastRatio,
-  deriveChromeColors,
-  deriveRecipeTokens,
-  type ChromeColors,
-} from "./derive-colors";
+import { deriveChromeColors, deriveRecipeTokens, type ChromeColors } from "./derive-colors";
 
 /**
  * Deck's two default themes wear the preset's own values, which `preset.css` declares and which
@@ -20,14 +15,14 @@ function wearsPresetValues({ ui }: Theme): boolean {
 /**
  * The preset's token names, without their `--`, read from a theme's own roles so the shadcn chrome
  * and the terminal beside it are one palette (UI-2). The keys are the whole list: the `--chart-*`
- * ramp is left out because no shipped surface draws a chart.
+ * ramp is left out because no shipped surface draws a chart. `primary` and `sidebar-primary` are
+ * left out on purpose: one value per mode, declared in `preset.css` (cream on dark, near-black on light), so a theme
+ * switch never recolours the primary button.
  */
 function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<string, string>> {
   const text = ui["text-primary"];
   const raised = ui["chrome-1"];
   const muted = ui["chrome-2"];
-  // Whichever reads better: an accent may sit close to the theme's own background.
-  const onAccent = contrastRatio(ui.bg, ui.accent) >= contrastRatio(text, ui.accent) ? ui.bg : text;
   return {
     background: ui.bg,
     foreground: text,
@@ -35,8 +30,6 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
     "card-foreground": text,
     popover: raised,
     "popover-foreground": text,
-    primary: ui.accent,
-    "primary-foreground": onAccent,
     secondary: muted,
     "secondary-foreground": text,
     muted,
@@ -50,8 +43,6 @@ function presetTokens({ ui }: Theme, chrome: ChromeColors): Readonly<Record<stri
     sidebar: ui["sidebar-bg"],
     "stage-ground": ui.bg,
     "sidebar-foreground": text,
-    "sidebar-primary": ui.accent,
-    "sidebar-primary-foreground": onAccent,
     "sidebar-accent": muted,
     "sidebar-accent-foreground": text,
     "sidebar-border": chrome.hair,

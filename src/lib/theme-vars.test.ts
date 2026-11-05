@@ -107,11 +107,9 @@ describe("applyThemeVars", () => {
     ).toEqual([]);
   });
 
-  it("keeps a primary button readable on a theme whose accent sits on its background", () => {
-    const [other] = NON_DEFAULT_THEMES;
-    const theme = { ...other, ui: { ...other.ui, accent: other.ui.bg } };
-    const written = recordProperties(theme);
-    expect(written.get("--primary-foreground")).toBe(theme.ui["text-primary"]);
+  it.each(NON_DEFAULT_THEMES)("never recolours the primary button on $id", (theme) => {
+    const names = [...recordProperties(theme).keys()];
+    expect(names.filter((name) => /^--(sidebar-)?primary(-foreground)?$/.test(name))).toEqual([]);
   });
 
   it.each(NON_DEFAULT_THEMES)("keeps the preset's text readable on $id", (theme) => {
@@ -122,7 +120,6 @@ describe("applyThemeVars", () => {
       ["--card-foreground", "--card", 4.5],
       ["--muted-foreground", "--muted", 4.5],
       ["--sidebar-foreground", "--sidebar", 4.5],
-      ["--primary-foreground", "--primary", 4.5],
     ] as const) {
       expect(contrastRatio(ink(text), ink(ground)), `${text} on ${ground}`).toBeGreaterThanOrEqual(
         floor,
