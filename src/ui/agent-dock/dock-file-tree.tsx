@@ -58,12 +58,13 @@ export function DockFileTree({ controller, workspacePath, canCreate, changes }: 
   const line = status !== null && status.workspacePath === workspacePath ? status : null;
   return (
     <div className="dock-tree flex h-full min-h-0 flex-col">
-      <div className="dock-tree__bar flex h-9 shrink-0 items-center gap-1.5 px-2">
+      {/* RCP-7: a search row is a 36 bar holding a 28 field. */}
+      <div className="dock-tree__bar flex h-(--control-h-36) shrink-0 items-center gap-(--space-4) px-(--space-in-lg)">
         <Input
           type="search"
           aria-label="Search files"
           placeholder="Search files"
-          className="h-7 flex-1 border-transparent bg-muted/50 text-xs"
+          className="h-(--control-h-28) flex-1 text-xs"
           value={query}
           onInput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
           onKeyDown={(event) => {

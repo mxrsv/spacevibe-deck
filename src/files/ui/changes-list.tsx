@@ -13,8 +13,8 @@
  * move it, Enter and Space press it.
  */
 import { useRef, useState } from "preact/hooks";
-import { ArrowClockwise, GitBranch } from "@phosphor-icons/react";
-import { CHROME_ICON, DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
+import { GitBranchIcon, RefreshIcon } from "@hugeicons/core-free-icons";
+import { DeckIcon, GLYPH_ROW } from "../../ui/controls/deck-icon";
 import {
   ActionTooltip,
   tooltipTriggerProps,
@@ -69,7 +69,7 @@ function RefreshButton({ onPress }: { onPress(): void }) {
         onClick={onPress}
         {...tooltipTriggerProps(tooltip, ref)}
       >
-        <DeckIcon icon={ArrowClockwise} size={CHROME_ICON} />
+        <DeckIcon icon={RefreshIcon} size={GLYPH_ROW} />
       </button>
       {tooltip.anchor !== null && (
         <ActionTooltip
@@ -171,7 +171,7 @@ export function ChangesList(props: ChangesListProps) {
     <div class="changes-list">
       <div class="changes-head" title={snapshot === null ? undefined : comparisonLabel(snapshot)}>
         <span class="file-tree__icon">
-          <DeckIcon icon={GitBranch} size={ROW_ICON} />
+          <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} />
         </span>
         <span class="changes-head__branch">
           {snapshot === null ? "Changes" : branchLabel(snapshot)}

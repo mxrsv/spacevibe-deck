@@ -1,4 +1,5 @@
 import ts from "typescript";
+import type { CompositionHit } from "./ui-composition-ledger";
 
 /**
  * The pure half of the small-UI policy (spec 2026-11-03-ui-composition, CMP-5 to CMP-7, CMP-10,
@@ -22,16 +23,6 @@ import ts from "typescript";
  *   hit in the tree was a full-width `<div>` row (`project-rail-parked.tsx`), and a block
  *   `<div>` is a row far more often than a chip. A chip drawn as a block `<div>` is missed.
  */
-
-export type CompositionRule = "small-text" | "chip-like";
-export const COMPOSITION_RULES: readonly CompositionRule[] = ["small-text", "chip-like"];
-
-export interface CompositionHit {
-  rule: CompositionRule;
-  line: number;
-  /** What matched, for the failure message. */
-  detail: string;
-}
 
 const REM_PX = 16;
 const MIN_TEXT_PX = 12;
@@ -145,82 +136,4 @@ export function findCompositionHits(source: string): CompositionHit[] {
   };
   visit(sf);
   return hits;
-}
-
-export interface DebtEntry {
-  path: string;
-  rule: CompositionRule;
-}
-
-export interface DebtParse {
-  /** Keyed `path rule`, so one file carries a count per rule. */
-  debt: Map<string, number>;
-  problems: string[];
-}
-
-export const debtKey = (path: string, rule: CompositionRule): string => `${path} ${rule}`;
-
-/** `path rule count` per line; blank lines and `#` comments are skipped, anything else is a problem. */
-export function parseDebt(text: string): DebtParse {
-  const debt = new Map<string, number>();
-  const problems: string[] = [];
-  for (const [index, line] of text.split(/\r?\n/).entries()) {
-    if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
-    const entry = /^(\S+) (small-text|chip-like) (\d+)$/.exec(line);
-    if (!entry) {
-      problems.push(`debt line ${index + 1} is not "path small-text|chip-like count": ${line}`);
-      continue;
-    }
-    const key = debtKey(entry[1], entry[2] as CompositionRule);
-    if (debt.has(key)) problems.push(`debt lists ${key} twice`);
-    else debt.set(key, Number(entry[3]));
-  }
-  return { debt, problems };
-}
-
-const HOW: Record<CompositionRule, string> = {
-  "small-text": "use `text-xs` (12px) or larger; nothing in the app is below 12 (CMP-10)",
-  "chip-like":
-    "use `Chip` (a pressable), `Badge` (read only) or `Button` from src/ui, not a hand-drawn element (CMP-5 to CMP-7)",
-};
-
-/**
- * Everything wrong with the tree against its debt: `scanned` maps each shipping `.tsx` path to
- * its hits. Debt may only fall, so a count under its entry fails as loudly as one over it.
- */
-export function auditComposition(
-  scanned: ReadonlyMap<string, readonly CompositionHit[]>,
-  debt: ReadonlyMap<string, number>,
-): string[] {
-  const problems: string[] = [];
-  for (const [path, hits] of scanned) {
-    for (const rule of COMPOSITION_RULES) {
-      const found = hits.filter((hit) => hit.rule === rule);
-      const allowed = debt.get(debtKey(path, rule));
-      const where = found.map(({ detail, line }) => `${detail} at line ${line}`).join(", ");
-      if (allowed === undefined && found.length > 0) {
-        problems.push(
-          `${path} has ${found.length} ${rule} hit(s) and is not in the debt file (${where}): ${HOW[rule]}`,
-        );
-      } else if (allowed !== undefined && found.length > allowed) {
-        problems.push(
-          `${path} has ${found.length} ${rule} hits, over its debt of ${allowed} (${where}): ${HOW[rule]}`,
-        );
-      } else if (allowed !== undefined && found.length < allowed) {
-        problems.push(
-          found.length === 0
-            ? `${path} ${rule} is clean now: remove its line from the debt file`
-            : `${path} has ${found.length} ${rule} hits, under its debt of ${allowed}: lower the entry to ${found.length}`,
-        );
-      }
-    }
-  }
-  for (const key of debt.keys()) {
-    const path = key.slice(0, key.indexOf(" "));
-    if (!scanned.has(path))
-      problems.push(
-        `${path} is in the debt file but is not a scanned shipping .tsx file: remove the entry`,
-      );
-  }
-  return problems;
 }

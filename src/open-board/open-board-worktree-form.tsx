@@ -1,5 +1,5 @@
-import { ArrowLeft, FolderOpen } from "@phosphor-icons/react";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { ArrowLeft01Icon, FolderOpenIcon } from "@hugeicons/core-free-icons";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { type RecentWorkspace } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
 import { tildify } from "../lib/process-info";
@@ -93,7 +93,7 @@ export function OpenBoardWorktreeForm({
     <div class="board-worktree" onKeyDown={handleKeyDown}>
       <div class="board-worktree__scroll">
         <button class="board-back" onClick={onBack}>
-          <DeckIcon icon={ArrowLeft} size={ROW_ICON} />
+          <DeckIcon icon={ArrowLeft01Icon} size={GLYPH_ROW} />
           Back
         </button>
 
@@ -124,7 +124,7 @@ export function OpenBoardWorktreeForm({
               ))}
             </select>
             <button class="wtf__browse" onClick={onBrowseRepo}>
-              <DeckIcon icon={FolderOpen} size={ROW_ICON} />
+              <DeckIcon icon={FolderOpenIcon} size={GLYPH_ROW} />
               Browse…
             </button>
           </div>

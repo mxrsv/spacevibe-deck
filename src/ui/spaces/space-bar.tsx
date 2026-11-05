@@ -1,8 +1,8 @@
-import { CaretRight } from "@phosphor-icons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Fragment } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { shellStageEnabled } from "../shell-stage";
 import { useStageOverlayFlag, useSurfacePlacement } from "../worktree-card-menus";
 import {
@@ -80,7 +80,7 @@ function sessionCrumb(space: Space): string | null {
 function Separator({ flush }: { readonly flush: boolean }) {
   return (
     <span class="space-bar__sep" aria-hidden="true">
-      {flush ? "/" : <DeckIcon icon={CaretRight} size={CHROME_ICON} />}
+      {flush ? "/" : <DeckIcon icon={ArrowRight01Icon} size={GLYPH_INLINE} />}
     </span>
   );
 }

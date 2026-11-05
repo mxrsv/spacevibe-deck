@@ -1,10 +1,15 @@
-import { ArrowUp, ArrowsOutSimple, CaretDown, Folder } from "@phosphor-icons/react";
+import {
+  ArrowDown01Icon,
+  ArrowExpand01Icon,
+  ArrowUp02Icon,
+  Folder01Icon,
+} from "@hugeicons/core-free-icons";
 import type { AgentOption } from "../lib/agent-catalog";
 import { AGENT_LOGOS } from "../lib/agent-logos";
 import { letterAvatar } from "../lib/letter-avatar";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { TASK_PROMPT_STAGING_ENABLED } from "../terminal/task-prompt-send";
 import {
   mergeRuntimeDefaults,
@@ -288,11 +293,11 @@ export function LauncherFields(props: LauncherFieldsProps) {
 
       <div class="nt-composer__context is-expanded">
         <label class="nt-context-control nt-context-control--workspace">
-          <DeckIcon icon={Folder} size={ROW_ICON} />
+          <DeckIcon icon={Folder01Icon} size={GLYPH_ROW} />
           <span class="nt-context-control__copy">
             <strong>{workspaceName}</strong>
           </span>
-          <DeckIcon icon={CaretDown} size={ROW_ICON} />
+          <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
           <select
             aria-label="Workspace"
             value={draft.workspacePath ?? ""}
@@ -321,7 +326,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
           <span class="nt-context-control__copy">
             <strong>{selectedAgent?.label ?? "Choose an agent"}</strong>
           </span>
-          <DeckIcon icon={CaretDown} size={ROW_ICON} />
+          <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
           <select
             aria-label="Agent"
             value={draft.agentId ?? ""}
@@ -362,7 +367,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
                   </option>
                 ))}
               </select>
-              <DeckIcon icon={CaretDown} size={ROW_ICON} />
+              <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
             </span>
           </label>
         ) : null}
@@ -376,7 +381,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
               disabled={busy}
               onClick={props.onOpenFullComposer}
             >
-              <DeckIcon icon={ArrowsOutSimple} size={ROW_ICON} />
+              <DeckIcon icon={ArrowExpand01Icon} size={GLYPH_ROW} />
             </button>
           ) : !staging ? null : (
             // "first" only means anything beside a button that would otherwise
@@ -402,7 +407,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
                 ? "Start task"
                 : "Open agent"
               : launcherPendingLabel(props.pending)}
-            <DeckIcon icon={ArrowUp} size={ROW_ICON} />
+            <DeckIcon icon={ArrowUp02Icon} size={GLYPH_ROW} />
           </button>
         </div>
       </div>

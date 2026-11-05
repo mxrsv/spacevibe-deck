@@ -1,10 +1,18 @@
 # UI recipes and the ratchet
 
 Status: `decided` (owner, 2026-11-04 to 2026-11-05, through an intent round and two grilling
-rounds). The visual standard is the multi-file mock `~/scratch/spacevibe-deck/launcher-flow-2026-11-04/`
+rounds). The visual standard is the multi-file mock
+[`src/gallery/layout-mocks/ui-recipes/`](../../src/gallery/layout-mocks/ui-recipes/index.html)
 (entry `index.html` with nine tabs, token layer `tokens.css`, recipes `chrome.css`), approved by eye;
-the binding record of every decision is `DECISIONS.md` in the same folder. The working mark is the
-braille spinner and the shadow strength is mid, both picked by eye on 2026-11-05.
+the binding record of every decision is
+[`DECISIONS.md`](../../src/gallery/layout-mocks/ui-recipes/DECISIONS.md) in the same folder. The
+working mark is the braille spinner and the shadow strength is mid, both picked by eye on
+2026-11-05.
+
+Amended 2026-11-05 after PR #98, which shipped tokens only, with the owner's parity decisions P0 to
+P9 (`DECISIONS.md`, "Parity decisions"). **The mock is the per-surface standard the app is changed
+to match: structure, content, look and theme** (grilling Q23, restated as P0). The ledger and the
+tests are how the ratchet holds the recipes; they are not how a surface is accepted (AC-7).
 
 This spec extends the [UI composition spec](2026-11-03-ui-composition.md) (CMP-1 to CMP-20). Where
 the two differ, this spec wins for the items it names, and where an `RCP-n` rule names a value it
@@ -48,7 +56,9 @@ every check.
   `--seam-raised`, `--control-frame`), and a new name exists only where the mock added one. The
   mock's own scaffolding does not ship: window, menu, popover, modal, launcher, tooltip and settings
   widths, `--window-radius`, `--lights-d`, `--traffic-*`, `--term-*`, `--scrim-filter`,
-  `--logo-mono-filter` and the `-soft` / `-strong` elevation variants.
+  `--logo-mono-filter` and the `-soft` / `-strong` elevation variants. The widths themselves are
+  still part of parity (MPR-1 to MPR-8): a surface takes the mock's width, written in its own
+  stylesheet rather than as a global token.
 - **RCP-2 Per-theme values.** A token is declared per theme where its value differs. State washes
   mix from `--tone` (white on dark, black on light), so they flip with the theme:
   - `--state-hover-bg` is 6% and `--tab-rest-bg` 3% of `--tone`;
@@ -260,8 +270,182 @@ every check.
     selected.
   - **Flash:** a card the list pane lands on flashes a 2px primary bar (`--flash-w`) on its leading
     edge, drawn above the sticky head.
-- **RCP-23 Copy.** The surfaces this spec restyles carry no heading, eyebrow or helper sentence, and
-  every string is English. A label change updates its `docs/user/` guide in the same commit.
+- **RCP-23 Copy.** The surfaces this spec changes carry no heading, eyebrow or helper sentence, and
+  every string is English. A label or flow change updates its `docs/user/` guide in the same
+  commit; P2's install tile updates [`agents.md`](../user/agents.md).
+
+### Mock parity
+
+The mock is the standard each surface is changed to match (Q23, P0): which elements exist, their
+order, their content and copy, the recipes above, and both themes. A path below is relative to the
+mock folder `src/gallery/layout-mocks/ui-recipes/`. Where the window tab and a per-group tab draw
+the same surface, the per-group tab is the detailed standard and the window tab the composed one.
+
+Each requirement lists the parity deltas it closes. The deltas were measured on 2026-11-05 between
+the composed app and the mock (51 ids; STA-05, DOC-07 and OVE-02 do not exist). A delta whose
+mock claim was wrong against the mock file is closed as "no difference" with the remaining
+difference named. An item marked **open** waits for the owner and is listed under
+[Open for the owner](#open-for-the-owner); it is never dropped.
+
+- **MPR-0 The reference.** The mock folder is the reference: `index.html` and nine tabs in the
+  order Window, Launcher, Rail, Stage, Dock, Overlays, Settings, Notices, Rules, each with
+  Dark/Light and Worst case (Q24, Q29); `tokens.css`, `chrome.css`, `app.js` and one HTML per tab,
+  each under 800 lines (Q31); real data with a Worst-case toggle (Q25); the Window tab's composed
+  moment (Q30); directions B and C dropped (Q26). The owner approved it by eye on 2026-11-05. A
+  change to a surface's standard is a change to the mock first, approved by eye. The real side of
+  every comparison is the composed app captured from an isolated-userData run (P8).
+- **RCP-30a Themes change backgrounds only (P10, owner 2026-11-05).** `--primary` and its ink, hover and pressed are one ivory in every built-in and custom theme, light included. A theme only changes the background surfaces (stage, rail/sidebar, chrome ladder, inputs, cards, popovers) and the inks derived from them. Accent, status and focus colours stay shared. This rewrites how `src/lib/theme-vars.ts` and `src/lib/derive-colors.ts` map a theme. In particular, `primary = ui.accent` goes. It amends DL §3, an invariant the owner approved here. Light themes keep the ivory fill, and the button needs no frame as long as its fill against the surface stays visible on the eye sheet; that check is part of AC-9.
+
+- **MPR-1 Window frame** (`window.html`, `app.js:593-594` `railFrame`).
+  - **Structure:** the frame row holds the traffic lights and the sidebar toggle only. The "Deck"
+    logo, name and the DEV or version chip leave the frame (P5).
+  - **Dev marker:** a development build shows a small dot on the sidebar toggle (P5); its meaning
+    is in the toggle's accessible name.
+  - **Kept:** the drag region and the room for the Windows caption buttons (P5).
+  - **Heights:** the frame row is 34 and the rail's search bar 36 under it (Pass decisions "Bar
+    heights", RCP-7); `--frame-h` is declared once.
+  - **DL:** DL-18.9 is rewritten for the brandless frame in the same commit (P5).
+  - **Closes:** WIN-01 (brand in the frame), WIN-02 (frame row 40 and a doubled `--frame-h`).
+- **MPR-2 Launcher** (`launcher.html`, `launcher.js:263-384`; LCH-5 owns its behaviour).
+  - **Command bar:** one 40 frame holding 32 controls, the project chip, the filter input with a
+    leading search icon and the Run split, 640 wide (P9, `launcher.js:368-370`, RCP-3).
+  - **Run:** ivory, like every primary action in every theme (P10, which supersedes P7).
+  - **Agent tiles:** one row of 36 tiles with the mock's padding, radius and selected wash
+    (`launcher.js:323-334`). An agent that is not installed stays in the row as a dimmed 36 tile
+    with a download mark; pressing it installs. There is no framed Install button, so the row
+    never wraps (P2). This amends [LCH-8](2026-11-04-launcher-in-stage.md)'s "Install on a missing
+    quick agent": the install lives on the tile.
+  - **Multi-pick key:** the trailing key reads ⇧ only, with its meaning in a tooltip and the
+    accessible name (P6).
+  - **Destination line:** a + icon before "New space in ‹project›" and a split icon before "Beside
+    ‹agent›" (P6, `launcher.js:318-322`).
+  - **Rail beside it:** at zero tabs the target project's header is selected and ends in the
+    forward arrow (`launcher.js:291-298`); an empty project shows its header only (P1).
+  - **Stage frame:** the breadcrumb project › branch at the top left and the shared toolbar (Pass
+    decisions "Stage frame").
+  - **Over a live space:** a floating panel at `--elev-2` over the `--scrim-bg` colour scrim, with
+    no `filter` dim (owner answer 5, RCP-11).
+  - **Project menu:** as `launcher.js:335-355` (see MPR-6 for its chord badge).
+  - **Closes:** WIN-10 and LAU-02 (teal Run, closed by P10: `--primary` is ivory in every theme), LAU-01 (frame 700 and 40 controls), LAU-03 (no search icon),
+    LAU-04 (Install buttons wrap the row; closed by P2, which overrides the mock's installed-only
+    row), LAU-05 (tile padding 8 and wash), LAU-06 (plain destination text), LAU-07 ("adds" word),
+    LAU-08 (no selected header or arrow; "No sessions"), LAU-09 (no breadcrumb at zero tabs),
+    LAU-11 (no scrim). LAU-10 (900 wide): the 640 frame and the single row close the wrap; below
+    the mock's width is **open**.
+- **MPR-3 Rail** (`rail.html`, `rail.js:72-160`, the launcher's rail at `launcher.js:263-304`).
+  - **Controls row:** search, the needs-you chip, Organize and an unframed 28 ghost +
+    (`rail.js:148-152`).
+  - **Rows and heads:** project heads, agent rows at 44 with the leading mark, remembered rows,
+    checkout lines nested under their label (`rail.js:96-97`, DL-27.28), the Archived section and
+    the hidden list, as RCP-17 to RCP-19 draw them.
+  - **Empty project:** its header only. "No sessions" goes; "No sessions match" stays while
+    searching (P1).
+  - **+ menu:** 240 wide, one line per item (`--menu-w`, `launcher.js:269`). Its contents are
+    **open**: the mock draws Open folder…, Clone repository… and New worktree…; LCH-8 adds Create
+    workspace…, and the app also has Resume a session….
+  - **Row titles:** a row is titled by its session with a one-line sentence, as the mock draws it,
+    once the agent provides one. Whether the app's agent-name fallback differs with a real agent is
+    **open** until the P8 capture runs with a real session.
+  - **Closes:** RAI-01 ("No sessions"), RAI-02 (framed +), RAI-03 (176 menu that wraps), RAI-04
+    (checkout as a project-level row), WIN-09 (titles; data-dependent, **open**).
+- **MPR-4 Stage** (`stage.html`, `window.html:71-99`, `app.js:533-561`).
+  - **Toolbar:** attention chip with the bell icon, dev-servers chip with the server icon and
+    count, the open-in-app icon split (its glyph is **open**: the mock's generic external icon, or the
+    app's own icon as today), more, and the dock toggle,
+    which is always present and shows its pressed state (`window.html:71-84`, Pass decisions
+    "Stage frame").
+  - **Overflow menu:** Split right, Split down, Expand pane, Close pane; a gap; Browser, Prompts,
+    Settings; each with one chord badge (`stage.html:138-158`, Q18).
+  - **Pane header:** 32, mark, agent name, session title, the DL-27.2 status word, and one 24
+    "more" at the end; gap 6 between icon and label (Pass decisions "Pane header", RCP-20).
+  - **Tab strip:** the mock draws a strip of tabs with marks, close and + under the frame, and its
+    tab menu (`window.html:87-97`, `stage.html:199`, `stage.html:352`). The app has no tab strip
+    since DL-35.3 moved the tab list to the rail. Required per Q23 and P0; the DL-35.3 rewrite it
+    needs is **open**, and the surface's commit waits for that answer.
+  - **Browser panel:** its toolbar as the mock draws it; the page area stays native (out of scope).
+  - **Narrow:** the mock draws no narrow stage; how the breadcrumb truncates at 900 is **open**.
+  - **Closes:** WIN-03 and STA-01 (no tab strip, **open**), WIN-04 (chip and open-in-app icons,
+    dock toggle only while closed), WIN-05 and STA-02 (no more, no title), WIN-06 (gap 8), STA-03
+    (four-item overflow menu), STA-04 (chords as plain text), STA-06 (900 wide, **open**).
+- **MPR-5 Dock** (`dock.html`, `dock.js:81-258` and its states at `dock.js:322-377`).
+  - **Strip:** a 34 bar with four view icons, Changes, Usage, History and Files, always shown;
+    then the file tabs, +, widen and close (P3, `dock.js:102-111`); 28 icon boxes.
+  - **Changes:** the 40 band ("Uncommitted", file count, +/−, the list-pane toggle, refresh), the
+    sticky card stack and the list/tree pane (`dock.js:81-87`, `dock.js:155-167`), and a panel
+    footer on the 3% resting wash with the totals and the list/tree toggle
+    (`window.html:117-125`). The window tab draws the pane under the stack and the dock tab beside
+    it; which one ships is **open**.
+  - **Usage:** with no agent, a centred empty state with its icon under the "Today" band with its
+    info and Usage details buttons (P4, `dock.js:89-92`, `dock.js:343`); with data, the fact cards
+    and agent cards (`dock.js:169-181`).
+  - **History:** the band with the count and Rescan, then rows, or the centred empty state with its
+    icon (`dock.js:93-96`, `dock.js:183-188`, `dock.js:345-355`).
+  - **Files:** the band with the search field, refresh and New file; the tree with its folder dots;
+    a file tab with the breadcrumb band, Open-in split, Wrap lines and tree toggle, and the
+    external-change bar (`dock.js:190-258`). A preview tab is italic. No status letter anywhere, in the Changes list or the Files tree (P11).
+    - **File marks:** a modified file ends in a small accent dot, an added file in a green `+` glyph, and a deleted file in a red `−` glyph with its name struck through. Each glyph is 12 in a 20 box.
+    - **Accessible name and tooltip:** "Modified", "Added" or "Deleted".
+    - **Folders:** a folder holding changes keeps its single dot.
+  - **Recipes:** RCP-7 (24 rows, 34 strip, 40 band), RCP-21 (panel footer), RCP-22 (cards and
+    diff), RCP-4 (icon boxes).
+  - **Closes:** WIN-07 and DOC-01 (no Files icon), WIN-08 and DOC-02 (no list/tree pane), DOC-03
+    (Usage plain line), DOC-04 (History plain line; rows need recorded sessions, measured in P8),
+    DOC-05 (Files tree, status icons by P11), DOC-06 (file tab; the editor stays out of scope),
+    DOC-08 (no panel footer), DOC-09 (24 box in a 40 row).
+- **MPR-6 Overlays** (`overlays.html`, `overlays.js`, `overlays-forms.js`, `overlays-modals.js`).
+  - **Menus:** the rail row menu and its New here submenu (`overlays.js:40-61`), the checkout menu
+    (`overlays.js:63-75`), the dock file menu (`overlays.js:77`), the launcher project menu with
+    one ⌘O badge (`launcher.js:354`, Q18) and the profile menu (`overlays.js:124`): items, order,
+    gaps and chords as drawn.
+  - **Popovers and tooltips:** attention, dev servers, prompt list and editor
+    (`overlays.js:187-258`) and the tooltip with no arrow (`overlays.js:259-311`).
+  - **Modals:** remove project, create file, preset editor, save preset and usage consent
+    (`overlays-modals.js:15-62`).
+  - **Forms:** the worktree form (`overlays-forms.js:13-25`) and Clone and Create workspace in the
+    stage (`overlays-forms.js:26-188`): a head with Back and Close icon buttons and a one-line
+    title, the labels GitHub repository, Parent folder, Folder name and Final path, and the primary
+    with its ↵ badge. The Clone label that reads "Folder01Icon name"
+    (`src/open-board/clone-workspace-form.tsx:247`) is a defect and reads "Folder name".
+  - **Usage details page** (`overlays-forms.js:189-266`).
+  - **Recipes:** RCP-11 (elevation), RCP-12 (gaps, not separators), RCP-13 (chords), RCP-21
+    (menu, tooltip, panel footer, modal), RCP-3 (form controls).
+  - **Closes:** OVE-01 (no difference: the mock's row menu has Open in Finder,
+    `overlays.js:46-49`; the remaining difference is gaps in place of separators, RCP-12), RAI-05
+    and OVE-03 (no difference: the mock's checkout menu has no New worktree…, which sits in the
+    New here submenu, `overlays.js:56-61`), OVE-04 (two badges for ⌘O), OVE-05 (the Folder01Icon
+    label), OVE-06 (two-line head, no Close, an arrow glyph in place of the ↵ badge; the primary turns ivory by P10).
+- **MPR-7 Command Settings** (`settings.html`, `settings.js`, `settings-rows.js`).
+  - **Frame:** search, area chips at 12 and 400 (RCP-4, Q20), the list, and the footer whose hints
+    read Move, Open and Close for every row, results included (`settings.js:52-53`).
+  - **Rows:** the toggle, select, shortcut, editable agent list and theme card patterns
+    (`settings-rows.js:22-267`), with no helper sentence under a row (RCP-23) and buttons in
+    sentence case with the button recipe.
+  - **Closes:** SET-01 (frame; matches apart from the items here), SET-02 ("Go to"), SET-03 (chip
+    size and weight), SET-04 (helper sentences), SET-05 (lowercase buttons with trailing icons),
+    SET-06 (theme cards; their order is checked side by side under AC-14).
+- **MPR-8 Notices** (`notices.html`).
+  - **Persist error:** a full-width bar at the bottom of the stage with its icon, text, Retry and a
+    Dismiss icon button (`notices.html:41-43`). The app's bar has no retry action, so Retry is
+    **open**; the shape, icon and icon Dismiss are required.
+  - **Update action:** available, downloading and ready (`notices.html:76-90`, RCP-20).
+  - **Launcher failure line** with its Retry (`notices.html:45-50`).
+  - **Closes:** NOT-01 (floating card, text Dismiss, no Retry).
+
+#### Open for the owner
+
+Each item blocks only its own surface's commit.
+
+All resolved by the owner on 2026-11-05 (P12–P19):
+
+1. **Tab strip (MPR-4), P12:** drawn as the mock does; DL-35.3 is rewritten.
+2. **Rail + menu (MPR-3), P13:** LCH-8's four items plus Resume a session…; the mock's three are the minimum.
+3. **Changes list pane (MPR-5), P14:** beside the card stack, as the mock's dock tab draws it.
+4. **Files status (MPR-5), P11:** icons, no letters.
+5. **Persist-error Retry (MPR-8), P15:** no Retry; the bar keeps Dismiss.
+6. **Narrow widths (MPR-2, MPR-4), P16:** the launcher and stage shrink, and text truncates with an ellipsis; nothing wraps.
+7. **Session titles (MPR-3), P17:** re-checked with a real agent's session at the owner's eye review, with no change before that.
+8. **Open-in-app glyph (MPR-4), P18:** the target app's own icon; the mock's generic icon is a stand-in.
+9. **Release switch (RCP-30), P19:** not flipped in this track. The cut-over is its own step after the owner's eye approval.
 
 ### Ratchet
 
@@ -330,59 +514,149 @@ every check.
 
 ### Rollout
 
-- **RCP-30 No switch.** This restyles existing surfaces and replaces none, so there is no release
-  switch, and `main` stays releasable after every commit.
+- **RCP-30 Surfaces change to match the mock.** Each surface changes in structure and content, not
+  only in values, until it matches its mock tab (MPR-1 to MPR-8). This spec adds no release switch
+  of its own, so `main` stays releasable after every commit; surfaces already behind a switch, such
+  as the launcher behind LCH-10, change behind it, and whether a packaged release shows them before
+  the cut-over is open item 9.
 - **RCP-31 One commit per surface.** First the token layer and the ratchet land, with every current
   hit counted as debt; that commit also rewrites the ledger's header for the new rules and CSS
-  paths. Then one commit per surface, in this order: the rail; the stage bar and pane
-  header; the dock; menus, popovers and modals; Command Settings. A surface's commit brings its
-  files' debt to zero, moves its CMP-20 classes out (RCP-28) and rewrites the DL rules it ships.
+  paths. Then one commit per surface, in this order (Q6): the rail; the stage bar and pane header,
+  with the window frame, the launcher and the browser toolbar; the dock; menus, popovers, modals,
+  forms, notices and the usage page; Command Settings. Placing the browser toolbar, notices, forms
+  and the usage page is the owner's answer 6; placing the window frame and the launcher with the
+  stage bar is this amendment's choice, since they share its frame row and toolbar. A surface's
+  commit brings its files' debt to zero, moves its CMP-20 classes out (RCP-28), closes its MPR's
+  deltas and rewrites the DL rules it ships.
 - **RCP-32 One eye review.** After the last surface, the owner reviews once, with no stop between
   surfaces. The review uses gallery state sheets built from the real components with the gallery's
   forced states ([`force-states.ts`](../../src/gallery/force-states.ts)), in graphite and Deck
-  Light, beside the mock. Then the real app runs once. Pushing waits for that approval.
+  Light, beside the mock, and the side-by-side parity of AC-7. Then the real app runs once. Pushing
+  waits for that approval.
 
 ## Design-language changes
 
 The owner approved these in conversation. Each is rewritten in
 [`DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md) in the same commit that ships it.
 
-| Rule        | Tier      | Change                                                                                                                                                                                               |
-| ----------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DL-1.3      | invariant | Blurred, offset `box-shadow` is allowed as RCP-11's three static levels, through `--elev-*`, on floating elements only; DL-3.3's "not from shadow" takes the same exception. The bans on `filter`, `backdrop-filter` and visual timers stay, as does the scrim's. |
-| DL-20.5     | invariant | The spacing steps get tokens (`--space-*` and RCP-6's role tokens); "no token declares the steps" goes.                                                                                             |
-| §20, new    | invariant | A row-height scale (24, 32, 44; RCP-7) and a weight scale (400, 600; RCP-5). DL-20.5's "no weight scale" goes.                                                                                       |
-| §21, new    | invariant | Pressed: `--state-pressed-bg`, the surface 8% toward black in both themes (RCP-9).                                                                                                                   |
-| DL-27.3     | pattern   | The rail's working mark changes from `WorkspaceSpinner` to the braille spinner (RCP-15), accepted by eye.                                                                                            |
-| DL-14.1     | pattern   | Phosphor gets a ratchet: no new import, existing ones counted down (RCP-26).                                                                                                                         |
+| Rule | Tier | Change |
+| --- | --- | --- |
+| DL-1.3 | invariant | Blurred, offset `box-shadow` is allowed as RCP-11's three static levels, through `--elev-*`, on floating elements only; DL-3.3's "not from shadow" takes the same exception. The bans on `filter`, `backdrop-filter` and visual timers stay, as does the scrim's. |
+| DL-20.5 | invariant | The spacing steps get tokens (`--space-*` and RCP-6's role tokens); "no token declares the steps" goes. |
+| §20, new | invariant | A row-height scale (24, 32, 44; RCP-7) and a weight scale (400, 600; RCP-5). DL-20.5's "no weight scale" goes. |
+| §21, new | invariant | Pressed: `--state-pressed-bg`, the surface 8% toward black in both themes (RCP-9). |
+| DL-27.3 | pattern | The rail's working mark changes from `WorkspaceSpinner` to the braille spinner (RCP-15), accepted by eye. |
+| DL-14.1 | pattern | Phosphor gets a ratchet: no new import, existing ones counted down (RCP-26). |
+| DL-18.9 | pattern | The frame row carries no brand; a development build marks the sidebar toggle with a dot (P5, MPR-1). |
+| DL-1.2 | invariant | The braille loop spreads from the worktree-card row to the rail row, strip tab and pane header, and holds ⠹ under reduced motion rather than the first frame (owner answer 1). |
+| DL-1.3, DL-1.6 | invariant | Preset popups wear `--elev-*` instead of `shadow-md` and `ring-1`, the preset's weight 500 goes, and an `RCP-n` value takes precedence over the preset's own (owner answer 2). |
+| DL-4.4 | invariant | The ladder gains the 16 rung, `--type-dialog`, that DL-20.3 already names (owner answer 3). |
+| DL-21.7 | invariant | A panel footer and the avatar carry the 3% resting wash beside the strip tab (owner answer 4). |
 
-These follow from the picks but change invariant text the table does not name. Confirm each with
-the owner before the commit that ships it:
-
-- **DL-1.2:** the braille loop spreads from the worktree-card row to the rail row, strip tab and
-  pane header, and holds ⠹ under reduced motion rather than the first frame.
-- **DL-1.3 and DL-1.6:** preset popups wear `--elev-*` instead of `shadow-md` and `ring-1`, the
-  preset's weight 500 goes, and an `RCP-n` value takes precedence over the preset's own.
-- **DL-4.4:** the ladder gains the 16 rung, `--type-dialog`, that DL-20.3 already names.
-- **DL-21.7:** a panel footer and the avatar carry the 3% resting wash beside the strip tab.
+The last four rows were approved on 2026-11-05 as the six answers recorded in the
+[build plan](../plans/2026-11-05-ui-recipes-ratchet.md) (local, not committed). DL-35.3 changes
+only if the owner keeps the mock's tab strip (open item 1).
 
 ## Acceptance
 
-| ID   | Check                                                                                                                                                                                                                                                           |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC-1 | Per surface (rail; stage bar and pane header; dock; menus, popovers and modals; Command Settings), at its commit: its files hold no line in the ledger, the tests beside its changed files pass, and the DL rules it ships are rewritten.                         |
-| AC-2 | The owner approves every surface's gallery state sheet by eye beside the mock: rest, hover, focus, selected, selected with focus, pressed, disabled, drag-over and needs you, built from the real components. Then one run of the real app.                    |
-| AC-3 | Both themes are checked: every sheet shows graphite and Deck Light, and status ink and every text tone hold at least 4.5:1 on every surface and wash they sit on in both.                                                                                 |
+| ID | Check |
+| --- | --- |
+| AC-1 | Per surface, at its commit (RCP-31's order): its files hold no line in the ledger, the tests beside its changed files pass, and the DL rules it ships are rewritten. This covers the ratchet only; parity is AC-7. |
+| AC-2 | The owner approves every surface's gallery state sheet by eye beside the mock: rest, hover, focus, selected, selected with focus, pressed, disabled, drag-over and needs you, built from the real components. Then one run of the real app. |
+| AC-3 | Both themes are checked: every sheet shows graphite and Deck Light, and status ink and every text tone hold at least 4.5:1 on every surface and wash they sit on in both. |
 | AC-4 | The ratchet fails on one seeded value of each kind, in CSS and `.tsx` where the kind applies: radius, height, spacing, focus, state background, blurred shadow, weight, arbitrary utility, ring outside Input, new Phosphor import, and `ui-scale:` without a reason. The same value with `ui-scale: <reason>` passes. |
-| AC-5 | After the ratchet lands, the ledger only falls: no later commit raises a count or adds a file.                                                                                                                                                                                                 |
-| AC-6 | The `scripts/` and `src/styles/` policy suites, lint and the tests beside each changed file pass at every commit.                                                                                                                                               |
+| AC-5 | After the ratchet lands, the ledger only falls: no later commit raises a count or adds a file. |
+| AC-6 | The `scripts/` and `src/styles/` policy suites, lint and the tests beside each changed file pass at every commit. |
+| AC-7 | **Parity, per surface.** The composed real app, from an isolated-userData run (P8), and the surface's mock tab are captured side by side at the same size, in graphite and in Deck Light. Elements, order and copy match. Computed styles are diffed (padding, gap, size, radius, hover and focus colours), and every delta the surface's MPR lists, and every new one the diff finds, is closed or listed as an accepted difference with the owner's yes. AC-1, AC-5 and AC-6 passing is not sufficient on its own. |
+| AC-8 | Window frame passes AC-7 against the Window tab (MPR-1); a development build shows the toggle dot and a packaged build none. |
+| AC-9 | Launcher passes AC-7 against the Launcher tab (MPR-2), including a not-installed agent's tile, the ivory Run in graphite with other primaries unchanged, and the launcher over a live space. |
+| AC-10 | Rail passes AC-7 against the Rail tab (MPR-3), including remembered rows, the Archived section and the inline rename field. |
+| AC-11 | Stage passes AC-7 against the Stage tab (MPR-4): toolbar, overflow menu, pane header, the tab strip and tab menu as open item 1 resolves, and the browser toolbar. |
+| AC-12 | Dock passes AC-7 against the Dock tab (MPR-5): every view with data, empty and loading, a file tab and the external-change bar. |
+| AC-13 | Overlays pass AC-7 against the Overlays tab (MPR-6): every listed menu, popover, tooltip, modal and form, and the usage details page; the Clone form reads "Folder name". |
+| AC-14 | Command Settings passes AC-7 against the Settings tab (MPR-7): the frame and each row pattern, the shortcut row and the agent list included. |
+| AC-15 | Notices pass AC-7 against the Notices tab (MPR-8): the persist bar, the three update states and the launcher failure line. |
+| AC-16 | The P8 capture reaches every surface the 2026-11-05 capture did not: remembered and archived rows, inline rename, the update action, the browser panel, the tab menu, the prompt and attention popovers, the external-change bar, the remembered row menu, create file, the worktree form, the preset editor, usage consent, the shortcut row, the agent list, the launcher failure line and loading skeleton. A surface it cannot reach is named with its reason. |
+| AC-17 | Every open item that touches a surface is answered by the owner before that surface's commit, and the answer is recorded in `DECISIONS.md`. |
+
+## Traceability
+
+Every decision in [`DECISIONS.md`](../../src/gallery/layout-mocks/ui-recipes/DECISIONS.md) maps to
+a requirement and an acceptance check. "A1" to "A6" are the owner's six answers for the build.
+
+| Decision | Decided | Requirement | Acceptance |
+| --- | --- | --- | --- |
+| Intent | One recipe per thing, one token each, per theme; a ratchet enforces it | RCP-1, RCP-24 | AC-1, AC-4 |
+| Q1 | The composition spec is the base; DL wins on radius 7 and ease; DL-20.5 gets spacing tokens | RCP-6, RCP-8, RCP-9 | AC-1 |
+| Q2 | The ratchet covers radius, height, spacing, focus, state backgrounds, shadow, weight | RCP-25, RCP-26 | AC-4 |
+| Q3 | Per-file debt ledger; CMP-20 surfaces exempt | RCP-24, RCP-28 | AC-1, AC-5 |
+| Q4 | State tokens derive from `--tone` | RCP-2, RCP-9 | AC-3 |
+| Q5 | One commit per surface, one eye review at the end | RCP-30, RCP-31, RCP-32 | AC-1, AC-2 |
+| Q6 | Order rail → stage bar and pane header → dock → overlays → settings | RCP-31 | AC-1 |
+| Q7 | Review on gallery sheets from real components, both themes, beside the mock, then one app run | RCP-32 | AC-2, AC-3, AC-7 |
+| Q8 | Shadows are allowed | RCP-11 | AC-4 |
+| Q8.1 | Three levels: menu, floating panel, modal | RCP-11 | AC-4, AC-13 |
+| Q8.2 | Dark = shadow + inset hairline, light = shadow only | RCP-11 | AC-3 |
+| Q8.3 | Static only, token only, floating elements only | RCP-11, RCP-25 | AC-4 |
+| Q9 | Hugeicons; the ratchet blocks new Phosphor imports | RCP-14, RCP-26 | AC-4, AC-5 |
+| Q10 | Rows 24/32/44 | RCP-7 | AC-4, AC-10 |
+| Q11 | Live classes move out of the CMP-20 partials | RCP-28 | AC-1 |
+| Q12 | The spacing role table | RCP-6 | AC-4, AC-7 |
+| Q13 | Deck's existing token names win | RCP-1 | AC-1 |
+| Q14 | Pressed = 8% toward black | RCP-9 | AC-2 |
+| Q15 | Shadow strength picked by eye: mid | RCP-11 | AC-2 |
+| Q16 | The Tailwind allowlist | RCP-26 | AC-4 |
+| Q17 | The `ui-scale: <reason>` exception | RCP-27 | AC-4 |
+| Q18 | One badge per chord | RCP-13, MPR-4, MPR-6 | AC-11, AC-13 |
+| Q19 | Rail rows 52 → 44, live and remembered | RCP-7, MPR-3 | AC-10 |
+| Q20 | Weights 400/600 only | RCP-5, MPR-7 | AC-4, AC-14 |
+| Q21 | DeckIcon size typed 16/14/12 | RCP-4 | AC-6 |
+| Q22 | Scrollbar and selection are tokens | RCP-16 | AC-3 |
+| Q23 | Draw every surface; the mock is the standard the app is changed to match | MPR-0 to MPR-8, RCP-30 | AC-7 to AC-15 |
+| Q24 | A composed window plus per-group state tabs, both themes | MPR-0 | AC-2, AC-7 |
+| Q25 | Real data plus a Worst-case toggle | MPR-0 | AC-7 |
+| Q26 | Drop directions B and C | MPR-0 | AC-2 |
+| Q27 | The surface list | MPR-1 to MPR-8 | AC-8 to AC-16 |
+| Q28 | Settings drawn as row patterns | MPR-7 | AC-14 |
+| Q29 | The tab order | MPR-0 | AC-7 |
+| Q30 | The composed scene | MPR-0 | AC-7 |
+| Q31 | The file split | MPR-0 | AC-2 |
+| Pick: working mark | Braille (B) everywhere a working state shows | RCP-15 | AC-2, AC-10, AC-11 |
+| Pick: shadow | Mid for all three levels | RCP-11 | AC-2 |
+| Pick: mock approved | Mock approved by eye on 2026-11-05 | MPR-0 | AC-7 |
+| Pick: DL items | The six pending DL items approved | RCP-5, RCP-11, RCP-15, RCP-21 | AC-1 |
+| A1 | DL-1.2 braille loop spreads, holds ⠹ | RCP-15 | AC-1, AC-2 |
+| A2 | DL-1.3 / DL-1.6 preset popups on `--elev-*`, no 500 | RCP-11, RCP-26 | AC-1, AC-4 |
+| A3 | DL-4.4 gains the 16 rung | RCP-5 | AC-1 |
+| A4 | DL-21.7 panel footer and avatar on the 3% wash | RCP-9, RCP-21 | AC-1, AC-2 |
+| A5 | Dims use no `filter`: opacity 0.5 and a colour scrim | RCP-1, MPR-2 | AC-9 |
+| A6 | Browser toolbar with the stage bar; notices, forms, usage page with overlays | RCP-31 | AC-1 |
+| P0 | The mock is the standard, per surface; layout is in scope | RCP-30, MPR-0 to MPR-8 | AC-7 to AC-15 |
+| P1 | Drop "No sessions"; keep "No sessions match" | MPR-2, MPR-3 | AC-9, AC-10 |
+| P2 | Not-installed agents stay as a dimmed 36 tile with a download mark; no Install button | MPR-2, RCP-23 | AC-9 |
+| P3 | The dock strip always shows Files; keep +, widen, close | MPR-5 | AC-12 |
+| P4 | Usage empty: icon, centred, plus the Today band | MPR-5 | AC-12 |
+| P5 | No brand in the frame; dev dot on the toggle; keep drag and caption room | MPR-1 | AC-8 |
+| P6 | Launcher ⇧ only with a tooltip; + and split icons on the destination | MPR-2 | AC-9 |
+| P7 | Superseded by P10 | MPR-2 | AC-9 |
+| P10 | `--primary` is one ivory in every theme; a theme changes only background surfaces | RCP-30a, MPR-2, MPR-6 | AC-9 |
+| P11 | Change status shown as icons (dot, +, −), no M/A/D letters, in Changes and the Files tree | MPR-5 | AC-9 |
+| P12 | Tab strip drawn as the mock; DL-35.3 rewritten | MPR-4 | AC-9 |
+| P13 | Rail + menu: LCH-8's four plus Resume a session… | MPR-3 | AC-9 |
+| P14 | Changes list pane beside the cards | MPR-5 | AC-9 |
+| P15 | Persist-error bar without Retry | MPR-8 | AC-9 |
+| P16 | Narrow widths shrink and truncate, never wrap | MPR-2, MPR-4 | AC-9 |
+| P17 | Session titles re-checked with a real agent at eye review | MPR-3 | AC-9 |
+| P18 | Open-in-app shows the target app's icon | MPR-4 | AC-9 |
+| P19 | Release switches flip in a separate cut-over | RCP-30 | AC-9 |
+| P8 | Capture the composed real app with an isolated userData run | MPR-0 | AC-7, AC-16 |
+| P9 | Command bar controls 32 inside a 40 frame | MPR-2, RCP-3 | AC-9 |
+| Noted | Release switches keep the new surfaces off in packaged builds | RCP-30, open item 9 | AC-17 |
 
 ## Out of scope
 
 - Terminal and editor content, the native browser view, the gallery, the landing and native OS
   dialogs.
-- Layout and identity colours: the arrangement of rail, stage and dock, and each theme's own
-  colours (graphite's teal Run stays).
 - The CMP-20 surfaces: the old agent rail and its cards, the old dock column, the Agent Board and
   Mission Control.
 - The Spaces bar, the browser-beside slot and the hunk queue, which are not live.

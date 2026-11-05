@@ -1,7 +1,7 @@
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
-import { PushPin, PushPinSlash, X } from "@phosphor-icons/react";
-import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
+import { Cancel01Icon, Pin02Icon, PinOffIcon } from "@hugeicons/core-free-icons";
+import { DeckIcon, GLYPH_FEATURE } from "./controls/deck-icon";
 import {
   useDismiss,
   useStageOverlayFlag,
@@ -38,12 +38,17 @@ export function TabStripMenu(props: Props) {
     {
       id: "pin",
       label: props.pinned ? "Unpin" : "Pin",
-      icon: props.pinned ? PushPinSlash : PushPin,
+      icon: props.pinned ? PinOffIcon : Pin02Icon,
       disabled: !props.canPin,
     },
-    { id: "close", label: "Close", icon: X, disabled: false },
-    { id: "others", label: "Close Others", icon: X, disabled: !props.canCloseOthers },
-    { id: "right", label: "Close to the Right", icon: X, disabled: !props.canCloseRight },
+    { id: "close", label: "Close", icon: Cancel01Icon, disabled: false },
+    { id: "others", label: "Close Others", icon: Cancel01Icon, disabled: !props.canCloseOthers },
+    {
+      id: "right",
+      label: "Close to the Right",
+      icon: Cancel01Icon,
+      disabled: !props.canCloseRight,
+    },
   ] as const;
 
   const closeRef = useRef(props.onClose);
@@ -106,7 +111,7 @@ export function TabStripMenu(props: Props) {
             disabled={row.disabled}
             onClick={() => props.onAction(row.id)}
           >
-            <DeckIcon icon={row.icon} size={CHROME_ICON} />
+            <DeckIcon icon={row.icon} size={GLYPH_FEATURE} />
             <span class="toolbar-menu__label">{row.label}</span>
           </button>
         </div>

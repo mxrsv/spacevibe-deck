@@ -17,6 +17,14 @@ import {
   commandSources,
 } from "./command-settings-view";
 
+/**
+ * RCP-11, RCP-21: Settings floats over the `--scrim-bg` colour scrim as a floating panel at
+ * `--elev-2`, framed by `--panel-frame` on light themes.
+ */
+const SCRIM =
+  // ui-scale: the panel's 64 drop from the window's top is placement, not a spacing step
+  "fixed inset-0 z-35 flex items-start justify-center bg-(--scrim-bg) pt-[64px] [-webkit-app-region:no-drag]";
+
 interface CommandSettingsProps {
   readonly open: boolean;
   readonly onClose: () => void;
@@ -120,7 +128,7 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
     // drag strip would otherwise swallow a press on the top 34px (which also means the window
     // cannot be dragged while Settings is open).
     <div
-      className="fixed inset-0 z-35 flex items-start justify-center bg-black/55 pt-[64px] [-webkit-app-region:no-drag]"
+      className={SCRIM}
       onPointerDown={(event) => {
         pressedScrim.current = event.target === event.currentTarget;
       }}
@@ -135,7 +143,7 @@ function CommandSurface({ onClose }: { readonly onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
-        className="ui-preset flex max-h-[calc(100%-128px)] w-[760px] max-w-[calc(100%-48px)] flex-col overflow-hidden rounded-xl bg-background text-foreground ring-1 ring-foreground/15"
+        className="ui-preset flex max-h-[calc(100%-128px)] w-[760px] max-w-[calc(100%-48px)] flex-col overflow-hidden rounded-(--radius-surface) border border-(--panel-frame) bg-(--popover-bg) text-(--text-primary) shadow-(--elev-2)"
       >
         <header className="flex shrink-0 flex-col gap-2 p-3">
           <SearchField

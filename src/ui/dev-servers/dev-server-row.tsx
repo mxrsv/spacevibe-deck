@@ -1,11 +1,11 @@
-import { ArrowSquareOut, Browser, Copy, type Icon } from "@phosphor-icons/react";
+import { BrowserIcon, Copy01Icon, LinkSquare02Icon } from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import {
   ActionTooltip,
   tooltipTriggerProps,
   useTooltipVisibility,
 } from "../controls/action-tooltip";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_ROW, type DeckGlyph } from "../controls/deck-icon";
 import type { DevServerAction } from "./dev-server-actions";
 import type { DevServerItem } from "./dev-server-model";
 
@@ -21,7 +21,7 @@ interface ActionSpec {
   readonly col: number;
   readonly action: DevServerAction;
   readonly label: string;
-  readonly icon: Icon;
+  readonly icon: DeckGlyph;
   readonly reason: string | null;
   readonly pill?: boolean;
 }
@@ -32,7 +32,7 @@ function actionsFor(item: DevServerItem): readonly ActionSpec[] {
       col: 0,
       action: "open-deck",
       label: "Open in Deck",
-      icon: Browser,
+      icon: BrowserIcon,
       reason: item.openReason,
       pill: true,
     },
@@ -40,14 +40,14 @@ function actionsFor(item: DevServerItem): readonly ActionSpec[] {
       col: 1,
       action: "open-external",
       label: "Open in your browser",
-      icon: ArrowSquareOut,
+      icon: LinkSquare02Icon,
       reason: item.openReason,
     },
     {
       col: 2,
       action: "copy",
       label: item.url === null ? "Copy address" : "Copy URL",
-      icon: Copy,
+      icon: Copy01Icon,
       reason: null,
     },
   ];
@@ -94,7 +94,7 @@ function ActionButton({ spec, item, tabbable, onFocusCell, onRun }: ActionButton
           }
         }}
       >
-        <DeckIcon icon={spec.icon} size={ROW_ICON} />
+        <DeckIcon icon={spec.icon} size={GLYPH_ROW} />
         {spec.pill === true ? <span>Open</span> : null}
       </button>
       {tooltip.anchor !== null && (

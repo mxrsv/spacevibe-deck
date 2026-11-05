@@ -1,10 +1,10 @@
-import { ArrowSquareOut } from "@phosphor-icons/react";
+import { LinkSquare02Icon } from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { openUrl } from "../host/shell-host";
 import { reportChromeMessage } from "../chrome/events";
 import { USAGE_PRIVACY_URL } from "../telemetry/usage-notice";
 import { setTelemetryEnabled } from "../telemetry/consent-store";
-import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
+import { GLYPH_ROW, DeckIcon } from "./controls/deck-icon";
 import { Modal } from "./modal";
 
 /**
@@ -91,7 +91,7 @@ export function UsageConsentModal() {
         }}
       >
         <span>What Deck sends</span>
-        <DeckIcon icon={ArrowSquareOut} size={CHROME_ICON} />
+        <DeckIcon icon={LinkSquare02Icon} size={GLYPH_ROW} />
       </button>
       <div class="usage-consent__actions">
         {/* Sharing first and accented, but focus does NOT start here — see

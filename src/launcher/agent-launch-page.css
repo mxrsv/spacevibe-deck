@@ -11,6 +11,7 @@
   box-sizing: border-box;
   overflow: auto;
   overscroll-behavior: contain;
+  /* ui-scale: the page's fluid outer margin, not a spacing step */
   padding: clamp(24px, 4vw, 48px);
   /* The preview line pins to the bottom edge, so no padding may sit under it: a sticky offset
      is measured from the scrollport, and a gap here would make the line rise by that much
@@ -87,7 +88,7 @@
 }
 .agent-launch-page__context .nt-workspace-picker__trigger {
   font-size: var(--type-meta);
-  font-weight: 550;
+  font-weight: 600;
   transition:
     background var(--duration) var(--ease),
     border-color var(--duration) var(--ease);
@@ -96,7 +97,7 @@
   .nt-workspace-picker__trigger:is(:hover, :focus-visible):not([aria-disabled="true"]) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .agent-launch-page__chip {
   position: relative;
@@ -150,7 +151,7 @@
 .agent-launch-page__card:not(.agent-launch-page__card--missing):hover,
 .agent-launch-page__card:not(.agent-launch-page__card--missing):focus-within {
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .agent-launch-page__card .agent-launch-page__main {
   position: absolute;
@@ -188,7 +189,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--type-body);
-  font-weight: 550;
+  font-weight: 600;
 }
 .agent-launch-page__main > .deck-icon {
   align-self: flex-end;
@@ -233,7 +234,7 @@
 }
 .agent-launch-page__card .agent-launch-page__alt:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
-  background: var(--muted);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 /* Install / Get sits over the press at full contrast; a failure message stacks above it. */
@@ -262,7 +263,7 @@
   align-items: center;
   gap: 10px;
   box-sizing: border-box;
-  min-height: 46px;
+  min-height: var(--row-44);
   margin-top: auto;
   padding: 8px 0;
   border-top: 1px solid var(--hair);
@@ -338,7 +339,7 @@
 .agent-launch-page .launch-profile__trigger:is(:hover, :focus-visible) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 .launch-profile__menu {
@@ -355,7 +356,7 @@
   padding: 4px;
   border-radius: var(--radius-surface);
   background: var(--chrome-2);
-  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  box-shadow: var(--elev-1);
   color: var(--text-primary);
 }
 .launch-profile__list {
@@ -391,8 +392,8 @@
 .launch-profile__glyph {
   display: block;
   flex: none;
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
 }
 /* A fixed slot, so the commands line up whether or not a row carries the check. */
 .launch-profile__check {
@@ -454,7 +455,7 @@
 }
 .agent-launch-page .agent-launch-page__notice button:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background: var(--state-hover-bg);
 }
 /* "Choose agents" is the page's main action when no agent can run: its one filled button. */
 .agent-launch-page .agent-launch-page__empty button {
@@ -469,10 +470,10 @@
 }
 .agent-launch-page .agent-launch-page__empty button:is(:hover, :focus-visible) {
   outline: none;
-  background: color-mix(in oklch, var(--primary) 92%, black);
+  background: var(--primary-hover);
 }
 .agent-launch-page .agent-launch-page__empty button:active {
-  background: color-mix(in oklch, var(--primary) 84%, black);
+  background: var(--primary-pressed);
 }
 .agent-launch-page .agent-launch-page__error {
   color: var(--text-primary);

@@ -13,12 +13,13 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { cn } from "@/lib/cn";
+import { rowActionsGround } from "../blocks/recipe-classes";
 import { Button } from "../controls/button";
 import { DeckIcon } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuSeparator,
+  DropdownMenuGap,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -30,6 +31,8 @@ import { MenuEntry, RailPopupGuard, REVEAL, Tip } from "./project-rail-menu-part
 import { recoverRailFocus } from "./project-rail-focus";
 
 export interface ProjectRailRowActionsProps {
+  /** The row is the selected one: the actions' ground takes its wash (RCP-19). */
+  readonly selected: boolean;
   /** The row's title, so every button names the row it acts on. */
   readonly title: string;
   readonly pinned: boolean;
@@ -45,6 +48,7 @@ export interface ProjectRailRowActionsProps {
 
 /** Pin, archive and the more menu, laid over the row's trailing edge (LAY-2). */
 export function ProjectRailRowActions({
+  selected,
   title,
   pinned,
   tabStop,
@@ -60,19 +64,14 @@ export function ProjectRailRowActions({
   // The menu hands focus back to its trigger as it closes, and the field would lose it to that.
   const renameWhenClosed = useRef(false);
   return (
-    <div
-      className={cn(
-        "absolute top-1 right-1.5 flex items-center gap-0.5 rounded-md bg-sidebar-accent p-0.5",
-        REVEAL,
-      )}
-    >
+    <div className={cn(rowActionsGround(selected), REVEAL)}>
       {commands.pin === undefined ? null : (
         <Tip
           label={pinLabel}
           button={
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               tabIndex={tabIndex}
               aria-label={`${pinLabel} ${title}`}
               onClick={commands.pin}
@@ -87,7 +86,7 @@ export function ProjectRailRowActions({
         button={
           <Button
             variant="ghost"
-            size="icon-xs"
+            size="icon-sm"
             tabIndex={tabIndex}
             aria-label={`${archiveLabel} ${title}`}
             onClick={commands.archive}
@@ -118,7 +117,7 @@ export function ProjectRailRowActions({
               render={
                 <Button
                   variant="ghost"
-                  size="icon-xs"
+                  size="icon-sm"
                   tabIndex={tabIndex}
                   aria-label={`More actions for ${title}`}
                 />
@@ -145,7 +144,7 @@ export function ProjectRailRowActions({
               {pinLabel}
             </MenuEntry>
           )}
-          <DropdownMenuSeparator />
+          <DropdownMenuGap />
           <MenuEntry icon={Copy01Icon} onClick={commands.copyPath}>
             Copy path
           </MenuEntry>
@@ -172,7 +171,7 @@ export function ProjectRailRowActions({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuSeparator />
+          <DropdownMenuGap />
           <MenuEntry icon={archiveIcon} onClick={commands.archive}>
             {archiveLabel}
           </MenuEntry>

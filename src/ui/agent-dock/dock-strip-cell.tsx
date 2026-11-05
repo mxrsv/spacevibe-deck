@@ -1,17 +1,18 @@
 import type { JSX } from "preact";
 import { cn } from "@/lib/cn";
+import { STATE_DISABLED, STATE_IDLE, STATE_MOTION } from "../blocks/recipe-classes";
 import { withRef } from "../controls/with-ref";
 
 /** How a pressed cell reads: the strip's selection mark, or a toggle's fill. */
 export type StripCellMark = "underline" | "fill";
 
-const CELL =
-  "relative flex h-full min-w-9 shrink-0 items-center justify-center px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-40 aria-pressed:text-foreground";
+/** RCP-9: hover and keyboard focus are one wash, pressed lays its layer, disabled is 50%. */
+const CELL = `relative flex h-full min-w-9 shrink-0 items-center justify-center px-2 text-xs text-(--text-muted) hover:text-(--text-primary) focus-visible:text-(--text-primary) aria-pressed:text-(--text-primary) ${STATE_MOTION} ${STATE_IDLE} ${STATE_DISABLED}`;
 
+/** The selected cell: the strip's full wash (DL-21.1), or a toggle's. */
 const MARK: Readonly<Record<StripCellMark, string>> = {
-  underline:
-    "aria-pressed:after:absolute aria-pressed:after:inset-x-0 aria-pressed:after:bottom-0 aria-pressed:after:h-0.5 aria-pressed:after:bg-primary",
-  fill: "aria-pressed:bg-muted",
+  underline: "aria-pressed:bg-(--tab-active-bg)",
+  fill: "aria-pressed:bg-(--tab-active-bg)",
 };
 
 /**

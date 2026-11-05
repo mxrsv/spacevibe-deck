@@ -1,0 +1,58 @@
+/* The recipe state sheets (spec 2026-11-05-ui-recipes-ratchet, RCP-32): the real components in
+   every state, graphite beside Deck Light. Pulls the Base UI preset in for itself, with the
+   sheets' own files scanned, so the forced copies of its utilities can be built from this
+   sheet (`recipe-states-kit.tsx` finds it by its file name). */
+@import "../../ui/preset.css";
+@source "./recipe-states-kit.tsx";
+@source "./recipe-states-rail.tsx";
+@source "./recipe-states-surfaces.tsx";
+
+/* The two themes stack, so each grid has the page's width for its nine columns. */
+.gx-recipe-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.gx-recipe-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 7px;
+  background: var(--ground, var(--bg));
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gx-recipe-scope__name {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* Transparent over the scope's ground: `.ui-preset` would otherwise paint the preset's own. */
+.gx-recipe-grid {
+  display: grid;
+  background: transparent;
+  align-items: center;
+  gap: 6px 8px;
+  overflow-x: auto;
+}
+
+.gx-recipe-grid__head,
+.gx-recipe-grid__label {
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.gx-recipe-grid__cell {
+  min-width: 0;
+}
+
+.gx-recipe-grid__na {
+  font-size: 12px;
+  color: var(--text-faint);
+  text-align: center;
+}

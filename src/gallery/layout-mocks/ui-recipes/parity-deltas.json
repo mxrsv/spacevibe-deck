@@ -1,0 +1,512 @@
+[
+  {
+    "surface": "window",
+    "id": "WIN-01",
+    "class": "c",
+    "mock": "Frame row is traffic lights + sidebar toggle only",
+    "real": "Frame row also carries the brand: Deck logo, \"Deck\", and a DEV chip (release: V<version>)",
+    "file": "src/ui/sidebar-toggle.tsx",
+    "line": "110-120",
+    "decided_by": "DECISIONS P5 (remove brand, keep a dev dot on the toggle)"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-02",
+    "class": "a",
+    "mock": "Rail frame row 34 + search bar 36; search field top at y=38 (measured on .win)",
+    "real": "Flush stage frame row 40; search field top at y=52 (measured). 14 px lower than the mock; --frame-h is declared twice (34 in 01-tokens, 40 in 31-shell-stage)",
+    "file": "src/styles/31-shell-stage.css",
+    "line": "25",
+    "decided_by": "DECISIONS Pass decisions \"Bar heights\" (bar 36, 34 in the frame row)"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-03",
+    "class": "c",
+    "mock": "Stage draws a tab strip (3 tabs, close, +) under the crumbs, then the pane heads",
+    "real": "No tab strip: only the breadcrumb (project / branch); panes start at y=41. The rail rows are the only tab list",
+    "file": "src/ui/tab-strip.tsx",
+    "line": "186",
+    "decided_by": "DECISIONS Surfaces \"Stage: tab strip and tab menu\", but Q1: DL-35.3 wins; owner decision"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-04",
+    "class": "c",
+    "mock": "Toolbar: attention chip with bell icon, dev-servers chip with server icon + count, open-in-app arrow icon + caret, more, dock toggle",
+    "real": "Toolbar: attention chip with red dot, dev-servers chip with tray icon, open-in-app shows the app's own icon (VS Code), more; dock toggle at far right only while the dock is closed",
+    "file": "src/ui/attention/attention-chip.tsx",
+    "line": "88",
+    "decided_by": "DECISIONS Pass decisions \"Stage frame\" (open-in-app split, more, dock toggle)"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-05",
+    "class": "c",
+    "mock": "Pane head: mark + name + title + status word + one 24 \"more\" at the end",
+    "real": "Pane head: logo + name + status word only. No \"more\", no title (the stub agent has no session title: unverified)",
+    "file": "src/terminal/pane-agent-header.tsx",
+    "line": "103-122",
+    "decided_by": "DECISIONS Pass decisions \"Pane header\" (default action is a single more)"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-06",
+    "class": "a",
+    "mock": "Pane head gap 6 (measured), pad 0 4 0 8, height 32",
+    "real": "Pane head gap 8, pad 0 4 0 8, height 32 (measured, .pane__bar)",
+    "file": "src/styles/06-stage-panes.css",
+    "line": "440",
+    "decided_by": "DECISIONS Standard \"icon <-> label 6\""
+  },
+  {
+    "surface": "window",
+    "id": "WIN-07",
+    "class": "c",
+    "mock": "Dock strip: 4 view icons (Changes, Usage, History, Files)",
+    "real": "Dock strip: 3 view icons; Files appears only as an \"Explorer\" file tab after pressing +. Strip keeps +, widen, close (the mock also keeps them: dock.js:111)",
+    "file": "src/ui/agent-dock/dock-tab-strip.tsx",
+    "line": "199-262",
+    "decided_by": "DECISIONS P3 (strip always shows Files)"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-08",
+    "class": "c",
+    "mock": "Changes = sticky card stack plus a list/tree pane with a \"6 files +94 -90\" footer and list/tree toggle",
+    "real": "Changes = a header band (\"Uncommitted 5 files +14 -11\", refresh) over the card stack; no list/tree pane",
+    "file": "src/ui/agent-dock/dock-changes.tsx",
+    "line": "157-170",
+    "decided_by": "DECISIONS Surfaces Dock (\"Changes as a card stack plus the list/tree pane\")"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-09",
+    "class": "b",
+    "mock": "Rail rows are titled by session (\"Launcher flow mock\") with a one-line sentence; remembered rows show 1d age",
+    "real": "Rows are titled by agent (\"Claude\"); the title waits for the agent's own sentence, which stubs never write (unverified with a real agent)",
+    "file": "src/ui/agent-rail-card-model.ts",
+    "line": "141",
+    "decided_by": "none (data-dependent; re-check with a real session log)"
+  },
+  {
+    "surface": "window",
+    "id": "WIN-10",
+    "class": "d",
+    "mock": "Primary is ivory in graphite (Run, Create, Save, update action)",
+    "real": "Primary is graphite teal #47bfc5 (measured --primary); the Clone button in the clone form is teal too",
+    "file": "src/lib/theme-vars.ts",
+    "line": "38",
+    "decided_by": "DECISIONS P7 (launcher Run only; --primary unchanged)"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-01",
+    "class": "a",
+    "mock": "Command frame is 640 wide, one 40 frame holding 32 controls (chip, input, Run split)",
+    "real": "Frame is 700 wide; chip h=40, filter input h=40, Run h=40 fill the frame edge to edge (measured)",
+    "file": "src/launcher/command-bar.tsx",
+    "line": "174-226",
+    "decided_by": "DECISIONS P9 / Pass decisions \"Command bar\"; RCP-3"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-02",
+    "class": "d",
+    "mock": "Run and caret are ivory (oklch .93 .025 85)",
+    "real": "Run and caret are teal rgb(71,191,197) in graphite",
+    "file": "src/lib/theme-vars.ts",
+    "line": "38",
+    "decided_by": "DECISIONS P7"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-03",
+    "class": "b",
+    "mock": "Input has a leading search icon",
+    "real": "Input has no icon; placeholder only",
+    "file": "src/launcher/command-bar.tsx",
+    "line": "218-219",
+    "decided_by": "none"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-04",
+    "class": "c",
+    "mock": "Installed agents only, one row of 36 tiles (9)",
+    "real": "12 agents: missing ones as a dimmed tile plus a framed \"Install\" button (60x28), so the row wraps to 2 lines at 1280 and 3 lines at 900",
+    "file": "src/launcher/command-bar.tsx",
+    "line": "351-366",
+    "decided_by": "DECISIONS P2 (dimmed tile with a download mark; no Install button)"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-05",
+    "class": "a",
+    "mock": "Tile padding 0 10, selected wash rgb(58,61,64), radius 6, h=36",
+    "real": "Tile padding 0 8, h=36, radius 6; unselected tile bg rgb(31,34,38)",
+    "file": "src/launcher/command-bar.css",
+    "line": "205",
+    "decided_by": "DECISIONS Standard \"control horizontal padding\""
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-06",
+    "class": "b",
+    "mock": "\"New space in <project>\" has a leading + icon; a \"Beside\" split icon",
+    "real": "Plain text, no icon",
+    "file": "src/launcher/command-bar.tsx",
+    "line": "316-320",
+    "decided_by": "DECISIONS P6"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-07",
+    "class": "b",
+    "mock": "Trailing \"shift\" key only (icon-only chip), meaning in a tooltip",
+    "real": "Prints the key plus the word \"adds\"",
+    "file": "src/launcher/command-bar.tsx",
+    "line": "299-300",
+    "decided_by": "DECISIONS P6"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-08",
+    "class": "c",
+    "mock": "Rail at zero tabs: project header selected with a trailing arrow, remembered sessions listed under it (title, branch, age)",
+    "real": "Rail at zero tabs: project headers, checkout rows (main, feat/...), \"No sessions\" under empty ones; no selected marker",
+    "file": "src/ui/project-rail/project-rail-sections.tsx",
+    "line": "157-160",
+    "decided_by": "DECISIONS P1 (drop \"No sessions\") for the text; the arrow marker is not decided"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-09",
+    "class": "c",
+    "mock": "Breadcrumb project > branch at top left, toolbar: open-in-app, more, dock toggle",
+    "real": "No breadcrumb at zero tabs; toolbar shows dev-servers chip \"0\", open-in-app, more, dock toggle",
+    "file": "src/ui/app.tsx",
+    "line": "2931",
+    "decided_by": "DECISIONS Pass decisions \"Stage frame\""
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-10",
+    "class": "c",
+    "mock": "Narrow (900): the mock has no narrow state for the launcher (only --rail-w-narrow 200)",
+    "real": "At 900 the filter placeholder truncates (\"Filter agents or project\"), tile row wraps to 3 lines, command frame stays 700 wide",
+    "file": "src/launcher/command-bar.css",
+    "line": "118",
+    "decided_by": "none (mock has no narrow launcher)"
+  },
+  {
+    "surface": "launcher",
+    "id": "LAU-11",
+    "class": "c",
+    "mock": "Launcher over an open stage is a floating panel (--elev-2) with a scrim",
+    "real": "Launcher popover over the stage: floating frame, no scrim dimming of panes (panes dimmed ~50% but terminal text still readable)",
+    "file": "src/launcher/command-bar.css",
+    "line": "52",
+    "decided_by": "DECISIONS Owner answers (scrim colour, no filter)"
+  },
+  {
+    "surface": "rail",
+    "id": "RAI-01",
+    "class": "c",
+    "mock": "Empty project: header only",
+    "real": "\"No sessions\" under each empty project (4 of 5 projects in the capture)",
+    "file": "src/ui/project-rail/project-rail-sections.tsx",
+    "line": "157-160",
+    "decided_by": "DECISIONS P1"
+  },
+  {
+    "surface": "rail",
+    "id": "RAI-02",
+    "class": "a",
+    "mock": "\"+\" is an unframed 28 ghost icon button",
+    "real": "\"+\" new is a framed outline icon button (1px oklch(1 0 0 / .15) border, 28x28)",
+    "file": "src/ui/project-rail/project-rail-create.tsx",
+    "line": "106",
+    "decided_by": "none (mock decides; spec silent)"
+  },
+  {
+    "surface": "rail",
+    "id": "RAI-03",
+    "class": "a",
+    "mock": "Rail New menu is 240 wide with one-line labels",
+    "real": "New menu is min-w-44 (176): \"Create workspace…\" and \"Resume a session…\" wrap to 2-3 lines",
+    "file": "src/ui/project-rail/project-rail-create.tsx",
+    "line": "112",
+    "decided_by": "DECISIONS Standard (menu item 32 single line)"
+  },
+  {
+    "surface": "rail",
+    "id": "RAI-04",
+    "class": "c",
+    "mock": "Checkout lines render as nested rows under a branch label",
+    "real": "Checkout row is a project-level row: fork icon + branch + \"worktree\" label; idle session of the checkout sits among the project's rows",
+    "file": "src/ui/project-rail/project-rail-checkout.tsx",
+    "line": "106",
+    "decided_by": "DECISIONS Surfaces Rail (checkout rows)"
+  },
+  {
+    "surface": "rail",
+    "id": "RAI-05",
+    "class": "b",
+    "mock": "Checkout menu: New agent…, New worktree…, Open shell, New split here, Open in Finder",
+    "real": "Checkout menu: New agent…, Open shell, New split here, Open in Finder (no New worktree…)",
+    "file": "src/ui/project-rail/project-rail-checkout.tsx",
+    "line": "106",
+    "decided_by": "none"
+  },
+  {
+    "surface": "stage",
+    "id": "STA-01",
+    "class": "c",
+    "mock": "Tab strip with tab menu, attention chip, dev-servers chip, toolbar",
+    "real": "Chips and toolbar present; no tab strip (breadcrumb only)",
+    "file": "src/ui/tab-strip.tsx",
+    "line": "186",
+    "decided_by": "see WIN-03 (owner decision)"
+  },
+  {
+    "surface": "stage",
+    "id": "STA-02",
+    "class": "c",
+    "mock": "Pane head draws mark + word + more",
+    "real": "Needs-you head: yellow ring + \"Needs you\"; working head: braille spinner + \"Working\"; no more button",
+    "file": "src/terminal/pane-agent-header.tsx",
+    "line": "103-122",
+    "decided_by": "DECISIONS Pass decisions \"Pane header\""
+  },
+  {
+    "surface": "stage",
+    "id": "STA-03",
+    "class": "b",
+    "mock": "Overflow menu: Split right, Split down, Expand pane, Close pane, gap, Browser, Prompts, Settings",
+    "real": "Overflow menu: Split vertically, Split horizontally, Focus expand, Close pane (4 items); no Browser, Prompts, Settings",
+    "file": "src/ui/toolbar/toolbar-overflow-menu.tsx",
+    "line": "95",
+    "decided_by": "DECISIONS Surfaces Stage (toolbar and overflow menu)"
+  },
+  {
+    "surface": "stage",
+    "id": "STA-04",
+    "class": "a",
+    "mock": "Shortcut is one kbd badge per chord",
+    "real": "Shortcut prints as plain text (⌘⇧D), no badge",
+    "file": "src/ui/toolbar/toolbar-overflow-menu.tsx",
+    "line": "126",
+    "decided_by": "DECISIONS Standard \"a shortcut is ONE badge per chord (Q18)\""
+  },
+  {
+    "surface": "stage",
+    "id": "STA-06",
+    "class": "c",
+    "mock": "Narrow 900: not drawn in the mock",
+    "real": "At 900 the breadcrumb truncates every crumb (\"northwind-...\" / \"feat/checkout-fl...\"); panes keep 2 columns",
+    "file": "src/ui/tab-strip.tsx",
+    "line": "186",
+    "decided_by": "none (mock has no narrow stage)"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-01",
+    "class": "c",
+    "mock": "Strip: Changes, Usage, History, Files; plus +, widen, close",
+    "real": "Strip: Changes, Usage, History; +, one more icon button (tooltip not read), close chevron; Files only as an Explorer tab after +",
+    "file": "src/ui/agent-dock/dock-tab-strip.tsx",
+    "line": "199-262",
+    "decided_by": "DECISIONS P3"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-02",
+    "class": "c",
+    "mock": "Changes: cards + list/tree pane (tree toggle) + footer facts",
+    "real": "Changes: header band + cards. No list/tree pane, no segmented toggle",
+    "file": "src/ui/agent-dock/dock-changes.tsx",
+    "line": "157-170",
+    "decided_by": "DECISIONS Surfaces Dock"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-03",
+    "class": "b",
+    "mock": "Usage with no agent: icon, centred text, \"Today\" band with info and Usage details buttons",
+    "real": "Usage: plain left-aligned line (\"Reading this machine's usage…\" while loading; \"Focus an agent to see its usage.\" otherwise)",
+    "file": "src/ui/agent-dock/dock-usage.tsx",
+    "line": "123-131",
+    "decided_by": "DECISIONS P4"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-04",
+    "class": "b",
+    "mock": "History: header band + rows or empty state with icon",
+    "real": "History: plain line (\"Reading this machine's recorded sessions…\"); no rows (stubs record nothing)",
+    "file": "src/ui/agent-dock/dock-history.tsx",
+    "line": "45",
+    "decided_by": "none"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-05",
+    "class": "c",
+    "mock": "Files: tree with status letters (M, A, D) and a breadcrumb row",
+    "real": "Files: Explorer tab with \"Search files\" field, root folder, tree with file-type icons; no status letters in the tree",
+    "file": "src/ui/agent-dock/dock-tab-strip.tsx",
+    "line": "262",
+    "decided_by": "DECISIONS Surfaces Dock (Files tree)"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-06",
+    "class": "c",
+    "mock": "File tab: tab with title, close; breadcrumb row; editor",
+    "real": "File tab: italic title (preview) + close; breadcrumb \"src > app.ts\"; save and tree-toggle icons at right; Monaco editor with line numbers",
+    "file": "src/ui/agent-dock/dock-tab-strip.tsx",
+    "line": "n/a",
+    "decided_by": "DECISIONS Pass decisions \"Tabs\" (preview tab italic)"
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-08",
+    "class": "a",
+    "mock": "Panel footer: a 3% resting wash strip",
+    "real": "No panel footer in Changes",
+    "file": "src/ui/agent-dock/dock-changes.tsx",
+    "line": "n/a",
+    "decided_by": "DECISIONS Pass decisions \"Panel footer\""
+  },
+  {
+    "surface": "dock",
+    "id": "DOC-09",
+    "class": "a",
+    "mock": "Dock strip bar 34 (.bar-strip), icon boxes 28 (.ib measured 28x28)",
+    "real": "Hide-panel button measured 24x24 at y=8 in a 40 row (--frame-h 40 in the flush stage)",
+    "file": "src/ui/agent-dock/dock-tab-strip.tsx",
+    "line": "199-215",
+    "decided_by": "DECISIONS Standard \"icon box 28/24/20\""
+  },
+  {
+    "surface": "overlays",
+    "id": "OVE-01",
+    "class": "b",
+    "mock": "Rail row menu: Rename, Pin, Copy path, Copy branch, New here >, Archive, Close",
+    "real": "Live row menu: Rename, Pin, Copy path, Copy branch, Open in Finder, New here >, Archive, Close (adds Open in Finder)",
+    "file": "src/ui/project-rail/project-rail-row-actions.tsx",
+    "line": "122",
+    "decided_by": "DECISIONS Surfaces Menus"
+  },
+  {
+    "surface": "overlays",
+    "id": "OVE-03",
+    "class": "b",
+    "mock": "Checkout menu includes New worktree…",
+    "real": "No New worktree…",
+    "file": "src/ui/project-rail/project-rail-checkout.tsx",
+    "line": "106",
+    "decided_by": "none"
+  },
+  {
+    "surface": "overlays",
+    "id": "OVE-04",
+    "class": "b",
+    "mock": "Launcher project menu: search, rows with age, Open folder… with one ⌘O badge, New worktree…",
+    "real": "Menu footer \"Open folder…\" prints the chord as two badges, ⌘ and O (measured on screen)",
+    "file": "src/launcher/command-bar-menu.tsx",
+    "line": "n/a",
+    "decided_by": "DECISIONS Standard \"ONE badge per chord (Q18)\""
+  },
+  {
+    "surface": "overlays",
+    "id": "OVE-05",
+    "class": "b",
+    "mock": "Clone form labels: GitHub repository, Parent folder, Folder name, Final path",
+    "real": "Label reads \"Folder01Icon name\" (a stray identifier in the text); the input's aria-label is \"Folder name\". Real defect, visible in the capture",
+    "file": "src/open-board/clone-workspace-form.tsx",
+    "line": "253",
+    "decided_by": "none (bug; W3 out of scope for this task)"
+  },
+  {
+    "surface": "overlays",
+    "id": "OVE-06",
+    "class": "c",
+    "mock": "Clone form: header with Back and Close icon buttons, \"Clone\" primary with ↵ badge",
+    "real": "Header: back chevron + \"Workspace / Clone repository\" two-line title; no Close; primary Clone (teal) with an arrow glyph, disabled",
+    "file": "src/open-board/clone-workspace-form.tsx",
+    "line": "200-290",
+    "decided_by": "DECISIONS Surfaces Modals/forms"
+  },
+  {
+    "surface": "settings",
+    "id": "SET-01",
+    "class": "c",
+    "mock": "Command Settings: search, area chips, rows, footer with Move/Open/Close kbd hints",
+    "real": "Same frame: search, area chips (Appearance…Reset), a \"Changed\" group with the Theme row, footer hints",
+    "file": "src/ui/command-settings/command-settings-frame.tsx",
+    "line": "145",
+    "decided_by": "DECISIONS Surfaces Settings (Command Settings)"
+  },
+  {
+    "surface": "settings",
+    "id": "SET-02",
+    "class": "b",
+    "mock": "Footer hint for a result row reads \"Open\"",
+    "real": "Result row hint reads \"Go to\" (area rows read \"Open\")",
+    "file": "src/ui/command-settings/command-settings-list.tsx",
+    "line": "27-29",
+    "decided_by": "none"
+  },
+  {
+    "surface": "settings",
+    "id": "SET-03",
+    "class": "a",
+    "mock": "Chip text is regular weight at the mock's 13 px",
+    "real": "Area chips print noticeably larger and semibold than the mock's chips (visual estimate from the 2x capture, not measured)",
+    "file": "src/ui/command-settings/command-settings-frame.tsx",
+    "line": "n/a",
+    "decided_by": "DECISIONS Standard \"type and weight\""
+  },
+  {
+    "surface": "settings",
+    "id": "SET-04",
+    "class": "b",
+    "mock": "No helper sentences under rows (RCP-23)",
+    "real": "Appearance rows carry helper text: \"iTerm2, Windows Terminal, Ghostty, Alacritty\" under Import theme, \"Delete a file here to remove its theme\" under Themes folder",
+    "file": "src/ui/settings/theme-gallery.tsx",
+    "line": "167",
+    "decided_by": "DECISIONS Standard \"Copy: no helper sentences\"; RCP-23"
+  },
+  {
+    "surface": "settings",
+    "id": "SET-05",
+    "class": "a",
+    "mock": "Row buttons are sentence case with the mock's button recipe",
+    "real": "Buttons print lowercase \"choose files\" and \"reveal\" with trailing icons",
+    "file": "src/ui/settings/theme-gallery.tsx",
+    "line": "163",
+    "decided_by": "none"
+  },
+  {
+    "surface": "settings",
+    "id": "SET-06",
+    "class": "c",
+    "mock": "Theme cards in Appearance",
+    "real": "Theme cards present (Deck Dark, Graphite, Midnight, Forest, Dusk, check on the picked one); the list shows the dark themes first, light themes not visible without scrolling",
+    "file": "src/ui/settings/theme-gallery.tsx",
+    "line": "n/a",
+    "decided_by": "DECISIONS Surfaces Settings (theme cards)"
+  },
+  {
+    "surface": "notices",
+    "id": "NOT-01",
+    "class": "c",
+    "mock": "Persist-error bar: alert icon, text, Retry, Dismiss icon button, full-width bottom bar",
+    "real": "Persist error is a floating bordered card at bottom centre: warning glyph, text, text \"Dismiss\"; no Retry",
+    "file": "src/presets/persist-error-bar.tsx",
+    "line": "n/a",
+    "decided_by": "DECISIONS Surfaces Notices (persist-error bar)"
+  }
+]

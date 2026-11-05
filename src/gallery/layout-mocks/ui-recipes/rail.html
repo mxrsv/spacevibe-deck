@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · rail</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <script src="rail.js"></script>
+    <style>
+      /* page-local layout only: widths, grid and positions. --rail-w and --rail-w-narrow come from tokens.css */
+      .rs-page {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-24);
+        width: var(--window-w);
+        max-width: 100%;
+      }
+      .rs-rail {
+        flex: none;
+        width: var(--rail-w);
+        height: var(--window-h);
+        position: sticky;
+        top: calc(var(--control-h-40) + var(--space-16));
+      }
+      .rs-sheet {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-section);
+      }
+      .rs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(var(--rail-w), var(--rail-w)));
+        gap: var(--space-16) var(--space-24);
+        align-items: start;
+      }
+      .rs-bed {
+        width: var(--rail-w);
+        flex: none;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      Deck.mount(
+        "rail",
+        (data) => `<div class="rs-page">
+  ${RailMock.column(data)}
+  ${Deck.worst() ? RailMock.column(data, { narrow: true }) : ""}
+  <div class="rs-sheet">${RailMock.sheet(data)}</div>
+</div>`,
+      );
+    </script>
+  </body>
+</html>

@@ -145,7 +145,7 @@
 }
 
 .sessions-nav__item.is-active:focus-visible {
-  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+  background: var(--tab-active-focus-bg);
 }
 
 .sessions-nav__label {
@@ -166,8 +166,8 @@
    16px `RAIL_ICON` the `all` chip still draws, so a row of mixed marks keeps
    one baseline. */
 .sessions-nav__logo {
-  width: 16px;
-  height: 16px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
   border-radius: var(--radius-tight);
   display: block;
@@ -306,8 +306,8 @@
    `--letter` fallback as a strip chip's `.tab__logo`, one size up for a row
    that has prose width to spend. */
 .session-row__logo {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
   border-radius: var(--radius-tight);
   display: block;
@@ -461,10 +461,10 @@
 .recent-session-activity__header {
   display: flex;
   min-width: 0;
-  min-height: 30px;
+  min-height: var(--row-32);
   align-items: center;
-  gap: 7px;
-  padding: 0 7px;
+  gap: var(--space-8);
+  padding: 0 var(--space-8);
 }
 
 /* The block's own group label, at the METADATA rung (owner, 2026-08-26, second
@@ -477,7 +477,7 @@
   margin: 0;
   color: var(--text-muted);
   font-size: var(--type-meta);
-  font-weight: 560;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -507,7 +507,7 @@
 .recent-session-activity__view-all:hover,
 .recent-session-activity__view-all:focus-visible {
   outline: none;
-  background: var(--muted);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
@@ -527,13 +527,13 @@
   display: grid;
   /* Identity · summary · age · state. Keep the trailing slot even for
      unopened sessions, so state changes never move the summary or time. */
-  grid-template-columns: 15px minmax(0, 1fr) 4em 14px;
+  grid-template-columns: var(--icon-16) minmax(0, 1fr) 4em var(--mark-slot);
   width: 100%;
   min-width: 0;
-  min-height: 30px;
+  min-height: var(--row-32);
   align-items: center;
-  gap: 7px;
-  padding: 0 7px;
+  gap: var(--space-8);
+  padding: 0 var(--space-8);
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-control);
@@ -574,6 +574,7 @@
   width: 1px;
   height: 1px;
   padding: 0;
+  /* ui-scale: the visually-hidden clip pattern, not a spacing choice */
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
@@ -583,8 +584,8 @@
 
 .recent-session-activity__glyph {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
   border-radius: var(--radius-tight);
   object-fit: contain;
@@ -631,7 +632,7 @@
   flex: 1;
   color: var(--text-muted);
   font-size: var(--type-micro);
-  font-weight: 450;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -642,8 +643,8 @@
 .recent-session-activity__state {
   display: grid;
   place-items: center;
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
 }
 
 .recent-session-activity__state > .asr-row__mark {
@@ -653,16 +654,16 @@
 .recent-session-activity__opening {
   display: grid;
   place-items: center;
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
   color: var(--accent);
 }
 
 .recent-session-activity__opening .wsitem__spinner {
   position: static;
   color: inherit;
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
 }
 
 .recent-session-activity__row[aria-busy="true"] {
@@ -671,7 +672,8 @@
 
 .recent-session-activity__error {
   margin: 0;
-  padding: 4px 7px 8px 29px;
+  /* ui-scale: lines the error up with the row's text after its mark */
+  padding: var(--space-4) var(--space-8) var(--space-8) 29px;
   color: var(--red);
   font-size: var(--type-micro);
 }
@@ -689,7 +691,7 @@
   flex: none;
   color: var(--text-faint);
   font-size: var(--type-micro);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -698,10 +700,10 @@
   box-sizing: border-box;
   display: flex;
   min-width: 0;
-  min-height: 30px;
+  min-height: var(--row-32);
   align-items: center;
   margin: 0;
-  padding: 0 7px;
+  padding: 0 var(--space-8);
   overflow: hidden;
   color: var(--text-faint);
   font-size: var(--type-meta);

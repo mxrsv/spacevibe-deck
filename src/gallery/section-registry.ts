@@ -58,6 +58,21 @@ const LauncherSection = lazy(() =>
 const PresetControlsSection = lazy(() =>
   import("./sections/preset-controls-section").then((m) => m.PresetControlsSection),
 );
+const RecipeRailSection = lazy(() =>
+  import("./sections/recipe-states-rail").then((m) => m.RecipeRailSection),
+);
+const RecipeStageSection = lazy(() =>
+  import("./sections/recipe-states-surfaces").then((m) => m.RecipeStageSection),
+);
+const RecipeDockSection = lazy(() =>
+  import("./sections/recipe-states-surfaces").then((m) => m.RecipeDockSection),
+);
+const RecipeOverlaysSection = lazy(() =>
+  import("./sections/recipe-states-surfaces").then((m) => m.RecipeOverlaysSection),
+);
+const RecipeSettingsSection = lazy(() =>
+  import("./sections/recipe-states-surfaces").then((m) => m.RecipeSettingsSection),
+);
 const ControlStatesSection = lazy(() =>
   import("./sections/control-states-section").then((m) => m.ControlStatesSection),
 );
@@ -92,6 +107,22 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "shared-controls", label: "shared controls · Base UI", Section: PresetControlsSection },
   { id: "small-ui", label: "small UI · states", Section: ControlStatesSection },
+  // The UI recipes' state sheets (RCP-32): one per surface, graphite beside Deck Light.
+  { id: "recipe-rail", label: "recipes · rail", Section: RecipeRailSection, scopedThemes: true },
+  { id: "recipe-stage", label: "recipes · stage", Section: RecipeStageSection, scopedThemes: true },
+  { id: "recipe-dock", label: "recipes · dock", Section: RecipeDockSection, scopedThemes: true },
+  {
+    id: "recipe-overlays",
+    label: "recipes · overlays",
+    Section: RecipeOverlaysSection,
+    scopedThemes: true,
+  },
+  {
+    id: "recipe-settings",
+    label: "recipes · settings",
+    Section: RecipeSettingsSection,
+    scopedThemes: true,
+  },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection, scopedThemes: true },
   { id: "navigation", label: "navigation", Section: NavigationSection },
   { id: "row-badge", label: "row badge", Section: RowBadgeSection, scopedThemes: true },

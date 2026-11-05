@@ -1,6 +1,12 @@
-import { ClockCounterClockwise, FolderOpen, FolderPlus, GitBranch, X } from "@phosphor-icons/react";
+import {
+  Cancel01Icon,
+  Clock01Icon,
+  FolderAddIcon,
+  FolderOpenIcon,
+  GitBranchIcon,
+} from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
-import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { GLYPH_FEATURE, DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import { GithubStarButton } from "../ui/controls/github-star-button";
 import { formatRelativeTime, type RecentWorkspace } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
@@ -117,7 +123,7 @@ export function OpenBoardHome({
           aria-label={alreadyOpen ? `Start another session in ${name}` : `Open workspace ${name}`}
           onClick={() => onOpen(recent.path)}
         >
-          <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
+          <DeckIcon icon={FolderOpenIcon} size={GLYPH_FEATURE} class="row__ico" />
           <span class="row__body">
             <span class="row__headline">
               <span class="row__name">{name}</span>
@@ -147,7 +153,7 @@ export function OpenBoardHome({
           aria-label={`Remove ${name} from recents`}
           onClick={() => onRemove([recent.path])}
         >
-          <DeckIcon icon={X} size={ROW_ICON} />
+          <DeckIcon icon={Cancel01Icon} size={GLYPH_ROW} />
         </button>
       </li>
     );
@@ -170,7 +176,7 @@ export function OpenBoardHome({
           disabled={opening}
           onClick={onPickFolder}
         >
-          <DeckIcon icon={FolderPlus} size={ROW_ICON} />
+          <DeckIcon icon={FolderAddIcon} size={GLYPH_ROW} />
           Open workspace…<kbd>{openFolderShortcut}</kbd>
         </button>
         {canCreateWorktree ? (
@@ -180,7 +186,7 @@ export function OpenBoardHome({
             disabled={opening}
             onClick={onCreateWorktree}
           >
-            <DeckIcon icon={GitBranch} size={ROW_ICON} />
+            <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} />
             Create worktree
           </button>
         ) : null}
@@ -192,7 +198,7 @@ export function OpenBoardHome({
           disabled={opening}
           onClick={onBrowseSessions}
         >
-          <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} />
+          <DeckIcon icon={Clock01Icon} size={GLYPH_ROW} />
           Resume a previous session…
         </button>
       ) : null}

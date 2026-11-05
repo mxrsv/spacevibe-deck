@@ -44,10 +44,14 @@ cites it.
   `background-color`, for at most 300ms, with no infinite loop and nothing moving while the
   user is idle. Three scoped exceptions loop, each only while its state exists, each with
   `transform`/`opacity` alone, and each still under reduced motion:
-  - the rail's `asked` mark radiates on a 1.8s loop (DL-27.3);
-  - a worktree-card row shows a braille spinner while its agent works: ten stacked frames
-    shown by `opacity`, 80ms each, an 800ms loop, only under `[data-state="working"]`;
-    reduced motion keeps the first frame (DL-27.21);
+  - the old agent rail's `asked` mark radiates on a 1.8s loop (DL-27.3), until CMP-20 deletes
+    it;
+  - the braille spinner marks a working agent wherever a working state shows: the project
+    rail's row, a strip tab, a pane header (`AgentStateMark`, RCP-15) and the old rail's
+    worktree-card row (DL-27.21). Ten stacked frames shown by `opacity`, 80ms each, an 800ms
+    loop, only under `[data-state="working"]`. Reduced motion holds ⠹ on the new marks and the
+    first frame on the card row. The new marks draw each frame's dots rather than typing the
+    character, because the Windows monospace fallback may lack braille;
   - the dev servers chip's 6px dot sends one ring out on a 1.8s loop while at least one
     server runs in the active checkout; zero servers or a failed scan (a still red dot)
     draw nothing moving; reduced motion keeps the still green dot (DL-36.1).
@@ -59,12 +63,22 @@ cites it.
   `transition-all` on state changes and the `tw-animate-css` enter and exit of popups (fade,
   zoom, slide), each 100–150ms, never looping and never while idle. Reduced motion shortens
   all of it to 0.01ms by scope.
-- **DL-1.3** No blurred or offset `box-shadow`, no `filter`, no `backdrop-filter`, no
-  `requestAnimationFrame` loop and no timer that exists only to drive visuals. Depth comes
-  from background steps and 1px lines; `box-shadow: inset 0 0 0 1px <color>` is a hairline
-  and allowed. One exception: `.modal-scrim` uses `backdrop-filter` (DL-29.5), because its
-  layer exists only while a modal is open. Inside the preset boundary (DL-1.6) popups carry
-  the preset's `shadow-md` and `ring-1`, and the dialog's overlay blurs what is behind it.
+- **DL-1.3** No `filter`, no `backdrop-filter`, no `requestAnimationFrame` loop and no timer
+  that exists only to drive visuals. Depth comes from background steps and 1px lines;
+  `box-shadow: inset 0 0 0 1px <color>` is a hairline and allowed. A blurred or offset
+  `box-shadow` is allowed only as one of three static elevation levels, read through its token
+  and on a floating element: `--elev-1` (menu, popover, tooltip), `--elev-2` (a floating panel:
+  the launcher over a space, a slide-over) and `--elev-3` (a modal). Each is derived per theme
+  ([`deriveRecipeTokens`](../src/lib/derive-colors.ts)); a dark theme adds the 1px `--elev-edge`
+  hairline, and a light floating panel or modal carries a 1px `--panel-frame` instead. An
+  elevation never transitions or animates, and the rail, stage, dock and any repeated row or cell
+  get none ([`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) fails any
+  other blurred shadow). One exception: `.modal-scrim` uses `backdrop-filter` (DL-29.5), because
+  its layer exists only while a modal is open. Inside the preset boundary (DL-1.6) the popups
+  wear the same tokens in place of the preset's `shadow-md`, `ring-1` and frosted backdrop:
+  menus, selects, popovers and tooltips `--elev-1`, the sheet `--elev-2`, the dialog `--elev-3`
+  with `--panel-frame`, each opaque on `--popover-bg` (the tooltip inverted on `--tooltip-bg`),
+  and the dialog's and sheet's overlay is the `--scrim-bg` colour scrim, with no blur.
 - **DL-1.4** Native inputs (`<select>`, `<input type="color">`) laid invisibly over a styled
   pill are preferred to custom pickers: no JS, no extra DOM, native accessibility. Inside the
   preset boundary (DL-1.6) the picker is the preset's Base UI `Select`.
@@ -75,13 +89,16 @@ cites it.
   [`preset-controls.ts`](../src/ui/controls/preset-controls.ts) with the popups they portal
   (each control root has a `data-slot`), are drawn by the preset
   ([`preset.css`](../src/ui/preset.css), generated from preset `b1a09kDGF`): its tokens,
-  Inter, its radius, shadows and motion. Every other surface keeps the rules in this document,
+  Inter, its radius and motion. Every other surface keeps the rules in this document,
   with the values of the [UI composition spec](specs/2026-11-03-ui-composition.md) (`CMP-n`):
   its legacy stylesheets follow the same sizes, radii, focus and dividers now (CMP-19), and
   the surfaces CMP-20 names keep their look until they are deleted. The sections below name
   what the fence relaxes: DL-1.1 to DL-1.4, DL-2.1, DL-3.3, DL-4.1, DL-4.4, DL-14.3, DL-20.1,
-  DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where a `CMP-n` rule names a value, it takes
-  precedence over the preset's own.
+  DL-20.3, DL-20.5, DL-21.3 and DL-21.4. Where a `CMP-n` or `RCP-n` rule names a value, it
+  takes precedence over the preset's own: the controls draw 400 and 600, never the preset's 500
+  (RCP-5), their states read the RCP-9 tokens, and their popups wear RCP-11's elevation. A menu
+  paints on the theme's own `--popover-bg` and text, so it follows the theme rather than inverting
+  to the preset's dark.
   - `.dark` on the root element is the preset's dark mode, so portals follow it.
   - Deck Dark and Deck Light wear the preset's own tokens, except the primary role, which is the
     ivory of CMP-4 in [`preset.css`](../src/ui/preset.css); every other theme publishes the tokens
@@ -133,6 +150,9 @@ only the pre-JS fallbacks.
 | `--type-title` … `--type-micro`                                                               | the four standard text sizes (DL-4.4)        | fixed   |
 | `--radius-flat` / `--radius-tab` / `--radius-tight` / `--radius-control` / `--radius-surface` | the five radius roles (DL-20.1)              | fixed   |
 | `--duration` / `--ease`                                                                       | chrome state-change motion (DL-20.2)         | fixed   |
+| `--space-*` / `--row-*` / `--control-h-*` / `--chip-h-*` / `--icon-box-*` / `--weight-*`         | the recipe scales (DL-20.5 to DL-20.7)       | fixed   |
+| `--state-pressed-bg` / `--state-needs-you-bg` / `--focus-ring` / `--status-*` / `--diff-*`      | recipe states and inks on one formula        | fixed   |
+| `--tab-active-focus-bg` / `--state-dragover-bg` / `--ink-*` / `--elev-*` / `--popover-bg` / `--card-bg` / `--well-bg` / `--chrome-3` | the recipe tokens that differ by theme (RCP-2) | derived |
 
 - **DL-2.1** Components never hardcode a color. Every color is a token, or comes from the
   live theme object (a swatch previewing a theme's own colors). Inside the preset boundary
@@ -171,7 +191,8 @@ only the pre-JS fallbacks.
   top.
   Why: the owner wants the two counts apart at a glance (2026-10-10), as every diff tool shows
   them.
-- **DL-3.3** Structure comes from spacing and background steps, not from color or shadow. A
+- **DL-3.3** Structure comes from spacing and background steps, not from color or shadow; the
+  floating elevation of DL-1.3 is the one shadow, and it marks a layer, not a structure. A
   line between two large regions appears only when they would otherwise merge, and none between
   rows, groups or section headers (CMP-14). Legacy stylesheets follow the same rule now (CMP-19);
   a horizontal line stays only where the structure would be unreadable without it, and the
@@ -224,15 +245,17 @@ only the pre-JS fallbacks.
   - `.settings-screen__title`, `letter-spacing: -0.02em`: optical correction at 24px;
   - `.board-label` (Agent Board): uppercase with `var(--label-tracking)` (0.06em), weight
     400, `--text-faint`, for the nav's two group headings and the state word only.
-- **DL-4.4** Standard chrome text uses four named sizes, on two values (CMP-10):
+- **DL-4.4** Standard chrome text uses five named sizes, on three values (CMP-10, RCP-5):
 
-  | role      | variable       | size | carries                                                 |
-  | --------- | -------------- | ---- | ------------------------------------------------------- |
-  | title     | `--type-title` | 14px | screen and panel titles, `More` menu rows, group labels |
-  | body      | `--type-body`  | 14px | keys, row names, the text read as content               |
-  | metadata  | `--type-meta`  | 12px | values, counts, paths, branches, status copy            |
-  | microcopy | `--type-micro` | 12px | descriptions, column headers, hints                     |
+  | role      | variable        | size | line height        | carries                                                 |
+  | --------- | --------------- | ---- | ------------------ | ------------------------------------------------------- |
+  | dialog    | `--type-dialog` | 16px | `--leading-dialog` | a dialog title                                          |
+  | title     | `--type-title`  | 14px | `--leading-body`   | screen and panel titles, `More` menu rows, group labels |
+  | body      | `--type-body`   | 14px | `--leading-body`   | keys, row names, the text read as content               |
+  | metadata  | `--type-meta`   | 12px | `--leading-meta`   | values, counts, paths, branches, status copy            |
+  | microcopy | `--type-micro`  | 12px | `--leading-meta`   | descriptions, column headers, hints                     |
 
+  The line heights are 24, 20 and 16px.
   A group label heading a list of rows is title-sized in `--text-muted` (the rail's
   cluster header via a local `--type-project` alias, DL-27.9; the footer's `Tools`; and
   `.cfg-group`). A column header is not a group label and stays at 12px faint (DL-15.5).
@@ -288,7 +311,8 @@ only the pre-JS fallbacks.
   - `--radius-surface` (7px): anything that floats above chrome — popovers, dialogs, the
     file view.
 
-  `50%` and the 999px capsule are shapes, not scale values, and `6px` is the one literal: the
+  `50%` and the 999px capsule (`--radius-pill`: badge, kbd, switch) are shapes, not scale
+  values, and `6px` is the one literal: the
   radius of a control 36 or 40 high (CMP-2). Full-bleed screens such as Settings have no
   radius. The design-language test fails a block that declares a height under 36px with `6px`, and
   one that declares 36 to 40px with `--radius-control`, without a matching width;
@@ -309,13 +333,44 @@ only the pre-JS fallbacks.
   the Windows overlay opens at the same height (`FRAME_HEIGHT_PX`). It stays physical under GUI
   zoom, so `--frame-h` is `calc(34px / var(--gui-zoom, 1))`;
   [`window-options.test.ts`](../electron/window-options.test.ts) holds the two together.
-- **DL-20.5** There is no weight, border-width or layer scale. Spacing moves in 2px steps, with
-  the values and roles of CMP-15; sizes that are functional geometry (hairlines, tree indent,
-  window controls, the frame height) stay outside it. Legacy stylesheets follow the steps where
-  a value is a plain spacing choice (CMP-19); the surfaces CMP-20 names keep theirs until
-  deleted. No token declares the steps.
-  The z-index order is behavioural (Settings under the modal scrim depends on 40 > 35), not a
-  token.
+- **DL-20.5** Spacing moves in 2px steps on the values of CMP-15, each a token: `--space-0`,
+  `--space-2`, `--space-4`, `--space-6`, `--space-8`, `--space-10`, `--space-12`, `--space-16` and
+  `--space-24`. A role reads its role token (RCP-6):
+
+  | role                       | value                                 | token                                             |
+  | -------------------------- | ------------------------------------- | ------------------------------------------------- |
+  | icon ↔ label               | 6                                     | `--space-icon-label`                              |
+  | control horizontal padding | 8 / 12 / 14 / 16 at 28 / 32 / 36 / 40 | `--control-pad-28` to `--control-pad-40`          |
+  | row horizontal padding     | 8                                     | `--space-pad-row`                                 |
+  | inside a group             | 4 / 6 / 8                             | `--space-in-sm`, `--space-in-md`, `--space-in-lg` |
+  | between groups             | 12 / 16                               | `--space-group-sm`, `--space-group-md`            |
+  | between sections           | 24                                    | `--space-section`                                 |
+  | between list rows          | 2                                     | `--space-list`                                    |
+
+  Sizes that are functional geometry stay outside it with named tokens of their own: hairlines
+  (`--seam-w`), the tree indent (`--tree-indent`), the frame, notice and status heights, the
+  mark slot, the resize gutter (`--resize-w`), a remembered row's end cell (`--row-end-w`) and the
+  36 control's 14 padding. The surfaces CMP-20 names keep theirs until deleted. There is no
+  border-width or layer scale: the z-index order is behavioural (Settings under the modal scrim
+  depends on 40 > 35), not a token.
+- **DL-20.6** Rows and bars have heights, not picks (RCP-7). A row is 24 in a dense list (Changes,
+  the file tree, a card head, a section label, breadcrumbs), 32 for a menu item, a project
+  header, a pane header or a one-line row, and 44 for a two-line rail row (`--row-24`,
+  `--row-32`, `--row-44`); live and remembered rail rows are both 44 and a setting row is at
+  least 44. A bar is 36 (a toolbar, search row or footer), 34 in the frame row (`--frame-h`) and
+  40 as a view header band. Controls are 28, 32, 36 and 40 (`--control-h-28` to
+  `--control-h-40`), chips 24 and 20, a badge 20, icon boxes 28, 24 and 20 holding a 16, 14 or 12
+  glyph. A height from 12 to 48px outside 20/24/28/32/36/40/44 fails
+  [`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) and, as a bracketed
+  class, [`ui-composition-gate.test.ts`](../scripts/ui-composition-gate.test.ts).
+- **DL-20.7** Two weights: 400 (`--weight-regular`, `font-normal`) and 600 (`--weight-strong`,
+  `font-semibold`), never 500 (RCP-5). A stylesheet writes the number, because DL-4.6's Windows
+  ledger reads authored weights as numbers; the ledger itself maps them for Segoe UI and is
+  exempt from the check.
+- **DL-20.8** An off-scale value that must stay carries `ui-scale: <reason>` on the line above
+  it, as a CSS or a JSX comment, and the change that adds one says so in its PR (RCP-27). The
+  ratchet's ledger, [`ui-composition-debt.txt`](../scripts/ui-composition-debt.txt), counts what
+  predates it per file and rule; a count only falls.
 
 ## 21. Interaction states
 
@@ -325,7 +380,8 @@ only the pre-JS fallbacks.
   `--radius-tab` corner and has no frame (DL-18.10). One scoped exception: the Electron card
   rail's focused agent row is an inverted fill (DL-27.22). A selected item that also has
   keyboard focus (a roving-tabindex group puts Tab on it) paints one step stronger than the
-  wash, `--tab-active-bg` mixed 10% toward `--foreground`; otherwise focus would paint nothing.
+  wash, `--tab-active-focus-bg` (`--tab-active-bg` mixed 10% toward the text); otherwise focus
+  would paint nothing.
 - **DL-21.2** Hover is a 6% `--tone` wash, quieter than selection and never the same
   value. Why: a hover that paints "selected" tells the user they chose something they did
   not.
@@ -343,14 +399,24 @@ only the pre-JS fallbacks.
 - **DL-21.5** State changes use DL-20.2's `--duration` / `--ease` and only DL-1.2's
   properties. Reduced motion is handled by scope (§9).
 - **DL-21.6** No accent bar beside the wash: one state, one signifier.
-- **DL-21.7** A tab-strip chip, and an Agent Board card (DL-34.2), carry a resting wash,
-  `--tab-rest-bg` (3% `--tone`), so the ladder reads 3% → 6% hover → `--tab-active-bg`.
+- **DL-21.7** A tab-strip chip, an Agent Board card (DL-34.2), a panel footer (a dialog's or a
+  floating panel's, RCP-21) and the project avatar (RCP-4) carry a resting wash,
+  `--tab-rest-bg` (3% `--tone`), so the ladder reads 3% → 6% hover → `--tab-active-bg`; a
+  footer separates from its body by that step, not a line.
   Everything else has no wash at rest. Why: an object floating alone on `--bg` with no wash
   reads as nothing there.
 - **DL-21.8** An `.iconbtn` that toggles a surface (sidebar, dock, `More`, the browser's
   Inspect) paints no active state: hover, focus and unavailable only. The surface it opens
   is the readout. `aria-pressed` / `aria-expanded` stay on the button. Rows in the `More`
   menu still report their state (DL-23.5).
+- **DL-21.9** Pressed is `--state-pressed-bg`, black at 8% laid over the surface as a background
+  layer (`background-image: linear-gradient(...)`), the same in both themes, so a selected item
+  keeps its wash beneath it. A filled primary steps its own fill instead (`--primary-hover`,
+  `--primary-pressed`), and a danger control to `--danger-bg-hover`. The cascade is hover = focus
+  < selected < selected with focus (`--tab-active-focus-bg`) < pressed; drag-over
+  (`--state-dragover-bg`) and needs-you (`--state-needs-you-bg`) sit under it. A state
+  background reads one of these tokens or clears to `transparent`;
+  [`composition-rules.test.ts`](../src/styles/composition-rules.test.ts) fails any other.
 
 ## 9. Agent checklist (anti-drift)
 
@@ -525,9 +591,9 @@ A list the user adds to and deletes from (user-declared agents) is still made of
 A popover is a small screen anchored to a chrome button, made of rows. It is the Prompt Board
 popover and the rail worktree card's segment and actions menus (`docs/internals/agent-rail.md`).
 
-- **DL-13.1** A popover is a `--chrome-2` surface with a 1px `--seam-raised` inset hairline at
-  `--radius-surface` (DL-20.1), anchored to its trigger; inside the rail it takes the card's
-  `--asr-card-radius` (6px). No blurred shadow (DL-1.3): depth comes from the background step.
+- **DL-13.1** A popover is a `--chrome-2` surface at `--radius-surface` (DL-20.1) on `--elev-1`,
+  anchored to its trigger; the token carries the dark themes' 1px edge (RCP-11). Inside the rail
+  it takes the card's `--asr-card-radius` (6px).
 - **DL-13.2** Esc, an outside click or completing the action dismisses it, and focus returns to
   the pane or control that had it. The trigger carries `aria-expanded`; the surface is
   `role="dialog"` with a label.
@@ -569,14 +635,19 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
   presentation is set, and glyphs are imported by name; nothing else authors an `<svg>` and no
   glyph character stands in for an action (`scripts/icon-system.test.ts`).
   - **Hugeicons** (`@hugeicons/core-free-icons`, passed as `icon`) is the source for the new
-    shell: the project rail, the agent dock, Command Settings, the shared blocks and the
-    preset controls' own chevrons, check marks and close glyphs. `DeckIcon` renders it with
+    shell: the project rail, the stage bar (strip, toolbar, dev servers, the browser toolbar),
+    the agent dock, Command Settings, the shared blocks and the preset controls' own chevrons,
+    check marks and close glyphs. `DeckIcon` renders it with
     `strokeWidth={2}`, `aria-hidden`, `focusable="false"` and the unconditional `deck-icon`
     class. Nothing outside `deck-icon.tsx` imports `@hugeicons/react` except the gallery's
     layout mocks, and the test fails when a cut-over directory imports Phosphor. Which glyph
     means what follows the layout mock for that surface; an action the mock does not draw
     takes the nearest Hugeicons glyph.
-  - **Phosphor** (`@phosphor-icons/react`) is the source for every surface not yet cut over.
+  - **Phosphor** (`@phosphor-icons/react`) is the source for every surface not yet cut over,
+    under a ratchet (RCP-26): no new import lands anywhere under `src/`, each existing one is a
+    `phosphor` line of [`ui-composition-debt.txt`](../scripts/ui-composition-debt.txt) that only
+    falls, and a directory joins the test's cut-over set when its count reaches zero. A list
+    that carries either library (`ToolbarItem.icon`) draws through `ListIcon`.
     `DeckIcon` sets `color="currentColor"`, the weight, `aria-hidden`, `focusable="false"` and
     the `deck-icon` class, and adds a per-icon `deck-icon--<name>` modifier for tests.
   - Phosphor weight is `bold` (24/256, about 1.2px) for every icon and `fill` for icons with a
@@ -589,9 +660,8 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
   - The surface-scoped `filled` prop (Phosphor only) is a closed boolean, not a `weight` escape
     hatch. It is used by the rail's fallback project `Folder` in live and remembered headers
     ([`agent-rail.tsx`](../src/ui/agent-rail.tsx), DL-27.17), the three icon-only dock tabs
-    (`TreeView`, `Gauge`, `ClockCounterClockwise`) and the toolbar's `More` trigger
-    (`DotsThreeOutline`). `mirrored` (Phosphor only) flips a one-sided mark: the old dock's toggle
-    is `SidebarSimple` mirrored. The class is Deck's own `.deck-icon`, never a vendor name.
+    (`TreeView`, `Gauge`, `ClockCounterClockwise`). `mirrored` (Phosphor only) flips a one-sided
+    mark; the dock toggle now draws Hugeicons' own right-hand sidebar glyph instead. The class is Deck's own `.deck-icon`, never a vendor name.
   - Why: Phosphor's weight lives in path data, not an attribute, so `deck-icon.test.tsx`
     compares drawn output against the library's `bold` / `fill`, and `dock-tabs.test.tsx` pins
     the dock icons. A Hugeicons glyph has no name to derive a class from, so a test pins one by
@@ -606,9 +676,9 @@ Phosphor stays in surfaces not yet cut over and goes when the last one is.
   (tab bar, titlebar), `ROW_ICON` 14 (config-row and popover actions), `BOARD_ICON` 15 (Open
   Board rows) and `RAIL_ICON` 16 (the `More` menu's rows, DL-23.9). `FEATURE_ICON` is the same 15
   for entry-point controls: the dock header's tab chips and panel toggle, and the toolbar's `More`
-  trigger (DL-23.8). Their `.iconbtn` box stays 24px; the stage-strip panel toggle and the
-  external-app split-button's caret stay at `CHROME_ICON`. The control sets padding and geometry,
-  never the icon.
+  trigger (DL-23.8). The glyph follows its box (RCP-4): `.iconbtn` is the 28 icon box with a 16
+  glyph, a 24 box holds 14 and a 20 box 12, so the external-app split's caret half carries 12.
+  The control sets padding and geometry, never the icon.
 - **DL-14.3** CSS does not set `width`, `height`, `fill`, `stroke` or `stroke-width` on an icon:
   those declarations beat SVG attributes and silently disable DL-14.1, and a stray `fill` erases
   the icon. Colour is `color`, reaching the icon through `currentColor`. Inside the preset
@@ -845,10 +915,12 @@ actions. §11 covers a full-window screen and §13 an anchored popover; neither 
   [`platform.ts`](../src/lib/platform.ts)). A 1px `--hair-strong` bottom border separates
   the row from navigation. Below it the Electron rail mounts the create row (DL-27.14); Tauri's
   `RepositoryRail` keeps a pinned `New Workspace` launcher.
-- **DL-18.10** A strip chip is a document or the browser, and both look identical: the same
-  height, `--radius-tab`, `--type-meta` label, `max-width` (full name in `title`), close
-  control and DL-21.1 wash when selected. A fixed 15px glyph slot holds one mark that says
-  what the chip opened: the tree's file-type icon for a document
+- **DL-18.10** A strip chip is a document or the browser, and both look identical: 28 high
+  (`--control-h-28`), padded 8, `--radius-tab`, a 14px label, a 240 `max-width` (full name in
+  `title`), the 20 close box and the DL-21.1 wash when selected (RCP-20). It never narrows past
+  its parts plus a 40 title (`--tab-title-min`), so the title truncates first and never
+  disappears, and close shows on keyboard focus as on hover. A fixed 14px glyph slot holds one
+  mark that says what the chip opened: the tree's file-type icon for a document
   ([`fileIcon`](../src/files/ui/file-icons.ts)), a globe for the browser. A chip says what
   is open and nothing else: no colour dot, no agent attention mark, no rename popover, and
   clicking the chip that holds the stage does nothing. The only dot is a document's unsaved
@@ -936,9 +1008,10 @@ covering it; the file explorer is the resident instance.
   chip may print a shorter label if its full name stays the accessible name (WCAG 2.5.3).
 - **DL-19.9** A panel tab hangs its own actions off the row that names what it shows; the
   shared header carries no control belonging to one tab. They are a trailing cluster of
-  icon-only controls, visible at rest, sized to the row rather than to chrome: `.iconbtn`'s
-  24px box would overflow the 22px data row, whose height every virtual-list index is computed
-  from ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)). The explorer's tree-root
+  icon-only controls, visible at rest, sized to the row rather than to chrome: the 20 icon box
+  (RCP-4) with a 12 glyph, because `.iconbtn`'s 28 would overflow the 22px data row, whose height
+  every virtual-list index is computed from
+  ([`TreeRootActions`](../src/files/ui/tree-root-actions.tsx)). The explorer's tree-root
   cluster is New file and New folder (omitted when the host cannot create), Show hidden
   files, Show ignored files, Refresh and Collapse all: 107px at DL-19.4's floor, and the
   root's name truncates first. Show hidden files and Show ignored files are toggles:
@@ -1124,10 +1197,18 @@ shadow.
     focuses the pane, or output arrives while the pane is visible), then reverts to the shell it
     now is. A latched `error` or `warning` outranks the end; a `requested` or `completed` is
     dropped with the agent.
-  - `working` is not a dot but `WorkspaceSpinner`, the ring the workspace avatar uses: 14px in
-    `--text-primary`, 8 round dots holding still while a bright head runs around them on a
-    staggered opacity cycle (`wschase`, 1.2s). The Electron row's working mark is the braille
-    spinner of DL-27.21.
+  - `working` is not a dot but the braille spinner (DL-1.2): ten frames of drawn dots in
+    `--status-working`, 80ms each, holding ⠹ under reduced motion
+    ([`BrailleSpinner`](../src/ui/blocks/braille-spinner.tsx)). It replaced
+    `WorkspaceSpinner`'s turning ring on the rail by the owner's pick (2026-11-05). The old
+    rail's card row draws the same spinner from typed glyphs (DL-27.21).
+
+  On the project rail the mark leads the row in its 14 slot (`--mark-slot`), drawn by
+  [`AgentStateMark`](../src/ui/blocks/agent-state-mark.tsx) and
+  [`32-state-mark.css`](../src/styles/32-state-mark.css): a 9 dot (`--mark-dot`) in a status
+  token (`--status-failed`, `--status-unread`, `--status-idle`), a 15 hairline ring
+  (`--mark-ring`) round the needs-you dot, held still, and a 7 square (`--mark-square`) for
+  ended. A remembered row keeps the slot empty, so the titles line up (RCP-18).
 
   When panes fold into one mark the loudest speaks: failed > asked > ended > working > done >
   idle. `failed` never reads as `idle`.
@@ -1143,7 +1224,7 @@ shadow.
   name ([card status styles](../src/styles/04c-rail-worktree-card.css)).
   Why: a dark surface must not turn a dot's centre into a dark hole.
 
-  `asked` radiates: a 13px disc under the dot expands to 2.1x and fades on a 1.8s loop, so
+  On the old agent rail `asked` radiates: a 13px disc under the dot expands to 2.1x and fades on a 1.8s loop, so
   unread is the one state that radiates. The loop is infinite only while `[data-state="asked"]`
   is on the element, animates `transform` and `opacity` only, and runs while the user is idle
   (DL-1.2's second scoped exception). The ripple is an absolutely positioned `::after`, so the
@@ -1398,8 +1479,8 @@ a preset, draft a layout. Anything longer-lived is a full-window screen (§11) o
   the exits off per modal with `dismissOnScrim` and `dismissOnEscape`.
 - **DL-29.4** Scrim dismissal reads the pointer press, not the click. Why: a drag that starts
   inside the panel and releases outside makes the browser fire `click` on the scrim.
-- **DL-29.5** The scrim is a translucent wash (42%) plus a blur, an exception to DL-1.3's
-  `backdrop-filter` clause for this one selector. Escape stops dead (`preventDefault` +
+- **DL-29.5** The scrim is the `--scrim-bg` colour wash plus a blur, an exception to DL-1.3's
+  `backdrop-filter` clause for this one selector, and the panel stands on `--elev-3` (RCP-11). Escape stops dead (`preventDefault` +
   `stopPropagation`) because a live terminal reading raw keys sits behind the scrim.
 - **DL-29.6** The panel stands on the chrome plane `--sidebar-bg`, the ground of the navigation
   column and docked panel (DL-18.7), not a `--chrome-1` step off the stage.
@@ -1533,9 +1614,15 @@ The launcher is the compact launch page plus the Open Board's agent cards, shari
   stays visible when the legacy shell pane bar is hidden; hover is neutral and keyboard focus
   explicit (`pane-agent-header.css`). On `.pane-slot.is-active` the bar takes
   the pane's `--bg` and a transparent bottom seam, so header and body read as one sheet inside
-  DL-18.12's focus edge; other panes keep `--chrome-2` (DL-3.3). The height is unchanged.
+  DL-18.12's focus edge; other panes keep `--chrome-2` (DL-3.3). The bar is 32
+  (`--row-32`), padded 8 at the start and 4 at the end.
   Why: the join needs xterm and `--bg` to read the same `theme.background`
   ([`theme-vars.ts`](../src/lib/theme-vars.ts)).
+  On the flush stage (RCP-20, [`31-shell-stage.css`](../src/styles/31-shell-stage.css)) the
+  header is the 32 bar on `--chrome-1`: the 14 logo, the name at 600, then the state as its mark
+  plus the DL-27.2 word (Needs you, Working, Failed, Finished, Ready, Ended) in status ink. In a
+  split the focused pane's header takes `--tab-active-bg`; a pane with no header keeps a 2px
+  line on its top edge. The resize handle paints `--ring` on hover, keyboard focus and drag.
 - **DL-32.8** The pane header draws no action buttons (owner, 2026-10-10): neither the Claude
   Effort picker nor Split horizontally, Split vertically, Focus expand and Close pane, which
   shipped on 2026-10-07 and were removed after the owner reviewed them. The pane operations
@@ -1568,8 +1655,8 @@ DL-33.2–33.5 when reused; it is not the sidebar footer.
   agent in this window (a contract-reported id outranks the tail store's pairing); a match
   supplies the rail's [RailStatusMark](../src/ui/controls/rail-status-mark.tsx), no match leaves
   the slot empty, never a gray dot. Times run from `now` to `99y+` (`—` for an invalid date). The
-  summary yields before identity, time or state. The row is 30px
-  minimum height with a 7px inset, `--radius-control` and `--state-hover-bg`; the heading is
+  summary yields before identity, time or state. The row is 32 (`--row-32`) minimum height
+  with an 8 inset, `--radius-control` and `--state-hover-bg`; the heading is
   `--type-meta`, the summary and `View all` are `--type-micro`.
 - **DL-33.3** The compact row opens its exact session: a matching agent still open in this window
   gets its pane focused, otherwise the row resumes the session in a new single-pane tab in its

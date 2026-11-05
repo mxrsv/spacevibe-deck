@@ -1,8 +1,8 @@
 import deckLogoUrl from "../../.github/assets/icon.svg";
-import { Plus, SidebarSimple } from "@phosphor-icons/react";
+import { PlusSignIcon, SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE } from "./controls/deck-icon";
 import { createNewPaneDragController, type NewPaneDropDeps } from "./new-pane-drag";
 import { appVersion } from "../updater/app-version";
 import { getDesktopEnvironment } from "../lib/platform";
@@ -41,7 +41,7 @@ export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
       title={label}
       onClick={onToggle}
     >
-      <DeckIcon icon={SidebarSimple} size={CHROME_ICON} />
+      <DeckIcon icon={SidebarLeftIcon} size={GLYPH_FEATURE} />
     </button>
   );
 }
@@ -92,7 +92,7 @@ export function SidebarNewButton({
       aria-label="New Workspace"
       onClick={onOpenWorkspace}
     >
-      <DeckIcon icon={Plus} size={CHROME_ICON} />
+      <DeckIcon icon={PlusSignIcon} size={GLYPH_FEATURE} />
       <span>New</span>
     </button>
   );

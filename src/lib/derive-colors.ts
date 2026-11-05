@@ -173,3 +173,91 @@ export function deriveChromeColors({ type, ui }: ChromeSource): ChromeColors {
     seamSplit: alpha(tone, 0.2),
   };
 }
+
+/** What the recipe tokens read from a theme besides its type: its grounds, text and selection. */
+export interface RecipeSource {
+  readonly type: ThemeType;
+  readonly ui: Pick<
+    UiTokens,
+    "bg" | "fg" | "sidebar-bg" | "chrome-1" | "chrome-2" | "text-primary"
+  >;
+  readonly terminal: { readonly selectionBackground: string };
+}
+
+/** `--chrome-3`: one step above `--chrome-2`, toward the tone (RCP-2). */
+const DARK_CHROME_3_STEP = 0.055;
+const LIGHT_CHROME_3_STEP = 0.035;
+/** `--well-bg` on a dark theme: the terminal and editor well, one step below the stage. */
+const DARK_WELL_STEP = 0.25;
+/** DL-21.1: selected with keyboard focus is the selection wash mixed this far toward the text. */
+const FOCUS_SELECTED_STEP = 0.1;
+
+/**
+ * RCP-11's three elevation levels at the owner's mid strength, per type. Dark themes add the 1px
+ * `--elev-edge` hairline; light themes are shadow only and frame a floating panel with
+ * `--panel-frame` instead.
+ */
+const ELEVATION = {
+  dark: [
+    "0 8px 24px rgba(0, 0, 0, 0.42)",
+    "0 16px 48px rgba(0, 0, 0, 0.5)",
+    "0 24px 64px rgba(0, 0, 0, 0.58)",
+  ],
+  light: [
+    "0 6px 20px rgba(16, 20, 26, 0.16)",
+    "0 14px 44px rgba(16, 20, 26, 0.2)",
+    "0 22px 60px rgba(16, 20, 26, 0.24)",
+  ],
+} as const;
+
+/**
+ * The recipe tokens whose value differs by theme (spec 2026-11-05-ui-recipes-ratchet, RCP-2,
+ * RCP-9 to RCP-11), as `--name → value`. The values that mix a role colour stay `color-mix()`
+ * over the role's own custom property, which `applyThemeVars` publishes on the same element, so a
+ * gallery cell that wears a second theme resolves them against its own palette. The tokens that
+ * are the same in every theme are declared once in `01-tokens.css`.
+ */
+export function deriveRecipeTokens(theme: RecipeSource): Readonly<Record<string, string>> {
+  const dark = theme.type === "dark";
+  const { ui } = theme;
+  const chrome = deriveChromeColors(theme);
+  // Roles are named without their `--`: these read a custom property, they do not declare one.
+  const mix = (role: string, percent: number): string =>
+    `color-mix(in srgb, var(--${role}) ${percent}%, transparent)`;
+  const ink = (role: string, percent: number): string =>
+    `color-mix(in lab, var(--${role}) ${percent}%, var(--text-primary))`;
+  const [elev1, elev2, elev3] = ELEVATION[theme.type];
+  const edge = dark ? "inset 0 0 0 1px color-mix(in srgb, var(--tone) 8%, transparent)" : "";
+  const level = (shadow: string): string => (edge ? `${shadow}, ${edge}` : shadow);
+  return {
+    "--tab-active-focus-bg": mixHex(chrome.tabActiveBg, ui["text-primary"], FOCUS_SELECTED_STEP),
+    "--chrome-3": mixHex(
+      ui["chrome-2"],
+      chrome.tone,
+      dark ? DARK_CHROME_3_STEP : LIGHT_CHROME_3_STEP,
+    ),
+    // Not `--chrome-2` on dark: hover (6%) must stay under selected inside a menu.
+    "--popover-bg": dark ? ui["sidebar-bg"] : "#ffffff",
+    "--card-bg": dark ? ui["chrome-1"] : ui.bg,
+    "--well-bg": dark ? mixHex(ui.bg, "#000000", DARK_WELL_STEP) : "#ffffff",
+    "--selection-bg": theme.terminal.selectionBackground,
+    "--menu-sep": mix("tone", dark ? 12 : 10),
+    "--panel-frame": dark ? "transparent" : chrome.seamRaised,
+    "--scrim-bg": `color-mix(in srgb, black ${dark ? 55 : 32}%, transparent)`,
+    "--state-dragover-bg": mix("accent", dark ? 18 : 14),
+    "--danger-bg": mix("red", dark ? 20 : 10),
+    "--danger-bg-hover": mix("red", dark ? 30 : 18),
+    "--primary-hover": `color-mix(in oklch, var(--primary) 92%, ${dark ? "black" : "white"})`,
+    "--primary-kbd-bg": mix("primary-foreground", dark ? 12 : 16),
+    "--primary-kbd-fg": mix("primary-foreground", dark ? 72 : 78),
+    // RCP-10: the least mix toward the text that holds 4.5:1 on every surface and tint.
+    "--ink-need": ink("status-unread", dark ? 80 : 55),
+    "--ink-fail": ink("red", dark ? 70 : 68),
+    "--ink-ok": ink("green", dark ? 80 : 62),
+    "--ink-fail-wash": ink("red", dark ? 50 : 68),
+    "--elev-edge": edge || "0 0 0 0 transparent",
+    "--elev-1": level(elev1),
+    "--elev-2": level(elev2),
+    "--elev-3": level(elev3),
+  };
+}

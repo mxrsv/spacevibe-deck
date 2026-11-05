@@ -127,7 +127,9 @@ describe("TabBar", () => {
 
     const close = host.querySelector(".tab__close") as HTMLButtonElement;
 
-    expect(close.querySelector(".deck-icon--x")).not.toBeNull();
+    // A drawn glyph, not a typed ✕, and the label alone names it.
+    expect(close.querySelector("svg.deck-icon")).not.toBeNull();
+    expect(close.textContent).toBe("");
     expect(close.getAttribute("aria-label")).toBe("Close the browser tab");
   });
 

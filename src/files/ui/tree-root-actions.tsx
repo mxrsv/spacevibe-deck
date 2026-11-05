@@ -19,16 +19,16 @@
  */
 import { useRef } from "preact/hooks";
 import {
-  ArrowClockwise,
-  ArrowsInLineVertical,
-  Eye,
-  EyeSlash,
-  FilePlus,
-  FolderPlus,
-  FunnelSimple,
-  FunnelSimpleX,
-} from "@phosphor-icons/react";
-import { CHROME_ICON, DeckIcon, type DeckIconComponent } from "../../ui/controls/deck-icon";
+  ArrowShrink02Icon,
+  FileAddIcon,
+  FilterIcon,
+  FilterRemoveIcon,
+  FolderAddIcon,
+  ReloadIcon,
+  ViewIcon,
+  ViewOffSlashIcon,
+} from "@hugeicons/core-free-icons";
+import { DeckIcon, GLYPH_INLINE, type DeckGlyph } from "../../ui/controls/deck-icon";
 import {
   ActionTooltip,
   tooltipTriggerProps,
@@ -59,7 +59,7 @@ export interface TreeRootActionsProps {
 interface ClusterButtonProps {
   readonly id: string;
   readonly label: string;
-  readonly icon: DeckIconComponent;
+  readonly icon: DeckGlyph;
   readonly tabIndex: 0 | -1;
   /** Set only on a toggle; a plain action leaves `aria-pressed` off. */
   readonly pressed?: boolean;
@@ -93,7 +93,7 @@ function ClusterButton({ id, label, icon, tabIndex, pressed, onPress }: ClusterB
         onDblClick={(event) => event.stopPropagation()}
         {...tooltipTriggerProps(tooltip, ref)}
       >
-        <DeckIcon icon={icon} size={CHROME_ICON} />
+        <DeckIcon icon={icon} size={GLYPH_INLINE} />
       </button>
       {tooltip.anchor !== null && (
         <ActionTooltip
@@ -116,14 +116,14 @@ export function TreeRootActions(props: TreeRootActionsProps) {
           <ClusterButton
             id="file-tree-new-file"
             label="New file"
-            icon={FilePlus}
+            icon={FileAddIcon}
             tabIndex={props.tabIndex}
             onPress={props.onNewFile}
           />
           <ClusterButton
             id="file-tree-new-folder"
             label="New folder"
-            icon={FolderPlus}
+            icon={FolderAddIcon}
             tabIndex={props.tabIndex}
             onPress={props.onNewFolder}
           />
@@ -132,7 +132,7 @@ export function TreeRootActions(props: TreeRootActionsProps) {
       <ClusterButton
         id="file-tree-show-hidden"
         label="Show hidden files"
-        icon={props.showHidden ? Eye : EyeSlash}
+        icon={props.showHidden ? ViewIcon : ViewOffSlashIcon}
         tabIndex={props.tabIndex}
         pressed={props.showHidden}
         onPress={props.onToggleHidden}
@@ -140,7 +140,7 @@ export function TreeRootActions(props: TreeRootActionsProps) {
       <ClusterButton
         id="file-tree-show-ignored"
         label="Show ignored files"
-        icon={props.showIgnored ? FunnelSimple : FunnelSimpleX}
+        icon={props.showIgnored ? FilterIcon : FilterRemoveIcon}
         tabIndex={props.tabIndex}
         pressed={props.showIgnored}
         onPress={props.onToggleIgnored}
@@ -148,14 +148,14 @@ export function TreeRootActions(props: TreeRootActionsProps) {
       <ClusterButton
         id="file-tree-refresh"
         label="Refresh"
-        icon={ArrowClockwise}
+        icon={ReloadIcon}
         tabIndex={props.tabIndex}
         onPress={props.onRefresh}
       />
       <ClusterButton
         id="file-tree-collapse-all"
         label="Collapse all"
-        icon={ArrowsInLineVertical}
+        icon={ArrowShrink02Icon}
         tabIndex={props.tabIndex}
         onPress={props.onCollapseAll}
       />

@@ -143,8 +143,10 @@ describe("remembered rows on the project rail", () => {
       .filter((span) => span.textContent === "5m")
       .at(-1);
     const mark = element.querySelector("[data-resume-mark]");
-    expect(age?.className).toContain("group-hover/item:hidden");
-    expect(mark?.className).toContain("group-hover/item:block");
+    // One grid cell holds both, so the swap moves nothing (RCP-18).
+    expect(age?.className).toContain("group-hover/item:invisible");
+    expect(mark?.className).toContain("group-hover/item:visible");
+    expect(age?.parentElement).toBe(mark?.parentElement);
     expect(element.querySelector('button[aria-label="Forget token refresh"]')).not.toBeNull();
   });
 

@@ -120,13 +120,13 @@
 .agent-usage-summary button:focus-visible,
 .agent-usage-summary__rows:focus-visible {
   outline: none;
-  background: var(--muted);
+  background: var(--state-hover-bg);
   color: var(--text-muted);
 }
 
 .agent-usage-summary__limit {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 

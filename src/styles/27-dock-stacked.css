@@ -42,3 +42,25 @@
 .dock-file .md-view-toggle {
   position: static;
 }
+
+/* RCP-22 (DOCK-10): a changed line's gutter carries a 3px bar in the change's pure hue. A line,
+   not a fill: a zero-blur inset shadow, so the gutter's own wash stays under it. */
+.dock-diff-bar--add {
+  box-shadow: inset var(--diff-bar-w) 0 0 var(--status-ok);
+}
+
+.dock-diff-bar--del {
+  box-shadow: inset var(--diff-bar-w) 0 0 var(--status-failed);
+}
+
+/* RCP-22: the card a press in the list pane lands on flashes a 2px primary bar on its leading
+   edge, drawn above the sticky head (z 10). The Changes view sets and clears `data-flash`. */
+.dock-card[data-flash]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  width: var(--flash-w);
+  background: var(--primary);
+  pointer-events: none;
+}

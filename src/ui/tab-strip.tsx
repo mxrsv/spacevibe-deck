@@ -2,7 +2,13 @@
  * display positions never replace the indexes owned by TabManager/files. */
 import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { Globe, PushPin, SquaresFour, TerminalWindow, X } from "@phosphor-icons/react";
+import {
+  Cancel01Icon,
+  ComputerTerminal01Icon,
+  DashboardSquare01Icon,
+  GlobeIcon,
+  Pin02Icon,
+} from "@hugeicons/core-free-icons";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 import {
@@ -12,7 +18,7 @@ import {
   stripPreferences,
 } from "../lib/strip-order";
 import { AgentGlyph } from "./controls/agent-glyph";
-import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE, GLYPH_ROW } from "./controls/deck-icon";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { activeWorkspace, fileSurfaces, promoteFileTab } from "../files/file-surface-store";
 import { browserState, browserSurfaceActive } from "../browser/browser-store";
@@ -92,7 +98,7 @@ function terminalChips(props: TabStripProps, surfaceActive: boolean): readonly C
         glyph: agent ? (
           <AgentGlyph agent={agent} className="tab__logo" />
         ) : (
-          <DeckIcon icon={TerminalWindow} size={CHROME_ICON} />
+          <DeckIcon icon={ComputerTerminal01Icon} size={GLYPH_ROW} />
         ),
         select: () => {
           if (
@@ -123,7 +129,7 @@ function surfaceChips(props: TabStripProps): readonly Chip[] {
         closeLabel: browser ? "Close the browser tab" : "Close the agent board tab",
         kind: surface.kind,
         active: browser ? browserSurfaceActive.value : agentBoardSurfaceActive.value,
-        glyph: <DeckIcon icon={browser ? Globe : SquaresFour} size={CHROME_ICON} />,
+        glyph: <DeckIcon icon={browser ? GlobeIcon : DashboardSquare01Icon} size={GLYPH_ROW} />,
         select: () => {
           if (
             props.transientPageOpen ||
@@ -312,7 +318,7 @@ export function TabStrip(props: TabStripProps) {
               {chip.dirty && <span class="tab__dot tab__dot--dirty" aria-hidden="true" />}
               {pinned ? (
                 <span class="tab__pin" aria-hidden="true">
-                  <DeckIcon icon={PushPin} size={CHROME_ICON} />
+                  <DeckIcon icon={Pin02Icon} size={GLYPH_INLINE} />
                 </span>
               ) : (
                 <button
@@ -324,7 +330,7 @@ export function TabStrip(props: TabStripProps) {
                     close([chip]);
                   }}
                 >
-                  <DeckIcon icon={X} size={CHROME_ICON} />
+                  <DeckIcon icon={Cancel01Icon} size={GLYPH_INLINE} />
                 </button>
               )}
             </div>

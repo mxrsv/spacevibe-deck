@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · launcher</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token */
+      .a-wrap {
+        position: absolute;
+        left: 50%;
+        top: 27%;
+        transform: translateX(-50%);
+        z-index: 10;
+        width: min(var(--launcher-w), calc(100% - 2 * var(--space-24)));
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-16);
+      }
+      .a-wrap.is-over {
+        top: var(--space-16);
+        padding: var(--space-12);
+      }
+      .a-bar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+      }
+      .a-branch {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: calc(var(--control-h-40) * 2);
+      }
+      .a-tiles {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-6);
+      }
+      .a-tiles .kbd {
+        margin-left: auto;
+      }
+      .a-menu {
+        top: calc(100% + var(--space-4));
+        left: 0;
+      }
+      .a-rail-menu {
+        top: calc(100% - var(--space-4));
+        right: var(--space-8);
+      }
+      .a-hits {
+        max-width: 100%;
+      }
+      .frame .crumbs {
+        flex: 1 1 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="launcher.js"></script>
+  </body>
+</html>

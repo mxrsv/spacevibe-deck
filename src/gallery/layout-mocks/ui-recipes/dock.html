@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · dock</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <script src="dock.js"></script>
+    <style>
+      /* page-local layout only: placement, widths, overflow. Every value is a token or a layout dimension; no colour, radius, border, shadow or state. */
+      .dk-cols {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-24);
+        align-items: flex-start;
+      }
+      .dk-w360 {
+        width: calc(var(--control-h-40) * 9);
+      }
+      .dk-w560 {
+        width: calc(var(--control-h-40) * 14);
+      }
+      .dk-tall {
+        height: calc(var(--control-h-40) * 16);
+      }
+      .dk-short {
+        height: calc(var(--control-h-40) * 6);
+      }
+      .dk-edge {
+        width: var(--control-h-32);
+        align-items: center;
+      }
+      .dk-edge-in {
+        align-items: center;
+      }
+      .dk-edge-foot {
+        margin-top: auto;
+      }
+      .dk-body {
+        flex: 1 1 0;
+        min-height: 0;
+      }
+      .dk-pane {
+        flex: 0 0 40%;
+        min-width: 0;
+      }
+      .dk-clip {
+        overflow: hidden;
+      }
+      .dk-name {
+        flex: 0 0 auto;
+        max-width: 100%;
+      }
+      .dk-ph {
+        width: var(--icon-12);
+        flex: none;
+      }
+      .dk-facts {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-8);
+      }
+      .dk-facts > * {
+        min-width: 0;
+      }
+      .dk-win {
+        display: grid;
+        grid-template-columns: var(--control-h-32) minmax(0, 1fr) var(--control-h-40);
+        align-items: center;
+        gap: var(--space-8);
+      }
+      .dk-win > :last-child {
+        text-align: right;
+      }
+      .dk-notice .notice-text {
+        flex: 1 1 calc(100% - var(--control-h-40));
+      }
+      .dk-edge-in {
+        padding-block: var(--space-4);
+      }
+      .dk-crumbs {
+        overflow: hidden;
+      }
+      .dk-crumbs .crumb:last-child {
+        flex: none;
+        max-width: 70%;
+      }
+      .dk-code {
+        white-space: pre;
+      }
+      .dk-bed {
+        width: 100%;
+      }
+      .dk-sheet {
+        align-self: stretch;
+        width: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const D = window.Deck,
+        M = window.DockMock;
+      const sec = (title, body) => `<section><h3 class="gx-h">${title}</h3>${body}</section>`;
+      const cell = ([cap, html]) =>
+        `<div class="gx-cell">${html}<span class="gx-cap">${cap}</span></div>`;
+
+      D.mount(
+        "dock",
+        (data, ctx) => `<div class="gx-sheet dk-sheet">
+  ${sec("dock columns", `<div class="dk-cols">${M.columns(data, ctx.worst).map(cell).join("")}</div>`)}
+  ${sec("empty, loading and error bodies", `<div class="dk-cols">${M.states(data, ctx.worst).map(cell).join("")}</div>`)}
+  ${M.matrix(data)}
+</div>`,
+        (app) => {
+          // show a sticky header: scroll the first stack so its first card's header is pinned
+          const stack = app.querySelector('[data-stack="stuck"]');
+          if (stack) stack.scrollTop = 56;
+        },
+      );
+    </script>
+  </body>
+</html>

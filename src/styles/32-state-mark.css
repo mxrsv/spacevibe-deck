@@ -1,0 +1,101 @@
+/* ── The agent state mark (RCP-15, DL-27.3) ─────────────────────────────────
+   `AgentStateMark` (src/ui/blocks/agent-state-mark.tsx) on the project rail,
+   the strip, the pane header and the dock. A 14 slot, so row geometry never
+   moves between states; every ink is a status token, never a palette colour. */
+.state-mark {
+  --mark-ink: var(--status-idle);
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--mark-slot);
+  height: var(--mark-slot);
+  color: var(--status-working);
+}
+
+.state-mark::before {
+  content: "";
+  width: var(--mark-dot);
+  height: var(--mark-dot);
+  border-radius: 50%;
+  background: var(--mark-ink);
+}
+
+.state-mark[data-state="failed"] {
+  --mark-ink: var(--status-failed);
+}
+
+.state-mark[data-state="needs-input"],
+.state-mark[data-state="unread"] {
+  --mark-ink: var(--status-unread);
+}
+
+/* Needs you wears a 15 hairline ring round its dot. */
+.state-mark[data-state="needs-input"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--mark-ring);
+  height: var(--mark-ring);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 var(--seam-w) var(--status-unread);
+}
+
+/* Ended is the one non-round mark: a 7 square in the quiet gray. */
+.state-mark[data-state="ended"]::before {
+  width: var(--mark-square);
+  height: var(--mark-square);
+  border-radius: var(--radius-flat);
+}
+
+/* An inferred state is the same dot, hollow: a ring in place of the disc. */
+.state-mark[data-confidence="inferred"]:is(
+    [data-state="needs-input"],
+    [data-state="unread"],
+    [data-state="done"]
+  )::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--mark-ink);
+}
+
+/* Working is the braille spinner instead of a dot (DL-1.2's braille loop): ten
+   stacked frames, shown one at a time by opacity, 80ms each. The negative
+   delay starts every frame mid-cycle, so the first loop has no blank frame.
+   Reduced motion holds ⠹. */
+.state-mark[data-state="working"]::before {
+  content: none;
+}
+
+.braille-spinner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.braille-spinner > g {
+  opacity: 0;
+}
+
+.braille-spinner > g[data-still] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .braille-spinner > g {
+    animation: braille-frame 800ms steps(1, end) infinite;
+    animation-delay: calc(var(--frame) * 80ms - 800ms);
+  }
+}
+
+@keyframes braille-frame {
+  0% {
+    opacity: 1;
+  }
+  10%,
+  100% {
+    opacity: 0;
+  }
+}

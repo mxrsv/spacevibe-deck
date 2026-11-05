@@ -1486,9 +1486,12 @@ describe("AgentRail shell contract", () => {
   // jsdom environment this file runs in. `src/styles.css` is an `@import`
   // index since the 2026-08-16 partial split, itself sub-split into
   // `04a`/`04b` once `04-agent-rail.css` crossed the 800-line ceiling; every
-  // selector below (`.asr-rail`, `.asr-rail__list`, both collapsed-column
-  // rules) lives in the shell half, `04a-agent-rail.css`.
-  const stylesheet = readFileSync("src/styles/04a-agent-rail.css", "utf8");
+  // `.asr-rail`, `.asr-rail__list` and the rail's collapsed rule moved to
+  // `04-rail-frame.css`, where the composition suites read them (RCP-28); the
+  // old rail's own collapsed rules stay in `04a-agent-rail.css`.
+  const stylesheet = ["src/styles/04a-agent-rail.css", "src/styles/04-rail-frame.css"]
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
 
   /**
    * The declarations of the rule whose selector is exactly `selector`.
@@ -1500,7 +1503,7 @@ describe("AgentRail shell contract", () => {
    */
   function ruleBody(selector: string): string {
     const start = stylesheet.indexOf(`\n${selector} {`);
-    expect(start, `no \`${selector} {\` rule in src/styles/04a-agent-rail.css`).toBeGreaterThan(-1);
+    expect(start, `no \`${selector} {\` rule in the rail's stylesheets`).toBeGreaterThan(-1);
     const open = stylesheet.indexOf("{", start);
     return stylesheet.slice(open + 1, stylesheet.indexOf("}", open));
   }
@@ -1560,15 +1563,18 @@ describe("AgentRail recent activity style contract", () => {
 
   it("keeps compact rows at fixed glyph and time geometry without horizontal overflow", () => {
     const row = ruleBody(".recent-session-activity__row");
-    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 4em 14px");
-    expect(row).toContain("min-height: 30px");
+    // RCP-4, RCP-7: the 16 glyph, the 14 mark slot and the 32 row are tokens now.
+    expect(row).toContain(
+      "grid-template-columns: var(--icon-16) minmax(0, 1fr) 4em var(--mark-slot)",
+    );
+    expect(row).toContain("min-height: var(--row-32)");
     expect(row).toContain("box-sizing: border-box");
     expect(row).toContain("width: 100%");
     expect(row).toContain("overflow: hidden");
 
     const glyph = ruleBody(".recent-session-activity__glyph");
-    expect(glyph).toContain("width: 15px");
-    expect(glyph).toContain("height: 15px");
+    expect(glyph).toContain("width: var(--icon-16)");
+    expect(glyph).toContain("height: var(--icon-16)");
 
     const summary = ruleBody(".recent-session-activity__summary");
     expect(summary).toContain("min-width: 0");

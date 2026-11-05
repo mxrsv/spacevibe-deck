@@ -1,9 +1,14 @@
-import { ArrowLeft, ArrowUp, Folder, X } from "@phosphor-icons/react";
+import {
+  ArrowLeft01Icon,
+  ArrowUp02Icon,
+  Cancel01Icon,
+  Folder01Icon,
+} from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { isTerminalPhase, type ClonePhase, type CloneError } from "../lib/clone-contract";
 import { parseGithubRepository } from "../lib/github-repository";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import type { CloneController, CloneControllerState } from "./clone-controller-types";
 
 export interface CloneWorkspaceFormProps {
@@ -127,7 +132,7 @@ function FormHeader({ onBack, onClose }: Pick<CloneWorkspaceFormProps, "onBack" 
   return (
     <header class="nt-quick-launch__head">
       <button type="button" class="nt-icon-action" aria-label="Back" onClick={onBack}>
-        <DeckIcon icon={ArrowLeft} size={ROW_ICON} />
+        <DeckIcon icon={ArrowLeft01Icon} size={GLYPH_ROW} />
       </button>
       <div>
         <span>Workspace</span>
@@ -135,7 +140,7 @@ function FormHeader({ onBack, onClose }: Pick<CloneWorkspaceFormProps, "onBack" 
       </div>
       {onClose === undefined ? null : (
         <button type="button" class="nt-icon-action" aria-label="Close" onClick={onClose}>
-          <DeckIcon icon={X} size={ROW_ICON} />
+          <DeckIcon icon={Cancel01Icon} size={GLYPH_ROW} />
         </button>
       )}
     </header>
@@ -233,13 +238,13 @@ export function CloneWorkspaceForm(props: CloneWorkspaceFormProps) {
             data-action="pick-parent"
             onClick={() => void pickParent()}
           >
-            <DeckIcon icon={Folder} size={ROW_ICON} />
+            <DeckIcon icon={Folder01Icon} size={GLYPH_ROW} />
             <span data-parent-path>{parent || "Choose a parent folder"}</span>
             <span>Choose…</span>
           </button>
         </label>
         <label>
-          <span>Folder name</span>
+          <span>Folder01Icon name</span>
           <input
             type="text"
             aria-label="Folder name"
@@ -290,7 +295,7 @@ export function CloneWorkspaceForm(props: CloneWorkspaceFormProps) {
           onClick={submit}
         >
           Clone
-          <DeckIcon icon={ArrowUp} size={ROW_ICON} />
+          <DeckIcon icon={ArrowUp02Icon} size={GLYPH_ROW} />
         </button>
       </footer>
     </>

@@ -50,7 +50,7 @@ export function ProjectRailRenameField({
       maxLength={MAX_TAB_NAME_LENGTH}
       aria-label="Session name"
       spellcheck={false}
-      className="h-6 text-sm"
+      className="h-(--control-h-28) text-sm"
       onKeyDown={(event: KeyboardEvent) => {
         event.stopPropagation();
         if (event.key === "Enter") {

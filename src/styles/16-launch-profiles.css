@@ -53,8 +53,8 @@
    fallback the quick picker's chips use. */
 .lp-mark {
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   object-fit: contain;
 }
 
@@ -106,7 +106,7 @@
      on the same right edge as each row's disclosure (margin 4 + padding 10). A heading
      inset 16 and a control inset 14 is a 2px stagger you see once and cannot
      unsee. */
-  padding: 16px 14px 6px;
+  padding: var(--space-16) var(--space-12) var(--space-6);
 }
 
 /* The first heading follows the section's own title, which already spent the
@@ -119,7 +119,7 @@
   padding-left: 2px;
   font-family: var(--ui-font);
   font-size: var(--type-title);
-  font-weight: 560;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
@@ -202,6 +202,7 @@
 }
 
 .lp-agent-details {
+  /* ui-scale: lines the details up with the agent's name after its mark */
   margin: 0 4px 12px 29px;
 }
 
@@ -317,7 +318,7 @@
 }
 
 .lp-install-help {
-  margin: 8px 14px;
+  margin: var(--space-8) var(--space-12);
   color: var(--text-muted);
   font-size: var(--type-meta);
   line-height: 1.45;

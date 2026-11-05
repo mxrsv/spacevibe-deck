@@ -1,10 +1,22 @@
 import * as React from "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { cn } from "@/lib/cn";
-import { invertedMenuClass } from "./inverted-menu";
 import { ArrowRight01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { DeckIcon } from "./deck-icon";
 import { withRef } from "./with-ref";
+
+/**
+ * RCP-11, RCP-21: every menu is one floating surface on `--popover-bg` at `--elev-1`, the
+ * `--radius-surface` corner, 4 inset, holding 32 rows 2 apart. Opaque and static: no frosted
+ * backdrop (DL-1.3) and no enter or exit motion on the shadow. An item highlights on the hover wash,
+ * whether the pointer or the keyboard put it there (CMP-11).
+ */
+const MENU_SURFACE =
+  "flex flex-col gap-(--space-list) rounded-(--radius-surface) bg-(--popover-bg) p-(--space-4) text-(--text-primary) shadow-(--elev-1) duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0";
+
+/** RCP-21: a menu row is 32, padded 8, with its 16 glyph 8 from its label. */
+const MENU_ROW =
+  "relative flex h-(--row-32) shrink-0 items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-sm text-(--text-primary) outline-hidden transition-colors duration-(--duration) select-none focus:bg-(--state-hover-bg) data-highlighted:bg-(--state-hover-bg) data-disabled:pointer-events-none data-disabled:opacity-(--state-disabled-opacity) [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:text-(--text-muted) [&_svg:not([class*='size-'])]:size-(--icon-16)";
 
 function DropdownMenu({ ...props }: Omit<MenuPrimitive.Root.Props, "ref">) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -45,8 +57,7 @@ const DropdownMenuContent = withRef(function DropdownMenuContent({
           data-slot="dropdown-menu-content"
           className={() =>
             cn(
-              invertedMenuClass(),
-              "z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 outline-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:overflow-hidden data-closed:fade-out-0 data-closed:zoom-out-95 animate-none! relative bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150 **:data-[slot$=-item]:focus:bg-foreground/10 **:data-[slot$=-item]:data-highlighted:bg-foreground/10 **:data-[slot$=-separator]:bg-foreground/5 **:data-[slot$=-trigger]:focus:bg-foreground/10 **:data-[slot$=-trigger]:aria-expanded:bg-foreground/10! **:data-[variant=destructive]:focus:bg-foreground/10! **:data-[variant=destructive]:text-accent-foreground! **:data-[variant=destructive]:**:text-accent-foreground!",
+              `z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto outline-none ${MENU_SURFACE}`,
               className,
             )
           }
@@ -75,7 +86,7 @@ const DropdownMenuLabel = withRef(function DropdownMenuLabel({
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        "flex h-(--row-24) items-center px-(--space-pad-row) text-xs text-(--text-faint) data-inset:pl-6",
         className,
       )}
       {...props}
@@ -98,7 +109,7 @@ const DropdownMenuItem = withRef(function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/dropdown-menu-item relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
+        `group/dropdown-menu-item ${MENU_ROW} data-inset:pl-6 data-[variant=destructive]:text-(--ink-fail) data-[variant=destructive]:*:[svg]:text-(--ink-fail)`,
         className,
       )}
       {...props}
@@ -123,7 +134,7 @@ const DropdownMenuSubTrigger = withRef(function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7 data-popup-open:bg-accent data-popup-open:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        `${MENU_ROW} data-inset:pl-6 data-popup-open:bg-(--state-hover-bg) data-open:bg-(--state-hover-bg)`,
         className,
       )}
       {...props}
@@ -145,10 +156,7 @@ const DropdownMenuSubContent = withRef(function DropdownMenuSubContent({
   return (
     <DropdownMenuContent
       data-slot="dropdown-menu-sub-content"
-      className={cn(
-        "w-auto min-w-32 rounded-lg p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 animate-none! relative bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150 **:data-[slot$=-item]:focus:bg-foreground/10 **:data-[slot$=-item]:data-highlighted:bg-foreground/10 **:data-[slot$=-separator]:bg-foreground/5 **:data-[slot$=-trigger]:focus:bg-foreground/10 **:data-[slot$=-trigger]:aria-expanded:bg-foreground/10! **:data-[variant=destructive]:focus:bg-foreground/10! **:data-[variant=destructive]:text-accent-foreground! **:data-[variant=destructive]:**:text-accent-foreground!",
-        className,
-      )}
+      className={cn(`w-auto min-w-32 ${MENU_SURFACE}`, className)}
       align={align}
       alignOffset={alignOffset}
       side={side}
@@ -171,10 +179,7 @@ const DropdownMenuCheckboxItem = withRef(function DropdownMenuCheckboxItem({
     <MenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
-      className={cn(
-        "relative flex items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(`${MENU_ROW} pr-(--control-h-32) data-inset:pl-6`, className)}
       checked={checked}
       {...props}
     >
@@ -209,10 +214,7 @@ const DropdownMenuRadioItem = withRef(function DropdownMenuRadioItem({
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
-      className={cn(
-        "relative flex items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(`${MENU_ROW} pr-(--control-h-32) data-inset:pl-6`, className)}
       {...props}
     >
       <span
@@ -235,7 +237,24 @@ const DropdownMenuSeparator = withRef(function DropdownMenuSeparator({
   return (
     <MenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      className={cn("-mx-1 my-1 h-(--seam-w) shrink-0 bg-(--menu-sep)", className)}
+      {...props}
+    />
+  );
+});
+
+/**
+ * RCP-12: groups in a menu separate by an 8 gap, not a line. The line (`DropdownMenuSeparator`)
+ * stays only between a list that scrolls and the fixed actions under it.
+ */
+const DropdownMenuGap = withRef(function DropdownMenuGap({
+  className,
+  ...props
+}: Omit<MenuPrimitive.Separator.Props, "ref">) {
+  return (
+    <MenuPrimitive.Separator
+      data-slot="dropdown-menu-gap"
+      className={cn("h-2 shrink-0", className)}
       {...props}
     />
   );
@@ -248,10 +267,7 @@ const DropdownMenuShortcut = withRef(function DropdownMenuShortcut({
   return (
     <span
       data-slot="dropdown-menu-shortcut"
-      className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground",
-        className,
-      )}
+      className={cn("ml-auto text-xs text-(--text-muted)", className)}
       {...props}
     />
   );
@@ -269,6 +285,7 @@ export {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuGap,
   DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubTrigger,

@@ -1,7 +1,7 @@
-import { CaretDown, Check, GitBranch } from "@phosphor-icons/react";
+import { ArrowDown01Icon, GitBranchIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import type { LaunchCheckoutRow } from "./agent-launch-context-model";
 
 interface LaunchCheckoutPickerProps {
@@ -110,9 +110,9 @@ export function LaunchCheckoutPicker(props: LaunchCheckoutPickerProps) {
           }
         }}
       >
-        <DeckIcon icon={GitBranch} size={ROW_ICON} />
+        <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} />
         <span>{current?.label ?? "Choose a checkout"}</span>
-        <DeckIcon icon={CaretDown} size={ROW_ICON} />
+        <DeckIcon icon={ArrowDown01Icon} size={GLYPH_ROW} />
       </button>
       {open.value && !props.disabled ? (
         <div class="nt-workspace-picker__menu" role="menu" aria-label="Choose a checkout">
@@ -131,10 +131,10 @@ export function LaunchCheckoutPicker(props: LaunchCheckoutPickerProps) {
                   props.onSelect(entry.path);
                 }}
               >
-                <DeckIcon icon={GitBranch} size={ROW_ICON} />
+                <DeckIcon icon={GitBranchIcon} size={GLYPH_ROW} />
                 <span class="nt-workspace-picker__name">{entry.label}</span>
                 {entry.linked ? <span class="nt-workspace-picker__detail">worktree</span> : null}
-                {selected ? <DeckIcon icon={Check} size={ROW_ICON} /> : null}
+                {selected ? <DeckIcon icon={Tick02Icon} size={GLYPH_ROW} /> : null}
               </button>
             );
           })}

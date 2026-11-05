@@ -171,9 +171,14 @@ describe("the Changes stack", () => {
     const gutter = lines[0].firstElementChild as HTMLElement;
     expect(gutter.getAttribute("aria-hidden")).toBe("true");
     expect(gutter.className).toContain("select-none");
-    // The number takes the change's ink, so the change reads from the gutter alone.
-    expect((lines[2].firstElementChild as HTMLElement).className).toContain("text-(--term-ok)");
-    expect((lines[1].firstElementChild as HTMLElement).className).toContain("text-(--term-err)");
+    // The number takes the change's status ink and the gutter its bar, so the change reads from
+    // the gutter alone (RCP-22).
+    const added = (lines[2].firstElementChild as HTMLElement).className;
+    const removed = (lines[1].firstElementChild as HTMLElement).className;
+    expect(added).toContain("text-(--ink-ok)");
+    expect(added).toContain("dock-diff-bar--add");
+    expect(removed).toContain("text-(--ink-fail)");
+    expect(removed).toContain("dock-diff-bar--del");
     await view.unmount();
   });
 

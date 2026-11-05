@@ -1,4 +1,5 @@
 import type { RailWorktreeGroup } from "../agent-rail-model";
+import { Badge } from "../controls/badge";
 import type { RailGroup, RailItem } from "../rail-view-model";
 import { focusCheckout } from "../worktree-card";
 import { ProjectRailCheckout } from "./project-rail-checkout";
@@ -113,7 +114,10 @@ export function ProjectSection({
     }
   };
   return (
-    <section aria-label={group.label}>
+    <section
+      aria-label={group.label}
+      className="mb-(--space-group-sm) flex flex-col gap-(--space-list)"
+    >
       <ProjectRailHeader
         group={group}
         markPath={firstCheckout?.repositoryPath ?? firstCheckout?.path ?? null}
@@ -151,7 +155,9 @@ export function ProjectSection({
             />
           ))}
       {!folded && group.items.length === 0 && rowless.length === 0 && remembered.length === 0 ? (
-        <p className="px-6 py-2 text-xs text-muted-foreground">No sessions</p>
+        <p className="flex h-(--row-24) items-center px-(--space-pad-row) text-xs text-(--text-faint)">
+          No sessions
+        </p>
       ) : null}
     </section>
   );
@@ -166,10 +172,15 @@ export function FlatSection({
   readonly env: RailRowEnv;
 }) {
   return (
-    <section aria-label={group.label}>
-      <h3 className="mx-3 mt-3 mb-0.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        {group.label}
-        <span className="tabular-nums">{group.count}</span>
+    <section
+      aria-label={group.label}
+      className="mb-(--space-group-sm) flex flex-col gap-(--space-list)"
+    >
+      <h3 className="flex h-(--row-24) items-center gap-(--space-icon-label) px-(--space-pad-row) text-xs leading-(--leading-meta) font-normal text-(--text-faint)">
+        <span className="min-w-0 truncate">{group.label}</span>
+        <Badge variant="secondary" className="tabular-nums">
+          {group.count}
+        </Badge>
       </h3>
       <RailRows items={group.items} env={env} named />
     </section>

@@ -3,7 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DockToggle } from "./dock-toggle";
-import { FEATURE_ICON } from "../controls/deck-icon";
+import { GLYPH_ROW } from "../controls/deck-icon";
 import { shortcutLabel } from "../../lib/shortcut-label";
 
 describe("DockToggle", () => {
@@ -73,15 +73,14 @@ describe("DockToggle", () => {
     expect(control().getAttribute("aria-describedby")).toBe(tip?.id);
   });
 
-  // DL-14.2: the dock header's cluster draws one rung up from chrome, and the
-  // stage-strip mount stays at 13 beside the toolbar's own glyphs. The size is
-  // a PROP, not a read of `open` — the two only happen to correlate today.
-  it("draws chrome-sized by default and larger when a mount asks", () => {
+  // RCP-4: the glyph follows its box, 16 in the 28 icon box by default. The size is a PROP,
+  // not a read of `open`.
+  it("draws the 28 box's 16 glyph by default and a smaller step when a mount asks", () => {
     act(() => render(<DockToggle open={false} onToggle={vi.fn()} />, host));
-    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe("13");
+    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe("16");
 
-    act(() => render(<DockToggle open={false} size={FEATURE_ICON} onToggle={vi.fn()} />, host));
-    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe("15");
+    act(() => render(<DockToggle open={false} size={GLYPH_ROW} onToggle={vi.fn()} />, host));
+    expect(control().querySelector("svg.deck-icon")?.getAttribute("width")).toBe("14");
   });
 
   it("reports a click and keeps no state of its own", () => {

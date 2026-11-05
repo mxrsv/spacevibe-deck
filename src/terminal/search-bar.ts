@@ -1,6 +1,6 @@
-import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
+import { ArrowLeft01Icon, ArrowRight01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { h, render } from "preact";
-import { DeckIcon, ROW_ICON, type DeckIconComponent } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW, type DeckGlyph } from "../ui/controls/deck-icon";
 import type { ISearchOptions } from "@xterm/addon-search";
 import { settings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
@@ -166,7 +166,7 @@ function findNormalized(
  * fall back to except the tooltip.
  */
 function barButton(
-  icon: DeckIconComponent,
+  icon: DeckGlyph,
   name: string,
   title: string,
   onClick: () => void,
@@ -175,7 +175,7 @@ function barButton(
   button.type = "button";
   button.className = "search-bar__btn";
   button.setAttribute("aria-label", name);
-  render(h(DeckIcon, { icon, size: ROW_ICON }), button);
+  render(h(DeckIcon, { icon, size: GLYPH_ROW }), button);
   button.title = title;
   // Keep the input focused while clicking the bar's buttons
   button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -218,18 +218,18 @@ export function openSearchBar(pane: Pane): void {
     input,
     counter,
     barButton(
-      CaretLeft,
+      ArrowLeft01Icon,
       "Previous match",
       `Previous match (${formatKeyChord(PREVIOUS_MATCH_CHORD, platform)})`,
       findPrevious,
     ),
     barButton(
-      CaretRight,
+      ArrowRight01Icon,
       "Next match",
       `Next match (${formatKeyChord(NEXT_MATCH_CHORD, platform)})`,
       findNext,
     ),
-    barButton(X, "Close", "Close (Esc)", closeSearchBar),
+    barButton(Cancel01Icon, "Close", "Close (Esc)", closeSearchBar),
   );
 
   const results = pane.search.onDidChangeResults(({ resultIndex, resultCount }) => {

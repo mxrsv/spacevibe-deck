@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
-import { ArrowLeft, Warning } from "@phosphor-icons/react";
+import { Alert02Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { LaunchCommandChoices } from "../lib/launch-command";
 import { tildify } from "../lib/process-info";
@@ -9,7 +9,7 @@ import { eventInOpenLaunchPopover } from "./agent-launch-page-store";
 import { AgentLaunchContext, type AgentLaunchContextProps } from "./agent-launch-context";
 import { LaunchCommandPreview } from "./launch-command-preview";
 import { LaunchProfilePopover, type LaunchProfileSection } from "./launch-profile-popover";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import "./agent-launch-page.css";
 
 export interface AgentLaunchPageProps {
@@ -108,12 +108,12 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
     >
       <div class="agent-launch-page__inner">
         <button class="sbtn sbtn--lead agent-launch-page__back" onClick={props.onBack}>
-          <DeckIcon icon={ArrowLeft} size={ROW_ICON} /> Back <kbd>Esc</kbd>
+          <DeckIcon icon={ArrowLeft01Icon} size={GLYPH_ROW} /> Back <kbd>Esc</kbd>
         </button>
         <AgentLaunchContext {...props.contextRow} />
         {props.error ? (
           <div class="agent-launch-page__notice" role="alert">
-            <DeckIcon icon={Warning} size={ROW_ICON} />
+            <DeckIcon icon={Alert02Icon} size={GLYPH_ROW} />
             <span class="agent-launch-page__notice-text">{props.error}</span>
             <button type="button" disabled={props.pending} onClick={props.onRetry}>
               Retry

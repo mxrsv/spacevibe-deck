@@ -34,11 +34,12 @@ describe("Chip", () => {
       </>,
     );
     const [filled, quiet] = [...view.host.querySelectorAll("button")];
-    expect(filled.className).toContain("h-6");
-    expect(filled.className).toContain("bg-muted");
-    expect(quiet.className).toContain("h-5");
+    // RCP-4: the heights are the chip tokens; a filled chip rests on the 3% wash.
+    expect(filled.className).toContain("h-(--chip-h-24)");
+    expect(filled.className).toContain("bg-(--tab-rest-bg)");
+    expect(quiet.className).toContain("h-(--chip-h-20)");
     expect(quiet.className).toContain("bg-transparent");
-    expect(quiet.className).not.toContain("bg-muted ");
+    expect(quiet.className).not.toContain("bg-(--tab-rest-bg)");
     await view.unmount();
   });
 
@@ -52,7 +53,7 @@ describe("Chip", () => {
     expect(ref.current?.tagName).toBe("BUTTON");
     const classes = (view.host.querySelector("button") as HTMLElement).className.split(" ");
     expect(classes).toContain("h-7");
-    expect(classes).not.toContain("h-6");
+    expect(classes).not.toContain("h-(--chip-h-24)");
     await view.unmount();
   });
 });

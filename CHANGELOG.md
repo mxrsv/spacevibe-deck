@@ -7,6 +7,11 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Menus, dialogs and tabs share one look.** Menus and pickers follow your theme instead of
+  inverting it, and they, tooltips and dialogs sit on an opaque ground at one of three shadow
+  depths; tooltips lose their arrow. Tabs, toolbar buttons, the browser toolbar, the Usage page and
+  session history share one set of row heights and spacing, and a pressed button darkens
+  instead of staying as it was.
 - **Resize handles let go when you do.** Letting go of the mouse now always ends a drag of
   [the seam beside the rail](docs/user/getting-started.md), the side panel's edge or a split
   divider. The column or pane no longer keeps following the pointer until the next click.

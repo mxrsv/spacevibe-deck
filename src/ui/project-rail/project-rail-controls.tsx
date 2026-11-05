@@ -113,18 +113,19 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
           />
         </PopoverContent>
       </Popover>
-      <div className="flex items-center gap-1">
+      {/* RCP-7: the search and controls row is a 36 bar holding 28 controls. */}
+      <div className="flex h-(--control-h-36) items-center gap-(--space-4)">
         <div className="relative min-w-0 flex-1">
           <DeckIcon
             icon={Search01Icon}
             size={GLYPH_INLINE}
-            class="pointer-events-none absolute top-2.5 left-2 text-muted-foreground"
+            class="pointer-events-none absolute top-2 left-2 text-(--text-faint)"
           />
           <Input
             data-rail-search=""
             aria-label="Search sessions"
             placeholder="Search"
-            className="pl-6"
+            className="h-(--control-h-28) pl-6"
             value={railViewState.value.query}
             onInput={(event: Event) => setRailQuery((event.target as HTMLInputElement).value)}
             onKeyDown={(event: KeyboardEvent) => {
@@ -152,7 +153,7 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
         />
       </div>
       {notice === null ? null : (
-        <p role="alert" className="px-2 pt-1 text-xs text-destructive">
+        <p role="alert" className="px-(--space-pad-row) pt-1 text-xs text-(--ink-fail)">
           {notice}
         </p>
       )}

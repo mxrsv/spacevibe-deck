@@ -14,9 +14,11 @@ const KEYWORD_WEIGHTS: Readonly<Record<string, number>> = { normal: 400, bold: 7
 /** A number, or why a number cannot be had: `bolder`, `lighter` and `var()` depend on context. */
 export type Weight = number | "unsupported" | "inherit";
 
-interface Declaration {
+export interface Declaration {
   readonly prop: string;
   readonly value: string;
+  /** The 1-based line the declaration starts on, so a comment on the line above can be found. */
+  readonly line: number;
 }
 
 export interface Rule {
@@ -143,10 +145,14 @@ interface Frame {
   readonly declarations: Declaration[];
 }
 
-function toDeclaration(text: string): Declaration | null {
+function toDeclaration(text: string, line: number): Declaration | null {
   const colon = text.indexOf(":");
   if (colon < 1) return null;
-  return { prop: text.slice(0, colon).trim().toLowerCase(), value: text.slice(colon + 1).trim() };
+  return {
+    prop: text.slice(0, colon).trim().toLowerCase(),
+    value: text.slice(colon + 1).trim(),
+    line,
+  };
 }
 
 function closeRule(file: string, stack: readonly Frame[], frame: Frame): Rule | null {
@@ -175,7 +181,7 @@ export function parseRules(file: string, source: string): Rule[] {
   const takeDeclaration = (): void => {
     const top = stack[stack.length - 1];
     if (top?.kind === "rule") {
-      const declaration = toDeclaration(buffer);
+      const declaration = toDeclaration(buffer, bufferLine);
       if (declaration) top.declarations.push(declaration);
     }
     buffer = "";

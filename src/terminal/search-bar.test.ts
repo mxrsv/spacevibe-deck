@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { ArrowLeft01Icon, ArrowRight01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { h, render } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   advanceSearch,
@@ -10,6 +12,16 @@ import {
 } from "./search-bar";
 import type { Pane, SelectionSnapshot } from "./pane";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { DeckIcon, type DeckGlyph } from "../ui/controls/deck-icon";
+
+/** A glyph has no name to read back (DL-14.1), so a test pins it by its drawn path data. */
+function drawn(icon: DeckGlyph): string {
+  const scratch = document.createElement("div");
+  render(h(DeckIcon, { icon }), scratch);
+  const markup = scratch.querySelector("svg")?.innerHTML ?? "";
+  render(null, scratch);
+  return markup;
+}
 
 vi.mock("../settings/settings-store", () => ({
   settings: {
@@ -244,9 +256,9 @@ describe("the search bar's own controls", () => {
 
     // Named explicitly, not by their text: once the glyph is an aria-hidden
     // icon, the only name left would be the tooltip.
-    expect(named("Previous match").querySelector(".deck-icon--caret-left")).not.toBeNull();
-    expect(named("Next match").querySelector(".deck-icon--caret-right")).not.toBeNull();
-    expect(named("Close").querySelector(".deck-icon--x")).not.toBeNull();
+    expect(named("Previous match").querySelector("svg")?.innerHTML).toBe(drawn(ArrowLeft01Icon));
+    expect(named("Next match").querySelector("svg")?.innerHTML).toBe(drawn(ArrowRight01Icon));
+    expect(named("Close").querySelector("svg")?.innerHTML).toBe(drawn(Cancel01Icon));
     expect(named("Close").textContent).toBe("");
   });
 

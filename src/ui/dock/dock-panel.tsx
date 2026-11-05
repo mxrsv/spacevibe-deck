@@ -19,7 +19,6 @@
  */
 import { dockWidthLive } from "../../files/file-surface-store";
 import type { DockTab } from "../../settings/settings-schema";
-import { FEATURE_ICON } from "../controls/deck-icon";
 import { DockResizeGrip } from "./dock-resize-grip";
 import { DockTabs } from "./dock-tabs";
 import { DockToggle } from "./dock-toggle";
@@ -99,7 +98,7 @@ export function DockPanel(props: DockPanelProps) {
             `FEATURE_ICON`, one rung up from chrome. The stage-strip mount of
             this same component keeps `CHROME_ICON`, where it stands beside
             the toolbar's own 13px glyphs. */}
-        <DockToggle open size={FEATURE_ICON} onToggle={props.onClose} />
+        <DockToggle open onToggle={props.onClose} />
       </div>
       <div class="dock-panel__body">{props.children}</div>
     </aside>

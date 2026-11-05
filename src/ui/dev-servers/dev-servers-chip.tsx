@@ -1,4 +1,4 @@
-import { HardDrives } from "@phosphor-icons/react";
+import { HardDriveIcon } from "@hugeicons/core-free-icons";
 import { useCallback, useRef, useState } from "preact/hooks";
 import type { DevServerCapability } from "../../dev-servers/dev-server-types";
 import {
@@ -6,7 +6,7 @@ import {
   tooltipTriggerProps,
   useTooltipVisibility,
 } from "../controls/action-tooltip";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { chipSummary } from "./dev-server-model";
 import { DevServersPopover, type DevServersPopoverProps } from "./dev-servers-popover";
 
@@ -82,7 +82,7 @@ export function DevServersChip({ capability, ...popover }: DevServersChipProps) 
           setAnchor({ right: rect.right, bottom: rect.bottom });
         }}
       >
-        <DeckIcon icon={HardDrives} size={CHROME_ICON} />
+        <DeckIcon icon={HardDriveIcon} size={GLYPH_INLINE} />
         <span class="dsv-chip__count" aria-hidden="true">
           {running}
         </span>

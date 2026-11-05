@@ -1,12 +1,12 @@
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { ArrowRight, PlusCircle, Terminal } from "@phosphor-icons/react";
+import { ArrowRight01Icon, CommandLineIcon, PlusSignCircleIcon } from "@hugeicons/core-free-icons";
 import type { AgentOption } from "../lib/agent-catalog";
 import { TERMINAL_LAUNCH_ID } from "../terminal/agent-launch-target";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { AgentInstallControl } from "./agent-install-control";
 import { noteAgentListShown } from "./agent-install-store";
-import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
+import { GLYPH_ROW, DeckIcon } from "../ui/controls/deck-icon";
 import { useStageOverlayFlag, useSurfacePlacement } from "../ui/worktree-card-menus";
 import "./agent-launch-page.css";
 
@@ -133,7 +133,7 @@ function NewSpaceButton(props: {
           props.onPress();
         }}
       >
-        <DeckIcon icon={PlusCircle} size={CHROME_ICON} />
+        <DeckIcon icon={PlusSignCircleIcon} size={GLYPH_ROW} />
       </button>
       {rect !== null && <NewSpaceTip rect={rect} id={tipId} />}
     </>
@@ -191,7 +191,7 @@ export function AgentLaunchCards(props: AgentLaunchCardsProps) {
             >
               <span class="agent-launch-page__name">
                 {agent.id === TERMINAL_LAUNCH_ID ? (
-                  <DeckIcon icon={Terminal} class="agent-launch-page__logo" />
+                  <DeckIcon icon={CommandLineIcon} class="agent-launch-page__logo" />
                 ) : (
                   <AgentGlyph
                     agent={agent.id.startsWith("custom:") ? agent.label : agent.id}
@@ -203,7 +203,7 @@ export function AgentLaunchCards(props: AgentLaunchCardsProps) {
               {agent.missing ? (
                 <span class="agent-launch-page__missing">Not installed</span>
               ) : (
-                <DeckIcon icon={ArrowRight} size={CHROME_ICON} />
+                <DeckIcon icon={ArrowRight01Icon} size={GLYPH_ROW} />
               )}
             </button>
             {withSpace && (

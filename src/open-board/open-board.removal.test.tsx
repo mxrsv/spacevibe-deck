@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { Cancel01Icon, Folder01Icon, FolderOpenIcon } from "@hugeicons/core-free-icons";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,6 +46,16 @@ import { OpenBoard } from "./open-board";
 import { newTaskDraft, resetLauncherStore } from "../launcher/launcher-store";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
+import { DeckIcon, type DeckGlyph } from "../ui/controls/deck-icon";
+
+/** A glyph has no name to read back (DL-14.1), so a test pins it by its drawn path data. */
+function drawn(icon: DeckGlyph): string {
+  const scratch = document.createElement("div");
+  render(<DeckIcon icon={icon} />, scratch);
+  const markup = scratch.querySelector("svg")?.innerHTML ?? "";
+  render(null, scratch);
+  return markup;
+}
 
 const NOW = 1_800_000_000_000;
 
@@ -138,13 +149,15 @@ describe("OpenBoard removal flow", () => {
     seed(["/w/alpha"]);
     await mount();
 
-    expect(host.querySelector(".row__ico.deck-icon--folder-open")).not.toBeNull();
-    expect(host.querySelector(".nt-workspace-picker__trigger .deck-icon--folder")).not.toBeNull();
+    expect(host.querySelector(".row__ico")?.innerHTML).toBe(drawn(FolderOpenIcon));
+    expect(host.querySelector(".nt-workspace-picker__trigger svg")?.innerHTML).toBe(
+      drawn(Folder01Icon),
+    );
 
     const x = removeButton("alpha");
     // Removing a recent forgets a pointer; it deletes nothing on disk, so it
     // is a dismissal (X), not a trash can.
-    expect(x?.querySelector(".deck-icon--x")).not.toBeNull();
+    expect(x?.querySelector("svg")?.innerHTML).toBe(drawn(Cancel01Icon));
     expect(x?.textContent).toBe("");
   });
 

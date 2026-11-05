@@ -7,6 +7,7 @@ import { paneTails } from "../../terminal/session-tail-store";
 import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { buildAgentRail, type AgentRailView } from "../agent-rail-model";
 import { AgentStateMark } from "../blocks/agent-state-mark";
+import { Chip } from "../blocks/chip";
 import { Button } from "../controls/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { needsYouItems, nextNeedsYou } from "./project-rail-attention";
@@ -55,8 +56,8 @@ export function ProjectRailAttentionPill({
       <Tooltip>
         <TooltipTrigger
           render={
-            <Button
-              size="sm"
+            <Chip
+              tone="need"
               aria-label={`${count} ${count === 1 ? "agent needs" : "agents need"} you`}
               className="tabular-nums"
               onClick={jump}

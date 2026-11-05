@@ -1,7 +1,7 @@
-import { CaretDown } from "@phosphor-icons/react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ActionTooltip, useTooltipVisibility } from "../controls/action-tooltip";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { groupExternalApps, type ExternalAppChoice } from "../../links/external-app-choices";
 import type { ExternalAppId } from "../../lib/external-app-catalog";
 import type { MenuAnchor } from "./toolbar-overflow-menu";
@@ -149,7 +149,7 @@ export function ExternalAppButton({
         aria-expanded={menu !== null}
         onClick={toggleMenu}
       >
-        <DeckIcon icon={CaretDown} size={CHROME_ICON} />
+        <DeckIcon icon={ArrowDown01Icon} size={GLYPH_INLINE} />
       </button>
       {showTooltip && tooltip.anchor !== null && (
         <ActionTooltip

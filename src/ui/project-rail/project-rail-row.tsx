@@ -7,9 +7,9 @@ import {
 import { useEffect, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { AgentGlyph } from "../controls/agent-glyph";
-import { Badge } from "../controls/badge";
-import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE, GLYPH_INLINE } from "../controls/deck-icon";
 import { AgentStateMark } from "../blocks/agent-state-mark";
+import { STATE_NEEDS_YOU, stateClasses } from "../blocks/recipe-classes";
 import { displayAgent } from "../agent-rail-card-model";
 import { formatShortAge } from "../agent-rail-model";
 import type { RailItem } from "../rail-view-model";
@@ -24,9 +24,22 @@ function StateAge({ changedAt }: { readonly changedAt: number }) {
   return <>{formatShortAge(changedAt, railNow.value)}</>;
 }
 
-/** The row button's box, shared with the remembered variant (`remembered-row.tsx`). */
+/**
+ * The two-line rail row (RCP-7, RCP-18): 44 high, the state mark leading in its 14 slot, the
+ * agent's 28 logo box, then the title over the meta line. Shared with the remembered variant
+ * (`remembered-row.tsx`), whose empty slot keeps the titles in line.
+ */
 export const ROW_LAYOUT =
-  "grid w-full grid-cols-[10px_minmax(0,1fr)] gap-x-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors";
+  "flex h-(--row-44) w-full min-w-0 items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left";
+/** The leading mark's 14 slot; it gives back 4 of the gap, as the mock's `.row-lead` does. */
+export const ROW_LEAD = "-mr-1 flex size-(--mark-slot) shrink-0 items-center justify-center";
+/** The agent's logo in a 28 box. */
+export const ROW_LOGO = "flex size-(--icon-box-28) shrink-0 items-center justify-center";
+/** The title over the meta line. */
+export const ROW_MAIN = "flex min-w-0 flex-1 flex-col";
+/** The 12px meta line under the title. */
+export const ROW_META =
+  "flex min-w-0 items-center gap-(--space-icon-label) text-xs leading-(--leading-meta) text-(--text-faint)";
 
 export interface ProjectRailRowProps {
   readonly item: RailItem;
@@ -42,10 +55,11 @@ export interface ProjectRailRowProps {
 }
 
 /**
- * Two lines (LAY-2): the state and the title, then the agent and the time in state. The branch
- * chip (and the project, in a flat list) shows on hover or focus; it holds its place, so the
- * line does not move. Hover or focus also adds pin, archive and the more menu over the
- * trailing edge; the same menu opens on right-click. F2 or a double-click renames in place.
+ * Two lines (LAY-2, RCP-18): the state mark, the agent's logo, then the title over the branch
+ * (and the project, in a flat list) and the time in state. A failed row's meta line reads in fail
+ * ink, and a row that needs the user carries the needs-you tint and a 600 title (RCP-9). Hover or
+ * focus adds pin, archive and the more menu over the trailing edge on an opaque ground (RCP-19);
+ * the same menu opens on right-click. F2 or a double-click renames in place.
  */
 export function ProjectRailRow({
   item,
@@ -76,7 +90,7 @@ export function ProjectRailRow({
   return (
     <div
       data-rail-item={item.id}
-      className="group/item relative mx-1.5"
+      className="group/item relative"
       onContextMenu={(event: MouseEvent) => {
         // The field keeps the native menu (cut, copy, paste).
         if (!editing) {
@@ -86,8 +100,10 @@ export function ProjectRailRow({
       }}
     >
       {editing && rename !== undefined ? (
-        <div className="grid grid-cols-[10px_minmax(0,1fr)] items-center gap-x-2 rounded-md bg-sidebar-accent px-2.5 py-1.5">
-          <AgentStateMark status={item.status} confidence={item.confidence} />
+        <div className={cn(ROW_LAYOUT, "bg-(--tab-active-bg)")}>
+          <span className={ROW_LEAD}>
+            <AgentStateMark status={item.status} confidence={item.confidence} />
+          </span>
           <ProjectRailRenameField
             initial={entry.kind === "agent" ? (entry.tabName ?? "") : ""}
             placeholder={entry.kind === "agent" ? (entry.taskLabel ?? entry.label) : item.title}
@@ -117,54 +133,44 @@ export function ProjectRailRow({
             }}
             className={cn(
               ROW_LAYOUT,
-              // Focus paints as hover does on an idle row; the selected row has no hover step, so
-              // focus takes one step beyond its fill instead of lightening it.
-              focused
-                ? "bg-sidebar-accent focus-visible:bg-[color-mix(in_oklch,var(--sidebar-accent),var(--foreground)_6%)]"
-                : "hover:bg-sidebar-accent/50 focus-visible:bg-sidebar-accent/50",
+              stateClasses(focused),
+              item.status === "needs-input" && !focused && STATE_NEEDS_YOU,
             )}
           >
-            <span className="flex h-5 items-center">
+            <span className={ROW_LEAD}>
               <AgentStateMark status={item.status} confidence={item.confidence} />
             </span>
-            <span
-              className={cn(
-                "truncate text-sm leading-5",
-                archived ? "text-muted-foreground" : "text-foreground",
-                focused && "font-medium",
-              )}
-            >
-              {item.title}
-            </span>
-            <span className="col-start-2 flex min-h-5 min-w-0 items-center gap-1.5 text-xs leading-5 text-muted-foreground">
+            <span className={ROW_LOGO}>
               {entry.kind === "agent" ? (
-                <AgentGlyph agent={entry.agent} className="size-3 shrink-0" />
+                <AgentGlyph agent={entry.agent} className="size-(--icon-16) shrink-0" />
               ) : (
-                <DeckIcon icon={ComputerTerminal01Icon} size={GLYPH_INLINE} class="shrink-0" />
+                <DeckIcon icon={ComputerTerminal01Icon} size={GLYPH_FEATURE} class="shrink-0" />
               )}
-              {/* Opacity, not display: the chip keeps its place and stays in the accessible
-                  name, so the line does not move between hover states. */}
+            </span>
+            <span className={ROW_MAIN}>
               <span
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5 transition-opacity group-focus-within/item:opacity-100 group-hover/item:opacity-100 has-[[data-popup-open]]:opacity-100",
-                  focused ? "opacity-100" : "opacity-0",
+                  "truncate text-sm leading-(--leading-body)",
+                  archived ? "text-(--text-muted)" : "text-(--text-primary)",
+                  item.status === "needs-input" && "font-semibold",
                 )}
               >
+                {item.title}
+              </span>
+              <span className={cn(ROW_META, item.status === "failed" && "text-(--ink-fail)")}>
                 {projectName === undefined ? null : (
                   <span className="min-w-0 shrink truncate">{projectName}</span>
                 )}
-                <Badge variant="secondary" className="min-w-0 shrink justify-start">
-                  <DeckIcon
-                    icon={item.checkout.labelled ? GitBranchIcon : Folder01Icon}
-                    size={GLYPH_INLINE}
-                    class="shrink-0"
-                  />
-                  <span className="truncate">{item.branch}</span>
-                </Badge>
-              </span>
-              <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
-                {pinned ? <DeckIcon icon={Pin02Icon} size={GLYPH_INLINE} /> : null}
-                <StateAge changedAt={item.changedAt} />
+                <DeckIcon
+                  icon={item.checkout.labelled ? GitBranchIcon : Folder01Icon}
+                  size={GLYPH_INLINE}
+                  class="shrink-0"
+                />
+                <span className="min-w-0 truncate">{item.branch}</span>
+                <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
+                  {pinned ? <DeckIcon icon={Pin02Icon} size={GLYPH_INLINE} /> : null}
+                  <StateAge changedAt={item.changedAt} />
+                </span>
               </span>
             </span>
             <span className="sr-only">
@@ -174,6 +180,7 @@ export function ProjectRailRow({
             </span>
           </button>
           <ProjectRailRowActions
+            selected={focused}
             title={item.title}
             pinned={pinned}
             tabStop={tabStop}

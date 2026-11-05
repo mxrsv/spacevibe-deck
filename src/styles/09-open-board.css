@@ -63,8 +63,8 @@
   border: 1px solid var(--hair);
 }
 .applogo svg {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
   fill: var(--text-faint);
 }
 .applogo img {
@@ -75,15 +75,15 @@
 /* The home mark reads as the screen's own identity, not a chrome icon —
    double the rail-era size. */
 .applogo--lg {
-  width: 48px;
-  height: 48px;
+  width: var(--row-44);
+  height: var(--row-44);
   background: transparent;
   border: 0;
 }
 .board-home__title {
   margin: 16px 0 0;
   font-size: 16px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.2;
 }
 .board-home__actions {
@@ -104,7 +104,7 @@
   cursor: pointer;
   font: inherit;
   font-size: var(--type-body);
-  font-weight: 590;
+  font-weight: 600;
   background: none;
   border: 1px solid var(--control-frame);
   color: var(--foreground);
@@ -117,10 +117,11 @@
 .home-action:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .home-action:active:not(:disabled) {
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background: linear-gradient(var(--state-pressed-bg), var(--state-pressed-bg))
+    var(--state-hover-bg);
 }
 .home-action:disabled,
 .board-home__resume:disabled,
@@ -137,10 +138,10 @@
 .home-action--primary:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
   border-color: transparent;
-  background: color-mix(in oklch, var(--primary) 92%, black);
+  background: var(--primary-hover);
 }
 .home-action--primary:active:not(:disabled) {
-  background: color-mix(in oklch, var(--primary) 84%, black);
+  background: var(--primary-pressed);
 }
 .home-action kbd {
   font: inherit;
@@ -186,13 +187,13 @@
   color: var(--foreground);
   font: inherit;
   font-size: var(--type-meta);
-  font-weight: 590;
+  font-weight: 600;
   cursor: pointer;
   transition: background var(--duration) var(--ease);
 }
 .board-home__star:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background: var(--state-hover-bg);
 }
 .board-home__star:disabled {
   cursor: default;
@@ -281,7 +282,7 @@
 .board-home__recents-head {
   padding: 0 8px 6px;
   font-size: var(--type-meta);
-  font-weight: 600;
+  font-weight: 400;
   color: var(--text-faint);
 }
 .board-home__list {
@@ -316,7 +317,7 @@
 }
 
 .row.is-selected:focus-within {
-  background: color-mix(in oklch, var(--tab-active-bg) 90%, var(--foreground));
+  background: var(--tab-active-focus-bg);
 }
 
 .row__open {
@@ -327,7 +328,7 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 6px 30px 6px 8px;
+  padding: var(--space-6) var(--icon-box-28) var(--space-6) var(--space-8);
   border: 0;
   border-radius: var(--radius-control);
   background: none;
@@ -440,7 +441,7 @@
 }
 .row__x:is(:hover, :focus-visible) {
   outline: none;
-  background: color-mix(in srgb, var(--red) 22%, transparent);
+  background: var(--danger-bg-hover);
   color: var(--red);
 }
 
@@ -470,7 +471,7 @@
   background: none;
   font: inherit;
   font-size: var(--type-meta);
-  font-weight: 500;
+  font-weight: 400;
   color: var(--accent);
   cursor: pointer;
   padding: 0;
@@ -504,7 +505,7 @@
 .board-sessions__head h1 {
   margin: 0;
   font-size: var(--type-title);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 /* Sits directly under the rail head, above the recents list — head padding
@@ -569,7 +570,7 @@
 .wtf__select:is(:hover, :focus-visible) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .wtf__browse {
   display: flex;
@@ -590,7 +591,7 @@
 .wtf__browse:is(:hover, :focus-visible) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .wtf__error {
   margin-top: 16px;
@@ -630,7 +631,7 @@
 .wshead__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -673,27 +674,27 @@
 .achip:is(:hover, :focus-visible) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 /* Selected is one neutral step, with no accent edge (CMP-13). */
 .achip.is-selected,
 .achip.is-selected:hover {
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background: var(--tab-active-bg);
 }
 .achip.is-selected:focus-visible {
-  background: color-mix(in oklch, var(--muted) 80%, var(--foreground));
+  background: var(--tab-active-focus-bg);
 }
 .achip__logo {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
   display: block;
 }
 /* Declared agents ship no brand mark, so they wear the same letter avatar the
    workspace rail uses (lib/letter-avatar.ts) rather than a generic glyph. */
 .achip__letter {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
   display: grid;
   place-items: center;
@@ -711,8 +712,8 @@
   color: var(--text-muted);
 }
 .shellmark {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   display: grid;
   place-items: center;
   font-family: var(--ui-font);
@@ -729,11 +730,11 @@
   border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--bg);
-  padding: 3px;
+  padding: var(--space-4);
 }
 .preset-thumb__split {
   display: flex;
-  gap: 3px;
+  gap: var(--space-4);
   width: 100%;
   height: 100%;
 }
@@ -788,7 +789,7 @@
 .btn {
   font: inherit;
   font-size: var(--type-body);
-  font-weight: 510;
+  font-weight: 600;
   height: 32px;
   padding: 0 12px;
   border-radius: var(--radius-control);
@@ -803,10 +804,11 @@
 .btn:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
   border-color: var(--control-frame-hover);
-  background: var(--muted);
+  background: var(--state-hover-bg);
 }
 .btn:active:not(:disabled) {
-  background: color-mix(in oklch, var(--muted) 90%, var(--foreground));
+  background: linear-gradient(var(--state-pressed-bg), var(--state-pressed-bg))
+    var(--state-hover-bg);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -820,16 +822,16 @@
   border-color: transparent;
   background: var(--primary);
   color: var(--primary-foreground);
-  font-weight: 590;
+  font-weight: 600;
   padding: 0 16px;
 }
 .btn--primary:is(:hover, :focus-visible):not(:disabled) {
   outline: none;
   border-color: transparent;
-  background: color-mix(in oklch, var(--primary) 92%, black);
+  background: var(--primary-hover);
 }
 .btn--primary:active:not(:disabled) {
-  background: color-mix(in oklch, var(--primary) 84%, black);
+  background: var(--primary-pressed);
 }
 .btn--primary kbd {
   font: inherit;

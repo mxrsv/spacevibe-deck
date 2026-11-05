@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+  </head>
+  <body>
+    <script>
+      const TABS = [
+        ["window", "One composed window of a real working moment"],
+        ["launcher", "The launcher in all its states"],
+        ["rail", "Search, projects, agent rows, footer"],
+        ["stage", "Tab strip, toolbar, panes, browser panel"],
+        ["dock", "Changes, Usage, History, Files"],
+        ["overlays", "Menus, popovers, tooltips, modals, forms"],
+        ["settings", "Command Settings and its row patterns"],
+        ["notices", "Persist error, update, launcher failure"],
+        ["rules", "Tokens, sizes, states, elevation, colour"],
+      ];
+      Deck.mount("index", () => {
+        const q = `?theme=${Deck.theme()}${Deck.worst() ? "&worst=1" : ""}`;
+        return `<div class="col gap-8" style="width:var(--launcher-w);max-width:100%">${TABS.map(
+          ([id, text], i) => `<a class="row row-44" href="${id}.html${q}">
+      <span class="row-logo t-meta">${i + 1}</span><span class="row-main"><span class="row-title t-strong">${id[0].toUpperCase() + id.slice(1)}</span><span class="row-meta">${text}</span></span><span class="row-end">${Deck.icon("caretRight", 16, "ico-faint")}</span></a>`,
+        ).join("")}</div>`;
+      });
+    </script>
+  </body>
+</html>

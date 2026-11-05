@@ -1,5 +1,10 @@
 // @vitest-environment jsdom
-import { Gear, SquareSplitHorizontal, TreeView, XSquare } from "@phosphor-icons/react";
+import {
+  CancelSquareIcon,
+  Folder01Icon,
+  Settings02Icon,
+  SquareSplitHorizontalIcon,
+} from "@hugeicons/core-free-icons";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -52,7 +57,7 @@ describe("FeatureToolbar", () => {
       {
         id: "explorer",
         label: "Explorer",
-        icon: TreeView,
+        icon: Folder01Icon,
         group: "tools",
         shortcut: "⌘⇧E",
         state: { kind: "active" },
@@ -63,7 +68,7 @@ describe("FeatureToolbar", () => {
       {
         id: "split-row",
         label: "Split Vertically",
-        icon: SquareSplitHorizontal,
+        icon: SquareSplitHorizontalIcon,
         group: "pane",
         shortcut: "⌘D",
         state: { kind: "idle" },
@@ -73,7 +78,7 @@ describe("FeatureToolbar", () => {
       {
         id: "close-pane",
         label: "Close Pane",
-        icon: XSquare,
+        icon: CancelSquareIcon,
         group: "pane",
         shortcut: "⌘W",
         state: { kind: "unavailable", reason: "only one pane is open" },
@@ -83,7 +88,7 @@ describe("FeatureToolbar", () => {
       {
         id: "settings",
         label: "Settings",
-        icon: Gear,
+        icon: Settings02Icon,
         group: "global",
         shortcut: "⌘,",
         state: { kind: "idle" },

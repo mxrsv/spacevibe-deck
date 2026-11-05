@@ -14,8 +14,8 @@
   display: flex;
 }
 .pane--agent-header > .pane__bar {
-  padding: 0 10px;
-  height: 33px;
+  padding: 0 var(--space-4) 0 var(--space-pad-row);
+  height: var(--row-32);
   /* DL-3.3: distinguish the header through a neutral surface step. */
   background: var(--chrome-2);
   /* CMP-14: the step above separates header from terminal. The transparent 1px
@@ -29,6 +29,7 @@
    other pane keeps its header on chrome. `is-active` is set only while the tab holds more than
    one pane. */
 .pane-slot.is-active .pane--agent-header > .pane__bar {
+  /* ui-scale: DL-32.7, the legacy focused header takes the pane's own ground; the flush stage's header takes the selection wash (RCP-20) */
   background: var(--bg);
 }
 .pane-bar-hidden .pane--agent-header > .pane__anchor {
@@ -37,7 +38,7 @@
 .pane-agent-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-icon-label);
   min-width: 0;
   color: var(--text-primary);
 }
@@ -46,8 +47,8 @@
   flex-shrink: 0;
 }
 .pane-agent-header__logo {
-  width: 16px;
-  height: 16px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   display: block;
 }
 .pane-agent-header__message {
@@ -57,7 +58,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font: var(--type-meta) var(--ui-font);
-  font-weight: 500;
+  font-weight: 400;
 }
 /* DL-21.2's wash on hover and on keyboard focus (CMP-11), the same neutral step
    on `--chrome-2` and on the focused pane's `--bg` sheet. */
@@ -80,6 +81,25 @@
   color: var(--text-primary);
   outline: none;
 }
+/* RCP-20: the status is the mark plus the DL-27.2 word, in status ink where it has a hue. */
+.pane-agent-header__status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-muted);
+  font: var(--type-meta) / var(--leading-meta) var(--ui-font);
+  white-space: nowrap;
+}
+
+.pane-agent-header__status[data-tone="need"] {
+  color: var(--ink-need);
+}
+
+.pane-agent-header__status[data-tone="fail"] {
+  color: var(--ink-fail);
+}
+
 /* A shell pane's header in a split tab: the pinned agents' logos, always visible,
    so a bare terminal is one press from an agent. */
 .pane-quick-agents {
@@ -88,7 +108,7 @@
   gap: 2px;
 }
 .pane-quick-agents__logo {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-14);
+  height: var(--icon-14);
   display: block;
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { contrastRatio, deriveChromeColors, luminance, mixHex } from "./derive-colors";
+import {
+  contrastRatio,
+  deriveChromeColors,
+  deriveRecipeTokens,
+  luminance,
+  mixHex,
+} from "./derive-colors";
 import { BUILT_IN_THEMES, DECK_DARK_THEME, DECK_LIGHT_THEME } from "../settings/built-in-themes";
 import type { Theme } from "../settings/theme-schema";
 
@@ -190,5 +196,42 @@ describe("deriveChromeColors", () => {
       expect(deriveChromeColors(DECK_DARK_THEME).stateHoverBg).toBe("rgba(255, 255, 255, 0.06)");
       expect(deriveChromeColors(DECK_LIGHT_THEME).stateHoverBg).toBe("rgba(0, 0, 0, 0.06)");
     });
+  });
+});
+
+describe("deriveRecipeTokens", () => {
+  const graphite = BUILT_IN_THEMES.find((theme) => theme.id === "graphite") as Theme;
+
+  it("yields the mock's grounds and focus wash for graphite and Deck Light (RCP-2)", () => {
+    const dark = deriveRecipeTokens(graphite);
+    expect(dark["--tab-active-focus-bg"]).toBe("#4b4e51");
+    expect(dark["--popover-bg"]).toBe(graphite.ui["sidebar-bg"]);
+    expect(dark["--card-bg"]).toBe(graphite.ui["chrome-1"]);
+    expect(dark["--selection-bg"]).toBe(graphite.terminal.selectionBackground);
+    const light = deriveRecipeTokens(DECK_LIGHT_THEME);
+    expect(light["--tab-active-focus-bg"]).toBe("#bfc0c2");
+    expect(light["--popover-bg"]).toBe("#ffffff");
+    expect(light["--well-bg"]).toBe("#ffffff");
+    expect(light["--card-bg"]).toBe(DECK_LIGHT_THEME.ui.bg);
+  });
+
+  it("keeps hover under selected inside a menu on every built-in theme", () => {
+    for (const theme of BUILT_IN_THEMES) {
+      const tokens = deriveRecipeTokens(theme);
+      const selected = deriveChromeColors(theme).tabActiveBg;
+      expect(tokens["--popover-bg"], theme.id).not.toBe(selected);
+      expect(tokens["--tab-active-focus-bg"], theme.id).not.toBe(selected);
+    }
+  });
+
+  it("edges a dark elevation with the hairline and leaves a light one shadow only (RCP-11)", () => {
+    const dark = deriveRecipeTokens(graphite);
+    const light = deriveRecipeTokens(DECK_LIGHT_THEME);
+    for (const level of ["--elev-1", "--elev-2", "--elev-3"]) {
+      expect(dark[level]).toContain("inset 0 0 0 1px");
+      expect(light[level]).not.toContain("inset");
+    }
+    expect(dark["--panel-frame"]).toBe("transparent");
+    expect(light["--panel-frame"]).toBe(deriveChromeColors(DECK_LIGHT_THEME).seamRaised);
   });
 });

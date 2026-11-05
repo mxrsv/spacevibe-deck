@@ -1,8 +1,8 @@
-import { HardDrives } from "@phosphor-icons/react";
+import { HardDriveIcon } from "@hugeicons/core-free-icons";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { placePopover } from "../attention/attention-placement";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE } from "../controls/deck-icon";
 import { usePressedPopoverDismiss } from "../controls/pressed-popover-dismiss";
 import { useStageOverlayFlag } from "../worktree-card-menus";
 import { DevServersPanel, type DevServersPanelProps } from "./dev-servers-panel";
@@ -79,7 +79,7 @@ export function DevServersPopover({
         }}
       >
         <h2 class="dsv-pop__title">
-          <DeckIcon icon={HardDrives} size={CHROME_ICON} />
+          <DeckIcon icon={HardDriveIcon} size={GLYPH_FEATURE} />
           Dev servers
         </h2>
         <DevServersPanel {...panel} onDone={onDone} />

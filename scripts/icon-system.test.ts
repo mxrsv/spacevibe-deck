@@ -41,6 +41,10 @@ const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
   // (DL-2.2) without a `filter` (DL-1.3). Brand marks, not action icons.
   ["lib/agent-logos.ts", 1],
   ["ui/controls/agent-glyph.tsx", 1],
+  // The braille working mark (RCP-15): each frame's dots drawn, because the
+  // Windows monospace fallback may lack the braille block. A status visual,
+  // not an action.
+  ["ui/blocks/braille-spinner.tsx", 1],
 ]);
 
 /**
@@ -90,21 +94,40 @@ const HUGEICONS_REACT_EXEMPT = (path: string): boolean => path.startsWith("galle
 /**
  * The cut-over set: surfaces that now draw Hugeicons only. A path ending in `/` is a directory,
  * anything else is a file. A surface joins this list in the change that converts it; a shared
- * file that an old surface still renders (`font-row`, `logo-row`, `github-star-button`, the
- * space bar's shipped caret) stays out until that surface is cut over.
+ * file that an old surface still renders (`font-row`, `logo-row`, `github-star-button`) stays out
+ * until that surface is cut over. A directory whose `phosphor` count in
+ * `ui-composition-debt.txt` reaches zero joins it (RCP-26).
  */
 const HUGEICONS_ONLY: readonly string[] = [
   "ui/project-rail/",
   "ui/agent-dock/",
   "ui/command-settings/",
   "ui/blocks/",
-  "terminal/pane-agent-header.tsx",
+  "terminal/",
   // The preset controls' own chevrons, checks and close glyphs.
   "ui/controls/button.tsx",
   "ui/controls/select.tsx",
   "ui/controls/dropdown-menu.tsx",
   "ui/controls/dialog.tsx",
   "ui/controls/sheet.tsx",
+  // Stage 3 of the UI recipes track (RCP-26): the stage bar, its toolbar and the browser toolbar.
+  "ui/dev-servers/",
+  "ui/toolbar/",
+  "ui/spaces/",
+  "browser/",
+  "ui/tab-strip.tsx",
+  "ui/tab-strip-menu.tsx",
+  "ui/sidebar-toggle.tsx",
+  "ui/dock/dock-toggle.tsx",
+  // Stage 4 and 5: the dock's file surfaces, the launcher, its forms, the prompt board, sessions.
+  "files/ui/",
+  "launcher/",
+  "open-board/",
+  "prompts/",
+  "ui/sessions/",
+  "ui/usage/",
+  "ui/usage-consent-modal.tsx",
+  "ui/agent-quick-picker.tsx",
 ];
 
 const inCutOverSet = (path: string): boolean =>

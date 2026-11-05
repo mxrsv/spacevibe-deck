@@ -11,11 +11,11 @@
 @import "./styles/02-shell.css";
 @import "./styles/03-repository-rail.css";
 @import "./styles/04a-agent-rail.css";
+@import "./styles/04-rail-frame.css";
 @import "./styles/04b-agent-rail-rows.css";
 @import "./styles/04c-rail-worktree-card.css";
 @import "./styles/04d-rail-card-menus.css";
 @import "./styles/04e-rail-collapsed.css";
-@import "./styles/04f-rail-create-row.css";
 @import "./styles/05-tab-bar-toolbar.css";
 @import "./styles/06-stage-panes.css";
 @import "./styles/07-config-rows.css";
@@ -28,6 +28,7 @@
 @import "./styles/12-usage.css";
 @import "./styles/13-sessions.css";
 @import "./styles/14-dock.css";
+@import "./styles/14b-dock-surfaces.css";
 @import "./styles/15-rail-footer.css";
 @import "./styles/16-launch-profiles.css";
 @import "./styles/17-markdown.css";
@@ -46,3 +47,4 @@
 @import "./styles/29-browser-beside.css";
 @import "./styles/30-attention-switcher.css";
 @import "./styles/31-shell-stage.css";
+@import "./styles/32-state-mark.css";

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deck UI mock · overlays</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="chrome.css" />
+    <script src="app.js"></script>
+    <style>
+      /* page-local layout only; every value is a token */
+      .ov-wide {
+        grid-column: span 2;
+      }
+      .ov-two {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-24);
+        align-items: start;
+      }
+      .ov-usage {
+        max-width: calc(var(--launcher-w) * 1.5);
+        width: 100%;
+        margin: 0 auto;
+      }
+      .ov-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-8);
+      }
+      .ov-totals {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: var(--space-12);
+      }
+      .ov-tr,
+      .ov-day {
+        display: grid;
+        align-items: center;
+        gap: var(--space-8);
+        min-height: var(--row-32);
+        padding: 0 var(--space-pad-row);
+      }
+      .ov-tr {
+        grid-template-columns:
+          minmax(0, 1fr) calc(var(--control-h-40) * 3) calc(var(--control-h-40) * 1.5)
+          calc(var(--control-h-40) * 3);
+      }
+      .ov-day {
+        grid-template-columns: calc(var(--control-h-40) * 4) minmax(0, 1fr) calc(
+            var(--control-h-40) * 3
+          );
+        min-height: var(--row-24);
+      }
+      .ov-num {
+        text-align: right;
+      }
+      .ov-end {
+        align-items: flex-end;
+      }
+    </style>
+    <script src="overlays.js"></script>
+    <script src="overlays-modals.js"></script>
+    <script src="overlays-forms.js"></script>
+  </head>
+  <body>
+    <script>
+      Deck.mount(
+        "overlays",
+        (data, ctx) =>
+          `<div class="gx-sheet ov-sheet">${OV.menus(data, ctx)}${OV.popovers(data, ctx)}${OV.tooltips(data, ctx)}${OV.modals(data, ctx)}${OV.forms(data, ctx)}${OV.usage(data, ctx)}</div>`,
+      );
+    </script>
+  </body>
+</html>

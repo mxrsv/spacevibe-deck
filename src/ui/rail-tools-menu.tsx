@@ -1,5 +1,5 @@
 import { useEffect } from "preact/hooks";
-import { DeckIcon, RAIL_ICON } from "./controls/deck-icon";
+import { ListIcon, RAIL_ICON } from "./controls/deck-icon";
 import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar/toolbar-item";
 import {
   useDismiss,
@@ -109,7 +109,7 @@ export function RailToolsMenu({ items, rect, trigger, onClose }: RailToolsMenuPr
               item.onActivate();
             }}
           >
-            <DeckIcon icon={item.icon} size={RAIL_ICON} />
+            <ListIcon icon={item.icon} size={RAIL_ICON} />
             <span class="toolbar-menu__label">{item.label}</span>
             {reason === null ? (
               item.shortcut !== null && <kbd class="toolbar-menu__kbd">{item.shortcut}</kbd>

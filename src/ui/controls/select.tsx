@@ -3,7 +3,6 @@
 import * as React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { cn } from "@/lib/cn";
-import { invertedMenuClass } from "./inverted-menu";
 import {
   ArrowDown01Icon,
   ArrowUp01Icon,
@@ -54,7 +53,7 @@ const SelectTrigger = withRef(function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-md border border-control-frame bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors duration-150 outline-none not-data-disabled:hover:bg-muted focus-visible:bg-muted disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:not-data-disabled:hover:bg-input/50 dark:focus-visible:bg-input/50 dark:aria-invalid:border-destructive/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex w-fit items-center justify-between gap-1.5 rounded-md border border-control-frame bg-transparent py-2 pr-2 pl-3 text-sm whitespace-nowrap text-(--text-primary) transition-colors duration-(--duration) outline-none not-data-disabled:hover:border-control-frame-hover not-data-disabled:hover:bg-(--state-hover-bg) focus-visible:border-control-frame-hover focus-visible:bg-(--state-hover-bg) disabled:cursor-not-allowed disabled:opacity-(--state-disabled-opacity) aria-invalid:border-destructive data-placeholder:text-(--text-faint) data-[size=default]:h-8 data-[size=sm]:h-7 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:aria-invalid:border-destructive/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -96,8 +95,7 @@ const SelectContent = withRef(function SelectContent({
           data-align-trigger={alignItemWithTrigger}
           className={() =>
             cn(
-              invertedMenuClass(),
-              "isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 animate-none! relative bg-popover/70 before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150 **:data-[slot$=-item]:focus:bg-foreground/10 **:data-[slot$=-item]:data-highlighted:bg-foreground/10 **:data-[slot$=-separator]:bg-foreground/5 **:data-[slot$=-trigger]:focus:bg-foreground/10 **:data-[slot$=-trigger]:aria-expanded:bg-foreground/10! **:data-[variant=destructive]:focus:bg-foreground/10! **:data-[variant=destructive]:text-accent-foreground! **:data-[variant=destructive]:**:text-accent-foreground!",
+              "isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-(--radius-surface) bg-(--popover-bg) p-(--space-4) text-(--text-primary) shadow-(--elev-1) duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
               className,
             )
           }
@@ -134,7 +132,7 @@ const SelectItem = withRef(function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex h-(--row-32) w-full items-center gap-2 rounded-(--radius-control) pr-(--control-h-32) pl-(--space-pad-row) text-sm text-(--text-primary) outline-hidden select-none focus:bg-(--state-hover-bg) data-highlighted:bg-(--state-hover-bg) data-disabled:pointer-events-none data-disabled:opacity-(--state-disabled-opacity) [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-(--icon-16) *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className,
       )}
       {...props}
@@ -174,7 +172,7 @@ const SelectScrollUpButton = withRef(function SelectScrollUpButton({
     <SelectPrimitive.ScrollUpArrow
       data-slot="select-scroll-up-button"
       className={cn(
-        "top-0 z-10 flex w-full items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
+        "top-0 z-10 flex w-full items-center justify-center bg-(--popover-bg) py-1 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -192,7 +190,7 @@ const SelectScrollDownButton = withRef(function SelectScrollDownButton({
     <SelectPrimitive.ScrollDownArrow
       data-slot="select-scroll-down-button"
       className={cn(
-        "bottom-0 z-10 flex w-full items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
+        "bottom-0 z-10 flex w-full items-center justify-center bg-(--popover-bg) py-1 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}

@@ -17,7 +17,6 @@ import { cn } from "@/lib/cn";
 import { Button } from "../controls/button";
 import { DeckIcon, type DeckGlyph } from "../controls/deck-icon";
 import { Kbd } from "../controls/kbd";
-import { Separator } from "../controls/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../controls/tooltip";
 import { dockMaximized, dockWideAffordable, toggleDockMaximized } from "./agent-dock-layout";
 import {
@@ -198,7 +197,8 @@ export function DockTabStrip({
     <div
       role="toolbar"
       aria-label="Dock views"
-      className="agent-dock__strip box-border flex h-[var(--frame-h)] shrink-0 items-center gap-0.5 border-b px-2"
+      // RCP-12: no line under the strip; the views and the file tabs part by an 8 gap.
+      className="agent-dock__strip box-border flex h-[var(--frame-h)] shrink-0 items-center gap-0.5 px-2"
     >
       {views.map((id) => (
         <Tooltip key={id}>
@@ -211,8 +211,8 @@ export function DockTabStrip({
                 aria-pressed={surface === "view" && id === view}
                 className={
                   surface === "view" && id === view
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground"
+                    ? "bg-(--tab-active-bg) text-(--text-primary) hover:bg-(--tab-active-bg) focus-visible:bg-(--tab-active-focus-bg)"
+                    : "text-(--text-muted)"
                 }
                 onClick={() => setDockView(id)}
               />
@@ -223,7 +223,7 @@ export function DockTabStrip({
           <TooltipContent side="bottom">{VIEW_LABEL[id]}</TooltipContent>
         </Tooltip>
       ))}
-      <Separator orientation="vertical" className="mr-1.5 ml-2 h-7" />
+      <span aria-hidden="true" className="w-2 shrink-0" />
       <div
         ref={list}
         role="tablist"
@@ -298,7 +298,9 @@ export function DockTabStrip({
               aria-label="Open a file"
               aria-pressed={surface === "explorer"}
               className={
-                surface === "explorer" ? "bg-muted text-foreground" : "text-muted-foreground"
+                surface === "explorer"
+                  ? "bg-(--tab-active-bg) text-(--text-primary)"
+                  : "text-(--text-muted)"
               }
               onClick={selectDockExplorer}
             />

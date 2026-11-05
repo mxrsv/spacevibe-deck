@@ -53,8 +53,9 @@ function Row({ itemKey, active, onOpen, children }: RowProps) {
         data-active={active || undefined}
         aria-current={active || undefined}
         className={cn(
-          "grid min-h-9 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-3 py-1 text-left text-sm text-foreground outline-none",
-          active && "bg-muted",
+          // RCP-7: a setting row is at least 44; the keyboard's row paints as hover (CMP-11).
+          "grid min-h-(--row-44) w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-(--space-group-md) rounded-(--radius-control) px-(--space-pad-row) py-1 text-left text-sm text-(--text-primary) outline-none transition-colors duration-(--duration) hover:bg-(--state-hover-bg)",
+          active && "bg-(--state-hover-bg)",
         )}
         onPointerMove={() => {
           if (commandActiveKey.peek() !== itemKey) commandActiveKey.value = itemKey;
@@ -70,7 +71,9 @@ function Row({ itemKey, active, onOpen, children }: RowProps) {
 export function Head({ title }: { readonly title: string }) {
   return (
     <li role="presentation">
-      <h3 className="px-3 pt-3 pb-1 text-xs font-medium text-muted-foreground">{title}</h3>
+      <h3 className="px-(--space-pad-row) pt-3 pb-1 text-xs font-normal text-(--text-faint)">
+        {title}
+      </h3>
     </li>
   );
 }
@@ -135,7 +138,7 @@ export function EmptyRow({
   return (
     <li className="flex flex-col items-center gap-2 px-6 py-6 text-sm text-foreground">
       <span>
-        Nothing matches <span className="font-medium">“{query}”</span>
+        Nothing matches <span className="font-semibold">“{query}”</span>
       </span>
       <Button variant="outline" size="sm" onClick={onClear}>
         Clear search

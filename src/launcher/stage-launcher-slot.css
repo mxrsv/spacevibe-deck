@@ -47,6 +47,7 @@
   gap: 12px;
   width: min(680px, calc(100% - 48px));
   margin: 0 auto;
+  /* ui-scale: the form's fluid top margin, not a spacing step */
   padding: clamp(24px, 6vh, 56px) 0 24px;
 }
 .stage-launcher-form__head {

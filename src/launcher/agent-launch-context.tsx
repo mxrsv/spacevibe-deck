@@ -1,4 +1,4 @@
-import { Columns } from "@phosphor-icons/react";
+import { LayoutTwoColumnIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from "preact/hooks";
 import { WorkspacePicker } from "../open-board/workspace-picker";
 import { DeckIcon } from "../ui/controls/deck-icon";
@@ -56,7 +56,7 @@ export function AgentLaunchContext(props: AgentLaunchContextProps) {
         />
       ) : null}
       <span class="agent-launch-page__chip" title={context.checkoutPath}>
-        <DeckIcon icon={Columns} size={14} />
+        <DeckIcon icon={LayoutTwoColumnIcon} size={14} />
         {context.chip}
       </span>
       {failure !== null ? (

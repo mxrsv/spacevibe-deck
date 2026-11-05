@@ -15,7 +15,7 @@
  * Windows, which has no binding for this action, prints no chord rather than
  * the wrong one.
  */
-import { Article, CodeSimple } from "@phosphor-icons/react";
+import { SourceCodeIcon, TextAlignLeftIcon } from "@hugeicons/core-free-icons";
 import { useRef } from "preact/hooks";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import {
@@ -23,7 +23,7 @@ import {
   tooltipTriggerProps,
   useTooltipVisibility,
 } from "../../ui/controls/action-tooltip";
-import { DeckIcon, FEATURE_ICON } from "../../ui/controls/deck-icon";
+import { DeckIcon, GLYPH_FEATURE } from "../../ui/controls/deck-icon";
 import type { ViewMode } from "../markdown-policy";
 
 export interface ViewModeToggleProps {
@@ -52,7 +52,7 @@ export function ViewModeToggle({ mode, onToggle }: ViewModeToggleProps) {
         {...tooltipTriggerProps(tooltip, ref)}
         onClick={onToggle}
       >
-        <DeckIcon icon={rendered ? CodeSimple : Article} size={FEATURE_ICON} />
+        <DeckIcon icon={rendered ? SourceCodeIcon : TextAlignLeftIcon} size={GLYPH_FEATURE} />
       </button>
       {tooltip.anchor !== null && (
         <ActionTooltip

@@ -24,7 +24,7 @@
   left: 50%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-12);
   width: min(700px, calc(100% - 64px));
   transform: translateX(-50%);
   background: transparent;
@@ -34,20 +34,21 @@
   top: 16px;
   gap: 12px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: var(--sidebar-bg);
-  box-shadow:
-    0 0 0 1px var(--control-frame),
-    0 20px 56px color-mix(in oklch, black 45%, transparent);
+  box-shadow: var(--elev-2);
+  border: var(--seam-w) solid var(--panel-frame);
 }
+/* RCP-3: the command bar is one 40 frame holding 32 controls, and the frame, not the input
+   inside it, takes the focus ring. */
 .command-bar__bar {
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 56px;
-  padding: 8px;
-  border-radius: 10px;
+  height: var(--control-h-40);
+  padding: var(--space-4);
+  border-radius: 6px;
   background: var(--sidebar-bg);
   box-shadow: inset 0 0 0 1px var(--control-frame);
 }
@@ -57,8 +58,8 @@
 }
 .command-bar__bar:focus-within {
   box-shadow:
-    inset 0 0 0 1px var(--control-frame-hover),
-    0 0 0 4px color-mix(in oklch, var(--foreground) 5%, transparent);
+    inset 0 0 0 var(--seam-w) var(--focus-border),
+    0 0 0 var(--ring-w) var(--focus-ring);
 }
 .command-bar__meta {
   font-size: var(--type-meta);
@@ -69,13 +70,14 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: color-mix(in oklch, var(--foreground) 12%, transparent);
-  color: var(--command-bar-ink-2);
+  width: var(--icon-box-24);
+  height: var(--icon-box-24);
+  border-radius: var(--radius-control);
+  background: var(--tab-rest-bg);
+  color: var(--text-muted);
   font-size: var(--type-meta);
   font-weight: 600;
+  box-shadow: inset 0 0 0 var(--seam-w) var(--control-frame);
 }
 
 /* Project chip and filter. */
@@ -100,7 +102,7 @@
   flex: 0 1 auto;
   min-width: 0;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-4);
 }
 .command-bar__branch-name {
   min-width: 0;
@@ -162,7 +164,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: var(--radius-surface);
   background: var(--sidebar-bg);
 }
 .command-bar__hit {
@@ -208,7 +210,7 @@
 .command-bar .command-bar__chip {
   min-width: 36px;
   gap: 0;
-  padding: 0 9px;
+  padding: 0 var(--chip-pad-24);
   border-width: 0;
   background: var(--command-bar-chip);
   transition:
@@ -216,25 +218,22 @@
     gap 200ms var(--ease, ease);
 }
 .command-bar .command-bar__chip:not([data-on]):hover {
-  background: var(--chrome-1);
+  background: var(--state-hover-bg);
 }
 .command-bar .command-bar__chip[data-on] {
   gap: 8px;
   background: color-mix(in srgb, var(--chrome-2), var(--text-primary) 3%);
 }
 .command-bar__glyph {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-16);
+  height: var(--icon-16);
   flex: none;
-  filter: grayscale(1);
-  opacity: 0.55;
-  transition:
-    filter 160ms,
-    opacity 160ms;
+  /* Opacity alone dims an unpicked agent: DL-1.3 bans `filter`. */
+  opacity: var(--state-disabled-opacity);
+  transition: opacity var(--duration) var(--ease);
 }
 .command-bar__chip:is(:hover, :focus-visible) .command-bar__glyph,
 .command-bar__chip[data-on] .command-bar__glyph {
-  filter: none;
   opacity: 1;
 }
 .command-bar__chip-name {
@@ -257,7 +256,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 6px 6px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--red) 12%, transparent);
   color: var(--foreground);
 }
@@ -295,12 +294,10 @@
   left: 8px;
   width: 320px;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: var(--radius-surface);
   background: var(--command-bar-raised);
   color: var(--foreground);
-  box-shadow:
-    0 0 0 1px var(--control-frame),
-    0 12px 32px color-mix(in oklch, black 45%, transparent);
+  box-shadow: var(--elev-1);
 }
 .command-bar-menu__search {
   position: relative;
@@ -315,7 +312,7 @@
   pointer-events: none;
 }
 .command-bar-menu__search input {
-  padding-left: 28px;
+  padding-left: var(--icon-box-28);
   font-size: var(--type-body);
 }
 .command-bar-menu__list {
@@ -332,7 +329,7 @@
   justify-content: flex-start;
   gap: 10px;
   padding: 0 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   font-size: var(--type-body);
   font-weight: 400;
 }

@@ -5,7 +5,8 @@ import { baseName } from "../../lib/path-name";
 import { writeText } from "../../host/shell-host";
 import { fileIcon } from "../../files/ui/file-icons";
 import { Button } from "../controls/button";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { STATE_IDLE, STATE_MOTION, STATE_SELECTED } from "../blocks/recipe-classes";
+import { DeckIcon, GLYPH_ROW } from "../controls/deck-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,10 +59,12 @@ export function DockFileTab({
       title={path}
       data-path={path}
       className={cn(
-        "group/tab relative flex h-full min-w-0 max-w-40 shrink-0 items-center gap-1.5 px-2.5 text-xs",
+        // RCP-20: the dock's file tab is the strip tab at its compact width: 28, padded 8, on the
+        // resting wash; the selected one takes the full wash, with no bar (DL-21.6).
+        "group/tab relative flex h-(--control-h-28) min-w-0 max-w-32 shrink-0 items-center gap-(--space-icon-label) self-center rounded-(--radius-tab) px-(--space-8) text-sm",
         active
-          ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary"
-          : "text-muted-foreground hover:bg-muted/50",
+          ? `text-(--text-primary) ${STATE_MOTION} ${STATE_SELECTED}`
+          : `bg-(--tab-rest-bg) text-(--text-muted) ${STATE_MOTION} ${STATE_IDLE}`,
       )}
       onClick={onSelect}
       onDblClick={onKeep}
@@ -82,10 +85,10 @@ export function DockFileTab({
         }
       }}
     >
-      <DeckIcon icon={fileIcon(name)} size={ROW_ICON} />
+      <DeckIcon icon={fileIcon(name)} size={GLYPH_ROW} />
       <span className={cn("min-w-0 truncate", preview && "italic")}>{name}</span>
       {dirty ? (
-        <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-foreground/60" />
+        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-(--status-idle)" />
       ) : null}
       {active ? (
         <Button

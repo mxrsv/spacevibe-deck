@@ -1,4 +1,4 @@
-import { CaretRight } from "@phosphor-icons/react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useRef } from "preact/hooks";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import { startUsagePolling, stopUsagePolling } from "../../usage/usage-store";
@@ -7,7 +7,7 @@ import {
   tooltipTriggerProps,
   useTooltipVisibility,
 } from "../controls/action-tooltip";
-import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { toolbarLabel } from "../toolbar/toolbar-label";
 import { UsageBody } from "./usage-body";
 
@@ -54,7 +54,7 @@ export function UsageDockTab({ onOpenDetails }: UsageDockTabProps) {
           onClick={onOpenDetails}
         >
           Details
-          <DeckIcon icon={CaretRight} size={ROW_ICON} />
+          <DeckIcon icon={ArrowRight01Icon} size={GLYPH_INLINE} />
         </button>
         {tooltip.anchor !== null && (
           <ActionTooltip
