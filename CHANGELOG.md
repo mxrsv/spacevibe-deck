@@ -7,7 +7,7 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
-- **One round Run button, one primary colour.** The launcher's Run is a small round button with only
+- **One icon-only Run button, one primary colour.** The launcher's Run is a small square button with only
   the Enter glyph, and the launch-profile menus are gone: each agent runs its default command from
   Settings → Agents. The primary button keeps one colour per mode (cream on dark, near-black on
   light) instead of following the theme's accent.

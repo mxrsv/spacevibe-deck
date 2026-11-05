@@ -197,7 +197,6 @@ export function CommandBar(props: CommandBarProps) {
               <TooltipTrigger
                 render={
                   <Button
-                    size="icon"
                     className="command-bar__run"
                     aria-label="Run"
                     disabled={!canRun}

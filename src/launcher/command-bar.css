@@ -112,10 +112,12 @@
   color: var(--command-bar-ink-3);
 }
 
-/* Run: one small round button holding only the Enter glyph. */
+/* Run: a square 32 holding only the Enter glyph, inset by the frame's own padding like the
+   other controls in the bar. */
 .command-bar__run {
   flex: none;
-  border-radius: 9999px;
+  width: var(--control-h-32);
+  padding: 0;
 }
 .command-bar__open kbd[data-slot="kbd"] {
   background: color-mix(in oklch, var(--primary-foreground) 12%, transparent);
