@@ -307,6 +307,34 @@
 .rh-row__meta[data-status="working"] {
   color: var(--status-working);
 }
+
+/* A pending (needs-you) branch is a thinking line (owner, 2026-11-06, as the Cursor agent's):
+   the text rests dim and a bright band glides across it. Only that state loops (U5); reduced
+   motion keeps the flat ink above. The gradient is 3x the text, so the band crosses it left to
+   right and the text is never bare. */
+@media (prefers-reduced-motion: no-preference) {
+  .rh-row__meta[data-status="needs-input"] .rh-row__branch {
+    background: linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--ink-need) 55%, var(--bg)) 42%,
+        color-mix(in srgb, var(--ink-need) 15%, var(--text-primary)) 50%,
+        color-mix(in srgb, var(--ink-need) 55%, var(--bg)) 58%
+      )
+      0 0 / 300% 100% no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rh-shimmer 1.8s linear infinite;
+  }
+}
+@keyframes rh-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
 .rh-row__age {
   flex: none;
   margin-left: auto;
