@@ -18,14 +18,6 @@ export const BAR_PROJECT_HITS = 5;
 
 const normalize = (text: string): string => text.trim().toLowerCase();
 
-/** "spacevibe-api" reads SA; a one-word name reads its first two letters. */
-export function projectInitials(name: string): string {
-  const words = name.split(/[^A-Za-z0-9]+/).filter((word) => word !== "");
-  if (words.length === 0) return "?";
-  const letters = words.length > 1 ? words[0][0] + words[1][0] : words[0].slice(0, 2);
-  return letters.toUpperCase();
-}
-
 /** The agents a run can start: the missing ones stay on the bar but never run. */
 export function runnableIds(agents: readonly AgentOption[]): readonly string[] {
   return agents.filter((agent) => !agent.missing).map((agent) => agent.id);

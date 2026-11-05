@@ -22,13 +22,13 @@ import {
   enterAction,
   filterAgents,
   profileOverrides,
-  projectInitials,
   resolveDefaultPick,
   runLabel,
   runnableIds,
   togglePick,
   type CommandBarProject,
 } from "./command-bar-model";
+import { CommandBarProjectLogo } from "./command-bar-project-logo";
 import { CommandBarProfileMenu } from "./command-bar-profile-menu";
 import { CommandBarProjectMenu } from "./command-bar-project-menu";
 import type { LaunchProfileSection } from "./launch-profile-popover";
@@ -198,11 +198,7 @@ export function CommandBar(props: CommandBarProps) {
               aria-label={current === null ? "Choose a project" : `Project ${current.name}`}
               onClick={() => setMenuOpen(!menuOpen)}
             >
-              {current === null ? null : (
-                <span class="command-bar__avatar" aria-hidden="true">
-                  {projectInitials(current.name)}
-                </span>
-              )}
+              {current === null ? null : <CommandBarProjectLogo path={current.path} />}
               <span class="command-bar__project-name">{current?.name ?? "Project"}</span>
               {current?.branch ? (
                 <span class="command-bar__branch command-bar__meta">
@@ -273,9 +269,7 @@ export function CommandBar(props: CommandBarProps) {
               data-first={at === 0 ? "" : undefined}
               onClick={() => pickProject(project.path)}
             >
-              <span class="command-bar__avatar" aria-hidden="true">
-                {projectInitials(project.name)}
-              </span>
+              <CommandBarProjectLogo path={project.path} />
               {project.name}
               {project.age === null ? null : (
                 <span class="command-bar__hit-age command-bar__meta">{project.age}</span>

@@ -63,19 +63,6 @@
   font-weight: 400;
   color: var(--command-bar-ink-3);
 }
-.command-bar__avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--icon-box-24);
-  height: var(--icon-box-24);
-  border-radius: var(--radius-control);
-  background: var(--tab-rest-bg);
-  color: var(--text-muted);
-  font-size: var(--type-meta);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 var(--seam-w) var(--control-frame);
-}
 
 /* Project chip and filter. */
 /* A long name or branch gives way before the filter and Run do: the chip may shrink to half the

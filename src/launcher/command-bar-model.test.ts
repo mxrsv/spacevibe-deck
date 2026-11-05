@@ -7,7 +7,6 @@ import {
   filterAgents,
   matchParts,
   profileOverrides,
-  projectInitials,
   reduceMenuKey,
   resolveDefaultPick,
   runLabel,
@@ -140,12 +139,6 @@ describe("matchParts and initials", () => {
   it("cuts a name around the first match, ignoring case", () => {
     expect(matchParts("Bench-API", "ch-a")).toEqual({ before: "Ben", match: "ch-A", after: "PI" });
     expect(matchParts("deck", "zz")).toEqual({ before: "deck", match: "", after: "" });
-  });
-
-  it("reads two letters off a project name", () => {
-    expect(projectInitials("spacevibe-api")).toBe("SA");
-    expect(projectInitials("deck")).toBe("DE");
-    expect(projectInitials("---")).toBe("?");
   });
 });
 

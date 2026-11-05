@@ -8,10 +8,10 @@ import { Input } from "../ui/controls/input";
 import {
   matchParts,
   matchProjects,
-  projectInitials,
   reduceMenuKey,
   type CommandBarProject,
 } from "./command-bar-model";
+import { CommandBarProjectLogo } from "./command-bar-project-logo";
 import "./command-bar.css";
 
 export interface CommandBarProjectMenuProps {
@@ -125,9 +125,7 @@ export function CommandBarProjectMenu(props: CommandBarProjectMenuProps) {
                 onMouseMove={() => setIndex(at)}
                 onClick={() => props.onPick(project.path)}
               >
-                <span class="command-bar__avatar" aria-hidden="true">
-                  {projectInitials(project.name)}
-                </span>
+                <CommandBarProjectLogo path={project.path} />
                 <span class="command-bar-menu__name" data-filtered={query === "" ? undefined : ""}>
                   {parts.before}
                   {parts.match === "" ? null : <b>{parts.match}</b>}
