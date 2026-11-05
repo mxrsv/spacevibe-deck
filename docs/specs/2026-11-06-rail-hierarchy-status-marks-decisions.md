@@ -40,7 +40,7 @@ only).
 | RH-21 | The meta line takes the row's status colour on the branch icon and the branch text: needs-input and unread `--ink-need`, failed `--ink-fail`, done `--ink-ok`, working `--status-working`, ended and idle faint. The date keeps the faint ink whatever the status | "thêm màu cho text branch theo màu của status icon" + "cả icon và date nữa" + "giữ màu cũ riêng cho date" |
 | RH-22 | A working (pending) row: its branch text is a thinking line, dim with a bright band gliding across it left to right (1.8s); its date is replaced by three dots that rise in turn. Both loop only while the state exists and stop under reduced motion (U5) | "pending thì branch có dạng sóng lướt trên text giống mấy kiểu thinking text" + "kiểu text đang thinking giống của cursor agent" + "pending là agent đang chạy ấy" + "khi agent đang run thì date nên đổi thành ... đang run" |
 | RH-23 | A workspace without a logo shows the fallback folder at 13px inside the 16px logo box (13 is the smallest step a Phosphor icon draws at) | "logo folder này giảm size đi" |
-| RH-24 | A workspace without git: the meta line shows the cwd's sub-path from the workspace root when the cwd is not the root; when there is nothing to add, the row is a single line (title and date on one line, vertically centred in the same 32px). Not yet drawn in the mock | (default 25d) after "nếu mở 1 workspace không có git thì sẽ không có branch name" |
+| RH-24 | REVISED, open between two. A workspace without git has no branch, so its meta line keeps the folder icon in the branch's place and either (a) the word "no git" after it, or (b) nothing after it (folder icon only). Both are drawn in the mock behind the "No git" buttons; the owner picks one. The earlier sub-path / single-line idea is dropped | "workspace không git, hiển thị từ gì đó cho từ notes được không ? no git được không" + "hoặc là folder only" |
 | RH-25 | The status icons stay (the on/off toggle in the mock was a trial and is removed from the build) | (default) after "thử bỏ luôn các icon status đi tôi xem" |
 
 ## Not decided, to settle in the spec (not silently assumed)
@@ -50,7 +50,7 @@ only).
 - Legibility of the 9px glyph and 11px / 10px text on both themes and for colour-blind users (shape carries the meaning, colour is secondary).
 - Search field and the Archived section: do they follow RH-7, RH-11, RH-12?
 - The strip tab, pane header and dock (RH-5) are not drawn in the mock: each needs its slot size set through a token and an eye pass before build.
-- How RH-24's sub-path is derived and shortened, and how a single-line row sits among two-line rows.
+- RH-24: which of the two non-git forms ships ("no git" or folder icon only).
 - Docs that name the old marks: DL-27.3, RCP-15, `docs/internals/agent-rail.md`; user guide only if a visible label changes.
 - W21 sweep: every `AgentStateMark`, `ROW_LEAD`, `--mark-slot`, `--mark-dot`, `--mark-ring`, `--mark-square` site, ending with "changed N of M".
 - Build in a worktree: the primary checkout holds other sessions' uncommitted `project-rail-*` edits.
@@ -70,5 +70,5 @@ only).
 - RH-21: branch icon and text take the status ink in both themes; the date is faint on every row.
 - RH-22: a working row shows the shimmer and the dots; with reduced motion on neither moves; no other state animates in the row.
 - RH-23: the fallback folder renders at 13px in the 16px box.
-- RH-24: a non-git workspace row has either a sub-path line or no second line; never a blank second line.
+- RH-24: a non-git workspace row keeps the folder icon in the branch's place and either "no git" or nothing after it, in the status ink; never a blank second line and never the workspace's own name repeated.
 - RH-25: no toggle ships.
