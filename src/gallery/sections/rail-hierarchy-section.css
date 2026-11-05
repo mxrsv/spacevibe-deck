@@ -173,9 +173,9 @@
   font-size: var(--type-meta);
   line-height: var(--leading-meta);
   font-weight: 600;
-  /* RH-7's "secondary ink": the theme has no `--text-secondary`, so the build reads
-     `--text-muted`, the nearest rung. */
-  color: var(--text-muted);
+  /* Owner, 2026-11-06: the workspace name is white, the theme's primary ink (it replaces
+     RH-7's muted header; weight 600 still tells it from an agent title at 400). */
+  color: var(--text-primary);
 }
 
 .rh-head__end {
