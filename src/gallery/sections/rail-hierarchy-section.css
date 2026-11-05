@@ -285,7 +285,7 @@
 .rh-row__age {
   flex: none;
   margin-left: auto;
-  font-variant-numeric: tabular-nums;
+  /* No tabular figures: at 11px they draw the digits wider than the branch beside them. */
 }
 
 /* ── The folded circles and the logo's count badge (RH-10) ── */
