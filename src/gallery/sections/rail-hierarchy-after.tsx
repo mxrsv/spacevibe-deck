@@ -78,7 +78,7 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
       >
         <HierarchyMark status={agent.status} />
         <span className="rh-row__logo">
-          <AgentGlyph agent="claude" className="size-3.5 shrink-0" />
+          <AgentGlyph agent="claude" className="size-3 shrink-0" />
         </span>
         <span className="rh-row__main">
           <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
