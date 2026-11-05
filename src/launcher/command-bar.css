@@ -56,9 +56,7 @@
   background: var(--command-bar-chip);
 }
 .command-bar__bar:focus-within {
-  box-shadow:
-    inset 0 0 0 var(--seam-w) var(--focus-border),
-    0 0 0 var(--ring-w) var(--focus-ring);
+  box-shadow: inset 0 0 0 var(--seam-w) var(--focus-border);
 }
 .command-bar__meta {
   font-size: var(--type-meta);
