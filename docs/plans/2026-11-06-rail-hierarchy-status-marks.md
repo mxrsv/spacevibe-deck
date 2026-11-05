@@ -59,7 +59,7 @@ pattern, rewritten with the code, AGENTS "Forks"). Not a fork: reusing `--row-32
 
 | #   | Task | Owns | Spec | Wave | Status |
 | --- | ---- | ---- | ---- | ---- | ------ |
-| T0  | Read-only sweep (W21): list every consumer of `AgentStateMark`, `.state-mark`, `--mark-*`, `--row-40`/`--row-44` in rail code and what the strip tab and dock draw for state; record "N sites" here | this plan | SR-7, SR-10 | 1 | todo |
+| T0  | Read-only sweep (W21): list every consumer of `AgentStateMark`, `.state-mark`, `--mark-*`, `--row-40`/`--row-44` in rail code and what the strip tab and dock draw for state; record "N sites" here | this plan | SR-7, SR-10 | 1 | done (see "T0 sweep") |
 | T1  | Tokens: add the 11px / 10px rail text steps and leadings (`01-tokens.css`), the logo box, the new mark sizes; keep `--row-32`; update the ratchets that read tokens (`scripts/`, `src/styles/` suites); DL-4 note | `src/styles/01-tokens.css`, `scripts/*.test.ts`, `docs/DESIGN-LANGUAGE.md` | SR-1, SR-2 | 1 | todo |
 | T2  | Mark: the new shape set in `32-state-mark.css` and `agent-state-mark.tsx` (spinner, dot + radiating ring, dot, done circle + check, ✕, square, dash; D1 for inferred); size by token per surface; apply to `pane-agent-header.tsx`, the pill, and the strip tab and dock sites found in T0 | `src/styles/32-state-mark.css`, `src/ui/blocks/agent-state-mark.tsx`, `src/terminal/pane-agent-header.tsx`, `project-rail-attention-pill.tsx`, strip/dock files | SR-7 | 2 | todo |
 | T3  | Rail rows: no mark, 32px, pad 8, 16 logo box / 12 glyph, text 8 after logo (x equals the name's), 11px / 10px, status ink on branch icon and text, tint only for needs-input, working shimmer and dots, "folder only", remembered rows; the rename field keeps the same geometry | `project-rail-row.tsx`, `remembered-row.tsx`, a new `src/styles/33-rail-working.css` imported in `styles.css` | SR-1, SR-2, SR-4, SR-6 | 2 | todo |
@@ -68,6 +68,27 @@ pattern, rewritten with the code, AGENTS "Forks"). Not a fork: reusing `--row-32
 | T6  | Docs: DL-27.3 and neighbours, `docs/internals/agent-rail.md`, edit `2026-11-06-rail-type-scale-decisions.md` (SR-9, RL-2 and RL-5 for agent rows), CHANGELOG line | docs | SR-9 | 3 | todo |
 | T7  | Review: `review-change` on the range; fix findings; W21 "changed N of M" and delete the gallery mock section `mock · rail hierarchy` only after T8 approval (W8) | review | SR-10 | 4 | todo |
 | T8  | Owner eye approval, one batch after T7: the real rail in the owner's dev app (their `electron:dev`, older instance stopped, W22) in both themes against the mock, plus the pane header, pill, strip tab and dock marks | none (owner) | SR-10 | 5 | todo |
+
+## T0 sweep (2026-11-05, read-only)
+
+- `AgentStateMark`: 6 production sites. Rail: `project-rail-row.tsx` x2 (live row, rename field),
+  `project-rail-header.tsx` x1 (folded roll-up). Other surfaces: `project-rail-attention-pill.tsx` x2
+  (stage-bar chip, button), `src/terminal/pane-agent-header.tsx` x1. Tests: `braille-spinner.test.tsx`.
+- `.state-mark` is styled only by `src/styles/32-state-mark.css`; `ROW_LEAD` is used by the live row and
+  `remembered-row.tsx` (empty slot).
+- `--mark-slot` also feeds `src/styles/13-sessions.css:530` (`.recent-session-activity__row`, whose state
+  cell holds the old rail's `.asr-row__mark`, a different component), asserted by `agent-rail.test.tsx:1568`
+  and `scripts/design-language.test.ts:440`. `--mark-dot`, `--mark-ring`, `--mark-square` are read only by
+  `32-state-mark.css`. `--row-40` is read only by `ROW_LAYOUT`; `--row-44` by non-rail surfaces.
+- **The strip tab and the dock draw no state mark today.** `tab-strip.tsx` has no state cue (DL-18.10
+  removed the chip's dot on 2026-08-16; `.tab__attn` is a leftover for the unused `AgentAttentionMark`,
+  which no production file mounts), and the dock tab chips and `agent-dock` import neither
+  `AgentStateMark` nor `RailStatusMark`. `RailStatusMark` (`.asr-row__mark`) belongs to the old cluster rail,
+  the Agent Board card and Recent activity: out of scope (spec "Out of scope").
+- So D3 resolves to: the strip tab and the dock take no mark in this build (adding one would reverse
+  DL-18.10, not replace a cue). Reported in the final handoff for the owner to overrule.
+- `group.rollup` is read only by `project-rail-header.tsx` (plus `rail-view-model.test.ts`), so SR-5 leaves it
+  unused.
 
 ## Verification
 
