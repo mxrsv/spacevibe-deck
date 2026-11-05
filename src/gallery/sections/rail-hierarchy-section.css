@@ -11,6 +11,7 @@
   --rh-glyph: 8px;
   --rh-row: 32px;
   --rh-text: 11px;
+  --rh-meta: 10px;
   --rh-indent: 14px;
   display: grid;
   grid-template-columns: repeat(2, 17rem);
@@ -269,7 +270,7 @@
   align-items: center;
   gap: var(--space-icon-label);
   min-width: 0;
-  font-size: var(--rh-text, 11px);
+  font-size: var(--rh-meta, 10px);
   line-height: 14px;
   color: var(--text-faint);
 }
