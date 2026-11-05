@@ -6,7 +6,10 @@
 @source "./rail-hierarchy-after.tsx";
 @source "./rail-hierarchy-marks.tsx";
 
-.rh-compare {
+/* The numbers the proposal is drawn with; every specimen of this section reads them. */
+.rh-compare,
+.rh-candidates,
+.rh-marks {
   --rh-slot: 10px;
   --rh-glyph: 7px;
   --rh-row: 32px;
@@ -15,7 +18,9 @@
   /* Row pad 8 + mark 10 + gap 2 + logo 16 + gap 2 + 1: where an agent's text starts. The row's
      pad is the header's, so the mark's left edge sits under the workspace logo's. */
   --rh-text-x: 39px;
-  --rh-indent: 14px;
+}
+
+.rh-compare {
   display: grid;
   grid-template-columns: repeat(2, 17rem);
   gap: 20px;
