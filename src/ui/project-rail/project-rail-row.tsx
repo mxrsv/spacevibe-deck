@@ -55,7 +55,7 @@ const META_INK: Readonly<Record<RailStatus, string>> = {
 };
 
 /** What the meta line says where git has no branch to give (RH-24). */
-const FOLDER_ONLY = "folder only";
+export const FOLDER_ONLY = "folder only";
 
 /** The agent's logo, or the terminal glyph of a shell tab, in the logo box. */
 export function RowLogo({

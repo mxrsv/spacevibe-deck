@@ -135,6 +135,24 @@ describe("order", () => {
     ]);
   });
 
+  it("ranks failed above needs-input, working and unread under Priority, and the rest newest first", () => {
+    // The loudest are the oldest, so only the rank (not recency) can put them first.
+    const view = rail([
+      tab(1, "/w/deck", [
+        pane(1, { attention: "error", changedAt: NOW - 50 * MINUTE }),
+        pane(2, { attention: "requested", changedAt: NOW - 40 * MINUTE }),
+        pane(3, { phase: "working", changedAt: NOW - 30 * MINUTE }),
+        pane(4, { attention: "completed", changedAt: NOW - 20 * MINUTE }),
+        pane(5, { hasRun: false, changedAt: NOW - 10 * MINUTE }),
+        pane(6, { changedAt: NOW - MINUTE }),
+      ]),
+    ]);
+    expect(layout(viewOf({ sorting: "priority" }, view))[0]).toEqual([
+      DECK_KEY,
+      ["pane:1", "pane:2", "pane:3", "pane:4", "pane:6", "pane:5"],
+    ]);
+  });
+
   it("keeps stream order on a tie, and the same order on every call", () => {
     const view = rail([tab(1, "/w/deck", [pane(3), pane(1), pane(2)])]);
     expect(layout(viewOf({}, view))[0]).toEqual([DECK_KEY, ["pane:3", "pane:1", "pane:2"]]);

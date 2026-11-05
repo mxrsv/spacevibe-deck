@@ -112,6 +112,7 @@ function rememberedRow(agentId: string, title: string): RememberedRowModel {
     },
     title,
     branch: "main",
+    folderOnly: false,
   };
 }
 

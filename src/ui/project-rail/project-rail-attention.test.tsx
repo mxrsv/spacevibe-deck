@@ -254,6 +254,7 @@ describe("where the pill lives", () => {
 
     expect(text(pill())).toBe("2");
     expect(pill()?.querySelector('[data-state="failed"]')).not.toBeNull();
+    expect(pill()?.querySelector("[data-state]")?.getAttribute("data-surface")).toBe("pill");
     expect(railPill()).toBeNull();
   });
 
@@ -273,5 +274,8 @@ describe("where the pill lives", () => {
     await settle();
 
     expect(text(railPill())).toBe("1 need you");
+    const drawn = railPill()?.querySelector("[data-state]");
+    expect(drawn?.getAttribute("data-state")).toBe("needs-input");
+    expect(drawn?.getAttribute("data-surface")).toBe("pill");
   });
 });

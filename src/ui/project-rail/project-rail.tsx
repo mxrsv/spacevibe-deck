@@ -98,6 +98,9 @@ function onListKeyDown(event: KeyboardEvent): void {
   if (next !== undefined) {
     event.preventDefault();
     next.focus();
+    // `focus()` leaves a row that is only partly under a pinned header where it is; this keeps it
+    // clear of the header (`scroll-padding-top` on the list). jsdom has no `scrollIntoView`.
+    next.scrollIntoView?.({ block: "nearest" });
   }
 }
 

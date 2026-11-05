@@ -210,16 +210,39 @@ describe("project list", () => {
     expect(api.querySelector("[data-state]")).toBeNull();
   });
 
-  it("caps a folded project's count at 9+", async () => {
+  it.each([
+    [9, "9"],
+    [10, "9+"],
+    [11, "9+"],
+  ])("shows %i agents on a folded project's logo as %s", async (agents, shown) => {
     tabViews.value = [
-      tab({ panes: Array.from({ length: 11 }, (_, i) => pane({ paneId: 100 + i })) }),
+      tab({ panes: Array.from({ length: agents }, (_, i) => pane({ paneId: 100 + i })) }),
     ];
     mount();
     await settle();
 
     click(headers()[0]);
-    expect(headers()[0].querySelector("[data-rail-count]")?.textContent).toBe("9+");
-    expect(text(headers()[0])).toContain("11 sessions");
+    expect(headers()[0].querySelector("[data-rail-count]")?.textContent).toBe(shown);
+    // The sr-only words keep the true number.
+    expect(text(headers()[0])).toContain(`${agents} sessions`);
+  });
+
+  it("draws a workspace without a logo as the 13px fallback folder in the logo box (RH-23)", async () => {
+    mount();
+    await settle();
+
+    expect(headers()[0].querySelectorAll('[data-deck-icon-size="13"]')).toHaveLength(1);
+  });
+
+  it("draws no count on a folded workspace that has no agents (RH-15)", async () => {
+    mount();
+    await settle();
+
+    const notes = host.querySelector("section[aria-label=notes]");
+    click(notes?.querySelector("[data-rail-project]"));
+    const folded = host.querySelector("section[aria-label=notes] [data-rail-project]");
+    expect(folded?.getAttribute("aria-expanded")).toBe("false");
+    expect(folded?.querySelector("[data-rail-count]")).toBeNull();
   });
 
   it("pins each header to the top of the list while its rows scroll under it", async () => {
@@ -374,6 +397,33 @@ describe("row", () => {
     // Only a needs-you row is tinted; an unread one is not.
     expect(row("pane:11")?.className).toContain(STATE_NEEDS_YOU);
     expect(row("pane:21")?.className).not.toContain(STATE_NEEDS_YOU);
+  });
+
+  it.each([
+    ["done", {}, "text-(--ink-ok)"],
+    ["ended", { phase: "exited" as const }, "text-(--text-faint)"],
+    ["idle", { hasRun: false }, "text-(--text-faint)"],
+  ])("reads a %s row in a regular title and its status ink", async (_status, change, ink) => {
+    tabViews.value = [tab({ panes: [pane({ paneId: 11, ...change })] })];
+    mount();
+    await settle();
+
+    const named = row("pane:11");
+    expect(named?.querySelector("[data-rail-title]")?.classList.contains("font-semibold")).toBe(
+      false,
+    );
+    expect(named?.querySelector("[data-rail-meta]")?.classList.contains(ink)).toBe(true);
+  });
+
+  it("keeps the date faint on every row, whatever the status ink (SR-4)", async () => {
+    mount();
+    await settle();
+
+    // Needs-you, unread, failed and done rows: the branch takes the ink, the date never does.
+    for (const id of ["pane:11", "pane:21", "pane:31"]) {
+      const date = row(id)?.querySelector("[data-rail-meta]")?.lastElementChild;
+      expect(date?.classList.contains("text-(--text-faint)"), id).toBe(true);
+    }
   });
 
   it("turns a working row's branch into a thinking line with three dots for its date", async () => {

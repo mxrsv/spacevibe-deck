@@ -83,7 +83,7 @@ export function ProjectRailHeader({
           >
             <span className="h-(--seam-w) w-(--space-2) bg-(--seam-split)" />
           </span>
-          {folded ? (
+          {folded && count > 0 ? (
             <span
               aria-hidden="true"
               data-rail-count

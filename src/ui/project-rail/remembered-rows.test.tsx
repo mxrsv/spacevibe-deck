@@ -111,15 +111,20 @@ describe("remembered rows on the project rail", () => {
     expect(content).toContain("5m");
   });
 
-  it("shares the live row's box, so the two line up (SR-1)", async () => {
+  it("lines the remembered row's logo and text up with the live row's (SR-1)", async () => {
     mount({ remembered: { panes: [LAST_TOKEN], onResume: vi.fn(), onForget: vi.fn() } });
     await settle();
 
     const [remembered] = rememberedRows();
     const live = rows().find((r) => r !== remembered.button);
-    // The same 32 box, pad and logo-to-text gap, and no status mark in either (SR-3).
+    // Both rows open with the logo box, then the title block, with nothing leading either:
+    // the same 32 box, pad and logo-to-text gap, so the two texts start at one x.
+    const shape = (button: Element | null | undefined) =>
+      [...(button?.children ?? [])].slice(0, 2).map((child) => child.className);
+    expect(shape(remembered.button)).toEqual(shape(live));
     expect(live?.className).toContain(ROW_LAYOUT);
     expect(remembered.button?.className).toContain(ROW_LAYOUT);
+    // No status mark in either (SR-3).
     expect(remembered.element.querySelector(".state-mark, [data-state]")).toBeNull();
   });
 
@@ -136,7 +141,7 @@ describe("remembered rows on the project rail", () => {
     expect(text(rememberedRows()[0].element)).toContain("Claude");
   });
 
-  it("shows a project that has only remembered rows, at zero tabs, and no branch for a plain folder", async () => {
+  it("shows a project that has only remembered rows, at zero tabs, saying folder only for a plain folder", async () => {
     mount({ remembered: { panes: [NOTES_CODEX], onResume: vi.fn(), onForget: vi.fn() } });
     await settle();
 
@@ -144,7 +149,8 @@ describe("remembered rows on the project rail", () => {
     expect(notes?.querySelectorAll("[data-rail-row]")).toHaveLength(1);
     expect(text(notes)).not.toContain("No sessions");
     expect(notes?.querySelector("[data-remembered]")?.textContent).toContain("Codex");
-    expect(notes?.querySelector('[data-remembered] [data-deck-icon-size="12"]')).toBeNull();
+    // No branch to give: the meta line says what the folder is, as a live row's does (SR-6).
+    expect(notes?.querySelector("[data-remembered]")?.textContent).toContain("folder only");
   });
 
   it("swaps the age for a resume mark on hover or focus, and lays a forget button beside it", async () => {

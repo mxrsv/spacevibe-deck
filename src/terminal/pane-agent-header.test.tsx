@@ -225,6 +225,13 @@ describe("agent pane header on the flush stage (LAY-5, shellStage switch)", () =
       expect(mark()).toBe(state);
     });
 
+    it("sizes the mark through the pane header's token, and shows it at full ink even when Deck inferred the state", () => {
+      republish({ ...pane, attention: "requested", confidence: "inferred" });
+      const drawn = element.querySelector("[data-state]");
+      expect(drawn?.getAttribute("data-surface")).toBe("pane");
+      expect(drawn?.getAttribute("data-confidence")).toBe("explicit");
+    });
+
     it("draws the four pane actions on an agent pane", () => {
       expect(element.querySelectorAll(".pane-agent-header__act")).toHaveLength(4);
     });
