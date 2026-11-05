@@ -6,10 +6,8 @@ import {
   enterAction,
   filterAgents,
   matchParts,
-  profileOverrides,
   reduceMenuKey,
   resolveDefaultPick,
-  runLabel,
   togglePick,
   type CommandBarProject,
 } from "./command-bar-model";
@@ -66,12 +64,6 @@ describe("resolveDefaultPick", () => {
   });
 });
 
-describe("runLabel", () => {
-  it("reads Run for one agent and Run N for several", () => {
-    expect([runLabel(1), runLabel(2), runLabel(4)]).toEqual(["Run", "Run 2", "Run 4"]);
-  });
-});
-
 describe("filter", () => {
   it("narrows agents by name, id or default command", () => {
     expect(filterAgents(AGENTS, COMMANDS, "cod").map((a) => a.id)).toEqual([
@@ -117,21 +109,6 @@ describe("enterAction", () => {
 
   it("skips a missing agent and falls back to the pick when nothing matches", () => {
     expect(enterAction("gemini", AGENTS, COMMANDS, [])).toEqual({ kind: "run" });
-  });
-});
-
-describe("profileOverrides", () => {
-  it("carries only the agents whose pick differs from their default", () => {
-    expect(
-      profileOverrides(["claude", "codex"], COMMANDS, {
-        claude: "claude --resume",
-        codex: "codex",
-      }),
-    ).toEqual({ claude: { kind: "profile", command: "claude --resume" } });
-  });
-
-  it("ignores a pick the agent no longer lists", () => {
-    expect(profileOverrides(["claude"], COMMANDS, { claude: "claude --gone" })).toEqual({});
   });
 });
 

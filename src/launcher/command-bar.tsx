@@ -1,6 +1,7 @@
 import {
   Alert02Icon,
   ArrowDown01Icon,
+  CornerDownLeftIcon,
   Download04Icon,
   FolderOpenIcon,
   GitBranchIcon,
@@ -8,7 +9,6 @@ import {
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { LaunchCommandChoices } from "../lib/launch-command";
-import type { LaunchCommandOverride } from "../terminal/agent-launch-target";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { Button } from "../ui/controls/button";
 import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
@@ -17,21 +17,16 @@ import { Chord } from "../ui/blocks/chord";
 import { Kbd } from "../ui/controls/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/controls/tooltip";
 import {
-  activeCommand,
   barProjectHits,
   enterAction,
   filterAgents,
-  profileOverrides,
   resolveDefaultPick,
-  runLabel,
   runnableIds,
   togglePick,
   type CommandBarProject,
 } from "./command-bar-model";
 import { CommandBarProjectLogo } from "./command-bar-project-logo";
-import { CommandBarProfileMenu } from "./command-bar-profile-menu";
 import { CommandBarProjectMenu } from "./command-bar-project-menu";
-import type { LaunchProfileSection } from "./launch-profile-popover";
 import "./command-bar.css";
 
 const DEFAULT_OPEN_FOLDER_KEYS: readonly string[] = ["⌘", "O"];
@@ -60,11 +55,8 @@ export interface CommandBarProps {
   readonly active?: boolean;
   /** Key caps of the Open folder shortcut, as the platform writes them. */
   readonly openFolderKeys?: readonly string[];
-  /** Run these agents, left to right. A profile override appears only for an agent off its default. */
-  readonly onRun: (
-    agentIds: readonly string[],
-    overrides: Readonly<Record<string, LaunchCommandOverride>>,
-  ) => void;
+  /** Run these agents, left to right, each on its default launch command. */
+  readonly onRun: (agentIds: readonly string[]) => void;
   readonly onPickProject: (path: string) => void;
   readonly onOpenFolder: () => void;
   readonly onNewWorktree: () => void;
@@ -72,8 +64,6 @@ export interface CommandBarProps {
   readonly onRetry: () => void;
   /** Escape with nothing left to dismiss in the bar. */
   readonly onClose?: () => void;
-  /** Settings → Agents, from the profile menu. */
-  readonly onEditProfiles?: () => void;
 }
 
 interface PickState {
@@ -93,8 +83,6 @@ export function CommandBar(props: CommandBarProps) {
   const chip = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  // A profile pick lives and dies with this visit, as it does on the launch page.
-  const [profilePicks, setProfilePicks] = useState<Readonly<Record<string, string>>>({});
 
   // The pick restarts from the default whenever the target project or its default changes.
   const pickKey = `${currentPath ?? ""}|${props.defaultPick.join(",")}`;
@@ -115,7 +103,7 @@ export function CommandBar(props: CommandBarProps) {
 
   const run = (ids: readonly string[]): void => {
     if (firstRun || pending || ids.length === 0) return;
-    props.onRun(ids, profileOverrides(ids, commands, profilePicks));
+    props.onRun(ids);
   };
 
   const pickProject = (path: string): void => {
@@ -124,20 +112,6 @@ export function CommandBar(props: CommandBarProps) {
     props.onPickProject(path);
     filterField.current?.focus();
   };
-
-  const sections: readonly LaunchProfileSection[] = agents.flatMap((agent) => {
-    const choices = commands[agent.id];
-    return agent.missing || choices === undefined
-      ? []
-      : [
-          {
-            id: agent.id,
-            label: agent.label,
-            choices,
-            active: activeCommand(choices, profilePicks[agent.id]) ?? choices.default,
-          },
-        ];
-  });
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.isComposing || event.defaultPrevented) return;
@@ -219,22 +193,24 @@ export function CommandBar(props: CommandBarProps) {
               spellcheck={false}
               onInput={(event: Event) => setQuery((event.target as HTMLInputElement).value)}
             />
-            <div class="command-bar__run">
-              <Button size="xl" disabled={!canRun} onClick={() => run(picked)}>
-                {runLabel(picked.length)}
-                <Kbd>↵</Kbd>
-              </Button>
-              {sections.length === 0 ? null : (
-                <CommandBarProfileMenu
-                  sections={sections}
-                  disabled={!canRun}
-                  onPick={(agentId, command) =>
-                    setProfilePicks((others) => ({ ...others, [agentId]: command }))
-                  }
-                  onEditProfiles={props.onEditProfiles}
-                />
-              )}
-            </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="icon"
+                    className="command-bar__run"
+                    aria-label="Run"
+                    disabled={!canRun}
+                    onClick={() => run(picked)}
+                  />
+                }
+              >
+                <DeckIcon icon={CornerDownLeftIcon} size={GLYPH_ROW} />
+              </TooltipTrigger>
+              <TooltipContent>
+                {picked.length > 1 ? `Run ${picked.length} agents` : "Run"} <Kbd>↵</Kbd>
+              </TooltipContent>
+            </Tooltip>
             {menuOpen ? (
               <CommandBarProjectMenu
                 projects={projects}
@@ -285,7 +261,7 @@ export function CommandBar(props: CommandBarProps) {
             agent={agent}
             on={picked.includes(agent.id)}
             disabled={firstRun || pending}
-            command={activeCommand(commands[agent.id], profilePicks[agent.id])}
+            command={commands[agent.id]?.default ?? null}
             onPress={(additive) =>
               setPickState({ key: pickKey, ids: togglePick(picked, agent.id, additive) })
             }

@@ -3,7 +3,7 @@ import type { LaunchCommandChoices } from "../lib/launch-command";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import type { RepositoryScan } from "../repositories/repository-client";
-import type { AgentLaunchTarget, LaunchCommandOverride } from "../terminal/agent-launch-target";
+import type { AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { CommandBar } from "./command-bar";
 import {
   launcherBeside,
@@ -33,17 +33,13 @@ export interface StageLauncherBarProps {
   readonly pending: boolean;
   readonly failure: string | null;
   readonly active: boolean;
-  onRun(
-    agentIds: readonly string[],
-    overrides: Readonly<Record<string, LaunchCommandOverride>>,
-  ): void;
+  onRun(agentIds: readonly string[]): void;
   onPickProject(path: string): void;
   onOpenFolder(): void;
   onNewWorktree(): void;
   onClone(): void;
   onRetry(): void;
   onClose(): void;
-  onEditProfiles(): void;
 }
 
 /**
@@ -83,7 +79,6 @@ export function StageLauncherBar(props: StageLauncherBarProps) {
         onClone={props.onClone}
         onRetry={props.onRetry}
         onClose={props.onClose}
-        onEditProfiles={props.onEditProfiles}
       />
     </StageLauncherSlot>
   );

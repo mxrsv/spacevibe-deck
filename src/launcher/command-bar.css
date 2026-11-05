@@ -112,24 +112,11 @@
   color: var(--command-bar-ink-3);
 }
 
-/* Run: one split button. */
+/* Run: one small round button holding only the Enter glyph. */
 .command-bar__run {
-  display: flex;
   flex: none;
+  border-radius: 9999px;
 }
-.command-bar__run > :first-child:not(:last-child) {
-  gap: 8px;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.command-bar__run > :last-child:not(:first-child) {
-  padding: 0 10px;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  /* A hairline between the halves, from the label's own ink. */
-  border-left: 1px solid color-mix(in oklch, var(--primary-foreground) 18%, transparent);
-}
-.command-bar__run kbd,
 .command-bar__open kbd[data-slot="kbd"] {
   background: color-mix(in oklch, var(--primary-foreground) 12%, transparent);
   color: color-mix(in oklch, var(--primary-foreground) 62%, transparent);

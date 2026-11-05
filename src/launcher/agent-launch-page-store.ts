@@ -72,9 +72,7 @@ export interface LaunchFailure {
  */
 export function eventInOpenLaunchPopover(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
-  const popover = target.closest(
-    ".agent-launch-page .nt-workspace-picker, .agent-launch-page .launch-profile",
-  );
+  const popover = target.closest(".agent-launch-page .nt-workspace-picker");
   return popover?.querySelector('[role="menu"]') != null;
 }
 

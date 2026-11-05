@@ -16,7 +16,6 @@ src/launcher/agent-install-control.tsx 1
 src/launcher/agent-launch-cards.tsx 2
 src/launcher/agent-launch-page.tsx 3
 src/launcher/launch-checkout-picker.tsx 2
-src/launcher/launch-profile-popover.tsx 3
 src/launcher/launcher-fields.tsx 13
 src/open-board/board-agent-launcher.tsx 1
 src/open-board/board-composer.tsx 11

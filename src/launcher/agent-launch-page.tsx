@@ -8,7 +8,6 @@ import { AgentLaunchCards, type CardPreview, type CardPreviewSource } from "./ag
 import { eventInOpenLaunchPopover } from "./agent-launch-page-store";
 import { AgentLaunchContext, type AgentLaunchContextProps } from "./agent-launch-context";
 import { LaunchCommandPreview } from "./launch-command-preview";
-import { LaunchProfilePopover, type LaunchProfileSection } from "./launch-profile-popover";
 import { DeckIcon, GLYPH_ROW } from "../ui/controls/deck-icon";
 import "./agent-launch-page.css";
 
@@ -54,31 +53,9 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
   const onPreview = (source: CardPreviewSource, next: CardPreview | null): void =>
     source === "pointer" ? setPointer(next) : setFocus(next);
   const { context, homeDir } = props.contextRow;
-  // A profile pick (PAGE4) lives and dies with this visit: component state, never stored. One
-  // that settings no longer list falls back to the default instead of being typed.
-  const [picks, setPicks] = useState<Readonly<Record<string, string>>>({});
-  const activeCommand = (agentId: string): string | null => {
-    const choices = props.commands[agentId];
-    if (choices === undefined) return null;
-    const picked = picks[agentId];
-    return picked !== undefined && choices.commands.includes(picked) ? picked : choices.default;
-  };
+  const activeCommand = (agentId: string): string | null =>
+    props.commands[agentId]?.default ?? null;
   const newSpace = props.target.kind === "split" ? props.onRunInNewSpace : undefined;
-  // The override rides along only while a pick differs from the default.
-  const launch = (
-    call: (agentId: string, override?: LaunchCommandOverride) => void,
-    id: string,
-  ) => {
-    const command = activeCommand(id);
-    if (command === null || command === props.commands[id]?.default) call(id);
-    else call(id, { kind: "profile", command });
-  };
-  const sections: readonly LaunchProfileSection[] = props.agents.flatMap((agent) => {
-    const choices = props.commands[agent.id];
-    return agent.missing || choices === undefined
-      ? []
-      : [{ id: agent.id, label: agent.label, choices, active: activeCommand(agent.id)! }];
-  });
   useLayoutEffect(() => {
     if (!active) return;
     const control = root.current?.querySelector<HTMLElement>(
@@ -132,8 +109,8 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
         <AgentLaunchCards
           agents={props.agents}
           pending={props.pending}
-          onRun={(agentId) => launch(props.onRun, agentId)}
-          onRunInNewSpace={newSpace && ((agentId) => launch(newSpace, agentId))}
+          onRun={(agentId) => props.onRun(agentId)}
+          onRunInNewSpace={newSpace && ((agentId) => newSpace(agentId))}
           preview={{ describedBy: PREVIEW_ID, shown: preview, onPreview }}
           terminal
         />
@@ -146,18 +123,7 @@ export function AgentLaunchPage(props: AgentLaunchPageProps) {
           folder={tildify(context.checkoutPath, homeDir)}
           folderPath={context.checkoutPath}
           placement={context.chip}
-        >
-          {/* DL-32.5: nothing to choose between, so no chip. */}
-          {sections.length > 0 ? (
-            <LaunchProfilePopover
-              sections={sections}
-              onPick={(agentId, command) =>
-                setPicks((current) => ({ ...current, [agentId]: command }))
-              }
-              onEditProfiles={props.onSettings}
-            />
-          ) : null}
-        </LaunchCommandPreview>
+        ></LaunchCommandPreview>
       </div>
     </section>
   );

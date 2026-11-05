@@ -113,9 +113,8 @@ replaced by another agent
 ([quick agent settings](../../src/ui/settings/quick-agents-section.tsx)).
 
 Hover or focus a tile to see the exact command it will type, the folder and where it lands.
-The **Default profile** chip under the tiles lets you pick another of an agent's launch commands
-for that visit; leaving the launcher forgets the pick, and **Edit profiles in Settings…** opens
-where commands are written. If an agent cannot be started, the launcher says why and offers
+Each tile runs its agent's default launch command; change which one that is in
+[Settings → Agents](agents.md#settings--agents). If an agent cannot be started, the launcher says why and offers
 **Retry**
 ([launcher](../../src/launcher/agent-launch-page.tsx)).
 

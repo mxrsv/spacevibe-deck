@@ -1,6 +1,5 @@
 import type { AgentOption } from "../lib/agent-catalog";
 import type { LaunchCommandChoices } from "../lib/launch-command";
-import type { LaunchCommandOverride } from "../terminal/agent-launch-target";
 
 /** One project the bar can target. The caller sends them most recent first. */
 export interface CommandBarProject {
@@ -53,10 +52,6 @@ export function togglePick(
     return rest.length > 0 ? rest : picked;
   }
   return picked.length >= MAX_PICKED_AGENTS ? picked : [...picked, id];
-}
-
-export function runLabel(count: number): string {
-  return count > 1 ? `Run ${count}` : "Run";
 }
 
 /** The chips a filter leaves: the query meets an agent's name, id or default command. */
@@ -136,34 +131,6 @@ export function enterAction(
   if (agent !== undefined) return { kind: "run-agent", agentId: agent.id };
   const project = hits[0];
   return project === undefined ? { kind: "run" } : { kind: "pick-project", path: project.path };
-}
-
-/** The command a chip's press types now: the visit's profile pick, else the agent's default. */
-export function activeCommand(
-  choices: LaunchCommandChoices | undefined,
-  pick: string | undefined,
-): string | null {
-  if (choices === undefined) return null;
-  return pick !== undefined && choices.commands.includes(pick) ? pick : choices.default;
-}
-
-/**
- * The profile overrides a run carries: one per agent whose pick differs from its default. An
- * agent on its default has no entry, as `launchAgentAtTarget` expects.
- */
-export function profileOverrides(
-  agentIds: readonly string[],
-  commands: Readonly<Record<string, LaunchCommandChoices>>,
-  picks: Readonly<Record<string, string>>,
-): Readonly<Record<string, LaunchCommandOverride>> {
-  const overrides: Record<string, LaunchCommandOverride> = {};
-  for (const id of agentIds) {
-    const command = activeCommand(commands[id], picks[id]);
-    if (command !== null && command !== commands[id]?.default) {
-      overrides[id] = { kind: "profile", command };
-    }
-  }
-  return overrides;
 }
 
 export interface MenuKeyResult {

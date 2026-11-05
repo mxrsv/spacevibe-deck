@@ -45,7 +45,6 @@ function props(over: Partial<StageLauncherBarProps> = {}): StageLauncherBarProps
     onClone: vi.fn(),
     onRetry: vi.fn(),
     onClose: vi.fn(),
-    onEditProfiles: vi.fn(),
     ...over,
   };
 }
@@ -63,8 +62,8 @@ describe("StageLauncherBar", () => {
     const view = await mount(<StageLauncherBar {...props({ onRun })} />);
     expect(pressed()).toEqual(["Codex"]);
     expect(document.querySelector(".command-bar__project-name")?.textContent).toBe("deck");
-    await click(document.querySelector(".command-bar__run > button") as HTMLElement);
-    expect(onRun).toHaveBeenCalledWith(["codex"], {});
+    await click(document.querySelector("button.command-bar__run") as HTMLElement);
+    expect(onRun).toHaveBeenCalledWith(["codex"]);
     await view.unmount();
   });
 

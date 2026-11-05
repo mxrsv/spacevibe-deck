@@ -311,115 +311,6 @@
 .agent-launch-page__preview-faint {
   color: var(--text-faint);
 }
-/* The profile chip and its popover (DL-13.1, PAGE4). The line is pinned to the page's bottom
-   edge, so the menu opens upward: below it there is no room. The page is always as tall as
-   its scrollport (`__inner` min-height), so the room above is the page's own height. */
-.launch-profile {
-  position: relative;
-  flex: none;
-  margin-left: auto;
-}
-.agent-launch-page .launch-profile__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-sizing: border-box;
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--control-frame);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--type-meta);
-  transition:
-    background var(--duration) var(--ease),
-    color var(--duration) var(--ease),
-    border-color var(--duration) var(--ease);
-}
-.agent-launch-page .launch-profile__trigger:is(:hover, :focus-visible) {
-  outline: none;
-  border-color: var(--control-frame-hover);
-  background: var(--state-hover-bg);
-  color: var(--text-primary);
-}
-.launch-profile__menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  z-index: 3;
-  /* No global reset (traps.md): the padding must stay inside the width. */
-  box-sizing: border-box;
-  width: min(380px, calc(100cqw - 48px));
-  max-height: min(360px, 60vh);
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  border-radius: var(--radius-surface);
-  background: var(--chrome-2);
-  box-shadow: var(--elev-1);
-  color: var(--text-primary);
-}
-.launch-profile__list {
-  min-height: 0;
-  overflow-y: auto;
-}
-.agent-launch-page .launch-profile__menu button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-sizing: border-box;
-  width: 100%;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: var(--radius-control);
-  background: transparent;
-  font-size: var(--type-meta);
-  text-align: left;
-}
-.agent-launch-page .launch-profile__menu button:hover,
-.agent-launch-page .launch-profile__menu button:focus-visible {
-  outline: none;
-  background: var(--state-hover-bg);
-}
-.launch-profile__section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px 2px;
-  color: var(--text-faint);
-  font-size: var(--type-micro);
-}
-.launch-profile__glyph {
-  display: block;
-  flex: none;
-  width: var(--icon-14);
-  height: var(--icon-14);
-}
-/* A fixed slot, so the commands line up whether or not a row carries the check. */
-.launch-profile__check {
-  flex: none;
-  width: 14px;
-}
-.launch-profile__command {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.launch-profile__default {
-  flex: none;
-  color: var(--text-faint);
-  font-size: var(--type-micro);
-}
-.launch-profile__separator,
-.agent-launch-page .launch-profile__menu > button {
-  flex: none;
-}
-/* A gap between groups, not a rule (CMP-14). */
-.launch-profile__separator {
-  height: 4px;
-}
 /* A launch that failed before its pane existed (PAGE5): the message, and Retry beside it. */
 .agent-launch-page__notice {
   display: flex;
@@ -483,7 +374,6 @@
   .agent-launch-page__card .agent-launch-page__alt,
   .agent-launch-page__main > .deck-icon,
   .agent-launch-page__context .nt-workspace-picker__trigger,
-  .agent-launch-page .launch-profile__trigger,
   .agent-launch-page .agent-launch-page__empty button,
   .agent-launch-page .agent-launch-page__notice button {
     transition: none;

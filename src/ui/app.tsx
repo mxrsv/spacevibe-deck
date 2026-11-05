@@ -16,11 +16,7 @@ import { stageBarMode } from "../launcher/stage-launcher-props";
 import { addFolderToRail, rememberOnRail } from "./rail-add-folder";
 import { requestWorktreeForm } from "./project-rail/project-rail-worktree-request";
 import type { AgentLaunchContextProps } from "../launcher/agent-launch-context";
-import {
-  TERMINAL_LAUNCH_ID,
-  type AgentLaunchTarget,
-  type LaunchCommandOverride,
-} from "../terminal/agent-launch-target";
+import { TERMINAL_LAUNCH_ID, type AgentLaunchTarget } from "../terminal/agent-launch-target";
 import { agentLaunchPage, agentLaunchPageAvailable } from "../launcher/agent-launch-page-store";
 import { createAgentInstallHost } from "../launcher/agent-install-host";
 import { registerAgentInstallHost } from "../launcher/agent-install-store";
@@ -1844,11 +1840,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     manager.renameTab(index, autoSpaceName(folderName(workspacePath), label));
   }
 
-  function runFromStageLauncher(
-    agentIds: readonly string[],
-    overrides: Readonly<Record<string, LaunchCommandOverride>>,
-  ): void {
-    stageActions.run(agentIds, overrides);
+  function runFromStageLauncher(agentIds: readonly string[]): void {
+    stageActions.run(agentIds, {});
   }
 
   function pickStageLauncherProject(path: string): void {
@@ -3025,7 +3018,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onClose={() => {
                 if (agentLaunchPage.request.value !== null) agentLaunchPage.close(true);
               }}
-              onEditProfiles={() => openSettingsAt("agents")}
             />
           )}
           {!stageLauncherEnabled() && agentLaunchPage.request.value !== null && (

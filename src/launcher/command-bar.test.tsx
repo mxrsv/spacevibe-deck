@@ -54,7 +54,7 @@ const pressed = (): string[] =>
     (el) => el.getAttribute("aria-label") ?? "",
   );
 const runButton = (): HTMLButtonElement =>
-  document.querySelector(".command-bar__run > button") as HTMLButtonElement;
+  document.querySelector("button.command-bar__run") as HTMLButtonElement;
 const filter = (): HTMLInputElement =>
   document.querySelector('input[aria-label="Filter agents or projects"]') as HTMLInputElement;
 const projectChip = (): HTMLElement =>
@@ -87,11 +87,11 @@ async function shiftClick(target: HTMLElement): Promise<void> {
 }
 
 describe("CommandBar picking", () => {
-  it("starts with the default pick and says Run", async () => {
+  it("starts with the default pick and a Run button that is only a glyph", async () => {
     const view = await mount(<CommandBar {...props()} />);
     expect(pressed()).toEqual(["Codex"]);
-    expect(runButton().textContent).toContain("Run");
-    expect(runButton().textContent).not.toContain("Run 1");
+    expect(runButton().getAttribute("aria-label")).toBe("Run");
+    expect(runButton().textContent).toBe("");
     await view.unmount();
   });
 
@@ -116,7 +116,6 @@ describe("CommandBar picking", () => {
     await shiftClick(chip("Claude Code"));
     // Chips list in Settings order; the pick itself keeps the order it was made in.
     expect(pressed()).toEqual(["Claude Code", "Amp"]);
-    expect(runButton().textContent).toContain("Run 2");
     await shiftClick(chip("Amp"));
     expect(pressed()).toEqual(["Claude Code"]);
     await view.unmount();
@@ -158,7 +157,7 @@ describe("CommandBar run", () => {
     const view = await mount(<CommandBar {...p} />);
     await shiftClick(chip("Claude Code"));
     await click(runButton());
-    expect(p.onRun).toHaveBeenCalledWith(["codex", "claude"], {});
+    expect(p.onRun).toHaveBeenCalledWith(["codex", "claude"]);
     await view.unmount();
   });
 
@@ -169,7 +168,7 @@ describe("CommandBar run", () => {
     expect(pressed()).toEqual(["Codex", "Amp"]);
     await doubleClick(chip("Claude Code"));
     expect(p.onRun).toHaveBeenCalledTimes(1);
-    expect(p.onRun).toHaveBeenCalledWith(["claude"], {});
+    expect(p.onRun).toHaveBeenCalledWith(["claude"]);
     await view.unmount();
   });
 
@@ -186,7 +185,7 @@ describe("CommandBar run", () => {
     const p = props();
     const view = await mount(<CommandBar {...p} />);
     await press(filter(), { key: "Enter" });
-    expect(p.onRun).toHaveBeenCalledWith(["codex"], {});
+    expect(p.onRun).toHaveBeenCalledWith(["codex"]);
     await view.unmount();
   });
 
@@ -207,19 +206,9 @@ describe("CommandBar run", () => {
     await view.unmount();
   });
 
-  it("carries the profile the user chose from the caret, only for that agent", async () => {
-    const p = props({ defaultPick: ["claude", "codex"] });
-    const view = await mount(<CommandBar {...p} />);
-    const caret = document.querySelector('[aria-label="Launch profile"]') as HTMLElement;
-    await click(caret);
-    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
-      (el) => el.textContent === "claude --dangerously-skip-permissions",
-    ) as HTMLElement;
-    await click(item);
-    await click(runButton());
-    expect(p.onRun).toHaveBeenCalledWith(["claude", "codex"], {
-      claude: { kind: "profile", command: "claude --dangerously-skip-permissions" },
-    });
+  it("has no profile caret: every agent runs on its default command", async () => {
+    const view = await mount(<CommandBar {...props()} />);
+    expect(document.querySelector('[aria-label="Launch profile"]')).toBeNull();
     await view.unmount();
   });
 });
@@ -247,7 +236,7 @@ describe("CommandBar filter", () => {
     const view = await mount(<CommandBar {...p} />);
     await type(filter(), "amp");
     await press(filter(), { key: "Enter" });
-    expect(p.onRun).toHaveBeenCalledWith(["amp"], {});
+    expect(p.onRun).toHaveBeenCalledWith(["amp"]);
     expect(p.onPickProject).not.toHaveBeenCalled();
     await view.unmount();
   });
