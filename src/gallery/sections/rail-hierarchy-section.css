@@ -311,6 +311,8 @@
   flex: none;
   margin-left: auto;
   /* No tabular figures: at 11px they draw the digits wider than the branch beside them. */
+  /* The date keeps the faint ink whatever the status (owner, 2026-11-06). */
+  color: var(--text-faint);
 }
 
 /* ── The folded circles and the logo's count badge (RH-10) ── */
