@@ -81,7 +81,10 @@ const TEXT_FIELD_FOCUS: readonly { token: string; reason: string }[] = [
   { token: ".wtf__input", reason: "worktree field input" },
   { token: ".preset-editor__name", reason: "preset name input" },
   { token: "input", reason: "plain input element" },
-  { token: ".command-bar__bar", reason: "the command bar's frame takes its input's ring (RCP-3)" },
+  {
+    token: ".command-bar__bar",
+    reason: "the command bar's frame shows focus as its hover border (RCP-3)",
+  },
 ];
 
 const FOCUS = /:focus(-visible|-within)?(?![\w-])/;

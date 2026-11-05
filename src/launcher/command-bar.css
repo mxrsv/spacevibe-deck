@@ -38,8 +38,8 @@
   background: var(--sidebar-bg);
   box-shadow: var(--elev-2);
 }
-/* RCP-3: the command bar is one 40 frame holding 32 controls, and the frame, not the input
-   inside it, takes the focus ring. */
+/* RCP-3: the command bar is one 40 frame holding 32 controls. Focus inside it has no ring: the
+   frame's border steps to the hover tone, as every other control shows focus (DL-21.3). */
 .command-bar__bar {
   position: relative;
   display: flex;
@@ -56,7 +56,7 @@
   background: var(--command-bar-chip);
 }
 .command-bar__bar:focus-within {
-  box-shadow: inset 0 0 0 var(--seam-w) var(--focus-border);
+  box-shadow: inset 0 0 0 1px var(--control-frame-hover);
 }
 .command-bar__meta {
   font-size: var(--type-meta);
