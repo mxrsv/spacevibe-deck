@@ -73,6 +73,9 @@ const RecipeOverlaysSection = lazy(() =>
 const RecipeSettingsSection = lazy(() =>
   import("./sections/recipe-states-surfaces").then((m) => m.RecipeSettingsSection),
 );
+const RailHierarchySection = lazy(() =>
+  import("./sections/rail-hierarchy-section").then((m) => m.RailHierarchySection),
+);
 const ControlStatesSection = lazy(() =>
   import("./sections/control-states-section").then((m) => m.ControlStatesSection),
 );
@@ -109,6 +112,12 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "small-ui", label: "small UI · states", Section: ControlStatesSection },
   // The UI recipes' state sheets (RCP-32): one per surface, graphite beside Deck Light.
   { id: "recipe-rail", label: "recipes · rail", Section: RecipeRailSection, scopedThemes: true },
+  {
+    id: "rail-hierarchy",
+    label: "mock · rail hierarchy",
+    Section: RailHierarchySection,
+    scopedThemes: true,
+  },
   { id: "recipe-stage", label: "recipes · stage", Section: RecipeStageSection, scopedThemes: true },
   { id: "recipe-dock", label: "recipes · dock", Section: RecipeDockSection, scopedThemes: true },
   {

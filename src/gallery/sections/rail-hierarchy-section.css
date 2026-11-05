@@ -1,0 +1,342 @@
+/* The rail hierarchy mock (ledger 2026-11-06-rail-hierarchy-status-marks-decisions.md).
+   Gallery-only: the values below are the numbers the build will add as tokens (RH-2, RH-11,
+   RH-12), declared here so the mock reads the same way the app will. Colours are theme tokens. */
+@import "../../ui/preset.css";
+@source "./rail-hierarchy-section.tsx";
+@source "./rail-hierarchy-after.tsx";
+@source "./rail-hierarchy-marks.tsx";
+
+.rh-compare {
+  --rh-slot: 12px;
+  --rh-glyph: 8px;
+  --rh-row: 36px;
+  --rh-indent: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 17rem);
+  gap: 20px;
+  align-items: start;
+}
+
+.rh-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rh-column__title {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.rh-frame {
+  height: 38rem;
+  overflow-y: auto;
+  overflow-x: clip;
+  padding: 0 var(--space-8) var(--space-group-sm);
+  background: var(--sidebar-bg);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 var(--seam-w) var(--seam-divider);
+}
+
+/* ── The mark: a 12 slot, an 8 glyph, one shape per status (RH-2, RH-3) ── */
+.rh-mark {
+  --rh-ink: var(--status-idle);
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--rh-slot, 12px);
+  height: var(--rh-slot, 12px);
+  color: var(--status-working);
+}
+
+.rh-mark::before {
+  content: "";
+  width: var(--rh-glyph, 8px);
+  height: var(--rh-glyph, 8px);
+  background: var(--rh-ink);
+}
+
+/* Needs you: a solid dot with a ring that radiates; unread: a smaller, still dot. */
+.rh-mark[data-state="needs-input"] {
+  --rh-ink: var(--status-unread);
+}
+.rh-mark[data-state="needs-input"]::before {
+  border-radius: 50%;
+}
+.rh-mark[data-state="needs-input"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 var(--seam-w) var(--status-unread);
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rh-mark[data-state="needs-input"]::after {
+    animation: rh-radiate 1.8s ease-out infinite;
+  }
+}
+@keyframes rh-radiate {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.rh-mark[data-state="unread"] {
+  --rh-ink: var(--status-unread);
+}
+.rh-mark[data-state="unread"]::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Done, failed: a check and a cross, drawn as a mask so they take the status ink. */
+.rh-mark[data-state="done"] {
+  --rh-ink: var(--status-ok);
+}
+.rh-mark[data-state="done"]::before {
+  -webkit-mask: var(--rh-check) center / 100% 100% no-repeat;
+  mask: var(--rh-check) center / 100% 100% no-repeat;
+  --rh-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M1 4.2 3.2 6.4 7 1.8' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.rh-mark[data-state="failed"] {
+  --rh-ink: var(--status-failed);
+}
+.rh-mark[data-state="failed"]::before {
+  -webkit-mask: var(--rh-cross) center / 100% 100% no-repeat;
+  mask: var(--rh-cross) center / 100% 100% no-repeat;
+  --rh-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M1.5 1.5 6.5 6.5M6.5 1.5 1.5 6.5' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* Ended: a small square. Idle: a short dash, the quietest ink. */
+.rh-mark[data-state="ended"]::before {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-flat);
+}
+.rh-mark[data-state="idle"]::before {
+  width: 6px;
+  height: 1.5px;
+  border-radius: 1px;
+}
+
+/* Working is the braille spinner, as shipped. */
+.rh-mark[data-state="working"]::before {
+  content: none;
+}
+
+/* ── Workspace header and rows (RH-7, RH-9, RH-11, RH-12) ── */
+.rh-ws {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--space-group-sm);
+}
+
+.rh-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: var(--row-28);
+  padding: 0 var(--space-pad-row);
+  border-radius: var(--radius-control);
+  text-align: left;
+  /* Opaque, so rows scroll under it without showing through. */
+  background: var(--sidebar-bg);
+}
+
+.rh-head__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-rail);
+  line-height: var(--leading-rail);
+  font-weight: 600;
+  /* RH-7's "secondary ink": the theme has no `--text-secondary`, so the build reads
+     `--text-muted`, the nearest rung. */
+  color: var(--text-muted);
+}
+
+.rh-head__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.rh-head__count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.rh-logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+}
+.rh-logo[data-logo="dark"] {
+  background: #000;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  box-shadow: inset 0 0 0 var(--seam-w) var(--seam-split);
+}
+.rh-logo[data-logo="violet"] {
+  background: color-mix(in srgb, var(--status-unread) 20%, #5b3df5);
+}
+
+/* The rows sit behind a thin guide line (RH-9). */
+.rh-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-list);
+  /* The guide runs under the header's logo centre (8 pad + 8 half of the 16 box). */
+  margin-left: 15px;
+  padding-left: 7px;
+  border-left: var(--seam-w) solid var(--seam-divider);
+}
+
+.rh-row-wrap {
+  position: relative;
+}
+
+.rh-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: var(--rh-row, 36px);
+  padding: 0 var(--space-pad-row) 0 6px;
+  border-radius: var(--radius-control);
+  text-align: left;
+}
+
+.rh-row__logo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-box-28);
+  height: var(--icon-box-28);
+}
+
+.rh-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rh-row__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-meta);
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.rh-row__title--loud {
+  font-weight: 600;
+}
+
+.rh-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-icon-label);
+  min-width: 0;
+  font-size: var(--type-meta);
+  line-height: 16px;
+  color: var(--text-faint);
+}
+.rh-row__meta--fail {
+  color: var(--ink-fail);
+}
+.rh-row__branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rh-row__age {
+  flex: none;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The folded cluster (RH-10) ── */
+.rh-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.rh-cluster__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.rh-cluster__more {
+  color: var(--text-faint);
+}
+
+/* ── The mark sheet ── */
+.rh-marks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rh-marks__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+}
+.rh-marks__label {
+  width: 3.5rem;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.rh-marks__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.rh-marks__pair {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.rh-marks__zoom {
+  display: inline-flex;
+  transform: scale(4);
+  transform-origin: center;
+  margin: 18px;
+}
+.rh-marks__name {
+  font-size: 11px;
+  color: var(--text-faint);
+}
