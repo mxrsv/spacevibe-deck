@@ -37,33 +37,6 @@ export function statusLabel(item: Pick<RailItem, "status" | "confidence" | "entr
     : word;
 }
 
-/** Up to two initials of the project's name: `spacevibe-deck` is `SD`, `notes` is `N`. */
-export function projectInitials(name: string): string {
-  const words = name
-    .split(/[^\p{L}\p{N}\p{Extended_Pictographic}]+/u)
-    .filter((word) => word !== "");
-  const first = firstGrapheme(words[0] ?? "");
-  // RCP-4: a wide first grapheme (CJK, emoji) fills the 24 box alone; two would not fit.
-  if (isWideGlyph(first)) return first;
-  const initials = words
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
-  return initials === "" ? "?" : initials;
-}
-
-/** True for a grapheme drawn about two Latin letters wide: CJK, kana, Hangul and emoji. */
-export function isWideGlyph(text: string): boolean {
-  return /^(\p{Extended_Pictographic}|\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul})/u.test(
-    text,
-  );
-}
-
-function firstGrapheme(text: string): string {
-  const segment = new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text);
-  return segment[Symbol.iterator]().next().value?.segment ?? "";
-}
-
 /** The two host callbacks a row can raise: the ones the shipped rail's rows call. */
 export interface RailSelection {
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;

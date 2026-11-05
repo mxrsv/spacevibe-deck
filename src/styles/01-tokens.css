@@ -203,6 +203,10 @@
   --type-dialog: 16px;
   --leading-dialog: 24px;
   --leading-body: 20px;
+  /* RL-2, RL-6 (2026-11-06): the project rail's name rung, one below the 14 chrome rung it
+     amends for the rail only. Its meta lines stay on --type-meta. */
+  --type-rail: 13px;
+  --leading-rail: 18px;
   --leading-meta: 16px;
   --weight-regular: 400;
   --weight-strong: 600;
@@ -256,7 +260,9 @@
   /* RCP-7 (DL-20.6): row heights. 24 a dense list, 32 a menu item or
      one-line row, 44 a two-line rail row. */
   --row-24: 24px;
+  --row-28: 28px;
   --row-32: 32px;
+  --row-40: 40px;
   --row-44: 44px;
 
   /* Functional geometry, outside the spacing scale (RCP-6, CMP-15). */

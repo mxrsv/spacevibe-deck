@@ -51,7 +51,7 @@ export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRow
           />
         </span>
         <span className={ROW_MAIN}>
-          <span className="truncate text-sm leading-(--leading-body) text-(--text-muted)">
+          <span className="truncate text-(length:--type-rail) leading-(--leading-rail) text-(--text-muted)">
             {title}
           </span>
           <span className={ROW_META}>

@@ -30,7 +30,7 @@ function StateAge({ changedAt }: { readonly changedAt: number }) {
  * (`remembered-row.tsx`), whose empty slot keeps the titles in line.
  */
 export const ROW_LAYOUT =
-  "flex h-(--row-44) w-full min-w-0 items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left";
+  "flex h-(--row-40) w-full min-w-0 items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left";
 /** The leading mark's 14 slot; it gives back 4 of the gap, as the mock's `.row-lead` does. */
 export const ROW_LEAD = "-mr-1 flex size-(--mark-slot) shrink-0 items-center justify-center";
 /** The agent's logo in a 28 box. */
@@ -150,7 +150,7 @@ export function ProjectRailRow({
             <span className={ROW_MAIN}>
               <span
                 className={cn(
-                  "truncate text-sm leading-(--leading-body)",
+                  "truncate text-(length:--type-rail) leading-(--leading-rail)",
                   archived ? "text-(--text-muted)" : "text-(--text-primary)",
                   item.status === "needs-input" && "font-semibold",
                 )}

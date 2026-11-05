@@ -125,7 +125,7 @@ export function ProjectRailControls({ attention, ...props }: ProjectRailControls
             data-rail-search=""
             aria-label="Search sessions"
             placeholder="Search"
-            className="h-(--control-h-28) pl-6"
+            className="h-(--control-h-28) pl-6 text-(length:--type-rail)"
             value={railViewState.value.query}
             onInput={(event: Event) => setRailQuery((event.target as HTMLInputElement).value)}
             onKeyDown={(event: KeyboardEvent) => {

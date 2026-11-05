@@ -7,12 +7,12 @@ import { AgentStateMark } from "../blocks/agent-state-mark";
 import { stateClasses } from "../blocks/recipe-classes";
 import type { RailGroup } from "../rail-view-model";
 import { ProjectRailHeaderActions } from "./project-rail-header-actions";
-import { isWideGlyph, projectInitials, statusLabel } from "./project-rail-model";
+import { statusLabel } from "./project-rail-model";
 import type { ProjectCommands } from "./project-rail-project-commands";
 import { ProjectRailRemoveDialog } from "./project-rail-remove-dialog";
 
 /** The `size-5` box of the header's mark. */
-const PROJECT_MARK_PX = 20;
+const PROJECT_MARK_PX = 24;
 
 export interface ProjectRailHeaderProps {
   readonly group: RailGroup;
@@ -41,7 +41,6 @@ export function ProjectRailHeader({
   onToggle,
 }: ProjectRailHeaderProps) {
   const { rollup, count } = group;
-  const initials = projectInitials(group.label);
   const sessions = `${count} ${count === 1 ? "session" : "sessions"}`;
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -62,7 +61,7 @@ export function ProjectRailHeader({
         aria-expanded={!folded}
         onClick={onToggle}
         className={cn(
-          "flex h-(--row-32) w-full items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left",
+          "flex h-(--row-28) w-full items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left",
           stateClasses(false),
         )}
       >
@@ -71,19 +70,9 @@ export function ProjectRailHeader({
           path={markPath}
           marks
           size={PROJECT_MARK_PX}
-          className="flex size-(--icon-box-24) shrink-0 overflow-hidden rounded-(--radius-control)"
-          fallback={
-            <span
-              className={cn(
-                "flex size-full items-center justify-center rounded-(--radius-control) bg-(--tab-rest-bg) text-xs leading-none text-(--text-muted) ring-1 ring-(--control-frame) ring-inset",
-                isWideGlyph(initials) ? "font-normal" : "font-semibold",
-              )}
-            >
-              {initials}
-            </span>
-          }
+          className="flex size-(--icon-box-24) shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted) [&>img]:size-full [&>img]:object-cover!"
         />
-        <span className="min-w-0 truncate text-sm font-semibold text-(--text-primary)">
+        <span className="min-w-0 truncate text-(length:--type-rail) leading-(--leading-rail) font-semibold text-(--text-primary)">
           {group.label}
         </span>
         <DeckIcon

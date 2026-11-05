@@ -135,7 +135,7 @@ export function ProjectRailCheckout({
         disabled={press === undefined}
         onClick={press}
         className={cn(
-          "flex h-(--row-32) w-full items-center gap-2 rounded-(--radius-control) pr-(--space-pad-row) pl-(--space-16) text-left text-sm text-(--text-muted)",
+          "flex h-(--row-28) w-full items-center gap-2 rounded-(--radius-control) pr-(--space-pad-row) pl-(--space-16) text-left text-(length:--type-rail) leading-(--leading-rail) text-(--text-muted)",
           stateClasses(false),
           STATE_DISABLED,
         )}

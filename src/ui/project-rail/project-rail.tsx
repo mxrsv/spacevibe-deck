@@ -200,7 +200,7 @@ export function ProjectRail({
       )}
       {model.groups.length === 0 && !searching && stageLauncherEnabled() ? (
         // First run (spec LCH-7): no project and no live tab, so say where projects will appear.
-        <p className="flex h-(--row-32) items-center gap-(--space-icon-label) px-(--space-pad-row) text-xs text-(--text-faint)">
+        <p className="flex h-(--row-28) items-center gap-(--space-icon-label) px-(--space-pad-row) text-xs text-(--text-faint)">
           <DeckIcon icon={Folder01Icon} size={GLYPH_INLINE} />
           Projects you open land here
         </p>
