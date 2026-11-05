@@ -113,11 +113,11 @@ function FlushIdentity({
           {tip}
         </TooltipContent>
       </Tooltip>
-      {/* Always solid: beside the name a hollow ring (the inferred look) reads as the letter "O".
-          The tooltip and the rail still carry how sure Deck is. The word is for the eye; the
-          hidden line below says it to a screen reader with the sentence (RCP-20). */}
+      {/* No confidence is passed, so the mark is always at full ink: the tooltip and the rail's
+          accessible names still carry how sure Deck is. The word is for the eye; the hidden
+          line below says it to a screen reader with the sentence (RCP-20). */}
       <span class="pane-agent-header__status" data-tone={STATUS_TONE[status]} aria-hidden="true">
-        <AgentStateMark status={status} />
+        <AgentStateMark status={status} surface="pane" />
         {STATUS_WORD[status]}
       </span>
       <span class="pane-agent-header__message pane-agent-header__message--hidden">
