@@ -28,6 +28,7 @@ const STATUS_TONE: Readonly<Partial<Record<RailStatus, "need" | "fail">>> = {
 };
 import { shellStageEnabled } from "../ui/shell-stage";
 import { PaneQuickAgents } from "./pane-quick-agents";
+import { PaneHeaderActionButtons } from "./pane-header-action-buttons";
 import "./pane-agent-header.css";
 
 interface PaneHeaderInput {
@@ -53,6 +54,7 @@ export function PaneAgentHeader({
       <div class="pane-agent-header">
         <PaneQuickAgents paneId={pane.paneId} input={input} />
         <span class="pane-agent-header__message" />
+        <PaneHeaderActionButtons paneId={pane.paneId} />
       </div>
     );
   }
@@ -69,6 +71,7 @@ export function PaneAgentHeader({
       <span class="pane-agent-header__message" title={message.trim() || name}>
         {message.trim() || name}
       </span>
+      <PaneHeaderActionButtons paneId={pane.paneId} />
     </div>
   );
 }
@@ -120,6 +123,7 @@ function FlushIdentity({
       <span class="pane-agent-header__message pane-agent-header__message--hidden">
         {sentence ? `${state}. ${sentence}` : state}
       </span>
+      <PaneHeaderActionButtons paneId={pane.paneId} />
     </div>
   );
 }

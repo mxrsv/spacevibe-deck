@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tabViews, type PaneView } from "./tabs-store";
 import { paneTails } from "./session-tail-store";
 import { mountPaneAgentHeader } from "./pane-agent-header";
+import { registerPaneHeaderActions } from "./pane-header-actions";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { settings } from "../settings/settings-store";
@@ -77,8 +78,21 @@ describe("agent pane header", () => {
     act(() => publish({ ...pane, agent: null }));
     expect(element.classList.contains("pane--agent-header")).toBe(false);
   });
-  it("draws no buttons: no Effort picker and no split, expand or close actions", () => {
-    expect(element.querySelector("button")).toBeNull();
+  it("draws the four pane actions and no Effort picker", () => {
+    expect(
+      [...element.querySelectorAll(".pane-agent-header__act")].map((button) =>
+        button.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Split vertically", "Split horizontally", "Focus expand", "Close pane"]);
+    expect(element.textContent).not.toContain("Effort");
+  });
+  it("acts on its own pane, not the focused one", () => {
+    const close = vi.fn();
+    const dispose = registerPaneHeaderActions({ split: vi.fn(), toggleExpand: vi.fn(), close });
+    const buttons = element.querySelectorAll<HTMLButtonElement>(".pane-agent-header__act");
+    act(() => buttons[3].click());
+    expect(close).toHaveBeenCalledWith(1);
+    dispose();
   });
 });
 describe("shell pane header in a split tab", () => {
@@ -211,8 +225,8 @@ describe("agent pane header on the flush stage (LAY-5, shellStage switch)", () =
       expect(mark()).toBe(state);
     });
 
-    it("draws no buttons on an agent pane", () => {
-      expect(element.querySelector("button")).toBeNull();
+    it("draws the four pane actions on an agent pane", () => {
+      expect(element.querySelectorAll(".pane-agent-header__act")).toHaveLength(4);
     });
 
     it("leaves a shell pane's quick agents as they are", () => {

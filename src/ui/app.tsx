@@ -2059,7 +2059,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   };
   /**
-   * The agent pane header's own buttons (DL-32.8). They act on the pane whose
+   * The agent pane header's own buttons (DL-32.9). They act on the pane whose
    * header was pressed, so each handler resolves that pane's tab and goes
    * through the entry point the rail already uses for a pane-exact act.
    *

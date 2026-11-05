@@ -112,3 +112,25 @@
   height: var(--icon-14);
   display: block;
 }
+
+/* DL-32.9: the pane's own actions end the header, dimmed at rest and full strength on header
+   hover, on pane focus and on keyboard focus (PH-4). They are never hidden, so a resting window
+   still shows where they are. The flush header's message is visually hidden, so `margin-left`
+   pushes the group to the right edge. */
+.pane-agent-header__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+  margin-left: auto;
+  opacity: var(--state-disabled-opacity);
+}
+.pane-agent-header:hover .pane-agent-header__actions,
+.pane-slot.is-active .pane-agent-header__actions,
+.pane-agent-header__actions:focus-within {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pane-agent-header__actions {
+    transition: opacity var(--duration) var(--ease);
+  }
+}

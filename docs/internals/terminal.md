@@ -12,9 +12,9 @@ window-transfer protocols. The vocabulary is in [glossary.md](glossary.md).
 
 The Electron [agent pane header](../../src/terminal/pane-agent-header.tsx) reads
 the same pane tail as the sidebar and disposes its subscriptions with the pane.
-The header draws no buttons (DL-32.8): the Claude Effort picker and the pane's
-split, Focus expand and Close actions were removed on 2026-10-10; those acts live in
-`More` and on their chords. Claude's own model/effort picker is still reachable with
+The header ends in the pane's own split, Focus expand and Close buttons (DL-32.9, which
+supersedes DL-32.8's removal of them on 2026-10-10); they fold into a `⋯` menu below 280px of
+header width and `More` keeps all four. The Claude Effort picker stays removed. Claude's own model/effort picker is still reachable with
 its default Meta+P inside the terminal. The experimental Codex App Server bridge
 was removed when the owner narrowed the scope to Claude Code.
 

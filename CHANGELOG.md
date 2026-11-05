@@ -7,6 +7,9 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **Split, expand and close from the pane header.** Every agent pane's header has buttons for
+  split vertically, split horizontally, Focus expand and close, dimmed until you hover the header or
+  focus the pane. In a narrow pane they fold into one `⋯` menu.
 - **Menus, dialogs and tabs share one look.** Menus and pickers follow your theme instead of
   inverting it, and they, tooltips and dialogs sit on an opaque ground at one of three shadow
   depths; tooltips lose their arrow. Tabs, toolbar buttons, the browser toolbar, the Usage page and

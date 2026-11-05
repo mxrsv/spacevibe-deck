@@ -1,5 +1,5 @@
 /**
- * What the agent pane header's buttons call (DL-32.8).
+ * What the agent pane header's buttons call (DL-32.9).
  *
  * The header is a Preact tree `mountPaneAgentHeader` renders into the pane's own
  * bar, outside `App`'s tree, so it cannot receive `App`'s callbacks as props. The

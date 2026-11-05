@@ -1610,7 +1610,7 @@ The launcher is the compact launch page plus the Open Board's agent cards, shari
   because Deck does not watch the process after spawn.
 - **DL-32.7** Agent panes carry one compact identity header. On Electron the
   [pane header](../src/terminal/pane-agent-header.tsx) is logo · the sidebar's latest message
-  (one line, ellipsis, full text on hover), with no buttons (DL-32.8). It
+  (one line, ellipsis, full text on hover), ending in four action buttons (DL-32.9). It
   stays visible when the legacy shell pane bar is hidden; hover is neutral and keyboard focus
   explicit (`pane-agent-header.css`). On `.pane-slot.is-active` the bar takes
   the pane's `--bg` and a transparent bottom seam, so header and body read as one sheet inside
@@ -1627,7 +1627,19 @@ The launcher is the compact launch page plus the Open Board's agent cards, shari
   Effort picker nor Split horizontally, Split vertically, Focus expand and Close pane, which
   shipped on 2026-10-07 and were removed after the owner reviewed them. The pane operations
   live in `More` (DL-23.8) and on their chords. A shell pane in a split tab keeps its pinned
-  agent logos (`pane-quick-agents.tsx`).
+  agent logos (`pane-quick-agents.tsx`). Superseded for the four pane actions by DL-32.9; the
+  Effort picker stays removed.
+- **DL-32.9** The pane header ends in the pane's own actions (owner, 2026-11-06): Split
+  vertically, Split horizontally, Focus expand and Close pane, as four icon buttons
+  ([`pane-header-action-buttons.tsx`](../src/terminal/pane-header-action-buttons.tsx)), each a
+  single press with a DL-23 tooltip naming the action and its chord. They act on the pane
+  whose header holds them, not the focused pane, and Close goes through the rail's close
+  contract. Dimmed at rest, full strength on header hover, on the focused pane and on keyboard
+  focus; never hidden. Below 280px of header width the four fold into one `⋯` button that
+  opens a menu with the same four entries, so no action is lost and the state word stays
+  readable. `More` (DL-23.8) keeps all four. Decisions: `docs/specs/2026-11-06-pane-header-actions-decisions.md`.
+  Why: the pane is where the eye is when it wants to split or close it; the chords and `More`
+  are a trip away.
 
 ## 33. Sidebar usage and retained activity rows
 
