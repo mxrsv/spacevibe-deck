@@ -58,7 +58,9 @@ function changedAt(age: string): number {
 
 function realItem(workspace: MockWorkspace, agent: MockAgent, index: number): RailItem {
   const entry =
-    BASE.entry.kind === "agent" ? { ...BASE.entry, focused: agent.focused === true } : BASE.entry;
+    BASE.entry.kind === "agent"
+      ? { ...BASE.entry, agent: agent.agent, focused: agent.focused === true }
+      : BASE.entry;
   return {
     ...BASE,
     id: `pane:${workspace.key}-${index}`,

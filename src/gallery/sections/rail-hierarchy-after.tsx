@@ -78,7 +78,7 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
       >
         <HierarchyMark status={agent.status} />
         <span className="rh-row__logo">
-          <AgentGlyph agent="claude" className="size-3 shrink-0" />
+          <AgentGlyph agent={agent.agent} className="size-3 shrink-0" />
         </span>
         <span className="rh-row__main">
           <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
@@ -88,7 +88,7 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
             <span className="rh-row__age">{agent.age}</span>
           </span>
         </span>
-        <span className="sr-only">{`Claude, ${STATUS_WORDS[agent.status]}`}</span>
+        <span className="sr-only">{`${agent.agent}, ${STATUS_WORDS[agent.status]}`}</span>
       </button>
     </div>
   );

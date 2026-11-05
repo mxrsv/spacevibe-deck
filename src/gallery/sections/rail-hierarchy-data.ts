@@ -11,6 +11,8 @@ export interface MockAgent {
   readonly title: string;
   readonly branch: string;
   readonly status: RailStatus;
+  /** The agent CLI, so the mock shows every logo the rail can draw. */
+  readonly agent: string;
   /** What the age column reads; the real rail formats `changedAt`, the mock keeps it literal. */
   readonly age: string;
   /** Mark the row as the focused pane. */
@@ -33,9 +35,9 @@ const a = (
   age: string,
   branch = "main",
   focused = false,
-): MockAgent => ({ title, status, age, branch, focused });
+): MockAgent => ({ title, status, age, branch, focused, agent: "claude" });
 
-export const MOCK_WORKSPACES: readonly MockWorkspace[] = [
+const BASE_WORKSPACES: readonly MockWorkspace[] = [
   {
     key: "deck",
     name: "spacevibe-deck",
@@ -146,3 +148,27 @@ export const MOCK_WORKSPACES: readonly MockWorkspace[] = [
     ],
   },
 ];
+
+/** Every logo the rail draws, dealt round the rows so neighbours differ (the first row stays Claude). */
+const AGENT_CYCLE = [
+  "claude",
+  "codex",
+  "gemini",
+  "opencode",
+  "copilot",
+  "grok",
+  "kimi",
+  "droid",
+  "amp",
+  "vibe",
+  "kiro-cli",
+  "agy",
+] as const;
+
+export const MOCK_WORKSPACES: readonly MockWorkspace[] = BASE_WORKSPACES.map((workspace, w) => ({
+  ...workspace,
+  agents: workspace.agents.map((agent, i) => ({
+    ...agent,
+    agent: AGENT_CYCLE[(w * 5 + i) % AGENT_CYCLE.length],
+  })),
+}));
