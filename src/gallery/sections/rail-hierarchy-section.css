@@ -472,3 +472,41 @@
   /* Row gap 2 is left once the mark is gone. */
   margin-left: calc(var(--rh-text-x) - 8px - 16px - 2px);
 }
+
+/* A running agent's date is three dots that rise in turn (owner, 2026-11-06). Only the working
+   state loops (U5); reduced motion keeps them still. */
+.rh-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 14px;
+}
+.rh-dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rh-dots i {
+    animation: rh-dot 1.2s ease-in-out infinite;
+  }
+  .rh-dots i:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .rh-dots i:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+@keyframes rh-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}

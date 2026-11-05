@@ -101,7 +101,16 @@ export function AfterRow({
                   ? displayAgent(agent.agent)
                   : null}
             </span>
-            <span className="rh-row__age">{agent.age}</span>
+            {agent.status === "working" ? (
+              // A running agent has no time in state worth reading: three dots stand in.
+              <span className="rh-row__age rh-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+            ) : (
+              <span className="rh-row__age">{agent.age}</span>
+            )}
           </span>
         </span>
         <span className="sr-only">{`${agent.agent}, ${STATUS_WORDS[agent.status]}`}</span>
