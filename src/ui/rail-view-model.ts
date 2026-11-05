@@ -58,8 +58,6 @@ export interface RailGroup {
   readonly items: readonly RailItem[];
   /** A project's unarchived rows whatever the search says; a bucket's own rows. */
   readonly count: number;
-  /** What a folded project speaks with (LAY-1); null for a quiet project and for buckets. */
-  readonly rollup: RailItem | null;
 }
 
 export interface RailViewModel {
@@ -74,9 +72,8 @@ export interface RailViewModel {
 }
 
 /**
- * Loudest first, for the roll-up and the Priority sort alike. Not
- * `STATE_RANK`: there `ended` outranks `working`, while a folded project only
- * ever speaks with these four (LAY-1) and every other state ties at zero.
+ * Loudest first, for the Priority sort. Not `STATE_RANK`: there `ended` outranks
+ * `working`, while this ladder ranks only these four and every other state ties at zero.
  */
 const LOUDNESS: Readonly<Record<RailStatus, number>> = {
   failed: 4,
@@ -162,22 +159,6 @@ export function railItems(view: AgentRailView): readonly RailItem[] {
   );
 }
 
-/** The loudest row, newest first on a tie; null when none is loud (LAY-1). */
-export function projectRollup(items: readonly RailItem[]): RailItem | null {
-  let loudest: RailItem | null = null;
-  for (const item of items) {
-    const rank = LOUDNESS[item.status];
-    if (rank === 0) {
-      continue;
-    }
-    const delta = loudest === null ? 1 : rank - LOUDNESS[loudest.status];
-    if (delta > 0 || (delta === 0 && item.changedAt > (loudest?.changedAt ?? 0))) {
-      loudest = item;
-    }
-  }
-  return loudest;
-}
-
 /** Case-insensitive subsequence match, whitespace ignored: `tkrf` finds `token refresh`. */
 export function fuzzyMatch(needle: string, haystack: string): boolean {
   const text = haystack.toLowerCase();
@@ -233,7 +214,7 @@ function bucketGroups(
   return buckets
     .map((bucket) => {
       const held = visible.filter((item) => keyOf(item) === bucket.key);
-      return { ...bucket, items: held, count: held.length, rollup: null };
+      return { ...bucket, items: held, count: held.length };
     })
     .filter((group) => group.items.length > 0);
 }
@@ -281,7 +262,6 @@ export function buildRailView(
               label: project.name,
               items: visible.filter((item) => item.projectKey === project.key),
               count: own.length,
-              rollup: projectRollup(own),
             };
           })
           .filter((group) => !searching || group.items.length > 0)

@@ -78,16 +78,9 @@ function realItem(workspace: MockWorkspace, agent: MockAgent, index: number): Ra
   };
 }
 
-/** What a folded header speaks with today: one agent, the loudest of four statuses. */
-const SPEAKS: readonly RailStatus[] = ["failed", "needs-input", "working", "unread"];
-
 function realGroup(workspace: MockWorkspace): RailGroup {
   const items = workspace.agents.map((agent, index) => realItem(workspace, agent, index));
-  const rollup =
-    SPEAKS.map((status) => items.find((item) => item.status === status)).find(
-      (item) => item !== undefined,
-    ) ?? null;
-  return { key: workspace.key, label: workspace.name, items, count: items.length, rollup };
+  return { key: workspace.key, label: workspace.name, items, count: items.length };
 }
 
 function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {

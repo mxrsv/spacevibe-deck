@@ -52,6 +52,7 @@ import {
   text,
 } from "./project-rail-test-kit";
 import { createRememberedPress } from "./remembered-press";
+import { ROW_LAYOUT } from "./project-rail-row";
 
 installRailHarness();
 
@@ -108,6 +109,18 @@ describe("remembered rows on the project rail", () => {
     expect(content).toContain("token refresh");
     expect(content).toContain("side");
     expect(content).toContain("5m");
+  });
+
+  it("shares the live row's box, so the two line up (SR-1)", async () => {
+    mount({ remembered: { panes: [LAST_TOKEN], onResume: vi.fn(), onForget: vi.fn() } });
+    await settle();
+
+    const [remembered] = rememberedRows();
+    const live = rows().find((r) => r !== remembered.button);
+    // The same 32 box, pad and logo-to-text gap, and no status mark in either (SR-3).
+    expect(live?.className).toContain(ROW_LAYOUT);
+    expect(remembered.button?.className).toContain(ROW_LAYOUT);
+    expect(remembered.element.querySelector(".state-mark, [data-state]")).toBeNull();
   });
 
   it("names a row without a title after its agent", async () => {

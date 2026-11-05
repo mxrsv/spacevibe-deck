@@ -1,18 +1,18 @@
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
-import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
+import { DeckIcon, GLYPH_INLINE, type DeckIconSize } from "../controls/deck-icon";
 import { WorkspaceIcon } from "../workspace-icon";
-import { AgentStateMark } from "../blocks/agent-state-mark";
 import { stateClasses } from "../blocks/recipe-classes";
 import type { RailGroup } from "../rail-view-model";
 import { ProjectRailHeaderActions } from "./project-rail-header-actions";
-import { statusLabel } from "./project-rail-model";
 import type { ProjectCommands } from "./project-rail-project-commands";
 import { ProjectRailRemoveDialog } from "./project-rail-remove-dialog";
 
-/** The `size-4` box of the header's mark. */
+/** The `--icon-16` box of the header's mark. */
 const PROJECT_MARK_PX = 16;
+/** The fallback folder inside that box: 13, the smallest step a Phosphor icon draws at (RH-23). */
+const FALLBACK_FOLDER_SIZE: DeckIconSize = 13;
 
 export interface ProjectRailHeaderProps {
   readonly group: RailGroup;
@@ -27,9 +27,10 @@ export interface ProjectRailHeaderProps {
 }
 
 /**
- * One project's header (LAY-1): its mark, name and fold chevron. A FOLDED project
- * speaks with its loudest agent and its count; an open one shows its rows instead. Hover or
- * focus adds "+" and the more menu (the count steps aside); a press only folds.
+ * One project's header (LAY-1, SR-5): its logo, a short line to the name, the name and the fold
+ * chevron. It sticks to the top of the scroll area while its rows pass under it. A FOLDED project
+ * shows its agent count as a small circle on the logo's corner and nothing per status; an open
+ * one shows its rows instead. Hover or focus adds "+" and the more menu; a press only folds.
  */
 export function ProjectRailHeader({
   group,
@@ -40,7 +41,7 @@ export function ProjectRailHeader({
   agentDisabled,
   onToggle,
 }: ProjectRailHeaderProps) {
-  const { rollup, count } = group;
+  const { count } = group;
   const sessions = `${count} ${count === 1 ? "session" : "sessions"}`;
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -48,7 +49,8 @@ export function ProjectRailHeader({
   return (
     <div
       data-rail-item={`project:${group.key}`}
-      className="group/item relative"
+      // Opaque, so the rows that scroll under the pinned header never show through it.
+      className="group/item sticky top-0 z-1 bg-(--sidebar-bg)"
       onContextMenu={(event: MouseEvent) => {
         event.preventDefault();
         setMenuOpen(true);
@@ -65,14 +67,33 @@ export function ProjectRailHeader({
           stateClasses(false),
         )}
       >
-        <WorkspaceIcon
-          key={markPath}
-          path={markPath}
-          marks
-          size={PROJECT_MARK_PX}
-          className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted) [&>img]:size-full [&>img]:object-cover!"
-        />
-        <span className="min-w-0 truncate text-(length:--type-rail) leading-(--leading-rail) font-semibold text-(--text-primary)">
+        <span className="relative inline-flex shrink-0">
+          <WorkspaceIcon
+            key={markPath}
+            path={markPath}
+            marks
+            size={PROJECT_MARK_PX}
+            fallbackSize={FALLBACK_FOLDER_SIZE}
+            className="flex size-(--icon-16) shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted) [&>img]:size-full [&>img]:object-cover!"
+          />
+          {/* A short line joins the logo to the name across the gap between them (RH-9). */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-full flex w-(--space-8) justify-center"
+          >
+            <span className="h-(--seam-w) w-(--space-2) bg-(--seam-split)" />
+          </span>
+          {folded ? (
+            <span
+              aria-hidden="true"
+              data-rail-count
+              className="absolute -right-1 -bottom-1 grid h-(--badge-count-h) min-w-(--badge-count-h) place-items-center rounded-full bg-(--text-faint) px-0.5 text-(length:--type-rail-count) leading-none font-semibold text-(--bg) tabular-nums ring-2 ring-(--sidebar-bg)"
+            >
+              {count > 9 ? "9+" : count}
+            </span>
+          ) : null}
+        </span>
+        <span className="min-w-0 truncate text-(length:--type-meta) leading-(--leading-meta) font-semibold text-(--text-primary)">
           {group.label}
         </span>
         <DeckIcon
@@ -80,18 +101,7 @@ export function ProjectRailHeader({
           size={GLYPH_INLINE}
           class={cn("shrink-0 text-(--text-faint) transition-transform", folded && "-rotate-90")}
         />
-        {folded ? (
-          <span className="ml-auto flex shrink-0 items-center gap-(--space-icon-label) text-xs leading-(--leading-meta) text-(--text-muted) tabular-nums group-hover/item:invisible group-has-[:focus-visible]/item:invisible group-has-[[data-popup-open]]/item:invisible">
-            {rollup === null ? null : (
-              <AgentStateMark status={rollup.status} confidence={rollup.confidence} />
-            )}
-            <span aria-hidden="true">{count}</span>
-          </span>
-        ) : null}
-        <span className="sr-only">
-          {sessions}
-          {folded && rollup !== null ? `, ${statusLabel(rollup)}` : ""}
-        </span>
+        <span className="sr-only">{sessions}</span>
       </button>
       <ProjectRailHeaderActions
         name={group.label}

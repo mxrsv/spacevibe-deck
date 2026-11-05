@@ -369,13 +369,13 @@ describe("remove", () => {
 });
 
 describe("remembered project", () => {
-  it("keeps its header, says there are no sessions and still starts an agent", async () => {
+  it("keeps its header as one line and still starts an agent", async () => {
     const calls = vi.fn();
     mount({ cardActions: launcher(calls) });
     await settle();
 
     const notes = host.querySelector("section[aria-label=notes]");
-    expect(text(notes)).toContain("No sessions");
+    expect(text(notes)).not.toContain("No sessions");
     expect(notes?.querySelectorAll("[data-rail-row]")).toHaveLength(0);
     click(headerButton(NOTES, "New agent in"));
     expect(calls).toHaveBeenCalledExactlyOnceWith("/w/notes");

@@ -154,11 +154,6 @@ export function ProjectSection({
               onSelectTab={onSelectTab}
             />
           ))}
-      {!folded && group.items.length === 0 && rowless.length === 0 && remembered.length === 0 ? (
-        <p className="flex h-(--row-24) items-center px-(--space-pad-row) text-xs text-(--text-faint)">
-          No sessions
-        </p>
-      ) : null}
     </section>
   );
 }

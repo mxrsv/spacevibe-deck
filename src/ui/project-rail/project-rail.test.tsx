@@ -36,6 +36,7 @@ import { activeTabIndex, tabViews } from "../../terminal/tabs-store";
 import { resetDesktopEnvironmentForTests } from "../../lib/platform";
 import { MAX_RECENTS, WORKSPACES_VERSION } from "../../lib/workspace-recents";
 import { workspacesData } from "../../open-board/workspaces-store";
+import { STATE_NEEDS_YOU } from "../blocks/recipe-classes";
 import { setRailQuery } from "./project-rail-state";
 import {
   click,
@@ -185,32 +186,51 @@ describe("project list", () => {
     expect(rows()).toHaveLength(5);
   });
 
-  it("speaks for a folded project with its loudest agent and its count", async () => {
+  it("shows a folded project's agent count on its logo and nothing per status", async () => {
     mount();
     await settle();
 
-    click(headers()[0]);
-    // needs-input outranks working and unread in this project.
-    const folded = headers()[0];
-    expect(folded.querySelector('[data-state="needs-input"]')).not.toBeNull();
-    expect(folded.querySelector('[data-state="working"]')).toBeNull();
-    expect(text(folded)).toContain("3 sessions, needs you");
+    // Open: its rows are listed, so the header carries no count.
+    expect(headers()[0].querySelector("[data-rail-count]")).toBeNull();
 
-    // failed outranks everything, and a shell beside it adds to the count only.
+    click(headers()[0]);
+    const folded = headers()[0];
+    expect(folded.querySelector("[data-rail-count]")?.textContent).toBe("3");
+    // The count is announced as sessions, and no status (needs you, working, unread) is drawn or said.
+    expect(text(folded)).toContain("3 sessions");
+    expect(text(folded)).not.toMatch(/needs you|working|unread|failed/);
+    expect(folded.querySelector("[data-state]")).toBeNull();
+
+    // A failed agent beside a shell reads the same way: a count, no status.
     click(headers()[1]);
     const api = headers()[1];
-    expect(api.querySelector('[data-state="failed"]')).not.toBeNull();
-    expect(text(api)).toContain("2 sessions, failed");
+    expect(api.querySelector("[data-rail-count]")?.textContent).toBe("2");
+    expect(text(api)).toContain("2 sessions");
+    expect(text(api)).not.toContain("failed");
+    expect(api.querySelector("[data-state]")).toBeNull();
   });
 
-  it("shows no mark on a folded project nobody is loud in", async () => {
-    tabViews.value = [tab({ panes: [pane({ paneId: 11 }), pane({ paneId: 12, hasRun: false })] })];
+  it("caps a folded project's count at 9+", async () => {
+    tabViews.value = [
+      tab({ panes: Array.from({ length: 11 }, (_, i) => pane({ paneId: 100 + i })) }),
+    ];
     mount();
     await settle();
 
     click(headers()[0]);
-    expect(headers()[0].querySelector("[data-state]")).toBeNull();
-    expect(text(headers()[0])).toContain("2 sessions");
+    expect(headers()[0].querySelector("[data-rail-count]")?.textContent).toBe("9+");
+    expect(text(headers()[0])).toContain("11 sessions");
+  });
+
+  it("pins each header to the top of the list while its rows scroll under it", async () => {
+    mount();
+    await settle();
+
+    for (const header of headers()) {
+      const wrapper = header.closest("[data-rail-item]");
+      expect(wrapper?.classList.contains("sticky")).toBe(true);
+      expect(wrapper?.classList.contains("top-0")).toBe(true);
+    }
   });
 
   it("keeps a remembered project's header with no rows under it", async () => {
@@ -219,7 +239,9 @@ describe("project list", () => {
 
     const notes = host.querySelector("section[aria-label=notes]");
     expect(notes?.querySelectorAll("[data-rail-row]")).toHaveLength(0);
-    expect(text(notes)).toContain("No sessions");
+    // One header line: no "No sessions" line stands under it (SR-5).
+    expect(text(notes)).not.toContain("No sessions");
+    expect(notes?.children).toHaveLength(1);
     expect(text(notes)).toContain("0 sessions");
   });
 
@@ -313,24 +335,73 @@ describe("row", () => {
     expect(text(named)).toContain("token refresh");
     expect(text(named)).toContain("side");
     expect(text(named)).toContain("3m");
-    // The words behind the marks reach the accessible name, inferred ones qualified.
-    expect(text(named)).toContain("unread (inferred)");
+    // The words behind the status reach the accessible name, inferred ones qualified (SR-8).
+    expect(text(named)).toContain("Claude, unread (inferred)");
     expect(text(row("pane:12"))).toContain("Codex, working");
     expect(text(row("pane:12"))).toContain("main");
-    expect(text(row("pane:12"))).toContain("1m");
-    expect(row("pane:21")?.querySelector('[data-state="unread"]')).not.toBeNull();
+    expect(text(row("pane:11"))).toContain("Claude, needs you");
+    expect(text(row("pane:11"))).toContain("10m");
   });
 
-  it("names the folder where git knows no branch, and draws a shell row without an agent", async () => {
+  it("draws no status mark in any row or header, open or folded", async () => {
+    mount();
+    await settle();
+    const marks = () => host.querySelectorAll(".state-mark, [data-state]");
+
+    expect(rows().length).toBeGreaterThan(0);
+    expect(marks()).toHaveLength(0);
+    click(headers()[0]);
+    click(headers()[1]);
+    expect(marks()).toHaveLength(0);
+  });
+
+  it("carries unread and needs-you in a 600 title and the status ink of the branch line", async () => {
+    mount();
+    await settle();
+
+    const title = (id: string) => row(id)?.querySelector<HTMLElement>("[data-rail-title]");
+    const metaOf = (id: string) => row(id)?.querySelector<HTMLElement>("[data-rail-meta]");
+    // needs-you (11) and unread (21) are loud; working (12) and failed (31) are not.
+    expect(title("pane:11")?.classList.contains("font-semibold")).toBe(true);
+    expect(title("pane:21")?.classList.contains("font-semibold")).toBe(true);
+    expect(title("pane:12")?.classList.contains("font-semibold")).toBe(false);
+    expect(title("pane:31")?.classList.contains("font-semibold")).toBe(false);
+
+    expect(metaOf("pane:11")?.classList.contains("text-(--ink-need)")).toBe(true);
+    expect(metaOf("pane:21")?.classList.contains("text-(--ink-need)")).toBe(true);
+    expect(metaOf("pane:31")?.classList.contains("text-(--ink-fail)")).toBe(true);
+    expect(metaOf("pane:12")?.classList.contains("text-(--status-working)")).toBe(true);
+    // Only a needs-you row is tinted; an unread one is not.
+    expect(row("pane:11")?.className).toContain(STATE_NEEDS_YOU);
+    expect(row("pane:21")?.className).not.toContain(STATE_NEEDS_YOU);
+  });
+
+  it("turns a working row's branch into a thinking line with three dots for its date", async () => {
+    mount();
+    await settle();
+
+    const working = row("pane:12");
+    expect(working?.querySelector(".rail-thinking")?.textContent).toBe("main");
+    expect(working?.querySelectorAll(".rail-dots > i")).toHaveLength(3);
+    // The dots stand where the age stood, and nothing else loops.
+    expect(text(working)).not.toContain("1m");
+    for (const id of ["pane:11", "pane:21", "pane:31", "shell:4"]) {
+      expect(row(id)?.querySelector(".rail-thinking, .rail-dots")).toBeNull();
+    }
+  });
+
+  it("says folder only where git knows no branch, and draws a shell row without an agent", async () => {
     mount();
     await settle();
 
     const failed = row("pane:31");
-    expect(text(failed)).toContain("api");
-    expect(failed?.querySelector('[data-state="failed"]')).not.toBeNull();
+    expect(text(failed)).toContain("folder only");
+    // The folder's own name is the project header's, never repeated on the row.
+    expect(failed?.querySelector(".rail-thinking")).toBeNull();
+    expect(text(row("pane:12"))).not.toContain("folder only");
     const shell = row("shell:4");
     expect(text(shell)).toContain("shell, idle");
-    expect(shell?.querySelector('[data-state="idle"]')).not.toBeNull();
+    expect(text(shell)).toContain("folder only");
   });
 
   it("highlights the row that holds the keyboard and no other", async () => {

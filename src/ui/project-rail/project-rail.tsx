@@ -189,7 +189,7 @@ export function ProjectRail({
           setActiveId(owner.getAttribute("data-rail-item"));
         }
       }}
-      className="ui-preset min-w-0 bg-transparent pt-(--space-2) pb-(--space-group-sm)"
+      className="ui-preset min-w-0 bg-transparent pb-(--space-group-sm)"
     >
       {model.groups.map((group) =>
         byProject ? (

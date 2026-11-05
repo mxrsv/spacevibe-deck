@@ -7,7 +7,7 @@ import { Button } from "../controls/button";
 import { rowActionsGround, stateClasses } from "../blocks/recipe-classes";
 import { DeckIcon, GLYPH_FEATURE, GLYPH_INLINE } from "../controls/deck-icon";
 import { REVEAL, Tip } from "./project-rail-menu-parts";
-import { ROW_LAYOUT, ROW_LEAD, ROW_LOGO, ROW_MAIN, ROW_META } from "./project-rail-row";
+import { ROW_LAYOUT, ROW_LOGO, ROW_MAIN, ROW_META, ROW_TITLE } from "./project-rail-row";
 import { railNow } from "./project-rail-state";
 import type { RememberedRowModel } from "./remembered-rows";
 
@@ -23,9 +23,9 @@ export interface RememberedRailRowProps {
 }
 
 /**
- * A remembered agent pane (launcher spec LCH-2, RCP-18): the live row's box, quiet. No state
- * mark (its slot stays empty), the logo at half opacity, the title muted, no needs-you tint and
- * no fail ink. Hover or focus swaps the age for a resume mark inside the fixed end cell and lays
+ * A remembered agent pane (launcher spec LCH-2, RCP-18): the live row's box, quiet, so it follows
+ * the live row's layout (SR-1). The logo at half opacity, the title muted, no needs-you tint and
+ * no status ink. Hover or focus swaps the age for a resume mark inside the fixed end cell and lays
  * the forget ✕ before it. Not in the Tab order (the arrow keys walk the list); a press resumes.
  */
 export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRowProps) {
@@ -41,19 +41,15 @@ export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRow
         onClick={() => onResume(pane)}
         className={cn(ROW_LAYOUT, stateClasses(false))}
       >
-        {/* RCP-18: the slot stays, empty, so the titles line up with the live rows'. */}
-        <span className={ROW_LEAD} />
         <span className={ROW_LOGO}>
           {/* Opacity alone dims it: DL-1.3 bans `filter`. */}
           <AgentGlyph
             agent={pane.agent}
-            className="size-(--icon-16) shrink-0 opacity-(--state-disabled-opacity)"
+            className="size-(--icon-12) shrink-0 opacity-(--state-disabled-opacity)"
           />
         </span>
         <span className={ROW_MAIN}>
-          <span className="truncate text-(length:--type-rail) leading-(--leading-rail) text-(--text-muted)">
-            {title}
-          </span>
+          <span className={cn(ROW_TITLE, "text-(--text-muted)")}>{title}</span>
           <span className={ROW_META}>
             {branch === null ? null : (
               <>
@@ -65,7 +61,7 @@ export function RememberedRailRow({ row, onResume, onForget }: RememberedRailRow
         </span>
         {/* The fixed end cell: the age and the resume mark swap in one grid cell, so nothing
             moves (RCP-18). */}
-        <span className="grid w-(--row-end-w) shrink-0 items-center justify-items-end text-xs leading-(--leading-meta) text-(--text-faint) tabular-nums">
+        <span className="grid w-(--row-end-w) shrink-0 items-center justify-items-end text-(length:--type-rail-meta) leading-(--leading-rail-line) text-(--text-faint)">
           <span className="[grid-area:1/1] group-hover/item:invisible group-focus-within/item:invisible">
             <SavedAge savedAt={pane.savedAt} />
           </span>
