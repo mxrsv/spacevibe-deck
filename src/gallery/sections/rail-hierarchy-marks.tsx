@@ -24,38 +24,53 @@ export function HierarchyMark({
   );
 }
 
-/** The four statuses a folded workspace speaks with, loudest first (RH-10). */
-const ATTENTION: readonly { readonly status: RailStatus; readonly words: string }[] = [
+/** What a folded workspace speaks with (owner, 2026-11-06): unread and pending only. */
+const FOLDED_KINDS: readonly { readonly status: RailStatus; readonly words: string }[] = [
   { status: "needs-input", words: "need you" },
-  { status: "failed", words: "failed" },
   { status: "unread", words: "unread" },
-  { status: "working", words: "working" },
 ];
 
-/** At most this many clusters show; the agents of the rest fold into `+N`. */
-const MAX_CLUSTERS = 3;
+/** `count`: the number sits inside the circle; `plain`: a bare coloured circle. */
+export type CircleVariant = "count" | "plain";
 
-export function FoldedCluster({ agents }: { readonly agents: readonly MockAgent[] }) {
-  const present = ATTENTION.map((kind) => ({
+/** One filled circle per status present, in that status's own colour. */
+export function FoldedCircles({
+  agents,
+  variant,
+}: {
+  readonly agents: readonly MockAgent[];
+  readonly variant: CircleVariant;
+}) {
+  const present = FOLDED_KINDS.map((kind) => ({
     ...kind,
     count: agents.filter((agent) => agent.status === kind.status).length,
   })).filter((kind) => kind.count > 0);
-  const shown = present.slice(0, MAX_CLUSTERS);
-  const hidden = present.slice(MAX_CLUSTERS).reduce((sum, kind) => sum + kind.count, 0);
   if (present.length === 0) return null;
   return (
     <span
       role="img"
       aria-label={present.map((kind) => `${kind.count} ${kind.words}`).join(", ")}
-      className="rh-cluster"
+      className="rh-circles"
     >
-      {shown.map((kind) => (
-        <span key={kind.status} className="rh-cluster__item">
-          <HierarchyMark status={kind.status} />
-          {kind.count}
+      {present.map((kind) => (
+        <span
+          key={kind.status}
+          data-state={kind.status}
+          data-variant={variant}
+          className="rh-circle"
+        >
+          {variant === "count" ? kind.count : null}
         </span>
       ))}
-      {hidden > 0 ? <span className="rh-cluster__more">+{hidden}</span> : null}
+    </span>
+  );
+}
+
+/** The agent count as a small circle on the logo's corner. */
+export function CountBadge({ count }: { readonly count: number }) {
+  return (
+    <span className="rh-badge" aria-label={`${count} sessions`}>
+      {count > 9 ? "9+" : count}
     </span>
   );
 }

@@ -9,7 +9,8 @@
 .rh-compare {
   --rh-slot: 12px;
   --rh-glyph: 8px;
-  --rh-row: 36px;
+  --rh-row: 32px;
+  --rh-text: 11px;
   --rh-indent: 14px;
   display: grid;
   grid-template-columns: repeat(2, 17rem);
@@ -161,8 +162,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--type-rail);
-  line-height: var(--leading-rail);
+  font-size: var(--type-meta);
+  line-height: var(--leading-meta);
   font-weight: 600;
   /* RH-7's "secondary ink": the theme has no `--text-secondary`, so the build reads
      `--text-muted`, the nearest rung. */
@@ -178,7 +179,7 @@
 }
 
 .rh-head__count {
-  font-size: 12px;
+  font-size: var(--rh-text, 11px);
   font-variant-numeric: tabular-nums;
   color: var(--text-faint);
 }
@@ -224,10 +225,10 @@
 .rh-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  height: var(--rh-row, 36px);
-  padding: 0 var(--space-pad-row) 0 6px;
+  height: var(--rh-row, 32px);
+  padding: 0 var(--space-pad-row) 0 4px;
   border-radius: var(--radius-control);
   text-align: left;
 }
@@ -237,11 +238,12 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--icon-box-28);
-  height: var(--icon-box-28);
+  width: 20px;
+  height: 20px;
 }
 
 .rh-row__main {
+  margin-left: 2px;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -252,9 +254,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--type-meta);
-  line-height: 16px;
-  font-weight: 500;
+  font-size: var(--rh-text, 11px);
+  line-height: 14px;
+  font-weight: 400;
   color: var(--text-primary);
 }
 .rh-row__title--loud {
@@ -266,8 +268,8 @@
   align-items: center;
   gap: var(--space-icon-label);
   min-width: 0;
-  font-size: var(--type-meta);
-  line-height: 16px;
+  font-size: var(--rh-text, 11px);
+  line-height: 14px;
   color: var(--text-faint);
 }
 .rh-row__meta--fail {
@@ -285,22 +287,77 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── The folded cluster (RH-10) ── */
-.rh-cluster {
+/* ── The folded circles and the logo's count badge (RH-10) ── */
+.rh-circles {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+}
+.rh-circle {
+  display: inline-grid;
+  place-items: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--status-unread);
+  /* The ink is the theme's ground, so it reads on the yellow in both themes. */
+  color: var(--bg);
+  /* Below the type scale on purpose: the mock shows it; the build decides (fork). */
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
 }
-.rh-cluster__item {
+.rh-circle[data-variant="plain"] {
+  width: 8px;
+  min-width: 0;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+}
+/* Needs you keeps the ring that tells it from unread. */
+.rh-circle[data-state="needs-input"] {
+  box-shadow:
+    0 0 0 1.5px var(--sidebar-bg),
+    0 0 0 2.5px var(--status-unread);
+  margin: 0 2px;
+}
+
+.rh-logo-wrap {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 1px;
+  flex: none;
 }
-.rh-cluster__more {
-  color: var(--text-faint);
+.rh-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: var(--text-faint);
+  box-shadow: 0 0 0 1.5px var(--sidebar-bg);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The three folded-header candidates sit one under another. */
+.rh-candidates {
+  display: grid;
+  grid-template-columns: repeat(3, 17rem);
+  gap: 20px;
+  align-items: start;
+}
+.rh-candidates .rh-frame {
+  height: auto;
+  padding-top: var(--space-8);
 }
 
 /* ── The mark sheet ── */

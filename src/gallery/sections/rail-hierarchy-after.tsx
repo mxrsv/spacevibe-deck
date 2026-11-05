@@ -5,7 +5,12 @@ import { AgentGlyph } from "../../ui/controls/agent-glyph";
 import { DeckIcon, GLYPH_INLINE } from "../../ui/controls/deck-icon";
 import { STATE_NEEDS_YOU, stateClasses } from "../../ui/blocks/recipe-classes";
 import type { MockAgent, MockLogo, MockWorkspace } from "./rail-hierarchy-data";
-import { FoldedCluster, HierarchyMark } from "./rail-hierarchy-marks";
+import {
+  CountBadge,
+  FoldedCircles,
+  HierarchyMark,
+  type CircleVariant,
+} from "./rail-hierarchy-marks";
 import "./rail-hierarchy-section.css";
 
 /** The words a screen reader gets in place of the mark (RH-16). */
@@ -19,32 +24,43 @@ const STATUS_WORDS: Readonly<Record<string, string>> = {
   idle: "idle",
 };
 
+/** Where a header puts what it knows: the circle style and where the agent count goes. */
+export interface HeaderStyle {
+  readonly circles: CircleVariant;
+  /** `badge`: on the logo's corner; `end`: a plain number at the header's end. */
+  readonly total: "badge" | "end";
+}
+export const DEFAULT_HEADER: HeaderStyle = { circles: "count", total: "badge" };
+
 /**
  * The workspace's logo in its fixed 16 box (RL-10). A workspace without one gets the real
- * fallback glyph; the others a flat stand-in the box clips.
+ * fallback glyph; the others a flat stand-in the box clips. A badge sits on the corner,
+ * outside the box so the clip does not cut it.
  */
-function LogoBox({ logo }: { readonly logo: MockLogo }) {
-  if (logo === "folder") {
-    return (
-      <WorkspaceIcon
-        path={null}
-        marks
-        size={16}
-        className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted)"
-      />
-    );
-  }
+function LogoBox({ logo, badge }: { readonly logo: MockLogo; readonly badge: number }) {
   return (
-    <span className="rh-logo" data-logo={logo}>
-      {logo === "dark" ? "N" : null}
+    <span className="rh-logo-wrap">
+      {logo === "folder" ? (
+        <WorkspaceIcon
+          path={null}
+          marks
+          size={16}
+          className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted)"
+        />
+      ) : (
+        <span className="rh-logo" data-logo={logo}>
+          {logo === "dark" ? "N" : null}
+        </span>
+      )}
+      {badge > 0 ? <CountBadge count={badge} /> : null}
     </span>
   );
 }
 
 /**
- * The proposed agent row (RH-2, RH-8, RH-11, RH-12): 36 high, a 12 mark slot, the 28 logo box,
- * a 12px title over a 12px faint meta line. Unread and needs-you titles are 600; only needs-you
- * is tinted.
+ * The proposed agent row (RH-2, RH-8, RH-12): a 12 mark slot, a 20 logo box holding a 14 glyph,
+ * an 11px title over an 11px faint meta line. Unread and needs-you titles are 600; only
+ * needs-you is tinted.
  */
 export function AfterRow({ agent }: { readonly agent: MockAgent }) {
   const loud = agent.status === "needs-input" || agent.status === "unread";
@@ -62,15 +78,10 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
       >
         <HierarchyMark status={agent.status} />
         <span className="rh-row__logo">
-          <AgentGlyph agent="claude" className="size-(--icon-16) shrink-0" />
+          <AgentGlyph agent="claude" className="size-3.5 shrink-0" />
         </span>
         <span className="rh-row__main">
-          <span
-            className={cn("rh-row__title", loud && "rh-row__title--loud")}
-            data-failed={agent.status === "failed" ? "" : undefined}
-          >
-            {agent.title}
-          </span>
+          <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
           <span className={cn("rh-row__meta", agent.status === "failed" && "rh-row__meta--fail")}>
             <DeckIcon icon={GitBranchIcon} size={GLYPH_INLINE} class="shrink-0" />
             <span className="rh-row__branch">{agent.branch}</span>
@@ -84,17 +95,23 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
 }
 
 /**
- * One workspace (RH-7, RH-9, RH-10, RH-15): a sticky header in secondary ink, then its rows
- * indented behind a guide line. Folded, the header carries the cluster; empty, one line and a
- * muted 0.
+ * One workspace (RH-7, RH-9, RH-10): a sticky header in muted ink, then its rows indented behind
+ * a guide line. Folded, the header carries one coloured circle per unread / pending status.
  */
-export function AfterWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
+export function AfterWorkspace({
+  workspace,
+  header = DEFAULT_HEADER,
+}: {
+  readonly workspace: MockWorkspace;
+  readonly header?: HeaderStyle;
+}) {
   const { agents, folded } = workspace;
+  const badge = header.total === "badge" ? agents.length : 0;
   return (
     <section aria-label={workspace.name} className="rh-ws">
       {/* raw-control: a whole-row disclosure target, as the shipped header */}
       <button type="button" aria-expanded={!folded} className={cn("rh-head", stateClasses(false))}>
-        <LogoBox logo={workspace.logo} />
+        <LogoBox logo={workspace.logo} badge={badge} />
         <span className="rh-head__name">{workspace.name}</span>
         <DeckIcon
           icon={ArrowDown01Icon}
@@ -102,8 +119,8 @@ export function AfterWorkspace({ workspace }: { readonly workspace: MockWorkspac
           class={cn("shrink-0 text-(--text-faint)", folded && "-rotate-90")}
         />
         <span className="rh-head__end">
-          {folded ? <FoldedCluster agents={agents} /> : null}
-          {folded || agents.length === 0 ? (
+          {folded ? <FoldedCircles agents={agents} variant={header.circles} /> : null}
+          {header.total === "end" && agents.length > 0 ? (
             <span className="rh-head__count">{agents.length}</span>
           ) : null}
         </span>

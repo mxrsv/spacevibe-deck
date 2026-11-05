@@ -11,7 +11,7 @@ import {
   type RailStatus,
 } from "../../ui/rail-view-model";
 import { SectionHead, Specimen } from "../specimen";
-import { AfterWorkspace } from "./rail-hierarchy-after";
+import { AfterWorkspace, type HeaderStyle } from "./rail-hierarchy-after";
 import { MOCK_WORKSPACES, type MockAgent, type MockWorkspace } from "./rail-hierarchy-data";
 import { HierarchyMark } from "./rail-hierarchy-marks";
 import { ThemePair } from "./recipe-states-kit";
@@ -162,6 +162,37 @@ function MarkSheet() {
   );
 }
 
+/** The folded-header candidates: the owner's circle idea, three ways to carry the numbers. */
+const CANDIDATES: readonly { readonly name: string; readonly header: HeaderStyle }[] = [
+  {
+    name: "A · count inside the circle, total on the logo",
+    header: { circles: "count", total: "badge" },
+  },
+  { name: "B · bare circles, total on the logo", header: { circles: "plain", total: "badge" } },
+  {
+    name: "C · count inside the circle, total at the end",
+    header: { circles: "count", total: "end" },
+  },
+];
+
+function FoldedCandidates() {
+  const folded = MOCK_WORKSPACES.filter((workspace) => workspace.folded);
+  return (
+    <div className="rh-candidates ui-preset">
+      {CANDIDATES.map((candidate) => (
+        <div key={candidate.name} className="rh-column">
+          <span className="rh-column__title">{candidate.name}</span>
+          <div className="rh-frame">
+            {folded.map((workspace) => (
+              <AfterWorkspace key={workspace.key} workspace={workspace} header={candidate.header} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function RailHierarchySection() {
   return (
     <>
@@ -171,7 +202,7 @@ export function RailHierarchySection() {
       />
       <Specimen
         name="rail"
-        note="8 workspaces, 31 agents, all 7 statuses; row 44→36, title 13→12, mark slot 14→12"
+        note="9 workspaces, 34 agents, all 7 statuses; row 44→32, agent text 13→11, logo box 28→20, mark slot 14→12"
       >
         <ThemePair ground="--sidebar-bg">
           <div className="rh-compare ui-preset">
@@ -192,6 +223,14 @@ export function RailHierarchySection() {
               </div>
             </div>
           </div>
+        </ThemePair>
+      </Specimen>
+      <Specimen
+        name="folded header"
+        note="folded workspaces only: board (2 pending, 1 unread, 1 failed), giffcoffee (working only), hub (1 unread)"
+      >
+        <ThemePair ground="--sidebar-bg">
+          <FoldedCandidates />
         </ThemePair>
       </Specimen>
       <Specimen

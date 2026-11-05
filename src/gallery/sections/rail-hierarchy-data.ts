@@ -1,7 +1,7 @@
 import type { RailStatus } from "../../ui/rail-view-model";
 
 /**
- * Worst-case data for the rail hierarchy mock (ledger RH-18): 8 workspaces, 31 agents, every
+ * Worst-case data for the rail hierarchy mock (ledger RH-18): 9 workspaces, 34 agents, every
  * status present, one workspace with six live agents, a folded one holding all four attention
  * kinds, a long name, a one-word name, a long Vietnamese title, a long branch, an empty one.
  * `src/gallery` only: nothing here ships.
@@ -132,6 +132,17 @@ export const MOCK_WORKSPACES: readonly MockWorkspace[] = [
       a("Supabase RLS policy for creators", "working", "3m", "feat/rls"),
       a("Google auth callback", "done", "4h", "fix/auth"),
       a("Idle shell", "idle", "1d"),
+    ],
+  },
+  {
+    key: "hub",
+    name: "spacevibe-hub",
+    logo: "folder",
+    folded: true,
+    agents: [
+      a("Remove the old live code", "unread", "12m", "chore/live"),
+      a("Redirect /live", "done", "3h", "feat/redirect"),
+      a("Portfolio copy", "idle", "2d"),
     ],
   },
 ];
