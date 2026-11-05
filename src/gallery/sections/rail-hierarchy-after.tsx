@@ -66,7 +66,7 @@ function LogoBox({ logo, badge }: { readonly logo: MockLogo; readonly badge: num
 export function AfterRow({
   agent,
   git = true,
-  noGit = "label",
+  noGit = "folder-only",
 }: {
   readonly agent: MockAgent;
   readonly git?: boolean;
@@ -136,7 +136,7 @@ export function AfterRow({
  */
 export function AfterWorkspace({
   workspace,
-  noGit = "label",
+  noGit = "folder-only",
 }: {
   readonly workspace: MockWorkspace;
   readonly noGit?: NoGitMeta;

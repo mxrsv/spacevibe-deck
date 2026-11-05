@@ -177,10 +177,11 @@ const NO_GIT_OPTIONS: readonly { readonly value: NoGitMeta; readonly label: stri
 ];
 
 export function RailHierarchySection() {
-  // The owner's A/B: the proposal with and without its status icons (2026-11-06).
-  const [marks, setMarks] = useState(true);
+  // The owner chose icons off (2026-11-06): the proposal opens without them; the button shows the
+  // other side.
+  const [marks, setMarks] = useState(false);
   // What a non-git workspace's meta line reads (the owner's open question, 2026-11-06).
-  const [noGit, setNoGit] = useState<NoGitMeta>("label");
+  const [noGit, setNoGit] = useState<NoGitMeta>("folder-only");
   return (
     <>
       <SectionHead
