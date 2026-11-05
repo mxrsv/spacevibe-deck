@@ -24,10 +24,10 @@ export function HierarchyMark({
   );
 }
 
-/** What a folded workspace speaks with (owner, 2026-11-06): unread and pending only. */
+/** What a folded workspace speaks with (owner, 2026-11-06): unread and pending (working) only. */
 const FOLDED_KINDS: readonly { readonly status: RailStatus; readonly words: string }[] = [
-  { status: "needs-input", words: "need you" },
   { status: "unread", words: "unread" },
+  { status: "working", words: "working" },
 ];
 
 /** One filled circle per status present, in that status's own colour. */
