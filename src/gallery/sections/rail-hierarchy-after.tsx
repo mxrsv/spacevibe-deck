@@ -74,9 +74,11 @@ export function AfterRow({ agent }: { readonly agent: MockAgent }) {
         </span>
         <span className="rh-row__main">
           <span className={cn("rh-row__title", loud && "rh-row__title--loud")}>{agent.title}</span>
-          <span className={cn("rh-row__meta", agent.status === "failed" && "rh-row__meta--fail")}>
+          <span className="rh-row__meta">
             <DeckIcon icon={GitBranchIcon} size={GLYPH_INLINE} class="shrink-0" />
-            <span className="rh-row__branch">{agent.branch}</span>
+            <span className="rh-row__branch" data-status={agent.status}>
+              {agent.branch}
+            </span>
             <span className="rh-row__age">{agent.age}</span>
           </span>
         </span>

@@ -286,14 +286,26 @@
   line-height: 14px;
   color: var(--text-faint);
 }
-.rh-row__meta--fail {
-  color: var(--ink-fail);
-}
 .rh-row__branch {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The branch takes its status mark's ink (owner, 2026-11-06). The `--ink-*` steps keep it legible
+   on both themes; working wears the mark's own primary ink; ended and idle stay faint. */
+.rh-row__branch[data-status="needs-input"],
+.rh-row__branch[data-status="unread"] {
+  color: var(--ink-need);
+}
+.rh-row__branch[data-status="failed"] {
+  color: var(--ink-fail);
+}
+.rh-row__branch[data-status="done"] {
+  color: var(--ink-ok);
+}
+.rh-row__branch[data-status="working"] {
+  color: var(--status-working);
 }
 .rh-row__age {
   flex: none;
