@@ -12,6 +12,8 @@
   --rh-row: 32px;
   --rh-text: 11px;
   --rh-meta: 10px;
+  /* Row pad 4 + mark 12 + gap 2 + logo 16 + gap 2 + 1: where an agent's text starts. */
+  --rh-text-x: 37px;
   --rh-indent: 14px;
   display: grid;
   grid-template-columns: repeat(2, 17rem);
@@ -159,6 +161,10 @@
 }
 
 .rh-head__name {
+  /* The name starts where the agent text starts: --rh-text-x from the row's edge (owner,
+     2026-11-06: no guide line, text in line with the workspace name). Header pad 8 + logo 16
+     + gap 8 leave this much to make up. */
+  margin-left: calc(var(--rh-text-x) - 8px - 16px - 8px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,10 +219,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-list);
-  /* The guide runs under the header's logo centre (8 pad + 8 half of the 16 box). */
-  margin-left: 15px;
-  padding-left: 7px;
-  border-left: var(--seam-w) solid var(--seam-divider);
 }
 
 .rh-row-wrap {
