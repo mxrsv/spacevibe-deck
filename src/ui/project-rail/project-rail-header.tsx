@@ -11,8 +11,8 @@ import { statusLabel } from "./project-rail-model";
 import type { ProjectCommands } from "./project-rail-project-commands";
 import { ProjectRailRemoveDialog } from "./project-rail-remove-dialog";
 
-/** The `size-5` box of the header's mark. */
-const PROJECT_MARK_PX = 24;
+/** The `size-4` box of the header's mark. */
+const PROJECT_MARK_PX = 16;
 
 export interface ProjectRailHeaderProps {
   readonly group: RailGroup;
@@ -70,7 +70,7 @@ export function ProjectRailHeader({
           path={markPath}
           marks
           size={PROJECT_MARK_PX}
-          className="flex size-(--icon-box-24) shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted) [&>img]:size-full [&>img]:object-cover!"
+          className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-control) text-(--text-muted) [&>img]:size-full [&>img]:object-cover!"
         />
         <span className="min-w-0 truncate text-(length:--type-rail) leading-(--leading-rail) font-semibold text-(--text-primary)">
           {group.label}

@@ -13,12 +13,12 @@ Rows marked (default) were not answered by the owner and take the recommended an
 | RL-6 | Name leading 20 → 18px (`--leading-rail`); meta leading stays 16px | (default) |
 | RL-7 | New tokens live in `01-tokens.css` next to RCP-5/RCP-7; update `composition-rules.test.ts` and the RCP spec | (default) |
 | RL-8 | A workspace with no logo shows the app folder glyph (`FEATURE_ICON`, 15px) instead of initials | (default) |
-| RL-9 | The logo box is 24px (`--icon-box-24`) | (default) |
-| RL-10 | Every logo, real or fallback, sits in one 24px box that is a fixed square mould with no border and no fill: the logo covers it and is clipped by it, no padding, so a round logo still shows square | "logo phải nằm trong 1 box" + "box để logo nằm trong 1 khuôn nhất định, không phải box có padding" |
+| RL-9 | The logo box is 16px (`size-4`) | "giảm size logo workspace xuống 16px" |
+| RL-10 | Every logo, real or fallback, sits in one 16px box that is a fixed square mould with no border and no fill: the logo covers it and is clipped by it, no padding, so a round logo still shows square | "logo phải nằm trong 1 box" + "box để logo nằm trong 1 khuôn nhất định, không phải box có padding" |
 
 ## Acceptance (each ID)
 
 - RL-2/3: computed `font-size` of a name is 13px, of a meta line 12px; no other surface changed (W21: list all `text-sm` sites, report changed N of M).
 - RL-4/5/6: measured row heights 28 / 40, leading 18 / 16 in the running dev app (W22).
 - RL-7: ratchet tests pass with the new tokens and still fail an off-scale literal.
-- RL-8/9/10: `spacevibe-academy` (real logo), `spacevibe-board` (no logo) and `kyantran` (one-letter name) all render a 24px square box without border; no initials anywhere.
+- RL-8/9/10: `spacevibe-academy` (real logo), `spacevibe-board` (no logo) and `kyantran` (one-letter name) all render a 16px square box without border; no initials anywhere.
