@@ -9,14 +9,14 @@
 /* The numbers the proposal is drawn with; every specimen of this section reads them. */
 .rh-compare,
 .rh-marks {
-  --rh-slot: 10px;
-  --rh-glyph: 7px;
+  --rh-slot: 12px;
+  --rh-glyph: 9px;
   --rh-row: 32px;
   --rh-text: 11px;
   --rh-meta: 10px;
-  /* Row pad 8 + mark 10 + gap 2 + logo 16 + gap 2 + 1: where an agent's text starts. The row's
+  /* Row pad 8 + mark 12 + gap 2 + logo 16 + gap 2 + 1: where an agent's text starts. The row's
      pad is the header's, so the mark's left edge sits under the workspace logo's. */
-  --rh-text-x: 39px;
+  --rh-text-x: 41px;
 }
 
 .rh-compare {
@@ -55,15 +55,15 @@
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: var(--rh-slot, 10px);
-  height: var(--rh-slot, 10px);
+  width: var(--rh-slot, 12px);
+  height: var(--rh-slot, 12px);
   color: var(--status-working);
 }
 
 .rh-mark::before {
   content: "";
-  width: var(--rh-glyph, 7px);
-  height: var(--rh-glyph, 7px);
+  width: var(--rh-glyph, 9px);
+  height: var(--rh-glyph, 9px);
   background: var(--rh-ink);
 }
 
@@ -102,8 +102,8 @@
   --rh-ink: var(--status-unread);
 }
 .rh-mark[data-state="unread"]::before {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
 }
 
@@ -120,8 +120,8 @@
   position: absolute;
   inset: 0;
   margin: auto;
-  width: var(--rh-glyph, 7px);
-  height: var(--rh-glyph, 7px);
+  width: var(--rh-glyph, 9px);
+  height: var(--rh-glyph, 9px);
   background: var(--bg);
   -webkit-mask: var(--rh-check) center / 100% 100% no-repeat;
   mask: var(--rh-check) center / 100% 100% no-repeat;
@@ -138,12 +138,12 @@
 
 /* Ended: a small square. Idle: a short dash, the quietest ink. */
 .rh-mark[data-state="ended"]::before {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: var(--radius-flat);
 }
 .rh-mark[data-state="idle"]::before {
-  width: 5px;
+  width: 6px;
   height: 1.5px;
   border-radius: 1px;
 }
