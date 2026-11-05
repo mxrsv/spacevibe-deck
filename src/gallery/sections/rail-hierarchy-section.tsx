@@ -242,7 +242,7 @@ export function RailHierarchySection() {
       </Specimen>
       <Specimen
         name="state marks"
-        note="RH-3: seven shapes, no hollow ring; 12 slot / 8 glyph, then 4×"
+        note="RH-3: seven shapes, no hollow ring; 12 slot / 8 glyph, then 4x"
       >
         <ThemePair ground="--sidebar-bg">
           <MarkSheet />
