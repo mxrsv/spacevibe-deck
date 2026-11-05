@@ -334,6 +334,18 @@
   display: inline-flex;
   flex: none;
 }
+
+/* A short horizontal line joins the logo to the name across the gap between them (owner,
+   2026-11-06): the logo's edge to the name is --rh-text-x - 8 - 16, the line leaves 3 either side. */
+.rh-head .rh-logo-wrap::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 3px);
+  width: calc(var(--rh-text-x) - 8px - 16px - 6px);
+  height: var(--seam-w);
+  background: var(--seam-split);
+}
 .rh-badge {
   position: absolute;
   right: -5px;
