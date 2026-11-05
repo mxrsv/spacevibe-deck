@@ -106,7 +106,8 @@ export function AfterWorkspace({
   readonly header?: HeaderStyle;
 }) {
   const { agents, folded } = workspace;
-  const badge = header.total === "badge" ? agents.length : 0;
+  // The count is for a folded workspace only: an open one lists its agents.
+  const badge = header.total === "badge" && folded ? agents.length : 0;
   return (
     <section aria-label={workspace.name} className="rh-ws">
       {/* raw-control: a whole-row disclosure target, as the shipped header */}
