@@ -187,3 +187,65 @@ The final pass rebuilt the tab workarounds as shared recipes. These choices were
 ## Owner answers for the build (2026-11-05)
 
 - **Dims use no `filter`** (DL-1.3): a remembered row's logo and an unpicked tile's logo dim by opacity 0.5 alone, and the window behind a floating launcher or modal dims under the `--scrim-bg` colour scrim. The mock's greyscale and `brightness()` dims are gone. The other five answers are recorded in `docs/plans/2026-11-05-ui-recipes-ratchet.md`.
+
+## Parity decisions (owner, 2026-11-05)
+
+Approved after PR #98 shipped tokens only. This ledger is binding: the app's components must match the mock tabs in structure, content, look and theme. The IDs are for spec traceability (W20).
+
+- **P0:** the mock is the standard the app is changed to match, per surface. This restates grilling Q23. "Layout" is no longer out of scope.
+- **P1:** drop "No sessions" under empty projects. Keep "No sessions match" while searching.
+- **P2:** agents that are not installed stay in the launcher row as a dimmed 36 tile with a download mark. Pressing the tile installs. There is no separate framed "Install" button, so the row never wraps. Amend LCH-8 and docs/user/agents.md.
+- **P3:** the dock strip always shows Files. Keep +, widen and close, as the mock's dock.js:111 does.
+- **P4:** Usage empty state: icon, centred, plus the "Today" band with its info and Usage details buttons (mock dock.js:89).
+- **P5:** remove the "Deck DEV" brand from the frame. Keep a dev-build marker: a small dot on the sidebar toggle. Keep the drag region and the room for the Windows caption buttons. Rewrite DL-18.9.
+- **P6:** launcher: show the ⇧ key only, with the meaning in a tooltip and the accessible name. Add a + icon for "New space in" and a split icon for "Beside".
+- **P7:** the launcher's Run is ivory in graphite. Scope it to the launcher's primary action only; `--primary` is unchanged. Amend spec line 386.
+- **P8:** capture the composed real app with an isolated userData run to complete the parity list.
+- **P9:** the launcher command bar's controls are 32 inside a 40 frame (mock launcher.js:370).
+- **Noted, not decided:** the release switches still keep the new surfaces off in packaged builds, so a release looks like the mock only after the cut-over.
+
+## Grilling ledger (owner, 2026-11-04/05; every answer = recommendation unless noted)
+
+- **Intent:** the whole app gets one recipe per thing (size, radius, spacing, row height, hover, focus, selected, pressed, disabled, borders, elevation, type, weight), one token each, per theme. A ratchet test enforces it. Success: per-surface state sheets approved by eye in both themes, debt 0 on those surfaces, and the test blocking new off-scale values.
+- **Standard and conflicts:**
+  - **Q1:** the ui-composition spec is the base, and the mock fills the gaps. Where DL and the mock conflict, DL wins on radius 7 and ease. DL-20.5 changes so spacing gets tokens.
+  - **Q4:** state tokens derive from `--tone`.
+  - **Q12:** the spacing role table.
+  - **Q13:** Deck's existing token names win.
+  - **Q14:** pressed = 8% toward black.
+- **The ratchet:**
+  - **Q2:** it covers radius, height, spacing, focus, state backgrounds, shadow and weight, in CSS and Tailwind classes in .tsx. Colours are out.
+  - **Q3:** per-file debt ledger; CMP-20 surfaces exempt.
+  - **Q11:** live classes move out of the CMP-20 partials.
+  - **Q16:** the Tailwind allowlist.
+  - **Q17:** the `ui-scale: <reason>` exception.
+- **Process:**
+  - **Q5:** no switch, one commit per surface, one eye review at the end.
+  - **Q6:** order rail → stage bar and pane header → dock → overlays → settings.
+  - **Q7:** the review is on gallery state sheets made from real components in graphite and Deck Light, next to the mock, then one run of the real app.
+- **Visual rules:**
+  - **Q8 = b:** shadows are allowed.
+    - **Q8.1:** three levels: menu, floating panel, modal.
+    - **Q8.2:** dark = shadow + inset hairline, light = shadow only.
+    - **Q8.3:** static only, token only, floating elements only.
+  - **Q9:** Hugeicons; the ratchet blocks new Phosphor imports.
+  - **Q10, Q19:** rows 24/32/44; rail rows 52 → 44, live and remembered.
+  - **Q15:** shadow strength picked by eye; picked mid.
+  - **Q18:** one badge per chord.
+  - **Q20:** weights 400/600 only.
+  - **Q21:** DeckIcon size typed 16/14/12.
+  - **Q22:** scrollbar and selection are tokens.
+- **The mock:**
+  - **Q23 (a):** draw every surface in the mock. **The mock is the standard the app is changed to match.**
+  - **Q24:** a composed window plus per-group state tabs, in both themes.
+  - **Q25:** real data plus a Worst-case toggle.
+  - **Q26:** drop directions B and C.
+  - **Q27:** the surface list.
+  - **Q28:** settings drawn as row patterns.
+  - **Q29:** the tab order.
+  - **Q30:** the composed scene.
+  - **Q31:** the file split.
+- **Owner picks:**
+  - working mark = braille (B);
+  - mock approved by eye 2026-11-05;
+  - the six pending DL items approved through the cloud prompt.
