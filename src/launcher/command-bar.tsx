@@ -214,6 +214,7 @@ export function CommandBar(props: CommandBarProps) {
             </Button>
             <Input
               ref={filterField}
+              framed
               className="command-bar__filter"
               aria-label="Filter agents or projects"
               placeholder="Filter agents or projects"

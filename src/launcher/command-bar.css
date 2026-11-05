@@ -37,7 +37,6 @@
   border-radius: var(--radius-surface);
   background: var(--sidebar-bg);
   box-shadow: var(--elev-2);
-  border: var(--seam-w) solid var(--panel-frame);
 }
 /* RCP-3: the command bar is one 40 frame holding 32 controls, and the frame, not the input
    inside it, takes the focus ring. */
@@ -117,8 +116,6 @@
   flex: 1;
   height: 40px;
   padding-left: 6px;
-  border-color: transparent;
-  background: transparent;
   font-size: var(--type-body);
 }
 .command-bar .command-bar__filter::placeholder {

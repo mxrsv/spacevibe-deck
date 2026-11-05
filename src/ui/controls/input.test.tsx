@@ -79,4 +79,13 @@ describe("Input", () => {
     expect(classes).toContain("aria-invalid:border-destructive");
     await view.unmount();
   });
+
+  it("paints no border change and no ring when the frame around it owns them", async () => {
+    const view = await mount(<Input aria-label="Filter" framed />);
+    const classes = field(view.host).className.split(" ");
+    expect(classes).toContain("focus-visible:ring-0");
+    expect(classes).toContain("focus-visible:border-transparent");
+    expect(classes).toContain("hover:border-transparent");
+    await view.unmount();
+  });
 });
