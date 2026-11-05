@@ -202,11 +202,6 @@
   opacity: 0.35;
   pointer-events: none;
 }
-.command-bar__missing {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
 .command-bar .command-bar__chip {
   min-width: 36px;
   gap: 0;

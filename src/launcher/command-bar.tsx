@@ -16,7 +16,6 @@ import { Input } from "../ui/controls/input";
 import { Chord } from "../ui/blocks/chord";
 import { Kbd } from "../ui/controls/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/controls/tooltip";
-import { AgentInstallControl } from "./agent-install-control";
 import {
   activeCommand,
   barProjectHits,
@@ -105,7 +104,8 @@ export function CommandBar(props: CommandBarProps) {
   const stored = pickState?.key === pickKey ? pickState.ids.filter((id) => runnable.has(id)) : [];
   const picked = stored.length > 0 ? stored : defaults;
 
-  const shownAgents = filterAgents(agents, commands, query);
+  // Only agents that can run: installing a missing one lives in Settings and on the launch page.
+  const shownAgents = filterAgents(agents, commands, query).filter((agent) => !agent.missing);
   const hits = barProjectHits(projects, query, currentPath);
   const canRun = !firstRun && !pending && picked.length > 0;
 
@@ -348,22 +348,6 @@ function AgentChip({ agent, on, disabled, command, onPress }: AgentChipProps) {
       </span>
     </>
   );
-  if (agent.missing) {
-    return (
-      <span class="command-bar__missing">
-        <Button
-          size="lg"
-          variant="secondary"
-          className="command-bar__chip"
-          disabled
-          aria-label={`${agent.label} is not installed`}
-        >
-          {glyph}
-        </Button>
-        <AgentInstallControl agentId={agent.id} label={agent.label} />
-      </span>
-    );
-  }
   return (
     <Tooltip>
       <TooltipTrigger

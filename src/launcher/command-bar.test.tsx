@@ -134,9 +134,9 @@ describe("CommandBar picking", () => {
     await view.unmount();
   });
 
-  it("keeps a missing agent out of the pick and offers it no press", async () => {
+  it("lists only agents that are installed", async () => {
     const view = await mount(<CommandBar {...props({ defaultPick: ["gemini"] })} />);
-    expect(chip("Gemini is not installed").disabled).toBe(true);
+    expect(document.body.textContent).not.toContain("Gemini");
     expect(pressed()).toEqual(["Claude Code"]);
     await view.unmount();
   });
