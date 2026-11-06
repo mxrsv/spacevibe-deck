@@ -51,7 +51,12 @@ export function trackCapturedDrag(
     // Load-bearing on the lost-release path: the capture is still held there,
     // and leaving it would hand the next press anywhere in the window to this
     // seam. A no-op when the capture is already gone.
-    target.releasePointerCapture(pointerId);
+    try {
+      target.releasePointerCapture(pointerId);
+    } catch {
+      // The Pointer Events spec has releasePointerCapture throw NotFoundError
+      // when the pointer is no longer active (e.g. touch/pen after pointerup).
+    }
     handlers.onEnd();
   };
 
