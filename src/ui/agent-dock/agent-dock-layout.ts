@@ -31,13 +31,14 @@ if (typeof window !== "undefined") {
 
 /**
  * The width the stage and the diff column leave for the dock (`--dock-w`). With the switch off it
- * is the live drag width, else the stored one, untouched. With it on, the column rests at 320px
+ * is the live drag width, else the stored one capped by the window. With it on, the column rests at 320px
  * while the stored width is still the legacy default (420, which nobody chose); a width the user
  * dragged to is honoured. The live width wins during a drag, so the column follows the pointer.
  */
 export function dockStageWidth(storedWidth: number, liveWidth: number | null = null): number {
   if (!agentDockEnabled()) {
-    return liveWidth ?? storedWidth;
+    // The legacy dock drags to the same window-sized ceiling, so its stored width needs the same cap.
+    return liveWidth ?? Math.min(storedWidth, dockWidthCeiling(windowWidth.value));
   }
   if (liveWidth !== null) {
     return liveWidth;
