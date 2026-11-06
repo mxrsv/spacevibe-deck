@@ -56,16 +56,12 @@
      scrolled it back. The traffic lights and the stage strip then read as
      misaligned. Measured 2026-08-16: rail 701px in a 686px row. */
   box-sizing: border-box;
-  /* Asymmetric on purpose (2026-08-17, owner: "make the right edge match the
-     left"). The leading inset is one number — 8px here plus the row's own 7px
-     — but the trailing one is a stack: this padding, then the 6px scrollbar
-     track `.asr-rail__list` reserves below, then the row's trailing padding,
-     then the 1.5px of centring a 14px glyph in its 17px slot. At 8px right
-     that summed too wide against 15px on the left, and the column read as though
-     it had a wide dead margin nobody asked for. 2px here is what brings the
-     total back to the leading inset; the scrollbar keeps its own 6px of
-     breathing room, so nothing is flush against the seam. */
-  padding: 8px 2px 7px 8px;
+  /* Tight gutters (2026-11-06, owner: the sides read as wasted space). The 4px
+     each side is where a row's hover wash stops; the row's own padding then
+     puts the folder glyph and the timestamps about 8px from the sidebar edge.
+     `.asr-rail__list` no longer reserves a scrollbar track, so this is the
+     whole trailing inset and the two sides match. */
+  padding: 8px 4px 7px;
   /* DL-18.7: the frame and the rail are one continuous side surface, and
      the stage keeps `--bg` so the terminal stays the focal plane. Transparent
      here would let the stage colour up into the navigation column. */
@@ -95,11 +91,9 @@
      scroll container to `auto`, never `visible`, so `overflow-y` alone was
      silently buying a horizontal scrollbar too. The rail scrolls one way. */
   overflow-x: hidden;
-  /* The gutter is reserved whether or not the rows overflow, so a row's width
-     — and the point where its name ellipsizes — does not change the moment
-     one more tab opens. The bar itself is the app-wide 6px one declared in
-     `01-tokens.css`; this rail only asks to keep its space. */
-  scrollbar-gutter: stable;
+  /* No `scrollbar-gutter: stable` (2026-11-06): a 6px track held open on every
+     rail was most of the dead right margin. The bar takes its space only while
+     the rows overflow; a name's ellipsis point moving then is accepted. */
 }
 
 .asr-stream {
@@ -178,11 +172,11 @@
      declared anyway so a later `width` cannot reopen it. */
   box-sizing: border-box;
   align-items: center;
-  /* DL-27.17: folder owns the outer column. The 15px icon centres in its 17px slot, so 5px of
-     padding here plus the rail's 8px puts it at 14px from the sidebar edge (DL-27.28, mock D). */
+  /* DL-27.17: folder owns the outer column. The 15px icon centres in its 17px slot, so 3px of
+     padding here plus the rail's 4px puts it at 8px from the sidebar edge (2026-11-06). */
   grid-template-columns: minmax(0, 1fr) 17px;
   gap: 7px;
-  padding: 6px 4px 2px 5px;
+  padding: 6px 4px 2px 3px;
   /* The HUG: this header belongs to the card directly under it, so it sits
      2px off it — the 6px padding-bottom + `.asr-cluster`'s gap, pulled back by
      this margin (2026-09-10). Spent as a negative margin rather than out of
@@ -414,12 +408,12 @@
 .asr-wt__head {
   display: grid;
   /* The rail's standing percentage-plus-padding trap: no global `border-box`
-     reset, and this box carries both a grid and a 31px inset. */
+     reset, and this box carries both a grid and a 29px inset. */
   box-sizing: border-box;
   grid-template-columns: minmax(0, 1fr) 17px 17px;
   align-items: center;
   gap: 7px;
-  padding: 2px 4px 1px 31px;
+  padding: 2px 4px 1px 29px;
 }
 
 /* A second and later group needs the break the project header gets above it,
@@ -564,7 +558,7 @@
      below its content, so a long name would widen the row again. */
   box-sizing: border-box;
   min-width: 0;
-  padding: 5px 8px 6px 7px;
+  padding: 5px 8px 6px 5px;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;

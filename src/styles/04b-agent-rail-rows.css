@@ -22,8 +22,8 @@
   gap: 2px 7px;
   min-height: 34px;
   /* The 4px trailing inset keeps the glyph/close slot aligned with the rail's
-     outer edge; 7px leading puts the status mark on the row's text rhythm. */
-  padding: 6px 4px 6px 7px;
+     outer edge; 5px leading keeps the status mark 2px inside the header's folder. */
+  padding: 6px 4px 6px 5px;
 }
 
 .asr-row--tab > .asr-chips {
@@ -328,7 +328,7 @@
      vertical, which reserves a 16px column instead. */
   min-height: 34px;
   margin-left: 0;
-  padding: 6px 8px 6px 7px;
+  padding: 6px 8px 6px 5px;
 }
 
 .asr-leaf--flat::before,

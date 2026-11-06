@@ -457,13 +457,13 @@ describe("DL-27.23/27.24 the rail's worktree tier", () => {
       expect(rulebook).toContain(`**DL-${rule}**`);
     }
 
-    // DL-27.23's one left edge: 7px inset + a 17px leading slot + a 7px gap is
+    // DL-27.23's one left edge: 5px inset + a 17px leading slot + a 7px gap is
     // where the project name and every row's text start, and the sub-header
     // spends it as padding because it carries no leading glyph. An indent step
     // would come out of the row's turn line instead.
     const head = css.match(/\.asr-wt__head\s*\{([^}]*)\}/)?.[1];
     expect(head, ".asr-wt__head should have a rule block").toBeDefined();
-    expect(head).toMatch(/padding:\s*[^;]*\s31px\s*;/);
+    expect(head).toMatch(/padding:\s*[^;]*\s29px\s*;/);
     expect(head).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 17px 17px\s*;/);
 
     // The row suffix's own treatment, one step quieter than the project.

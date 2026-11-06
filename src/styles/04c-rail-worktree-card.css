@@ -23,11 +23,11 @@
  */
 .asr-checkout,
 .asr-card__row {
-  /* DL-27.28 (amended 2026-10-07, mock D): measured from the sidebar edge, the rail's 8px plus
-     this puts the checkout's 13px branch glyph (centred in its 14px track) at 22px. */
-  --asr-worktree-inset: 13.5px;
-  /* DL-27.28's one indent step: the session row's edge lands at 26px (8px rail + inset + this),
-     the logo 9px inside it at 35px. */
+  /* DL-27.28 (gutters tightened 2026-11-06): measured from the sidebar edge, the rail's 4px plus
+     this puts the checkout's 13px branch glyph (centred in its 14px track) at 16px. */
+  --asr-worktree-inset: 11.5px;
+  /* DL-27.28's one indent step: the session row's edge lands at 20px (4px rail + inset + this),
+     the logo 9px inside it at 29px. */
   --asr-tree-step: 4.5px;
   /* Radius (spec §9.8). 6px sits between DL-20.1's `--radius-flat` (2px) and `--radius-tight`
      (8px) and matches no existing rung — the owner's own pick (2026-08-25). Every
