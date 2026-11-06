@@ -1,0 +1,12 @@
+node_modules/
+**/node_modules/
+# Expo and Wrangler state and build output.
+**/.expo/
+**/.wrangler/
+**/dist/
+**/ios/
+**/android/
+# Generated from @xterm/xterm by app/scripts/build-terminal-html.mjs.
+app/src/terminal/terminal-html.generated.ts
+# Hand-maintained prose, as at the root.
+*.md

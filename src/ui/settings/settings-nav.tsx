@@ -2,7 +2,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { searchSettings } from "../../settings/settings-search";
 import { activeCategory } from "./active-category-store";
 import { settingsQuery, settingsTarget } from "./settings-focus-store";
-import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings-categories";
+import { categoryTabId, SECTION_PANEL_ID, visibleSettingsCategories } from "./settings-categories";
 
 /**
  * The settings rail: one vertical list of category tabs, and nothing else.
@@ -25,6 +25,7 @@ import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings
  * `aria-selected` are the correct semantics, not an incidental choice.
  */
 export function SettingsNav() {
+  const categories = visibleSettingsCategories();
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const query = settingsQuery.value;
@@ -37,7 +38,7 @@ export function SettingsNav() {
     if (query.trim() === "" || pages.size === 0 || pages.has(activeCategory.value as never)) {
       return;
     }
-    const first = SETTINGS_CATEGORIES.find((category) => pages.has(category.id as never));
+    const first = visibleSettingsCategories().find((category) => pages.has(category.id as never));
     if (first) {
       activeCategory.value = first.id;
     }
@@ -45,7 +46,7 @@ export function SettingsNav() {
 
   const selectCategory = (index: number): void => {
     settingsTarget.value = null;
-    activeCategory.value = SETTINGS_CATEGORIES[index].id;
+    activeCategory.value = categories[index].id;
     itemRefs.current[index]?.focus();
   };
 
@@ -59,10 +60,8 @@ export function SettingsNav() {
       return;
     }
     event.preventDefault();
-    const length = SETTINGS_CATEGORIES.length;
-    const currentIndex = SETTINGS_CATEGORIES.findIndex(
-      (category) => category.id === activeCategory.value,
-    );
+    const length = categories.length;
+    const currentIndex = categories.findIndex((category) => category.id === activeCategory.value);
     const from = currentIndex === -1 ? 0 : currentIndex;
     selectCategory((from + step + length) % length);
   };
@@ -102,7 +101,7 @@ export function SettingsNav() {
         aria-orientation="vertical"
         onKeyDown={handleKeyDown}
       >
-        {SETTINGS_CATEGORIES.map((category, index) => {
+        {categories.map((category, index) => {
           const isActive = category.id === activeCategory.value;
           return (
             <button

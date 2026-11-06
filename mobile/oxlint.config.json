@@ -1,0 +1,43 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  // Not named `.oxlintrc.json`: the root's oxlint loads nested configs of that name, and one here
+  // overrode the root's `mobile/**` ignore, so `npm run lint` at the root linted this tree too.
+  "plugins": ["typescript", "import", "vitest", "react"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }
+    ],
+    "no-explicit-any": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "react/react-in-jsx-scope": "off"
+  },
+  "overrides": [
+    {
+      // Command-line scripts report progress on stdout; that is their output, not debugging.
+      "files": ["scripts/**", "**/scripts/**"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      // The relay's one log line: Workers Logs read stdout, and this file closes the vocabulary.
+      "files": ["relay/src/log.ts"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      // The repro client is a command-line tool; its stdout is the product.
+      "files": ["**/repro/**"],
+      "rules": { "no-console": "off" }
+    }
+  ],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.expo/**",
+    "**/.wrangler/**",
+    "**/dist/**",
+    "app/src/terminal/terminal-html.generated.ts"
+  ]
+}

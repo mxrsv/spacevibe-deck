@@ -86,6 +86,27 @@ export const UPDATE_KEYS = [
 
 export type UpdateCounterKey = (typeof UPDATE_KEYS)[number];
 
+/**
+ * Phone-companion use that day (spec MOB27), mirrored from
+ * `src/telemetry/payload.ts`. `pairedPhones` is a gauge read at send time;
+ * the other three are counts persisted in the day buffer. Counted by main's
+ * mobile service, never by the renderer, so they never cross IPC.
+ */
+export const MOBILE_KEYS = [
+  "pairedPhones",
+  "phoneSessions",
+  "phoneSends",
+  "phoneOpenedAgents",
+] as const;
+
+/** The persisted counts; `pairedPhones` is not stored, see `MOBILE_KEYS`. */
+export const MOBILE_COUNT_KEYS = ["phoneSessions", "phoneSends", "phoneOpenedAgents"] as const;
+
+export type MobileCountKey = (typeof MOBILE_COUNT_KEYS)[number];
+
+/** What the mobile service reports; each maps to one persisted count. */
+export type MobileEvent = "session" | "send" | "openedAgent";
+
 export type CountKind = "agent" | "surface" | "tabs" | "panes" | "restored" | "update";
 
 export type ConsentAnswer = "unanswered" | "enabled" | "declined";
@@ -107,6 +128,8 @@ export interface DayBuffer {
   readonly restoredSessions: boolean;
   /** Update outcomes; absent from buffers written by 1.2.0 and older. */
   readonly updates: Readonly<Record<string, number>>;
+  /** Phone-companion counts; absent from buffers written before the companion. */
+  readonly mobile: Readonly<Record<string, number>>;
   /** Counters changed since the last accepted send. */
   readonly dirty: boolean;
   /** Epoch ms of the last 204, or null before the first. */
@@ -152,4 +175,6 @@ export interface UsagePayloadLike {
   readonly maxPanes: number;
   readonly restoredSessions: boolean;
   readonly updates: Readonly<Record<string, number>>;
+  /** Only while the `mobileCompanion` switch is on: the deployed backend rejects unknown keys. */
+  readonly mobile?: Readonly<Record<string, number>>;
 }

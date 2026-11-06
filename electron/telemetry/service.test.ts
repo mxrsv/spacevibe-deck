@@ -9,6 +9,7 @@ import {
   EMPTY_STATE,
   HEARTBEAT_INTERVAL_MS,
   MAX_PENDING_DAYS,
+  MOBILE_KEYS,
   SEND_CHECK_INTERVAL_MS,
   UPDATE_KEYS,
   type PersistedTelemetry,
@@ -23,6 +24,7 @@ import {
 } from "./service";
 import {
   AGENT_PAYLOAD_KEYS as RENDERER_AGENT_KEYS,
+  MOBILE_KEYS as RENDERER_MOBILE_KEYS,
   UPDATE_KEYS as RENDERER_UPDATE_KEYS,
 } from "../../src/telemetry/payload";
 
@@ -54,7 +56,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 function harness(
   initial?: unknown,
-  options?: { unreadable?: boolean; mandatory?: boolean },
+  options?: { unreadable?: boolean; mandatory?: boolean; mobile?: boolean },
 ): Harness {
   let nowMs = Date.UTC(2026, 7, 22, 12, 0, 0);
   let uuidCounter = 0;
@@ -68,6 +70,7 @@ function harness(
   let persisted: unknown = initial;
   const deps: TelemetryDeps = {
     mandatory: options?.mandatory ?? false,
+    mobileEnabled: options?.mobile ?? true,
     now: () => nowMs,
     localDay: (ms) => new Date(ms).toISOString().slice(0, 10),
     randomUUID: () => `uuid-${(uuidCounter += 1)}`,
@@ -345,6 +348,132 @@ describe("counting and the cumulative merge", () => {
     });
   });
 
+  it("sends every mobile key, zeros included, before any phone is paired", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    expect(h.posts[0].mobile).toEqual({
+      pairedPhones: 0,
+      phoneSessions: 0,
+      phoneSends: 0,
+      phoneOpenedAgents: 0,
+    });
+  });
+
+  it("sends no mobile key at all while the mobileCompanion switch is off", async () => {
+    // A backend that predates the companion rejects unknown keys with a terminal 400.
+    const h = harness(ENABLED_STATE, { mobile: false });
+    h.service.countMobile("phoneSends");
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    expect(h.posts).toHaveLength(1);
+    expect("mobile" in h.posts[0]).toBe(false);
+  });
+
+  it("carries mobile counts and the paired-phone gauge into the next snapshot", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    h.service.setPairedPhones(2);
+    h.service.countMobile("session");
+    h.service.countMobile("send");
+    h.service.countMobile("send");
+    h.service.countMobile("openedAgent");
+    h.advance(SEND_CHECK_INTERVAL_MS);
+    h.tick();
+    await flushMicrotasks();
+    expect(h.posts[h.posts.length - 1].mobile).toEqual({
+      pairedPhones: 2,
+      phoneSessions: 1,
+      phoneSends: 2,
+      phoneOpenedAgents: 1,
+    });
+  });
+
+  it("reports the gauge as it stands, not as a running total, and keeps counts cumulative", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.setPairedPhones(3);
+    h.service.countMobile("send");
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    h.service.setPairedPhones(1); // two phones revoked
+    h.service.countMobile("send");
+    h.advance(SEND_CHECK_INTERVAL_MS);
+    h.tick();
+    await flushMicrotasks();
+    expect(h.posts[0].mobile).toMatchObject({ pairedPhones: 3, phoneSends: 1 });
+    expect(h.posts[1].mobile).toMatchObject({ pairedPhones: 1, phoneSends: 2 });
+  });
+
+  it("resets the mobile counts on a new local day but keeps the gauge", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.setPairedPhones(1);
+    h.service.countMobile("session");
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    h.advance(DAY_MS);
+    h.service.countMobile("openedAgent");
+    h.tick();
+    await flushMicrotasks();
+    const [first, second] = [h.posts[0], h.posts[h.posts.length - 1]];
+    expect(first.mobile!.phoneSessions).toBe(1);
+    expect(second.day).not.toBe(first.day);
+    expect(second.mobile).toEqual({
+      pairedPhones: 1,
+      phoneSessions: 0,
+      phoneSends: 0,
+      phoneOpenedAgents: 1,
+    });
+  });
+
+  it("persists mobile counts across a restart", () => {
+    const h = harness(ENABLED_STATE);
+    h.service.countMobile("send");
+    const saved = h.writes[h.writes.length - 1];
+    const day = Object.values(saved.days)[0];
+    expect(day.mobile).toEqual({ phoneSends: 1 });
+    const restarted = harness(JSON.parse(JSON.stringify(saved)));
+    restarted.service.noteWindowReady();
+    return flushMicrotasks().then(() => {
+      expect(restarted.posts[0].mobile!.phoneSends).toBe(1);
+    });
+  });
+
+  it("ignores a bad gauge and counts nothing while analytics is not enabled", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.setPairedPhones(-1);
+    h.service.setPairedPhones(1.5);
+    h.service.setPairedPhones(Number.NaN);
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    expect(h.posts[0].mobile!.pairedPhones).toBe(0);
+    const off = harness({ ...ENABLED_STATE, consent: "declined" });
+    off.service.countMobile("send");
+    expect(off.writes).toEqual([]);
+  });
+
+  it("never lets the renderer's count channel touch the mobile counters", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.count("mobile", "phoneSends", 5);
+    h.service.count("update", "phoneSends", 5);
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    expect(h.posts[0].mobile!.phoneSends).toBe(0);
+  });
+
+  it("the mobile fields carry only whole numbers, no identifier", async () => {
+    const h = harness(ENABLED_STATE);
+    h.service.setPairedPhones(2);
+    h.service.countMobile("session");
+    h.service.noteWindowReady();
+    await flushMicrotasks();
+    const { mobile } = h.posts[0];
+    expect(Object.keys(mobile).sort()).toEqual([...MOBILE_KEYS].sort());
+    for (const value of Object.values(mobile)) {
+      expect(Number.isInteger(value)).toBe(true);
+    }
+  });
+
   it("one run is enough to reach participating DAU", async () => {
     const h = harness(ENABLED_STATE);
     h.service.noteWindowReady();
@@ -419,6 +548,7 @@ describe("days and ids", () => {
           "maxPanes",
           "restoredSessions",
           "updates",
+          "mobile",
         ].sort(),
       );
     }
@@ -500,6 +630,7 @@ describe("shouldSend cadence", () => {
     maxPanes: 0,
     restoredSessions: false,
     updates: {},
+    mobile: {},
     dirty: false,
     lastSentAt: 0,
     terminal: false,
@@ -581,12 +712,17 @@ describe("persisted-state parsing", () => {
     });
     expect(parsed.days["2026-08-22"].agents).toEqual({ claude: 2 });
     expect(parsed.days["2026-08-22"].updates).toEqual({});
+    expect(parsed.days["2026-08-22"].mobile).toEqual({});
   });
 });
 
 describe("renderer mirror parity", () => {
   it("main's closed agent key set equals the renderer contract's", () => {
     expect([...AGENT_PAYLOAD_KEYS].sort()).toEqual([...RENDERER_AGENT_KEYS].sort());
+  });
+
+  it("main's mobile keys equal the renderer contract's", () => {
+    expect([...MOBILE_KEYS]).toEqual([...RENDERER_MOBILE_KEYS]);
   });
 
   it("main's update outcome keys equal the renderer contract's", () => {

@@ -15,6 +15,8 @@ import {
   COUNTER_CAP,
   EMPTY_STATE,
   HEARTBEAT_INTERVAL_MS,
+  MOBILE_COUNT_KEYS,
+  MOBILE_KEYS,
   MAX_PENDING_DAYS,
   SCHEMA_VERSION,
   SEND_CHECK_INTERVAL_MS,
@@ -23,6 +25,7 @@ import {
   type ConsentState,
   type CountKind,
   type DayBuffer,
+  type MobileEvent,
   type PersistedTelemetry,
   type TelemetryStateReply,
   type UsagePayloadLike,
@@ -67,10 +70,23 @@ export interface TelemetryDeps {
    * this is what keeps it covered while it is unreachable in shipped builds.
    */
   mandatory?: boolean;
+  /**
+   * Whether the `mobileCompanion` switch is on. The `mobile` block is sent only then: a backend
+   * that predates the companion rejects an unknown key with a terminal 400, which would lose a
+   * whole day of analytics for every user. Defaults to off.
+   */
+  mobileEnabled?: boolean;
 }
 
 export interface TelemetryService {
   count(kind: string, key: string, value: number): void;
+  /**
+   * One phone-companion event. Separate from `count` on purpose: that entry
+   * point is reachable from the renderer over IPC, and these counts are main's.
+   */
+  countMobile(event: MobileEvent): void;
+  /** How many phones are paired right now; sent as a gauge, never accumulated. */
+  setPairedPhones(count: number): void;
   state(): TelemetryStateReply;
   setEnabled(enabled: boolean): Promise<void>;
   /** First window ready in an enabled run — the initial snapshot. */
@@ -116,6 +132,8 @@ function parseBuffer(raw: unknown): DayBuffer | null {
     restoredSessions: source.restoredSessions === true,
     // A 1.2.0 buffer has no `updates`; it reads as nothing counted yet.
     updates: parseCounters(source.updates, UPDATE_KEYS),
+    // Buffers written before the companion have no `mobile`.
+    mobile: parseCounters(source.mobile, MOBILE_COUNT_KEYS),
     dirty: source.dirty === true,
     lastSentAt: isCount(source.lastSentAt) ? source.lastSentAt : null,
     terminal: source.terminal === true,
@@ -193,6 +211,9 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     : parsePersisted(deps.store.read(), mandatory);
   let stopTimer: (() => void) | null = null;
   let sending = false;
+  // A gauge, not a count: the mobile service reports it, it is never persisted
+  // and starts at 0 until the service has loaded its pairings.
+  let pairedPhones = 0;
   let initialSnapshotDone = false;
   /** One report per run for a write-locked store; see `persist`. */
   let unreadableReported = false;
@@ -284,6 +305,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
           maxPanes: 0,
           restoredSessions: false,
           updates: {},
+          mobile: {},
           dirty: true,
           lastSentAt: null,
           terminal: false,
@@ -321,6 +343,10 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     for (const key of UPDATE_KEYS) {
       updates[key] = buffer.updates[key] ?? 0;
     }
+    const mobile: Record<string, number> = {};
+    for (const key of MOBILE_KEYS) {
+      mobile[key] = key === "pairedPhones" ? pairedPhones : (buffer.mobile[key] ?? 0);
+    }
     return {
       schemaVersion: SCHEMA_VERSION,
       dailyId: buffer.dailyId,
@@ -334,6 +360,7 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
       maxPanes: buffer.maxPanes,
       restoredSessions: buffer.restoredSessions,
       updates,
+      ...(deps.mobileEnabled === true ? { mobile } : {}),
     };
   }
 
@@ -427,7 +454,49 @@ export function createTelemetryService(deps: TelemetryDeps): TelemetryService {
     beginTimer();
   }
 
+  const MOBILE_COUNT_BY_EVENT: Record<MobileEvent, (typeof MOBILE_COUNT_KEYS)[number]> = {
+    session: "phoneSessions",
+    send: "phoneSends",
+    openedAgent: "phoneOpenedAgents",
+  };
+
   return {
+    countMobile(event: MobileEvent): void {
+      const key = MOBILE_COUNT_BY_EVENT[event];
+      if (!enabled() || key === undefined) {
+        return;
+      }
+      const today = ensureToday();
+      const buffer = state.days[today];
+      if (buffer === undefined) {
+        return;
+      }
+      const next = Math.min((buffer.mobile[key] ?? 0) + 1, COUNTER_CAP);
+      updateDay(today, { ...buffer, mobile: { ...buffer.mobile, [key]: next }, dirty: true });
+      persist();
+    },
+
+    setPairedPhones(count: number): void {
+      if (!isCount(count)) {
+        return;
+      }
+      const next = Math.min(count, COUNTER_CAP);
+      if (next === pairedPhones) {
+        return;
+      }
+      pairedPhones = next;
+      if (!enabled()) {
+        return;
+      }
+      // A changed gauge is worth a fresh snapshot; it rides the normal cadence.
+      const today = ensureToday();
+      const buffer = state.days[today];
+      if (buffer !== undefined) {
+        updateDay(today, { ...buffer, dirty: true });
+        persist();
+      }
+    },
+
     count(kind: string, key: string, value: number): void {
       if (!enabled()) {
         return;

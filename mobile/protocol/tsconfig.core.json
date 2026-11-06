@@ -1,0 +1,8 @@
+{
+  // The files the phone and the desktop bundle share, compiled without Node's types or any DOM
+  // so a stray `Buffer`, `TextEncoder` or `crypto` global cannot slip into them.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": [] },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/crypto-node.ts", "src/fixtures.ts"]
+}

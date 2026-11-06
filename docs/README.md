@@ -17,6 +17,8 @@ translations at `/<locale>/docs` from `marketing/landing-prototype/docs/translat
   with the `deck` command.
 - [Keyboard shortcuts](user/keyboard-shortcuts.md) — every shipped chord on macOS and Windows.
 - [Settings](user/settings.md) — each category, the privacy switch, where data lives.
+- [Mobile](user/mobile.md) — the iPhone companion: pairing, answering agents, Live mode,
+  notifications, revoking, the Windows limit.
 
 ## `internals/` — how Deck is built
 
@@ -38,6 +40,9 @@ translations at `/<locale>/docs` from `marketing/landing-prototype/docs/translat
   resolution and session history.
 - [UI conventions](internals/ui-conventions.md) — how Tailwind classes are written inside the
   preset fence and which HTML element each job uses, with the counts behind each rule.
+- [Mobile companion](internals/mobile.md) — the shared protocol, pairing and the secure
+  channel, the blind relay, the LAN path, how phone input reaches a pane without breaking echo
+  suppression, push and keep-awake.
 - [Analytics service](../backend/README.md) — independent Worker/D1 deployment and retention operations.
 - [Usage analytics](internals/telemetry.md) — the payload, consent state and when a POST
   fires.

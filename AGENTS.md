@@ -42,6 +42,7 @@ Where the current behaviour of a surface is written down:
 | Explorer, editor, markdown, browser tab, path opening   | [internals/file-surface.md](docs/internals/file-surface.md)       |
 | The journal, last-session offer, resume resolution      | [internals/session-restore.md](docs/internals/session-restore.md) |
 | Usage analytics                                         | [internals/telemetry.md](docs/internals/telemetry.md)             |
+| The phone companion: pairing, relay, LAN, phone input   | [internals/mobile.md](docs/internals/mobile.md)                   |
 | Traps, live switches, accepted limitations              | [internals/traps.md](docs/internals/traps.md)                     |
 | Vocabulary this repo uses precisely                     | [internals/glossary.md](docs/internals/glossary.md)               |
 | Visual invariants and current surface patterns          | [docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md)                |
@@ -88,6 +89,7 @@ and why — a fork nobody can reconstruct is a decision that will be re-litigate
 | `npm test`                    | Vitest suite                                                                                                                                                            |
 | `npm run build`               | TypeScript + shipping renderer bundle                                                                                                                                   |
 | `npm run lint`                | oxlint + prettier check; max-lines stays a warning (234 pre-existing over-length files as of 2026-11-03 are backlog)                                                                     |
+| `npm run mobile:check`        | the phone companion under `mobile/` (protocol, relay, Expo app), which the root's lint, `tsc` and tests skip; install with `npm --prefix mobile run setup` |
 | [`scripts/check-changed.sh [files]`](scripts/check-changed.sh) | prettier, `tsc`, oxlint and the sibling tests on the files you touched (default: the whole working-tree diff) |
 | [`scripts/sync-origin.sh`](scripts/sync-origin.sh) | fetch, then dirty files, last commits and ahead/behind against `origin/main` — before a push or rebase |
 | `npm run prototype:gallery`   | visual comparison gallery at `127.0.0.1:5175`                                                                                                                           |

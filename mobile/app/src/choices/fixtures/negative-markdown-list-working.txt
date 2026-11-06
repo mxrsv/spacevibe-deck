@@ -1,0 +1,11 @@
+✻ Thinking… (esc to interrupt)
+
+  Findings so far:
+
+  1. startRelay() opens one socket per pairing
+  2. frames are sealed before they leave
+  3. nothing connects while the switch is off
+
+  Checking the remaining call sites now.
+
+✢ Searching… (12s · ↑ 1.2k tokens · esc to interrupt)

@@ -76,6 +76,25 @@ export const UPDATE_KEYS = [
 export type UpdateKey = (typeof UPDATE_KEYS)[number];
 
 /**
+ * Phone-companion use that day, as plain counts (spec MOB27). The phone app
+ * sends nothing itself; the desktop counts these. No device name, pairing id,
+ * agent name or message content.
+ *
+ *  - `pairedPhones`: a gauge, phones paired when the snapshot was sent.
+ *  - `phoneSessions`: times a phone connected to this desktop.
+ *  - `phoneSends`: messages or keystroke batches a phone sent to a terminal.
+ *  - `phoneOpenedAgents`: agents a phone opened on this desktop.
+ */
+export const MOBILE_KEYS = [
+  "pairedPhones",
+  "phoneSessions",
+  "phoneSends",
+  "phoneOpenedAgents",
+] as const;
+
+export type MobileKey = (typeof MOBILE_KEYS)[number];
+
+/**
  * One install-day, cumulative. Every send replaces the whole
  * row server-side, so a retry can never double-count.
  */
@@ -108,6 +127,12 @@ export interface UsagePayload {
    * the service accepts both shapes.
    */
   readonly updates: Readonly<Record<UpdateKey, number>>;
+  /**
+   * Phone-companion counts, every key present (see `MOBILE_KEYS`). Added to
+   * schema 1 without a bump: releases before the companion do not send it, and
+   * the service accepts both shapes.
+   */
+  readonly mobile: Readonly<Record<MobileKey, number>>;
 }
 
 /**

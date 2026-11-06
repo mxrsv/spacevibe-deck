@@ -1,0 +1,21 @@
+⏺ Summary of the failing cases:
+
+  1. relay rejects a second claim
+  2. relay accepts an expired claim
+  3. pairing id is not validated
+
+⏺ Read(electron/relay/pairing.ts)
+  ⎿  Read 112 lines
+
+⏺ Search(pattern: "hooksSupported", path: "electron")
+  ⎿  Found 3 files
+
+⏺ Update(electron/relay/client.ts)
+  ⎿  Updated electron/relay/client.ts with 48 additions
+     12 +export function startRelay(config: RelayConfig) {
+     13 +  if (!config.enabled) return null;
+
+⏺ The relay route is wired. Running the checks before I commit.
+
+⏺ Bash(npm test -- electron/relay/)
+  ⎿  Running…

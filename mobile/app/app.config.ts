@@ -1,0 +1,83 @@
+import type { ExpoConfig } from "expo/config";
+import { BUNDLE_ID, IOS_DEPLOYMENT_TARGET, RUNTIME_VERSION } from "./src/release/release";
+
+// Set by the owner after `eas init`; without it Expo Go and local runs get no updates or EAS config.
+const projectId = process.env.EAS_PROJECT_ID;
+
+// No ios/ or android/ folders are committed: Expo generates the native projects on demand
+// (continuous native generation), and Expo Go runs the JavaScript without any of them.
+const config: ExpoConfig = {
+  name: "SpaceVibe Deck",
+  slug: "spacevibe-deck",
+  scheme: "spacevibe-deck",
+  version: "1.0.0",
+  orientation: "portrait",
+  // The iPhone layout runs on iPad too (spec decision 4).
+  userInterfaceStyle: "automatic",
+  ios: {
+    bundleIdentifier: BUNDLE_ID,
+    supportsTablet: true,
+    buildNumber: "1",
+    infoPlist: {
+      // The direct LAN path (MOB9) connects to the computer's private address; iOS asks once.
+      // In Expo Go the prompt is Expo Go's own, with Expo Go's wording.
+      NSLocalNetworkUsageDescription:
+        "Deck connects straight to your computer when you are on the same Wi-Fi, so it stays fast and works without the internet.",
+      // Plain ws:// to a private address needs this exemption. Local networking only; never NSAllowsArbitraryLoads.
+      NSAppTransportSecurity: { NSAllowsLocalNetworking: true },
+      NSCameraUsageDescription:
+        "Deck scans the pairing code shown in Deck's Settings on your computer.",
+      NSFaceIDUsageDescription:
+        "Deck unlocks with Face ID so your agents stay private if you lose your phone.",
+      // TODO(owner): the app uses end-to-end encryption (ChaCha20-Poly1305, X25519) implemented in
+      // JavaScript, which counts as encryption for App Store export compliance. Answer the export
+      // compliance questions in App Store Connect and set ITSAppUsesNonExemptEncryption to match
+      // (false only when an exemption applies). It is deliberately left unset here.
+    },
+  },
+  plugins: [
+    "expo-router",
+    [
+      "expo-camera",
+      {
+        cameraPermission: "Deck scans the pairing code shown in Deck's Settings on your computer.",
+      },
+    ],
+    ["expo-build-properties", { ios: { deploymentTarget: IOS_DEPLOYMENT_TARGET } }],
+    "expo-secure-store",
+    [
+      "expo-local-authentication",
+      {
+        faceIDPermission:
+          "Deck unlocks with Face ID so your agents stay private if you lose your phone.",
+      },
+    ],
+    [
+      "expo-notifications",
+      {
+        // The `aps-environment` entitlement: development for debug builds, production for EAS
+        // production builds. A mismatch makes the APNs token useless, so the relay is told which
+        // host to use (`env`, see src/push/push-environment.ts).
+        mode: process.env.EAS_BUILD_PROFILE === "production" ? "production" : "development",
+      },
+    ],
+    // Encrypted push: the Notification Service Extension. Runs only at prebuild/EAS build; Expo Go
+    // and `expo export` never load it.
+    "./plugins/notification-service-extension/withNotificationServiceExtension",
+  ],
+  // A JavaScript update only reaches a binary built for the same protocol (MOB24).
+  runtimeVersion: RUNTIME_VERSION,
+  ...(projectId === undefined
+    ? {}
+    : {
+        updates: {
+          url: `https://u.expo.dev/${projectId}`,
+          checkAutomatically: "ON_LOAD" as const,
+          fallbackToCacheTimeout: 0,
+        },
+        extra: { eas: { projectId } },
+      }),
+  experiments: { typedRoutes: true },
+};
+
+export default config;

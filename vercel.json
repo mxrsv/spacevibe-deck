@@ -11,7 +11,11 @@
     },
     {
       "source": "/privacy",
-      "destination": "/privacy/2026-10-08/index.html"
+      "destination": "/privacy/2026-11-05/index.html"
+    },
+    {
+      "source": "/privacy/2026-11-05",
+      "destination": "/privacy/2026-11-05/index.html"
     },
     {
       "source": "/privacy/2026-10-08",

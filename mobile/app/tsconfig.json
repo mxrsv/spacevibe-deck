@@ -1,0 +1,15 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@protocol/*": ["../protocol/src/*"]
+    }
+  },
+  "include": ["src", "app.config.ts", "expo-env.d.ts", ".expo/types/**/*.ts"],
+  "exclude": ["node_modules", "src/**/*.test.ts", "src/testing/**"]
+}

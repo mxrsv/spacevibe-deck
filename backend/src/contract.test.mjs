@@ -5,7 +5,14 @@ import { test } from "node:test";
 import { build } from "esbuild";
 import { FEEDBACK_SYNC_CRON } from "./feedback-sync.mjs";
 import { FEEDBACK_PROBE_CRON } from "./linear-feedback.mjs";
-import { AGENT_KEYS, SURFACE_KEYS, UPDATE_KEYS, COUNTER_CAP, validPayload } from "./payload.mjs";
+import {
+  AGENT_KEYS,
+  SURFACE_KEYS,
+  UPDATE_KEYS,
+  MOBILE_KEYS,
+  COUNTER_CAP,
+  validPayload,
+} from "./payload.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -30,6 +37,8 @@ test("Worker schema accepts snapshots emitted by the actual Deck telemetry servi
   assert.deepEqual(SURFACE_KEYS, client.payload.SURFACE_KEYS);
   assert.deepEqual(UPDATE_KEYS, client.model.UPDATE_KEYS);
   assert.deepEqual(UPDATE_KEYS, client.payload.UPDATE_KEYS);
+  assert.deepEqual(MOBILE_KEYS, client.model.MOBILE_KEYS);
+  assert.deepEqual(MOBILE_KEYS, client.payload.MOBILE_KEYS);
   assert.equal(COUNTER_CAP, client.model.COUNTER_CAP);
   assert.equal(client.model.TELEMETRY_ENDPOINT, "https://api.deck.spacevibe.dev/v1/ping");
   const snapshots = [];
@@ -40,6 +49,8 @@ test("Worker schema accepts snapshots emitted by the actual Deck telemetry servi
     version: "1.1.0",
     platform: "darwin",
     arch: "arm64",
+    // The mobile object is sent only while the mobileCompanion switch is on; this contract covers it.
+    mobileEnabled: true,
     store: {
       unreadable: () => false,
       read: () => undefined,
@@ -57,10 +68,18 @@ test("Worker schema accepts snapshots emitted by the actual Deck telemetry servi
     service.count("agent", "claude", 1);
     service.count("surface", "browser", 1);
     service.count("update", "checkFailed", 1);
+    service.setPairedPhones(1);
+    service.countMobile("send");
     await service.flushOnQuit();
     assert.ok(snapshots.length > 0);
     for (const snapshot of snapshots) assert.equal(validPayload(snapshot), true);
     assert.equal(snapshots.at(-1).updates.checkFailed, 1);
+    assert.deepEqual(snapshots.at(-1).mobile, {
+      pairedPhones: 1,
+      phoneSessions: 0,
+      phoneSends: 1,
+      phoneOpenedAgents: 0,
+    });
   } finally {
     service.dispose();
   }
@@ -95,7 +114,8 @@ test("privacy routes publish the dated notice and include its source in the depl
   const config = JSON.parse(await readFile(new URL("../../vercel.json", import.meta.url), "utf8"));
   // `/privacy` serves the newest notice; every earlier dated copy stays reachable.
   for (const [source, notice] of [
-    ["/privacy", "2026-10-08"],
+    ["/privacy", "2026-11-05"],
+    ["/privacy/2026-11-05", "2026-11-05"],
     ["/privacy/2026-10-08", "2026-10-08"],
     ["/privacy/2026-09-18", "2026-09-18"],
     ["/privacy/2026-09-12", "2026-09-12"],
@@ -132,5 +152,29 @@ test("privacy routes publish the dated notice and include its source in the depl
     "do not automatically expire",
   ]) {
     assert.ok(html.replace(/\s+/g, " ").includes(term), term);
+  }
+});
+
+test("the current privacy notice discloses the relay and the mobile counters", async () => {
+  const html = (
+    await readFile(
+      new URL("../../marketing/public/privacy/2026-11-05/index.html", import.meta.url),
+      "utf8",
+    )
+  ).replace(/\s+/g, " ");
+  assert.doesNotMatch(html, /anonymous analytics|anonymous usage/i);
+  for (const term of [
+    ...MOBILE_KEYS,
+    "Mobile companion",
+    "end-to-end encrypted",
+    "APNs",
+    "Expo",
+    "terminal text",
+    "file contents",
+    "no usage analytics",
+    "IP address",
+    "deletes that pairing's whole record",
+  ]) {
+    assert.ok(html.includes(term), term);
   }
 });

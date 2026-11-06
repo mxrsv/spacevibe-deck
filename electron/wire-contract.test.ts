@@ -158,6 +158,44 @@ describe("control:command", () => {
   });
 });
 
+describe("mobile companion events", () => {
+  it("pushes the flat keys the renderer's bridge reads, on the names its listeners use", () => {
+    // `src/terminal/mobile-bridge.ts` reads these keys by name from an unchecked payload, so a
+    // renamed key would silently stop a stream or a phone's typing.
+    expect(EVENTS.mobileChanged).toBe("mobile:changed");
+    expect(EVENTS.mobileQueryRequest).toBe("mobile:query-request");
+    expect(EVENTS.mobileStreamSubscribe).toBe("mobile:stream-subscribe");
+    expect(EVENTS.mobileStreamUnsubscribe).toBe("mobile:stream-unsubscribe");
+    expect(EVENTS.mobileInput).toBe("mobile:input");
+    const service = readFileSync("electron/mobile/service.ts", "utf8");
+    expect(service).toContain("EVENTS.mobileQueryRequest, { requestId, kind }");
+    expect(service).toContain("EVENTS.mobileStreamSubscribe, { subscriptionId, paneId }");
+    expect(service).toContain("EVENTS.mobileStreamUnsubscribe, { subscriptionId }");
+    expect(service).toContain("EVENTS.mobileInput, { paneId, data }");
+    const host = readFileSync("src/host/mobile-host.ts", "utf8");
+    for (const name of [
+      "mobile:changed",
+      "mobile:query-request",
+      "mobile:stream-subscribe",
+      "mobile:stream-unsubscribe",
+      "mobile:input",
+    ]) {
+      expect(host).toContain(`"${name}"`);
+    }
+    const bridge = readFileSync("src/terminal/mobile-bridge.ts", "utf8");
+    for (const key of ["subscriptionId", "paneId", "requestId", "kind", "data"]) {
+      expect(bridge).toContain(key);
+    }
+  });
+
+  it("is delivered to the preload's listen allowlist", () => {
+    const listenable = new Set<string>(Object.values(EVENTS));
+    for (const name of ["mobile:changed", "mobile:query-request", "mobile:input"]) {
+      expect(listenable.has(name)).toBe(true);
+    }
+  });
+});
+
 describe("desktop_environment", () => {
   it("returns a shape the renderer validator accepts", () => {
     // Getting this wrong disabled EVERY keyboard shortcut: the validator threw,

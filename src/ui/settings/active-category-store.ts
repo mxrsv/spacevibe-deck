@@ -14,6 +14,8 @@ export type CategoryId =
   | "browser"
   | "shortcuts"
   | "notifications"
+  // The iPhone companion (spec 2026-11-04-mobile-companion); listed only while `mobileCompanion` is on.
+  | "mobile"
   // A view over MAIN-owned analytics consent (spec 2026-08-22 §7), not a
   // settings-schema pair — consent must never travel with copied settings.
   | "privacy"

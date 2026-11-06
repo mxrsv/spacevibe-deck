@@ -82,6 +82,8 @@ import { hooksSupported } from "./agent-hooks/hooks-supported";
 import { createControlRouter } from "./control/control-routes";
 import { createPaneMirror } from "./control/pane-mirror";
 import { registerControl } from "./ipc/register-control";
+import { registerMobile } from "./ipc/register-mobile";
+import { createMobileForMain } from "./mobile/wire-main";
 import { addWorktree } from "./git/worktree";
 import { isReleaseSwitchEnabled, resolveReleaseSwitches } from "../src/lib/release-switches";
 import { installAppImagePolicy } from "./app-image-policy";
@@ -203,7 +205,32 @@ const agentControl =
   isReleaseSwitchEnabled("agentControl", resolveReleaseSwitches(!app.isPackaged));
 // The renderer reports every pane's phase and attention here whether or not the switch is on
 // (a report is cheap); only the control router reads it.
-const paneMirror = createPaneMirror({ now: () => Date.now() });
+const mainPaneMirror = createPaneMirror({ now: () => Date.now() });
+// ------------------------------------------------------- Usage analytics
+// Opt-in only (spec 2026-08-22): with consent unanswered, declined or the
+// state file unreadable, this registers handlers that count nothing, create
+// no id and start no timer. Registered above the mobile service, which
+// counts into it, and above the quit block, whose chain sends the
+// best-effort final snapshot.
+const telemetry = registerTelemetry({ stores, windows, emitTo });
+
+// The iPhone companion (spec 2026-11-04-mobile-companion); null while `mobileCompanion` is off.
+// Not gated on `hooksSupported()`: the phone needs the mirror, not the CLI's router.
+const mobile = createMobileForMain({
+  windows,
+  coordinator,
+  mirror: mainPaneMirror,
+  emitTo,
+  mostRecentlyFocused: () => registry.order()[0] ?? null,
+  mainLabel: MAIN_LABEL,
+  broadcastChanged: () => {
+    for (const label of windows.keys()) emitTo(label, EVENTS.mobileChanged, {});
+  },
+  onUsage: (kind) => telemetry.countMobile(kind === "open" ? "openedAgent" : kind),
+  onPairedPhones: (count) => telemetry.setPairedPhones(count),
+});
+// Every report also re-evaluates keep-awake (MOB12).
+const paneMirror = mobile?.observeMirror(mainPaneMirror) ?? mainPaneMirror;
 const controlRouter = agentControl
   ? createControlRouter({
       tokenFor: (paneId) => pty.hookTokenOf(paneId),
@@ -273,6 +300,7 @@ const pty = new PtyManager({
     hookServer.forgetPane(paneId);
     controlRouter?.forgetPane(paneId);
     paneMirror.forget(paneId);
+    mobile?.paneGone(paneId);
   },
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
   hookPort: () => hookServer.port(),
@@ -564,9 +592,17 @@ registerControl({
   labelOf,
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
   settleReply:
-    controlRouter === null
+    controlRouter === null && mobile === null
       ? null
-      : (fromWindow, reply) => controlRouter.settleReply(fromWindow, reply),
+      : (fromWindow, reply) =>
+          // The phone's forwarder first: it refuses quietly what is not its own.
+          (mobile?.settleControlReply(fromWindow, reply) ?? false) ||
+          (controlRouter?.settleReply(fromWindow, reply) ?? false),
+});
+registerMobile({
+  service: mobile,
+  labelOf,
+  assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
 });
 
 // ------------------------------------------------- Dev server discovery
@@ -589,13 +625,6 @@ registerSettingsIpc({
     await syncAgentIntegrations(settings);
   },
 });
-
-// ------------------------------------------------------- Usage analytics
-// Opt-in only (spec 2026-08-22): with consent unanswered, declined or the
-// state file unreadable, this registers handlers that count nothing, create
-// no id and start no timer. Registered above the quit block because the quit
-// chain below sends the best-effort final snapshot.
-const telemetry = registerTelemetry({ stores, windows, emitTo });
 
 // ------------------------------------------------------------- Account
 // Optional Google account (spec 2026-10-20-accounts). Signed out by default,

@@ -1,0 +1,27 @@
+{
+  "name": "spacevibe-deck-mobile",
+  "private": true,
+  "type": "module",
+  "description": "The iPhone companion: the shared protocol, the relay Worker (relay/) and the Expo app (app/).",
+  "scripts": {
+    "setup": "npm install && node scripts/setup.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p protocol/tsconfig.json && tsc -p protocol/tsconfig.core.json",
+    "lint": "oxlint -c oxlint.config.json protocol scripts relay/src",
+    "format": "prettier --write .",
+    "repro": "tsx protocol/repro/client.ts",
+    "vectors": "tsx protocol/scripts/make-test-vectors.ts"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "oxlint": "1.89.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

@@ -393,7 +393,8 @@ describe("the release train dependency graph", () => {
       expect(job(name)).toContain("runs-on: ubuntu-24.04");
     }
     const ci = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
-    expect(ci.match(/runs-on: ubuntu-24\.04/g)).toHaveLength(2);
+    // `check`, `backend-check` and `mobile-check` (the phone companion's own packages).
+    expect(ci.match(/runs-on: ubuntu-24\.04/g)).toHaveLength(3);
     expect(ci).not.toContain("runs-on: ubuntu-latest");
   });
   it("refuses empty notes before drafting and again before promotion", () => {

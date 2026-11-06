@@ -274,6 +274,38 @@ describe("Electron IPC contract", () => {
     expect(INVOKABLE_CHANNELS.has("control_reply")).toBe(true);
   });
 
+  it("pins the iPhone companion's flat payloads on both sides", () => {
+    // Mobile companion (spec 2026-11-04-mobile-companion, F5). The renderer is not the trust
+    // boundary for any of these; the sender is the window, resolved in main, so no key names one.
+    const flat = {
+      mobile_revoke: ["pairingId"],
+      mobile_query_report: ["requestId", "kind", "payload"],
+      mobile_stream_data: ["subscriptionId", "paneId", "kind", "data", "cols", "rows"],
+      mobile_push: ["paneId", "kind", "title", "body"],
+    };
+    for (const [channel, keys] of Object.entries(flat)) {
+      const registered = handlers.filter((handler) => handler.channel === channel);
+      expect(registered.length, channel).toBeGreaterThan(0);
+      for (const handler of registered) expect(handler.required, channel).toEqual(keys);
+      const sites = callSites.filter((site) => site.channel === channel);
+      expect(sites.length, channel).toBeGreaterThan(0);
+      for (const site of sites) expect(site.keys, channel).toEqual(keys);
+      expect(INVOKABLE_CHANNELS.has(channel), channel).toBe(true);
+    }
+    // The Settings section's other three take no payload at all.
+    for (const channel of ["mobile_state", "mobile_pair_start", "mobile_pair_cancel"]) {
+      for (const site of callSites.filter((candidate) => candidate.channel === channel)) {
+        expect(site.keys, channel).toEqual([]);
+      }
+      expect(handlers.filter((handler) => handler.channel === channel)).toEqual([]);
+      expect(
+        callSites.some((site) => site.channel === channel),
+        channel,
+      ).toBe(true);
+      expect(INVOKABLE_CHANNELS.has(channel), channel).toBe(true);
+    }
+  });
+
   it("create_directory carries the flat { parent, name } payload on both sides", () => {
     const sites = callSites.filter((site) => site.channel === "create_directory");
     expect(sites.length).toBeGreaterThan(0);

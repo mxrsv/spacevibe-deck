@@ -58,6 +58,9 @@ const LauncherSection = lazy(() =>
 const PresetControlsSection = lazy(() =>
   import("./sections/preset-controls-section").then((m) => m.PresetControlsSection),
 );
+const MobileSettingsSection = lazy(() =>
+  import("./sections/mobile-settings-section").then((m) => m.MobileSettingsSection),
+);
 const ControlStatesSection = lazy(() =>
   import("./sections/control-states-section").then((m) => m.ControlStatesSection),
 );
@@ -114,4 +117,5 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "explorer-changes", label: "explorer changes", Section: ExplorerChangesSection },
   { id: "usage-page", label: "usage page", Section: UsagePageSection },
   { id: "launcher", label: "stage launcher", Section: LauncherSection, scopedThemes: true },
+  { id: "settings-mobile", label: "settings · mobile", Section: MobileSettingsSection },
 ];

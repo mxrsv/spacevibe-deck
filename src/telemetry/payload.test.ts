@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   AGENT_PAYLOAD_KEYS,
   SCHEMA_VERSION,
+  MOBILE_KEYS,
   SURFACE_KEYS,
   UPDATE_KEYS,
   agentPayloadKey,
@@ -35,6 +36,7 @@ const SPECIMEN: UsagePayload = {
     downloadFailed: 0,
     installAttempted: 1,
   },
+  mobile: { pairedPhones: 1, phoneSessions: 3, phoneSends: 40, phoneOpenedAgents: 2 },
 };
 
 describe("usage payload contract", () => {
@@ -53,6 +55,7 @@ describe("usage payload contract", () => {
         "maxPanes",
         "restoredSessions",
         "updates",
+        "mobile",
       ].sort(),
     );
   });
@@ -65,6 +68,15 @@ describe("usage payload contract", () => {
       "downloaded",
       "downloadFailed",
       "installAttempted",
+    ]);
+  });
+
+  it("pins the mobile counter key set", () => {
+    expect([...MOBILE_KEYS]).toEqual([
+      "pairedPhones",
+      "phoneSessions",
+      "phoneSends",
+      "phoneOpenedAgents",
     ]);
   });
 

@@ -64,6 +64,23 @@ describe("Pane transfer primitives", () => {
     pane.dispose();
   });
 
+  it("snapshotForStream() holds the output written before the call and none written after it", async () => {
+    // The phone bridge buffers live output from the instant of this call; a byte in both the
+    // snapshot and that buffer would be drawn twice on the phone.
+    const pane = createPane(3, DEFAULT_SETTINGS as Settings, silentEvents);
+    pane.write("before");
+    const taken = pane.snapshotForStream(100);
+    pane.write("after");
+    const snapshot = await taken;
+    expect(snapshot.data).toContain("before");
+    expect(snapshot.data).not.toContain("after");
+    expect(snapshot.cols).toBe(pane.cols);
+    expect(snapshot.rows).toBe(pane.rows);
+    await pane.flush();
+    expect(pane.serializeScrollback(100)).toContain("after");
+    pane.dispose();
+  });
+
   it("flush() resolves on an idle terminal with nothing queued", async () => {
     const pane = createPane(2, DEFAULT_SETTINGS as Settings, silentEvents);
     await expect(pane.flush()).resolves.toBeUndefined();

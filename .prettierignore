@@ -13,3 +13,6 @@ src/lib/usage-pricing-snapshot.ts
 # Shell fixtures — no parser.
 *.zsh
 *.jsonl
+# The phone companion formats itself with the same options (mobile/prettier.config.mjs
+# re-exports the root config) from `npm run mobile:check`, which knows its generated files.
+mobile/**

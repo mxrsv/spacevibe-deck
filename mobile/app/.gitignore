@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+dist/
+expo-env.d.ts
+ios/
+android/
+src/terminal/terminal-html.generated.ts

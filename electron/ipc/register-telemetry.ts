@@ -12,12 +12,14 @@
  */
 import crypto from "node:crypto";
 import { app, ipcMain, type BrowserWindow } from "electron";
+import { isReleaseSwitchEnabled, resolveReleaseSwitches } from "../../src/lib/release-switches";
 import type { StoreRegistry } from "../store";
 import { CHANNELS, EVENTS } from "./channels";
 import {
   POST_TIMEOUT_MS,
   TELEMETRY_ENDPOINT,
   TELEMETRY_FILE,
+  type MobileEvent,
   type TelemetryStateReply,
   type UpdateCounterKey,
   type UsagePayloadLike,
@@ -35,6 +37,10 @@ export interface TelemetryHandle {
   flushOnQuit(): Promise<void>;
   /** Count one update-lifecycle outcome. Main-side; fire and forget. */
   countUpdate(key: UpdateCounterKey): void;
+  /** Count one phone-companion event (MOB27). Main-side only, like `countUpdate`. */
+  countMobile(event: MobileEvent): void;
+  /** The paired-phone gauge, re-read whenever the mobile service reports a change. */
+  setPairedPhones(count: number): void;
 }
 
 /** The one key the state lives under inside `telemetry.json`. */
@@ -83,6 +89,11 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
         version: app.getVersion(),
         platform: process.platform,
         arch: process.arch,
+        // The `mobile` block is sent only while the companion is on (older backends reject it).
+        mobileEnabled: isReleaseSwitchEnabled(
+          "mobileCompanion",
+          resolveReleaseSwitches(!app.isPackaged),
+        ),
         store: {
           unreadable: () => store.loadState.state === "unreadable",
           read: () => store.get(STATE_KEY),
@@ -140,6 +151,16 @@ export function registerTelemetry(deps: TelemetryRegisterDeps): TelemetryHandle 
     countUpdate: (key) => {
       servicePromise
         .then((service) => service.count("update", key, 1))
+        .catch((error: unknown) => console.error("Deck: telemetry count failed", error));
+    },
+    countMobile: (event) => {
+      servicePromise
+        .then((service) => service.countMobile(event))
+        .catch((error: unknown) => console.error("Deck: telemetry count failed", error));
+    },
+    setPairedPhones: (count) => {
+      servicePromise
+        .then((service) => service.setPairedPhones(count))
         .catch((error: unknown) => console.error("Deck: telemetry count failed", error));
     },
   };

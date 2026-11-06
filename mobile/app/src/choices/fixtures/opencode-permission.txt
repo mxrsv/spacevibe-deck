@@ -1,0 +1,8 @@
+  ┃  △ Permission required
+  ┃  ← Run bash command
+  ┃
+  ┃  npm test -- electron/relay/
+  ┃
+  ┃   Allow once   Allow always   Reject
+  ┃
+  ┃  ⇆ select  enter confirm

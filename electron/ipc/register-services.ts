@@ -22,7 +22,7 @@ import { listExternalApps, openInApp } from "../external-apps";
 import { workspaceForPath } from "../fs/workspace-for-path";
 import { listPromptAssets } from "../prompt-assets";
 import { pickImageAsDataUrl, readWorkspaceImageAsDataUrl, scanWorkspaceFavicon } from "../images";
-import { createUsageService } from "../usage/service";
+import { createUsageService, type UsageService } from "../usage/service";
 import { USAGE_CACHE_FILE } from "../usage/model";
 import { createAgentLimitsService } from "../agent-limits/service";
 
@@ -31,6 +31,23 @@ export interface RegisterServicesDeps {
   readonly setRecording: (senderId: number, recording: boolean) => void;
   readonly imageRootsFor: (senderId: number) => readonly string[] | Promise<readonly string[]>;
   readonly activateImageRootFor: (senderId: number, root: unknown) => boolean | Promise<boolean>;
+}
+
+let usageServiceInstance: UsageService | null = null;
+
+/**
+ * The one usage scanner of this process, shared by the Usage tab's channel and the mobile
+ * companion's `usage.get`: two scanners would race on the same cache file.
+ */
+export function sharedUsageService(): UsageService {
+  usageServiceInstance ??= createUsageService({
+    home: app.getPath("home"),
+    cachePath: path.join(app.getPath("userData"), USAGE_CACHE_FILE),
+    reportCacheWriteFailure: (error) => {
+      console.error("Deck: the usage cache could not be written:", error);
+    },
+  });
+  return usageServiceInstance;
 }
 
 export function registerServices(deps: RegisterServicesDeps): void {
@@ -129,13 +146,7 @@ export function registerServices(deps: RegisterServicesDeps): void {
   // Token usage: one command, no payload — the scan takes no renderer input.
   // Failures inside the scan are in-band (`sources[].state`, `skippedLines`);
   // a rejection here is user-safe while the detail stays in main's log.
-  const usageService = createUsageService({
-    home: app.getPath("home"),
-    cachePath: path.join(app.getPath("userData"), USAGE_CACHE_FILE),
-    reportCacheWriteFailure: (error) => {
-      console.error("Deck: the usage cache could not be written:", error);
-    },
-  });
+  const usageService = sharedUsageService();
   ipcMain.handle(CHANNELS.usageSnapshot, async () => {
     try {
       return await usageService.snapshot();

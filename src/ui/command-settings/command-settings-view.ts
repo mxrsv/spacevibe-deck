@@ -26,7 +26,8 @@ import { shortcutGroups } from "../settings/shortcut-groups";
 export function commandSources(): CommandSources {
   return {
     settings: settings.value,
-    areas: SETTINGS_CATEGORIES.map(({ id, label }) => ({ id, label })),
+    // Command Settings has no Mobile area; the classic screen is where that section lives.
+    areas: SETTINGS_CATEGORIES.flatMap(({ id, label }) => (id === "mobile" ? [] : [{ id, label }])),
     shortcuts: shortcutGroups(),
     platform: getDesktopEnvironment().platform,
     reported: reportedIssues(settings.value),

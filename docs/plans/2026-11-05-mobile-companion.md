@@ -205,24 +205,24 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     and `@noble/*`.
   - **S5:** Electron 43's Node has a global `WebSocket` client usable in main. If it does not,
     the relay client needs `ws` (F1).
-- [ ] **T1: Isolation of `mobile/` from root tooling (F8).**
+- [x] **T1: Isolation of `mobile/` from root tooling (F8).** Done 2026-11-05 in `a0f60dc`.
   - **Excluded from:** root vitest, `tsconfig`, `.oxlintrc.json` (with an R9 comment),
     prettier, `scripts/check-changed.sh`, the `.githooks/pre-push` sibling lookup and CI paths.
   - **Added:** a `mobile/` check script.
   - **Verify:** a deliberately broken file under `mobile/` is invisible to `npm test` and
     `npm run lint`, and is caught by the `mobile/` check.
-- [ ] **T2: Protocol and crypto (`mobile/protocol/`).**
+- [x] **T2: Protocol and crypto (`mobile/protocol/`).** Done 2026-11-05.
   - **Contents:** types, version, framing, the crypto interface with a Node implementation, the
     S4 vectors, and the no-phone repro client.
   - **Covers:** MOB7 (framing and auth failure) and MOB10.
   - **Verify:** unit tests.
-- [ ] **T3: Relay (`mobile/relay/`).**
+- [x] **T3: Relay (`mobile/relay/`).** Done 2026-11-05; deploying stays the owner's.
   - **Contents:** the Durable Object per pairing, hibernation, limits, revoke, APNs, minimal
     storage, and the canary test (MOB7). Covers MOB2, MOB6 and MOB8.
   - **Verify:** Wrangler local tests. The repro client pairs and exchanges frames through
     `wrangler dev`.
   - **Deploying the route and secrets is an owner action.**
-- [ ] **T4: Desktop service (`electron/mobile/`) behind `mobileCompanion`.** Covers MOB1–3, MOB5,
+- [x] **T4: Desktop service (`electron/mobile/`) behind `mobileCompanion`.** Done 2026-11-05. Covers MOB1–3, MOB5,
   MOB10–15 and decisions 21–24.
   - **Contents:**
     - the switch;
@@ -240,21 +240,21 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
     - a keystroke echo produces no `working`;
     - a snapshot plus the stream draws a Claude Code TUI correctly;
     - no push while a Deck window is focused.
-- [ ] **T5: Desktop Settings → Mobile.**
+- [x] **T5: Desktop Settings → Mobile.** Done 2026-11-05; the owner's eye judgement is in T14.
   - **Mock, no early stop** (the owner's 2026-11-05 full-build call): build a gallery specimen
     from the real Settings rows and controls. It holds Pair a phone, the QR dialog, the paired
     list and revoke. Then build the surface from the same parts. The owner judges both by eye in
     T14.
   - **Covers:** MOB1 (QR, 5-minute expiry) and MOB2 (list, revoke within 10 seconds).
   - **Verify:** renderer tests; the repro client sees a revoke.
-- [ ] **T6: Phone app shell (`mobile/app/`).**
+- [x] **T6: Phone app shell (`mobile/app/`).** Done 2026-11-05 (committed before T4, which was still running).
   - **Contents:** the Expo project, a theme module from Deck's tokens, SF Symbols, the text
     styles, the Face ID lock (MOB4), QR pairing (MOB1, MOB3), Settings (desktops, online and
     offline, toggles), and the offline and version states (MOB10–11).
   - **Verify:** Simulator screenshots next to the mock in both themes, with each difference
     measured.
   - **Needs Xcode:** an owner action, due before this task.
-- [ ] **T7: Home and pane (MOB16–19).**
+- [x] **T7: Home and pane (MOB16–19).** Done 2026-11-05 (committed before T4).
   - **Home:** tree E with the pinned Needs you section and See all. Every row shows its last line
     and age.
   - **Answers:** the numbered-choice parser with tests on captured Claude Code, Codex and opencode
@@ -262,33 +262,33 @@ clone of `origin/main`. This replaces the local worktree, fast-forward and push 
   - **Terminal:** the terminal view, Live mode with the accessory row, and the composer.
   - **Verify:** parser tests; Simulator and real-device runs against `electron:dev`; a pinned
     answer lands without opening the pane.
-- [ ] **T8: New agent, Files, Changes, Usage (MOB20–21).**
+- [x] **T8: New agent, Files, Changes, Usage (MOB20–21).** Done 2026-11-05; the desktop handlers landed with T4's executor.
   - **New agent:** `open` follows the orchestration spec's guarded flow, because a first-run
     trust dialog reads as idle.
   - **Verify:** a tab appears on the desktop and its focus does not move.
-- [ ] **T9: Push end to end (MOB22–23).**
+- [x] **T9: Push end to end (MOB22–23).** Done 2026-11-05 as code and config (before T5); the extension builds only in an EAS build.
   - **Contents:** APNs registration, the NSE decrypt with its generic fallback line, and tap to
     open the pane.
   - **Verify:** the acceptance latency of 9 of 10 within 5 seconds on cellular, and the
     focused-window mute.
-- [ ] **T10: LAN path (MOB9, F6).**
+- [x] **T10: LAN path (MOB9, F6).** Done 2026-11-05 (before T5); the final review covers the listener's security.
   - **Contents:** the address offered over the channel; a direct connection with the same
     encryption; relay fallback; the path shown in host details.
   - **Security:** run `security-review` before merge, and note the firewall prompt in the user
     guide.
   - **Verify:** same Wi-Fi uses LAN; leaving the network moves to the relay without re-pairing.
-- [ ] **T11: Telemetry and privacy (MOB26–27, F7).**
+- [x] **T11: Telemetry and privacy (MOB26–27, F7).** Done 2026-11-05 (before T5 and T8, which were still running); the backend deploy and the migration stay the owner's.
   - **Telemetry:** the counters, `internals/telemetry.md`, and the backend validation, deployed
     first.
   - **Privacy:** a new dated notice under `marketing/public/privacy/<date>/`; the App Store
     privacy answers match it.
-- [ ] **T12: Docs (MOB28).**
+- [x] **T12: Docs (MOB28).** Done 2026-11-05.
   - **User guide:** `docs/user/mobile.md`, covering pairing, revoke, offline, keep-awake and the
     Windows limit, plus its `vi` translation (then `npm run docs:translations -- --stamp
     vi/mobile`).
   - **Internals:** `docs/internals/mobile.md`, covering the protocol, the encryption and the
     traps. Plus glossary terms and the `docs/README.md` index.
-- [ ] **T13: Release pipeline (MOB24–25).**
+- [x] **T13: Release pipeline (MOB24–25).** Done 2026-11-05 as config; every EAS, App Store Connect and TestFlight step is the owner's.
   - **Contents:** the EAS project; Update channels per protocol version; the minimum iOS
     version and Expo SDK pinned; a public TestFlight beta.
   - **Submitting is an owner action.**
@@ -349,7 +349,367 @@ accepted).
 
 Evidence lands here, per task, with the command and the observed result.
 
+**Baseline (clean clone of `origin/main` `f3d2aa3`, Linux cloud VM, 2026-11-05):** `npm test` →
+`Test Files 4 failed | 626 passed | 1 skipped (631)`, `Tests 2 failed | 9692 passed | 22 skipped`.
+All four are environmental and pre-existing:
+- `scripts/electron-dev-watch.test.ts`, `electron/agent-hooks/codex-integration.test.ts`: "Electron
+  failed to install correctly" (the VM has no Electron binary);
+- `electron/dev-servers/protocol.test.ts` › rejects a certificate without an IP SAN for `::1` (no
+  IPv6 in the sandbox);
+- `electron/agent-shell/shell-bootstrap.test.ts` › bash startup keeps the user's PATH order.
+
+`npx oxlint` → exit 0 (warnings only).
+
+**T1:**
+- A file with a type error and a failing test under `mobile/protocol/src/` is invisible to the root:
+  `npx vitest run --exclude 'backend/**' --exclude 'mobile/**' mobile/` → "No test files found";
+  `npx oxlint <file>` → exit 0, nothing reported; `npx prettier --check <file>` → ignored.
+- The same file is caught by `npm run mobile:check`: unformatted → `mobile:check: prettier failed`;
+  formatted → `protocol/src/broken.test.ts(3,7): error TS2322 … mobile:check: tsc protocol failed`.
+- `npm run mobile:check` on the real tree → `mobile:check: all green`.
+- `npx vitest run scripts/ src/styles/` → one failure, `electron-release-config.test.ts` pins two
+  `ubuntu-24.04` jobs in `ci.yml`; updated to three for `mobile-check` in the same commit → green.
+- Push from a clean `/tmp` worktree: the pre-push hook ran `mobile:check` and
+  `npm test -- scripts/ src/styles/` → `Test Files 32 passed (32)`, `Tests 511 passed | 1 skipped`.
+
+**T2 (`mobile/protocol/`):**
+- `cd mobile && npx vitest run` → `Test Files 15 passed (15)`, `Tests 190 passed (190)`: encoding,
+  the Node crypto against RFC 7748 §6.1, RFC 8439 §2.8.2 and RFC 5869 vectors, every Deck
+  derivation in `test-vectors.json`, QR expiry/version/malformed, frames, the pairing exchange
+  (one-time use, expiry on the desktop too, bad proof), the channel (in-order counters, a tampered
+  frame dropped and counted while the next good one opens, close after 16 failures, version
+  verdicts, no message before key confirmation), messages/results/tree parsers, chunking, sealed
+  push, and a full in-memory phone ↔ desktop loopback.
+- `npx tsc -p protocol/tsconfig.json` and `protocol/tsconfig.core.json` (`types: []`, no Node) pass;
+  the core also compiles under the root's TS 5.6 with `--module commonjs --lib ES2022 --types node`.
+- Prettier and `oxlint --deny-warnings` clean on `protocol/` and `scripts/`.
+- The repro client (`npm run repro -- …`) typechecks and parses its arguments; its run against a
+  real relay and `electron:dev` is **verify on the Mac**.
+
+**T3 (`mobile/relay/`):**
+- `cd mobile/relay && npm run check` (tsc + `node --test`, the Worker bundled by esbuild and run in
+  Miniflare with SQLite Durable Objects, Node's `WebSocket` as the client) → `# tests 32 # pass 32
+  # fail 0`: registration (201/409/bad bodies/expiry bounds), one-time claim, claim after expiry,
+  the unclaimed-pairing alarm, auth for both roles, binary forwarding and drop when the peer is
+  offline, `peer` notices, revoke from either side reaching the other and later connects reading
+  `unknown`, 4413 frame size, 4429 rate, the third socket closing the oldest, APNs and Expo request
+  shapes against a faked outbound service (generic alert only, `d: { p, c }`), push rate limit, the
+  APNs-secrets-missing no-op, and **MOB7's canary**: a canary sent in binary frames and in a push is
+  absent from every Durable Object storage value and every captured log line, raw, base64 (three
+  alignments), base64url and hex.
+- `npx wrangler deploy --dry-run --outdir dist` → 24.23 KiB, bindings `PAIRINGS`, `APNS_TOPIC`.
+  `wrangler dev` answered `{"ok":true,"protocol":1}` on `/v1/health` and `/relay/v1/health`.
+- **Verify after the owner deploys (S2):** whether a Worker's `fetch` reaches APNs over HTTP/2.
+
+**T6 (`mobile/app/`):**
+- `cd mobile && npm run check` → app check: `tsc --noEmit` without Node types, the test tsconfig with
+  them, `oxlint --deny-warnings`, vitest `Test Files 10 passed (10)`, `Tests 64 passed (64)`, and
+  `expo export --platform ios --no-minify` → `iOS Bundled 11378ms node_modules/expo-router/entry.js
+  (1248 modules)`: Metro bundles the whole app for iOS without Xcode.
+- Tested: the noble provider against `test-vectors.json`, the RFC vectors and the Node provider;
+  pairing (happy path, reused code, desktop offline, relay unreachable, relay refusal, expired code);
+  the connection through the real channel against a fake desktop (online, offline with last seen,
+  version block, revoked, relay refusal, reconnect, handshake timeout); the ping watchdog; revoke on
+  forget; the MOB4 lock rules; prefs defaults; status lines.
+- **Verify on the Mac / iPhone (Expo Go):** camera QR scan, Face ID and the passcode, SF Symbols,
+  Dynamic Type, the Keychain, pairing against `wrangler dev` and `electron:dev`, and the look next
+  to the mock in both themes (T14's eye batch). No Simulator here, so no screenshots.
+
+**T7 (`mobile/app/`):**
+- `cd mobile && npm run check` → app vitest `Tests 115 passed (115)`, `iOS Bundled … (1280 modules)`.
+  Tested: the numbered-choice parser on reconstructed Claude Code, Codex and opencode screens plus
+  negatives (a list higher up the output, a list followed by a spinner or an idle input box); the
+  Needs-you selection, order and See all; the tree store's replay after a reconnect; the terminal
+  bridge's ready gating and snapshot-then-live order, held events and gap detection; zoom snapping
+  and per-desktop persistence; the accessory key map; the 16 ms input batcher.
+- **Verify on the iPhone (Expo Go):** xterm drawing inside the WebView and the Menlo cell ratio that
+  sets fit-to-width; the keyboard opening in Live mode and keystrokes arriving; pinch and horizontal
+  scroll; the header swipe; and whether a bare digit selects an option in each real agent (no real
+  captures were available here; opencode's permission dialog has no numbers, so it gets Reply).
+
+**T4 (desktop service):**
+- `npx tsc --noEmit` and `npx tsc -p tsconfig.electron.json --noEmit` → clean.
+- `npx vitest run src/terminal/ src/host/ src/lib/ src/ui/settings electron/control/ electron/ipc/
+  electron/mobile/` → `Test Files 204 passed (204)`, `Tests 3145 passed (3145)`; the 24 files T4
+  added or changed alone → 304 tests. Covered: pairing (the registration hash, the 5-minute expiry
+  checked at start and at `pair-hello`, one-time use, a bad proof that does not burn the QR, the
+  refusal when `safeStorage` cannot encrypt), the store (an unreadable file is never overwritten),
+  the relay client (auth, ping, backoff, stopping on a terminal close code), a full phone session
+  through the real channel with the version gate and the `desktop` event, every executor method
+  with chunked bodies and error mapping, agent `send` with `expectedAgent` versus shell input,
+  callerless `open` picking its window and holding the prompt until the first idle, the stream
+  order (snapshot, buffered output, live output, with the snapshot holding exactly the output before
+  the call), phone input reaching `paneIo.writePty`, push gated on focus and sealed per phone,
+  keep-awake, revoke, the notifier's phone branch, and every new channel pinned in
+  `scripts/electron-ipc-contract.test.ts` and `electron/wire-contract.test.ts`.
+- **Verify on the Mac (`electron:dev`, isolated userData, repro client or phone):** Electron main's
+  global `WebSocket` against `wrangler dev` (S5); a keystroke echo giving no `working` and no false
+  `completed` push; a Claude Code TUI drawn from snapshot plus stream; callerless open across
+  windows with the prompt after idle and focus unmoved; real `powerSaveBlocker` and `safeStorage`;
+  no push while any Deck window is focused; revoke reaching the phone within 10 s.
+
+**T11 (telemetry and privacy):**
+- `npx vitest run electron/telemetry/ src/telemetry/ electron/mobile/ electron/ipc/ scripts/
+  src/styles/` → `Test Files 61 passed (61)`, `Tests 803 passed | 1 skipped`: the four mobile
+  counters reach the daily payload, reset on the next local day, carry no identifier, and are not
+  reachable from the renderer's `telemetry_count` channel.
+- `cd backend && npm test` → `# pass 57 # fail 0`: the optional `mobile` object validates, older
+  payloads without it still validate, and the new notice is the current `/privacy`.
+- `npm run build:landing` built. `tsc` (renderer and main) clean.
+- **Owner:** apply `backend/migrations/0004-mobile-counters.sql` and deploy the backend **before**
+  a client release that sends the counters (backend README rule); enter the App Store privacy
+  answers from `mobile/app/store/privacy-answers.md`.
+
+**T8 (`mobile/app/`, desktop handlers in T4):**
+- `cd mobile && npm run check` → app vitest `Tests 148 passed (148)`, `iOS Bundled … (1302 modules)`.
+  Tested: the new-agent flow and its error text; the guarded first prompt (idle → sent, a question
+  on screen → held in the composer, timeout → held, agent exited → error, out-of-order events
+  ignored); file navigation never leaving the checkout; the diff line classifier (with the
+  desktop's synthetic untracked-file diff); usage formatting with the unpriced-tokens note; chunk
+  assembly with the response before or after its chunks, gaps and timeouts.
+- **Verify on the iPhone against `electron:dev`:** a fresh folder's trust question holds the prompt
+  and a known folder gets it; the tab appears on the desktop without taking focus; sheet,
+  segmented control, wide-diff scroll and large-file viewing on the device.
+
+**T9 (push):**
+- Desktop: the notifier's phone branch and main's focus gate and sealing landed in T4; the relay's
+  APNs and Expo senders in T3.
+- `cd mobile && npm run check` → app vitest `Tests 175 passed (175)` (including the
+  `swift-contract.test.ts` that pins the AAD, nonce length, Keychain service and access group and
+  the `d.p`/`d.c` keys between `NotificationService.swift` and `push.ts`), `iOS Bundled … (1374
+  modules)`. Tested: environment → token kind and env, the registration message, re-registration
+  on every relay `ready` and on rotation, the off switch sending nothing, the push key written,
+  migrated and deleted under the extension's Keychain contract, the tap router, and the foreground
+  decrypt of a `sealPush` payload (a tampered one keeps the generic line).
+- **Verify with an EAS dev build on the iPhone (owner actions first: App Group and Keychain Sharing
+  on both App IDs, an APNs key as Worker secrets, the relay deployed):** S1 — the extension
+  rewrites "An agent needs you" into the real copy; the 9-of-10-within-5-s latency on cellular; no
+  push while a Deck window is focused; tap opens the pane after unlock. In Expo Go only the
+  generic line shows until the app is opened, and only with an EAS project id configured.
+
+**T10 (LAN path):**
+- Desktop: `npx vitest run electron/mobile/ electron/ipc/` → `Test Files 26 passed (26)`, `Tests 271
+  passed (271)`; `tsc -p tsconfig.electron.json` clean. Tested: the private-interface filter (each
+  RFC 1918 range in, link-local, CGNAT, public, internal and IPv6 out), never binding a wildcard,
+  refusing a wrong path, an unknown pairing, plain HTTP, a text frame, an unmasked frame, an
+  oversized message, a ninth socket and a socket that never completes its handshake; a full phone
+  handshake and request over a real loopback socket with the real channel; the listener stopping
+  on the last revoke; `lan` addresses in every `desktop` event and a fresh event on change.
+- Phone: `cd mobile && npm run check` → app vitest `Tests 185 passed (185)`. Tested: address
+  filtering, the LAN link's binary-only send and timeouts, the handshake over a fake LAN socket
+  against the protocol's desktop channel, LAN preferred with the relay socket kept for presence and
+  push, fallback to a fresh relay session with subscription replay, retry with backoff and on a new
+  address set, the "Same Wi-Fi" / "Relay" line.
+- **Verify on the Mac and iPhone on one Wi-Fi:** the macOS firewall prompt on first bind, the iOS
+  Local Network prompt (Expo Go's own wording in Expo Go), `ws://` to a private address under App
+  Transport Security, the phone reporting "Same Wi-Fi", and leaving the network moving it to the
+  relay without re-pairing.
+
+**T5 (Settings → Mobile):**
+- `npx tsc --noEmit` clean; `npx vitest run src/ui/settings src/ui/command-settings src/settings
+  src/gallery scripts/ src/styles/` → `Test Files 87 passed (87)`, `Tests 1361 passed | 1 skipped`.
+  Tested: no Mobile category, row or search hit with the switch off; Pair a phone shows the QR from
+  `mobile_pair_start` with the countdown; expiry offers Show a new code; a `mobile:changed` with
+  the new phone closes the dialog and lists it; Revoke confirms, then sends the flat
+  `{ pairingId }`; the error and storage-unavailable states.
+- Gallery specimen `settings-mobile` ("settings · mobile") renders the real rows and dialog bodies
+  over fixtures; a headless screenshot in scratch showed it rendering with no page errors (default
+  button chrome there is the headless browser's, the same on the existing `rows` specimen).
+- **The owner's eye (T14):** the dialog over Settings, the QR's size and a real iPhone camera
+  scanning it in dark themes, row spacing.
+
+**T13 (release pipeline):**
+- `cd mobile && npm run check` green; `src/release/eas-config.test.ts` fails unless every EAS build
+  channel is `protocol-<PROTOCOL_VERSION>[-…]`, the runtime version is
+  `protocol-<PROTOCOL_VERSION>`, and the bundle id `dev.spacevibe.deck.mobile`, team `DJDD3T8LH7`
+  and the iOS deployment target are pinned — so bumping the protocol without new channels fails
+  the check (MOB24). `expo export` still bundles with `expo-updates`, `expo-build-properties` and
+  `expo-dev-client` installed.
+- **Pinned (MOB25):** Expo SDK 58 (React Native 0.88.1, React 19.3, TypeScript 6.0), iOS 16.4
+  minimum, the native modules listed in `mobile/app/package.json`.
+- **Owner actions, never run here:** the seven Release steps in `mobile/app/README.md` (`eas init`
+  and `EAS_PROJECT_ID`, the App Store Connect record, App ID capabilities for the app and its
+  extension, the APNs key as relay secrets, a development build for the iPhone, a production
+  build with `eas submit` for the public TestFlight beta, `eas update --channel protocol-1`).
+
+**T12 (docs):**
+- New: `docs/user/mobile.md` (pairing, answering, Live mode, new agent, files/changes/usage,
+  notifications, offline, keep-awake, the LAN prompt, Face ID, revoke, updates, the Windows limit)
+  with its `vi` translation stamped current (`npm run docs:translations -- --stamp vi/mobile` →
+  `vi/mobile current`), and `docs/internals/mobile.md` (protocol, pairing, channel, relay, LAN,
+  how phone input keeps echo suppression, push, keep-awake, Windows).
+- Updated in place: `docs/user/settings.md` (Mobile category), `docs/internals/glossary.md`,
+  `docs/README.md`, `docs/operations/development.md` (`mobile:check`, `mobile-check`),
+  `AGENTS.md` (the surface table and the commands table).
+- Every relative link in those files resolves (a script over each `](…)`; the one miss,
+  `AGENTS.md` → `../AGENTS.md`, is the pre-existing workspace map outside this repo).
+  `npm run build:landing` built; it still notes the pre-existing stale `vi` guides
+  (getting-started, keyboard-shortcuts, settings), which this change does not stamp.
+- `npx vitest run scripts/ src/styles/` → `Test Files 32 passed (32)`, `Tests 512 passed`.
+
+**Independent review (two fresh-context reviewers over `origin/main...HEAD`, 2026-11-05):**
+- Security (pairing, crypto, relay, LAN): no critical or high finding; the key schedule, nonces,
+  replay and reordering, key confirmation, the relay never seeing the QR secret, constant-time
+  token checks, the WebSocket parser's masking and length checks, the WebView's isolation and the
+  `safeStorage` envelope held up. Fixed: a hostile relay could keep a revoked phone's session alive
+  over another pairing's socket (medium); viewing a pane forwarded xterm's own query replies into
+  the PTY (medium); idle TCP connections could exhaust the LAN listener's file descriptors
+  (medium); a forged version verdict, a non-durable revoke, unlimited relay registration and
+  self-claimed pairings, a tap routed by an unauthenticated pane id, quadratic frame buffering
+  (low). Hardening: keys `THIS_DEVICE_ONLY`; Linux `basic_text` `safeStorage` counts as none.
+- Correctness: the hard constraints held (input only through `paneIo.writePty`, the CLI untouched,
+  snapshot-then-live with nothing lost or doubled, push before `isEnabled()` with dedupe and the
+  focus gate, keep-awake). Fixed: the desktop's relay session outliving the phone, so the tree poll
+  and streams ran forever (high); a custom agent label with a space dropping a whole tree (high);
+  the telemetry payload changing with the switch off, which the deployed backend would refuse
+  (medium); a subscribe in flight during the move to the LAN (medium); the tail of a PTY's output,
+  resize ordering, `moved` read as closed, an orphan relay link, UTF-16 inline sizes (low); stream
+  pacing so busy panes cannot trip the relay's rate limit.
+- Each fix carries its own test; the reviewers' failing scratch tests were reproduced as repo tests
+  where the agents fixed them.
+
+**End-to-end over real sockets (scratch only, nothing committed):** the real relay under
+`wrangler dev`, the real desktop `createMobileService` with a fake renderer, and the phone's real
+pair flow, connection manager, socket factory and noble crypto: pairing (QR → claim → accept in
+103–167 ms), online with the `desktop` event, the tree (with a "My Aider" custom agent), snapshot
+then live data in order, `pane.input` and shell `pane.send` reaching the renderer's input path, a
+push reaching the relay, the move to the LAN on a private alias address and the fallback to the
+relay when it closed, and revoke reaching the phone in 52–80 ms (relay path, relay only, and
+during a LAN session — that last case failed first and was fixed in `db4ba6a`); a reconnect with
+the old token then reads 4404.
+
+**Final gates on a clean worktree (`2d94987` for the long runs, then `db4ba6a`/`bc036d2`):**
+- `npm test` → `Test Files 2 failed | 647 passed | 1 skipped (650)`, `Tests 2 failed | 9895
+  passed | 22 skipped (9919)`: the two baseline failures only (bash PATH, `::1`).
+- `npm run lint` at `db4ba6a` → exit 0 (the first run at `2d94987` failed: `mobile/.oxlintrc.json`
+  was loaded by the root as a nested config and overrode its ignore; fixed in `5a03d82`). 31 new
+  warnings of kinds the tree already carries, six of them `max-lines` on new files over 300 lines.
+- `npm run build` → `✓ built in 1m 3s`, exit 0. `npm run electron:build` → exit 0.
+- `cd backend && npm test` → `# pass 57 # fail 0` after `bc036d2` (the contract test now turns
+  the mobile switch on).
+- `npm run mobile:check` → `mobile:check: all green` (protocol 194 tests, relay 35, app 241, the
+  iOS bundle).
+
+## Decisions taken (cloud run, 2026-11-05)
+
+Each is the reversible option closest to the spec, taken without stopping (Operating contract).
+
+1. **Branch.** The session was handed `mock/mobile-companion-2026-11-05` as its branch; the owner's
+   prompt and this plan name `claude/mobile-companion`, so the build lives there and the mock branch
+   is only read. Turned down: committing onto the mock branch, which is never merged.
+2. **npm 10.9 crashes resolving vitest without a lockfile** (`Cannot read properties of null
+   (reading 'edgesOut')`, also in an empty directory). Each `mobile/` lockfile was created once with
+   `npx npm@11 install`; `npm ci` with npm 10 works from it. Turned down: `--legacy-peer-deps`,
+   which changes what gets installed.
+3. **CI runs `mobile/` in its own job** (`mobile-check`) instead of ignoring the path:
+   `electron/mobile/` imports `mobile/protocol/`, so a protocol change must still run the root CI.
+   `scripts/electron-release-config.test.ts` counted two Linux CI jobs and now counts three.
+4. **The pre-push hook runs `mobile:check` when `mobile/` changed** and its packages are installed,
+   and prints how to install them otherwise (CI runs it either way). Turned down: failing the push
+   for a contributor who never installed the phone toolchain.
+5. **`tsx` in `mobile/`'s dev dependencies** runs the protocol's no-phone repro client.
+6. **Session keys are per connection**, from a fresh X25519 exchange on each transport mixed with
+   the pairing key and the handshake transcript; frame counters restart per session. Turned down:
+   one long-lived key with persisted counters, which a crash or a second transport can reuse.
+7. **The relay never sees the QR secret**: it holds `sha256(claimToken)`, where `claimToken` is an
+   HKDF of the secret, so it cannot forge the phone's pairing proof.
+8. **Relay URL parsing is string-based** (`parseRelayUrl`): React Native's `URL` cannot set a
+   protocol or a path.
+9. **Expo's push service is the Expo Go path** (`kind: "expo"`), next to direct APNs. It carries
+   the same generic line and ciphertext only; the privacy notice names it. Turned down: no push at
+   all in Expo Go, which the owner's test tomorrow runs in.
+10. **A socket for an unknown pairing is accepted as a plain socket and closed at once**, because
+    closing a just-accepted hibernatable socket left the client waiting 10 s for the close.
+11. **Expo SDK 58** (the latest; React Native 0.88, React 19.3, TypeScript 6.0). `npx expo install`
+    cannot reach `api.expo.dev` through this VM's proxy, so the versions come from
+    `expo/bundledNativeModules.json` by hand; `expo-crypto` (random bytes for the noble crypto) and
+    `expo-font` (needed by `expo-symbols`) join the F1 list.
+12. **T6 and T7 were committed before T4**: they were built at once by separate agents and finished
+    first. Each task still has its own commit.
+13. **A numbered choice sends the bare digit**, the same for every agent (MOB18: parsed buttons are
+    agent-agnostic). Turned down: per-agent key recipes, which the spec rules out.
+14. **Callerless `open` routes through a synthetic pane id** mapped to the chosen window, so
+    `control-forward.ts` and the CLI stay untouched (F4). Turned down: a window field on the
+    control command, which would change its twelve pinned keys.
+15. **The renderer builds the tree** with the rail's own `buildRail` and main overlays the pane
+    mirror. Turned down: grouping panes in main, a second copy of the rail's rules.
+16. **Paths the phone may name are the ones a window reported** (projects and checkouts);
+    `files.*`, `changes.*` and `open` refuse anything else with `outside-root`.
+17. **Custom agents (`custom:` ids) are left out of `agents.list`** for now: the protocol's id
+    pattern has no `:`. Opening a custom agent from the phone waits for a protocol bump.
+18. **`DECK_RELAY_URL` is read only by unpackaged runs**, as `DECK_SUPABASE_URL` is: a packaged app
+    cannot be redirected by its environment.
+19. **The mobile counters are a separate `mobile` object** in the payload, optional on the backend,
+    and main-side only. `pairedPhones` is a gauge read on every change, so the backend's aggregate
+    reads as phone-days, not distinct phones (the migration and `telemetry.md` say so).
+20. **App Store privacy answer:** "Device ID" (the push token and pairing id), not linked to the
+    user, no tracking, for app functionality. "Data Not Collected" is the alternative, noted in the
+    file; the owner picks when entering it.
+21. **The phone runs the guarded first prompt itself** (MOB20): it opens the agent with no prompt,
+    waits for its first idle, reads the screen, and sends only when no question shows; otherwise
+    the prompt waits in the composer with a banner. Turned down: the desktop's prompt-on-first-idle
+    path (the CLI's `--prompt`), which a first-run trust dialog would swallow. The protocol keeps
+    the field; the phone always sends null.
+22. **The push extension reads its key from a Keychain group the app shares**: the config plugin
+    makes that group the app's only Keychain access group, so `expo-secure-store` writes there
+    without the team id in JavaScript; the extension reads the resolved group from its Info.plist.
+23. **No OS permission prompt at launch**: it appears when the first pairing completes or when the
+    user turns Notifications on. Turning it off unregisters on the phone; the relay keeps the stale
+    token until it is replaced, because its protocol has no "clear" message.
+24. **T9 and T10 were committed before T5**, which was still running.
+25. **The LAN listener is a hand-written RFC 6455 server** on `node:http` (masked binary frames only,
+    128 KiB cap), so the root gains no `ws` dependency (F1). The Origin header is not checked: the
+    pairing key decides who may talk. A listener restart takes a new port.
+26. **The phone keeps its relay socket while on the LAN**, for presence and push-token
+    registration, and falls back to a fresh relay session (a used channel cannot take a second
+    `hello`), replaying its subscriptions.
+27. **QR codes come from `uqr@0.1.3`** (MIT, zero dependencies) as an exact root devDependency:
+    every renderer library here is a devDependency because it is bundled, so the root still gains
+    no runtime dependency (F1). Turned down: a hand-written QR encoder. **For the owner to accept:**
+    `scripts/icon-system.test.ts` now allows one `<svg>` in `qr-code.tsx`, with its reason.
+28. **The Mobile section is on the classic Settings screen only.** The `commandSettings` variant's
+    areas are a closed set pinned by a type test; a Mobile area there is a follow-up when that
+    switch ships. The dialogs use a plain stylesheet (`src/styles/32-mobile-settings.css`) because
+    utility classes in app markup fail the preset-boundary test.
+29. **iOS 16.4 is the minimum**, not React Native 0.88's 15.1: `expo-build-properties` 58 refuses
+    anything below 16.4.
+30. **`npm start` is `expo start --go`**: with `expo-dev-client` installed, a plain `expo start`
+    serves a development build whose QR Expo Go cannot open. `npm run start:dev-client` serves
+    the EAS development build.
+31. **The runtime version is `protocol-<N>`** and the release constants sit in a CommonJS module
+    (`src/release/release.js`), because Expo's config loader cannot import TypeScript from
+    `app.config.ts`; a test checks it against the protocol's real export.
+32. **Copy code** in the pairing dialog puts the QR text on the clipboard, for the phone's code
+    field and the repro client. It is as one-time and short-lived as the QR. Turned down: no text
+    form at all, which left the repro client and the Simulator path unusable.
+33. **Relay rate raised to 1500 messages / 10 s per socket**, with the desktop pacing each stream to
+    one message per 50 ms and ending a stream with `overflow` past a 1 MiB backlog. Turned down:
+    keeping 400, which four busy panes would exceed and close the desktop's socket.
+34. **The LAN listener does not check Origin**; the pairing key decides who may talk.
+35. **Phone push off leaves the relay's stored token** until it is replaced: the relay protocol has
+    no "clear" message yet.
+
 ## Handoff
+
+2026-11-05 (cloud run): T1–T13 built on `claude/mobile-companion`, one commit per task plus fix
+commits, all pushed; draft PR https://github.com/mxrsv/spacevibe-deck/pull/97. Everything sits
+behind `mobileCompanion` (on in dev builds, off in releases). Nothing deployed, no secrets set, no
+Expo/EAS/App Store action taken.
+- **Next (T14, the owner on the Mac, no Xcode):** the PR's "Cách test" checklist: `npm install`,
+  `npm --prefix mobile run setup`, `npm --prefix mobile/relay run dev`, `DECK_RELAY_URL=http://<mac
+  LAN ip>:8787 npm run electron:dev`, `cd mobile/app && npm start` in Expo Go, pair, then each
+  acceptance item. Everything marked **verify on the Mac / iPhone** above is open.
+- **Still the owner's:** deploying the relay and its route and secrets; applying the backend
+  migration and deploying the backend before a client release sends the counters; `eas init`, the
+  App Store Connect record, capabilities, the APNs key, a development build (S1), TestFlight; the
+  switch flip; the CHANGELOG entry at merge; accepting the icon-system ledger exemption for
+  `qr-code.tsx`.
+- **Not verified anywhere yet:** S1 (the extension decrypting on a device), S2 (a Worker reaching
+  APNs over HTTP/2), S3 (xterm in the WebView on a device), S5 in a running Electron main (Node 22's
+  `WebSocket` is there by version), the 9-of-10-in-5-s push latency, the LAN path on a real network.
+
+Earlier entries:
+
 
 2026-11-05: plan written, approved for a full build (see Record) and committed for a cloud session,
 together with the spec's link to it. The direction mock was pushed on its own branch,

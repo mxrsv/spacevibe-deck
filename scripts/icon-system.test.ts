@@ -41,6 +41,9 @@ const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
   // (DL-2.2) without a `filter` (DL-1.3). Brand marks, not action icons.
   ["lib/agent-logos.ts", 1],
   ["ui/controls/agent-glyph.tsx", 1],
+  // The pairing QR (mobile companion, MOB1): a data picture generated from the code's text, shown
+  // as an <img> on a white quiet zone in every theme. Not an icon; it must not follow the theme.
+  ["ui/settings/sections/qr-code.tsx", 1],
 ]);
 
 /**

@@ -23,6 +23,7 @@ whose only symptom when lost is `posix_spawnp failed`.
 | `npm run build`                      | `tsc` over `src/` plus the shipping renderer bundle                                                            |
 | `npm run electron:build`             | `tsc -p tsconfig.electron.json` plus the CommonJS rename pass; this is the whole typecheck of `electron/`       |
 | `npm run lint`                       | oxlint, then `prettier --check`                                                                                |
+| `npm run mobile:check`               | The phone companion's own check: prettier, oxlint, `tsc` and tests for `mobile/protocol`, `mobile/relay` and `mobile/app`, and an iOS bundle of the app. Install first with `npm --prefix mobile run setup` |
 | `npm run electron:package`           | Local unsigned `Deck Electron.app` (arm64, `dir` target) in `dist-electron-app/`                               |
 | `npm run electron:package:release`   | The shipping config: signing preflight, signed and notarized, published nowhere                                 |
 | `npm run electron:package:monaco-smoke` | The packaged Monaco regression smoke (universal, unsigned)                                                  |
@@ -53,8 +54,9 @@ runs no CI check, but a change under `docs/user/**` builds the landing, which re
 guides.
 
 - [`ci.yml`](../../.github/workflows/ci.yml) `check` (ubuntu): `lint`, `test`, `build`,
-  `electron:build`; plus `backend-check` for the ingest Worker. Skipped when the change
-  stays within `marketing/**`, `docs/**`, `**/*.md` or `landing.yml`.
+  `electron:build`; plus `backend-check` for the ingest Worker and `mobile-check` for the phone
+  companion's packages. Skipped when the change stays within `marketing/**`, `docs/**`,
+  `**/*.md` or `landing.yml`.
 - [`landing.yml`](../../.github/workflows/landing.yml) (ubuntu): the landing's Vitest files
   and `build:landing`, when `marketing/**`, `docs/user/**` or the workflow itself changes.
 - [`pr-shots.yml`](../../.github/workflows/pr-shots.yml) (ubuntu, pull requests touching the
@@ -76,8 +78,9 @@ covers that tree.
 ## Tests
 
 Vitest with the `node` environment by default; component tests opt into jsdom with an
-`@vitest-environment jsdom` pragma. `npm test` excludes only `backend/`, whose `node:test`
-suite runs in CI's `backend-check`.
+`@vitest-environment jsdom` pragma. `npm test` excludes `backend/`, whose `node:test`
+suite runs in CI's `backend-check`, and `mobile/`, whose packages bring their own toolchain and run
+in `npm run mobile:check` and CI's `mobile-check`.
 
 Tests that guard a repository rule rather than a module:
 

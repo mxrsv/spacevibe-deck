@@ -1,0 +1,155 @@
+import type { CryptoProvider } from "@protocol/crypto";
+import {
+  pairingKeys,
+  summarize,
+  type PairingStore,
+  type PairingSummary,
+  type StoredPairing,
+} from "@/pairing/pairing-store";
+import type { ClientToRelay } from "@protocol/relay-messages";
+import type { PushKeyStore } from "@/push/push-key-store";
+import { createDesktopConnection, type DesktopConnection } from "./connection";
+import { createLanLink } from "./lan-link";
+import { createRelayLink } from "./relay-link";
+import { revokeOnRelay } from "./revoke-client";
+import type { SocketFactory } from "./socket";
+
+export interface DesktopEntry {
+  readonly summary: PairingSummary;
+  readonly connection: DesktopConnection;
+}
+
+export interface SessionManager {
+  /** The same array until a desktop is added or forgotten, so it is safe as a store snapshot. */
+  getEntries(): readonly DesktopEntry[];
+  subscribe(listener: () => void): () => void;
+  /** Reads the Keychain and opens a connection for every stored pairing. */
+  load(): Promise<void>;
+  addPairing(pairing: StoredPairing): Promise<void>;
+  /** Sends `revoke` to the relay, then forgets the keys. `revokedOnRelay` is false when that could not be confirmed. */
+  forget(pairingId: string): Promise<{ readonly revokedOnRelay: boolean }>;
+  /** Foreground starts every connection, background stops them (iOS suspends sockets anyway). */
+  setActive(active: boolean): void;
+  find(pairingId: string): DesktopEntry | null;
+  /** A pairing's push key as bytes, for opening a sealed push; null for an unknown pairing. */
+  pushKeyOf(pairingId: string): Uint8Array | null;
+  /** Tell every connected relay link the current push registration (a token appeared or rotated). */
+  announcePush(): void;
+}
+
+export interface ManagerDeps {
+  readonly store: PairingStore;
+  readonly crypto: CryptoProvider;
+  readonly socketFactory: SocketFactory;
+  readonly session: { readonly device: string; readonly appVersion: string };
+  /** Where the extension reads push keys; optional so tests and Expo Go builds can omit it. */
+  readonly pushKeys?: PushKeyStore;
+  /** The push registration to send on every relay `ready`, or null when there is none. */
+  readonly pushRegistration?: () => ClientToRelay | null;
+}
+
+export function createSessionManager(deps: ManagerDeps): SessionManager {
+  const listeners = new Set<() => void>();
+  const stored = new Map<string, StoredPairing>();
+  let entries: readonly DesktopEntry[] = [];
+  let active = false;
+
+  function publish(next: readonly DesktopEntry[]): void {
+    entries = next;
+    for (const listener of [...listeners]) listener();
+  }
+
+  function open(pairing: StoredPairing): DesktopEntry {
+    const keys = pairingKeys(pairing);
+    const connection = createDesktopConnection({
+      pairing: { pairingId: pairing.pairingId, pairKey: keys.pairKey },
+      desktopName: pairing.desktopName,
+      crypto: deps.crypto,
+      session: deps.session,
+      openLan: (address, handlers) =>
+        createLanLink({
+          socketFactory: deps.socketFactory,
+          address,
+          pairingId: pairing.pairingId,
+          handlers,
+        }),
+      openLink: (kind, handlers) =>
+        kind === "relay"
+          ? createRelayLink({
+              socketFactory: deps.socketFactory,
+              relayUrl: pairing.relayUrl,
+              pairingId: pairing.pairingId,
+              phoneToken: keys.phoneToken,
+              handlers,
+              readyMessage: deps.pushRegistration,
+            })
+          : null, // the LAN link is opened by `openLan`, once the desktop offers an address
+    });
+    if (active) connection.start();
+    return { summary: summarize(pairing), connection };
+  }
+
+  return {
+    getEntries: () => entries,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    async load() {
+      const pairings = await deps.store.list();
+      for (const entry of entries) entry.connection.stop();
+      stored.clear();
+      for (const pairing of pairings) stored.set(pairing.pairingId, pairing);
+      // Pairings made before the extension existed (or before an app update) get their key written now.
+      await Promise.all(
+        pairings.map((p) => deps.pushKeys?.ensure(p.pairingId, p.pushKey).catch(() => {})),
+      );
+      publish(pairings.map(open));
+    },
+    async addPairing(pairing) {
+      await deps.store.save(pairing);
+      // A failed write is repaired by the launch migration; it must not undo the pairing.
+      await deps.pushKeys?.write(pairing.pairingId, pairing.pushKey).catch(() => {});
+      stored.set(pairing.pairingId, pairing);
+      publish([...entries.filter((e) => e.summary.pairingId !== pairing.pairingId), open(pairing)]);
+    },
+    async forget(pairingId) {
+      const entry = entries.find((e) => e.summary.pairingId === pairingId);
+      const pairing = stored.get(pairingId);
+      if (entry === undefined || pairing === undefined) return { revokedOnRelay: true };
+      entry.connection.stop();
+      // A desktop that already revoked this phone has nothing left on the relay to delete.
+      const alreadyGone = entry.connection.getSnapshot().status === "revoked";
+      const revokedOnRelay =
+        alreadyGone ||
+        (await revokeOnRelay({
+          socketFactory: deps.socketFactory,
+          relayUrl: pairing.relayUrl,
+          pairingId,
+          phoneToken: pairing.phoneToken,
+        }));
+      await deps.store.remove(pairingId);
+      await deps.pushKeys?.remove(pairingId).catch(() => {});
+      stored.delete(pairingId);
+      publish(entries.filter((e) => e.summary.pairingId !== pairingId));
+      return { revokedOnRelay };
+    },
+    setActive(next) {
+      active = next;
+      for (const entry of entries) {
+        if (next) entry.connection.start();
+        else entry.connection.stop();
+      }
+    },
+    pushKeyOf(pairingId) {
+      const pairing = stored.get(pairingId);
+      return pairing === undefined ? null : pairingKeys(pairing).pushKey;
+    },
+    announcePush() {
+      const message = deps.pushRegistration?.() ?? null;
+      if (message === null) return;
+      for (const entry of entries) entry.connection.sendControl(message);
+    },
+    find: (pairingId) => entries.find((e) => e.summary.pairingId === pairingId) ?? null,
+  };
+}

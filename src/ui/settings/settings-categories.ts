@@ -10,6 +10,8 @@ import { PrivacySection } from "./sections/privacy-section";
 import { ShortcutsSection } from "./sections/shortcuts-section";
 import { AboutSection } from "./sections/about-section";
 import { ResetSection } from "./sections/reset-section";
+import { MobileSection } from "./sections/mobile-section";
+import { mobileCompanionEnabled } from "./mobile-store";
 
 /**
  * The one section panel the rail swaps content into. A single stable id (not
@@ -122,3 +124,25 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     Section: ResetSection,
   },
 ];
+
+/**
+ * The Mobile category (spec 2026-11-04-mobile-companion), kept out of `SETTINGS_CATEGORIES` so a
+ * build without the `mobileCompanion` switch has no trace of it: not a rail stop, not a search
+ * target (search indexes registry rows, and this section has none).
+ */
+export const MOBILE_CATEGORY: SettingsCategory = {
+  id: "mobile",
+  label: "Mobile",
+  description: "Pair an iPhone to watch and steer your agents away from this computer.",
+  Section: MobileSection,
+};
+
+/**
+ * The categories the rail lists now: `SETTINGS_CATEGORIES`, plus Mobile after Notifications while
+ * `mobileCompanion` is on. Read at call time, never into a constant.
+ */
+export function visibleSettingsCategories(): readonly SettingsCategory[] {
+  if (!mobileCompanionEnabled()) return SETTINGS_CATEGORIES;
+  const at = SETTINGS_CATEGORIES.findIndex((category) => category.id === "notifications") + 1;
+  return [...SETTINGS_CATEGORIES.slice(0, at), MOBILE_CATEGORY, ...SETTINGS_CATEGORIES.slice(at)];
+}

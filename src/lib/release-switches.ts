@@ -24,6 +24,8 @@ export const RELEASE_SWITCHES = Object.freeze({
   agentControl: { enabled: false, createdOn: "2026-11-03" },
   /** The launcher in the stage replaces the Open board as the start surface (spec 2026-11-04-launcher-in-stage). */
   stageLauncher: { enabled: false, createdOn: "2026-11-04" },
+  /** The iPhone companion: pairing, the relay client and the phone executor (spec 2026-11-04-mobile-companion). */
+  mobileCompanion: { enabled: false, createdOn: "2026-11-05" },
 } satisfies ReleaseSwitchDefinitions);
 export type ReleaseSwitchId = keyof typeof RELEASE_SWITCHES;
 

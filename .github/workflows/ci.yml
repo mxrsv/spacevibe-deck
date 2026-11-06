@@ -94,6 +94,33 @@ jobs:
       - name: Test
         run: npm test
 
+  # `mobile/` is the phone companion: a shared protocol, the relay Worker and the Expo app, each its
+  # own npm project with its own lockfile. The root's lint, typecheck and `npm test` skip it on
+  # purpose (`.oxlintrc.json`, `.prettierignore`, the `test` script), so without this job nothing
+  # would gate it. Nothing here deploys the relay or builds the iOS app: both need accounts CI
+  # does not hold.
+  mobile-check:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/**/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci && node scripts/setup.mjs --ci
+
+      - name: Check
+        run: npm run check
+
   # By hand only (owner, 2026-09-11). It has been red on every push for weeks
   # with the pre-existing failures in docs/internals/traps.md, so on push it
   # spent a Windows runner and told nobody anything. Run it before a Windows

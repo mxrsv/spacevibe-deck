@@ -26,6 +26,21 @@ export interface AgentNotifierDeps {
   /** Task 20's permission-guarded adapter `send` — the notifier never talks
    * to the OS notification API itself. */
   send: (payload: AgentNotificationPayload) => void;
+  /**
+   * The phone branch (mobile spec decisions 23-24): evaluated BEFORE `isEnabled()`, because the
+   * phone is wanted even when desktop banners are off. Only `requested` and `completed` reach
+   * it, never while this window is focused, with its own revision dedupe so a desktop banner and
+   * a phone push never suppress each other. Absent = the feature is not wired.
+   */
+  sendPhone?: (payload: PhonePushPayload) => void;
+}
+
+/** What the phone branch hands the host; main seals the copy per paired phone. */
+export interface PhonePushPayload {
+  paneId: number;
+  kind: "requested" | "completed";
+  title: string;
+  body: string;
 }
 
 /** One attention transition the caller wants evaluated for a notification. */
@@ -90,7 +105,24 @@ export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
   // focus/settings gates. Phase-only revisions must not become notifications.
   const lastAttentionKind = new Map<number, AttentionKind>();
 
+  // Separate high-water mark for the phone branch (see `AgentNotifierDeps.sendPhone`).
+  const lastPhoned = new Map<number, number>();
+
+  function maybePhone(n: AttentionNotification): void {
+    if (deps.sendPhone === undefined || deps.isWindowFocused()) return;
+    if (n.kind !== "requested" && n.kind !== "completed") return;
+    if (n.revision <= (lastPhoned.get(n.paneId) ?? -Infinity)) return;
+    lastPhoned.set(n.paneId, n.revision);
+    deps.sendPhone({
+      paneId: n.paneId,
+      kind: n.kind,
+      title: n.workspaceLabel,
+      body: `${n.agentLabel ?? "Agent"} ${KIND_PHRASE[n.kind]}`,
+    });
+  }
+
   function maybeNotify(n: AttentionNotification): void {
+    maybePhone(n);
     if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === "none" || n.kind === "warning") {
       return;
     }
@@ -125,6 +157,9 @@ export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
       const keep = new Set(live);
       for (const paneId of lastNotified.keys()) {
         if (!keep.has(paneId)) lastNotified.delete(paneId);
+      }
+      for (const paneId of lastPhoned.keys()) {
+        if (!keep.has(paneId)) lastPhoned.delete(paneId);
       }
       for (const paneId of lastAttentionKind.keys()) {
         if (!keep.has(paneId)) lastAttentionKind.delete(paneId);

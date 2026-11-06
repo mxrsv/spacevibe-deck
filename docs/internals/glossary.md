@@ -196,6 +196,24 @@ Not: session restore.
 **Remembered cluster** — A rail header for a workspace with nothing open, kept from the
 workspace history so its `+` can launch into it. Not: archived session.
 
+## Mobile companion
+
+**Pairing** — One desktop and one phone sharing keys, made from one QR code. A phone with two
+desktops has two pairings; revoking one leaves the other. See [mobile.md](mobile.md).
+Not: account, sign-in.
+
+**Desktop** (on the phone) — A computer running Deck that the phone is paired with. Not: window,
+workspace.
+
+**Relay** — The Cloudflare Worker that forwards a pairing's sealed frames between desktop and
+phone and sends its pushes. It cannot read either. Not: server, backend (the analytics Worker).
+
+**LAN path** — The phone's direct socket to the desktop on a shared network, with the same keys
+as the relay path. Not: local mode, offline.
+
+**Live mode** — The phone sends each keystroke to the pane as it is typed. Its opposite is the
+composer, which pastes text and presses a gated Enter. Not: live switch.
+
 ## Chrome
 
 **Open board** — The start surface: recent workspaces, Open workspace…, Create worktree…,
@@ -225,8 +243,8 @@ holds it: choosing a theme under Settings → Appearance decides it. Not: theme 
 **Release switch** — A temporary feature gate in
 [`release-switches.ts`](../../src/lib/release-switches.ts): off in a packaged release until
 its activation commit, on in every development build. The project-first rail, Command
-Settings, the stacked dock, the flush stage, the in-pane `deck` command and the stage launcher
-sit behind one each. Not: live switch (a
+Settings, the stacked dock, the flush stage, the in-pane `deck` command, the stage launcher and
+the mobile companion sit behind one each. Not: live switch (a
 typed constant kept for a safety, consent or retirement decision).
 
 **UI preset** — The generated shadcn/Base UI stylesheet in

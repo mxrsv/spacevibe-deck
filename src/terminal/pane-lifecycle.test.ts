@@ -23,6 +23,9 @@ function fakePane(id: number, events: PaneEvents): Pane & { focusCalls: number }
     flush() {
       return Promise.resolve();
     },
+    snapshotForStream() {
+      return Promise.resolve({ data: "", cols: 80, rows: 24 });
+    },
     serializeScrollback() {
       return "";
     },

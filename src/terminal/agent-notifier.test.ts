@@ -324,4 +324,65 @@ describe("createAgentNotifier", () => {
       },
     );
   });
+
+  describe("phone branch", () => {
+    it("is evaluated before the enabled gate and uses the same copy", () => {
+      const sendPhone = vi.fn();
+      const { deps, send } = makeDeps({ isEnabled: () => false, sendPhone });
+      createAgentNotifier(deps).maybeNotify(makeNotification({ kind: "requested", paneId: 4 }));
+
+      expect(send).not.toHaveBeenCalled();
+      expect(sendPhone).toHaveBeenCalledWith({
+        paneId: 4,
+        kind: "requested",
+        title: "my-workspace",
+        body: "claude-code needs attention",
+      });
+    });
+
+    it("only carries requested and completed", () => {
+      const sendPhone = vi.fn();
+      const { deps } = makeDeps({ sendPhone });
+      const notifier = createAgentNotifier(deps);
+      notifier.maybeNotify(makeNotification({ kind: "error", revision: 1 }));
+      notifier.maybeNotify(makeNotification({ kind: "warning", revision: 2 }));
+      notifier.maybeNotify(makeNotification({ kind: "none", revision: 3 }));
+      expect(sendPhone).not.toHaveBeenCalled();
+      notifier.maybeNotify(makeNotification({ kind: "completed", revision: 4 }));
+      expect(sendPhone).toHaveBeenCalledOnce();
+    });
+
+    it("stays silent while this window is focused", () => {
+      const sendPhone = vi.fn();
+      const { deps } = makeDeps({ isWindowFocused: () => true, sendPhone });
+      createAgentNotifier(deps).maybeNotify(makeNotification({ kind: "requested" }));
+      expect(sendPhone).not.toHaveBeenCalled();
+    });
+
+    it("dedupes on its own revision map, independent of the desktop banner", () => {
+      const sendPhone = vi.fn();
+      let enabled = false;
+      const { deps, send } = makeDeps({ isEnabled: () => enabled, sendPhone });
+      const notifier = createAgentNotifier(deps);
+      notifier.maybeNotify(makeNotification({ revision: 5 }));
+      notifier.maybeNotify(makeNotification({ revision: 5 }));
+      notifier.maybeNotify(makeNotification({ revision: 4 }));
+      expect(sendPhone).toHaveBeenCalledOnce();
+      // The banner was suppressed by the setting, so it is still owed at the same revision.
+      enabled = true;
+      notifier.maybeNotify(makeNotification({ revision: 6 }));
+      expect(send).toHaveBeenCalledOnce();
+      expect(sendPhone).toHaveBeenCalledTimes(2);
+    });
+
+    it("forgets a pane's phone revision when the pane is pruned", () => {
+      const sendPhone = vi.fn();
+      const { deps } = makeDeps({ sendPhone });
+      const notifier = createAgentNotifier(deps);
+      notifier.maybeNotify(makeNotification({ revision: 9 }));
+      notifier.prune([]);
+      notifier.maybeNotify(makeNotification({ revision: 1 }));
+      expect(sendPhone).toHaveBeenCalledTimes(2);
+    });
+  });
 });

@@ -63,6 +63,28 @@ test("update counters are optional, but complete and closed when present", async
   assert.equal((await worker.fetch(request({ ...swapped, updates }), {})).status, 400);
 });
 
+const mobile = { pairedPhones: 1, phoneSessions: 2, phoneSends: 30, phoneOpenedAgents: 1 };
+
+test("mobile counters are optional, but complete, closed and bounded when present", async () => {
+  const env = { INGEST_LIMITER: { limit: async () => ({ success: false }) } };
+  // 429 comes after validation: both shapes pass.
+  assert.equal((await worker.fetch(request({ ...snapshot, mobile }), env)).status, 429);
+  assert.equal((await worker.fetch(request({ ...snapshot, updates, mobile }), env)).status, 429);
+  const { phoneSends: _sends, ...incomplete } = mobile;
+  for (const changes of [
+    { mobile: incomplete },
+    { mobile: { ...mobile, deviceName: 1 } },
+    { mobile: { ...mobile, phoneSends: -1 } },
+    { mobile: { ...mobile, phoneSends: 1.5 } },
+    { mobile: { ...mobile, phoneSends: 1_000_001 } },
+    { mobile: { ...mobile, pairedPhones: "2" } },
+    { mobile: null },
+    { mobile: [] },
+  ]) {
+    assert.equal((await worker.fetch(request({ ...snapshot, ...changes }), {})).status, 400);
+  }
+});
+
 test("invalid dates, UUIDs, counters and dimensions are rejected", async () => {
   for (const changes of [
     { day: "2026-02-30" },
