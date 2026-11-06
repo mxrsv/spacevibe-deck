@@ -7,6 +7,8 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **The side panel fits a smaller window.** A side panel dragged wide on a large display no
+  longer stays wider than a smaller window it reopens in; it narrows to leave room for the terminal.
 - **Resize handles let go when you do.** Letting go of the mouse now always ends a drag of
   [the seam beside the rail](docs/user/getting-started.md), the side panel's edge or a split
   divider. The column or pane no longer keeps following the pointer until the next click.
