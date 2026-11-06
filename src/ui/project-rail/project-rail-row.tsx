@@ -7,12 +7,11 @@ import {
 import { useEffect, useRef, useState } from "preact/hooks";
 import { cn } from "@/lib/cn";
 import { AgentGlyph } from "../controls/agent-glyph";
-import { DeckIcon, GLYPH_FEATURE, GLYPH_INLINE } from "../controls/deck-icon";
-import { AgentStateMark } from "../blocks/agent-state-mark";
+import { DeckIcon, GLYPH_INLINE } from "../controls/deck-icon";
 import { STATE_NEEDS_YOU, stateClasses } from "../blocks/recipe-classes";
 import { displayAgent } from "../agent-rail-card-model";
 import { formatShortAge } from "../agent-rail-model";
-import type { RailItem } from "../rail-view-model";
+import type { RailItem, RailStatus } from "../rail-view-model";
 import type { RowCommands } from "./project-rail-commands";
 import { isRailItemFocused, statusLabel } from "./project-rail-model";
 import { ProjectRailRenameField } from "./project-rail-rename-field";
@@ -25,21 +24,57 @@ function StateAge({ changedAt }: { readonly changedAt: number }) {
 }
 
 /**
- * The two-line rail row (RCP-7, RCP-18): 44 high, the state mark leading in its 14 slot, the
- * agent's 28 logo box, then the title over the meta line. Shared with the remembered variant
- * (`remembered-row.tsx`), whose empty slot keeps the titles in line.
+ * The two-line rail row (SR-1, RCP-7): 32 high, no status mark (SR-3), the agent's 16 logo box
+ * holding a 12 glyph, then the title over the meta line 8 after the box, so the text starts where
+ * the workspace name does. Shared with the remembered variant (`remembered-row.tsx`).
  */
 export const ROW_LAYOUT =
-  "flex h-(--row-40) w-full min-w-0 items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left";
-/** The leading mark's 14 slot; it gives back 4 of the gap, as the mock's `.row-lead` does. */
-export const ROW_LEAD = "-mr-1 flex size-(--mark-slot) shrink-0 items-center justify-center";
-/** The agent's logo in a 28 box. */
-export const ROW_LOGO = "flex size-(--icon-box-28) shrink-0 items-center justify-center";
+  "flex h-(--row-32) w-full min-w-0 items-center gap-2 rounded-(--radius-control) px-(--space-pad-row) text-left";
+/** The agent's logo in a 16 box. */
+export const ROW_LOGO = "flex size-(--icon-16) shrink-0 items-center justify-center";
 /** The title over the meta line. */
 export const ROW_MAIN = "flex min-w-0 flex-1 flex-col";
-/** The 12px meta line under the title. */
+/** The 11px title (RH-12); weight and ink are the row's. */
+export const ROW_TITLE = "truncate text-(length:--type-rail-title) leading-(--leading-rail-line)";
+/** The 10px meta line under the title; a row sets its ink (RH-21). */
 export const ROW_META =
-  "flex min-w-0 items-center gap-(--space-icon-label) text-xs leading-(--leading-meta) text-(--text-faint)";
+  "flex min-w-0 items-center gap-(--space-icon-label) text-(length:--type-rail-meta) leading-(--leading-rail-line) text-(--text-faint)";
+
+/**
+ * The meta line's ink per status (RH-21): the branch icon and the branch take it, the date keeps
+ * the faint ink. With no mark in the row this is how a status reads next to the title's weight.
+ */
+const META_INK: Readonly<Record<RailStatus, string>> = {
+  "needs-input": "text-(--ink-need)",
+  unread: "text-(--ink-need)",
+  failed: "text-(--ink-fail)",
+  done: "text-(--ink-ok)",
+  working: "text-(--status-working)",
+  ended: "text-(--text-faint)",
+  idle: "text-(--text-faint)",
+};
+
+/** What the meta line says where git has no branch to give (RH-24). */
+export const FOLDER_ONLY = "folder only";
+
+/** The agent's logo, or the terminal glyph of a shell tab, in the logo box. */
+export function RowLogo({
+  entry,
+  className,
+}: {
+  readonly entry: RailItem["entry"];
+  readonly className?: string;
+}) {
+  return (
+    <span className={cn(ROW_LOGO, className)}>
+      {entry.kind === "agent" ? (
+        <AgentGlyph agent={entry.agent} className="size-(--icon-12) shrink-0" />
+      ) : (
+        <DeckIcon icon={ComputerTerminal01Icon} size={GLYPH_INLINE} class="shrink-0" />
+      )}
+    </span>
+  );
+}
 
 export interface ProjectRailRowProps {
   readonly item: RailItem;
@@ -55,11 +90,13 @@ export interface ProjectRailRowProps {
 }
 
 /**
- * Two lines (LAY-2, RCP-18): the state mark, the agent's logo, then the title over the branch
- * (and the project, in a flat list) and the time in state. A failed row's meta line reads in fail
- * ink, and a row that needs the user carries the needs-you tint and a 600 title (RCP-9). Hover or
- * focus adds pin, archive and the more menu over the trailing edge on an opaque ground (RCP-19);
- * the same menu opens on right-click. F2 or a double-click renames in place.
+ * Two lines (LAY-2, SR-1): the agent's logo, then the title over the branch (and the project, in
+ * a flat list) and the time in state. There is no mark: an unread or needs-you title is 600, the
+ * branch icon and text take the status ink (SR-4), a needs-you row carries the tint (RCP-9), and
+ * a working row's branch is a thinking line with three dots for its date. A workspace without git
+ * says "folder only" (SR-6). Hover or focus adds pin, archive and the more menu over the trailing
+ * edge on an opaque ground (RCP-19); the same menu opens on right-click. F2 or a double-click
+ * renames in place.
  */
 export function ProjectRailRow({
   item,
@@ -72,6 +109,9 @@ export function ProjectRailRow({
 }: ProjectRailRowProps) {
   const focused = isRailItemFocused(item);
   const { entry } = item;
+  const working = item.status === "working";
+  // Unread and needs-you are the rows the owner scans for: their title is 600 (SR-2).
+  const loud = item.status === "needs-input" || item.status === "unread";
   const { rename } = commands;
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -101,9 +141,7 @@ export function ProjectRailRow({
     >
       {editing && rename !== undefined ? (
         <div className={cn(ROW_LAYOUT, "bg-(--tab-active-bg)")}>
-          <span className={ROW_LEAD}>
-            <AgentStateMark status={item.status} confidence={item.confidence} />
-          </span>
+          <RowLogo entry={entry} />
           <ProjectRailRenameField
             initial={entry.kind === "agent" ? (entry.tabName ?? "") : ""}
             placeholder={entry.kind === "agent" ? (entry.taskLabel ?? entry.label) : item.title}
@@ -137,27 +175,19 @@ export function ProjectRailRow({
               item.status === "needs-input" && !focused && STATE_NEEDS_YOU,
             )}
           >
-            <span className={ROW_LEAD}>
-              <AgentStateMark status={item.status} confidence={item.confidence} />
-            </span>
-            <span className={ROW_LOGO}>
-              {entry.kind === "agent" ? (
-                <AgentGlyph agent={entry.agent} className="size-(--icon-16) shrink-0" />
-              ) : (
-                <DeckIcon icon={ComputerTerminal01Icon} size={GLYPH_FEATURE} class="shrink-0" />
-              )}
-            </span>
+            <RowLogo entry={entry} />
             <span className={ROW_MAIN}>
               <span
+                data-rail-title
                 className={cn(
-                  "truncate text-(length:--type-rail) leading-(--leading-rail)",
+                  ROW_TITLE,
                   archived ? "text-(--text-muted)" : "text-(--text-primary)",
-                  item.status === "needs-input" && "font-semibold",
+                  loud && "font-semibold",
                 )}
               >
                 {item.title}
               </span>
-              <span className={cn(ROW_META, item.status === "failed" && "text-(--ink-fail)")}>
+              <span data-rail-meta className={cn(ROW_META, META_INK[item.status])}>
                 {projectName === undefined ? null : (
                   <span className="min-w-0 shrink truncate">{projectName}</span>
                 )}
@@ -166,10 +196,20 @@ export function ProjectRailRow({
                   size={GLYPH_INLINE}
                   class="shrink-0"
                 />
-                <span className="min-w-0 truncate">{item.branch}</span>
-                <span className="ml-auto flex shrink-0 items-center gap-1 tabular-nums">
+                <span className={cn("min-w-0 truncate", working && "rail-thinking")}>
+                  {item.checkout.labelled ? item.branch : FOLDER_ONLY}
+                </span>
+                <span className="ml-auto flex shrink-0 items-center gap-1 text-(--text-faint)">
                   {pinned ? <DeckIcon icon={Pin02Icon} size={GLYPH_INLINE} /> : null}
-                  <StateAge changedAt={item.changedAt} />
+                  {working ? (
+                    <span className="rail-dots" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  ) : (
+                    <StateAge changedAt={item.changedAt} />
+                  )}
                 </span>
               </span>
             </span>

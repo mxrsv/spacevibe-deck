@@ -4,7 +4,7 @@ import type { ComponentChildren } from "preact";
 import { useEffect } from "preact/hooks";
 import { invoke } from "../host/bridge";
 import { validateLogoDataUrl } from "../settings/logo-store";
-import { DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
+import { DeckIcon, FEATURE_ICON, type DeckIconSize } from "./controls/deck-icon";
 
 /**
  * The project identity in the existing DL-27.17 icon slot: the folder's own
@@ -19,6 +19,7 @@ export function WorkspaceIcon({
   className = "asr-cluster__folder",
   size = FEATURE_ICON,
   marks = false,
+  fallbackSize = FEATURE_ICON,
 }: {
   readonly path: string | null;
   readonly fallback?: ComponentChildren;
@@ -27,6 +28,8 @@ export function WorkspaceIcon({
   readonly size?: number;
   /** Also accept a logo or an app icon: the project rail, which is behind its release switch. */
   readonly marks?: boolean;
+  /** The size of the default folder glyph; ignored when the caller passes its own `fallback`. */
+  readonly fallbackSize?: DeckIconSize;
 }) {
   const favicon = useSignal("");
   useEffect(() => {
@@ -72,7 +75,7 @@ export function WorkspaceIcon({
           }}
         />
       ) : (
-        (fallback ?? <DeckIcon icon={Folder} size={FEATURE_ICON} filled />)
+        (fallback ?? <DeckIcon icon={Folder} size={fallbackSize} filled />)
       )}
     </span>
   );

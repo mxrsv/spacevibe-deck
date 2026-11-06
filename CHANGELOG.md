@@ -7,6 +7,12 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 
 ## Unreleased
 
+- **A quieter, denser agent list in the new project rail.** Each agent is a single 32px row with no
+  status icon: its text lines up with the workspace name, an unread or waiting agent has a bold
+  title and a coloured branch line, a running agent's branch shimmers with three dots in place of
+  its age, and a folder without git says "folder only". Workspace names stay pinned at the top
+  while their agents scroll, and a folded workspace shows its agent count on its logo. The pane
+  header and the "N need you" button draw a new set of status shapes.
 - **One icon-only Run button, one primary colour.** The launcher's Run is a small square button with only
   the Enter glyph, and the launch-profile menus are gone: each agent runs its default command from
   Settings → Agents. The primary button keeps one colour per mode (cream on dark, near-black on

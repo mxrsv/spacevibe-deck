@@ -1,0 +1,71 @@
+/* ── A working agent row in the project rail (SR-4, RH-22) ────────────────────
+   The row has no mark (SR-3), so the state that moves says so in the meta line. The
+   branch becomes a thinking line: it rests dim and a bright band glides across it, left to
+   right, 1.8s. The date gives way to three dots that rise in turn. Both exist only while the
+   row is working, and both stand still under reduced motion (DL-1.2's scoped exception for
+   this surface; the shimmer paints `background-position`, the dots `transform` and `opacity`).
+   The markup is `project-rail-row.tsx`. */
+@media (prefers-reduced-motion: no-preference) {
+  /* The gradient is 3x the text, so the band crosses it and the text is never bare. */
+  .rail-thinking {
+    background: linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--status-working) 55%, var(--bg)) 42%,
+        var(--status-working) 50%,
+        color-mix(in srgb, var(--status-working) 55%, var(--bg)) 58%
+      )
+      0 0 / 300% 100% no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rail-shimmer 1.8s linear infinite;
+  }
+
+  .rail-dots > i {
+    animation: rail-dot 1.2s ease-in-out infinite;
+  }
+
+  .rail-dots > i:nth-child(2) {
+    animation-delay: 150ms;
+  }
+
+  .rail-dots > i:nth-child(3) {
+    animation-delay: 300ms;
+  }
+}
+
+.rail-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--leading-rail-line);
+}
+
+.rail-dots > i {
+  width: calc(var(--space-2) * 1.5);
+  height: calc(var(--space-2) * 1.5);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+@keyframes rail-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes rail-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(calc(var(--space-2) * -1));
+  }
+}

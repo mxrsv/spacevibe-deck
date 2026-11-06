@@ -208,6 +208,13 @@
   --type-rail: 13px;
   --leading-rail: 18px;
   --leading-meta: 16px;
+  /* RH-12 (2026-11-06): an agent row's two lines sit below the 12 rung, a fork the owner
+     resolved (alternative turned down: keep 12). Title 11, meta 10, one 14 leading for both, and
+     the folded count's digit at 8 (SR-5). The rail's workspace name stays on --type-meta. */
+  --type-rail-title: 11px;
+  --type-rail-meta: 10px;
+  --type-rail-count: 8px;
+  --leading-rail-line: 14px;
   --weight-regular: 400;
   --weight-strong: 600;
 
@@ -280,11 +287,16 @@
   --ring-w: 3px;
   --scrollbar-w: 6px;
   --menu-rows: 6.5;
-  /* RCP-15 (DL-27.3): every agent state mark sits in a 14 slot. */
+  /* SR-7 (DL-27.3, amended 2026-11-06): the state mark draws in a square box and sizes its ink as
+     fractions of it, so each surface that keeps a mark sets only the box (RH-6): the stage bar's
+     pill and the pane header. The project rail draws none (SR-3). `--mark-slot` is the old rail's
+     state column (`.recent-session-activity__row`) and no longer sizes `.state-mark`. */
+  --mark-size: 12px;
+  --mark-size-pill: var(--mark-size);
+  --mark-size-pane: var(--mark-size);
   --mark-slot: 14px;
-  --mark-dot: 9px;
-  --mark-ring: 15px;
-  --mark-square: 7px;
+  /* SR-5: the folded workspace's count circle on the logo's corner. */
+  --badge-count-h: 10px;
 
   /* RCP-9 and DL-21.9: pressed lays black at 8% over the surface as a
      background layer, the same in both themes; disabled is 50% opacity. */

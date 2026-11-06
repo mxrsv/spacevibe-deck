@@ -18,7 +18,7 @@ const STATUS_WORD: Readonly<Record<RailStatus, string>> = {
   idle: "idle",
 };
 
-/** The states whose mark is drawn hollow when Deck inferred them (`AgentStateMark`). */
+/** The states `statusLabel` qualifies as inferred; `AgentStateMark` draws them at 55% ink (32-state-mark.css). */
 const INFERRABLE: ReadonlySet<RailStatus> = new Set(["needs-input", "unread", "done"]);
 
 /**

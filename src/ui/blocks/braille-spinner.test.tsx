@@ -35,16 +35,44 @@ describe("BrailleSpinner", () => {
   });
 });
 
+const STATUSES = ["needs-input", "unread", "working", "failed", "done", "ended", "idle"] as const;
+
 describe("AgentStateMark", () => {
-  it("names its state and draws the spinner only while working (RCP-15)", () => {
+  it.each(STATUSES)(
+    "names %s as its state and draws the spinner only while working (SR-7)",
+    (status) => {
+      const host = document.createElement("div");
+      render(<AgentStateMark status={status} />, host);
+      const mark = host.querySelector("[data-state]");
+      expect(mark?.getAttribute("data-state")).toBe(status);
+      // Hidden from assistive tech: the row or word beside it carries the state (SR-8).
+      expect(mark?.getAttribute("aria-hidden")).toBe("true");
+      expect(mark?.querySelector("svg") !== null).toBe(status === "working");
+      render(null, host);
+    },
+  );
+
+  it("is explicit unless told otherwise, and passes an inferred or unknown reading through", () => {
     const host = document.createElement("div");
-    render(<AgentStateMark status="working" />, host);
-    expect(host.querySelector('[data-state="working"] svg')).not.toBeNull();
-    render(<AgentStateMark status="needs-input" confidence="inferred" />, host);
-    const mark = host.querySelector("[data-state]");
-    expect(mark?.getAttribute("data-state")).toBe("needs-input");
-    expect(mark?.getAttribute("data-confidence")).toBe("inferred");
-    expect(mark?.querySelector("svg")).toBeNull();
+    const confidence = () => host.querySelector("[data-state]")?.getAttribute("data-confidence");
+    render(<AgentStateMark status="unread" />, host);
+    expect(confidence()).toBe("explicit");
+    render(<AgentStateMark status="unread" confidence="inferred" />, host);
+    expect(confidence()).toBe("inferred");
+    render(<AgentStateMark status="unread" confidence="unknown" />, host);
+    expect(confidence()).toBe("unknown");
+    render(null, host);
+  });
+
+  it("takes its box from the surface that draws it, and from --mark-size when none is named", () => {
+    const host = document.createElement("div");
+    const surface = () => host.querySelector("[data-state]")?.getAttribute("data-surface");
+    render(<AgentStateMark status="idle" />, host);
+    expect(surface()).toBeNull();
+    render(<AgentStateMark status="idle" surface="pane" />, host);
+    expect(surface()).toBe("pane");
+    render(<AgentStateMark status="idle" surface="pill" />, host);
+    expect(surface()).toBe("pill");
     render(null, host);
   });
 });

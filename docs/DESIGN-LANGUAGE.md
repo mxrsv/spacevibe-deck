@@ -42,16 +42,23 @@ cites it.
   `devDependencies` that Vite bundles into the renderer, and none loads from a network.
 - **DL-1.2** Chrome animates only `transform`, `opacity`, `color`, `border-color` and
   `background-color`, for at most 300ms, with no infinite loop and nothing moving while the
-  user is idle. Three scoped exceptions loop, each only while its state exists, each with
-  `transform`/`opacity` alone, and each still under reduced motion:
+  user is idle. Four scoped exceptions loop, each only while its state exists, each still under
+  reduced motion (all with `transform`/`opacity` alone except the branch shimmer below):
   - the old agent rail's `asked` mark radiates on a 1.8s loop (DL-27.3), until CMP-20 deletes
-    it;
-  - the braille spinner marks a working agent wherever a working state shows: the project
-    rail's row, a strip tab, a pane header (`AgentStateMark`, RCP-15) and the old rail's
-    worktree-card row (DL-27.21). Ten stacked frames shown by `opacity`, 80ms each, an 800ms
-    loop, only under `[data-state="working"]`. Reduced motion holds ⠹ on the new marks and the
-    first frame on the card row. The new marks draw each frame's dots rather than typing the
-    character, because the Windows monospace fallback may lack braille;
+    it, and so does the ring round `AgentStateMark`'s needs-input dot, on the pane header and
+    the stage bar's pill (SR-7);
+  - the braille spinner marks a working agent wherever a working mark shows: the pane header,
+    the stage bar's pill (`AgentStateMark`, SR-7) and the old rail's worktree-card row
+    (DL-27.21). Ten stacked frames shown by `opacity`, 80ms each, an 800ms loop, only under
+    `[data-state="working"]`. Reduced motion holds ⠹ on the new marks and the first frame on the
+    card row. The new marks draw each frame's dots rather than typing the character, because the
+    Windows monospace fallback may lack braille;
+  - a working row of the project rail has no mark (SR-3), so its branch is a thinking line, dim
+    with a bright band gliding across it on a 1.8s loop, and its date is three dots that rise in
+    turn on a 1.2s loop ([`33-rail-working.css`](../src/styles/33-rail-working.css), RH-22). The
+    dots use `transform` and `opacity`; the band paints `background-position` of a text-clipped
+    gradient, a paint-only deviation from the property list above, kept as the mock the owner
+    reviewed drew it (an owner call to confirm at the eye review);
   - the dev servers chip's 6px dot sends one ring out on a 1.8s loop while at least one
     server runs in the active checkout; zero servers or a failed scan (a still red dot)
     draw nothing moving; reduced motion keeps the still green dot (DL-36.1).
@@ -264,7 +271,7 @@ only the pre-JS fallbacks.
   descriptions and empty states are sentence-case; values are lowercase.
 
   Legacy stylesheets read this ladder and it carries the values of DL-20.3 (CMP-19), so no
-  surface sits below 12px. The surfaces CMP-20 names keep their look, now on the same two
+  surface sits below 12px, bar the project rail's agent rows (DL-4.5, item 7). The surfaces CMP-20 names keep their look, now on the same two
   values, until they are deleted.
 - **DL-4.5** Sizes come from the `--type-*` variables declared once in `:root`, never from
   a px literal at the use site. The closed list of exceptions, none of them standard chrome
@@ -275,7 +282,11 @@ only the pre-JS fallbacks.
   4. the theme-gallery miniature (DL-24.2) and the preset-editor stage specimens;
   5. `.settings-screen__title`, 24px, the settings section heading;
   6. the rail project label, which reaches the 14px title rung through `--type-project`
-     ([rail stylesheet](../src/styles/04a-agent-rail.css)).
+     ([rail stylesheet](../src/styles/04a-agent-rail.css));
+  7. the project rail's agent rows (RH-12, a fork the owner resolved with the alternative of
+     keeping 12 turned down): the title at 11px (`--type-rail-title`), the meta line at 10px
+     (`--type-rail-meta`), both on a 14px `--leading-rail-line`, and the folded workspace's count
+     digit at 8px (`--type-rail-count`). The workspace name stays on `--type-meta` (12px, 600).
 - **DL-4.6** Weights are authored for the macOS variable face. Windows draws static Segoe
   UI with 400, 600 and 700 in the chrome's range, so under `.window--windows`
   [the weight ledger](../src/styles/21-windows-weights.css) maps each authored weight by
@@ -354,10 +365,10 @@ only the pre-JS fallbacks.
   border-width or layer scale: the z-index order is behavioural (Settings under the modal scrim
   depends on 40 > 35), not a token.
 - **DL-20.6** Rows and bars have heights, not picks (RCP-7). A row is 24 in a dense list (Changes,
-  the file tree, a card head, a section label, breadcrumbs), 32 for a menu item, a project
-  header, a pane header or a one-line row, and 44 for a two-line rail row (`--row-24`,
-  `--row-32`, `--row-44`); live and remembered rail rows are both 44 and a setting row is at
-  least 44. A bar is 36 (a toolbar, search row or footer), 34 in the frame row (`--frame-h`) and
+  the file tree, a card head, a section label, breadcrumbs), 32 for a menu item, a pane header
+  or a one-line row, and 44 for a two-line row outside the project rail (`--row-24`, `--row-32`,
+  `--row-44`); a setting row is at least 44. The project rail's agent rows, live and remembered,
+  are two lines on a 32 row (SR-1, RH-11) under a 28 workspace header (`--row-28`). A bar is 36 (a toolbar, search row or footer), 34 in the frame row (`--frame-h`) and
   40 as a view header band. Controls are 28, 32, 36 and 40 (`--control-h-28` to
   `--control-h-40`), chips 24 and 20, a badge 20, icon boxes 28, 24 and 20 holding a 16, 14 or 12
   glyph. A height from 12 to 48px outside 20/24/28/32/36/40/44 fails
@@ -1184,8 +1195,10 @@ shadow.
   line carries the state word as text when the agent has no turn yet: `Working`, `Needs you`,
   `Failed`, `Finished`, `Ready`, `No signal`, `Ended`.
   Why: a second signifier for the same state is DL-21.6's mistake.
-- **DL-27.3** State has six words, drawn as one mark in a fixed 14px box (the resting dot paints
-  9px of ink centred in it by `::before`), so row geometry never moves between states.
+- **DL-27.3** State has six words, drawn as one mark in a fixed 14px box on the old rail (the
+  resting dot paints 9px of ink centred in it by `::before`), so row geometry never moves between
+  states. The bullets below are that mark; the project rail and the surfaces that keep a mark
+  follow the two paragraphs after them.
   - `failed` is `--red`. `asked` is `--status-unread`: a question, a permission wait, or a
     finished run not yet checked (the fold lives in one case label of `paneState`).
   - `done` and `idle` share one gray dot, `--tone` at 45%. `done` is a run the user checked;
@@ -1203,12 +1216,24 @@ shadow.
     `WorkspaceSpinner`'s turning ring on the rail by the owner's pick (2026-11-05). The old
     rail's card row draws the same spinner from typed glyphs (DL-27.21).
 
-  On the project rail the mark leads the row in its 14 slot (`--mark-slot`), drawn by
-  [`AgentStateMark`](../src/ui/blocks/agent-state-mark.tsx) and
-  [`32-state-mark.css`](../src/styles/32-state-mark.css): a 9 dot (`--mark-dot`) in a status
-  token (`--status-failed`, `--status-unread`, `--status-idle`), a 15 hairline ring
-  (`--mark-ring`) round the needs-you dot, held still, and a 7 square (`--mark-square`) for
-  ended. A remembered row keeps the slot empty, so the titles line up (RCP-18).
+  The project rail draws no mark (SR-3, RH-25). A row says its status through its title weight
+  (600 when unread or needing the owner), the status ink of its branch icon and branch text
+  (`--ink-need` for needs-input and unread, `--ink-fail`, `--ink-ok`, `--status-working`; ended
+  and idle stay faint; the date stays faint on every row), the needs-you tint, and, for a
+  working row, a thinking branch with three dots in place of the date (DL-1.2). A workspace
+  without git says "folder only" in the same ink. A folded workspace shows only its agent count
+  on the logo's corner.
+
+  The mark survives where a header or a bar has room for it (SR-7): the pane header and the
+  stage bar's pill, one component, [`AgentStateMark`](../src/ui/blocks/agent-state-mark.tsx),
+  drawn by [`32-state-mark.css`](../src/styles/32-state-mark.css). It draws in a square box of
+  `--mark-size-pane` or `--mark-size-pill` (12 by default, `--mark-size`) and every shape is a
+  fraction of that box: working the braille spinner; needs-input a solid 75% dot in
+  `--status-unread` with a hairline ring that radiates; unread a solid 50% dot; done a solid
+  `--status-ok` disc with a check cut out of it; failed a cross in `--status-failed`; ended a
+  50% square; idle a short dash. There is no hollow ring: a state Deck inferred is the same
+  shape at 55% ink. The strip tab and the dock draw no mark (DL-18.10). `--mark-slot` (14) is
+  now only the old rail's state column in Recent activity.
 
   When panes fold into one mark the loudest speaks: failed > asked > ended > working > done >
   idle. `failed` never reads as `idle`.

@@ -98,6 +98,11 @@ export function ProjectSection({
     rememberedRowMatches(row, group.label, env.remembered?.query ?? ""),
   );
   const firstCheckout = env.checkouts.get(group.key)?.[0];
+  // An empty workspace is its header and nothing else (SR-5).
+  const hasBody =
+    group.items.length > 0 ||
+    rowless.length > 0 ||
+    (env.remembered !== undefined && remembered.length > 0);
   // As the shipped header: a press focuses the project (its active checkout, else the first
   // with something open) and then folds or unfolds it.
   const focusProject = (): void => {
@@ -114,10 +119,7 @@ export function ProjectSection({
     }
   };
   return (
-    <section
-      aria-label={group.label}
-      className="mb-(--space-group-sm) flex flex-col gap-(--space-list)"
-    >
+    <section aria-label={group.label} className="mb-(--space-group-sm) flex flex-col">
       <ProjectRailHeader
         group={group}
         markPath={firstCheckout?.repositoryPath ?? firstCheckout?.path ?? null}
@@ -130,20 +132,21 @@ export function ProjectSection({
           toggleProjectFolded(group.key);
         }}
       />
-      {folded ? null : <RailRows items={group.items} env={env} named={false} />}
-      {folded || env.remembered === undefined
-        ? null
-        : remembered.map((row) => (
-            <RememberedRailRow
-              key={row.pane.id}
-              row={row}
-              onResume={env.remembered?.onResume ?? noop}
-              onForget={env.remembered?.onForget ?? noop}
-            />
-          ))}
-      {folded
-        ? null
-        : rowless.map((checkout) => (
+      {/* The rows keep their own 2px list gap; the header sits flush on the first of them. */}
+      {folded || !hasBody ? null : (
+        <div className="flex flex-col gap-(--space-list)">
+          <RailRows items={group.items} env={env} named={false} />
+          {env.remembered === undefined
+            ? null
+            : remembered.map((row) => (
+                <RememberedRailRow
+                  key={row.pane.id}
+                  row={row}
+                  onResume={env.remembered?.onResume ?? noop}
+                  onForget={env.remembered?.onForget ?? noop}
+                />
+              ))}
+          {rowless.map((checkout) => (
             <ProjectRailCheckout
               key={checkout.key}
               project={group.label}
@@ -154,11 +157,8 @@ export function ProjectSection({
               onSelectTab={onSelectTab}
             />
           ))}
-      {!folded && group.items.length === 0 && rowless.length === 0 && remembered.length === 0 ? (
-        <p className="flex h-(--row-24) items-center px-(--space-pad-row) text-xs text-(--text-faint)">
-          No sessions
-        </p>
-      ) : null}
+        </div>
+      )}
     </section>
   );
 }

@@ -111,6 +111,9 @@
      one more tab opens. The bar itself is the app-wide 6px one declared in
      `01-tokens.css`; this rail only asks to keep its space. */
   scrollbar-gutter: stable;
+  /* A workspace header sticks to the top of this box (SR-5, 28 high). Without the padding a
+     focused row can scroll to the very top and sit under it. */
+  scroll-padding-top: var(--row-28);
 }
 
 /* ------------------------------------------------- the collapsed column */

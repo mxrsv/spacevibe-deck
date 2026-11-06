@@ -78,25 +78,15 @@ function realItem(workspace: MockWorkspace, agent: MockAgent, index: number): Ra
   };
 }
 
-/** What a folded header speaks with today: one agent, the loudest of four statuses. */
-const SPEAKS: readonly RailStatus[] = ["failed", "needs-input", "working", "unread"];
-
 function realGroup(workspace: MockWorkspace): RailGroup {
   const items = workspace.agents.map((agent, index) => realItem(workspace, agent, index));
-  const rollup =
-    SPEAKS.map((status) => items.find((item) => item.status === status)).find(
-      (item) => item !== undefined,
-    ) ?? null;
-  return { key: workspace.key, label: workspace.name, items, count: items.length, rollup };
+  return { key: workspace.key, label: workspace.name, items, count: items.length };
 }
 
 function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
   const group = realGroup(workspace);
   return (
-    <section
-      aria-label={workspace.name}
-      className="mb-(--space-group-sm) flex flex-col gap-(--space-list)"
-    >
+    <section aria-label={workspace.name} className="mb-(--space-group-sm) flex flex-col">
       <ProjectRailHeader
         group={group}
         markPath={null}
@@ -105,9 +95,9 @@ function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
         active={false}
         onToggle={NOOP}
       />
-      {workspace.folded
-        ? null
-        : group.items.map((item, index) => (
+      {workspace.folded || group.items.length === 0 ? null : (
+        <div className="flex flex-col gap-(--space-list)">
+          {group.items.map((item, index) => (
             <ProjectRailRow
               key={item.id}
               item={item}
@@ -117,11 +107,8 @@ function BeforeWorkspace({ workspace }: { readonly workspace: MockWorkspace }) {
               onSelect={NOOP}
             />
           ))}
-      {!workspace.folded && group.items.length === 0 ? (
-        <p className="flex h-(--row-24) items-center px-(--space-pad-row) text-xs text-(--text-faint)">
-          No sessions
-        </p>
-      ) : null}
+        </div>
+      )}
     </section>
   );
 }

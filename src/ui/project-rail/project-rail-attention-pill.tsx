@@ -64,7 +64,7 @@ export function ProjectRailAttentionPill({
             />
           }
         >
-          <AgentStateMark status={status} />
+          <AgentStateMark status={status} surface="pill" />
           <span aria-hidden="true">{count}</span>
         </TooltipTrigger>
         <TooltipContent>Next agent that needs you</TooltipContent>
@@ -74,7 +74,7 @@ export function ProjectRailAttentionPill({
   return (
     <Tooltip>
       <TooltipTrigger render={<Button variant="secondary" size="sm" onClick={jump} />}>
-        <AgentStateMark status="needs-input" />
+        <AgentStateMark status="needs-input" surface="pill" />
         {count} need you
       </TooltipTrigger>
       <TooltipContent>Next</TooltipContent>

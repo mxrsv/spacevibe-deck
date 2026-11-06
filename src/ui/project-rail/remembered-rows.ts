@@ -14,6 +14,8 @@ export interface RememberedRowModel {
   readonly title: string;
   /** The checkout's branch from the repository scan; null for a plain folder or an unknown path. */
   readonly branch: string | null;
+  /** The pane's checkout is a folder git does not know: its meta line says so (SR-6). */
+  readonly folderOnly: boolean;
 }
 
 interface Owner {
@@ -65,6 +67,7 @@ export function rememberedRowsByProject(
       title: pane.title ?? displayAgent(pane.agent),
       branch:
         checkout !== null && checkout.labelled && checkout.branch !== "" ? checkout.branch : null,
+      folderOnly: checkout !== null && !checkout.labelled,
     };
     byProject.set(owner.projectKey, [...(byProject.get(owner.projectKey) ?? []), row]);
   }

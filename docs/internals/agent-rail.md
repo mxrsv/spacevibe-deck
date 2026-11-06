@@ -93,6 +93,15 @@ count moves from the strip's chip to a stage-bar pill that also needs `shellStag
 release, so this page describes the shipped rail; the branch point is the render-time read in
 [`agent-rail.tsx`](../../src/ui/agent-rail.tsx).
 
+The project rail draws no status mark: its rows say a status through the title weight, the
+status ink of the branch line and, for a working row, a shimmering branch with three dots
+([`project-rail-row.tsx`](../../src/ui/project-rail/project-rail-row.tsx),
+[`33-rail-working.css`](../../src/styles/33-rail-working.css)), and a folded workspace shows
+its agent count on the logo's corner and nothing per status. The mark set lives on in
+[`AgentStateMark`](../../src/ui/blocks/agent-state-mark.tsx) for the pane header and the
+stage-bar pill only; the strip tab and the dock draw none. The old rail's badges
+(`RailStatusMark`, the table above) are a separate component and keep their look.
+
 [Electron's limit service](../../electron/agent-limits/service.ts) reads Codex's
 `account/rateLimits/read` using the installed CLI and its default login profile,
 without starting a model turn. It shares one request per minute across windows.

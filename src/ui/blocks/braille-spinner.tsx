@@ -10,7 +10,7 @@
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 /** ⠹: the frame that still reads as "working" when nothing moves. */
 const STILL_FRAME = 2;
-/** The six-dot cell inside the 14 slot: two columns, three rows, 4 apart. */
+/** The six-dot cell in the spinner's 14-unit viewBox (the box it scales to is `--mark-size`): two columns, three rows, 4 apart. */
 const DOT_X = [5, 9] as const;
 const DOT_Y = [3, 7, 11] as const;
 const DOT_R = 1.4;

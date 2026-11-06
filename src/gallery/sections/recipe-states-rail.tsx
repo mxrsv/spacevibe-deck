@@ -68,7 +68,12 @@ const ROWS: readonly SheetRow[] = [
     draw: (state) =>
       isSelected(state) || state === "disabled" || state === "needs you" ? null : (
         <RememberedRailRow
-          row={{ pane: REMEMBERED, title: REMEMBERED.title ?? "", branch: "main" }}
+          row={{
+            pane: REMEMBERED,
+            title: REMEMBERED.title ?? "",
+            branch: "main",
+            folderOnly: false,
+          }}
           onResume={NOOP}
           onForget={NOOP}
         />

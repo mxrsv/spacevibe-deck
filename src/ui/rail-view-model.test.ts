@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { PaneView } from "../terminal/tabs-store";
 import type { AgentRailView } from "./agent-rail-model";
 import {
   API_KEY,
@@ -84,53 +83,11 @@ describe("railItems", () => {
   });
 });
 
-describe("project roll-up (LAY-1)", () => {
-  const LOUD = {
-    failed: { attention: "error" },
-    needs: { attention: "requested" },
-    working: { phase: "working" },
-    unread: { attention: "completed" },
-  } as const;
-
-  function rollupOf(...panes: readonly Partial<PaneView>[]) {
-    const view = rail([
-      tab(
-        1,
-        "/w/deck",
-        panes.map((over, at) => pane(at + 1, over)),
-      ),
-    ]);
-    return viewOf({}, view).groups[0].rollup?.status ?? null;
-  }
-
-  it("speaks with the loudest row: failed, needs input, working, then unread", () => {
-    expect(rollupOf(LOUD.unread, LOUD.working, LOUD.needs, LOUD.failed)).toBe("failed");
-    expect(rollupOf(LOUD.unread, LOUD.working, LOUD.needs)).toBe("needs-input");
-    expect(rollupOf(LOUD.unread, LOUD.working)).toBe("working");
-    expect(rollupOf(LOUD.unread)).toBe("unread");
-  });
-
-  it("is null for a quiet project", () => {
-    expect(rollupOf({ phase: "exited" }, {}, { hasRun: false })).toBeNull();
-  });
-
-  it("takes the newest of two equally loud rows", () => {
-    const view = rail([
-      tab(1, "/w/deck", [
-        pane(1, { attention: "requested", changedAt: NOW - 9 * MINUTE }),
-        pane(2, { attention: "requested", changedAt: NOW - 2 * MINUTE }),
-      ]),
-    ]);
-    expect(viewOf({}, view).groups[0].rollup?.id).toBe("pane:2");
-  });
-
-  it("leaves archived rows out of the roll-up and the count", () => {
+describe("project count (SR-5)", () => {
+  it("leaves archived rows out of the count", () => {
     const api = (model: RailViewModel) => model.groups.find((group) => group.key === API_KEY);
-    expect(api(viewOf())).toMatchObject({ count: 2, rollup: { id: "pane:31" } });
-    expect(api(viewOf({ archived: new Set(["pane:31"]) }))).toMatchObject({
-      count: 1,
-      rollup: null,
-    });
+    expect(api(viewOf())).toMatchObject({ count: 2 });
+    expect(api(viewOf({ archived: new Set(["pane:31"]) }))).toMatchObject({ count: 1 });
   });
 });
 
@@ -158,7 +115,6 @@ describe("grouping", () => {
       ["Working", ["pane:12"]],
       ["Quiet", ["shell:4"]],
     ]);
-    expect(model.groups.every((group) => group.rollup === null)).toBe(true);
   });
 
   it("by time: time in state, a row never seen to change in Earlier", () => {
@@ -176,6 +132,24 @@ describe("order", () => {
     expect(layout(viewOf({ sorting: "priority" }))[0]).toEqual([
       DECK_KEY,
       ["pane:11", "pane:12", "pane:21"],
+    ]);
+  });
+
+  it("ranks failed above needs-input, working and unread under Priority, and the rest newest first", () => {
+    // The loudest are the oldest, so only the rank (not recency) can put them first.
+    const view = rail([
+      tab(1, "/w/deck", [
+        pane(1, { attention: "error", changedAt: NOW - 50 * MINUTE }),
+        pane(2, { attention: "requested", changedAt: NOW - 40 * MINUTE }),
+        pane(3, { phase: "working", changedAt: NOW - 30 * MINUTE }),
+        pane(4, { attention: "completed", changedAt: NOW - 20 * MINUTE }),
+        pane(5, { hasRun: false, changedAt: NOW - 10 * MINUTE }),
+        pane(6, { changedAt: NOW - MINUTE }),
+      ]),
+    ]);
+    expect(layout(viewOf({ sorting: "priority" }, view))[0]).toEqual([
+      DECK_KEY,
+      ["pane:1", "pane:2", "pane:3", "pane:4", "pane:6", "pane:5"],
     ]);
   });
 
@@ -225,7 +199,7 @@ describe("review follow-ups", () => {
     expect(view.stream.map((group) => group.orderKey)).toEqual([DECK_KEY, DECK_KEY]);
     const model = viewOf({}, view);
     expect(layout(model)).toEqual([[DECK_KEY, ["pane:11"]]]);
-    expect(model.groups[0]).toMatchObject({ count: 1, rollup: { id: "pane:11" } });
+    expect(model.groups[0]).toMatchObject({ count: 1 });
     expect(viewOf({ hidden: new Set([DECK_KEY]) }, view).hidden.map((p) => p.key)).toEqual([
       DECK_KEY,
     ]);
@@ -278,11 +252,11 @@ describe("review follow-ups", () => {
     ]);
   });
 
-  it("keeps a project's count and roll-up whole under a search, and Archived unfiltered", () => {
+  it("keeps a project's count whole under a search, and Archived unfiltered", () => {
     const model = viewOf({ query: "release", archived: new Set(["pane:31"]) });
     expect(layout(model)).toEqual([[DECK_KEY, ["pane:21"]]]);
-    // The roll-up is the loudest of the project, not of what the search left.
-    expect(model.groups[0]).toMatchObject({ count: 3, rollup: { id: "pane:11" } });
+    // The count is the project's, not what the search left.
+    expect(model.groups[0]).toMatchObject({ count: 3 });
     expect(ids(model.archived)).toEqual(["pane:31"]);
   });
 
