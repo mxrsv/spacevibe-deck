@@ -10,6 +10,8 @@ the release PR, and frozen at the tag — never an auto-generated commit list.
 - **Resize handles let go when you do.** Letting go of the mouse now always ends a drag of
   [the seam beside the rail](docs/user/getting-started.md), the side panel's edge or a split
   divider. The column or pane no longer keeps following the pointer until the next click.
+- **Touch and pen resizes keep their size.** A resize drag made with a finger or a pen now
+  keeps the width or split it ended on, instead of dropping it when the drag finishes.
 - **Safer encrypted connections.** The [desktop runtime](package.json) now rejects
   certificates issued through compromised eMudhra intermediates.
 - **Switch between agents without the pause.** Switching [agent tabs](docs/user/agents.md)
